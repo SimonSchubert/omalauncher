@@ -1,6 +1,7 @@
 package dev.omalauncher.ui
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
@@ -139,13 +140,14 @@ private fun DesktopScreen(
         remember(runtime, state, context) {
             AppHandlers(
                 launch = ::launch,
-                // Pins to the page that's showing; the panel closes so the new tile is visible.
+                // Pins to the page that's showing. The panel stays open to pin more; a toast confirms it, without a page
+                // number: a full page passes the tile on to the next with room, and home follows it there.
                 pin = { hit ->
                     when (hit) {
                         is AppHit.Linux -> runtime.widgets.shortcuts.addLinux(hit.app, state.currentPage)
                         is AppHit.Android -> runtime.widgets.shortcuts.addAndroid(hit.app.label, hit.app.component, state.currentPage)
                     }
-                    state.close()
+                    Toast.makeText(context, "added to home", Toast.LENGTH_SHORT).show()
                 },
                 info = { app ->
                     state.closeNow()
