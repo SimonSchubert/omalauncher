@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.nav.HomeDrawer
+import dev.omalauncher.nav.gestureNav
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.applySystemBars
 import dev.omalauncher.ui.LauncherRoot
@@ -88,11 +90,31 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        gestureNav.homeInFront = true
+        gestureNav.homeDrawer = homeDrawer
         runtime.wm.focus(null)
         removeStaleWindowTasks()
         // The user may have set or replaced the wallpaper while we were in the background.
         lifecycleScope.launch { runtime.themes.refreshLiveWallpaper() }
     }
+
+    override fun onPause() {
+        super.onPause()
+        gestureNav.homeInFront = false
+        gestureNav.homeDrawer = null
+    }
+
+    /** For the launcher's gesture navigation: a swipe up from the bottom edge on home opens the drawer, following the finger. */
+    private val homeDrawer =
+        object : HomeDrawer {
+            override val available get() = !state.panelOpen && !state.homeMenuOpen && runtime.widgets.openScreen == null
+
+            override fun drag(fraction: Float) {
+                state.dragBy(fraction)
+            }
+
+            override fun settle(velocity: Float) = state.settle(velocity)
+        }
 
     /** Drops Recents cards whose Linux window no longer exists (app exited or process restarted). */
     private fun removeStaleWindowTasks() {

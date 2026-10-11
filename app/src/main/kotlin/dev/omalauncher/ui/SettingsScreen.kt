@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.JobState
 import dev.omalauncher.linux.LinuxState
+import dev.omalauncher.nav.gestureNav
 
 /** The launcher's settings hub, opened from the gear next to the drawer's search. */
 @Composable
@@ -38,8 +39,10 @@ fun SettingsScreen(
     onStore: () -> Unit,
     onLinux: () -> Unit,
     onLicenses: () -> Unit,
+    onNavigation: () -> Unit,
 ) {
     val context = LocalContext.current
+    val gestures by context.gestureNav.settings.collectAsState()
     val linux by runtime.bootstrap.state.collectAsState()
     val installed = linux == LinuxState.Installed
     OverlayPanel("settings", onDismiss, contentWidth = ReadingWidth) {
@@ -62,6 +65,7 @@ fun SettingsScreen(
                 },
                 Triple("packages", if (installed) "install Linux apps and tools with pacman and the AUR" else "needs linux", if (installed) onPackages else onLinux),
                 Triple("widget store", "add widgets to the home screen", onStore),
+                Triple("navigation", if (gestures.gestures) "gestures · ${gestures.layout.label}" else "buttons · switch to gestures", onNavigation),
                 Triple("android settings", "the phone's system settings") {
                     context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 },

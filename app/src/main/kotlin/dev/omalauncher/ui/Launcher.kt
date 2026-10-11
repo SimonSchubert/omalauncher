@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
+import dev.omalauncher.nav.gestureNav
 import dev.omalauncher.Runtime
 import dev.omalauncher.widgets.checkSecretsCommand
 import dev.omalauncher.widgets.publishWidgetCommand
@@ -84,6 +85,7 @@ private fun DesktopScreen(
             state.sharing != null -> state.sharing = null
             state.linuxOpen -> state.linuxOpen = false
             state.licensesOpen -> state.licensesOpen = false
+            state.navigationOpen -> state.navigationOpen = false
             state.agentsOpen -> state.agentsOpen = false
             state.storeOpen -> state.storeOpen = false
             state.themeBrowserOpen -> state.themeBrowserOpen = false
@@ -238,6 +240,7 @@ private fun ThemesOverlay(
             onStore = { state.storeOpen = true },
             onLinux = { state.linuxOpen = true },
             onLicenses = { state.licensesOpen = true },
+            onNavigation = { state.navigationOpen = true },
         )
     }
     if (state.packagesOpen) PackagesScreen(runtime, onDismiss = { state.packagesOpen = false })
@@ -245,6 +248,7 @@ private fun ThemesOverlay(
     if (state.themeBrowserOpen) ThemeCatalogScreen(runtime.themes, onDismiss = { state.themeBrowserOpen = false })
     if (state.storeOpen) StoreScreen(runtime.widgets, runtime.agents.installed, state.currentPage, runtime.themes.picked, onDismiss = { state.storeOpen = false })
     if (state.licensesOpen) LicensesScreen(onDismiss = { state.licensesOpen = false })
+    if (state.navigationOpen) NavigationScreen(LocalContext.current.gestureNav, onDismiss = { state.navigationOpen = false })
     if (state.linuxOpen) LinuxScreen(runtime, onDismiss = { state.linuxOpen = false })
     state.shared?.let { link ->
         SharedWidgetScreen(

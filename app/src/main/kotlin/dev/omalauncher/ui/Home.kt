@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import android.app.WallpaperManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.nav.HoldScreenSides
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.HomeItem
 import dev.omalauncher.widgets.Shortcut
@@ -85,6 +86,8 @@ fun HomeScreen(
     BackHandler(enabled = state.homeMenuOpen) { state.homeMenuOpen = false }
     BackHandler(enabled = state.editing != null && !state.homeMenuOpen) { state.editing = null }
     BackHandler(enabled = arrange.folder != null && !state.homeMenuOpen) { arrange.folder = null }
+    // A tile in edit mode has resize handles at the screen's sides: the launcher's own back swipe stays off them.
+    HoldScreenSides(state.editing != null)
     LaunchedEffect(engine) {
         engine.launcherAction = { action ->
             when (action) {

@@ -292,7 +292,7 @@ private fun FontOption(
 
 /** A labeled segmented choice: the picked option fills with the accent color. */
 @Composable
-private fun StyleOption(
+internal fun StyleOption(
     label: String,
     options: List<String>,
     selected: Int,

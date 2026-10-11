@@ -2,4 +2,6 @@
 <resources>
     <string name="wallpaper_label">Omarchy</string>
     <string name="wallpaper_description">The current Omarchy theme background. System colors follow the theme.</string>
+    <string name="navigation_service_label">Omalauncher gestures</string>
+    <string name="navigation_service_description">Gesture navigation for phones that keep it from other launchers: swipe in from a side for back, up from the bottom for home, and up and hold for recent apps. Omalauncher draws thin strips along the screen\'s edges for this; taps on them reach the app underneath. For the launcher\'s recent apps it notes which app comes to the front, and keeps a small picture of each app\'s screen for its card, in memory only. It doesn\'t read the screen\'s text or what you type.</string>
 </resources>

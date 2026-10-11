@@ -102,6 +102,10 @@ fun HomeMenu(
                     state.themeBrowserOpen = true
                 },
             ) }
+        MenuItem("settings") {
+            state.homeMenuOpen = false
+            state.settingsOpen = true
+        }
     }
 }
 

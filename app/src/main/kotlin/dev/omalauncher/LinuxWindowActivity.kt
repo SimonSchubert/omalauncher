@@ -39,6 +39,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.systemGestureExclusion
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.LocalDensity
+import dev.omalauncher.nav.HoldScreenSides
+import dev.omalauncher.nav.gestureNav
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.ui.ExtraKeys
 import dev.omalauncher.ui.KeyboardSink
@@ -71,8 +77,11 @@ class LinuxWindowActivity : ComponentActivity() {
         applySystemBars(this, Palette.isLight)
         setContent {
             LaunchedEffect(Palette.isLight) { applySystemBars(this@LinuxWindowActivity, Palette.isLight) }
-            AppWindow(runtime, window)
+            val keepSides = gestureNav.settings.collectAsState().value.linuxKeepsSides
+            AppWindow(runtime, window, keepSides)
             BackHandler { moveTaskToBack(true) }
+            // Edge drags (scrollbars, selections) are the app's: the launcher's back swipe steps aside.
+            HoldScreenSides(keepSides)
             LaunchedEffect(window) {
                 snapshotFlow { window in runtime.wm.appWindows }.first { !it }
                 finishAndRemoveTask()
@@ -96,6 +105,7 @@ class LinuxWindowActivity : ComponentActivity() {
                         ActivityManager.TaskDescription(label, icon, Palette.background.toArgb())
                     }
                 setTaskDescription(description)
+                gestureNav.ownTaskDescribed(taskId, label, icon)
             }
         }
     }
@@ -108,6 +118,7 @@ class LinuxWindowActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         window?.let(runtime.wm::focus)
+        window?.let { gestureNav.ownTaskResumed(taskId, runtime.displayName(it.appId, it.title)) }
     }
 
     override fun onStop() {
@@ -118,6 +129,7 @@ class LinuxWindowActivity : ComponentActivity() {
     /** Swiping the card away in Recents closes the Linux window, like closing an app. */
     override fun onDestroy() {
         super.onDestroy()
+        if (isFinishing) gestureNav.ownTaskGone(taskId)
         val w = window ?: return
         if (isFinishing && w in runtime.wm.appWindows) runtime.wm.close(w)
     }
@@ -164,8 +176,21 @@ private fun taskIcon(
 private fun AppWindow(
     runtime: Runtime,
     window: XdgToplevel,
+    /** The window's sides are the app's, not back's (settings › navigation). */
+    keepSides: Boolean,
 ) {
     var sink by remember { mutableStateOf<KeyboardSink?>(null) }
+    // Android's own back swipe too, where the phone has gestures: it allows 200dp of each edge, so around the middle.
+    val band = with(LocalDensity.current) { 200.dp.toPx() }
+    val edge = with(LocalDensity.current) { 32.dp.toPx() }
+
+    fun side(left: Boolean) =
+        Modifier.systemGestureExclusion { c ->
+            val w = c.size.width.toFloat()
+            val h = c.size.height.toFloat()
+            val top = (h - band).coerceAtLeast(0f) / 2
+            if (left) Rect(0f, top, edge, top + minOf(band, h)) else Rect(w - edge, top, w, top + minOf(band, h))
+        }
     val background = Palette.surface.toArgb()
     Box(
         Modifier
@@ -186,7 +211,12 @@ private fun AppWindow(
                     modifier = Modifier.fillMaxSize(),
                 )
                 // Over the SurfaceView, which Compose's pointer input doesn't reach.
-                Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window))
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .linuxWindowInput(runtime.wm, window)
+                        .then(if (keepSides) side(left = true).then(side(left = false)) else Modifier),
+                )
                 Box(
                     Modifier
                         .align(Alignment.BottomEnd)

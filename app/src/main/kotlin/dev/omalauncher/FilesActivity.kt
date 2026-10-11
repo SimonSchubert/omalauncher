@@ -8,6 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.nav.gestureNav
 import dev.omalauncher.ui.FilesScreen
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.applySystemBars
@@ -30,6 +31,16 @@ class FilesActivity : ComponentActivity() {
             LaunchedEffect(Palette.isLight) { applySystemBars(this@FilesActivity, Palette.isLight) }
             FilesScreen(runtime, startPath, onExit = { moveTaskToBack(true) })
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        gestureNav.ownTaskResumed(taskId, "Files")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing) gestureNav.ownTaskGone(taskId)
     }
 
     /** Opened again with a path (e.g. `omarchy-files ~/Downloads`): jump there. */
