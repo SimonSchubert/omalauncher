@@ -217,7 +217,8 @@ class WidgetServices(
                 "timezone" to Str(java.util.TimeZone.getDefault().id),
                 "launcher" to Str(BuildConfig.VERSION_NAME),
                 "theme" to (runtime.themes.current?.title?.let(::Str) ?: Null),
-                "apps" to num(runtime.androidApps.apps.size.toLong()),
+                // Widgets are shared code: the private space's apps don't count, so its size doesn't leak.
+                "apps" to num(runtime.androidApps.apps.count { !runtime.androidApps.isPrivate(it.profile) }.toLong()),
             ),
         )
     }

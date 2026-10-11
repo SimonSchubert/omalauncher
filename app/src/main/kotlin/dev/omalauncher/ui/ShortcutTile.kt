@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +40,9 @@ fun ShortcutTile(
     focused: Boolean,
     modifier: Modifier,
     onTap: () -> Unit,
+    /** Another profile's app: badged with this (a briefcase, a lock), and greyed while [paused], like Lawnchair's pinned work apps. */
+    profileBadge: ImageVector? = null,
+    paused: Boolean = false,
 ) {
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
@@ -58,26 +62,29 @@ fun ShortcutTile(
             verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
         ) {
             val bmp = icon
-            when {
-                // Bare silhouettes and initials sit on a badge, as in the drawer, so they read on any wallpaper.
-                bare && (mono || bmp == null) ->
-                    Box(
-                        Modifier.size(iconSize).clip(LauncherStyle.shape(iconSize / 2)).background(Palette.surface),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (bmp != null) {
-                            Image(bmp, shortcut.label, Modifier.size(iconSize * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
-                        } else {
-                            BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.35f).sp))
+            Box(Modifier.paused(paused), contentAlignment = Alignment.Center) {
+                when {
+                    // Bare silhouettes and initials sit on a badge, as in the drawer, so they read on any wallpaper.
+                    bare && (mono || bmp == null) ->
+                        Box(
+                            Modifier.size(iconSize).clip(LauncherStyle.shape(iconSize / 2)).background(Palette.surface),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (bmp != null) {
+                                Image(bmp, shortcut.label, Modifier.size(iconSize * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
+                            } else {
+                                BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.35f).sp))
+                            }
                         }
-                    }
-                bmp != null ->
-                    Image(bmp, shortcut.label, Modifier.size(iconSize), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
-                else ->
-                    // Apps without an icon get their initials.
-                    Box(Modifier.size(iconSize), contentAlignment = Alignment.Center) {
-                        BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.45f).sp))
-                    }
+                    bmp != null ->
+                        Image(bmp, shortcut.label, Modifier.size(iconSize), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
+                    else ->
+                        // Apps without an icon get their initials.
+                        Box(Modifier.size(iconSize), contentAlignment = Alignment.Center) {
+                            BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.45f).sp))
+                        }
+                }
+                if (profileBadge != null) ProfileBadge(iconSize, profileBadge)
             }
             if (showLabel) TileLabel(shortcut.label)
         }

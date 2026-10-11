@@ -11,6 +11,9 @@
     <!-- Uninstall from the app drawer's long-press menu (ACTION_DELETE). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
+    <!-- The private space (Android 15 on): only the default launcher holding this sees it. -->
+    <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
+
     <uses-feature
         android:name="android.software.live_wallpaper"
         android:required="false" />
