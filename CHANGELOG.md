@@ -6,6 +6,8 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+- The Arch files are open to every Android app: file managers, editors and
+  Open/Save dialogs can browse, read and edit them through SAF.
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
 
