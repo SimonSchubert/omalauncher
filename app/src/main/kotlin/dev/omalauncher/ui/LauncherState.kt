@@ -25,6 +25,9 @@ class LauncherState {
     var themeBrowserOpen by mutableStateOf(false)
     var agentsOpen by mutableStateOf(false)
     var storeOpen by mutableStateOf(false)
+
+    /** The Android widgets to pick from, from the home menu. */
+    var appWidgetsOpen by mutableStateOf(false)
     var settingsOpen by mutableStateOf(false)
     var packagesOpen by mutableStateOf(false)
     var licensesOpen by mutableStateOf(false)
@@ -43,7 +46,7 @@ class LauncherState {
 
     /** The open drawer or a full-screen panel hides the home screen; animated widgets stop ticking under it. */
     val homeCovered: Boolean
-        get() = drawer.value > 0.99f || settingsOpen || styleOpen || themeBrowserOpen || agentsOpen || storeOpen || packagesOpen || linuxOpen || licensesOpen || shared != null || sharing != null
+        get() = drawer.value > 0.99f || settingsOpen || styleOpen || themeBrowserOpen || agentsOpen || storeOpen || appWidgetsOpen || packagesOpen || linuxOpen || licensesOpen || shared != null || sharing != null
 
     /** Closes every overlay screen (settings and what it opens). */
     fun closeScreens() {
@@ -51,6 +54,7 @@ class LauncherState {
         themeBrowserOpen = false
         agentsOpen = false
         storeOpen = false
+        appWidgetsOpen = false
         packagesOpen = false
         linuxOpen = false
         licensesOpen = false

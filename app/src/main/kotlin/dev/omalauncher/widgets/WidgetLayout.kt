@@ -194,15 +194,30 @@ class WidgetLayout(
         cells: Pair<Int, Int>,
         metrics: android.util.DisplayMetrics,
     ): Pair<Int, Int> {
-        val (cellW, cellH, gap) =
-            geometry ?: run {
-                val gap = Math.round(6 * metrics.density)
-                val cell = (metrics.widthPixels - gap) / GRID_COLUMNS.toFloat()
-                Triple(cell, cell, gap)
-            }
+        val (cellW, cellH, gap) = cellGeometry(metrics)
         val (across, down) = if (turned) cells.second to cells.first else cells
         return (across * cellW).toInt() - gap to (down * cellH).toInt() - gap
     }
+
+    /** The fewest cells, at most [GRID_COLUMNS] across, whose tile is at least [px] (width, height) big; [tilePx] the other way round. */
+    fun cellsFor(
+        px: Pair<Int, Int>,
+        metrics: android.util.DisplayMetrics,
+    ): Pair<Int, Int> {
+        val (cellW, cellH, gap) = cellGeometry(metrics)
+        val across = kotlin.math.ceil((px.first + gap) / cellW).toInt().coerceAtLeast(1)
+        val down = kotlin.math.ceil((px.second + gap) / cellH).toInt().coerceAtLeast(1)
+        val (w, h) = if (turned) down to across else across to down
+        return w.coerceAtMost(GRID_COLUMNS) to h
+    }
+
+    /** [geometry]; before the home grid was laid out, an estimate from the screen width. */
+    private fun cellGeometry(metrics: android.util.DisplayMetrics) =
+        geometry ?: run {
+            val gap = Math.round(6 * metrics.density)
+            val cell = (metrics.widthPixels - gap) / GRID_COLUMNS.toFloat()
+            Triple(cell, cell, gap)
+        }
 
     fun save() {
         val json = JSONObject()
