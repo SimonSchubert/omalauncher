@@ -203,9 +203,10 @@ internal fun PromptBar(
         state.promptRequest = null
     }
     // The panel and the bar open and close together: opening it (Super+Space, a widget) focuses the bar, closing it lets go.
+    // Set to come on tap, the keyboard waits for a tap on the bar (or Super+A) instead.
     LaunchedEffect(panelShown) {
         // Opened to dictate, the keyboard stays down.
-        if (panelShown && !speech.listening) {
+        if (panelShown && !speech.listening && LauncherStyle.drawerKeyboard) {
             focus.requestFocus()
             keyboard?.show()
         } else if (!panelShown && focused) {
