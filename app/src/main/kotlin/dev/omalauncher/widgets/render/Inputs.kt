@@ -33,7 +33,6 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.omalauncher.ui.LauncherStyle
-import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
@@ -149,7 +148,7 @@ internal fun InputNode(
     val placeholder = p.observe("placeholder")?.toString().orEmpty()
     val clear = p.observe("clear")?.truthy == true
     val color = p.color("color") { Palette.foreground }
-    val style = Mono.copy(fontSize = p.observe("fontSize")?.num()?.sp ?: Mono.fontSize)
+    val style = WidgetMono.copy(fontSize = p.observe("fontSize")?.num()?.sp ?: WidgetMono.fontSize)
     val onChange = p.el.handlers["onChange"]
     val onSubmit = p.el.handlers["onSubmit"]
     val focus = LocalFocusManager.current

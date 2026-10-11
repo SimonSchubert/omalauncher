@@ -224,7 +224,7 @@ the widget that ran it refreshes its sources; other widgets keep their own inter
 | `copy(text)` | copies text to the Android clipboard |
 | `notify("title", "text")` | posts an Android notification (if the launcher may post them) |
 | `url("https://...")` | opens in the Android browser |
-| `launcher("themes")` | `themes`, `agents`, `store`, `drawer` or `linux` (the sheet that installs Linux) |
+| `launcher("style")` | opens a launcher screen: `style` (theme, background, home screen, terminal; `themes` too), `agents`, `store`, `drawer` or `linux` (the sheet that installs Linux) |
 | `refresh()` | re-runs this widget's sources now |
 | `screen()` / `close()` | opens the widget's `screen { }` full screen, or closes it (owl 5) |
 | `media("toggle")` | controls what's playing: `toggle`, `play`, `pause`, `next`, `previous`, or `open` (brings up the player app) |
@@ -264,7 +264,8 @@ widget "weather" {
   and a tap that changes state there changes the tile too. While it's open its sources keep
   running, whichever page the tile is on.
 - It holds the same nodes as a tile. It doesn't scroll by itself: put the content in a
-  `Column { scroll: true }`. `screenWidth` and `screenHeight` are its size in dp.
+  `Column { scroll: true }`. `screenWidth` and `screenHeight` are its size in dp, known from its
+  first frame. The tile can read them too, but there they may be `null`: use `screenWidth ?? 0`.
 - One screen per widget, with up to 1000 nodes (the tile still has its own 500). For views
   within it, use a state and `if`: `state tab = "hours"`, buttons that set it, and
   `if tab == "hours" { ... } else { ... }`.

@@ -34,7 +34,7 @@ fun AgentsScreen(
         BasicText(
             "Installed with mise, like Omarchy. Logins open in your browser; paste keys with the keyboard's clipboard.",
             Modifier.padding(vertical = 8.dp),
-            style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.9f),
+            style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(AGENTS, key = { it.bin }) { agent ->
@@ -69,8 +69,8 @@ private fun AgentRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                BasicText(agent.name, style = Mono.copy(fontSize = Mono.fontSize * 1.1f))
-                BasicText(agent.description, style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f))
+                BasicText(agent.name, style = Mono.copy(fontSize = TextSize.Item))
+                BasicText(agent.description, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
             when {
                 state is JobState.Working -> BasicText("${state.action}…", style = Mono.copy(color = Palette.accent))

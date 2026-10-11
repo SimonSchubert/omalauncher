@@ -55,7 +55,7 @@ class ThemePalette(
     val border = color("muted", 0xFF414868)
     val red = color("red", 0xFFF7768E)
     val green = color("green", 0xFF9ECE6A)
-    val mono = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = foreground)
+    val mono = TextStyle(fontFamily = FontFamily.Monospace, fontSize = TextSize.Body, color = foreground)
 }
 
 /**
@@ -87,6 +87,9 @@ object Palette {
     val border get() = current.border
     val red get() = current.red
     val green get() = current.green
+
+    /** The translucent fill of tiles, bars and rails over the wallpaper. */
+    val glass get() = background.copy(alpha = 0.88f)
 }
 
 /** How the launcher draws itself, independent of the theme's colors. Saved by ThemeStore. */
@@ -136,15 +139,63 @@ fun Modifier.frame(
     return clip(shape).background(fill, shape).border(width, color, shape)
 }
 
+/**
+ * Omarchy's gap between framed surfaces: between home's tiles, from them to the screen's
+ * safe edges, and from full-screen panels to those edges, so a panel's frame lines up with the tiles'.
+ */
+val HomeGap = 6.dp
+
+/** A home-screen surface over the wallpaper: tiles, the prompt bar, the rails; accent while [focused]. */
+fun Modifier.tile(focused: Boolean = false): Modifier = frame(2.dp, if (focused) Palette.accent else Palette.border, Palette.glass)
+
 /** The launcher's text style in the theme's foreground color. */
 val Mono get() = Palette.current.mono
 
 /**
+ * The launcher's text sizes. Nothing is smaller than [Small], which is still
+ * readable on a phone at arm's length; Android's font size scales them all.
+ */
+object TextSize {
+    /** Second lines, statuses, hints and labels under icons. */
+    val Small = 12.sp
+
+    /** Everything else; [Mono]'s size. */
+    val Body = 14.sp
+
+    /** List items and menu entries. */
+    val Item = 15.sp
+
+    /** Fields and dialog text. */
+    val Large = 16.sp
+
+    /** Screen and dialog titles. */
+    val Title = 18.sp
+}
+
+/**
  * The few Nerd Font glyphs omarchy uses that Android lacks: weather (U+E300–E3E3, see
- * weatherIcon()) plus nf-md-check 󰄬 and nf-md-close 󰅖. A subset of Symbols Nerd Font;
- * Weather Icons by Erik Flowers, SIL OFL 1.1; Material Design Icons, Apache 2.0.
+ * weatherIcon()) plus the launcher's own [Glyph]s. A subset of Symbols Nerd Font 3.5.1, made
+ * with pyftsubset; Weather Icons by Erik Flowers, SIL OFL 1.1; Material Design Icons, Apache 2.0.
  */
 val NerdSymbols = FontFamily(Font(R.font.nerd_symbols))
+
+/** The Material Design Icons in [NerdSymbols] the launcher draws with [Symbol]. */
+object Glyph {
+    /** nf-md-check 󰄬 */
+    const val Check = "\uDB80\uDD2C"
+
+    /** nf-md-close 󰅖 */
+    const val Close = "\uDB80\uDD56"
+
+    /** nf-md-chevron_down 󰅀 */
+    const val ChevronDown = "\uDB80\uDD40"
+
+    /** nf-md-chevron_right 󰅂 */
+    const val ChevronRight = "\uDB80\uDD42"
+
+    /** nf-md-chevron_up 󰅃 */
+    const val ChevronUp = "\uDB80\uDD43"
+}
 
 /** Status/navigation bar icons follow the theme's light or dark mode. */
 fun applySystemBars(

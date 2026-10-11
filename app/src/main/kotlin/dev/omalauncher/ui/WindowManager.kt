@@ -6,11 +6,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.wayland.Keys
 import dev.omalauncher.wayland.Surface
 import dev.omalauncher.wayland.SurfaceHit
 import dev.omalauncher.wayland.WaylandServer
 import dev.omalauncher.wayland.WindowManagerHooks
 import dev.omalauncher.wayland.XdgToplevel
+import kotlin.math.abs
 
 /**
  * Window state for Linux toplevels. Every toplevel is shown as its own Android
@@ -41,6 +43,12 @@ class WindowManager : WindowManagerHooks {
     /** A claimed toplevel went away. */
     var release: (XdgToplevel) -> Unit = {}
 
+    /** A toplevel showed up, before it's claimed or opened. */
+    var created: (XdgToplevel) -> Unit = {}
+
+    /** A window got the keyboard (again); set by the runtime, which catches terminals up on the text size. */
+    var focusGained: (XdgToplevel) -> Unit = {}
+
     /** Toplevels shown inside tiles. */
     private val embedded = HashSet<XdgToplevel>()
 
@@ -62,6 +70,7 @@ class WindowManager : WindowManagerHooks {
 
     override fun toplevelCreated(toplevel: XdgToplevel) {
         main.post {
+            created(toplevel)
             if (claim(toplevel)) {
                 embedded += toplevel
                 return@post
@@ -102,6 +111,27 @@ class WindowManager : WindowManagerHooks {
             server.input.setKeyboardFocus(toplevel?.surface)
             // Refresh the "activated" state on both windows.
             listOfNotNull(previous, toplevel).distinct().forEach { configure(it) }
+        }
+        toplevel?.let(focusGained)
+    }
+
+    /**
+     * Zooms the focused [window]'s text [steps] times with Ctrl+= or Ctrl+-,
+     * foot's font-increase and font-decrease. Only the focused window gets keys.
+     */
+    fun zoom(
+        window: XdgToplevel,
+        steps: Int,
+    ) {
+        if (window !== focused || steps == 0) return
+        val code = if (steps > 0) Keys.KEY_EQUAL else Keys.KEY_MINUS
+        server.postInput {
+            key(Keys.KEY_LEFTCTRL, true)
+            repeat(abs(steps)) {
+                key(code, true)
+                key(code, false)
+            }
+            key(Keys.KEY_LEFTCTRL, false)
         }
     }
 

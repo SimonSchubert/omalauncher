@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.newAppCommand
 import dev.omalauncher.widgets.newWidgetCommand
@@ -41,7 +40,7 @@ internal fun EditAction(
     onClick: () -> Unit,
 ) {
     Box(Modifier.clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp)) {
-        BasicText(label, style = Mono.copy(color = color, fontSize = 14.sp))
+        BasicText(label, style = Mono.copy(color = color, fontSize = TextSize.Body))
     }
 }
 
@@ -138,5 +137,5 @@ private fun MenuItem(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) { BasicText(label, style = Mono.copy(fontSize = 15.sp)) }
+    ) { BasicText(label, style = Mono.copy(fontSize = TextSize.Item)) }
 }

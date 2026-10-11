@@ -4,6 +4,9 @@ import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -435,6 +438,40 @@ class ThemeStore(
         wallpaper = if (liveWallpaperActive) null else decodeWallpaper(file)
         if (file != null && isLinux()) withContext(Dispatchers.IO) { guest.linkBackground(file) }
         changeListeners.forEach { it() }
+    }
+
+    /**
+     * Like omarchy-theme-bg-install, then picking it: copies an image into the
+     * current theme's ~/.config/omarchy/backgrounds/<theme> and shows it.
+     * Formats Linux can't read (HEIC, GIF) are re-encoded as JPEG.
+     */
+    suspend fun addBackground(uri: Uri) {
+        val theme = current ?: return
+        val file = withContext(Dispatchers.IO) {
+            val dir = File(dirs.backgrounds, theme.name)
+            val type = context.contentResolver.getType(uri)
+            val ext = when (type) {
+                "image/png" -> "png"
+                "image/webp" -> "webp"
+                else -> "jpg"
+            }
+            val out = File(dir, "image-${System.currentTimeMillis()}.$ext")
+            runCatching {
+                dir.mkdirs()
+                val input = context.contentResolver.openInputStream(uri) ?: throw FileNotFoundException(uri.toString())
+                if (type in listOf("image/png", "image/webp", "image/jpeg")) {
+                    input.use { i -> out.outputStream().use { i.copyTo(it) } }
+                } else {
+                    val bmp = input.use(BitmapFactory::decodeStream) ?: error("can't decode $type")
+                    out.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 92, it) }
+                }
+                out
+            }.onFailure {
+                out.delete()
+                Log.e(TAG, "background not added", it)
+            }.getOrNull()
+        } ?: return
+        setBackground(file)
     }
 
     /**

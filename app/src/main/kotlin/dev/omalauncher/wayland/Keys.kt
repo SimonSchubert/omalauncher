@@ -10,6 +10,7 @@ object Keys {
     const val KEY_ESC = 1
     const val KEY_TAB = 15
     const val KEY_MINUS = 12
+    const val KEY_EQUAL = 13
     const val KEY_SLASH = 53
     const val KEY_LEFTCTRL = 29
     const val KEY_LEFTALT = 56

@@ -83,7 +83,7 @@ class WidgetServices(
     private val notifications = Notifications(context, media)
     private val volume = Volume(context)
 
-    /** Opens launcher screens ("themes", "agents", "drawer"); set by the UI. */
+    /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction: ((String) -> Unit)? = null
 
     private val recent = HashMap<String, Pair<Long, Deferred<ShellResult>>>()

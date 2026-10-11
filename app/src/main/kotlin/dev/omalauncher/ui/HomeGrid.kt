@@ -267,7 +267,7 @@ internal fun HomeGrid(
 
     BoxWithConstraints(modifier) {
         val density = LocalDensity.current
-        val gap = with(density) { 6.dp.roundToPx() }
+        val gap = with(density) { HomeGap.roundToPx() }
         // The grid stops [room] short of the bottom; the pages and their gestures go on below it.
         val height = constraints.maxHeight - with(density) { room.roundToPx() }
         val width = constraints.maxWidth / per

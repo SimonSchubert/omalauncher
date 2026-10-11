@@ -43,7 +43,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.GuestEntry
@@ -192,14 +191,14 @@ fun FilesScreen(
                         value = q,
                         onValueChange = { query = it },
                         singleLine = true,
-                        textStyle = Mono.copy(fontSize = 16.sp),
+                        textStyle = Mono.copy(fontSize = TextSize.Large),
                         cursorBrush = SolidColor(Palette.accent),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = {}),
                         modifier = Modifier.weight(1f).focusRequester(focus).padding(horizontal = 8.dp),
                         decorationBox = { inner ->
                             Box {
-                                if (q.isEmpty()) BasicText("filter this folder", style = Mono.copy(color = Palette.muted, fontSize = 16.sp))
+                                if (q.isEmpty()) BasicText("filter this folder", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Large))
                                 inner()
                             }
                         },
@@ -213,7 +212,7 @@ fun FilesScreen(
                                 "/root" -> "home"
                                 else -> path.substringAfterLast('/')
                             },
-                            style = Mono.copy(fontSize = 18.sp),
+                            style = Mono.copy(fontSize = TextSize.Title),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )

@@ -62,7 +62,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Velocity
-import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -267,8 +266,8 @@ internal fun RecentStrip(
     LaunchedEffect(runtime.usage.settled) { listState.scrollToItem(0) }
     Box(
         modifier
-            .then(if (vertical) Modifier.fillMaxHeight().width(RecentStripHeight) else Modifier.padding(horizontal = 6.dp).fillMaxWidth().height(RecentStripHeight))
-            .then(if (bare) Modifier else Modifier.frame(2.dp, Palette.border, Palette.background.copy(alpha = 0.88f))),
+            .then(if (vertical) Modifier.fillMaxHeight().width(RecentStripHeight) else Modifier.padding(horizontal = HomeGap).fillMaxWidth().height(RecentStripHeight))
+            .then(if (bare) Modifier else Modifier.tile()),
         contentAlignment = if (vertical) Alignment.TopCenter else Alignment.CenterStart,
     ) {
         val cells: LazyListScope.() -> Unit = {
@@ -326,11 +325,11 @@ private fun StripCell(
                         if (bmp != null) {
                             Image(bmp, label, Modifier.size(size * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
                         } else {
-                            BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = 14.sp))
+                            BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Body))
                         }
                     }
                 bmp != null -> Image(bmp, label, Modifier.size(size * if (mono) 0.85f else 1f), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
-                else -> BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = 16.sp))
+                else -> BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Large))
             }
             if (profileBadge != null) ProfileBadge(size, profileBadge)
         }
@@ -608,7 +607,7 @@ internal fun SearchField(
     placeholder: String,
     modifier: Modifier = Modifier,
 ) {
-    val style = Mono.copy(fontSize = Mono.fontSize * 1.1f)
+    val style = Mono.copy(fontSize = TextSize.Item)
     BasicTextField(
         value = query,
         onValueChange = onChange,
@@ -639,7 +638,7 @@ private fun Section(
     actions: List<Pair<String, () -> Unit>> = emptyList(),
 ) {
     if (actions.isEmpty()) {
-        BasicText(title, Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), style = Mono.copy(color = Palette.muted))
+        SectionLabel(title, Modifier.padding(start = 8.dp))
     } else {
         Row(Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicText(title, Modifier.weight(1f), style = Mono.copy(color = Palette.muted))
@@ -726,7 +725,7 @@ private fun AppCell(
                 Image(icon, label, Modifier.size(52.dp))
             } else {
                 Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
-                    BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = 18.sp))
+                    BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
                 }
             }
             if (profileBadge != null) ProfileBadge(52.dp, profileBadge)
@@ -734,7 +733,7 @@ private fun AppCell(
         Spacer(Modifier.height(6.dp))
         BasicText(
             label,
-            style = Mono.copy(fontSize = 11.sp, textAlign = TextAlign.Center),
+            style = Mono.copy(fontSize = TextSize.Small, textAlign = TextAlign.Center),
             // Always two lines tall, so a row keeps its height whichever apps fill it while typing.
             maxLines = 2,
             minLines = 2,
@@ -770,6 +769,6 @@ private fun AppActions(
             }
         }
     Popup(popupPositionProvider = position, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        MenuItems(actions, onDismiss, minWidth = 160.dp, itemPadding = 12.dp, fontSize = Mono.fontSize * 1.05f)
+        MenuItems(actions, onDismiss, minWidth = 160.dp, itemPadding = 12.dp, fontSize = TextSize.Item)
     }
 }

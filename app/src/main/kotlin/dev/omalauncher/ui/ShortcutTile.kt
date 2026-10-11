@@ -94,7 +94,7 @@ fun ShortcutTile(
 /** An app tile's frame, or none for bare icons unless [focused]. */
 internal fun Modifier.tileFrame(focused: Boolean) =
     when {
-        !LauncherStyle.bareAppIcons -> frame(2.dp, if (focused) Palette.accent else Palette.border, Palette.background.copy(alpha = 0.88f))
+        !LauncherStyle.bareAppIcons -> tile(focused)
         // Bare icons still show which tile is focused or being edited.
         focused -> frame(2.dp, Palette.accent)
         else -> this
@@ -108,9 +108,9 @@ internal fun TileLabel(text: String) {
         style =
             if (LauncherStyle.bareAppIcons) {
                 // On the wallpaper: light text with a shadow, like stock launchers.
-                Mono.copy(fontSize = 11.sp, textAlign = TextAlign.Center, color = Color.White, shadow = Shadow(Color.Black.copy(alpha = 0.7f), blurRadius = 6f))
+                Mono.copy(fontSize = TextSize.Small, textAlign = TextAlign.Center, color = Color.White, shadow = Shadow(Color.Black.copy(alpha = 0.7f), blurRadius = 6f))
             } else {
-                Mono.copy(fontSize = 10.sp, textAlign = TextAlign.Center)
+                Mono.copy(fontSize = TextSize.Small, textAlign = TextAlign.Center)
             },
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,

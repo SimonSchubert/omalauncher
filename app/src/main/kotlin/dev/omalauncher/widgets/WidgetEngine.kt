@@ -95,7 +95,7 @@ class WidgetEngine(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val services = WidgetServices(context, proot, runtime, scope)
 
-    /** Opens launcher screens ("themes", "agents", "drawer"); set by the UI. */
+    /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction by services::launcherAction
 
     /** The widget store. */
@@ -209,7 +209,7 @@ class WidgetEngine(
     /** The user (or their agent) wrote it: not shipped with the app, installed from the store, shared with them, or an agent's tile. */
     fun isOwnWidget(spec: WidgetSpec): Boolean {
         val name = spec.file.name
-        return name !in bundledFiles && !name.startsWith("agent-") && !name.startsWith("shared-") && market.installed.values.none { it.file == name }
+        return name !in bundledFiles && !name.startsWith("agent-") && !name.startsWith(TERMINAL_PREFIX) && !name.startsWith("shared-") && market.installed.values.none { it.file == name }
     }
 
     /** [agent]'s terminal tile is on the home screen. */
@@ -224,6 +224,17 @@ class WidgetEngine(
         setPage(name, page)
         File(dir, name).writeText(agentWidget(agent))
     }
+
+    /**
+     * Adds another plain terminal tile to [page], a copy of the default one. Each is a file of its own, so there
+     * can be any number, and one removed (the default included) is always a tap away in the store.
+     */
+    suspend fun addTerminalWidget(page: Int) =
+        withContext(Dispatchers.IO) {
+            val name = TERMINAL_PREFIX + System.currentTimeMillis().toString(36) + ".owl"
+            setPage(name, page)
+            File(dir, name).writeBytes(context.assets.open("widgets/$TERMINAL_ASSET").use { it.readBytes() })
+        }
 
     /** What a widget from a share link is saved as is there already, with the same text (null when it isn't there). */
     fun sharedWidgetIsSame(shared: Shared): Boolean? = File(dir, shared.fileName).takeIf { it.exists() }?.let { it.readText() == shared.text }
@@ -724,6 +735,10 @@ class WidgetEngine(
             }
 
     companion object {
+        /** The default terminal tile, which [addTerminalWidget] copies. */
+        private const val TERMINAL_ASSET = "45-terminal.owl"
+        private const val TERMINAL_PREFIX = "terminal-"
+
         /** The widgets dir, relative to the guest home. */
         const val GUEST_DIR = ".config/omalauncher/widgets"
 

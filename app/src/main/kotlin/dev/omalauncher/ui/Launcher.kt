@@ -85,7 +85,7 @@ private fun DesktopScreen(
             state.agentsOpen -> state.agentsOpen = false
             state.storeOpen -> state.storeOpen = false
             state.themeBrowserOpen -> state.themeBrowserOpen = false
-            state.themesOpen -> state.themesOpen = false
+            state.styleOpen -> state.styleOpen = false
             state.packagesOpen -> state.packagesOpen = false
             state.settingsOpen -> state.settingsOpen = false
             runtime.widgets.openScreen != null -> runtime.widgets.openScreen = null
@@ -172,7 +172,7 @@ private fun DesktopScreen(
         )
     }
     // The bar and the panel above it; the keyboard lifts both. Nothing here takes touches while the panel is closed,
-    // except the bar. Landscape folds them into a rail beside the grid, and unfolds them over it, centered.
+    // except the bar. A phone's landscape folds them into a rail beside the grid, and unfolds them over it, centered.
     val side = homeSide()
     if (side != null && !panelShown) {
         if (runtime.terminals.active == null) {
@@ -234,7 +234,7 @@ private fun ThemesOverlay(
         SettingsScreen(
             runtime,
             onDismiss = { state.settingsOpen = false },
-            onThemes = { state.themesOpen = true },
+            onStyle = { state.styleOpen = true },
             onAgents = { state.agentsOpen = true },
             onPackages = { state.packagesOpen = true },
             onStore = { state.storeOpen = true },
@@ -243,7 +243,7 @@ private fun ThemesOverlay(
         )
     }
     if (state.packagesOpen) PackagesScreen(runtime, onDismiss = { state.packagesOpen = false })
-    if (state.themesOpen) ThemePicker(runtime.themes, onDismiss = { state.themesOpen = false })
+    if (state.styleOpen) StyleScreen(runtime, onDismiss = { state.styleOpen = false })
     if (state.themeBrowserOpen) ThemeCatalogScreen(runtime.themes, onDismiss = { state.themeBrowserOpen = false })
     if (state.storeOpen) StoreScreen(runtime.widgets, runtime.agents.installed, state.currentPage, runtime.themes.picked, onDismiss = { state.storeOpen = false })
     if (state.licensesOpen) LicensesScreen(onDismiss = { state.licensesOpen = false })

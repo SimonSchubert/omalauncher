@@ -91,11 +91,11 @@ fun rememberLinuxInstall(runtime: Runtime): (List<String>) -> Unit {
 private fun InstallOffer(runtime: Runtime) {
     var picked by rememberSaveable { mutableStateOf(listOf(AGENTS.first().bin)) }
     val install = rememberLinuxInstall(runtime)
-    BasicText("arch linux, optional", style = Mono.copy(fontSize = Mono.fontSize * 1.2f))
+    BasicText("arch linux, optional", style = Mono.copy(fontSize = TextSize.Large))
     Spacer(Modifier.height(8.dp))
     BasicText(
         "Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download; installs in the background.",
-        style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.9f),
+        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
     )
     Spacer(Modifier.height(16.dp))
     // Above the agent list, so it's in reach without scrolling.
@@ -116,10 +116,10 @@ private fun Installed(runtime: Runtime) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            BasicText("arch linux", style = Mono.copy(fontSize = Mono.fontSize * 1.1f))
+            BasicText("arch linux", style = Mono.copy(fontSize = TextSize.Item))
             BasicText(
                 "installed · " + (size?.let(::formatSize) ?: "measuring…"),
-                style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f),
+                style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
         }
     }
@@ -139,7 +139,7 @@ private fun Installed(runtime: Runtime) {
             BasicText(
                 "Deletes Linux apps, coding agents, packages and everything in /root, like Downloads. " +
                     "Themes, wallpapers, widgets and your home screen stay.",
-                style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f),
+                style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
             Row {
                 BracketAction("remove", Palette.red, runtime::removeLinux)
@@ -166,10 +166,10 @@ private fun GpuRow(runtime: Runtime) {
     Column(Modifier.fillMaxWidth().clip(LauncherStyle.shape(12.dp)).background(Palette.surface).padding(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                BasicText("gpu acceleration", style = Mono.copy(fontSize = Mono.fontSize * 1.1f))
+                BasicText("gpu acceleration", style = Mono.copy(fontSize = TextSize.Item))
                 BasicText(
                     status,
-                    style = Mono.copy(color = if (gpu.active) Palette.green else Palette.muted, fontSize = Mono.fontSize * 0.85f),
+                    style = Mono.copy(color = if (gpu.active) Palette.green else Palette.muted, fontSize = TextSize.Small),
                 )
             }
             when {

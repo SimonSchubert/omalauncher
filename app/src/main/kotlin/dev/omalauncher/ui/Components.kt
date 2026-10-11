@@ -42,7 +42,7 @@ fun OverlayPanel(
             .background(Palette.overlay)
             .clickable(onClick = onDismiss)
             .safeDrawingPadding()
-            .padding(12.dp),
+            .padding(HomeGap),
     ) {
         Column(
             Modifier
@@ -53,16 +53,32 @@ fun OverlayPanel(
                 .padding(12.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                BasicText(title, style = Mono.copy(color = Palette.accent, fontSize = Mono.fontSize * 1.3f))
+                BasicText(title, style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
                 Spacer(Modifier.weight(1f))
                 actions()
-                Box(Modifier.clickable(onClick = onDismiss).padding(8.dp)) { BasicText("✕", style = Mono.copy(color = Palette.red)) }
+                Symbol(Glyph.Close, Palette.red, Modifier.clickable(onClick = onDismiss).padding(8.dp), TextSize.Title)
             }
             Spacer(Modifier.height(8.dp))
             content()
         }
     }
 }
+
+/** A muted heading over a group of rows: settings sections, the app drawer's letters. */
+@Composable
+fun SectionLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+) = BasicText(text, modifier.padding(top = 12.dp, bottom = 4.dp), style = Mono.copy(color = Palette.muted))
+
+/** A [Glyph] from the launcher's Nerd Font subset, sized like text. */
+@Composable
+fun Symbol(
+    glyph: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    fontSize: TextUnit = TextSize.Body,
+) = BasicText(glyph, modifier, style = Mono.copy(color = color, fontSize = fontSize, fontFamily = NerdSymbols))
 
 /** A terminal-style `[ label ]` button. */
 @Composable
@@ -90,7 +106,7 @@ fun JobLog(
         }
     if (log.isEmpty()) return
     Spacer(Modifier.height(6.dp))
-    val style = Mono.copy(color = if (state is JobState.Failed) Palette.red else Palette.muted, fontSize = Mono.fontSize * 0.8f)
+    val style = Mono.copy(color = if (state is JobState.Failed) Palette.red else Palette.muted, fontSize = TextSize.Small)
     // A failure's reason is usually at the end of the line: let it wrap.
     for (line in log.takeLast(lines)) BasicText(line, style = style, maxLines = if (state is JobState.Failed) 3 else 1)
 }

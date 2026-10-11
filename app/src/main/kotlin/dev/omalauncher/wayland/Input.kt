@@ -22,8 +22,7 @@ class Input(
     private val server: WaylandServer,
 ) {
     private val keyboards = mutableListOf<KeyboardResource>()
-    private var keymapFd = -1
-    private var keymapSize = 0
+    private var keymap: Keymap? = null
 
     var pointerFocus: Surface? = null
         private set
@@ -36,22 +35,37 @@ class Input(
 
     private fun now() = SystemClock.uptimeMillis().toInt()
 
-    /** Uses a NUL-terminated XKB keymap file; clients mmap it. */
+    /** Uses a NUL-terminated XKB keymap file, extended with slots for other characters; see [Keymap]. */
     fun setKeymap(path: String) {
-        val fd = Native.openReadOnly(path)
-        if (fd < 0) {
-            Log.w("wl.input", "cannot open keymap $path: $fd")
-            return
-        }
-        if (keymapFd >= 0) Native.close(keymapFd)
-        keymapFd = fd
-        keymapSize = java.io.File(path).length().toInt()
+        val file = java.io.File(path)
+        keymap =
+            try {
+                Keymap(file.readText().trimEnd('\u0000'), file.resolveSibling("keymaps"))
+            } catch (e: Exception) {
+                Log.w("wl.input", "cannot load keymap $path", e)
+                return
+            }
         keyboards.forEach(::sendKeymap)
     }
 
+    /** Sends a fresh fd each time, so a keymap that changes doesn't close one a queued event holds. */
     private fun sendKeymap(k: KeyboardResource) {
-        if (keymapFd < 0) return
-        k.send(k.event(0).uint(1).fd(keymapFd).uint(keymapSize))
+        val file = keymap?.file ?: return
+        val fd = Native.openReadOnly(file.path)
+        if (fd < 0) {
+            Log.w("wl.input", "cannot open keymap $file: $fd")
+            return
+        }
+        k.send(k.event(0).uint(1).fd(fd, close = true).uint(file.length().toInt()))
+    }
+
+    /** Types a character no US key has, by binding it to a spare key first. */
+    fun typeCodePoint(codePoint: Int) {
+        val map = keymap ?: return
+        val (code, changed) = map.slotFor(codePoint)
+        if (changed) keyboards.forEach(::sendKeymap)
+        key(code, true)
+        key(code, false)
     }
 
     fun addKeyboard(k: KeyboardResource) {

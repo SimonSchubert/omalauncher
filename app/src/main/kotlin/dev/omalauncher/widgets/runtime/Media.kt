@@ -88,6 +88,10 @@ class Media(
     /** Album art by the id widgets see in `art`; only the current track's is kept. */
     private var art: Pair<String, Bitmap>? = null
 
+    /** What [art] was taken for: the app, the track and the art's size. */
+    private var artTrack: List<Any?>? = null
+    private var artSerial = 0
+
     fun art(src: String): Bitmap? = art?.takeIf { it.first == src }?.second
 
     /** The session to show and control: the one playing, else the most recent. */
@@ -114,8 +118,20 @@ class Media(
                     ?: it.getBitmap(MediaMetadata.METADATA_KEY_ART)
                     ?: it.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
             }
-        val artSrc = bitmap?.let { b -> (art?.takeIf { it.second === b } ?: ("media:art:${System.identityHashCode(b)}" to b)).also { art = it }.first }
         fun text(key: String) = m?.getString(key)?.takeIf { it.isNotBlank() }?.let(::Str) ?: Null
+        // Every c.metadata is a fresh parcel with a fresh Bitmap, and this runs every second while playing:
+        // keep the art for as long as the track (and the art's size) stays the same, so its id doesn't change
+        // each tick and the widget doesn't swap, and briefly lose, the image.
+        val artKey =
+            bitmap?.let { b ->
+                val track = listOf(MediaMetadata.METADATA_KEY_MEDIA_ID, MediaMetadata.METADATA_KEY_TITLE, MediaMetadata.METADATA_KEY_ARTIST, MediaMetadata.METADATA_KEY_ALBUM).map { m.getString(it) }
+                listOf(c.packageName, track, b.width, b.height)
+            }
+        if (artKey != artTrack) {
+            artTrack = artKey
+            art = bitmap?.let { "media:art:${++artSerial}" to it }
+        }
+        val artSrc = art?.first
         val app =
             labels.getOrPut(c.packageName) {
                 runCatching {

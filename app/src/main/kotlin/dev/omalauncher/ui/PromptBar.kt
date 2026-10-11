@@ -225,7 +225,7 @@ internal fun PromptBar(
     // Measured rather than assumed (a large system font makes the bar taller), and passed on while home shows:
     // with the panel open the bar can grow by lines of text that home shouldn't make room for.
     var frame by remember { mutableIntStateOf(0) }
-    val gap = with(LocalDensity.current) { 6.dp.roundToPx() }
+    val gap = with(LocalDensity.current) { HomeGap.roundToPx() }
     LaunchedEffect(frame, panelShown, gap) { if (frame > 0 && !panelShown) state.barHeight = frame + 2 * gap }
     // The whole bar and the gutter around it focus the field, not just the text: it's the main way in.
     Column(
@@ -249,7 +249,7 @@ internal fun PromptBar(
                     }.background(Palette.background)
                     .clickable { speech.error = null }
                     .padding(horizontal = 10.dp, vertical = 4.dp),
-                style = Mono.copy(color = Palette.red, fontSize = Mono.fontSize * 0.9f),
+                style = Mono.copy(color = Palette.red, fontSize = TextSize.Small),
             )
         }
         Box(Modifier.onSizeChanged { frame = it.height }) {
@@ -257,7 +257,7 @@ internal fun PromptBar(
                 Modifier
                     .fillMaxWidth()
                     .heightIn(min = PromptBarHeight)
-                    .frame(2.dp, if (listening || focused) Palette.accent else Palette.border, Palette.background.copy(alpha = 0.88f))
+                    .tile(listening || focused)
                     .padding(start = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -271,7 +271,7 @@ internal fun PromptBar(
                     },
                     readOnly = listening,
                     maxLines = 5,
-                    textStyle = Mono.copy(fontSize = Mono.fontSize * 1.1f, color = if (listening) Palette.accent else Palette.foreground),
+                    textStyle = Mono.copy(fontSize = TextSize.Item, color = if (listening) Palette.accent else Palette.foreground),
                     cursorBrush = SolidColor(Palette.accent),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { submit() }),
@@ -307,7 +307,7 @@ internal fun PromptBar(
                                     !linux || agent == null -> "open an app…"
                                     else -> "open an app or ask ${agent.bin}…"
                                 }
-                            BasicText(hint, style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 1.1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            BasicText(hint, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Item), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         inner()
                         }
@@ -466,7 +466,7 @@ private fun AgentPicker(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BasicText(agent?.bin ?: "agent", style = Mono.copy(color = if (agent == null) Palette.muted else Palette.accent))
-            BasicText(if (open) " ▴" else " ▾", style = Mono.copy(color = Palette.muted))
+            Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 4.dp))
         }
         if (open) {
             Popup(
@@ -495,7 +495,7 @@ private fun AgentPicker(
                             BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
                             Column(Modifier.weight(1f)) {
                                 BasicText(a.name, style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
-                                BasicText(a.bin, style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f))
+                                BasicText(a.bin, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                             }
                         }
                     }

@@ -41,7 +41,18 @@ import dev.omalauncher.linux.LinuxState
 /** Where landscape home keeps the recent apps strip and the bar: the side portrait's bottom turned to. */
 enum class HomeSide { Left, Right }
 
-/** The side for the strip and the bar in landscape, where home turns its grid on its side; null in portrait. */
+/** Whether home turns portrait's grid on its side: landscape, unless the window shows two pages. */
+@Composable
+internal fun homeTurned(): Boolean {
+    val window = LocalWindowInfo.current.containerSize
+    return window.width > window.height && !showsTwoPages(window)
+}
+
+/**
+ * The side for the strip and the bar where home turns its grid on its side; null in portrait. Only a phone's
+ * landscape is too short for them below the grid: a tablet keeps them there, where a rail would stack its
+ * prompt one letter at a time down a long edge.
+ */
 @Composable
 internal fun homeSide(): HomeSide? {
     val view = LocalView.current
@@ -63,8 +74,9 @@ internal fun homeSide(): HomeSide? {
         onDispose { displays.unregisterDisplayListener(listener) }
     }
     val window = LocalWindowInfo.current.containerSize
+    val tablet = with(LocalDensity.current) { minOf(window.width, window.height).toDp() } >= 600.dp
     return when {
-        window.width <= window.height || showsTwoPages(window) -> null
+        !homeTurned() || tablet -> null
         rotation == Surface.ROTATION_270 -> HomeSide.Left
         else -> HomeSide.Right
     }
@@ -83,7 +95,7 @@ internal fun showsTwoPages(window: IntSize) = window.width / 2f / window.height 
 @Composable
 internal fun sideWidth(): Dp =
     with(LocalDensity.current) {
-        val gap = 6.dp.roundToPx()
+        val gap = HomeGap.roundToPx()
         ((if (LauncherStyle.recentApps) RecentStripHeight.roundToPx() + gap else 0) + PromptBarHeight.roundToPx() + gap).toDp()
     }
 
@@ -133,12 +145,12 @@ private fun PromptRail(
     val agent = runtime.agents.default
     // The longest that fits the rail: a letter takes a whole line.
     val hints = listOfNotNull(agent?.takeIf { linuxState == LinuxState.Installed }?.let { "open an app or ask ${it.bin}" }, "open an app", "apps")
-    val style = Mono.copy(fontSize = Mono.fontSize * 1.1f, color = Palette.muted)
+    val style = Mono.copy(fontSize = TextSize.Item, color = Palette.muted)
     Column(
         Modifier
             .width(PromptBarHeight)
             .fillMaxHeight()
-            .frame(2.dp, Palette.border, Palette.background.copy(alpha = 0.88f))
+            .tile()
             .clickable { state.open() },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
