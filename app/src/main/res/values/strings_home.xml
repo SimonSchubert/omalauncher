@@ -84,6 +84,8 @@
 
     <!-- The drawer's long-press menu of an app. -->
     <string name="drawer_action_pin">add to home</string>
+    <string name="drawer_action_add_to_strip">add to strip</string>
+    <string name="drawer_action_remove_from_strip">remove from strip</string>
     <string name="drawer_action_info">app info</string>
     <string name="drawer_action_uninstall">uninstall</string>
 </resources>

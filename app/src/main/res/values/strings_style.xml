@@ -23,6 +23,9 @@
     <string name="style_boxed">boxed</string>
     <string name="style_icon_only">icon only</string>
     <string name="style_recent_apps">recent apps</string>
+    <string name="style_app_strip">app strip</string>
+    <string name="style_pinned">pinned</string>
+    <string name="style_recent">recent</string>
     <string name="style_shown">shown</string>
     <string name="style_hidden">hidden</string>
     <string name="style_empty_page_left">empty page left</string>
