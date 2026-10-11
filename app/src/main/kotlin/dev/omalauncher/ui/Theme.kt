@@ -132,6 +132,9 @@ object LauncherStyle {
     /** The strip of recently used apps above the bar on home. */
     val recentApps get() = style[Style.RECENT_APPS]
 
+    /** That strip shows the apps pinned to it, in their order, instead of recent ones. */
+    val pinnedStrip get() = style[Style.PINNED_STRIP]
+
     /** Forces one home page even on a screen [SideRail]'s auto-detect would otherwise split in two. */
     val forceSinglePage get() = style[Style.FORCE_SINGLE_PAGE]
 

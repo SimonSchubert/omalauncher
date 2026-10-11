@@ -34,6 +34,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.KeyboardActions
@@ -59,6 +60,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.AndroidShortcut
 import dev.omalauncher.Runtime
+import dev.omalauncher.StripPins
+import dev.omalauncher.stripCellSize
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.widgets.WidgetSpec
 import dev.omalauncher.widgets.render.LocalMenuOpened
@@ -139,6 +142,7 @@ internal class AppHandlers(
     val share: (WidgetSpec) -> Unit,
     /** Removes an owl app's file, and its icon from home. */
     val removeOwl: (WidgetSpec) -> Unit,
+    val stripPins: StripPins,
 )
 
 /** The shortcuts an Android app offers above its menu's actions; null for anything else. */
@@ -199,7 +203,16 @@ internal fun AppHit.act(
 }
 
 /** The long-press menu of an app cell, labeled as stock launchers label it. */
-private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>> = actionWords().map { word -> (ACTION_LABELS[word] ?: word) to { act(word, handlers) } }
+private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>> =
+    listOfNotNull(stripAction(handlers.stripPins)) + actionWords().map { word -> (ACTION_LABELS[word] ?: word) to { act(word, handlers) } }
+
+/** Adds the app to the strip or takes it off, while the strip shows pinned apps. */
+private fun AppHit.stripAction(pins: StripPins): Pair<String, () -> Unit>? =
+    when {
+        !LauncherStyle.recentApps || !LauncherStyle.pinnedStrip -> null
+        key in pins.keys -> "remove from strip" to { pins.remove(key) }
+        else -> "add to strip" to { pins.add(key) }
+    }
 
 /** The app's icon and its silhouette, each null until loaded or if it has none. */
 internal fun AppHit.icons(runtime: Runtime): Pair<ImageBitmap?, ImageBitmap?> =
@@ -245,7 +258,7 @@ val RecentStripHeight = 56.dp
 /**
  * The apps opened lately, on home right above the bar, scrolling sideways; [vertical] stands it up
  * beside the grid in landscape, scrolling down. A home tile like the others: frame, fill and gaps,
- * or bare when home icons are. Can be hidden in themes.
+ * or bare when home icons are. Can show pinned apps instead, or be hidden, in themes.
  */
 @Composable
 internal fun RecentStrip(
@@ -260,9 +273,10 @@ internal fun RecentStrip(
     home: FocusRequester? = null,
     side: HomeSide? = null,
 ) {
-    // Not before every kind of app is listed: the ones missing would push in as their kind arrived.
-    val apps = if (runtime.appsListed) recentApps(runtime, 20) else emptyList()
-    // Nothing opened yet: no strip, but its room stays, so home doesn't shift when the first app shows up.
+    val pinned = LauncherStyle.pinnedStrip
+    // Recent apps wait until every kind of app is listed: the ones missing would push in as their kind arrived.
+    val apps = if (pinned) pinnedApps(runtime) else if (runtime.appsListed) recentApps(runtime, 20) else emptyList()
+    // Nothing opened (or pinned) yet: no strip, but its room stays, so home doesn't shift when the first app shows up.
     if (apps.isEmpty()) {
         Spacer(if (vertical) modifier.width(RecentStripHeight) else modifier.height(RecentStripHeight))
         return
@@ -271,24 +285,28 @@ internal fun RecentStrip(
     val listState = rememberLazyListState()
     // Back on home, the strip starts at the app opened last, wherever it was scrolled to before.
     LaunchedEffect(runtime.usage.settled) { listState.scrollToItem(0) }
-    Box(
+    BoxWithConstraints(
         modifier
             .then(if (vertical) Modifier.fillMaxHeight().width(RecentStripHeight) else Modifier.padding(horizontal = EdgeGap).fillMaxWidth().height(RecentStripHeight))
             .then(if (bare) Modifier else Modifier.tile()),
         contentAlignment = if (vertical) Alignment.TopCenter else Alignment.CenterStart,
     ) {
+        // Pinned apps share the strip out evenly: a few get bigger cells, many get smaller ones until they have to scroll.
+        val cell = if (pinned) stripCellSize(((if (vertical) maxHeight else maxWidth) - 8.dp).value, apps.size).dp else 48.dp
         val cells: LazyListScope.() -> Unit = {
             items(apps, key = { it.key }) { hit ->
                 val (icon, mask) = hit.icons(runtime)
                 Box(if (home != null) Modifier.focusProperties { toHome(side, home) } else Modifier) {
-                    StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, spoken = hit.spoken, paused = hit.paused(runtime))
+                    StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, spoken = hit.spoken, paused = hit.paused(runtime), cell = cell)
                 }
             }
         }
         if (vertical) {
-            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, content = cells)
+            val arrangement = if (pinned) Arrangement.SpaceEvenly else Arrangement.Top
+            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(vertical = 4.dp), verticalArrangement = arrangement, horizontalAlignment = Alignment.CenterHorizontally, content = cells)
         } else {
-            LazyRow(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, content = cells)
+            val arrangement = if (pinned) Arrangement.SpaceEvenly else Arrangement.Start
+            LazyRow(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 4.dp), horizontalArrangement = arrangement, verticalAlignment = Alignment.CenterVertically, content = cells)
         }
     }
 }
@@ -308,15 +326,17 @@ private fun StripCell(
     spoken: String = label,
     /** As in [AppHit.paused]: drawn dimmed, like stock launchers. */
     paused: Boolean = false,
+    /** The tapped area; the icon fills most of it. */
+    cell: Dp = 48.dp,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
-    val size = 40.dp
+    val size = cell * 5 / 6
     Box(
         Modifier
-            .size(48.dp)
+            .size(cell)
             .alpha(if (paused) PausedAlpha else 1f)
             .clip(LauncherStyle.shape(12.dp))
             .menuLongPresses { menuOpen = true }
@@ -374,6 +394,12 @@ internal fun recentApps(
             }
         }.take(limit)
         .toList()
+}
+
+/** The apps pinned to the strip, in pin order; ones not installed (or not loaded yet) are skipped. */
+private fun pinnedApps(runtime: Runtime): List<AppHit> {
+    val byKey = allApps(runtime).associateBy { it.key }
+    return runtime.stripPins.keys.mapNotNull { byKey[it] }
 }
 
 /** Pulling down past the top of a list in the drawer drags it closed, like stock drawers; for its list, and a panel's in its place. */
