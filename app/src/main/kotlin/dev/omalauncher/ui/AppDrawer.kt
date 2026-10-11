@@ -751,7 +751,7 @@ private fun AppCell(
         Spacer(Modifier.height(6.dp))
         BasicText(
             label,
-            style = Mono.copy(fontSize = 11.sp, textAlign = TextAlign.Center),
+            style = Mono.copy(fontSize = TextSize.Small, textAlign = TextAlign.Center),
             // Always two lines tall, so a row keeps its height whichever apps fill it while typing.
             maxLines = 2,
             minLines = 2,

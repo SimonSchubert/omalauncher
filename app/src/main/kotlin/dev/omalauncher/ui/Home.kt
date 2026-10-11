@@ -17,19 +17,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imeAnimationTarget
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
@@ -81,7 +88,8 @@ fun HomeScreen(
     LaunchedEffect(engine) {
         engine.launcherAction = { action ->
             when (action) {
-                "themes" -> state.themesOpen = true
+                // "themes" from before the screen was style; widgets still send it.
+                "style", "themes" -> state.styleOpen = true
                 "agents" -> state.agentsOpen = true
                 "store" -> state.storeOpen = true
                 "linux" -> state.linuxOpen = true
@@ -155,6 +163,10 @@ fun HomeScreen(
     // Overlays below are siblings of the pager inside this Box, so they never change the page's size.
     val density = LocalDensity.current
     val ime = WindowInsets.ime
+    // Where the keyboard ends up, so a terminal tile resizes once rather than with every frame of its animation.
+    @OptIn(ExperimentalLayoutApi::class)
+    val imeTarget = WindowInsets.imeAnimationTarget
+    val statusBar = WindowInsets.statusBars.union(WindowInsets.displayCutout)
     // Back with the soft keyboard up only reaches the keyboard app, which closes itself. Closed like that
     // (not by the tile's ⌨ button), the tile lets go too, so the bar and recent apps come back.
     LaunchedEffect(terminals) {
@@ -165,7 +177,7 @@ fun HomeScreen(
     var origin by remember { mutableStateOf(Offset.Zero) }
     val extraKeys = terminals.active != null && extraKeysWanted()
     val side = homeSide()
-    val turned = side != null
+    val turned = homeTurned()
     val sideRoom = sideWidth()
     val barRoom = with(density) { state.barHeight.takeIf { it > 0 }?.toDp() ?: (PromptBarHeight + 12.dp) }
     LaunchedEffect(extraKeys) { if (!extraKeys) terminals.extraKeys = null }
@@ -186,19 +198,43 @@ fun HomeScreen(
     Column(
         Modifier
             .fillMaxSize()
-            // Typing in a terminal tile: lift the pages so the tile stays above the keyboard.
+            // Typing in a terminal tile: lift the pages so the tile stays above the keyboard, but not under the status
+            // bar; a tile too tall for both gives up the rest at its bottom.
             .graphicsLayer {
                 val keys = if (extraKeys) ExtraKeysHeight.toPx() else 0f
-                translationY = -terminals.liftFor(ime.getBottom(density), view.height, 8.dp.toPx() + keys)
+                translationY =
+                    -terminals.liftFor(
+                        imeHeight = ime.getBottom(density),
+                        imeTarget = imeTarget.getBottom(density),
+                        windowHeight = view.height,
+                        margin = 8.dp.toPx() + keys,
+                        top = statusBar.getTop(density) + 6.dp.toPx(),
+                        minHeight = 64.dp.toPx(),
+                    )
+            }
+            // Nothing below where the typing tile ends, above the extra keys, so the gaps around them show the wallpaper, and
+            // nothing lifted under the status bar.
+            .drawWithContent {
+                val keyboard = ime.getBottom(density)
+                if (terminals.active == null || keyboard == 0) {
+                    drawContent()
+                } else {
+                    val keys = if (extraKeys) ExtraKeysHeight.toPx() else 0f
+                    val lift = terminals.lift - origin.y
+                    clipRect(
+                        top = statusBar.getTop(density) + lift,
+                        bottom = view.height - keyboard - keys - 8.dp.toPx() + lift,
+                    ) { this@drawWithContent.drawContent() }
+                }
             }
             // Room for the bar, which DesktopScreen draws over the pages (so the keyboard lifts it without shrinking
             // the grid). The grid ends with its own gap; below it the strip, a gap, the bar and a gap: the bar as
-            // measured, since a large font makes it taller. In landscape they stand beside it instead, on the side
-            // portrait's bottom turned to.
+            // measured, since a large font makes it taller. In a phone's landscape they stand beside it instead, on
+            // the side portrait's bottom turned to.
             .padding(
                 start = if (side == HomeSide.Left) sideRoom else 0.dp,
                 end = if (side == HomeSide.Right) sideRoom else 0.dp,
-                bottom = if (turned) 0.dp else barRoom,
+                bottom = if (side != null) 0.dp else barRoom,
             ),
     ) {
         HomeGrid(
@@ -226,15 +262,24 @@ fun HomeScreen(
             },
             render = { item, tile, highlighted ->
                 when (item) {
-                    is WidgetItem ->
+                    is WidgetItem -> {
+                        // Whose terminal has the keyboard: the tile gives up what the keyboard covers once the lift is spent.
+                        val typing = engine.instance(item.spec)?.owns(terminals.active) == true
                         WidgetTile(
                             spec = item.spec,
                             instance = engine.instance(item.spec),
                             // As shown: on its side in landscape.
                             cells = engine.layout.cell(item.key)?.let { if (turned) it.h to it.w else it.w to it.h },
                             // Accent like Hyprland's active border: only while one of its terminals has the keyboard.
-                            focused = highlighted || engine.instance(item.spec)?.owns(terminals.active) == true,
-                            modifier = tile,
+                            focused = highlighted || typing,
+                            modifier =
+                                if (typing) {
+                                    tile
+                                        .onGloballyPositioned { terminals.tile = it.boundsInWindow().translate(0f, terminals.lift) }
+                                        .padding(bottom = with(density) { terminals.cut.toDp() })
+                                } else {
+                                    tile
+                                },
                             onTap = { engine.tap(item.spec) },
                             needs = engine.missing[item.spec.file.name].orEmpty(),
                             install = engine.installs[item.spec.file.name],
@@ -250,6 +295,7 @@ fun HomeScreen(
                                 }
                             },
                         )
+                    }
                     is Shortcut ->
                         ShortcutTile(
                             shortcut = item,
@@ -276,7 +322,7 @@ fun HomeScreen(
             },
             // The recent apps strip's room: kept while it's empty, so tiles don't reflow when it fills, and still
             // home's to swipe and long-press there until it does.
-            room = if (LauncherStyle.recentApps && !turned) RecentStripHeight else 0.dp,
+            room = if (LauncherStyle.recentApps && side == null) RecentStripHeight else 0.dp,
             turned = turned,
             per = per,
             onLongPressEmpty = { openMenu(null) },

@@ -264,7 +264,8 @@ widget "weather" {
   and a tap that changes state there changes the tile too. While it's open its sources keep
   running, whichever page the tile is on.
 - It holds the same nodes as a tile. It doesn't scroll by itself: put the content in a
-  `Column { scroll: true }`. `screenWidth` and `screenHeight` are its size in dp.
+  `Column { scroll: true }`. `screenWidth` and `screenHeight` are its size in dp, known from its
+  first frame. The tile can read them too, but there they may be `null`: use `screenWidth ?? 0`.
 - One screen per widget, with up to 1000 nodes (the tile still has its own 500). For views
   within it, use a state and `if`: `state tab = "hours"`, buttons that set it, and
   `if tab == "hours" { ... } else { ... }`.

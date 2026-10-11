@@ -95,7 +95,7 @@ class WidgetEngine(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val services = WidgetServices(context, proot, runtime, scope)
 
-    /** Opens launcher screens ("themes", "agents", "drawer"); set by the UI. */
+    /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction by services::launcherAction
 
     /** The widget store. */

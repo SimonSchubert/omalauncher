@@ -157,7 +157,7 @@ fun LicensesScreen(onDismiss: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             BasicText(c.name, style = Mono.copy(fontSize = Mono.fontSize * 1.1f))
-                            BasicText("${c.license} · ${c.use}", style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f))
+                            BasicText("${c.license} · ${c.use}", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                         }
                         BasicText(if (expanded) "⌄" else "›", style = Mono.copy(color = Palette.accent, fontSize = Mono.fontSize * 1.4f))
                     }
@@ -183,7 +183,7 @@ private fun Details(c: Component) {
     val gpl3 by produceState<String?>(null, c.license) {
         if (c.license == "lgpl-3.0") value = withContext(Dispatchers.IO) { context.assets.open("licenses/gpl-3.0.txt").bufferedReader().use { it.readText() } }
     }
-    val small = Mono.copy(fontSize = Mono.fontSize * 0.8f)
+    val small = Mono.copy(fontSize = TextSize.Small)
     // runCatching: there may be no browser.
     val open = remember(context) { { url: String -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; Unit } }
     Spacer(Modifier.height(10.dp))

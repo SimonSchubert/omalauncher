@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.widgets.WidgetSpec
 import dev.omalauncher.widgets.lang.text
@@ -60,7 +59,7 @@ internal fun WidgetTile(
                 when (install) {
                     WidgetEngine.Install.Running -> BasicText("installing…", style = Mono.copy(color = Palette.accent))
                     is WidgetEngine.Install.Failed -> {
-                        BasicText(install.log.lines().lastOrNull { it.isNotBlank() }.orEmpty(), style = Mono.copy(color = Palette.red, fontSize = 11.sp), maxLines = 2)
+                        BasicText(install.log.lines().lastOrNull { it.isNotBlank() }.orEmpty(), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small), maxLines = 2)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             TileButton("retry", Palette.accent, onInstall)
                             TileButton("fix with agent", Palette.muted) { onFix(install.log) }
@@ -72,7 +71,7 @@ internal fun WidgetTile(
         } else if (instance == null) {
             Column(Modifier.padding(12.dp)) {
                 BasicText(spec.file.name, style = Mono.copy(color = Palette.red))
-                BasicText(spec.error.orEmpty(), style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
+                BasicText(spec.error.orEmpty(), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
         } else {
             WidgetContent(instance, Modifier.fillMaxSize(), cells)
@@ -93,7 +92,7 @@ private fun LinuxPlaceholder(
         BasicText("needs Linux", style = Mono.copy(color = Palette.accent))
         BasicText(
             "runs commands in the optional Arch Linux",
-            style = Mono.copy(color = Palette.muted, fontSize = 11.sp),
+            style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )

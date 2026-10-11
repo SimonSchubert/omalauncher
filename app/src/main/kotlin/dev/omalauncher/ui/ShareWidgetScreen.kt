@@ -39,7 +39,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
@@ -109,13 +108,13 @@ fun ShareWidgetScreen(
                     BasicText(
                         text,
                         Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).padding(6.dp),
-                        style = Mono.copy(fontSize = 10.sp),
+                        style = Mono.copy(fontSize = TextSize.Small),
                     )
                 }
             }
             when {
-                text == null -> BasicText("can't read ${file.name}", style = Mono.copy(color = Palette.red, fontSize = 13.sp))
-                link == null -> BasicText("${file.name} is over ${Review.MAX_BYTES / 1024} KB, more than a launcher takes", style = Mono.copy(color = Palette.red, fontSize = 13.sp))
+                text == null -> BasicText("can't read ${file.name}", style = Mono.copy(color = Palette.red, fontSize = TextSize.Body))
+                link == null -> BasicText("${file.name} is over ${Review.MAX_BYTES / 1024} KB, more than a launcher takes", style = Mono.copy(color = Palette.red, fontSize = TextSize.Body))
                 else -> {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         val square = Modifier.widthIn(max = 360.dp).fillMaxWidth().aspectRatio(1f)
@@ -147,8 +146,8 @@ fun ShareWidgetScreen(
                                             uploading = false
                                         }
                                     }
-                                    BasicText("uploads it, public, to ${Paste.HOST} for ${Paste.DAYS} days", style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
-                                    uploadError?.let { BasicText("✗ $it", style = Mono.copy(color = Palette.red, fontSize = 11.sp)) }
+                                    BasicText("uploads it, public, to ${Paste.HOST} for ${Paste.DAYS} days", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                                    uploadError?.let { BasicText("✗ $it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
                                 }
                             }
                         }
@@ -159,7 +158,7 @@ fun ShareWidgetScreen(
                             pasted != null -> "Links to ${Paste.HOST}, gone in ${Paste.DAYS} days. The link below is permanent."
                             else -> "Permanent: the whole widget is in the image."
                         },
-                        style = Mono.copy(color = Palette.muted, fontSize = 11.sp),
+                        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                         modifier = Modifier.fillMaxWidth(),
                     )
                     FlowRow {
@@ -190,20 +189,20 @@ fun ShareWidgetScreen(
                     }
                     BasicText(
                         "Omarchy: omarchy-widgets import '<link>'",
-                        style = Mono.copy(color = Palette.muted, fontSize = 10.sp),
+                        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                     )
                 }
             }
 
             if (onPublish != null) {
                 Spacer(Modifier.height(16.dp))
-                BasicText("in the widget store", style = Mono.copy(color = Palette.accent, fontSize = 18.sp))
+                BasicText("in the widget store", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
                 BasicText(
                     "An issue on github.com/${Market.REPO}; once reviewed, anyone can install it.",
-                    style = Mono.copy(color = Palette.muted, fontSize = 11.sp),
+                    style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                 )
                 if (text != null) StoreIssue(spec, text)
-                BasicText("Or a pull request from your agent, which can add a preview too:", style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
+                BasicText("Or a pull request from your agent, which can add a preview too:", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                 BracketAction("create pull request with agent", Palette.accent, onPublish)
             }
         }
@@ -249,7 +248,7 @@ private fun StoreIssue(
     var error by remember(text) { mutableStateOf<String?>(null) }
 
     val problems = (review ?: return).errors.filterNot { it.startsWith("widgets go at") }
-    for (p in problems) BasicText("✗ $p", style = Mono.copy(color = Palette.red, fontSize = 11.sp))
+    for (p in problems) BasicText("✗ $p", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
     if (problems.isNotEmpty()) return
     BracketAction(if (uploading) "uploading…" else "open GitHub issue", Palette.accent) {
         if (uploading) return@BracketAction
@@ -264,8 +263,8 @@ private fun StoreIssue(
             uploading = false
         }
     }
-    BasicText("uploads it, public, to ${Paste.HOST} for review", style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
-    error?.let { BasicText("✗ couldn't upload: $it", style = Mono.copy(color = Palette.red, fontSize = 11.sp)) }
+    BasicText("uploads it, public, to ${Paste.HOST} for review", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+    error?.let { BasicText("✗ couldn't upload: $it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
 }
 
 /** How the launcher names itself to [Paste]'s host, which asks clients to. */

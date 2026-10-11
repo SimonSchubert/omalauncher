@@ -90,7 +90,7 @@ fun JobLog(
         }
     if (log.isEmpty()) return
     Spacer(Modifier.height(6.dp))
-    val style = Mono.copy(color = if (state is JobState.Failed) Palette.red else Palette.muted, fontSize = Mono.fontSize * 0.8f)
+    val style = Mono.copy(color = if (state is JobState.Failed) Palette.red else Palette.muted, fontSize = TextSize.Small)
     // A failure's reason is usually at the end of the line: let it wrap.
     for (line in log.takeLast(lines)) BasicText(line, style = style, maxLines = if (state is JobState.Failed) 3 else 1)
 }

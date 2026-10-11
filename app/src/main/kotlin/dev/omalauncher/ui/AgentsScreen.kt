@@ -70,7 +70,7 @@ private fun AgentRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 BasicText(agent.name, style = Mono.copy(fontSize = Mono.fontSize * 1.1f))
-                BasicText(agent.description, style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f))
+                BasicText(agent.description, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
             when {
                 state is JobState.Working -> BasicText("${state.action}…", style = Mono.copy(color = Palette.accent))

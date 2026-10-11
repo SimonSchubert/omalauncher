@@ -2,6 +2,7 @@ package dev.omalauncher.theme
 
 import android.system.Os
 import dev.omalauncher.linux.Proot
+import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.run
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
@@ -78,6 +79,7 @@ class GuestThemeConfig(
         }
         // btop rewrites its config on exit; from then on it's the user's.
         copy("config/btop/btop.conf", ".config/btop/btop.conf")
+        files.add(Managed.text(File(proot.rootfs, "usr/local/bin/btop"), Policy.Owned, executable = true) { BTOP })
         copy("icon.txt", ".config/omarchy/branding/about.txt")
         copy("config/starship.toml", ".config/starship.toml")
         copy("config/lazygit/config.yml", ".config/lazygit/config.yml")
@@ -134,15 +136,15 @@ class GuestThemeConfig(
         }
 
         /**
-         * Omarchy's foot.ini, sized for a phone: size 8 gives the 80 columns btop needs in
-         * portrait. Nerd glyphs come via fontconfig fallback.
+         * Omarchy's foot.ini, sized for a phone: the font comes from [TerminalFont], which
+         * follows the screen and Android's font size. Nerd glyphs come via fontconfig fallback.
          */
         val FOOT_INI =
             """
             [main]
             include=~/.local/state/omarchy/current/theme/foot.ini
             term=xterm-256color
-            font=JetBrains Mono:size=8
+            include=${TerminalFont.PATH}
             pad=8x8
             workers=0
             # Copy on select: on a phone a selection is a deliberate long press, and Android shows what was copied.
@@ -160,6 +162,28 @@ class GuestThemeConfig(
             clipboard-copy=Control+Insert Control+Shift+c XF86Copy
             primary-paste=none
             clipboard-paste=Shift+Insert Control+Shift+v XF86Paste
+            """.trimIndent() + "\n"
+
+        /**
+         * btop's full layout needs 80 columns, more than a terminal on a phone in
+         * portrait has at a readable size, and btop then draws nothing: it opens
+         * with less instead. Its first preset, cpu and processes, needs 60; under
+         * that only the process list fits (44), from a copy of the config.
+         * /usr/local/bin precedes /usr/bin.
+         */
+        val BTOP =
+            """
+            #!/bin/sh
+            # omalauncher: btop with fewer boxes in a narrow terminal (see GuestThemeConfig.kt)
+            [ ${'$'}# -eq 0 ] || exec /usr/bin/btop "${'$'}@"
+            cols=${'$'}(stty size 2>/dev/null | cut -d' ' -f2)
+            cols=${'$'}{cols:-80}
+            [ "${'$'}cols" -ge 80 ] && exec /usr/bin/btop
+            [ "${'$'}cols" -ge 60 ] && exec /usr/bin/btop -p 1
+            conf=${'$'}{XDG_CONFIG_HOME:-${'$'}HOME/.config}/btop/btop.conf
+            narrow=/tmp/omalauncher-btop-narrow.conf
+            { grep -v -e '^shown_boxes' -e '^presets' "${'$'}conf" 2>/dev/null; echo 'shown_boxes = "proc"'; echo 'presets = "proc:0:default"'; } > "${'$'}narrow"
+            exec /usr/bin/btop -c "${'$'}narrow"
             """.trimIndent() + "\n"
 
         val BASHRC =

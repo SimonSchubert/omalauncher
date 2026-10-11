@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -30,7 +31,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.shellQuote
@@ -64,6 +64,13 @@ class TerminalTiles(
     var lift = 0f
         private set
 
+    /** How much of the active tile the keyboard still covers once its top reaches the status bar: the tile gives that up. */
+    var cut by mutableFloatStateOf(0f)
+        private set
+
+    /** The active terminal's whole tile, before the [cut], in window pixels as if the home screen weren't lifted. */
+    var tile: Rect? = null
+
     init {
         wm.claim = { window -> sessions.firstOrNull { it.appId == window.appId }?.attach(window) != null }
         wm.release = { window -> sessions.firstOrNull { it.window === window }?.detach() }
@@ -87,12 +94,14 @@ class TerminalTiles(
 
     fun activate(term: EmbeddedTerminal) {
         val window = term.window ?: return
+        tile = null
         wm.focus(window)
         keyboard?.show()
     }
 
     fun deactivate() {
         if (active != null) wm.focus(null)
+        tile = null
         keyboard?.hide()
     }
 
@@ -105,16 +114,32 @@ class TerminalTiles(
 
     /**
      * The lift that keeps the active tile's bottom above a soft keyboard of
-     * [imeHeight] in a window [windowHeight] tall; read while drawing, so it
-     * follows the keyboard's animation without recomposing.
+     * [imeHeight] in a window [windowHeight] tall, but its top below [top] (the
+     * status bar); read while drawing, so it follows the keyboard's animation
+     * without recomposing. A tile too tall for both gives up the rest at its
+     * bottom ([cut]), kept from the keyboard's [imeTarget] so foot resizes once, not on
+     * every frame of the animation, and never below [minHeight].
      */
     fun liftFor(
         imeHeight: Int,
+        imeTarget: Int,
         windowHeight: Int,
         margin: Float,
+        top: Float,
+        minHeight: Float,
     ): Float {
         val term = active
-        lift = if (term == null || imeHeight == 0) 0f else (term.bounds.bottom + margin - (windowHeight - imeHeight)).coerceAtLeast(0f)
+        if (term == null) {
+            lift = 0f
+            cut = 0f
+            return lift
+        }
+        // Its whole tile, so its frame clears the keys too; measured before the cut, which would otherwise feed back into it.
+        val bounds = tile ?: term.bounds
+        fun overlap(ime: Int) = if (ime == 0) 0f else (bounds.bottom + margin - (windowHeight - ime)).coerceAtLeast(0f)
+        val room = (bounds.top - top).coerceAtLeast(0f)
+        lift = minOf(overlap(imeHeight), room)
+        cut = (overlap(imeTarget) - room).coerceIn(0f, (bounds.height - minHeight).coerceAtLeast(0f))
         return lift
     }
 
@@ -216,7 +241,7 @@ fun TerminalView(
                         .pointerInput(term) { detectTapGestures { term.start() } },
                     contentAlignment = Alignment.Center,
                 ) {
-                    BasicText(if (term.running) "starting…" else "exited · tap to restart", style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
+                    BasicText(if (term.running) "starting…" else "exited · tap to restart", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                 }
             active -> {
                 // Over the TextureView, which Compose's pointer input doesn't reach.

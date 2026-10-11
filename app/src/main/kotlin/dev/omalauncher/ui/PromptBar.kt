@@ -495,7 +495,7 @@ private fun AgentPicker(
                             BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
                             Column(Modifier.weight(1f)) {
                                 BasicText(a.name, style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
-                                BasicText(a.bin, style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f))
+                                BasicText(a.bin, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                             }
                         }
                     }

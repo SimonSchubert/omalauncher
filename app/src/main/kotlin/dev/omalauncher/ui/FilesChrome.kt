@@ -37,7 +37,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import dev.omalauncher.linux.GuestEntry
@@ -164,7 +163,7 @@ internal fun FileRow(
         Column(Modifier.weight(1f)) {
             BasicText(
                 entry.name + if (entry.isLink) " ↗" else "",
-                style = Mono.copy(fontSize = 15.sp),
+                style = Mono.copy(fontSize = TextSize.Item),
                 maxLines = 1,
                 overflow = TextOverflow.MiddleEllipsis,
             )
@@ -174,7 +173,7 @@ internal fun FileRow(
                 } else {
                     Formatter.formatShortFileSize(context, entry.size) + " · " + formatDate(context, entry.modified)
                 }
-            BasicText(detail, style = Mono.copy(color = Palette.muted, fontSize = 12.sp), maxLines = 1)
+            BasicText(detail, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small), maxLines = 1)
         }
         if (selecting && !selected) {
             Box(Modifier.size(22.dp).border(2.dp, Palette.border, LauncherStyle.shape(11.dp)))
@@ -201,7 +200,7 @@ internal fun SelectionBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(Icons.Close, "clear selection", onClick = onClose)
-        BasicText("$count selected", Modifier.weight(1f).padding(horizontal = 8.dp), style = Mono.copy(fontSize = 16.sp))
+        BasicText("$count selected", Modifier.weight(1f).padding(horizontal = 8.dp), style = Mono.copy(fontSize = TextSize.Large))
         IconButton(Icons.Copy, "copy", onClick = onCopy)
         IconButton(Icons.Cut, "cut", onClick = onCut)
         IconButton(Icons.Delete, "delete", tint = Palette.red, onClick = onDelete)
@@ -253,7 +252,7 @@ internal fun TextButton(
     BasicText(
         label,
         Modifier.clip(LauncherStyle.shape(20.dp)).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 10.dp),
-        style = Mono.copy(color = color, fontSize = 15.sp),
+        style = Mono.copy(color = color, fontSize = TextSize.Item),
     )
 }
 
@@ -263,6 +262,6 @@ internal fun MenuPopup(
     onDismiss: () -> Unit,
 ) {
     Popup(alignment = Alignment.TopEnd, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        MenuItems(items, onDismiss, minWidth = 200.dp, itemPadding = 13.dp, fontSize = 15.sp)
+        MenuItems(items, onDismiss, minWidth = 200.dp, itemPadding = 13.dp, fontSize = TextSize.Item)
     }
 }

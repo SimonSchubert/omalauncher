@@ -108,9 +108,9 @@ internal fun TileLabel(text: String) {
         style =
             if (LauncherStyle.bareAppIcons) {
                 // On the wallpaper: light text with a shadow, like stock launchers.
-                Mono.copy(fontSize = 11.sp, textAlign = TextAlign.Center, color = Color.White, shadow = Shadow(Color.Black.copy(alpha = 0.7f), blurRadius = 6f))
+                Mono.copy(fontSize = TextSize.Small, textAlign = TextAlign.Center, color = Color.White, shadow = Shadow(Color.Black.copy(alpha = 0.7f), blurRadius = 6f))
             } else {
-                Mono.copy(fontSize = 10.sp, textAlign = TextAlign.Center)
+                Mono.copy(fontSize = TextSize.Small, textAlign = TextAlign.Center)
             },
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,

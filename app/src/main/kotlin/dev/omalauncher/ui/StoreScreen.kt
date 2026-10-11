@@ -44,7 +44,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.widgets.Market
 import dev.omalauncher.widgets.WidgetEngine
@@ -177,7 +176,7 @@ private const val OTHER = "other"
 private const val INSTALLED = "installed"
 
 @Composable
-private fun Caption(text: String) = BasicText(text, style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
+private fun Caption(text: String) = BasicText(text, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
 
 @Composable
 private fun Chip(
@@ -191,7 +190,7 @@ private fun Chip(
             .frame(1.dp, if (selected) Palette.accent else Palette.border, if (selected) Palette.accent.copy(alpha = 0.15f) else Color.Transparent, radius = 14.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        style = Mono.copy(color = if (selected) Palette.accent else Palette.foreground, fontSize = 12.sp),
+        style = Mono.copy(color = if (selected) Palette.accent else Palette.foreground, fontSize = TextSize.Small),
     )
 }
 
@@ -212,11 +211,11 @@ private fun AgentEntry(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            BasicText(agent.name, Modifier.weight(1f), style = Mono.copy(fontSize = 15.sp))
-            BasicText(if (added) "on the home screen" else "tap to add to page $page", style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
+            BasicText(agent.name, Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item))
+            BasicText(if (added) "on the home screen" else "tap to add to page $page", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
         }
-        BasicText("built in · 6x6 · runs ${agent.bin} in ~", style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
-        BasicText("${agent.description}, in a terminal on the home screen. Tap the tile to type.", style = Mono.copy(fontSize = 12.sp))
+        BasicText("built in · 6x6 · runs ${agent.bin} in ~", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        BasicText("${agent.description}, in a terminal on the home screen. Tap the tile to type.", style = Mono.copy(fontSize = TextSize.Small))
     }
 }
 
@@ -256,11 +255,11 @@ private fun Card(
                 Image(preview, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             } else {
                 Box(Modifier.fillMaxSize().background(Palette.surface), contentAlignment = Alignment.Center) {
-                    BasicText(e.name, style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
+                    BasicText(e.name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                 }
             }
         }
-        BasicText(e.name, style = Mono.copy(fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        BasicText(e.name, style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
         val (status, color) =
             when {
                 busy != null -> busy to Palette.accent
@@ -270,7 +269,7 @@ private fun Card(
                 !linux && e.needsLinux -> "needs linux" to Palette.muted
                 else -> "${e.category ?: OTHER}${e.size?.let { " · ${it.first}x${it.second}" } ?: ""}" to Palette.muted
             }
-        BasicText(status, style = Mono.copy(color = color, fontSize = 10.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        BasicText(status, style = Mono.copy(color = color, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -297,41 +296,41 @@ private fun Detail(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Image(Icons.Back, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Palette.muted))
-            BasicText("all widgets", style = Mono.copy(color = Palette.muted, fontSize = 12.sp))
+            BasicText("all widgets", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
         }
         preview?.let {
             // As wide as the panel, but a tall widget shouldn't push its description off screen.
             Image(it, null, Modifier.fillMaxWidth().heightIn(max = 320.dp).aspectRatio(it.width.toFloat() / it.height), contentScale = ContentScale.Fit)
         }
         Spacer(Modifier.height(4.dp))
-        BasicText(e.name, style = Mono.copy(fontSize = 18.sp))
+        BasicText(e.name, style = Mono.copy(fontSize = TextSize.Title))
         val size = e.size?.let { " · ${it.first}x${it.second}" } ?: ""
-        BasicText("${e.category ?: OTHER} · ${e.author} · v${e.version} · ${e.license}$size", style = Mono.copy(color = Palette.muted, fontSize = 11.sp))
-        BasicText(e.description, style = Mono.copy(fontSize = 13.sp))
+        BasicText("${e.category ?: OTHER} · ${e.author} · v${e.version} · ${e.license}$size", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        BasicText(e.description, style = Mono.copy(fontSize = TextSize.Body))
         Spacer(Modifier.height(4.dp))
         when {
             busy != null -> BasicText(busy, style = Mono.copy(color = Palette.accent))
-            !e.supported -> BasicText("needs a newer launcher (owl ${e.owl}); update the launcher to install it", style = Mono.copy(color = Palette.red, fontSize = 12.sp))
+            !e.supported -> BasicText("needs a newer launcher (owl ${e.owl}); update the launcher to install it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
             update -> BracketAction("update ${installed?.version} → ${e.version}", Palette.accent, onInstall)
             installed != null -> BasicText("✓ on your home screen", style = Mono.copy(color = Palette.green))
             else -> BracketAction("add to page $page", Palette.accent, onInstall)
         }
-        message?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = 12.sp)) }
+        message?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
         if (!linux && e.needsLinux) {
             BasicText(
                 "needs Linux: it runs commands in Arch, so it waits as a placeholder until you install Linux in settings",
-                style = Mono.copy(color = Palette.muted, fontSize = 12.sp),
+                style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
         }
 
         // What it installs and runs, before it's added.
         Spacer(Modifier.height(4.dp))
         val packages = e.requires.entries.joinToString("; ") { (m, l) -> "$m: ${l.joinToString(", ")}" }.ifEmpty { "none" }
-        BasicText("installs packages: $packages", style = Mono.copy(fontSize = 12.sp))
+        BasicText("installs packages: $packages", style = Mono.copy(fontSize = TextSize.Small))
         if (market.changedSinceApproval(e)) {
-            BasicText("its commands or packages changed since the version you approved", style = Mono.copy(color = Palette.red, fontSize = 12.sp))
+            BasicText("its commands or packages changed since the version you approved", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
         }
-        BasicText(if (e.commands.isEmpty()) "runs no commands" else "runs these commands in Arch:", style = Mono.copy(fontSize = 12.sp))
+        BasicText(if (e.commands.isEmpty()) "runs no commands" else "runs these commands in Arch:", style = Mono.copy(fontSize = TextSize.Small))
         for (c in e.commands) {
             BasicText(
                 c.trimEnd(),
@@ -340,7 +339,7 @@ private fun Detail(
                     .background(Palette.surface)
                     .horizontalScroll(rememberScrollState())
                     .padding(6.dp),
-                style = Mono.copy(fontSize = 10.sp),
+                style = Mono.copy(fontSize = TextSize.Small),
             )
         }
     }

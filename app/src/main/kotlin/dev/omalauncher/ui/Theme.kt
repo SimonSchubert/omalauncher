@@ -55,7 +55,7 @@ class ThemePalette(
     val border = color("muted", 0xFF414868)
     val red = color("red", 0xFFF7768E)
     val green = color("green", 0xFF9ECE6A)
-    val mono = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = foreground)
+    val mono = TextStyle(fontFamily = FontFamily.Monospace, fontSize = TextSize.Body, color = foreground)
 }
 
 /**
@@ -138,6 +138,27 @@ fun Modifier.frame(
 
 /** The launcher's text style in the theme's foreground color. */
 val Mono get() = Palette.current.mono
+
+/**
+ * The launcher's text sizes. Nothing is smaller than [Small], which is still
+ * readable on a phone at arm's length; Android's font size scales them all.
+ */
+object TextSize {
+    /** Second lines, statuses, hints and labels under icons. */
+    val Small = 12.sp
+
+    /** Everything else; [Mono]'s size. */
+    val Body = 14.sp
+
+    /** List items and menu entries. */
+    val Item = 15.sp
+
+    /** Fields and dialog text. */
+    val Large = 16.sp
+
+    /** Screen and dialog titles. */
+    val Title = 18.sp
+}
 
 /**
  * The few Nerd Font glyphs omarchy uses that Android lacks: weather (U+E300–E3E3, see

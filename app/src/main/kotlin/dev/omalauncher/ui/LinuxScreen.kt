@@ -119,7 +119,7 @@ private fun Installed(runtime: Runtime) {
             BasicText("arch linux", style = Mono.copy(fontSize = Mono.fontSize * 1.1f))
             BasicText(
                 "installed · " + (size?.let(::formatSize) ?: "measuring…"),
-                style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f),
+                style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
         }
     }
@@ -139,7 +139,7 @@ private fun Installed(runtime: Runtime) {
             BasicText(
                 "Deletes Linux apps, coding agents, packages and everything in /root, like Downloads. " +
                     "Themes, wallpapers, widgets and your home screen stay.",
-                style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f),
+                style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
             Row {
                 BracketAction("remove", Palette.red, runtime::removeLinux)
@@ -169,7 +169,7 @@ private fun GpuRow(runtime: Runtime) {
                 BasicText("gpu acceleration", style = Mono.copy(fontSize = Mono.fontSize * 1.1f))
                 BasicText(
                     status,
-                    style = Mono.copy(color = if (gpu.active) Palette.green else Palette.muted, fontSize = Mono.fontSize * 0.85f),
+                    style = Mono.copy(color = if (gpu.active) Palette.green else Palette.muted, fontSize = TextSize.Small),
                 )
             }
             when {

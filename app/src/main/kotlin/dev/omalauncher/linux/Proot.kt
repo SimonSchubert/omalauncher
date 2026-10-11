@@ -48,6 +48,12 @@ class Proot(
             "$GUEST_HOME/.config/omarchy/backgrounds" to LauncherData.userBackgroundsDir(context),
         )
 
+    /**
+     * Android's Chinese, Japanese and Korean font, which the guest has none of (Arch's is ~300 MB).
+     * Absent on some devices; the guest then goes without, as before.
+     */
+    private val cjkFont = File("/system/fonts/NotoSansCJK-Regular.ttc")
+
     /** Host directories bound over guest paths by [command]. */
     private val binds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
 
@@ -87,6 +93,16 @@ class Proot(
             if (rootfs.isDirectory) File(rootfs, guest.removePrefix("/")).mkdirs()
         }
         File(rootfs, "var/lib/pacman/db.lck").delete()
+        // An empty stand-in, so fontconfig lists the bound font when it reads the directory.
+        if (rootfs.isDirectory) {
+            val stub = File(rootfs, GUEST_CJK_FONT.removePrefix("/"))
+            if (cjkFont.isFile) {
+                stub.parentFile?.mkdirs()
+                stub.createNewFile()
+            } else {
+                stub.delete()
+            }
+        }
         for (sub in listOf("devices/system/cpu", "class", "block", "bus", "dev", "fs", "kernel")) File(sysDir, sub).mkdirs()
         val shim = context.assets.open("bwrap-shim.sh").use { it.readBytes() }
         if (!bwrapShim.isFile || !bwrapShim.readBytes().contentEquals(shim)) writeAtomically(bwrapShim, shim, executable = true)
@@ -106,7 +122,8 @@ class Proot(
                 "-b", "/proc",
                 "-b", "${sysDir.path}:/sys",
                 "-b", "/sys/devices/system/cpu",
-            ) + binds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
+            ) + (if (cjkFont.isFile) listOf("-b", "${cjkFont.path}:$GUEST_CJK_FONT") else emptyList()) +
+            binds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
             listOf(
                 "-b", "${bwrapShim.path}:/usr/bin/bwrap",
                 "-w", GUEST_HOME,
@@ -165,5 +182,7 @@ class Proot(
 
         /** XDG_RUNTIME_DIR in the guest, bound to [runtimeDir]. */
         const val GUEST_RUNTIME_DIR = "/run/user/0"
+
+        private const val GUEST_CJK_FONT = "/usr/share/fonts/android/NotoSansCJK-Regular.ttc"
     }
 }

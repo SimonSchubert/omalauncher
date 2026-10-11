@@ -56,7 +56,7 @@ fun PackagesScreen(
             "Arch Linux ARM packages via pacman, and the AUR via yay. Installing also updates the system, so it can take a while. " +
                 "AUR packages are user-submitted and built on the device: check their PKGBUILD on aur.archlinux.org first.",
             Modifier.padding(vertical = 8.dp),
-            style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f),
+            style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )
         val list = loaded?.second.orEmpty()
         val status =
@@ -106,12 +106,12 @@ private fun PackageRow(
                     Spacer(Modifier.padding(start = 8.dp))
                     BasicText(
                         listOfNotNull(pkg.repo, pkg.version).joinToString(" "),
-                        style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.8f),
+                        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                         maxLines = 1,
                     )
                 }
                 if (pkg.description.isNotEmpty()) {
-                    BasicText(pkg.description, style = Mono.copy(color = Palette.muted, fontSize = Mono.fontSize * 0.85f), maxLines = 2)
+                    BasicText(pkg.description, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small), maxLines = 2)
                 }
             }
             when {

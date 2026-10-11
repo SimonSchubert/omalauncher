@@ -41,7 +41,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import dev.omalauncher.theme.CatalogTheme
 import dev.omalauncher.theme.ThemeCatalog
 import dev.omalauncher.theme.ThemeDirs
@@ -96,7 +95,7 @@ fun ThemeCatalogScreen(
                     BasicText(
                         "made by the community, listed on omarchy.org/themes · installed from GitHub",
                         Modifier.clickable { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ThemeCatalog.PAGE))) } },
-                        style = Mono.copy(color = Palette.muted, fontSize = 11.sp),
+                        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                     )
                     InstallStatus(store)
                     when {
@@ -171,7 +170,7 @@ private fun CatalogCard(
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(LauncherStyle.shape(8.dp)).background(Palette.surface), contentAlignment = Alignment.Center) {
             image?.let { Image(it, theme.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
         }
-        BasicText(theme.title, style = Mono.copy(fontSize = 13.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        BasicText(status.first, style = Mono.copy(color = status.second, fontSize = 10.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        BasicText(theme.title, style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        BasicText(status.first, style = Mono.copy(color = status.second, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
