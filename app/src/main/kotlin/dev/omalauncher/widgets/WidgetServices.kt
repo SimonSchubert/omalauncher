@@ -11,12 +11,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.app.ActivityManager
+import android.graphics.Bitmap
 import android.hardware.display.DisplayManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import android.view.Display
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.graphics.asAndroidBitmap
 import dev.omalauncher.BuildConfig
 import android.os.SystemClock
 import android.util.Log
@@ -28,6 +31,7 @@ import dev.omalauncher.linux.GuestShell
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.ShellPool
 import dev.omalauncher.linux.ShellResult
+import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
@@ -50,6 +54,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -60,6 +65,8 @@ import java.net.URL
 
 private const val MAX_HTTP_BYTES = 1 shl 20
 private const val NOTIFY_CHANNEL = "widgets"
+/** How many apps `android.apps` lists at most; widgets scroll rather than a source carry thousands. */
+private const val MAX_APPS = 250
 
 /**
  * What widgets can reach: guest commands (in shared shells, never with
@@ -111,6 +118,7 @@ class WidgetServices(
     override fun android(name: String): Value =
         when (name) {
             "battery" -> battery()
+            "apps" -> apps()
             "device" -> device()
             "system" -> system()
             "media" -> media.value()
@@ -124,6 +132,7 @@ class WidgetServices(
             "media" -> media.updates()
             "notifications" -> notifications.updates()
             "volume" -> volume.updates()
+            "apps" -> snapshotFlow { runtime.androidApps.apps.toList() }.map { apps() }.distinctUntilChanged()
             "battery" ->
                 callbackFlow {
                     val receiver =
@@ -143,7 +152,19 @@ class WidgetServices(
             else -> null
         }
 
-    override fun androidImage(src: String) = media.art(src)
+    override fun androidImage(src: String): Bitmap? =
+        when {
+            src.startsWith("media:") -> media.art(src)
+            // The icon of the first activity of a package ("app:com.example"), as the drawer draws it.
+            src.startsWith("app:") -> appIcon(src.removePrefix("app:"))
+            else -> null
+        }
+
+    private fun appIcon(pkg: String): Bitmap? =
+        runtime.androidApps.icons.entries
+            .firstOrNull { it.key.packageName == pkg }
+            ?.value
+            ?.asAndroidBitmap()
 
     override fun terminal(
         command: String?,
@@ -265,6 +286,31 @@ class WidgetServices(
         )
     }
 
+    /**
+     * The launchable apps the drawer shows, for `source apps = android.apps`:
+     * labels and packages from the app catalog, plus how the launcher's own
+     * opens have scored them ([AppUsage]'s decayed score, so a widget can
+     * rank like the bar search does). Icons come separately, with
+     * `Image { src: "app:package" }`.
+     */
+    private fun apps(): Value {
+        val list = runtime.androidApps.apps
+        val items =
+            list.take(MAX_APPS).map { app ->
+                val key = "a:" + app.component.flattenToShortString()
+                Obj(
+                    mapOf(
+                        "package" to Str(app.component.packageName),
+                        "label" to Str(app.label),
+                        "system" to bool(app.system),
+                        "score" to Num(Math.round(runtime.usage.score(key) * 10.0) / 10.0),
+                        "last" to (runtime.usage.last(key)?.let { Num(Math.floor(it / 1000.0)) } ?: Null),
+                    ),
+                )
+            }
+        return Obj(mapOf("count" to Num(list.size.toDouble()), "items" to Lst(items)))
+    }
+
     /** Runs a widget action: terminal, app, run, url, launcher, media, volume, notification, ... */
     override fun act(
         name: String,
@@ -284,7 +330,12 @@ class WidgetServices(
             "media" -> media.control(arg)
             "volume" -> volume.control(args[0])
             "notification" -> args.getOrNull(1)?.takeIf { it != Null }?.let { notifications.control(arg, it.toString()) }
-            "androidApp" -> context.packageManager.getLaunchIntentForPackage(arg)?.let { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            // Opens from a widget count for the launcher's own ranking as well.
+            "androidApp" -> {
+                val launch = context.packageManager.getLaunchIntentForPackage(arg)
+                runtime.androidApps.apps.firstOrNull { it.component.packageName == arg }?.let { runtime.usage.record("a:" + it.component.flattenToShortString()) }
+                launch?.let { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }
             "copy" -> copy(arg)
             "notify" -> notify(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
         }

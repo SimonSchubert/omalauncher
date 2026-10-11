@@ -388,6 +388,12 @@ class WidgetInstance(
             mediaArt?.takeIf { it.first === art }?.let { return it.second }
             return art.asImageBitmap().also { mediaArt = art to it }
         }
+        // An app icon's bitmap is replaced (not mutated) when the catalog reloads.
+        if (src.startsWith("app:")) {
+            val bmp = services.androidImage(src) ?: return null
+            appIcon?.takeIf { it.first === bmp }?.let { return it.second }
+            return bmp.asImageBitmap().also { appIcon = bmp to it }
+        }
         if (src !in imageRequests) {
             // Not from inside a draw: that would write state while drawing.
             scope?.launch {
@@ -405,6 +411,9 @@ class WidgetInstance(
 
     /** The album art last asked for, and its ImageBitmap; main thread only. */
     private var mediaArt: Pair<Bitmap, ImageBitmap>? = null
+
+    /** The app icon last asked for, and its ImageBitmap; main thread only. */
+    private var appIcon: Pair<Bitmap, ImageBitmap>? = null
 
     /** When guest image files were last checked for changes, in elapsed milliseconds. */
     private var imagesChecked = 0L

@@ -6,6 +6,8 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+- Widgets can list the apps the drawer shows (`android.apps`) with labels, packages and the launcher's own open counts, and draw their icons with `Image { src: "app:package" }`. Opens through widgets (`androidApp(...)`) count for the launcher's ranking too.
+
 ## 0.5.0 (versionCode 10) – 2026-10-11
 
 - Add your own themes, like Omarchy's, and your own picture as the background.

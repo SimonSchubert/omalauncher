@@ -65,6 +65,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `source now = clock every 1s` | Unix time in seconds, with no shell involved. Use `fmtTime(now, "HH:mm")` |
 | `source bat = android.battery` | `{level, charging, status, temp, voltage, health, plugged, technology, cycles}` from Android, updated as it changes (`temp` in °C, `voltage` in V; `health`, `plugged`, `technology` and `cycles` are null when the phone doesn't say) |
 | `source dev = android.device` | the phone: `{model, maker, android, sdk, soc}` (the Linux side can't see these) |
+| `source a = android.apps` | the launchable apps the drawer shows, label first, alphabetically: `{count, items}`, each item `{package, label, system, score, last}` (`system` preinstalled; `score` how opens through the launcher have ranked it, halving every two weeks; `last` in Unix seconds, null until the launcher opened it). Updates as apps come and go. At most 250. Icons with `Image { src: "app:package" }` (owl 5) |
 | `source sys = android.system every 5s` | the phone's state, polled: `{kernel, uptime, memory, storage, cpu, display, build, codename, patch, locale, timezone, launcher, theme, apps}`. `uptime` is in seconds; `memory` is `{total, used, available}` and `storage` `{total, used, free}`, in bytes; `cpu` is `{soc, maker, hardware, cores, abi, maxMhz}`; `display` is `{width, height, hz, dpi}`; `patch` is the security patch date, `launcher` this launcher's version, `theme` the Omarchy theme's name and `apps` how many Android apps are installed. See `20-fetch.owl` (owl 5) |
 | `source m = android.media` | what's playing in any app on the phone: `{available, playing, title, artist, album, app, package, position, duration, art}`, updated as it changes (`position` and `duration` in seconds; `art` goes in `Image { src: m.art }`). `available` is false until the user grants notification access; `media(...)` opens that setting then. See `examples/97-now-playing.owl` |
 | `source n = android.notifications` | the phone's notifications, newest first, updated as they come and go: `{available, count, items}`, each item `{key, app, package, title, text, time, clearable}` (`time` in Unix seconds). Ongoing ones (music, downloads) are left out. Needs the same notification access as media. See `examples/98-notifications.owl` (owl 4) |
@@ -77,7 +78,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see Sharing) |
-| `meta { owl: 5 }` | the language version the widget needs (this launcher has 5; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5; using them without declaring it is an error |
+| `meta { owl: 5 }` | the language version the widget needs (this launcher has 5; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth`, `screenHeight`, `android.system` and `android.apps` need 5; using them without declaring it is an error |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see Screens (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -184,7 +185,7 @@ when lists reorder), and `let x = ...` inside any node.
 | `Progress` | `value`, `max` (100), `color`, `track` |
 | `Ring` | circular progress: `value`, `max` (1), `color`, `track`, `thickness` (6), `start`/`sweep` (degrees; `start: 225; sweep: 270` makes a gauge). 64 dp unless sized |
 | `Sparkline` | `values` (a list, usually a `history`), `min` (0), `max`, `color`, `area: true` or a color, `thickness` |
-| `Image` | `src`: an `asset` or a path in this system (`"~/pics/a.png"`), `fit: contain/cover/fill`, `tint` |
+| `Image` | `src`: an `asset`, a path in this system (`"~/pics/a.png"`), or `"app:package"` for an Android app's icon (updates as apps come and go), `fit: contain/cover/fill`, `tint` |
 | `Canvas` | free drawing, below. Fills the space unless sized |
 | `Shader` | an AGSL shader, below. Fills the space unless sized |
 | `Spacer` | empty space: `size`, `width`, `height` or `weight` |

@@ -102,7 +102,7 @@ class Compiler private constructor(
             mapOf("Terminal" to 2, "sprite" to 3) +
                 listOf("Slider", "Input", "file", "android.notifications", "android.volume", "volume", "notification", "every", "at", "when", "on").associateWith { 4 } +
                 // owl 5: a full-screen view of the widget.
-                listOf("screen", "close", "screenWidth", "screenHeight", "optional", "linux", "android.system").associateWith { 5 }
+                listOf("screen", "close", "screenWidth", "screenHeight", "optional", "linux", "android.system", "android.apps").associateWith { 5 }
 
         // No onLongPress: long-press belongs to the home screen, which lifts the tile to move it.
         /**
@@ -122,7 +122,7 @@ class Compiler private constructor(
         private val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 
         /** Data only Android has; battery, media, notifications and volume update as they change, device is fixed. */
-        val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system")
+        val ANDROID = setOf("battery", "apps", "device", "media", "notifications", "volume", "system")
 
         /** media("...") commands. */
         val MEDIA = setOf("toggle", "play", "pause", "next", "previous", "open")
@@ -372,6 +372,7 @@ class Compiler private constructor(
                 since("android.${e.name}", e.pos)
                 // Listed with the commands, so the store shows it before anyone installs the widget.
                 if (e.name == "notifications") commands += "read Android notifications (apps, titles and text)"
+                if (e.name == "apps") commands += "read the list of installed apps (labels, packages and usage)"
                 Global.Source(d.name, "android.${e.name}", null, (every ?: 60.0).coerceAtLeast(1.0), false, 0)
             }
             else -> fail("a source is cmd(\"...\"), stream(\"...\"), http(\"...\"), file(\"...\"), clock, or android.${ANDROID.joinToString("/")}", e.pos)
