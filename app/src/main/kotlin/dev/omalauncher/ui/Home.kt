@@ -7,6 +7,8 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import android.app.WallpaperManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.AppWidgetSetupActivity
+import dev.omalauncher.widgets.AppWidgetItem
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.HomeItem
 import dev.omalauncher.widgets.Shortcut
@@ -149,6 +151,7 @@ fun HomeScreen(
         when (item) {
             is WidgetItem -> engine.removeWidget(item.spec)
             is Shortcut, is Folder -> engine.shortcuts.remove(item.key)
+            is AppWidgetItem -> engine.appWidgets.remove(item.key)
         }
         engine.layout.remove(item.key)
     }
@@ -261,6 +264,13 @@ fun HomeScreen(
                             state.sharing = item.spec
                         }
                     }
+                    // An Android widget that lets its settings change later, in its own screen.
+                    if (item is AppWidgetItem && engine.appWidgets.reconfigurable(item.id)) {
+                        EditAction("settings") {
+                            state.editing = null
+                            view.context.startActivity(AppWidgetSetupActivity.reconfigure(view.context, item.id))
+                        }
+                    }
                     EditAction("remove", Palette.red) { remove(item) }
                 }
             },
@@ -320,6 +330,7 @@ fun HomeScreen(
                             modifier = tile,
                             onTap = { arrange.folder = item.key },
                         )
+                    is AppWidgetItem -> AppWidgetTile(item, engine.appWidgets, highlighted, tile)
                 }
             },
             // The recent apps strip's room: kept while it's empty, so tiles don't reflow when it fills, and still

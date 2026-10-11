@@ -87,6 +87,7 @@ private fun DesktopScreen(
             state.licensesOpen -> state.licensesOpen = false
             state.agentsOpen -> state.agentsOpen = false
             state.storeOpen -> state.storeOpen = false
+            state.appWidgetsOpen -> state.appWidgetsOpen = false
             state.themeBrowserOpen -> state.themeBrowserOpen = false
             state.styleOpen -> state.styleOpen = false
             state.packagesOpen -> state.packagesOpen = false
@@ -246,6 +247,7 @@ private fun ThemesOverlay(
     if (state.styleOpen) StyleScreen(runtime, onDismiss = { state.styleOpen = false }, onBrowse = { state.themeBrowserOpen = true })
     if (state.themeBrowserOpen) ThemeCatalogScreen(runtime.themes, onDismiss = { state.themeBrowserOpen = false })
     if (state.storeOpen) StoreScreen(runtime.widgets, runtime.agents.installed, state.currentPage, runtime.themes.picked, onDismiss = { state.storeOpen = false })
+    if (state.appWidgetsOpen) AppWidgetPicker(runtime.widgets.appWidgets, state.currentPage, onDismiss = { state.appWidgetsOpen = false })
     if (state.licensesOpen) LicensesScreen(onDismiss = { state.licensesOpen = false })
     if (state.linuxOpen) LinuxScreen(runtime, onDismiss = { state.linuxOpen = false })
     state.shared?.let { link ->
