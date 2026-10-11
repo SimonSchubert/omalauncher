@@ -46,6 +46,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Velocity
@@ -274,10 +278,14 @@ internal fun AppPanel(
     LaunchedEffect(query.isBlank(), search) { listState.scrollToItem(0) }
 
     val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
-    // Pulling down past the end of the list drags the panel closed, like stock drawers.
+    // Pulling down at the end of the list drags the panel closed, like stock drawers: only a pull that starts there
+    // (decided as the finger lands, as Launcher3 does). Scrolling up to the end just stops there.
     val pullToClose =
         remember(state, screenHeight) {
             object : NestedScrollConnection {
+                /** The list was already at its end when this gesture started. */
+                var fromEnd = false
+
                 override fun onPreScroll(
                     available: Offset,
                     source: NestedScrollSource,
@@ -293,7 +301,7 @@ internal fun AppPanel(
                     available: Offset,
                     source: NestedScrollSource,
                 ): Offset {
-                    if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                    if (source != NestedScrollSource.UserInput || available.y <= 0f || !fromEnd) return Offset.Zero
                     state.dragBy(-available.y / screenHeight)
                     return Offset(0f, available.y)
                 }
@@ -339,7 +347,16 @@ internal fun AppPanel(
                     LazyColumn(
                         state = listState,
                         reverseLayout = true,
-                        modifier = Modifier.fillMaxWidth().nestedScroll(pullToClose),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .pointerInput(listState) {
+                                    // Bottom-up, so forward is up: the end is the top row.
+                                    awaitEachGesture {
+                                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                        pullToClose.fromEnd = !listState.canScrollForward
+                                    }
+                                }.nestedScroll(pullToClose),
                         contentPadding = PaddingValues(top = 8.dp, bottom = 4.dp),
                     ) {
                         fun row(
