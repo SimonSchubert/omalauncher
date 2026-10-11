@@ -94,6 +94,10 @@ fun HomeMenu(
             state.homeMenuOpen = false
             if (linux) state.packagesOpen = true else state.linuxOpen = true
         }
+        MenuItem("change wallpaper") {
+            state.homeMenuOpen = false
+            state.wallpaperOpen = true
+        }
         Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) { ThemeStrip(
                 runtime.themes,
                 gutter = 20.dp,

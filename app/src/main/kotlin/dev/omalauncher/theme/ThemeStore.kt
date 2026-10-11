@@ -4,6 +4,9 @@ import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -172,10 +175,33 @@ class ThemeStore(
     var liveWallpaperActive by mutableStateOf(false)
         private set
 
+    /** Whether the user chose Android's wallpaper (set in the system's picker) over the theme's backgrounds. */
+    var useSystemWallpaper by mutableStateOf(prefs.getBoolean(SYSTEM_WALLPAPER, false))
+        private set
+
+    /** Whether the launcher is transparent and shows Android's wallpaper: ours as the live one, or the user's own. */
+    val showsSystemWallpaper get() = liveWallpaperActive || useSystemWallpaper
+
     suspend fun refreshLiveWallpaper() {
         liveWallpaperActive = WallpaperManager.getInstance(context).wallpaperInfo?.packageName == context.packageName
-        if (!liveWallpaperActive && wallpaper == null) wallpaper = decodeWallpaper(background)
+        if (!showsSystemWallpaper && wallpaper == null) wallpaper = decodeWallpaper(background)
     }
+
+    /** Switches between Android's wallpaper and the theme's; a theme picked meanwhile doesn't switch back. */
+    suspend fun setSystemWallpaper(on: Boolean) {
+        if (on == useSystemWallpaper) return
+        useSystemWallpaper = on
+        prefs.edit().putBoolean(SYSTEM_WALLPAPER, on).apply()
+        // Only the launcher's own copy changes; the theme's background stays what Linux shows.
+        wallpaper = if (showsSystemWallpaper) null else decodeWallpaper(background)
+    }
+
+    /**
+     * Android's wallpaper pickers ("Wallpaper & style" on Pixels, the gallery…): with several, Android
+     * asks which, and can remember it; see [setSystemWallpaper]. Never through a chooser: on Android 16
+     * one for this intent crashes the whole system, which expects shared content to have a type.
+     */
+    fun systemWallpaperIntent() = Intent(Intent.ACTION_SET_WALLPAPER)
 
     private suspend fun decodeWallpaper(file: File?) = file?.let { withContext(Dispatchers.IO) { decodeForScreen(it, context)?.asImageBitmap() } }
 
@@ -216,7 +242,7 @@ class ThemeStore(
         background = bg
         // Decodes the wallpaper on first load, unless ours is the live one.
         refreshLiveWallpaper()
-        if (stale && !liveWallpaperActive) wallpaper = decodeWallpaper(bg)
+        if (stale && !showsSystemWallpaper) wallpaper = decodeWallpaper(bg)
     }
 
     /** After a new release was downloaded: its themes, templates and configs. */
@@ -431,10 +457,52 @@ class ThemeStore(
     suspend fun setBackground(file: File?) {
         background = file
         prefs.edit().putString(BACKGROUND, file?.name).apply()
-        // With the live wallpaper active, the launcher is transparent and needs no copy of its own.
-        wallpaper = if (liveWallpaperActive) null else decodeWallpaper(file)
+        // Showing Android's wallpaper, the launcher is transparent and needs no copy of its own.
+        wallpaper = if (showsSystemWallpaper) null else decodeWallpaper(file)
         if (file != null && isLinux()) withContext(Dispatchers.IO) { guest.linkBackground(file) }
         changeListeners.forEach { it() }
+    }
+
+    /**
+     * Like dropping an image into ~/.config/omarchy/backgrounds/<theme>: copies
+     * [uri] there, so Linux sees it too, and shows it. A type the themes don't
+     * use (HEIC, GIF) is converted to JPEG. Returns why it failed, or null.
+     */
+    suspend fun addBackground(uri: Uri): String? {
+        val theme = current ?: return "no theme applied yet"
+        val file =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val dir = File(LauncherData.userBackgroundsDir(context), theme.name).apply { mkdirs() }
+                    val ext = OWN_BACKGROUND_TYPES[context.contentResolver.getType(uri)]
+                    val out = File(dir, "phone-${System.currentTimeMillis()}.${ext ?: "jpg"}")
+                    if (ext != null) {
+                        checkNotNull(context.contentResolver.openInputStream(uri)) { "can't read the image" }.use { input -> out.outputStream().use { input.copyTo(it) } }
+                    } else {
+                        val bmp =
+                            ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { decoder, info, _ ->
+                                // Phone cameras take far more pixels than a wallpaper needs.
+                                val scale = 3840f / maxOf(info.size.width, info.size.height)
+                                if (scale < 1f) decoder.setTargetSize((info.size.width * scale).toInt(), (info.size.height * scale).toInt())
+                                decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                            }
+                        out.outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 92, it) }
+                    }
+                    out
+                }.onFailure { e -> Log.e(TAG, "adding background $uri failed", e) }
+            }
+        setBackground(file.getOrElse { return it.message ?: it.toString() })
+        return null
+    }
+
+    /** Whether [file] is one the user added (see [addBackground]), which they can remove. */
+    fun isOwnBackground(file: File) = file.startsWith(LauncherData.userBackgroundsDir(context))
+
+    /** Deletes a background the user added; if it was showing, the theme's first one takes over. */
+    suspend fun removeBackground(file: File) {
+        if (!isOwnBackground(file)) return
+        withContext(Dispatchers.IO) { file.delete() }
+        if (file == background) setBackground(current?.backgrounds()?.firstOrNull())
     }
 
     /**
@@ -454,12 +522,16 @@ class ThemeStore(
 
         private const val THEME = "theme"
         private const val BACKGROUND = "background"
+        private const val SYSTEM_WALLPAPER = "system_wallpaper"
         private const val MONO_ICONS = "mono_icons"
         private const val BARE_APP_ICONS = "bare_app_icons"
         private const val RECENT_APPS = "recent_apps"
         private const val CORNERS = "corners"
         private const val RENDERED_BY = "rendered_by"
         private const val DEFAULT_THEME = "tokyo-night"
+
+        /** Image types an added background is kept in as is, with their extension; see [OmarchyTheme.backgrounds]. */
+        private val OWN_BACKGROUND_TYPES = mapOf("image/png" to "png", "image/jpeg" to "jpg", "image/webp" to "webp")
 
         /** Called on the main thread after the theme or background changes (the live wallpaper listens). */
         val changeListeners = CopyOnWriteArraySet<() -> Unit>()
