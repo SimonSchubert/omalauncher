@@ -246,7 +246,7 @@ private fun ThemeCard(
 }
 
 @Composable
-private fun Thumbnail(
+internal fun Thumbnail(
     file: File,
     selected: Boolean,
     modifier: Modifier,

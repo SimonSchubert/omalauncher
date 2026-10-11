@@ -53,8 +53,8 @@ fun LauncherRoot(
 ) {
     state.bindScope()
     val ready = runtime.launcherReady
-    // With our live wallpaper active the window is transparent and Android draws the wallpaper behind it.
-    val showOwnBackground = !ready || !runtime.themes.liveWallpaperActive
+    // Showing Android's wallpaper (ours as the live one, or the user's), the window is transparent and Android draws it behind.
+    val showOwnBackground = !ready || !runtime.themes.showsSystemWallpaper
     Box(
         Modifier
             .fillMaxSize()
@@ -88,6 +88,7 @@ private fun DesktopScreen(
             state.agentsOpen -> state.agentsOpen = false
             state.storeOpen -> state.storeOpen = false
             state.themeBrowserOpen -> state.themeBrowserOpen = false
+            state.wallpaperOpen -> state.wallpaperOpen = false
             state.themesOpen -> state.themesOpen = false
             state.packagesOpen -> state.packagesOpen = false
             state.settingsOpen -> state.settingsOpen = false
@@ -96,7 +97,7 @@ private fun DesktopScreen(
         }
     }
 
-    if (!runtime.themes.liveWallpaperActive) {
+    if (!runtime.themes.showsSystemWallpaper) {
         runtime.themes.wallpaper?.let { bmp ->
             // Read while drawing, so swiping pages only redraws this.
             Canvas(Modifier.fillMaxSize()) {
@@ -246,6 +247,7 @@ private fun ThemesOverlay(
     if (state.packagesOpen) PackagesScreen(runtime, onDismiss = { state.packagesOpen = false })
     if (state.themesOpen) ThemePicker(runtime.themes, onDismiss = { state.themesOpen = false })
     if (state.themeBrowserOpen) ThemeCatalogScreen(runtime.themes, onDismiss = { state.themeBrowserOpen = false })
+    if (state.wallpaperOpen) WallpaperPicker(runtime.themes, onDismiss = { state.wallpaperOpen = false })
     if (state.storeOpen) StoreScreen(runtime.widgets, runtime.agents.installed, state.currentPage, runtime.themes.picked, onDismiss = { state.storeOpen = false })
     if (state.licensesOpen) LicensesScreen(onDismiss = { state.licensesOpen = false })
     if (state.linuxOpen) LinuxScreen(runtime, onDismiss = { state.linuxOpen = false })
