@@ -19,6 +19,9 @@
     <string name="style_boxed">gerahmt</string>
     <string name="style_icon_only">nur symbol</string>
     <string name="style_recent_apps">letzte apps</string>
+    <string name="style_app_strip">app-leiste</string>
+    <string name="style_pinned">angeheftet</string>
+    <string name="style_recent">zuletzt</string>
     <string name="style_shown">sichtbar</string>
     <string name="style_hidden">ausgeblendet</string>
     <string name="style_empty_page_left">leere seite links</string>

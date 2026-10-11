@@ -61,6 +61,8 @@
     <string name="home_linux_window">Linux</string>
 
     <string name="drawer_action_pin">zum startbildschirm hinzufügen</string>
+    <string name="drawer_action_add_to_strip">zur app-leiste hinzufügen</string>
+    <string name="drawer_action_remove_from_strip">aus der app-leiste entfernen</string>
     <string name="drawer_action_info">app-info</string>
     <string name="drawer_action_uninstall">deinstallieren</string>
 </resources>

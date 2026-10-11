@@ -19,6 +19,9 @@
     <string name="style_boxed">em caixa</string>
     <string name="style_icon_only">só ícone</string>
     <string name="style_recent_apps">apps recentes</string>
+    <string name="style_app_strip">barra de apps</string>
+    <string name="style_pinned">fixados</string>
+    <string name="style_recent">recentes</string>
     <string name="style_shown">visíveis</string>
     <string name="style_hidden">ocultos</string>
     <string name="style_empty_page_left">página vazia à esquerda</string>

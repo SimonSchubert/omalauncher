@@ -19,6 +19,9 @@
     <string name="style_boxed">dalam kotak</string>
     <string name="style_icon_only">ikon saja</string>
     <string name="style_recent_apps">aplikasi yang baru dibuka</string>
+    <string name="style_app_strip">bilah aplikasi</string>
+    <string name="style_pinned">disematkan</string>
+    <string name="style_recent">terbaru</string>
     <string name="style_shown">tampil</string>
     <string name="style_hidden">tersembunyi</string>
     <string name="style_empty_page_left">halaman kosong kiri</string>

@@ -59,6 +59,8 @@
     <string name="home_linux_window">Linux</string>
 
     <string name="drawer_action_pin">添加到主屏幕</string>
+    <string name="drawer_action_add_to_strip">添加到应用栏</string>
+    <string name="drawer_action_remove_from_strip">从应用栏移除</string>
     <string name="drawer_action_info">应用信息</string>
     <string name="drawer_action_uninstall">卸载</string>
 </resources>
