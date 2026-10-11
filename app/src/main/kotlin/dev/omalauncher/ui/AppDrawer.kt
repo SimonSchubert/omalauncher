@@ -283,8 +283,7 @@ internal fun AppPanel(
     val query = state.query
     // With a work profile, the empty bar lists one profile's apps at a time, as stock drawers' tabs do.
     val hasWork = runtime.androidApps.workProfiles.isNotEmpty()
-    var workTab by remember { mutableStateOf(false) }
-    val showWork = workTab && hasWork
+    val showWork = state.workTab && hasWork
     val listState = rememberLazyListState()
     // New results start at the bar, where the best match is.
     LaunchedEffect(query.isBlank(), search, showWork) { listState.scrollToItem(0) }
@@ -331,7 +330,7 @@ internal fun AppPanel(
             ) {
                 // Typing searches both profiles, so the tabs step aside.
                 if (hasWork && query.isBlank()) {
-                    ProfileTabs(showWork, onWork = { workTab = it })
+                    ProfileTabs(showWork, onWork = { state.workTab = it })
                     Spacer(Modifier.weight(1f))
                 }
                 Box(

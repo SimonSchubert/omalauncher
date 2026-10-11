@@ -75,6 +75,9 @@ class LauncherState {
     /** Home page currently showing (1-based); the drawer pins apps there. */
     var currentPage by mutableStateOf(1)
 
+    /** The drawer's work tab is picked rather than personal; it stays so the next time the drawer opens. */
+    var workTab by mutableStateOf(false)
+
     private var typed by mutableStateOf("")
 
     /** What's in the bar: an app to find, or a prompt for the agent. */
