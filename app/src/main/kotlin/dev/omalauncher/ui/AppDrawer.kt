@@ -147,6 +147,38 @@ internal fun asksForPrivate(query: String): Boolean {
 /** How far a sideways swipe over the drawer goes before it turns the tab. */
 private val SwipeDistance = 56.dp
 
+/** The tabs the empty bar offers right now, and the one showing: the one picked, or personal while that one's gone. */
+private fun shownTabs(
+    runtime: Runtime,
+    state: LauncherState,
+): Pair<List<DrawerTab>, DrawerTab> {
+    val apps = runtime.androidApps
+    val tabs = drawerTabs(apps.workProfiles.isNotEmpty(), apps.privateProfiles.isNotEmpty() && !apps.privateHidden)
+    return tabs to (state.tab.takeIf { it in tabs } ?: DrawerTab.Personal)
+}
+
+/**
+ * Swiping sideways turns to the next or previous tab, as stock drawers' tabs do, while the bar is empty.
+ * On the list and on the scrim behind the panel, so it works anywhere, even over a locked private space's lone title.
+ */
+internal fun Modifier.swipeTabs(
+    runtime: Runtime,
+    state: LauncherState,
+) = pointerInput(runtime, state) {
+    val threshold = SwipeDistance.toPx()
+    var dragged = 0f
+    detectHorizontalDragGestures(
+        onDragStart = { dragged = 0f },
+        onDragEnd = {
+            val (tabs, tab) = shownTabs(runtime, state)
+            if (state.query.isBlank()) swipedTab(tabs, tab, dragged, threshold).takeIf { it != tab }?.let { state.tab = it }
+        },
+    ) { change, amount ->
+        change.consume()
+        dragged += amount
+    }
+}
+
 /** What the bar's query matched: apps best first, and whether Enter opens the first rather than asking the agent. */
 internal class BarSearch(
     val hits: List<AppHit>,
@@ -336,9 +368,7 @@ internal fun AppPanel(
     val query = state.query
     val apps = runtime.androidApps
     // With a work profile or private space, the empty bar lists one profile's apps at a time, as stock drawers' tabs do.
-    val tabs = drawerTabs(apps.workProfiles.isNotEmpty(), apps.privateProfiles.isNotEmpty() && !apps.privateHidden)
-    val tab = state.tab.takeIf { it in tabs } ?: DrawerTab.Personal
-    val swipe = with(LocalDensity.current) { SwipeDistance.toPx() }
+    val (tabs, tab) = shownTabs(runtime, state)
 
     val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     // Pulling down past the end of the list drags the panel closed, like stock drawers.
@@ -408,22 +438,7 @@ internal fun AppPanel(
             }
             // Only as tall as its rows, so taps above a short list reach the scrim behind and close the panel.
             Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp), verticalArrangement = Arrangement.Bottom) {
-                BoxWithConstraints(
-                    Modifier
-                        .weight(1f, fill = false)
-                        // Swiping sideways over the list turns to the next or previous tab, as stock drawers' tabs do.
-                        .pointerInput(tabs, tab, query.isBlank()) {
-                            if (tabs.size < 2 || query.isNotBlank()) return@pointerInput
-                            var dragged = 0f
-                            detectHorizontalDragGestures(
-                                onDragStart = { dragged = 0f },
-                                onDragEnd = { swipedTab(tabs, tab, dragged, swipe).takeIf { it != tab }?.let { state.tab = it } },
-                            ) { change, amount ->
-                                change.consume()
-                                dragged += amount
-                            }
-                        },
-                ) {
+                BoxWithConstraints(Modifier.weight(1f, fill = false).swipeTabs(runtime, state)) {
                     val columns = (maxWidth / 76.dp).toInt().coerceAtLeast(1)
                     // A tab slides in from the side it was swiped or tapped towards; search results just take the list's place.
                     AnimatedContent(
