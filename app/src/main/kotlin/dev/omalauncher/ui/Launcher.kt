@@ -1,6 +1,5 @@
 package dev.omalauncher.ui
 
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
@@ -125,13 +124,14 @@ private fun DesktopScreen(
     val highlighted = search.highlighted(state.picked)
 
     fun launch(hit: AppHit) {
-        runtime.usage.record(hit.key)
+        // Private Space apps leave no trace outside it: no recent strip, no search boost.
+        if (!(hit is AppHit.Android && hit.app.isPrivate)) runtime.usage.record(hit.key)
         state.query = ""
         state.closeNow()
         when (hit) {
             is AppHit.Linux -> runtime.launch(hit.app)
-            // Uninstalled or disabled since the list was loaded.
-            is AppHit.Android -> runCatching { context.startActivity(hit.app.intent) }.onFailure { Log.w("launcher", "cannot open ${hit.app.component}", it) }
+            // Logs it if uninstalled or disabled since the list was loaded.
+            is AppHit.Android -> runtime.androidApps.open(hit.app)
         }
     }
 

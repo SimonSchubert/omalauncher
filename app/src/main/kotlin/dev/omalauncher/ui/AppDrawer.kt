@@ -85,7 +85,7 @@ internal sealed interface AppHit {
     data class Android(
         val app: AndroidApp,
     ) : AppHit {
-        override val key get() = "a:" + app.component.flattenToShortString()
+        override val key get() = (if (app.isPrivate) "p:" else "a:") + app.component.flattenToShortString()
         override val label get() = app.label
     }
 }
@@ -101,13 +101,16 @@ internal class BarSearch(
 
 private fun allApps(runtime: Runtime): List<AppHit> = runtime.linuxApps.map { AppHit.Linux(it) } + runtime.androidApps.apps.map { AppHit.Android(it) }
 
+/** Private Space apps come up in search while it's unlocked (there are none to list otherwise), but never in the recent strip. */
+private fun searchableApps(runtime: Runtime): List<AppHit> = allApps(runtime) + runtime.androidApps.privateApps.map { AppHit.Android(it) }
+
 internal fun searchApps(
     runtime: Runtime,
     query: String,
 ): BarSearch {
     if (query.isBlank()) return BarSearch(emptyList(), false)
     val now = System.currentTimeMillis()
-    val ranked = rankMatches(allApps(runtime), query, { it.label }, boost = { (runtime.usage.score(it.key, now) * 10).toInt() })
+    val ranked = rankMatches(searchableApps(runtime), query, { it.label }, boost = { (runtime.usage.score(it.key, now) * 10).toInt() })
     return BarSearch(ranked.map { it.first }, ranked.firstOrNull()?.let { isStrongMatch(it.second, query) } == true)
 }
 
@@ -119,13 +122,13 @@ internal class AppHandlers(
     val uninstall: (AndroidApp) -> Unit,
 )
 
-/** The long-press menu of an app cell: pin to home, and for Android apps their info and uninstall. */
+/** The long-press menu of an app cell: pin to home, and for Android apps their info and uninstall. Private Space apps stay off home. */
 private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>> =
     when (this) {
         is AppHit.Linux -> listOf("add to home" to { handlers.pin(this) })
         is AppHit.Android ->
             listOfNotNull(
-                "add to home" to { handlers.pin(this) },
+                if (app.isPrivate) null else "add to home" to { handlers.pin(this) },
                 "app info" to { handlers.info(app) },
                 if (app.system) null else "uninstall" to { handlers.uninstall(app) },
             )
@@ -135,7 +138,7 @@ private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>
 private fun AppHit.icons(runtime: Runtime): Triple<ImageBitmap?, ImageBitmap?, ImageVector?> =
     when (this) {
         is AppHit.Linux -> Triple(runtime.linuxIcons[app.id], runtime.linuxMasks[app.id], if (app.exec == FILES_COMMAND) Icons.Folder else null)
-        is AppHit.Android -> Triple(runtime.androidApps.icons[app.component], runtime.androidApps.masks[app.component], null)
+        is AppHit.Android -> Triple(runtime.androidApps.icon(app, mono = false), runtime.androidApps.icon(app, mono = true), null)
     }
 
 @Composable
@@ -382,6 +385,7 @@ internal fun AppPanel(
                                 }
                             }
                             section("android", runtime.androidApps.apps.map { AppHit.Android(it) })
+                            privateSection(runtime, columns, ::row)
                         }
                     }
                 }
@@ -456,6 +460,30 @@ internal fun SearchField(
             }
         },
     )
+}
+
+/**
+ * Private Space, above the Android apps: a header to lock or unlock it, and its apps while unlocked.
+ * Nothing at all on phones without one.
+ */
+private fun LazyListScope.privateSection(
+    runtime: Runtime,
+    columns: Int,
+    row: (key: String, cells: List<AppHit>, selected: Int) -> Unit,
+) {
+    val catalog = runtime.androidApps
+    if (catalog.privateSpace == null) return
+    if (!catalog.privateLocked) {
+        val rows = catalog.privateApps.map { AppHit.Android(it) }.chunked(columns)
+        for (r in rows.indices.reversed()) row("private:$r", rows[r], -1)
+    }
+    item(key = "h:private") {
+        Row(Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            BasicText("private", Modifier.weight(1f), style = Mono.copy(color = Palette.muted))
+            if (!catalog.privateLocked) BracketAction("settings", Palette.muted) { catalog.openPrivateSettings() }
+            BracketAction(if (catalog.privateLocked) "unlock" else "lock", Palette.accent) { catalog.lockPrivate(!catalog.privateLocked) }
+        }
+    }
 }
 
 /**
