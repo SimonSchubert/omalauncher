@@ -8,6 +8,9 @@ Dates are when the build was uploaded to Play.
 
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
+- Linux keyboard input uses a normal text editor for dictation, supplies an
+  empty IME snapshot, and commits replacement text without duplicating composition.
+- Linux keyboard focus recovery respects launcher, widget and dialog editors.
 
 ## 0.5.0 (versionCode 10) – 2026-10-11
 

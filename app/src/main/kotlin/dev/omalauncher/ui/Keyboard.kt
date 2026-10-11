@@ -10,8 +10,11 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.ExtractedText
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.TextAttribute
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -163,18 +166,36 @@ class KeyboardSink(
 
     override fun onCheckIsTextEditor() = softKeyboard
 
+    override fun onFocusChanged(
+        gainFocus: Boolean,
+        direction: Int,
+        previouslyFocusedRect: android.graphics.Rect?,
+    ) {
+        super.onFocusChanged(gainFocus, direction, previouslyFocusedRect)
+        // Keep the Linux window's IME connection after a surface tap, but allow
+        // launcher, widget and dialog editors to take focus normally.
+        if (!gainFocus && softKeyboard) post {
+            if (softKeyboard && isAttachedToWindow && rootView.findFocus()?.onCheckIsTextEditor() != true) {
+                requestFocus()
+            }
+        }
+    }
+
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
         cjk = cjkKeyboard()
-        // Like Termux: no suggestions or autocorrect, raw keys where the IME allows. Gboard
-        // drops pinyin and the like in such a field, so those get plain text, autocorrect and all.
+        // Offer a normal editor for dictation and CJK input, without Latin
+        // suggestions that assume access to the Linux client's surrounding text.
         outAttrs.inputType =
             if (cjk) {
                 InputType.TYPE_CLASS_TEXT
             } else {
-                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or
-                    InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             }
-        outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN or EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN or EditorInfo.IME_FLAG_NO_EXTRACT_UI or
+            EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+        // A real empty selection, so voice IMEs treat this as a field they can insert into.
+        outAttrs.initialSelStart = 0
+        outAttrs.initialSelEnd = 0
         return object : BaseInputConnection(this, false) {
             /**
              * Text the IME is still composing, like pinyin before a candidate is picked. A window
@@ -200,6 +221,21 @@ class KeyboardSink(
                 text: CharSequence,
                 newCursorPosition: Int,
             ): Boolean {
+                // Replaces composing; do not also type [composing] or voice finals duplicate.
+                composing = ""
+                bridge.type(text)
+                return true
+            }
+
+            override fun replaceText(
+                start: Int,
+                end: Int,
+                text: CharSequence,
+                newCursorPosition: Int,
+                textAttribute: TextAttribute?,
+            ): Boolean {
+                // Default finishComposingText()+commitText() would type the partial, then the
+                // final. Voice IMEs on API 33+ use this for the finished utterance.
                 composing = ""
                 bridge.type(text)
                 return true
@@ -209,9 +245,36 @@ class KeyboardSink(
                 beforeLength: Int,
                 afterLength: Int,
             ): Boolean {
-                repeat(beforeLength.coerceAtLeast(1)) { bridge.tap(Keys.KEY_BACKSPACE) }
+                repeat(beforeLength.coerceAtLeast(0)) { bridge.tap(Keys.KEY_BACKSPACE) }
                 return true
             }
+
+            /**
+             * Supply an empty editor snapshot rather than BaseInputConnection's null.
+             * Composing text has not reached Linux; reporting it as committed would
+             * let an IME delete characters that were never typed into the window.
+             */
+            override fun getExtractedText(
+                request: ExtractedTextRequest?,
+                flags: Int,
+            ) = ExtractedText().apply {
+                text = ""
+                startOffset = 0
+                selectionStart = 0
+                selectionEnd = 0
+                partialStartOffset = -1
+                partialEndOffset = -1
+            }
+
+            override fun getTextBeforeCursor(
+                n: Int,
+                flags: Int,
+            ): CharSequence = ""
+
+            override fun getTextAfterCursor(
+                n: Int,
+                flags: Int,
+            ): CharSequence = ""
 
             override fun sendKeyEvent(event: KeyEvent): Boolean {
                 // Text with no key code, which some IMEs send as one event.
