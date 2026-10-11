@@ -104,6 +104,12 @@ internal class BarSearch(
 
 private fun allApps(runtime: Runtime): List<AppHit> = runtime.linuxApps.map { AppHit.Linux(it) } + runtime.androidApps.apps.map { AppHit.Android(it) }
 
+/** [AppHit.key]s of the apps pinned to home, on their own or in a folder. */
+private fun pinnedKeys(runtime: Runtime): Set<String> =
+    runtime.widgets.shortcuts.items.mapNotNullTo(HashSet()) { s ->
+        s.component?.let { "a:" + it.flattenToShortString() } ?: s.linux?.let { AppHit.Linux(it).key }
+    }
+
 internal fun searchApps(
     runtime: Runtime,
     query: String,
@@ -276,6 +282,8 @@ internal fun AppPanel(
     val listState = rememberLazyListState()
     // New results start at the bar, where the best match is.
     LaunchedEffect(query.isBlank(), search) { listState.scrollToItem(0) }
+    // Set to list only what home doesn't have; search still finds everything.
+    val hidden = if (LauncherStyle.homeAppsInDrawer) emptySet() else pinnedKeys(runtime)
 
     val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     // Pulling down at the end of the list drags the panel closed, like stock drawers: only a pull that starts there
@@ -385,7 +393,7 @@ internal fun AppPanel(
                             search.hits.chunked(columns).forEachIndexed { r, cells -> row("q:$r", cells, highlighted - r * columns) }
                         } else {
                             if (linuxState == LinuxState.Installed) {
-                                section("linux", runtime.linuxApps.map { AppHit.Linux(it) })
+                                section("linux", runtime.linuxApps.map { AppHit.Linux(it) }.filter { it.key !in hidden })
                             } else {
                                 // Linux apps would be listed here; without Linux, one quiet offer instead.
                                 item(key = "linux-offer") {
@@ -398,7 +406,7 @@ internal fun AppPanel(
                                     }
                                 }
                             }
-                            section("android", runtime.androidApps.apps.map { AppHit.Android(it) })
+                            section("android", runtime.androidApps.apps.map { AppHit.Android(it) }.filter { it.key !in hidden })
                         }
                     }
                 }
