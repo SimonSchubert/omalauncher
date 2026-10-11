@@ -69,6 +69,12 @@ class AndroidAppCatalog(
     /** The work profiles by serial number (Android allows one), each true while paused. */
     val workProfiles = mutableStateMapOf<Long, Boolean>()
 
+    /** Runs after each reload, once [apps] and [workProfiles] are current. */
+    var onReload: () -> Unit = {}
+
+    /** Serial numbers of work profiles Android announced as removed while it's still tearing them down. */
+    private val removedProfiles = HashSet<Long>()
+
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val users = context.getSystemService(UserManager::class.java)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -109,7 +115,20 @@ class AndroidAppCatalog(
                 override fun onReceive(
                     context: Context,
                     intent: Intent,
-                ) = reload()
+                ) {
+                    // Android says so before it's done removing: until then the profile still answers to its serial number.
+                    if (intent.action == Intent.ACTION_MANAGED_PROFILE_REMOVED) {
+                        val user =
+                            if (Build.VERSION.SDK_INT >= 33) {
+                                intent.getParcelableExtra(Intent.EXTRA_USER, UserHandle::class.java)
+                            } else {
+                                @Suppress("DEPRECATION")
+                                intent.getParcelableExtra(Intent.EXTRA_USER)
+                            }
+                        user?.let { users.getSerialNumberForUser(it) }?.takeIf { it >= 0 }?.let { removedProfiles += it }
+                    }
+                    reload()
+                }
             }
         if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, profileChanges, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, profileChanges)
         reload()
@@ -117,6 +136,9 @@ class AndroidAppCatalog(
 
     /** True while apps of [profile] can't open: it's a paused work profile. */
     fun isPaused(profile: Long?) = profile != null && workProfiles[profile] == true
+
+    /** False once [profile] is deleted, for good: Android never hands its serial number out again. Paused still exists. */
+    fun exists(profile: Long) = profile !in removedProfiles && users.getUserForSerialNumber(profile) != null
 
     fun open(app: AndroidApp) = open(app.component, app.profile)
 
@@ -218,6 +240,7 @@ class AndroidAppCatalog(
                     apps.clear()
                     apps += list
                 }
+                onReload()
                 val present = list.mapTo(HashSet()) { it.id }
                 icons.keys.retainAll(present)
                 masks.keys.retainAll(present)
