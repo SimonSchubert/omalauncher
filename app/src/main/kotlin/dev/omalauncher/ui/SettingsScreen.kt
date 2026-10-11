@@ -63,9 +63,12 @@ fun SettingsScreen(
                 },
                 Triple("packages", if (installed) "install Linux apps and tools with pacman and the AUR" else "needs linux", if (installed) onPackages else onLinux),
                 Triple("widget store", "add widgets to the home screen", onStore),
-                // Not even this row tells of a private space while it hides.
-                if (apps.privateProfiles.isNotEmpty() && !apps.privateHidden) {
-                    Triple("private space", if (apps.hidePrivate) "hidden while locked · show" else "shown · hide while locked") { apps.hidePrivate = !apps.hidePrivate }
+                // Only while unlocked: the switch then hides nothing under the finger, the space goes at its next lock.
+                if (apps.privateProfiles.isNotEmpty() && !apps.privateLocked) {
+                    Triple(
+                        "private space",
+                        if (apps.hidePrivate) "hidden while locked, type \"priv\" to unlock · show" else "shown · hide while locked",
+                    ) { apps.hidePrivate = !apps.hidePrivate }
                 } else {
                     null
                 },
