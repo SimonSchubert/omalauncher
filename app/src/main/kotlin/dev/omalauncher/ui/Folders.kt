@@ -1,5 +1,6 @@
 package dev.omalauncher.ui
 
+import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -145,6 +146,8 @@ internal fun FolderPanel(
     folder: Folder,
     geometry: FolderGeometry,
     render: @Composable (HomeItem, Modifier, Boolean) -> Unit,
+    /** The app a finger is dragging, if it's one of these: its place stays empty while the others sort around it. */
+    carried: String? = null,
 ) {
     val density = LocalDensity.current
     Box(Modifier.fillMaxSize().zIndex(4f).background(Palette.overlay.copy(alpha = 0.6f))) {
@@ -156,12 +159,15 @@ internal fun FolderPanel(
                 .frame(2.dp, Palette.accent, Palette.background, radius = 20.dp),
         )
         folder.apps.forEachIndexed { i, app ->
+            if (app.key == carried) return@forEachIndexed
             val r = geometry.app(i)
             key(app.key) {
+                // Apps making way for a dragged one slide to their new places.
+                val at = animateIntOffsetAsState(IntOffset(r.left, r.top))
                 render(
                     app,
                     Modifier
-                        .offset { IntOffset(r.left, r.top) }
+                        .offset { at.value }
                         .size(with(density) { r.width.toDp() }, with(density) { r.height.toDp() }),
                     false,
                 )

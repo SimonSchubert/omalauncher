@@ -123,6 +123,23 @@ class Shortcuts(
         return folder
     }
 
+    /**
+     * Moves an app within its folder to just before [before], or after the folder's last app if that's null.
+     * A folder's order is its apps' order in [items].
+     */
+    fun moveBefore(
+        key: String,
+        before: String?,
+    ) {
+        val i = items.indexOfFirst { it.key == key }
+        val folder = items.getOrNull(i)?.folder ?: return
+        if (key == before) return
+        val app = items.removeAt(i)
+        val at = before?.let { b -> items.indexOfFirst { it.key == b && it.folder == folder } }?.takeIf { it >= 0 } ?: (items.indexOfLast { it.folder == folder } + 1)
+        items.add(at, app)
+        if (at != i) save()
+    }
+
     private fun setFolder(
         key: String,
         folder: String?,
