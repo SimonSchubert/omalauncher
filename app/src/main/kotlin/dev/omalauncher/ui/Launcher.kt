@@ -147,6 +147,7 @@ private fun DesktopScreen(
                     }
                     state.close()
                 },
+                dock = { hit, shown -> if (shown) runtime.usage.unhide(hit.key) else runtime.usage.hide(hit.key) },
                 info = { app ->
                     state.closeNow()
                     runtime.androidApps.openInfo(app)

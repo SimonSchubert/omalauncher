@@ -112,25 +112,39 @@ internal fun searchApps(
     return BarSearch(ranked.map { it.first }, ranked.firstOrNull()?.let { isStrongMatch(it.second, query) } == true)
 }
 
-/** What the app cells do: open, pin to home, and the Android app's info and uninstall. */
+/** What the app cells do: open, pin to home, show in or hide from the dock, and the Android app's info and uninstall. */
 internal class AppHandlers(
     val launch: (AppHit) -> Unit,
     val pin: (AppHit) -> Unit,
+    val dock: (AppHit, Boolean) -> Unit,
     val info: (AndroidApp) -> Unit,
     val uninstall: (AndroidApp) -> Unit,
 )
 
-/** The long-press menu of an app cell: pin to home, and for Android apps their info and uninstall. */
-private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>> =
-    when (this) {
-        is AppHit.Linux -> listOf("add to home" to { handlers.pin(this) })
-        is AppHit.Android ->
-            listOfNotNull(
-                "add to home" to { handlers.pin(this) },
-                "app info" to { handlers.info(app) },
-                if (app.system) null else "uninstall" to { handlers.uninstall(app) },
-            )
-    }
+/**
+ * The long-press menu of an app cell: pin to home, hide it from the dock if [docked] or bring it back
+ * if not (null: neither, the dock is off), and for Android apps their info and uninstall.
+ */
+private fun AppHit.actions(
+    handlers: AppHandlers,
+    docked: Boolean? = null,
+): List<Pair<String, () -> Unit>> =
+    listOfNotNull(
+        "add to home" to { handlers.pin(this) },
+        when (docked) {
+            true -> "hide from dock" to { handlers.dock(this, false) }
+            false -> "show in dock" to { handlers.dock(this, true) }
+            null -> null
+        },
+    ) +
+        when (this) {
+            is AppHit.Linux -> emptyList()
+            is AppHit.Android ->
+                listOfNotNull(
+                    "app info" to { handlers.info(app) },
+                    if (app.system) null else "uninstall" to { handlers.uninstall(app) },
+                )
+        }
 
 /** The app's icon and its silhouette (each null until loaded or if it has none), and a glyph for built-in apps (Files). */
 private fun AppHit.icons(runtime: Runtime): Triple<ImageBitmap?, ImageBitmap?, ImageVector?> =
@@ -147,7 +161,9 @@ private fun HitCell(
     selected: Boolean = false,
 ) {
     val (icon, mask, glyph) = hit.icons(runtime)
-    AppCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph, selected = selected)
+    // Only hidden apps offer the dock here: the rest show up in it on their own once opened.
+    val docked = if (LauncherStyle.recentApps && hit.key in runtime.usage.hidden) false else null
+    AppCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers, docked) }, glyph = glyph, selected = selected)
 }
 
 /** Height of the recent apps strip; home keeps this much room for it above the bar, even while it's empty. */
@@ -156,7 +172,7 @@ val RecentStripHeight = 56.dp
 /**
  * The apps opened lately, on home right above the bar, scrolling sideways; [vertical] stands it up
  * beside the grid in landscape, scrolling down. A home tile like the others: frame, fill and gaps,
- * or bare when home icons are. Can be hidden in themes.
+ * or bare when home icons are. Can be turned off in settings; a long press hides one app from it.
  */
 @Composable
 internal fun RecentStrip(
@@ -184,7 +200,7 @@ internal fun RecentStrip(
         val cells: LazyListScope.() -> Unit = {
             items(apps, key = { it.key }) { hit ->
                 val (icon, mask, glyph) = hit.icons(runtime)
-                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph)
+                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers, docked = true) }, glyph = glyph)
             }
         }
         if (vertical) {
@@ -243,13 +259,14 @@ private fun StripCell(
     }
 }
 
-/** The apps opened lately, last opened first; ones not installed (or not loaded yet) are skipped. */
+/** The apps opened lately, last opened first; ones hidden from the dock or not installed (or not loaded yet) are skipped. */
 private fun recentApps(
     runtime: Runtime,
     limit: Int,
 ): List<AppHit> {
     val byKey = allApps(runtime).associateBy { it.key }
-    return runtime.usage.recent.mapNotNull { byKey[it] }.take(limit)
+    val hidden = runtime.usage.hidden
+    return runtime.usage.recent.mapNotNull { key -> byKey[key]?.takeIf { key !in hidden } }.take(limit)
 }
 
 /**

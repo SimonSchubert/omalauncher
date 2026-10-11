@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlin.math.pow
@@ -17,14 +18,30 @@ class AppUsage(
 ) {
     private val prefs = context.getSharedPreferences("app_usage", Context.MODE_PRIVATE)
 
+    private val hiddenPrefs = context.getSharedPreferences("app_usage_hidden", Context.MODE_PRIVATE)
+
     /** Key -> (decayed score, millis it was last updated). */
     private val scores = mutableStateMapOf<String, Pair<Double, Long>>()
+
+    /** Keys kept out of the recent apps strip, however often they're opened; search still ranks them. */
+    val hidden = mutableStateSetOf<String>()
 
     init {
         for ((key, value) in prefs.all) {
             val (score, at) = (value as? String)?.split(',') ?: continue
             scores[key] = (score.toDoubleOrNull() ?: continue) to (at.toLongOrNull() ?: continue)
         }
+        hidden.addAll(hiddenPrefs.all.keys)
+    }
+
+    fun hide(key: String) {
+        hidden.add(key)
+        hiddenPrefs.edit().putBoolean(key, true).apply()
+    }
+
+    fun unhide(key: String) {
+        hidden.remove(key)
+        hiddenPrefs.edit().remove(key).apply()
     }
 
     /**

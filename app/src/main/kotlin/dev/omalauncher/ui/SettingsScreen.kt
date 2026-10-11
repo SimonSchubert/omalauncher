@@ -54,6 +54,7 @@ fun SettingsScreen(
         val rows =
             listOf(
                 Triple("themes", runtime.themes.current?.title ?: "colors and backgrounds", onThemes),
+                Triple("dock", dockStatus(runtime)) { runtime.themes.setRecentApps(!LauncherStyle.recentApps) },
                 Triple("linux", linuxStatus, onLinux),
                 if (installed) {
                     Triple("coding agents", runtime.agents.default?.let { "default: ${it.name}" } ?: "install Claude Code, OpenCode, …", onAgents)
@@ -168,6 +169,17 @@ private fun UpdatesRow(runtime: Runtime) {
             }
         }
         JobLog(job)
+    }
+}
+
+/** The dock row's subtitle: whether recent apps show above the bar, and how many are hidden from it. */
+private fun dockStatus(runtime: Runtime): String {
+    if (!LauncherStyle.recentApps) return "off · tap to show recent apps above the bar"
+    val hidden = runtime.usage.hidden.size
+    return if (hidden == 0) {
+        "on · tap to turn off, long-press an app in it to hide it"
+    } else {
+        "on · $hidden hidden, long-press one in the app list to show it again"
     }
 }
 
