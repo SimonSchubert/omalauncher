@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,6 +54,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -403,9 +403,10 @@ internal fun AppPanel(
         }
 
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-        Column(Modifier.widthIn(max = 640.dp).fillMaxSize()) {
+        // Full width: a wide screen fits more icons in each row rather than leaving the sides empty.
+        Column(Modifier.fillMaxSize()) {
             Row(
-                Modifier.fillMaxWidth().padding(top = 12.dp, start = 12.dp, end = 12.dp),
+                Modifier.fillMaxWidth().padding(top = 12.dp, start = 12.dp, end = 12.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -437,7 +438,8 @@ internal fun AppPanel(
             }
             // Only as tall as its rows, so taps above a short list reach the scrim behind and close the panel.
             Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp), verticalArrangement = Arrangement.Bottom) {
-                BoxWithConstraints(Modifier.weight(1f, fill = false).swipeTabs(runtime, state)) {
+                // Clipped, so rows scrolled up or stretched by an overscroll stop short of the settings button.
+                BoxWithConstraints(Modifier.weight(1f, fill = false).clipToBounds().swipeTabs(runtime, state)) {
                     val columns = (maxWidth / 76.dp).toInt().coerceAtLeast(1)
                     // A tab slides in from the side it was swiped or tapped towards; search results just take the list's place.
                     AnimatedContent(

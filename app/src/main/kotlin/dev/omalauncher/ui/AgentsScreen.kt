@@ -30,7 +30,7 @@ fun AgentsScreen(
 ) {
     val store = runtime.agents
     val scope = rememberCoroutineScope()
-    OverlayPanel("coding agents", onDismiss) {
+    OverlayPanel("coding agents", onDismiss, contentWidth = ReadingWidth) {
         BasicText(
             "Installed with mise, like Omarchy. Logins open in your browser; paste keys with the keyboard's clipboard.",
             Modifier.padding(vertical = 8.dp),

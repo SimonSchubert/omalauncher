@@ -50,7 +50,7 @@ fun PackagesScreen(
         scope.launch { if (block()) runtime.refreshApps() }
     }
 
-    OverlayPanel("packages", onDismiss) {
+    OverlayPanel("packages", onDismiss, contentWidth = ReadingWidth) {
         SearchField(query, onChange = { query = it }, onGo = {}, placeholder = "search packages")
         BasicText(
             "Arch Linux ARM packages via pacman, and the AUR via yay. Installing also updates the system, so it can take a while. " +

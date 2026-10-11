@@ -142,6 +142,23 @@ class AgentStore(
             Managed.text(File(proot.applications, "agent-${agent.bin}.desktop"), Policy.Owned) {
                 "[Desktop Entry]\nType=Application\nName=${agent.name}\nTerminal=true\nExec=${agent.bin}\nIcon=${bundledIcon("agent-${agent.bin}")}\n"
             }
+        } + codexConfig()
+
+    /**
+     * Codex starts a shared background server and reads its start time with `ps`; when that fails, Codex
+     * refuses to start ("failed to read start time for pid-managed app server", rerun with --no-daemon).
+     * Proot kills that server with its window anyway, so don't start it. A system layer, so the user's
+     * ~/.codex/config.toml stays theirs and can turn it back on.
+     */
+    private fun codexConfig() =
+        if (installed.none { it.bin == "codex" }) {
+            emptyList()
+        } else {
+            listOf(
+                Managed.text(File(proot.rootfs, "etc/codex/config.toml"), Policy.Owned) {
+                    "# Written by the launcher.\n[features]\ndaemon_auto_start = false\n"
+                },
+            )
         }
 
     private suspend fun run(

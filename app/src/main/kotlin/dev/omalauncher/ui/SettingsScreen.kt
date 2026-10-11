@@ -42,7 +42,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val linux by runtime.bootstrap.state.collectAsState()
     val installed = linux == LinuxState.Installed
-    OverlayPanel("settings", onDismiss) {
+    OverlayPanel("settings", onDismiss, contentWidth = ReadingWidth) {
         val linuxStatus =
             when (val l = linux) {
                 LinuxState.Installed -> "installed · remove"

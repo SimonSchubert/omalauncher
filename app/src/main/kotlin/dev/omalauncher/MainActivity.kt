@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.role.RoleManager
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -55,10 +56,20 @@ class MainActivity : ComponentActivity() {
         startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_HOME), 1)
     }
 
-    /** Debug builds: `adb shell am start -n dev.omalauncher/.MainActivity --es exec foot`. */
+    /**
+     * Debug builds: `adb shell am start -n dev.omalauncher/.MainActivity --es exec foot`,
+     * or `--es theme kanagawa` to apply a theme (scripts/collage-captures.sh).
+     */
     private fun handleDebugExec(intent: Intent) {
         if (!BuildConfig.DEBUG) return
         intent.getStringExtra("exec")?.let(runtime::launch)
+        intent.getStringExtra("theme")?.let { name ->
+            lifecycleScope.launch {
+                snapshotFlow { runtime.themes.loaded }.first { it }
+                runtime.themes.themes.firstOrNull { it.name == name }?.let { runtime.themes.apply(it) }
+                    ?: Log.w("debug", "no theme $name")
+            }
+        }
     }
 
     /**

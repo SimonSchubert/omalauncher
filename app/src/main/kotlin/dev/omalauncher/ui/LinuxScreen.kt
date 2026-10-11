@@ -54,7 +54,7 @@ fun LinuxScreen(
     onDismiss: () -> Unit,
 ) {
     val state by runtime.bootstrap.state.collectAsState()
-    OverlayPanel("linux", onDismiss) {
+    OverlayPanel("linux", onDismiss, contentWidth = ReadingWidth) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 4.dp)) {
             when (val s = state) {
                 LinuxState.Checking -> {}

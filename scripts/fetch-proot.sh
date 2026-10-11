@@ -27,8 +27,8 @@ fetch() {
     exit 1
   }
   echo "$sha  $WORK/$pkg/pkg.deb" | shasum -a 256 -c --status || { echo "$file: SHA256 mismatch" >&2; exit 1; }
-  # bsdtar reads .deb (ar) archives, unlike macOS ar
-  (cd "$WORK/$pkg" && tar xf pkg.deb && tar xf data.tar.*)
+  # bsdtar reads .deb (ar) archives, unlike macOS ar and GNU tar
+  (cd "$WORK/$pkg" && bsdtar xf pkg.deb && bsdtar xf data.tar.*)
 }
 
 fetch proot pool/main/p/proot/proot_${PROOT}_aarch64.deb \

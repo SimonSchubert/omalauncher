@@ -168,11 +168,16 @@ fun HomeScreen(
     val imeTarget = WindowInsets.imeAnimationTarget
     val statusBar = WindowInsets.statusBars.union(WindowInsets.displayCutout)
     // Back with the soft keyboard up only reaches the keyboard app, which closes itself. Closed like that
-    // (not by the tile's ⌨ button), the tile lets go too, so the bar and recent apps come back.
+    // (not by the tile's ⌨ button), the tile lets go too, so the bar and recent apps come back. Only once it's gone:
+    // hiding it again mid-way, while a back swipe still drives its animation, left home taking no touches.
     LaunchedEffect(terminals) {
         snapshotFlow { ime.getBottom(density) > 0 }.collect { shown ->
             if (!shown && terminals.keyboard?.wanted == true) terminals.deactivate()
         }
+    }
+    // The bar and recent apps don't wait for that: back as the keyboard starts closing, like the pages.
+    LaunchedEffect(terminals) {
+        snapshotFlow { imeTarget.getBottom(density) == 0 && terminals.keyboard?.wanted == true }.collect { terminals.keyboardLeaving = it }
     }
     var origin by remember { mutableStateOf(Offset.Zero) }
     val extraKeys = terminals.active != null && extraKeysWanted()

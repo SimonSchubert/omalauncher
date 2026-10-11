@@ -1,11 +1,10 @@
 package dev.omalauncher.linux
 
 import android.util.Log
+import dev.omalauncher.httpGet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 
 /** Searches the AUR over its RPC API: from Android directly, no proot needed. */
@@ -19,15 +18,8 @@ object Aur {
         if (q.length < 2) return emptyList()
         return withContext(Dispatchers.IO) {
             runCatching {
-                val url = URL(RPC + URLEncoder.encode(q, "UTF-8").replace("+", "%20") + "?by=name-desc")
-                val conn = url.openConnection() as HttpURLConnection
-                conn.connectTimeout = 10_000
-                conn.readTimeout = 15_000
-                try {
-                    parse(conn.inputStream.bufferedReader().readText())
-                } finally {
-                    conn.disconnect()
-                }
+                val url = RPC + URLEncoder.encode(q, "UTF-8").replace("+", "%20") + "?by=name-desc"
+                parse(String(httpGet(url, readTimeout = 15_000)))
             }.getOrElse {
                 Log.w(TAG, "search failed", it)
                 emptyList()

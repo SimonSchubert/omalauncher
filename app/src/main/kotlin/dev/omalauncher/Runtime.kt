@@ -56,10 +56,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.WeakHashMap
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
-import kotlin.math.roundToInt
 
 /**
  * Process-wide state: the launcher (themes, widgets, Android apps) and the
@@ -152,16 +150,8 @@ class Runtime(
             }
         }
         // A terminal shown again after the text size changed catches up, with foot's own zoom keys.
-        wm.created = { window -> if (followsTerminalFont(window.appId)) terminalSizes[window] = terminalFont.size }
-        wm.focusGained = { window ->
-            terminalSizes[window]?.let { shown ->
-                val steps = ((terminalFont.size - shown) / TerminalFont.STEP).roundToInt()
-                if (steps != 0) {
-                    wm.zoom(window, steps)
-                    terminalSizes[window] = shown + steps * TerminalFont.STEP
-                }
-            }
-        }
+        wm.created = { window -> if (followsTerminalFont(window.appId)) terminalFont.track(window) }
+        wm.focusGained = { window -> wm.zoom(window, terminalFont.catchUp(window)) }
         wm.openAppWindow = { handle ->
             // Recents uses the activity's manifest label, not the task description's; see the aliases in the manifest.
             val window = wm.windowByHandle(handle)
@@ -291,6 +281,9 @@ class Runtime(
                 proot.procShim.start()
                 openBridge.start()
             }
+        } else {
+            // Linux installed again: its new home has no foot-font.ini yet.
+            terminalFont.write()
         }
         linux = true
         // The recent apps strip on home lists Linux apps before the app list is ever opened.
@@ -347,7 +340,7 @@ class Runtime(
                 (metrics.heightPixels * mmPerPx).toInt(),
             ),
         )
-        terminalFont.update(metrics.density, context.resources.configuration.fontScale, scale)
+        terminalFont.update(metrics.density, context.resources.configuration.fontScale, scale, metrics.widthPixels)
     }
 
     /** wl_output scales are integers, so the density rounds down (2.625 -> 2); [TerminalFont] makes up the rest. */
@@ -421,17 +414,11 @@ class Runtime(
     /** Wayland app_id -> the agent running in it, for sessions not named after their agent ("New app"). */
     private val launchedAgents = ConcurrentHashMap<String, Agent>()
 
-    /** App ids of terminals [terminal] opened at a size of their own (btop), which the text size doesn't change. */
-    private val ownFont = HashSet<String>()
-
-    /** The size each open terminal that follows the text size is at; see [TerminalFont]. */
-    private val terminalSizes = WeakHashMap<XdgToplevel, Double>()
-
     /** Whether a window's foot takes its size from foot.ini, as its own terminals, plain foot and most tiles do. */
     private fun followsTerminalFont(appId: String) =
         when {
             appId == "foot" -> true
-            launchedNames.containsKey(appId) -> appId !in ownFont
+            launchedNames.containsKey(appId) -> !terminalFont.hasOwnSize(appId)
             appId.startsWith(TerminalTiles.APP_ID_PREFIX) -> !terminals.hasOwnFont(appId)
             else -> false
         }
@@ -456,23 +443,7 @@ class Runtime(
         launchedNames[appId] = name
         if (agent != null) launchedAgents[appId] = agent
         val args = command?.let { " -e bash -c " + shellQuote(it) }.orEmpty()
-        val font = fontFor(command)
-        if (font.isEmpty()) ownFont -= appId else ownFont += appId
-        launch("foot --app-id=$appId$font$args")
-    }
-
-    /**
-     * A font override for [command]'s terminal: btop, opened as an app, gets the
-     * size its full layout's 80 columns need where the usual size leaves fewer (a
-     * phone in portrait); it's glanced at more than read. Empty for the rest,
-     * which take foot.ini's.
-     */
-    private fun fontFor(command: String?): String {
-        if (command != "btop") return ""
-        val metrics = context.resources.displayMetrics
-        val size = TerminalFont.fitting(BTOP_COLUMNS, metrics.widthPixels, outputScale(), terminalFont.size)
-        if (size >= terminalFont.size) return ""
-        return " -o " + shellQuote("main.font=${terminalFont.family}:size=${TerminalFont.format(size)}")
+        launch("foot --app-id=$appId${terminalFont.optionFor(appId, command)}$args")
     }
 
     /** Opens a pinned app from the home screen. A Linux one runs its current desktop entry, which an update may have changed. */
@@ -562,6 +533,5 @@ class Runtime(
     companion object {
         private const val TAG = "runtime"
         private const val SETUP_DONE = "setup_done"
-        private const val BTOP_COLUMNS = 80
     }
 }

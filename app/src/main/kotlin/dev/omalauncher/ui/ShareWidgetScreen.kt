@@ -91,7 +91,7 @@ fun ShareWidgetScreen(
     var copied by remember(file) { mutableStateOf(false) }
     var showSource by remember(file) { mutableStateOf(false) }
 
-    OverlayPanel("share $name", onDismiss) {
+    OverlayPanel("share $name", onDismiss, contentWidth = ReadingWidth) {
         val prepared = prepared ?: return@OverlayPanel
         val text = prepared.text
         val link = prepared.link

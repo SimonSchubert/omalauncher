@@ -21,7 +21,7 @@ class LauncherState {
     val drawer = Animatable(0f)
     var styleOpen by mutableStateOf(false)
 
-    /** The community themes, opened straight from the home menu's theme strip. */
+    /** The community themes, from the home menu's theme strip or over the style screen. */
     var themeBrowserOpen by mutableStateOf(false)
     var agentsOpen by mutableStateOf(false)
     var storeOpen by mutableStateOf(false)

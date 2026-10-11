@@ -135,7 +135,7 @@ private val COMPONENTS =
 @Composable
 fun LicensesScreen(onDismiss: () -> Unit) {
     var open by rememberSaveable { mutableStateOf<String?>(null) }
-    OverlayPanel("licenses", onDismiss) {
+    OverlayPanel("licenses", onDismiss, contentWidth = ReadingWidth) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 BasicText(

@@ -54,7 +54,7 @@ fun SharedWidgetScreen(
             }
     }
     var showSource by remember(link) { mutableStateOf(false) }
-    OverlayPanel("shared widget", onDismiss) {
+    OverlayPanel("shared widget", onDismiss, contentWidth = ReadingWidth) {
         val result = result
         if (result == null) {
             if (Share.pasteId(link) != null) BasicText("fetching it from ${Paste.HOST}…", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Body))

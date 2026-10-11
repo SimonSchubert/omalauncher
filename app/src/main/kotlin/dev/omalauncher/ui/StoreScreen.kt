@@ -7,18 +7,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
@@ -29,6 +33,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -70,9 +75,7 @@ fun StoreScreen(
     val scope = rememberCoroutineScope()
     var open by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    var query by remember { mutableStateOf("") }
-    var tab by remember { mutableStateOf(ALL) }
-    val keyboard = LocalSoftwareKeyboardController.current
+    val filter = remember { StoreFilter() }
     LaunchedEffect(market) { market.refresh() }
     OverlayPanel(
         "widget store",
@@ -83,30 +86,88 @@ fun StoreScreen(
             }
         },
     ) {
-        val detail = open?.let { id -> market.entries.firstOrNull { it.id == id } }
-        if (detail != null) {
-            BackHandler { open = null }
-            Detail(
-                market = market,
-                e = detail,
-                theme = theme,
-                linux = engine.linux,
-                page = page,
-                message = message,
-                onBack = {
-                    open = null
-                    message = null
-                },
-                onInstall = {
-                    scope.launch {
-                        message = market.install(detail, page)
-                        if (message == null) onDismiss()
+        BoxWithConstraints {
+            val wide = maxWidth >= 720.dp
+            val paneWidth = (maxWidth * 0.42f).coerceIn(340.dp, 520.dp)
+            val detail = open?.let { id -> market.entries.firstOrNull { it.id == id } }
+            val select = { id: String ->
+                open = id
+                message = null
+            }
+            val showDetail = @Composable { e: CatalogEntry, showBack: Boolean, modifier: Modifier ->
+                Detail(
+                    market = market,
+                    e = e,
+                    theme = theme,
+                    linux = engine.linux,
+                    page = page,
+                    message = message,
+                    showBack = showBack,
+                    modifier = modifier,
+                    onBack = {
+                        open = null
+                        message = null
+                    },
+                    onInstall = {
+                        scope.launch {
+                            message = market.install(e, page)
+                            if (message == null) onDismiss()
+                        }
+                    },
+                )
+            }
+            val list = @Composable { modifier: Modifier ->
+                StoreList(engine, agents, page, theme, filter, if (wide) open else null, modifier, select, onDismiss)
+            }
+            when {
+                // Side by side: the grid, and the picked widget's page beside it.
+                wide ->
+                    Row {
+                        list(Modifier.weight(1f))
+                        Box(Modifier.padding(horizontal = 12.dp).width(1.dp).fillMaxHeight().background(Palette.border))
+                        val pane = Modifier.width(paneWidth).fillMaxHeight()
+                        if (detail != null) {
+                            showDetail(detail, false, pane)
+                        } else {
+                            Box(pane, contentAlignment = Alignment.Center) {
+                                BasicText("pick a widget to see what it installs and runs", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                            }
+                        }
                     }
-                },
-            )
-            return@OverlayPanel
+                detail != null -> {
+                    BackHandler { open = null }
+                    showDetail(detail, true, Modifier.widthIn(max = ReadingWidth).align(Alignment.TopCenter))
+                }
+                else -> list(Modifier)
+            }
         }
+    }
+}
 
+/** What the grid shows and where it's scrolled, kept while a widget's page covers it or the layout changes. */
+private class StoreFilter {
+    var query by mutableStateOf("")
+    var tab by mutableStateOf(ALL)
+    val grid = LazyGridState()
+}
+
+/** The store's search, category tabs and grid; [selected] is the widget whose page shows beside it. */
+@Composable
+private fun StoreList(
+    engine: WidgetEngine,
+    agents: List<Agent>,
+    page: Int,
+    theme: String?,
+    filter: StoreFilter,
+    selected: String?,
+    modifier: Modifier,
+    onOpen: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val market = engine.market
+    val scope = rememberCoroutineScope()
+    val keyboard = LocalSoftwareKeyboardController.current
+    Column(modifier) {
         val installed = market.entries.filter { market.installedVersion(it) != null }
         val tabs =
             buildList {
@@ -115,36 +176,38 @@ fun StoreScreen(
                 market.entries.count { it.category == null }.takeIf { it > 0 }?.let { add(OTHER to it) }
                 if (installed.isNotEmpty()) add(INSTALLED to installed.size)
             }
-        val q = query.trim().lowercase()
+        val q = filter.query.trim().lowercase()
         // In the catalog's order, which the store repo sets in order.txt.
         val shown =
             market.entries
                 .filter { e ->
-                    when (tab) {
+                    when (filter.tab) {
                         ALL -> true
                         INSTALLED -> e in installed
                         OTHER -> e.category == null
-                        else -> e.category == tab
+                        else -> e.category == filter.tab
                     }
                 }.filter { e -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { q in it.lowercase() } }
         val updates = installed.count { market.hasUpdate(it) }
 
-        SearchField(query, { query = it }, onGo = { keyboard?.hide() }, placeholder = "search ${market.entries.size} widgets")
+        SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = "search ${market.entries.size} widgets")
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Scrolls under the panel's padding, up to its frame or, side by side, the divider.
+        Row(Modifier.bleed(PanelPadding).horizontalScroll(rememberScrollState()).padding(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((name, n) in tabs) {
                 val label = if (name == INSTALLED && updates > 0) "$name $n · $updates↑" else "$name $n"
-                Chip(label, selected = tab == name) { tab = name }
+                Chip(label, selected = filter.tab == name) { filter.tab = name }
             }
         }
         Spacer(Modifier.height(10.dp))
         LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+            columns = GridCells.Adaptive(150.dp),
             modifier = Modifier.fillMaxSize(),
+            state = filter.grid,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (tab == ALL && q.isEmpty()) {
+            if (filter.tab == ALL && q.isEmpty()) {
                 item(key = "builtin", span = { GridItemSpan(maxLineSpan) }) { Caption("built in") }
                 item(key = "terminal", span = { GridItemSpan(maxLineSpan) }) {
                     BuiltInEntry("terminal", "6x4 · a shell in ~", "A shell on the home screen. Add as many as you like; tap one to type.", added = false, page = page) {
@@ -176,11 +239,11 @@ fun StoreScreen(
                         market.loading && market.entries.isEmpty() -> BasicText("loading…", style = Mono.copy(color = Palette.muted))
                         market.error != null && market.entries.isEmpty() -> BasicText(market.error.orEmpty(), style = Mono.copy(color = Palette.red))
                         market.entries.isEmpty() -> BasicText("no widgets yet", style = Mono.copy(color = Palette.muted))
-                        shown.isEmpty() -> BasicText("nothing matches \"${query.trim()}\"", style = Mono.copy(color = Palette.muted))
+                        shown.isEmpty() -> BasicText("nothing matches \"${filter.query.trim()}\"", style = Mono.copy(color = Palette.muted))
                     }
                 }
             }
-            items(shown, key = { it.id }) { e -> Card(market, e, theme, engine.linux) { open = e.id } }
+            items(shown, key = { it.id }) { e -> Card(market, e, theme, engine.linux, selected = e.id == selected) { onOpen(e.id) } }
         }
     }
 }
@@ -245,13 +308,14 @@ private fun rememberPreview(
     return preview
 }
 
-/** A grid cell: the preview, the name, and whether it's installed. */
+/** A grid cell: the preview, the name, and whether it's installed; [selected] while its page shows beside the grid. */
 @Composable
 private fun Card(
     market: Market,
     e: CatalogEntry,
     theme: String?,
     linux: Boolean,
+    selected: Boolean,
     onOpen: () -> Unit,
 ) {
     val preview = rememberPreview(market, e, theme)
@@ -261,7 +325,7 @@ private fun Card(
     Column(
         Modifier
             .fillMaxWidth()
-            .frame(1.dp, Palette.border, radius = 12.dp)
+            .frame(1.dp, if (selected) Palette.accent else Palette.border, radius = 12.dp)
             .clickable(onClick = onOpen)
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -298,25 +362,35 @@ private fun Detail(
     linux: Boolean,
     page: Int,
     message: String?,
+    /** The way back to the grid; off where the grid stays beside the page. */
+    showBack: Boolean,
+    modifier: Modifier,
     onBack: () -> Unit,
     onInstall: () -> Unit,
-) {
+) = key(e.id) {
     val installed = market.installedVersion(e)
     val update = market.hasUpdate(e)
     val preview = rememberPreview(market, e, theme)
     val busy = market.busy[e.id]
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(
-            Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onBack).padding(vertical = 6.dp).padding(end = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Image(Icons.Back, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Palette.muted))
-            BasicText("all widgets", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+    // Keyed by the widget, so picking another one beside the grid starts its page at the top.
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (showBack) {
+            Row(
+                Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onBack).padding(vertical = 6.dp).padding(end = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Image(Icons.Back, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Palette.muted))
+                BasicText("all widgets", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+            }
         }
         preview?.let {
-            // As wide as the panel, but a tall widget shouldn't push its description off screen.
-            Image(it, null, Modifier.fillMaxWidth().heightIn(max = 320.dp).aspectRatio(it.width.toFloat() / it.height), contentScale = ContentScale.Fit)
+            // As wide as the panel, but no taller than 320 dp, so a tall widget doesn't push its description off screen:
+            // narrowing the width keeps the image inside its slot instead of drawing over the text below.
+            val ratio = it.width.toFloat() / it.height
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Image(it, null, Modifier.widthIn(max = 320.dp * ratio).fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Fit)
+            }
         }
         Spacer(Modifier.height(4.dp))
         BasicText(e.name, style = Mono.copy(fontSize = TextSize.Title))

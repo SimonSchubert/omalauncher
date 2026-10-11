@@ -139,6 +139,15 @@ class Proot(
                 // As (fake) root, GNU tar restores directory modes with fchmodat(AT_SYMLINK_NOFOLLOW),
                 // which fails with ENOENT under proot on newer kernels and fails the extraction (mise.run).
                 "TAR_OPTIONS=--no-same-permissions",
+                // mise's default npm installer hardlinks packages out of its store in ~/.cache/mise; under proot
+                // (--link2symlink) those become symlinks into the store, and `mise cache clear` after installs and
+                // updates then breaks them (Grok: "no platform binary installed"). npm copies the files.
+                "MISE_NPM_PACKAGE_MANAGER=npm",
+                // Coding agents come from mise and update with the system (SystemUpdates); updating themselves
+                // too would bypass that and leave a second copy on a phone that's short on storage.
+                "DISABLE_AUTOUPDATER=1",
+                "OPENCODE_DISABLE_AUTOUPDATE=1",
+                "GROK_DISABLE_AUTOUPDATER=1",
                 "BROWSER=xdg-open",
                 // micro takes taps and scrolling; yazi and git open files with it.
                 "EDITOR=micro",
@@ -152,16 +161,20 @@ class Proot(
             ) + graphicsEnv + listOf("/bin/sh", "-c", script)
 
     /**
-     * Kills every proot we started, and with it (--kill-on-exit) every guest
-     * process: before the rootfs is deleted. Our own processes are the only
-     * ones whose /proc entries we can read.
+     * Kills every proot we started and every guest process: before the rootfs
+     * is deleted. A SIGKILLed proot doesn't take its tracees along
+     * (--kill-on-exit needs a clean exit); they run on untraced and spin, so
+     * they go too, found by their executable, proot's loader. Our own
+     * processes are the only ones whose /proc entries we can read.
      */
     fun killAll() {
         val proot = File(nativeDir, "libproot.so").path
+        val loader = File(nativeDir, "libproot-loader.so").path
         for (dir in File("/proc").listFiles().orEmpty()) {
             val pid = dir.name.toIntOrNull() ?: continue
             val argv0 = runCatching { File(dir, "cmdline").readBytes().takeWhile { it != 0.toByte() }.toByteArray().decodeToString() }.getOrNull()
-            if (argv0 == proot) runCatching { android.system.Os.kill(pid, android.system.OsConstants.SIGKILL) }
+            val exe = runCatching { android.system.Os.readlink(File(dir, "exe").path) }.getOrNull()
+            if (argv0 == proot || exe == loader) runCatching { android.system.Os.kill(pid, android.system.OsConstants.SIGKILL) }
         }
     }
 

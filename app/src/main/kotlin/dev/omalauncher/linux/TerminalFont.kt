@@ -6,8 +6,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.wayland.XdgToplevel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
+import java.util.WeakHashMap
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
@@ -17,8 +21,8 @@ import kotlin.math.roundToInt
  * user's [family], at a size that follows the screen's density and Android's
  * font size, as the launcher's own text does, in the user's [text] size: more
  * columns or bigger letters. foot reads it as it starts; one already open
- * catches up on the size when it's shown again, with its own zoom keys (see
- * Runtime), but keeps its family. Main thread.
+ * catches up on the size when it's shown again, with its own zoom keys
+ * ([catchUp]), but keeps its family. Main thread.
  */
 class TerminalFont(
     context: Context,
@@ -32,7 +36,7 @@ class TerminalFont(
     var family by mutableStateOf(prefs.getString(FAMILY, null) ?: DEFAULT_FAMILY)
         private set
 
-    /** The guest's monospace families, [family] among them; just it until [loadFamilies]. */
+    /** The guest's monospace families, [family] among them; just it until [refreshFamilies]. */
     var families by mutableStateOf(listOf(family))
         private set
 
@@ -41,11 +45,19 @@ class TerminalFont(
         private set
 
     /** foot's wl_output scale, from the last [update]. */
-    var scale = 1
-        private set
+    private var scale = 1
 
     private var density = 0f
     private var fontScale = 1f
+
+    /** The screen's width in pixels, from the last [update]. */
+    private var widthPx = 0
+
+    /** App ids of terminals opened at a size of their own (btop), which the text size doesn't change. */
+    private val ownSize = HashSet<String>()
+
+    /** The size each open terminal that follows the text size is at; see [catchUp]. */
+    private val shown = WeakHashMap<XdgToplevel, Double>()
 
     /** What the file holds; null until written, as a write can fail before Linux is unpacked. */
     private var written: String? = null
@@ -58,10 +70,12 @@ class TerminalFont(
         density: Float,
         fontScale: Float,
         scale: Int,
+        widthPx: Int,
     ) {
         this.density = density
         this.fontScale = fontScale
         this.scale = scale
+        this.widthPx = widthPx
         write()
     }
 
@@ -77,30 +91,71 @@ class TerminalFont(
         write()
     }
 
-    /** Lists the guest's monospace fonts, as omarchy-font-list does; one installed with pacman shows up here. Blocking. */
-    fun loadFamilies(): List<String> {
-        val found = sortedSetOf<String>()
-        runCatching { proot.run(LIST_FAMILIES) { it.trim().takeIf(::isTextFont)?.let(found::add) } }
-            .onFailure { Log.w(TAG, "can't list fonts", it) }
-        return (found + family).sorted()
+    /** Lists the guest's monospace fonts into [families], as omarchy-font-list does; one installed with pacman shows up here. */
+    suspend fun refreshFamilies() {
+        val found =
+            withContext(Dispatchers.IO) {
+                sortedSetOf<String>().also { found ->
+                    runCatching { proot.run(LIST_FAMILIES) { it.trim().takeIf(::isTextFont)?.let(found::add) } }
+                        .onFailure { Log.w(TAG, "can't list fonts", it) }
+                }
+            }
+        families = (found + family).sorted()
     }
 
-    /** What [loadFamilies] found, from the main thread. */
-    fun familiesLoaded(list: List<String>) {
-        families = list
+    /**
+     * foot's `-o` option for [command]'s terminal [appId], or empty for foot.ini's
+     * font. btop, opened as an app, gets the size its full layout's 80 columns
+     * need where the usual size leaves fewer (a phone in portrait); it's glanced
+     * at more than read, and keeps that size whatever the text size does.
+     */
+    fun optionFor(
+        appId: String,
+        command: String?,
+    ): String {
+        val fit = if (command == "btop") fitting(BTOP_COLUMNS, widthPx, scale, size) else size
+        if (fit >= size) {
+            ownSize -= appId
+            return ""
+        }
+        ownSize += appId
+        return " -o " + shellQuote("main.font=$family:size=${format(fit)}")
+    }
+
+    /** Whether [appId]'s terminal was opened at a size of its own by [optionFor]. */
+    fun hasOwnSize(appId: String) = appId in ownSize
+
+    /** A terminal that takes its size from foot.ini opened, at the current [size]. */
+    fun track(window: XdgToplevel) {
+        shown[window] = size
+    }
+
+    /**
+     * A tracked terminal is shown again: the steps of foot's zoom keys that
+     * catch it up on a text size changed meanwhile, counted as taken.
+     */
+    fun catchUp(window: XdgToplevel): Int {
+        val at = shown[window] ?: return 0
+        val steps = ((size - at) / STEP).roundToInt()
+        shown[window] = at + steps * STEP
+        return steps
     }
 
     /** The columns a terminal [widthPx] wide gets at [size]. */
     fun columns(widthPx: Int) = columns(widthPx, scale, size)
 
-    private fun write() {
+    /**
+     * Writes foot-font.ini if it changed or is gone: Linux removed and
+     * installed again in the same process starts without it.
+     */
+    fun write() {
         if (density == 0f) return
         size = pointSize(density, fontScale, scale, text.em)
         val content = "[main]\nfont=$family:size=${format(size)}\n"
-        if (content == written) return
+        val file = File(proot.home, PATH.removePrefix("~/"))
+        if (content == written && file.isFile) return
         written = content
         runCatching {
-            val file = File(proot.home, PATH.removePrefix("~/"))
             file.parentFile?.mkdirs()
             file.writeText(content)
         }.onFailure {
@@ -130,6 +185,9 @@ class TerminalFont(
 
         /** foot.ini's pad, in logical pixels on each side. */
         private const val PAD = 8
+
+        /** What btop's full layout needs. */
+        private const val BTOP_COLUMNS = 80
 
         private const val DEFAULT_SIZE = 8.0
         private const val MIN_SIZE = 4.0

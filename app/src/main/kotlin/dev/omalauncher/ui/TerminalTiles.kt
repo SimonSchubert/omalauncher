@@ -69,6 +69,9 @@ class TerminalTiles(
     var cut by mutableFloatStateOf(0f)
         private set
 
+    /** The soft keyboard is closing on its own (Back) and the active tile lets go once it's gone; home shows its bar meanwhile. */
+    var keyboardLeaving by mutableStateOf(false)
+
     /** The active terminal's whole tile, before the [cut], in window pixels as if the home screen weren't lifted. */
     var tile: Rect? = null
 

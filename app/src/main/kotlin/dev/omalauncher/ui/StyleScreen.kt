@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,7 +54,6 @@ import dev.omalauncher.linux.TerminalText
 import dev.omalauncher.theme.OmarchyTheme
 import dev.omalauncher.theme.ThemeDirs
 import dev.omalauncher.theme.ThemeDownload
-import dev.omalauncher.theme.ThemeInstall
 import dev.omalauncher.theme.ThemeStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -67,24 +68,20 @@ import java.io.File
 fun StyleScreen(
     runtime: Runtime,
     onDismiss: () -> Unit,
+    /** Opens the community themes over this screen. */
+    onBrowse: () -> Unit,
 ) {
     val store = runtime.themes
     val scope = rememberCoroutineScope()
-    // Themes added in Linux since the launcher started.
-    LaunchedEffect(Unit) { if (store.loaded) store.rescan() }
-    var browsing by remember { mutableStateOf(false) }
+    RescanThemes(store)
     var installOpen by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<OmarchyTheme?>(null) }
-    if (browsing) {
-        ThemeCatalogScreen(store, onDismiss = { browsing = false })
-        return
-    }
     val linux by runtime.bootstrap.state.collectAsState()
     OverlayPanel("style", onDismiss) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
             ThemeSection(
                 store,
-                onBrowse = { browsing = true },
+                onBrowse = onBrowse,
                 onInstall = {
                     store.clearInstallError()
                     installOpen = true
@@ -93,7 +90,7 @@ fun StyleScreen(
             )
             store.current?.let { BackgroundSection(store, it) }
             // Style choices don't depend on a theme, so they're offered before themes are downloaded too.
-            SectionLabel("home screen")
+            Heading("home screen")
             StyleOption("icons", listOf("monochrome", "colored"), if (LauncherStyle.monochromeIcons) 0 else 1) { store.setMonochromeIcons(it == 0) }
             StyleOption("home apps", listOf("boxed", "icon only"), if (LauncherStyle.bareAppIcons) 1 else 0) { store.setBareAppIcons(it == 1) }
             StyleOption("recent apps", listOf("shown", "hidden"), if (LauncherStyle.recentApps) 0 else 1) { store.setRecentApps(it == 0) }
@@ -137,8 +134,7 @@ private fun ThemeSection(
 ) {
     val scope = rememberCoroutineScope()
     val current = store.current
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        SectionLabel("theme", Modifier.weight(1f))
+    Heading("theme") {
         BracketAction("browse", Palette.accent, onBrowse)
         BracketAction("install", Palette.accent, onInstall)
     }
@@ -149,7 +145,13 @@ private fun ThemeSection(
     }
     if (store.themes.isNotEmpty()) {
         val start = store.themes.indexOfFirst { it.name == current?.name }.coerceAtLeast(0)
-        LazyRow(state = rememberLazyListState(start), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(
+            // Scrolls under the panel's padding to its frame, starting aligned with the heading.
+            Modifier.bleed(PanelPadding),
+            state = rememberLazyListState(start),
+            contentPadding = PaddingValues(horizontal = PanelPadding),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             items(store.themes, key = { it.name }) { theme ->
                 ThemeCard(theme, selected = theme.name == current?.name, Modifier.width(160.dp)) { scope.launch { store.apply(theme) } }
             }
@@ -184,8 +186,8 @@ private fun BackgroundSection(
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch { store.addBackground(uri) }
     }
-    SectionLabel("background")
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Heading("background")
+    LazyRow(Modifier.bleed(PanelPadding), contentPadding = PaddingValues(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(backgrounds, key = { it.path }) { file ->
             Thumbnail(
                 file,
@@ -231,8 +233,8 @@ private fun BackgroundSection(
 /** The terminals' font and the size they open at, on top of Android's font size; see [TerminalFont]. */
 @Composable
 private fun TerminalSection(font: TerminalFont) {
-    LaunchedEffect(Unit) { font.familiesLoaded(withContext(Dispatchers.IO) { font.loadFamilies() }) }
-    SectionLabel("terminal")
+    LaunchedEffect(Unit) { font.refreshFamilies() }
+    Heading("terminal")
     FontOption(font.families, font.family, font::select)
     BasicText(
         "terminals opened from now on · more with pacman, like ttf-cascadia-code",
@@ -248,6 +250,18 @@ private fun TerminalSection(font: TerminalFont) {
         Modifier.padding(start = 104.dp, top = 2.dp),
         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
     )
+}
+
+/** A section's title, set apart from the muted labels of the options under it by the accent color, as the weather screen sets its sections apart; [actions] go at the far end. */
+@Composable
+private fun Heading(
+    text: String,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        BasicText(text, Modifier.weight(1f), style = Mono.copy(color = Palette.accent), softWrap = false)
+        actions()
+    }
 }
 
 /** Font names run long: each is a chip of its own, and they wrap rather than scroll out of sight. */
@@ -376,13 +390,3 @@ private fun Thumbnail(
 }
 
 private fun String?.toColor(): Color = hexColor(this) ?: Color.Gray
-
-/** How installing a theme from its repo is going; tapping a failure clears it. Nothing while idle. */
-@Composable
-internal fun InstallStatus(store: ThemeStore) {
-    when (val state = store.installing) {
-        is ThemeInstall.Running -> BasicText("installing ${state.name}… ${state.megabytes} MB", style = Mono.copy(color = Palette.accent))
-        is ThemeInstall.Failed -> BasicText("install failed: ${state.message}", Modifier.clickable { store.clearInstallError() }, style = Mono.copy(color = Palette.red))
-        ThemeInstall.Idle -> {}
-    }
-}
