@@ -3,6 +3,7 @@ package dev.omalauncher.widgets
 import android.content.ComponentName
 import android.content.Context
 import androidx.compose.runtime.mutableStateListOf
+import dev.omalauncher.androidAppId
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapObjects
@@ -36,9 +37,14 @@ data class Shortcut(
     override val page: Int,
     val label: String,
     val component: ComponentName? = null,
+    /** Serial number of the work profile [component] is in; null for the phone's own. */
+    val profile: Long? = null,
     val linux: LinuxApp? = null,
     val folder: String? = null,
 ) : HomeItem {
+    /** The Android app's [dev.omalauncher.AndroidApp.id], which its icon is filed under. */
+    val androidId: String? get() = component?.let { androidAppId(it, profile) }
+
     override val size get() = 1 to 1
     override val minSize get() = 1 to 1
     override val resizable get() = false
@@ -170,6 +176,7 @@ class Shortcuts(
             page = o.optInt("page", 1),
             label = o.getString("label"),
             component = o.optString("component").ifEmpty { null }?.let(ComponentName::unflattenFromString),
+            profile = if (o.has("profile")) o.getLong("profile") else null,
             linux = linux,
             folder = o.optString("folder").ifEmpty { null },
         )
@@ -178,8 +185,9 @@ class Shortcuts(
     fun addAndroid(
         label: String,
         component: ComponentName,
+        profile: Long?,
         page: Int,
-    ) = add(Shortcut("app:" + component.flattenToShortString(), page, label, component = component))
+    ) = add(Shortcut("app:" + androidAppId(component, profile), page, label, component = component, profile = profile))
 
     fun addLinux(
         app: LinuxApp,
@@ -232,6 +240,7 @@ class Shortcuts(
                     .put("page", s.page)
                     .put("label", s.label)
                     .putOpt("folder", s.folder)
+                    .putOpt("profile", s.profile)
             s.component?.let { o.put("component", it.flattenToString()) }
             // A snapshot of the desktop entry, for when it's gone; while it exists, the launcher runs the current one.
             s.linux?.let {

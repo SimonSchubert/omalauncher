@@ -383,7 +383,7 @@ class Runtime(
         shortcut: Shortcut,
         mono: Boolean,
     ): ImageBitmap? {
-        shortcut.component?.let { return if (mono) androidApps.masks[it] else androidApps.icons[it] }
+        shortcut.androidId?.let { return if (mono) androidApps.masks[it] else androidApps.icons[it] }
         val id = shortcut.linux?.id ?: return null
         return if (mono) linuxMasks[id] else linuxIcons[id]
     }
@@ -420,10 +420,7 @@ class Runtime(
     /** Opens a pinned app from the home screen. A Linux one runs its current desktop entry, which an update may have changed. */
     fun open(shortcut: Shortcut) {
         shortcut.linux?.let { pinned -> launch(linuxApps.firstOrNull { it.id == pinned.id } ?: pinned) }
-        shortcut.component?.let { component ->
-            runCatching { context.startActivity(AndroidApp(shortcut.label, component).intent) }
-                .onFailure { Log.w(TAG, "cannot open $component", it) }
-        }
+        shortcut.component?.let { androidApps.open(it, shortcut.profile) }
     }
 
     fun launch(app: LinuxApp) {

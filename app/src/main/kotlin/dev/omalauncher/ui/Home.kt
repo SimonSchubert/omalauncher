@@ -260,6 +260,8 @@ fun HomeScreen(
                                 arrange.folder = null
                                 runtime.open(item)
                             },
+                            work = item.profile != null,
+                            paused = runtime.androidApps.isPaused(item.profile),
                         )
                     is Folder ->
                         FolderTile(

@@ -1,6 +1,5 @@
 package dev.omalauncher.ui
 
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
@@ -39,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.platform.LocalContext
 import dev.omalauncher.Runtime
 import dev.omalauncher.widgets.checkSecretsCommand
 import dev.omalauncher.widgets.publishWidgetCommand
@@ -69,7 +67,6 @@ private fun DesktopScreen(
     runtime: Runtime,
     state: LauncherState,
 ) {
-    val context = LocalContext.current
     // Something that needs Linux was asked for (a terminal, Super+Enter): offer to install it.
     LaunchedEffect(runtime.linuxWanted) {
         if (runtime.linuxWanted) {
@@ -125,25 +122,26 @@ private fun DesktopScreen(
     val highlighted = search.highlighted(state.picked)
 
     fun launch(hit: AppHit) {
+        // A paused work app turns work apps back on; the panel stays, to tap it again once they are.
+        if (hit is AppHit.Android && runtime.androidApps.isPaused(hit.app.profile)) return runtime.androidApps.pauseWork(false)
         runtime.usage.record(hit.key)
         state.query = ""
         state.closeNow()
         when (hit) {
             is AppHit.Linux -> runtime.launch(hit.app)
-            // Uninstalled or disabled since the list was loaded.
-            is AppHit.Android -> runCatching { context.startActivity(hit.app.intent) }.onFailure { Log.w("launcher", "cannot open ${hit.app.component}", it) }
+            is AppHit.Android -> runtime.androidApps.open(hit.app)
         }
     }
 
     val handlers =
-        remember(runtime, state, context) {
+        remember(runtime, state) {
             AppHandlers(
                 launch = ::launch,
                 // Pins to the page that's showing; the panel closes so the new tile is visible.
                 pin = { hit ->
                     when (hit) {
                         is AppHit.Linux -> runtime.widgets.shortcuts.addLinux(hit.app, state.currentPage)
-                        is AppHit.Android -> runtime.widgets.shortcuts.addAndroid(hit.app.label, hit.app.component, state.currentPage)
+                        is AppHit.Android -> runtime.widgets.shortcuts.addAndroid(hit.app.label, hit.app.component, hit.app.profile, state.currentPage)
                     }
                     state.close()
                 },

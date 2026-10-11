@@ -86,10 +86,15 @@ internal sealed interface AppHit {
     data class Android(
         val app: AndroidApp,
     ) : AppHit {
-        override val key get() = "a:" + app.component.flattenToShortString()
+        override val key get() = "a:" + app.id
         override val label get() = app.label
     }
 }
+
+/** A work profile's app: badged, and greyed while [paused]. */
+private val AppHit.work get() = this is AppHit.Android && app.profile != null
+
+private fun AppHit.paused(runtime: Runtime) = this is AppHit.Android && runtime.androidApps.isPaused(app.profile)
 
 /** What the bar's query matched: apps best first, and whether Enter opens the first rather than asking the agent. */
 internal class BarSearch(
@@ -136,7 +141,7 @@ private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>
 private fun AppHit.icons(runtime: Runtime): Triple<ImageBitmap?, ImageBitmap?, ImageVector?> =
     when (this) {
         is AppHit.Linux -> Triple(runtime.linuxIcons[app.id], runtime.linuxMasks[app.id], if (app.exec == FILES_COMMAND) Icons.Folder else null)
-        is AppHit.Android -> Triple(runtime.androidApps.icons[app.component], runtime.androidApps.masks[app.component], null)
+        is AppHit.Android -> Triple(runtime.androidApps.icons[app.id], runtime.androidApps.masks[app.id], null)
     }
 
 @Composable
@@ -147,7 +152,7 @@ private fun HitCell(
     selected: Boolean = false,
 ) {
     val (icon, mask, glyph) = hit.icons(runtime)
-    AppCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph, selected = selected)
+    AppCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph, selected = selected, work = hit.work, paused = hit.paused(runtime))
 }
 
 /** Height of the recent apps strip; home keeps this much room for it above the bar, even while it's empty. */
@@ -184,7 +189,7 @@ internal fun RecentStrip(
         val cells: LazyListScope.() -> Unit = {
             items(apps, key = { it.key }) { hit ->
                 val (icon, mask, glyph) = hit.icons(runtime)
-                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph)
+                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph, work = hit.work, paused = hit.paused(runtime))
             }
         }
         if (vertical) {
@@ -205,6 +210,8 @@ private fun StripCell(
     /** Built when the menu opens: a fresh list of lambdas would keep the cell from skipping recomposition. */
     actions: () -> List<Pair<String, () -> Unit>>,
     glyph: ImageVector? = null,
+    work: Boolean = false,
+    paused: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
@@ -225,19 +232,22 @@ private fun StripCell(
         contentAlignment = Alignment.Center,
     ) {
         val bmp = if (mono) mask else icon
-        when {
-            glyph != null -> Image(glyph, label, Modifier.size(size * 0.7f), colorFilter = ColorFilter.tint(Palette.accent))
-            // Bare silhouettes and initials sit on a badge, as pinned apps do, so they read on any wallpaper.
-            bare && (mono || bmp == null) ->
-                Box(Modifier.size(size).clip(LauncherStyle.shape(size / 2)).background(Palette.surface), contentAlignment = Alignment.Center) {
-                    if (bmp != null) {
-                        Image(bmp, label, Modifier.size(size * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
-                    } else {
-                        BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = 14.sp))
+        Box(Modifier.paused(paused), contentAlignment = Alignment.Center) {
+            when {
+                glyph != null -> Image(glyph, label, Modifier.size(size * 0.7f), colorFilter = ColorFilter.tint(Palette.accent))
+                // Bare silhouettes and initials sit on a badge, as pinned apps do, so they read on any wallpaper.
+                bare && (mono || bmp == null) ->
+                    Box(Modifier.size(size).clip(LauncherStyle.shape(size / 2)).background(Palette.surface), contentAlignment = Alignment.Center) {
+                        if (bmp != null) {
+                            Image(bmp, label, Modifier.size(size * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
+                        } else {
+                            BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = 14.sp))
+                        }
                     }
-                }
-            bmp != null -> Image(bmp, label, Modifier.size(size * if (mono) 0.85f else 1f), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
-            else -> BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = 16.sp))
+                bmp != null -> Image(bmp, label, Modifier.size(size * if (mono) 0.85f else 1f), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
+                else -> BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = 16.sp))
+            }
+            if (work) WorkBadge(size)
         }
         if (menuOpen) AppActions(actions(), onDismiss = { menuOpen = false })
     }
@@ -271,9 +281,13 @@ internal fun AppPanel(
     LaunchedEffect(Unit) { runtime.refreshApps() }
     val linuxState by runtime.bootstrap.state.collectAsState()
     val query = state.query
+    // With a work profile, the empty bar lists one profile's apps at a time, as stock drawers' tabs do.
+    val hasWork = runtime.androidApps.workProfiles.isNotEmpty()
+    var workTab by remember { mutableStateOf(false) }
+    val showWork = workTab && hasWork
     val listState = rememberLazyListState()
     // New results start at the bar, where the best match is.
-    LaunchedEffect(query.isBlank(), search) { listState.scrollToItem(0) }
+    LaunchedEffect(query.isBlank(), search, showWork) { listState.scrollToItem(0) }
 
     val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     // Pulling down past the end of the list drags the panel closed, like stock drawers.
@@ -310,7 +324,16 @@ internal fun AppPanel(
 
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         Column(Modifier.widthIn(max = 640.dp).fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp, start = 12.dp, end = 12.dp), horizontalArrangement = Arrangement.End) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 12.dp, start = 12.dp, end = 12.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Typing searches both profiles, so the tabs step aside.
+                if (hasWork && query.isBlank()) {
+                    ProfileTabs(showWork, onWork = { workTab = it })
+                    Spacer(Modifier.weight(1f))
+                }
                 Box(
                     Modifier
                         .size(44.dp)
@@ -354,19 +377,27 @@ internal fun AppPanel(
                             }
                         }
 
-                        // Each section reads top-down above the one before it.
+                        // Each section reads top-down above the one before it. One with an action shows its title even without apps.
                         fun section(
                             title: String,
                             apps: List<AppHit>,
+                            action: Pair<String, () -> Unit>? = null,
                         ) {
-                            if (apps.isEmpty()) return
+                            if (apps.isEmpty() && action == null) return
                             val rows = apps.chunked(columns)
                             for (r in rows.indices.reversed()) row("$title:$r", rows[r])
-                            item(key = "h:$title") { Section(title) }
+                            item(key = "h:$title") { Section(title, action) }
                         }
 
                         if (query.isNotBlank()) {
                             search.hits.chunked(columns).forEachIndexed { r, cells -> row("q:$r", cells, highlighted - r * columns) }
+                        } else if (showWork) {
+                            val paused = runtime.androidApps.workProfiles.values.any { it }
+                            section(
+                                if (paused) "work apps paused" else "work apps",
+                                runtime.androidApps.apps.filter { it.profile != null }.map { AppHit.Android(it) },
+                                (if (paused) "turn on" else "pause") to { runtime.androidApps.pauseWork(!paused) },
+                            )
                         } else {
                             if (linuxState == LinuxState.Installed) {
                                 section("linux", runtime.linuxApps.map { AppHit.Linux(it) })
@@ -382,7 +413,7 @@ internal fun AppPanel(
                                     }
                                 }
                             }
-                            section("android", runtime.androidApps.apps.map { AppHit.Android(it) })
+                            section("android", runtime.androidApps.apps.filter { it.profile == null }.map { AppHit.Android(it) })
                         }
                     }
                 }
@@ -460,8 +491,41 @@ internal fun SearchField(
 }
 
 @Composable
-private fun Section(title: String) {
-    BasicText(title, Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), style = Mono.copy(color = Palette.muted))
+private fun Section(
+    title: String,
+    /** Label and handler of a bracketed action at the right end, as the install linux offer has. */
+    action: Pair<String, () -> Unit>? = null,
+) {
+    if (action == null) {
+        BasicText(title, Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), style = Mono.copy(color = Palette.muted))
+    } else {
+        Row(Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            BasicText(title, Modifier.weight(1f), style = Mono.copy(color = Palette.muted))
+            BracketAction(action.first, Palette.accent, action.second)
+        }
+    }
+}
+
+/** Stock drawers' personal | work switch over which profile's apps the empty bar lists. */
+@Composable
+private fun ProfileTabs(
+    work: Boolean,
+    onWork: (Boolean) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        for ((label, tab) in listOf("personal" to false, "work" to true)) {
+            val chosen = tab == work
+            BasicText(
+                label,
+                Modifier
+                    .clip(LauncherStyle.shape(18.dp))
+                    .then(if (chosen) Modifier.background(Palette.surface) else Modifier)
+                    .clickable { onWork(tab) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                style = Mono.copy(color = if (chosen) Palette.accent else Palette.muted),
+            )
+        }
+    }
 }
 
 /**
@@ -481,6 +545,8 @@ private fun AppCell(
     glyph: ImageVector? = null,
     /** What Enter in the bar would open: outlined in the accent color. */
     selected: Boolean = false,
+    work: Boolean = false,
+    paused: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
@@ -501,23 +567,26 @@ private fun AppCell(
         val mono = LauncherStyle.monochromeIcons
         // Badges are circles when rounded, squares with Omarchy's sharp edges.
         val badge = LauncherStyle.shape(26.dp)
-        if (glyph != null) {
-            Box(
-                Modifier.size(52.dp).clip(badge).background(if (mono) Palette.surface else Palette.accent),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(glyph, label, Modifier.size(26.dp), colorFilter = ColorFilter.tint(if (mono) Palette.accent else Palette.background))
+        Box(Modifier.paused(paused)) {
+            if (glyph != null) {
+                Box(
+                    Modifier.size(52.dp).clip(badge).background(if (mono) Palette.surface else Palette.accent),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(glyph, label, Modifier.size(26.dp), colorFilter = ColorFilter.tint(if (mono) Palette.accent else Palette.background))
+                }
+            } else if (mono && mask != null) {
+                Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
+                    Image(mask, label, Modifier.size(36.dp), colorFilter = ColorFilter.tint(Palette.accent))
+                }
+            } else if (!mono && icon != null) {
+                Image(icon, label, Modifier.size(52.dp))
+            } else {
+                Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
+                    BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = 18.sp))
+                }
             }
-        } else if (mono && mask != null) {
-            Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
-                Image(mask, label, Modifier.size(36.dp), colorFilter = ColorFilter.tint(Palette.accent))
-            }
-        } else if (!mono && icon != null) {
-            Image(icon, label, Modifier.size(52.dp))
-        } else {
-            Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
-                BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = 18.sp))
-            }
+            if (work) WorkBadge(52.dp)
         }
         Spacer(Modifier.height(6.dp))
         BasicText(
