@@ -16,12 +16,27 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.omalauncher.AndroidAppCatalog
 
-/** The briefcase on a work app's icon, bottom right like stock launchers' badge, in the theme's colors. */
+/** The badge on an app of [profile]: a briefcase in a work profile, a lock in the private space, none in the phone's own. */
+internal fun AndroidAppCatalog.badge(profile: Long?): ImageVector? =
+    when {
+        profile == null -> null
+        isPrivate(profile) -> Icons.Lock
+        profile in workProfiles -> Icons.Work
+        // Not loaded yet.
+        else -> null
+    }
+
+/** [glyph] on another profile's app icon, bottom right like stock launchers' badge, in the theme's colors. */
 @Composable
-internal fun BoxScope.WorkBadge(iconSize: Dp) {
+internal fun BoxScope.ProfileBadge(
+    iconSize: Dp,
+    glyph: ImageVector,
+) {
     val size = iconSize * 0.4f
     val shape = LauncherStyle.shape(size / 2)
     Box(
@@ -34,11 +49,11 @@ internal fun BoxScope.WorkBadge(iconSize: Dp) {
             .border(1.dp, Palette.background, shape),
         contentAlignment = Alignment.Center,
     ) {
-        Image(Icons.Work, "work", Modifier.size(size * 0.6f), colorFilter = ColorFilter.tint(Palette.background))
+        Image(glyph, glyph.name, Modifier.size(size * 0.6f), colorFilter = ColorFilter.tint(Palette.background))
     }
 }
 
-/** A paused work app's icon, whatever it is (bitmap, silhouette, initials): drained of color and faded, as stock launchers grey them. */
+/** A paused work app's or locked private app's icon, whatever it is (bitmap, silhouette, initials): drained of color and faded, as stock launchers grey them. */
 internal fun Modifier.paused(paused: Boolean): Modifier =
     if (!paused) {
         this

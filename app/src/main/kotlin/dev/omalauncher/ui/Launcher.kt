@@ -122,9 +122,11 @@ private fun DesktopScreen(
     val highlighted = search.highlighted(state.picked)
 
     fun launch(hit: AppHit) {
-        // A paused work app turns work apps back on; the panel stays, to tap it again once they are.
-        if (hit is AppHit.Android && runtime.androidApps.isPaused(hit.app.profile)) return runtime.androidApps.pauseWork(false)
-        runtime.usage.record(hit.key)
+        // A paused work app turns work apps back on, a locked private one unlocks the private space;
+        // the panel stays, to tap it again once they are.
+        if (hit is AppHit.Android && runtime.androidApps.isPaused(hit.app.profile)) return runtime.androidApps.resume(hit.app.profile)
+        // The private space's apps leave no trace in the phone's own profile: not in recents, not in the ranking.
+        if (!(hit is AppHit.Android && runtime.androidApps.isPrivate(hit.app.profile))) runtime.usage.record(hit.key)
         state.query = ""
         state.closeNow()
         when (hit) {

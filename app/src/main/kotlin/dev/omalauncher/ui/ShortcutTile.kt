@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,8 +40,8 @@ fun ShortcutTile(
     focused: Boolean,
     modifier: Modifier,
     onTap: () -> Unit,
-    /** A work profile's app: badged, and greyed while [paused], like Lawnchair's pinned work apps. */
-    work: Boolean = false,
+    /** Another profile's app: badged with this (a briefcase, a lock), and greyed while [paused], like Lawnchair's pinned work apps. */
+    profileBadge: ImageVector? = null,
     paused: Boolean = false,
 ) {
     val mono = LauncherStyle.monochromeIcons
@@ -83,7 +84,7 @@ fun ShortcutTile(
                             BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.45f).sp))
                         }
                 }
-                if (work) WorkBadge(iconSize)
+                if (profileBadge != null) ProfileBadge(iconSize, profileBadge)
             }
             if (showLabel) TileLabel(shortcut.label)
         }

@@ -51,8 +51,9 @@ fun SettingsScreen(
                 LinuxState.Removing -> "removing…"
                 else -> "not installed · install Arch Linux for terminal apps and agents"
             }
+        val apps = runtime.androidApps
         val rows =
-            listOf(
+            listOfNotNull(
                 Triple("themes", runtime.themes.current?.title ?: "colors and backgrounds", onThemes),
                 Triple("linux", linuxStatus, onLinux),
                 if (installed) {
@@ -62,6 +63,12 @@ fun SettingsScreen(
                 },
                 Triple("packages", if (installed) "install Linux apps and tools with pacman and the AUR" else "needs linux", if (installed) onPackages else onLinux),
                 Triple("widget store", "add widgets to the home screen", onStore),
+                // Not even this row tells of a private space while it hides.
+                if (apps.privateProfiles.isNotEmpty() && !apps.privateHidden) {
+                    Triple("private space", if (apps.hidePrivate) "hidden while locked · show" else "shown · hide while locked") { apps.hidePrivate = !apps.hidePrivate }
+                } else {
+                    null
+                },
                 Triple("android settings", "the phone's system settings") {
                     context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 },

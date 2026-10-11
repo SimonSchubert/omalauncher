@@ -137,6 +137,7 @@ class Runtime(
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
         themes.loadStyle()
         androidApps.onReload = ::forgetDeletedProfiles
+        widgets.shortcuts.hidden = { androidApps.concealed(it.profile) }
         androidApps.start()
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
         keyboard.onShortcut = { code ->
