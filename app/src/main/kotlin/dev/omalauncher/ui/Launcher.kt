@@ -1,5 +1,6 @@
 package dev.omalauncher.ui
 
+import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -110,10 +112,17 @@ private fun DesktopScreen(
             }
         }
     }
+    val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+    val drawerDrag = rememberDraggableState { dy -> state.dragBy(-dy / screenHeight) }
     val covered = remember(state) { { state.homeCovered || runtime.widgets.openScreen != null } }
     CompositionLocalProvider(LocalHomeCovered provides covered) {
         Column(Modifier.fillMaxSize().safePadding()) {
-            HomeScreen(runtime, state, Modifier.weight(1f))
+            // Swiping up anywhere on home opens the drawer. Tiles being moved or edited and typing terminals keep their touches.
+            HomeScreen(
+                runtime,
+                state,
+                Modifier.weight(1f).dragsDrawer(state, drawerDrag, enabled = state.editing == null && runtime.terminals.active == null),
+            )
         }
     }
     HomeMenu(runtime, state)
@@ -137,13 +146,14 @@ private fun DesktopScreen(
         remember(runtime, state, context) {
             AppHandlers(
                 launch = ::launch,
-                // Pins to the page that's showing; the panel closes so the new tile is visible.
+                // Pins to the page that's showing. The panel stays open to pin more; a toast confirms it, without a page
+                // number: a full page passes the tile on to the next with room, and home follows it there.
                 pin = { hit ->
                     when (hit) {
                         is AppHit.Linux -> runtime.widgets.shortcuts.addLinux(hit.app, state.currentPage)
                         is AppHit.Android -> runtime.widgets.shortcuts.addAndroid(hit.app, state.currentPage)
                     }
-                    state.close()
+                    Toast.makeText(context, "added to home", Toast.LENGTH_SHORT).show()
                 },
                 info = { app ->
                     state.closeNow()
@@ -153,7 +163,6 @@ private fun DesktopScreen(
             )
         }
 
-    val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     if (panelShown) {
         // Near-opaque like stock drawers: home widgets bleeding through made icons hard to read.
         Box(
@@ -162,11 +171,7 @@ private fun DesktopScreen(
                 .graphicsLayer { alpha = state.drawer.value.coerceAtMost(1f) }
                 .background(Palette.background.copy(alpha = 0.97f))
                 .clickable { state.close() }
-                .draggable(
-                    orientation = Orientation.Vertical,
-                    state = rememberDraggableState { dy -> state.dragBy(-dy / screenHeight) },
-                    onDragStopped = { velocity -> state.settle(velocity) },
-                ),
+                .dragsDrawer(state, drawerDrag),
         )
     }
     // The bar and the panel above it; the keyboard lifts both. Nothing here takes touches while the panel is closed,
@@ -208,10 +213,13 @@ private fun DesktopScreen(
             }
             // Hidden while a terminal tile types: it would sit on the keyboard, over the tile.
             if (runtime.terminals.active == null || runtime.terminals.keyboardLeaving) {
-                // Home only: the open app list has everything.
-                if (LauncherStyle.recentApps && !panelShown) RecentStrip(runtime, handlers)
-                // Insets itself by the grid gap, so it lines up with the tiles and the gap still takes taps.
-                PromptBar(runtime, state, search = search, highlighted = highlighted, onLaunch = handlers.launch)
+                // Part of home too: swiping up on them opens the drawer, and with it open, down closes it.
+                Column(Modifier.fillMaxWidth().dragsDrawer(state, drawerDrag)) {
+                    // Home only: the open app list has everything.
+                    if (LauncherStyle.recentApps && !panelShown) RecentStrip(runtime, handlers)
+                    // Insets itself by the grid gap, so it lines up with the tiles and the gap still takes taps.
+                    PromptBar(runtime, state, search = search, highlighted = highlighted, onLaunch = handlers.launch)
+                }
             }
         }
     }
@@ -219,6 +227,16 @@ private fun DesktopScreen(
     // Full-screen panels draw over the bar.
     ThemesOverlay(runtime, state)
 }
+
+/**
+ * Moves the drawer with a vertical drag: up opens it, down closes it, letting go settles it. Only past the touch
+ * slop, so taps, long-presses and sideways swipes underneath still go where they did.
+ */
+private fun Modifier.dragsDrawer(
+    state: LauncherState,
+    drag: DraggableState,
+    enabled: Boolean = true,
+) = draggable(drag, Orientation.Vertical, enabled, onDragStopped = { velocity -> state.settle(velocity) })
 
 @Composable
 private fun ThemesOverlay(

@@ -148,6 +148,8 @@ class ThemeStore(
         LauncherStyle.monochromeIcons = prefs.getBoolean(MONO_ICONS, false)
         LauncherStyle.bareAppIcons = prefs.getBoolean(BARE_APP_ICONS, false)
         LauncherStyle.recentApps = prefs.getBoolean(RECENT_APPS, true)
+        LauncherStyle.drawerKeyboard = prefs.getBoolean(DRAWER_KEYBOARD, true)
+        LauncherStyle.homeAppsInDrawer = prefs.getBoolean(HOME_APPS_IN_DRAWER, true)
         LauncherStyle.corners = Corners.of(prefs.getString(CORNERS, null))
     }
 
@@ -164,6 +166,16 @@ class ThemeStore(
     fun setRecentApps(on: Boolean) {
         LauncherStyle.recentApps = on
         prefs.edit().putBoolean(RECENT_APPS, on).apply()
+    }
+
+    fun setDrawerKeyboard(on: Boolean) {
+        LauncherStyle.drawerKeyboard = on
+        prefs.edit().putBoolean(DRAWER_KEYBOARD, on).apply()
+    }
+
+    fun setHomeAppsInDrawer(on: Boolean) {
+        LauncherStyle.homeAppsInDrawer = on
+        prefs.edit().putBoolean(HOME_APPS_IN_DRAWER, on).apply()
     }
 
     fun setCorners(corners: Corners) {
@@ -494,6 +506,8 @@ class ThemeStore(
         private const val MONO_ICONS = "mono_icons"
         private const val BARE_APP_ICONS = "bare_app_icons"
         private const val RECENT_APPS = "recent_apps"
+        private const val DRAWER_KEYBOARD = "drawer_keyboard"
+        private const val HOME_APPS_IN_DRAWER = "home_apps_in_drawer"
         private const val CORNERS = "corners"
         private const val RENDERED_BY = "rendered_by"
         private const val DEFAULT_THEME = "tokyo-night"

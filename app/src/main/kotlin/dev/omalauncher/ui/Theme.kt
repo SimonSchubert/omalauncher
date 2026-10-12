@@ -103,6 +103,12 @@ object LauncherStyle {
     /** The strip of recently used apps above the bar on home. */
     var recentApps by mutableStateOf(true)
 
+    /** Opening the app drawer brings up the keyboard too; otherwise only a tap on the bar does. */
+    var drawerKeyboard by mutableStateOf(true)
+
+    /** The app drawer lists apps pinned to home (on their own or in a folder) too; search finds them either way. */
+    var homeAppsInDrawer by mutableStateOf(true)
+
     /** How frames (tiles, panels, menus, fields) round their corners. */
     var corners by mutableStateOf(Corners.Edge)
 

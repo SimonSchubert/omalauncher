@@ -48,6 +48,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Velocity
@@ -63,6 +67,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.graphics.ColorFilter
 import dev.omalauncher.AndroidApp
+import dev.omalauncher.androidAppKey
 import androidx.compose.runtime.collectAsState
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
@@ -114,6 +119,12 @@ internal class BarSearch(
 }
 
 private fun allApps(runtime: Runtime): List<AppHit> = runtime.linuxApps.map { AppHit.Linux(it) } + runtime.androidApps.apps.map { AppHit.Android(it) }
+
+/** [AppHit.key]s of the apps pinned to home, on their own or in a folder. */
+private fun pinnedKeys(runtime: Runtime): Set<String> =
+    runtime.widgets.shortcuts.items.mapNotNullTo(HashSet()) { s ->
+        s.component?.let { "a:" + androidAppKey(it, s.profile) } ?: s.linux?.let { AppHit.Linux(it).key }
+    }
 
 internal fun searchApps(
     runtime: Runtime,
@@ -292,12 +303,18 @@ internal fun AppPanel(
     val listState = rememberLazyListState()
     // New results start at the bar, where the best match is.
     LaunchedEffect(query.isBlank(), search) { listState.scrollToItem(0) }
+    // Set to list only what home doesn't have; search still finds everything.
+    val hidden = if (LauncherStyle.homeAppsInDrawer) emptySet() else pinnedKeys(runtime)
 
     val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
-    // Pulling down past the end of the list drags the panel closed, like stock drawers.
+    // Pulling down at the end of the list drags the panel closed, like stock drawers: only a pull that starts there
+    // (decided as the finger lands, as Launcher3 does). Scrolling up to the end just stops there.
     val pullToClose =
         remember(state, screenHeight) {
             object : NestedScrollConnection {
+                /** The list was already at its end when this gesture started. */
+                var fromEnd = false
+
                 override fun onPreScroll(
                     available: Offset,
                     source: NestedScrollSource,
@@ -313,7 +330,7 @@ internal fun AppPanel(
                     available: Offset,
                     source: NestedScrollSource,
                 ): Offset {
-                    if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                    if (source != NestedScrollSource.UserInput || available.y <= 0f || !fromEnd) return Offset.Zero
                     state.dragBy(-available.y / screenHeight)
                     return Offset(0f, available.y)
                 }
@@ -360,7 +377,16 @@ internal fun AppPanel(
                     LazyColumn(
                         state = listState,
                         reverseLayout = true,
-                        modifier = Modifier.fillMaxWidth().nestedScroll(pullToClose),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .pointerInput(listState) {
+                                    // Bottom-up, so forward is up: the end is the top row.
+                                    awaitEachGesture {
+                                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                        pullToClose.fromEnd = !listState.canScrollForward
+                                    }
+                                }.nestedScroll(pullToClose),
                         contentPadding = PaddingValues(top = 8.dp, bottom = 4.dp),
                     ) {
                         fun row(
@@ -389,7 +415,7 @@ internal fun AppPanel(
                             search.hits.chunked(columns).forEachIndexed { r, cells -> row("q:$r", cells, highlighted - r * columns) }
                         } else {
                             if (linuxState == LinuxState.Installed) {
-                                section("linux", runtime.linuxApps.map { AppHit.Linux(it) })
+                                section("linux", runtime.linuxApps.map { AppHit.Linux(it) }.filter { it.key !in hidden })
                             } else {
                                 // Linux apps would be listed here; without Linux, one quiet offer instead.
                                 item(key = "linux-offer") {
@@ -402,7 +428,7 @@ internal fun AppPanel(
                                     }
                                 }
                             }
-                            section("android", runtime.androidApps.apps.map { AppHit.Android(it) })
+                            section("android", runtime.androidApps.apps.map { AppHit.Android(it) }.filter { it.key !in hidden })
                         }
                     }
                 }
