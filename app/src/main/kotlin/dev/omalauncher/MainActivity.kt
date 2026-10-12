@@ -90,6 +90,8 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         runtime.wm.focus(null)
         removeStaleWindowTasks()
+        // Made the default home app (or no longer it) while away: only then does Android show us pinned shortcuts.
+        runtime.androidApps.checkShortcutAccess()
         // The user may have set or replaced the wallpaper while we were in the background.
         lifecycleScope.launch { runtime.themes.refreshLiveWallpaper() }
     }

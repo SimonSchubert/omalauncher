@@ -59,6 +59,22 @@
             </intent-filter>
         </activity>
 
+        <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
+             websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
+             gone once left. Not exported: the system starts it, and other apps have no reason to. -->
+        <activity
+            android:name=".PinShortcutActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".LinuxWindowActivity"
             android:label="Linux"
