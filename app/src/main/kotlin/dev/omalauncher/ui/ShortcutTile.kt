@@ -45,10 +45,12 @@ fun ShortcutTile(
     paused: Boolean = false,
     /** In a clone profile: read out as a clone, not a work app. */
     clone: Boolean = false,
+    /** In the private space: read out as private. */
+    private: Boolean = false,
 ) {
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
-    val spoken = spokenLabel(shortcut.label, shortcut.profile, clone)
+    val spoken = spokenLabel(shortcut.label, shortcut.profile, clone, private)
     BoxWithConstraints(
         modifier
             .alpha(if (paused) PausedAlpha else 1f)

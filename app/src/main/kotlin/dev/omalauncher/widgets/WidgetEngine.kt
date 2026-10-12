@@ -179,7 +179,7 @@ class WidgetEngine(
 
     /** A widget with no room on its page moves to the next page with room at its size, or a new one after the last. Returns the page. */
     fun moveToFreePage(item: HomeItem): Int {
-        val page = pages.firstOrNull { it > item.page && layout.claim(item, itemsOn(it)) } ?: ((pages.maxOrNull() ?: 1) + 1)
+        val page = pages.firstOrNull { it > item.page && layout.claim(item, itemsOn(it) + hiddenOn(it)) } ?: ((pages.maxOrNull() ?: 1) + 1)
         moveToPage(item, page)
         return page
     }
@@ -289,6 +289,9 @@ class WidgetEngine(
 
     /** Widgets, pinned apps and folders on [page]. Wrappers compare by spec, so unchanged pages skip recomposition. */
     fun itemsOn(page: Int): List<HomeItem> = specs.filter { it.page == page }.map(::WidgetItem) + shortcuts.onGrid().filter { it.page == page }
+
+    /** Pinned apps and folders on [page] that are hidden right now: not shown, but no other tile may take their cells. */
+    fun hiddenOn(page: Int): List<HomeItem> = shortcuts.hiddenOnGrid().filter { it.page == page }
 
     private val pageList by derivedStateOf {
         (specs.map { it.page } + shortcuts.onGrid().map { it.page }).distinct().sorted().ifEmpty { listOf(1) }

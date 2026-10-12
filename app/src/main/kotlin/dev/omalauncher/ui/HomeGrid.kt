@@ -263,6 +263,8 @@ internal fun HomeGrid(
     room: Dp = 0.dp,
     turned: Boolean = false,
     per: Int = 1,
+    /** Tiles on a page that are hidden right now: not drawn or touched, but their cells stay taken. */
+    hiddenOn: (Int) -> List<HomeItem> = { emptyList() },
 ) {
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -279,8 +281,8 @@ internal fun HomeGrid(
         val windowSize = "${minOf(window.width, window.height)}x${maxOf(window.width, window.height)}"
         // Rows the tiles on every page reach down to (apps show as 1x1); the pages share one grid.
         // Derived, so moving or resizing a tile recomposes only its page, unless it changes how far down they reach.
-        val used by remember(pages, itemsOn, layout) {
-            derivedStateOf { pages.flatMap(itemsOn).maxOfOrNull { item -> layout.cell(item.key)?.let { if (item.resizable) it.bottom else it.y + 1 } ?: 0 } ?: 0 }
+        val used by remember(pages, itemsOn, hiddenOn, layout) {
+            derivedStateOf { pages.flatMap { itemsOn(it) + hiddenOn(it) }.maxOfOrNull { item -> layout.cell(item.key)?.let { if (item.resizable) it.bottom else it.y + 1 } ?: 0 } ?: 0 }
         }
         val grid =
             remember(width, height, gap, turned, windowSize, used, per) {
@@ -302,6 +304,12 @@ internal fun HomeGrid(
             page: Int,
             g: Grid,
         ) = itemsOn(page).mapNotNull { item -> layout.cell(item.key)?.let { item to g.fit(it, item) } }
+
+        /** The cells [hiddenOn] keeps taken on [page]. */
+        fun reservedOn(
+            page: Int,
+            g: Grid,
+        ) = hiddenOn(page).mapNotNull { item -> layout.cell(item.key)?.let { g.fit(it, item) } }
 
         /** The pages a pager slot shows, left to right. */
         fun pagesAt(
@@ -421,7 +429,7 @@ internal fun HomeGrid(
                                 } else {
                                     val x = g.colLine(at - hold).coerceIn(0, (g.cols - cell.w).coerceAtLeast(0))
                                     val y = g.rowLine(at - hold).coerceIn(0, (g.rows - cell.h).coerceAtLeast(0))
-                                    Cell(x, y, cell.w, cell.h).takeIf { n -> others.none { it.second.overlaps(n) } }
+                                    Cell(x, y, cell.w, cell.h).takeIf { n -> others.none { it.second.overlaps(n) } && reservedOn(page, g).none { it.overlaps(n) } }
                                 }
                         }
                         val page = arrange.page
@@ -517,7 +525,7 @@ internal fun HomeGrid(
                                 val edges = if (item.resizable) g.edges(edgesAt(rect, selAt, grab, sideGrab)) else Edges(false, false, false, false)
                                 when {
                                     edges.any -> {
-                                        val others = placed.filter { it.first.key != item.key }.map { it.second }
+                                        val others = placed.filter { it.first.key != item.key }.map { it.second } + reservedOn(page, g)
                                         while (true) {
                                             val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
                                             c.consume()
@@ -576,7 +584,7 @@ internal fun HomeGrid(
                 Row(Modifier.fillMaxSize()) {
                     for (page in pagesAt(slot, pages, grid)) {
                         Box(Modifier.width(with(density) { grid.width.toDp() }).fillMaxHeight()) {
-                            TiledPage(page, itemsOn(page), layout, grid, arrange, selected, render, actions, onNoRoom)
+                            TiledPage(page, itemsOn(page), hiddenOn(page), layout, grid, arrange, selected, render, actions, onNoRoom)
                         }
                     }
                 }
@@ -653,6 +661,8 @@ private const val FOLDER_EXIT_MS = 400L
 private fun TiledPage(
     page: Int,
     items: List<HomeItem>,
+    /** Hidden tiles: placed with the others so their cells stay taken, never drawn. */
+    hidden: List<HomeItem>,
     layout: WidgetLayout,
     grid: Grid,
     arrange: Arrange,
@@ -663,8 +673,8 @@ private fun TiledPage(
 ) {
     val density = LocalDensity.current
     val carried = arrange.carry?.item?.key
-    LaunchedEffect(items.map { it.key }, grid.cols, grid.rows) {
-        layout.place(items, grid.cols, grid.rows).forEach(onNoRoom)
+    LaunchedEffect((items + hidden).map { it.key }, grid.cols, grid.rows) {
+        layout.place(items + hidden, grid.cols, grid.rows).forEach(onNoRoom)
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val pageWidth = constraints.maxWidth
