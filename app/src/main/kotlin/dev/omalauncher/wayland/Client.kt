@@ -88,7 +88,6 @@ class Client(
      * (common under proot) must never block whoever holds the server lock.
      */
     private val outbox = LinkedBlockingQueue<Event>()
-    private val writer = thread(name = "wl-writer-$fd", isDaemon = true) { writeLoop() }
 
     private val open = AtomicBoolean(true)
     val alive get() = open.get()
@@ -177,6 +176,9 @@ class Client(
 
     /** Events in the buffer whose fds are closed once it's sent: the client has its own copy then. */
     private val sent = ArrayList<Event>()
+
+    // Declared after every field writeLoop uses: those declared below it would still be null when it starts.
+    private val writer = thread(name = "wl-writer-$fd", isDaemon = true) { writeLoop() }
 
     private fun flush(
         buf: ByteBuffer,

@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.toOffset
 import kotlinx.coroutines.launch
 
 /**
@@ -228,7 +229,8 @@ internal class Arrange {
  * move it, tap outside or press Back to finish. Hold a carried tile against a
  * side edge to turn the page; the last page is always an empty one. Drop an app
  * on another app to put both in a folder, or on a folder to add it; tap a folder
- * to open it, and long-press an app in it to drag it back out.
+ * to open it, and long-press an app in it to drag it to another place in it,
+ * or back out.
  *
  * Gestures live here, around the pager, rather than on each page: a drag that
  * turns the page has to survive leaving the page it started on. [room] at the
@@ -255,6 +257,8 @@ internal fun HomeGrid(
     onNoRoom: (HomeItem) -> Unit,
     onMove: (HomeItem, Int) -> Unit,
     onGroup: (Shortcut, HomeItem) -> Unit,
+    /** Moves an app within its folder to just before another of its apps, or with null to the end. */
+    onReorder: (Shortcut, String?) -> Unit,
     modifier: Modifier = Modifier,
     room: Dp = 0.dp,
     turned: Boolean = false,
@@ -319,7 +323,8 @@ internal fun HomeGrid(
                     /**
                      * Follows the finger, carrying [item] from [cell] on page [from]; returns whether it moved.
                      * [origin] is where the tile is on screen: its cell, or for an app lifted out of a folder,
-                     * its place in the open folder.
+                     * its place in the open folder. Such an app sorts the folder (laid out by [folder]) while the
+                     * finger stays over its panel; resting outside it closes the folder and carries the app on.
                      */
                     suspend fun AwaitPointerEventScope.moveDrag(
                         downId: PointerId,
@@ -328,6 +333,7 @@ internal fun HomeGrid(
                         cell: Cell,
                         from: Int,
                         origin: IntRect,
+                        folder: FolderGeometry? = null,
                     ): Boolean {
                         val inFolder = (item as? Shortcut)?.folder != null
                         val hold = start - Offset(origin.left.toFloat(), origin.top.toFloat())
@@ -335,8 +341,14 @@ internal fun HomeGrid(
                         var position = start
                         // When the finger reached a side edge; the page turns after it rests there a moment.
                         var atEdgeSince = 0L
+                        // Sorting the open folder: the place the finger is over and since when, and since when it's off the panel.
+                        var sorting = folder
+                        var aim = -1
+                        var aimSince = 0L
+                        var outSince = 0L
                         while (true) {
-                            val event = withTimeoutOrNull(if (atEdgeSince > 0) 50L else Long.MAX_VALUE) { awaitPointerEvent(PointerEventPass.Initial) }
+                            val waiting = atEdgeSince > 0 || aimSince > 0 || outSince > 0
+                            val event = withTimeoutOrNull(if (waiting) 50L else Long.MAX_VALUE) { awaitPointerEvent(PointerEventPass.Initial) }
                             if (event != null) {
                                 val c = event.changes.firstOrNull { it.id == downId } ?: break
                                 c.consume()
@@ -345,14 +357,38 @@ internal fun HomeGrid(
                             }
                             if (!moved && (position - start).getDistance() > viewConfiguration.touchSlop) {
                                 moved = true
-                                // Like Android, the folder closes once an app is dragged out of it.
-                                arrange.folder = null
                                 arrange.carry = Carry(item, from, cell, hold)
                             }
                             if (!moved) continue
                             arrange.finger = position
-                            val edgeSide = if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
                             val now = SystemClock.uptimeMillis()
+                            val fg = sorting
+                            if (fg != null) {
+                                if (fg.panel.has(position)) {
+                                    outSince = 0L
+                                    val apps = (itemsOn(from).firstOrNull { it.key == (item as Shortcut).folder } as? Folder)?.apps.orEmpty()
+                                    val to = apps.indices.minByOrNull { (fg.app(it).center.toOffset() - position).getDistanceSquared() } ?: continue
+                                    when {
+                                        to == apps.indexOfFirst { it.key == item.key } -> aimSince = 0L
+                                        to != aim || aimSince == 0L -> aimSince = now
+                                        // Like Android, the other apps make way once the finger rests over a place a moment.
+                                        now - aimSince > REORDER_MS -> {
+                                            onReorder(item as Shortcut, apps.filter { it.key != item.key }.getOrNull(to)?.key)
+                                            aimSince = 0L
+                                        }
+                                    }
+                                    aim = to
+                                    continue
+                                }
+                                aimSince = 0L
+                                if (outSince == 0L) outSince = now
+                                if (now - outSince <= FOLDER_EXIT_MS) continue
+                                // Like Android, the folder closes once the app rests outside it, and the app goes on to the grid.
+                                arrange.folder = null
+                                sorting = null
+                                outSince = 0L
+                            }
+                            val edgeSide = if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
                             when {
                                 edgeSide == 0 -> atEdgeSince = 0L
                                 atEdgeSince == 0L -> atEdgeSince = now
@@ -436,7 +472,7 @@ internal fun HomeGrid(
                         val placed = placedOn(page, g)
 
                         // An open folder takes every touch: a tap on an app opens it (the tile gets the tap),
-                        // a long-press lifts it out, a tap outside closes the folder. Its panel is centered on
+                        // a long-press lifts it to sort it in or drag it out, a tap outside closes the folder. Its panel is centered on
                         // the whole screen, even with two pages showing.
                         val folderPage = shown.getOrNull(sideOf(arrange.folder, shown))
                         val open = folderPage?.let { p -> itemsOn(p).firstOrNull { it.key == arrange.folder } as? Folder }
@@ -458,7 +494,7 @@ internal fun HomeGrid(
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                             arrange.holding = true
                             try {
-                                moveDrag(down.id, start, open.apps[hit], Cell(0, 0, 1, 1), folderPage, fg.app(hit))
+                                moveDrag(down.id, start, open.apps[hit], Cell(0, 0, 1, 1), folderPage, fg.app(hit), fg)
                             } finally {
                                 arrange.holding = false
                             }
@@ -550,10 +586,10 @@ internal fun HomeGrid(
             val openFolder = arrange.folder?.let { key -> pagesAt(pager.currentPage, pages, grid).firstNotNullOfOrNull { p -> itemsOn(p).firstOrNull { it.key == key } as? Folder } }
             if (openFolder != null) {
                 val fg = FolderGeometry(width * per, grid.height, grid.cellW, grid.cellH, gap, openFolder.apps.size, density)
-                FolderPanel(openFolder, fg, render)
+                FolderPanel(openFolder, fg, render, arrange.carry?.item?.key)
             }
 
-            // The carried tile floats above the pager, so it stays put while pages turn.
+            // The carried tile floats above the pager, so it stays put while pages turn, and above an open folder it's sorting.
             arrange.carry?.let { carry ->
                 val r = grid.rect(carry.cell)
                 androidx.compose.runtime.key(carry.item.key) {
@@ -566,7 +602,7 @@ internal fun HomeGrid(
                                 IntOffset(at.x.roundToInt(), at.y.roundToInt())
                             }
                             .size(with(density) { r.width.toDp() }, with(density) { r.height.toDp() })
-                            .zIndex(1f)
+                            .zIndex(5f)
                             .graphicsLayer {
                                 scaleX = 0.96f
                                 scaleY = 0.96f
@@ -606,6 +642,12 @@ private fun DropPreview(
 /** How long a carried tile rests against a side edge before the page turns. */
 private const val PAGE_TURN_MS = 600L
 
+/** How long an app dragged in its open folder rests over another place before the apps make way; Launcher3's REORDER_DELAY. */
+private const val REORDER_MS = 250L
+
+/** How long it rests outside the folder's panel before the folder closes; Launcher3's ON_EXIT_CLOSE_DELAY. */
+private const val FOLDER_EXIT_MS = 400L
+
 /** One home page: its tiles, and while arranging the grid guides, drop preview and selection frame. */
 @Composable
 private fun TiledPage(
@@ -626,8 +668,8 @@ private fun TiledPage(
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val pageWidth = constraints.maxWidth
-        if (selected != null || carried != null) {
-            // Grid guides while arranging.
+        if (selected != null || (carried != null && arrange.folder == null)) {
+            // Grid guides while arranging; not while sorting an open folder, which covers the grid.
             Canvas(Modifier.fillMaxSize()) {
                 for (x in 0 until grid.cols) {
                     for (y in 0 until grid.rows) {

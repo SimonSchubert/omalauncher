@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   apk:
@@ -62,12 +64,25 @@ jobs:
       - name: Build
         run: ./gradlew :app:assembleRelease
 
+      # Checksum and provenance, so a sideloaded APK can be checked against what CI built:
+      # sha256sum -c SHA256SUMS, or gh attestation verify <apk> -R SimonSchubert/omalauncher.
+      - name: Checksum
+        id: apk
+        run: |
+          apk="omalauncher-${{ steps.version.outputs.name }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$apk"
+          sha256sum "$apk" > SHA256SUMS
+          echo "file=$apk" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.apk.outputs.file }}
+
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          apk="omalauncher-${{ steps.version.outputs.name }}.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$apk"
+          apk="${{ steps.apk.outputs.file }}"
           notes=fastlane/metadata/android/en-US/changelogs/${{ steps.version.outputs.code }}.txt
           [ -f "$notes" ] || notes=/dev/null
-          gh release create "$GITHUB_REF_NAME" "$apk" --title "$GITHUB_REF_NAME" --notes-file "$notes" --verify-tag
+          gh release create "$GITHUB_REF_NAME" "$apk" SHA256SUMS --title "$GITHUB_REF_NAME" --notes-file "$notes" --verify-tag

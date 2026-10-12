@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -54,7 +55,7 @@ fun OverlayPanel(
                 .frame(2.dp, Palette.accent, Palette.background, radius = 20.dp)
                 // Taps inside the panel don't reach the scrim behind it.
                 .pointerInput(Unit) { detectTapGestures { } }
-                .padding(12.dp),
+                .padding(PanelPadding),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 BasicText(title, style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
@@ -71,6 +72,17 @@ fun OverlayPanel(
         }
     }
 }
+
+/** [OverlayPanel]'s padding inside its frame; rows that scroll sideways [bleed] through it to the frame. */
+val PanelPadding = 12.dp
+
+/** Widens the element by [gutter] on both sides, drawing over its parent's padding. */
+fun Modifier.bleed(gutter: Dp) =
+    layout { measurable, constraints ->
+        val extra = gutter.roundToPx() * 2
+        val placeable = measurable.measure(constraints.copy(minWidth = constraints.minWidth + extra, maxWidth = constraints.maxWidth + extra))
+        layout(placeable.width - extra, placeable.height) { placeable.place(-extra / 2, 0) }
+    }
 
 /** A muted heading over a group of rows: settings sections, the app drawer's letters. */
 @Composable

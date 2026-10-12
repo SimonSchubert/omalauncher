@@ -161,16 +161,20 @@ class Proot(
             ) + graphicsEnv + listOf("/bin/sh", "-c", script)
 
     /**
-     * Kills every proot we started, and with it (--kill-on-exit) every guest
-     * process: before the rootfs is deleted. Our own processes are the only
-     * ones whose /proc entries we can read.
+     * Kills every proot we started and every guest process: before the rootfs
+     * is deleted. A SIGKILLed proot doesn't take its tracees along
+     * (--kill-on-exit needs a clean exit); they run on untraced and spin, so
+     * they go too, found by their executable, proot's loader. Our own
+     * processes are the only ones whose /proc entries we can read.
      */
     fun killAll() {
         val proot = File(nativeDir, "libproot.so").path
+        val loader = File(nativeDir, "libproot-loader.so").path
         for (dir in File("/proc").listFiles().orEmpty()) {
             val pid = dir.name.toIntOrNull() ?: continue
             val argv0 = runCatching { File(dir, "cmdline").readBytes().takeWhile { it != 0.toByte() }.toByteArray().decodeToString() }.getOrNull()
-            if (argv0 == proot) runCatching { android.system.Os.kill(pid, android.system.OsConstants.SIGKILL) }
+            val exe = runCatching { android.system.Os.readlink(File(dir, "exe").path) }.getOrNull()
+            if (argv0 == proot || exe == loader) runCatching { android.system.Os.kill(pid, android.system.OsConstants.SIGKILL) }
         }
     }
 

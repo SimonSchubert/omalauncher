@@ -41,7 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -78,6 +80,15 @@ internal sealed interface AppHit {
     val key: String
     val label: String
 
+    /** What screen readers say, to tell a work app from the personal one of the same name. */
+    val spoken: String get() = label
+
+    /** Another name search matches: a work app's own name with "work" added, so "work" or "whatsapp work" finds it. */
+    val alias: String? get() = null
+
+    /** In a paused work profile: shown dimmed, and opening it turns work apps back on. */
+    fun paused(runtime: Runtime) = false
+
     data class Linux(
         val app: LinuxApp,
     ) : AppHit {
@@ -88,8 +99,12 @@ internal sealed interface AppHit {
     data class Android(
         val app: AndroidApp,
     ) : AppHit {
-        override val key get() = "a:" + app.component.flattenToShortString()
+        override val key get() = "a:" + app.key
         override val label get() = app.label
+        override val spoken get() = app.spoken
+        override val alias get() = if (app.profile != null) "${app.label} work" else null
+
+        override fun paused(runtime: Runtime) = runtime.androidApps.paused(app.profile)
     }
 }
 
@@ -116,7 +131,7 @@ internal fun searchApps(
 ): BarSearch {
     if (query.isBlank()) return BarSearch(emptyList(), false)
     val now = System.currentTimeMillis()
-    val ranked = rankMatches(allApps(runtime), query, { it.label }, boost = { (runtime.usage.score(it.key, now) * 10).toInt() })
+    val ranked = rankMatches(allApps(runtime), query, { it.label }, boost = { (runtime.usage.score(it.key, now) * 10).toInt() }, alias = { it.alias })
     return BarSearch(ranked.map { it.first }, ranked.firstOrNull()?.let { isStrongMatch(it.second, query) } == true)
 }
 
@@ -144,7 +159,7 @@ private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>
 private fun AppHit.icons(runtime: Runtime): Triple<ImageBitmap?, ImageBitmap?, ImageVector?> =
     when (this) {
         is AppHit.Linux -> Triple(runtime.linuxIcons[app.id], runtime.linuxMasks[app.id], if (app.exec == FILES_COMMAND) Icons.Folder else null)
-        is AppHit.Android -> Triple(runtime.androidApps.icons[app.component], runtime.androidApps.masks[app.component], null)
+        is AppHit.Android -> Triple(runtime.androidApps.icons[app.key], runtime.androidApps.masks[app.key], null)
     }
 
 @Composable
@@ -155,7 +170,7 @@ private fun HitCell(
     selected: Boolean = false,
 ) {
     val (icon, mask, glyph) = hit.icons(runtime)
-    AppCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph, selected = selected)
+    AppCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph, selected = selected, spoken = hit.spoken, paused = hit.paused(runtime))
 }
 
 /** Height of the recent apps strip; home keeps this much room for it above the bar, even while it's empty. */
@@ -192,7 +207,7 @@ internal fun RecentStrip(
         val cells: LazyListScope.() -> Unit = {
             items(apps, key = { it.key }) { hit ->
                 val (icon, mask, glyph) = hit.icons(runtime)
-                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph)
+                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, glyph = glyph, spoken = hit.spoken, paused = hit.paused(runtime))
             }
         }
         if (vertical) {
@@ -213,6 +228,10 @@ private fun StripCell(
     /** Built when the menu opens: a fresh list of lambdas would keep the cell from skipping recomposition. */
     actions: () -> List<Pair<String, () -> Unit>>,
     glyph: ImageVector? = null,
+    /** As in [AppHit.spoken]. */
+    spoken: String = label,
+    /** As in [AppHit.paused]: drawn dimmed, like stock launchers. */
+    paused: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
@@ -222,6 +241,7 @@ private fun StripCell(
     Box(
         Modifier
             .size(48.dp)
+            .alpha(if (paused) PausedAlpha else 1f)
             .clip(LauncherStyle.shape(12.dp))
             .combinedClickable(
                 onClick = onClick,
@@ -239,12 +259,12 @@ private fun StripCell(
             bare && (mono || bmp == null) ->
                 Box(Modifier.size(size).clip(LauncherStyle.shape(size / 2)).background(Palette.surface), contentAlignment = Alignment.Center) {
                     if (bmp != null) {
-                        Image(bmp, label, Modifier.size(size * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
+                        Image(bmp, spoken, Modifier.size(size * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
                     } else {
                         BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Body))
                     }
                 }
-            bmp != null -> Image(bmp, label, Modifier.size(size * if (mono) 0.85f else 1f), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
+            bmp != null -> Image(bmp, spoken, Modifier.size(size * if (mono) 0.85f else 1f), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
             else -> BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Large))
         }
         if (menuOpen) AppActions(actions(), onDismiss = { menuOpen = false })
@@ -325,7 +345,7 @@ internal fun AppPanel(
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         // Full width: a wide screen fits more icons in each row rather than leaving the sides empty.
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp, start = 12.dp, end = 12.dp), horizontalArrangement = Arrangement.End) {
+            Row(Modifier.fillMaxWidth().padding(top = 12.dp, start = 12.dp, end = 12.dp, bottom = 8.dp), horizontalArrangement = Arrangement.End) {
                 Box(
                     Modifier
                         .size(44.dp)
@@ -349,7 +369,8 @@ internal fun AppPanel(
             }
             // Only as tall as its rows, so taps above a short list reach the scrim behind and close the panel.
             Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp), verticalArrangement = Arrangement.Bottom) {
-                BoxWithConstraints(Modifier.weight(1f, fill = false)) {
+                // Clipped, so rows scrolled up or stretched by an overscroll stop short of the settings button.
+                BoxWithConstraints(Modifier.weight(1f, fill = false).clipToBounds()) {
                     val columns = (maxWidth / 76.dp).toInt().coerceAtLeast(1)
                     // Rows bottom-up: the first item sits right above the bar.
                     LazyColumn(
@@ -500,12 +521,17 @@ private fun AppCell(
     glyph: ImageVector? = null,
     /** What Enter in the bar would open: outlined in the accent color. */
     selected: Boolean = false,
+    /** As in [AppHit.spoken]. */
+    spoken: String = label,
+    /** As in [AppHit.paused]: drawn dimmed, like stock launchers. */
+    paused: Boolean = false,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
     Column(
         Modifier
             .fillMaxWidth()
+            .alpha(if (paused) PausedAlpha else 1f)
             .clip(LauncherStyle.shape(16.dp))
             .then(if (selected) Modifier.frame(2.dp, Palette.accent) else Modifier)
             .combinedClickable(
@@ -529,10 +555,10 @@ private fun AppCell(
             }
         } else if (mono && mask != null) {
             Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
-                Image(mask, label, Modifier.size(36.dp), colorFilter = ColorFilter.tint(Palette.accent))
+                Image(mask, spoken, Modifier.size(36.dp), colorFilter = ColorFilter.tint(Palette.accent))
             }
         } else if (!mono && icon != null) {
-            Image(icon, label, Modifier.size(52.dp))
+            Image(icon, spoken, Modifier.size(52.dp))
         } else {
             Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
                 BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))

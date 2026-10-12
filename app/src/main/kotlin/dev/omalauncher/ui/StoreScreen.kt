@@ -192,7 +192,8 @@ private fun StoreList(
 
         SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = "search ${market.entries.size} widgets")
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Scrolls under the panel's padding, up to its frame or, side by side, the divider.
+        Row(Modifier.bleed(PanelPadding).horizontalScroll(rememberScrollState()).padding(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((name, n) in tabs) {
                 val label = if (name == INSTALLED && updates > 0) "$name $n · $updates↑" else "$name $n"
                 Chip(label, selected = filter.tab == name) { filter.tab = name }

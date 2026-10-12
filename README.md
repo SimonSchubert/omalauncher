@@ -5,6 +5,8 @@ optional Arch Linux ARM system next to your phone apps. Omalauncher runs the
 system under proot, without root, and is its Wayland compositor: every Linux
 window opens as its own Android task, with its own card in Recents.
 
+<a href="https://play.google.com/store/apps/details?id=dev.omalauncher"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"></a>
+
 ![The home screen in twelve Omarchy themes, each with different widgets](art/collage.png)
 
 <p>
@@ -13,8 +15,6 @@ window opens as its own Android task, with its own card in Recents.
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03.png" width="24%" alt="Screenshot">
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04.png" width="24%" alt="Screenshot">
 </p>
-
-<a href="https://play.google.com/store/apps/details?id=dev.omalauncher">Get it on Google Play</a>
 
 - **Themes**: all 22 Omarchy themes, with their wallpapers, applied to the
   launcher and to the Linux apps, plus the community themes from

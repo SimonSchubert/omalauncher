@@ -2,6 +2,7 @@ package dev.omalauncher.wayland
 
 import android.os.SystemClock
 import android.util.Log
+import java.io.File
 
 const val BTN_LEFT = 0x110
 const val BTN_RIGHT = 0x111
@@ -37,7 +38,7 @@ class Input(
 
     /** Uses a NUL-terminated XKB keymap file, extended with slots for other characters; see [Keymap]. */
     fun setKeymap(path: String) {
-        val file = java.io.File(path)
+        val file = File(path)
         keymap =
             try {
                 Keymap(file.readText().trimEnd('\u0000'), file.resolveSibling("keymaps"))

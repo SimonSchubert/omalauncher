@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -448,8 +447,7 @@ internal fun ThemeStrip(
     onPick: (BundledTheme) -> Unit = themes::pick,
     onBrowse: (() -> Unit)? = null,
 ) {
-    // Themes added in Linux since the launcher started.
-    LaunchedEffect(Unit) { if (themes.loaded) themes.rescan() }
+    RescanThemes(themes)
     val list = themes.choices
     if (list.isEmpty()) return
     Column {
@@ -553,10 +551,3 @@ private val Subtle get() = Palette.foreground.copy(alpha = 0.6f)
 /** Side padding of the setup screens. */
 private val Gutter = 24.dp
 
-/** Widens the element by [gutter] on both sides, drawing over its parent's padding. */
-private fun Modifier.bleed(gutter: Dp) =
-    layout { measurable, constraints ->
-        val extra = gutter.roundToPx() * 2
-        val placeable = measurable.measure(constraints.copy(minWidth = constraints.minWidth + extra, maxWidth = constraints.maxWidth + extra))
-        layout(placeable.width - extra, placeable.height) { placeable.place(-extra / 2, 0) }
-    }

@@ -55,15 +55,19 @@ internal fun isStrongMatch(
     query: String,
 ) = score >= INITIALS && '\n' !in query && words(query).size <= 2
 
-/** [items] that match [query], best first; [boost] (0–99, e.g. from recent use) breaks ties within a tier. */
+/**
+ * [items] that match [query], best first; [boost] (0–99, e.g. from recent use) breaks ties within a tier.
+ * An [alias] matches too, scored on its own, so it adds matches without demoting what [name] matches.
+ */
 internal fun <T> rankMatches(
     items: List<T>,
     query: String,
     name: (T) -> String,
     boost: (T) -> Int = { 0 },
+    alias: (T) -> String? = { null },
 ): List<Pair<T, Int>> =
     items
-        .map { it to matchScore(name(it), query) }
+        .map { it to maxOf(matchScore(name(it), query), alias(it)?.let { a -> matchScore(a, query) } ?: 0) }
         .filter { it.second > 0 }
         .sortedWith(
             compareByDescending<Pair<T, Int>> { it.second + boost(it.first).coerceIn(0, 99) }

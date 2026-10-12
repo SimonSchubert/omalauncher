@@ -2,6 +2,7 @@ package dev.omalauncher.widgets
 
 import android.content.ComponentName
 import android.content.Context
+import dev.omalauncher.AndroidApp
 import androidx.compose.runtime.mutableStateListOf
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.upgrade.Versioned
@@ -36,6 +37,8 @@ data class Shortcut(
     override val page: Int,
     val label: String,
     val component: ComponentName? = null,
+    /** [component]'s profile, as in [AndroidApp.profile]. */
+    val profile: Long? = null,
     val linux: LinuxApp? = null,
     val folder: String? = null,
 ) : HomeItem {
@@ -123,6 +126,23 @@ class Shortcuts(
         return folder
     }
 
+    /**
+     * Moves an app within its folder to just before [before], or after the folder's last app if that's null.
+     * A folder's order is its apps' order in [items].
+     */
+    fun moveBefore(
+        key: String,
+        before: String?,
+    ) {
+        val i = items.indexOfFirst { it.key == key }
+        val folder = items.getOrNull(i)?.folder ?: return
+        if (key == before) return
+        val app = items.removeAt(i)
+        val at = before?.let { b -> items.indexOfFirst { it.key == b && it.folder == folder } }?.takeIf { it >= 0 } ?: (items.indexOfLast { it.folder == folder } + 1)
+        items.add(at, app)
+        if (at != i) save()
+    }
+
     private fun setFolder(
         key: String,
         folder: String?,
@@ -170,16 +190,16 @@ class Shortcuts(
             page = o.optInt("page", 1),
             label = o.getString("label"),
             component = o.optString("component").ifEmpty { null }?.let(ComponentName::unflattenFromString),
+            profile = if (o.has("profile")) o.getLong("profile") else null,
             linux = linux,
             folder = o.optString("folder").ifEmpty { null },
         )
     }
 
     fun addAndroid(
-        label: String,
-        component: ComponentName,
+        app: AndroidApp,
         page: Int,
-    ) = add(Shortcut("app:" + component.flattenToShortString(), page, label, component = component))
+    ) = add(Shortcut("app:" + app.key, page, app.label, component = app.component, profile = app.profile))
 
     fun addLinux(
         app: LinuxApp,
@@ -233,6 +253,7 @@ class Shortcuts(
                     .put("label", s.label)
                     .putOpt("folder", s.folder)
             s.component?.let { o.put("component", it.flattenToString()) }
+            s.profile?.let { o.put("profile", it) }
             // A snapshot of the desktop entry, for when it's gone; while it exists, the launcher runs the current one.
             s.linux?.let {
                 o.put(

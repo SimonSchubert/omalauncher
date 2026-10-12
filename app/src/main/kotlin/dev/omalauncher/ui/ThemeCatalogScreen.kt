@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -64,6 +65,7 @@ fun ThemeCatalogScreen(
     var confirming by remember { mutableStateOf<CatalogTheme?>(null) }
     BackHandler(onBack = onDismiss)
     LaunchedEffect(catalog) { catalog.refresh() }
+    RescanThemes(store)
     // Which repos are installed, by github.com/owner/repo; read from the themes' source markers.
     val installedFrom by produceState(emptyMap<String, String>(), store.themes) {
         value =
@@ -158,7 +160,11 @@ private fun CatalogCard(
     status: Pair<String, Color>,
     onClick: () -> Unit,
 ) {
-    val image by produceState<ImageBitmap?>(null, theme.image) { value = store.catalog.image(theme, 400) }
+    // Decoded per card, not kept: 146 screenshots in memory would be a lot.
+    val image by produceState<ImageBitmap?>(null, theme.image) {
+        val file = store.catalog.image(theme) ?: return@produceState
+        value = withContext(Dispatchers.IO) { decodeSampled(file, 400, 0)?.asImageBitmap() }
+    }
     Column(
         Modifier
             .fillMaxWidth()
@@ -173,4 +179,20 @@ private fun CatalogCard(
         BasicText(theme.title, style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
         BasicText(status.first, style = Mono.copy(color = status.second, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
+}
+
+/** How installing a theme from its repo is going; tapping a failure clears it. Nothing while idle. */
+@Composable
+internal fun InstallStatus(store: ThemeStore) {
+    when (val state = store.installing) {
+        is ThemeInstall.Running -> BasicText("installing ${state.name}… ${state.megabytes} MB", style = Mono.copy(color = Palette.accent))
+        is ThemeInstall.Failed -> BasicText("install failed: ${state.message}", Modifier.clickable { store.clearInstallError() }, style = Mono.copy(color = Palette.red))
+        ThemeInstall.Idle -> {}
+    }
+}
+
+/** Picks up themes added or removed in Linux since the launcher started, when the calling screen opens. */
+@Composable
+internal fun RescanThemes(store: ThemeStore) {
+    LaunchedEffect(store) { if (store.loaded) store.rescan() }
 }

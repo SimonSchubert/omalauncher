@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import dev.omalauncher.httpGet
 import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapEntries
 import dev.omalauncher.upgrade.writeAtomically
@@ -16,8 +17,6 @@ import dev.omalauncher.widgets.market.Review
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -64,7 +63,7 @@ class Market(
         loading = true
         error = null
         try {
-            entries = withContext(Dispatchers.IO) { Catalog.parse(String(fetch(BASE + "index.json"))) }
+            entries = withContext(Dispatchers.IO) { Catalog.parse(String(httpGet(BASE + "index.json"))) }
         } catch (e: Exception) {
             error = "couldn't load the store: ${e.message ?: e}"
         } finally {
@@ -89,7 +88,7 @@ class Market(
     ): String? {
         busy[e.id] = "installing…"
         try {
-            val bytes = withContext(Dispatchers.IO) { fetch(BASE + e.path) }
+            val bytes = withContext(Dispatchers.IO) { httpGet(BASE + e.path) }
             if (Review.sha256(bytes) != e.sha256) return "the download doesn't match the reviewed version; try again later"
             val name = installedVersion(e)?.file ?: fileFor(e)
             withContext(Dispatchers.IO) {
@@ -117,23 +116,10 @@ class Market(
         synchronized(previews) { if (path in previews) return previews[path] }
         val img =
             withContext(Dispatchers.IO) {
-                runCatching { fetch(BASE + path).let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }.getOrNull()
+                runCatching { httpGet(BASE + path).let { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() } }.getOrNull()
             }
         synchronized(previews) { previews[path] = img }
         return img
-    }
-
-    private fun fetch(url: String): ByteArray {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 10_000
-        c.readTimeout = 20_000
-        c.useCaches = false
-        try {
-            if (c.responseCode != 200) throw java.io.IOException("HTTP ${c.responseCode} for $url")
-            return c.inputStream.use { it.readBytes() }
-        } finally {
-            c.disconnect()
-        }
     }
 
     /** Reads the install records; call off the main thread before the store opens. */

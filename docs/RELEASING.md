@@ -24,7 +24,9 @@ bundle exec fastlane android internal     # build + upload to internal testing
 bundle exec fastlane android promote      # internal -> production
 ```
 
-Bump `versionCode` for every upload and add its changelog.
+Bump `versionCode` for every upload and add its changelog. Add the release's
+most important changes to `CHANGELOG.md` as they land under "Unreleased", and
+retitle that section with the version when releasing.
 
 ## Store assets
 

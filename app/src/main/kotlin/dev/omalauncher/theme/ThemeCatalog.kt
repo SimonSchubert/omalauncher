@@ -4,15 +4,11 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
-import dev.omalauncher.ui.decodeSampled
+import dev.omalauncher.httpGet
 import dev.omalauncher.upgrade.writeAtomically
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 
 private const val TAG = "theme-catalog"
 
@@ -49,7 +45,7 @@ class ThemeCatalog(
         error = null
         try {
             if (entries.isEmpty()) entries = withContext(Dispatchers.IO) { runCatching { parse(page.readText()) }.getOrDefault(emptyList()) }
-            val html = withContext(Dispatchers.IO) { String(fetch(PAGE)) }
+            val html = withContext(Dispatchers.IO) { String(httpGet(PAGE)) }
             val parsed = parse(html)
             // A redesign of the page would parse to nothing; keep what we had and say so.
             check(parsed.isNotEmpty()) { "the page changed and can't be read" }
@@ -63,32 +59,17 @@ class ThemeCatalog(
         }
     }
 
-    /** [theme]'s screenshot at about [width] px wide, downloaded once. Not kept in memory: 146 of them would be a lot. */
-    suspend fun image(
-        theme: CatalogTheme,
-        width: Int,
-    ): ImageBitmap? =
+    /** [theme]'s screenshot, downloaded once. */
+    suspend fun image(theme: CatalogTheme): File? =
         withContext(Dispatchers.IO) {
             runCatching {
                 val name = theme.image.substringAfterLast('/')
                 check(SAFE_FILE.matches(name)) { "odd image name $name" }
                 val file = File(images, name)
-                if (!file.isFile) writeAtomically(file, fetch(theme.image))
-                decodeSampled(file, width, 0)?.asImageBitmap()
+                if (!file.isFile) writeAtomically(file, httpGet(theme.image))
+                file
             }.onFailure { Log.w(TAG, "no image for ${theme.title}", it) }.getOrNull()
         }
-
-    private fun fetch(url: String): ByteArray {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 10_000
-        c.readTimeout = 20_000
-        try {
-            if (c.responseCode != 200) throw java.io.IOException("HTTP ${c.responseCode}")
-            return c.inputStream.use { it.readBytes() }
-        } finally {
-            c.disconnect()
-        }
-    }
 
     companion object {
         const val PAGE = "https://omarchy.org/themes/"

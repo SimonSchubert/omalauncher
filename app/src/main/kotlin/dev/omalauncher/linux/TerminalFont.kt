@@ -144,14 +144,18 @@ class TerminalFont(
     /** The columns a terminal [widthPx] wide gets at [size]. */
     fun columns(widthPx: Int) = columns(widthPx, scale, size)
 
-    private fun write() {
+    /**
+     * Writes foot-font.ini if it changed or is gone: Linux removed and
+     * installed again in the same process starts without it.
+     */
+    fun write() {
         if (density == 0f) return
         size = pointSize(density, fontScale, scale, text.em)
         val content = "[main]\nfont=$family:size=${format(size)}\n"
-        if (content == written) return
+        val file = File(proot.home, PATH.removePrefix("~/"))
+        if (content == written && file.isFile) return
         written = content
         runCatching {
-            val file = File(proot.home, PATH.removePrefix("~/"))
             file.parentFile?.mkdirs()
             file.writeText(content)
         }.onFailure {

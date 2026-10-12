@@ -55,6 +55,17 @@ class AppSearchTest {
         assertEquals("Calculator", ranked.last().first)
     }
 
+    @Test fun aliasFindsWorkCopy() {
+        // The same app in the personal and the work profile; only the work one has the alias.
+        val copies = listOf("WhatsApp" to null, "WhatsApp" to "WhatsApp work")
+        val ranked = { q: String, boost: (Pair<String, String?>) -> Int -> rankMatches(copies, q, { it.first }, boost, alias = { it.second }) }
+        assertEquals(2, ranked("whatsapp") { 0 }.size)
+        // Both match the plain name equally, so recent use decides which Enter opens.
+        assertEquals("WhatsApp work", ranked("whatsapp") { if (it.second != null) 50 else 0 }.first().first.second)
+        assertEquals(listOf("WhatsApp work"), ranked("work") { 0 }.map { it.first.second })
+        assertEquals(listOf("WhatsApp work"), ranked("whatsapp work") { 0 }.map { it.first.second })
+    }
+
     @Test fun noMatchIsEmpty() {
         assertTrue(rankMatches(apps, "zzz", { it }).isEmpty())
         assertTrue(rankMatches(apps, "  ", { it }).isEmpty())

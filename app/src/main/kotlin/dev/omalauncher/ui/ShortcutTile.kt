@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
+import dev.omalauncher.spokenLabel
 import dev.omalauncher.widgets.Shortcut
 
 /**
@@ -39,11 +41,15 @@ fun ShortcutTile(
     focused: Boolean,
     modifier: Modifier,
     onTap: () -> Unit,
+    /** In a paused work profile: drawn dimmed, like stock launchers. */
+    paused: Boolean = false,
 ) {
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
+    val spoken = spokenLabel(shortcut.label, shortcut.profile)
     BoxWithConstraints(
         modifier
+            .alpha(if (paused) PausedAlpha else 1f)
             .tileFrame(focused)
             .pointerInput(shortcut.key) { detectTapGestures(onTap = { onTap() }) }
             .padding(4.dp),
@@ -66,13 +72,13 @@ fun ShortcutTile(
                         contentAlignment = Alignment.Center,
                     ) {
                         if (bmp != null) {
-                            Image(bmp, shortcut.label, Modifier.size(iconSize * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
+                            Image(bmp, spoken, Modifier.size(iconSize * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
                         } else {
                             BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.35f).sp))
                         }
                     }
                 bmp != null ->
-                    Image(bmp, shortcut.label, Modifier.size(iconSize), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
+                    Image(bmp, spoken, Modifier.size(iconSize), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
                 else ->
                     // Apps without an icon get their initials.
                     Box(Modifier.size(iconSize), contentAlignment = Alignment.Center) {
@@ -83,6 +89,9 @@ fun ShortcutTile(
         }
     }
 }
+
+/** How opaque an app from a paused work profile is drawn. */
+internal const val PausedAlpha = 0.4f
 
 /** An app tile's frame, or none for bare icons unless [focused]. */
 internal fun Modifier.tileFrame(focused: Boolean) =
