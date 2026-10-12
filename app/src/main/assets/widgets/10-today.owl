@@ -3,14 +3,20 @@ widget "today" {
   order: 1
   size: 3x3
   minSize: 3x2
-  meta { description: "The date and the weather where you are, located by IP via wttr.in. Tap it for the next 24 hours, three days, wind, UV, sun and moon"; version: "1.0"; license: "MIT"; category: "world"; owl: 5 }
+  meta { description: "The date and the weather where you are, located by IP via wttr.in. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Offline, it keeps the last forecast and retries"; version: "1.1"; license: "MIT"; category: "world"; owl: 5 }
 
   source now = clock every 1m
   // One request, located by IP. Icons and °F countries match omarchy's weather panel.
-  source wx = http("https://wttr.in/?format=j1") every 30m timeout 10s json
-  let cur = wx.current_condition[0]
-  let day = wx.weather[0]
-  let area = wx.nearest_area[0]
+  source wx = http("https://wttr.in/?format=j1") every 30m timeout 10s json status
+  // The last good answer, so losing the connection (plane mode) keeps the tile filled while it retries.
+  state kept = null
+  state tick = 0
+  state retried = 0
+  let offline = wx != null && !wx.ok
+  let data = wx.ok ? wx.out : kept
+  let cur = data.current_condition[0]
+  let day = data.weather[0]
+  let area = data.nearest_area[0]
   let imperial = contains(["united states", "united states of america", "liberia", "myanmar", "burma"], lower(trim(area.country[0].value)))
   let unit = imperial ? "F" : "C"
   let night = contains(cur.weatherIconUrl[0].value, "_night")
@@ -23,15 +29,15 @@ widget "today" {
   let sunHours = sun.map(s => num(sub(s, 0, 2)))
   let hourNow = num(fmtTime(now, "H"))
   // The next 24 hours in wttr's 3-hour steps, from today's and tomorrow's forecasts.
-  let steps = flatten(range(2).map(i => (wx.weather[i].hourly ?? []).map(h => {
+  let steps = flatten(range(2).map(i => (data.weather[i].hourly ?? []).map(h => {
     hr: i * 24 + num(h.time) / 100,
     t: num(get(h, "temp" + unit)),
     rain: num(h.chanceofrain),
     code: h.weatherCode
   }))).filter(s => s.hr > hourNow - 3).take(8)
   // The three days' range, so their bars share one scale.
-  let lowest = min((wx.weather ?? []).map(d => num(get(d, "mintemp" + unit))))
-  let highest = max((wx.weather ?? []).map(d => num(get(d, "maxtemp" + unit))))
+  let lowest = min((data.weather ?? []).map(d => num(get(d, "mintemp" + unit))))
+  let highest = max((data.weather ?? []).map(d => num(get(d, "maxtemp" + unit))))
   let moonIcons = {
     "New Moon": "", "Waxing Crescent": "", "First Quarter": "", "Waxing Gibbous": "",
     "Full Moon": "", "Waning Gibbous": "", "Last Quarter": "", "Waning Crescent": ""
@@ -39,6 +45,11 @@ widget "today" {
   let uv = num(cur.uvIndex)
 
   onTap: screen()
+  on wx { kept = value.ok ? value.out : kept }
+  // A failed request would otherwise wait 30 minutes. Handlers can't branch, so a counter
+  // and a `when` retry every 30 s while offline (only while the page is on screen).
+  every 30s { tick = tick + 1 }
+  when offline && tick != retried { retried = tick; refresh() }
 
   component Rule() {
     Spacer { height: 1; fill: width; background: alpha(muted, 0.25) }
@@ -90,7 +101,17 @@ widget "today" {
           Text { text: "↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}°"; style: small; color: muted; align: end; maxLines: 1; padding: [0, 0, 0, 5] }
         }
       }
-      Text { text: "feels ${get(cur, "FeelsLike" + unit)}° · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1 }
+      // Offline, this line says so and offers a retry instead of the feels-like temperature.
+      if offline {
+        Row {
+          gap: 8
+          align: center
+          Text { text: "offline · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1; weight: 1 }
+          Text { text: "retry"; style: small; color: accent; width: 64; align: center; padding: [8, 2]; border: 1; borderColor: alpha(accent, 0.6); onTap: refresh() }
+        }
+      } else {
+        Text { text: "feels ${get(cur, "FeelsLike" + unit)}° · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1 }
+      }
       Spacer { weight: 1 }
       Spacer { height: 1; fill: width; background: alpha(muted, 0.25) }
       Spacer { height: 8 }
@@ -98,7 +119,7 @@ widget "today" {
       Row {
         gap: 4
         align: center
-        for d, i in drop(wx.weather, 1) key d.date {
+        for d, i in drop(data.weather, 1) key d.date {
           Column {
             gap: 0
             weight: 1
@@ -126,14 +147,30 @@ widget "today" {
         }
       }
     } else {
-      Text { text: wx == null ? "weather…" : "weather offline"; style: small; color: muted }
+      Row {
+        gap: 8
+        align: center
+        Text { text: offline ? "weather offline" : "weather…"; style: small; color: muted; weight: 1 }
+        if offline {
+          Text { text: "retry"; style: small; color: accent; width: 64; align: center; padding: [8, 2]; border: 1; borderColor: alpha(accent, 0.6); onTap: refresh() }
+        }
+      }
     }
   }
 
   screen {
     title: "weather"
     if cur == null {
-      Text { text: wx == null ? "weather…" : "weather offline"; style: body; color: muted }
+      Column {
+        gap: 12
+        Text { text: offline ? "weather offline" : "weather…"; style: body; color: muted }
+        if offline {
+          Text { text: trim(wx.err ?? ""); style: small; color: muted; maxLines: 3 }
+          Row {
+            Button { text: "retry"; color: accent; onTap: refresh() }
+          }
+        }
+      }
     } else {
       Column {
         scroll: true
@@ -154,6 +191,14 @@ widget "today" {
           text: "feels ${get(cur, "FeelsLike" + unit)}° · ↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}° · ${lower(area.areaName[0].value)}, ${lower(area.country[0].value)}"
           style: small
           color: muted
+        }
+        if offline {
+          Row {
+            gap: 8
+            align: center
+            Text { text: "offline · showing the last update"; style: small; color: yellow; weight: 1 }
+            Button { text: "retry"; color: accent; onTap: refresh() }
+          }
         }
         Rule { }
         Grid {
@@ -205,7 +250,7 @@ widget "today" {
         Rule { }
         // Three days: icon, rain chance and the day's low to high on a shared scale.
         Text { text: "3 days"; style: label; color: accent }
-        for d, i in wx.weather key d.date {
+        for d, i in data.weather key d.date {
           let lo = num(get(d, "mintemp" + unit))
           let hi = num(get(d, "maxtemp" + unit))
           Row {
