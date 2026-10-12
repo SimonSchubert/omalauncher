@@ -1,6 +1,6 @@
 Privacy Policy
 
-Effective Date: 10.10.2026
+Effective Date: 11.10.2026
 
 Omalauncher ("the App") is an Android home screen launcher developed by Simon Schubert ("we," "us," or "our"). This Privacy Policy explains how the App handles information.
 
@@ -21,6 +21,7 @@ Your home screen layout, widgets, theme settings and, if you install it, the Lin
 
 - Microphone (optional): used only while you hold or tap the microphone button to dictate a prompt. Speech is recognized by your phone's speech recognition service (on the device where the phone supports it), and only the resulting text is passed to the app you are talking to. The App does not record or store audio.
 - Notification access (optional): lets media widgets show and control what is currently playing, and lets widgets you add show your notifications (app name, title and text) and open or dismiss them. Notifications are read on your device, only when a widget on your home screen asks for them, and are not stored or sent to us. A widget you add could send what it shows to a service it contacts; each widget's page in the widget store shows what it runs and which addresses it contacts.
+- Location (optional, approximate): the weather widget asks once to read your phone's approximate location, so it shows the weather where you are instead of where your IP address appears. The coordinates go with the weather request to wttr.in and are not stored or sent to us.
 - Uninstalling apps: used only when you choose to uninstall an app from the app drawer. Android asks you to confirm every uninstall.
 - Internet: used to download the content listed in section 4.
 
@@ -37,7 +38,7 @@ dpaste.com (sharing widgets)
 - Widgets shared as a QR code or link without dpaste.com carry the whole widget in the link itself and are not uploaded anywhere.
 
 wttr.in (weather widget)
-- The weather widget requests the current weather. wttr.in estimates your approximate location from your IP address.
+- The weather widget requests the current weather. If you allow it, it sends your phone's approximate location; without it, wttr.in estimates an approximate location from your IP address.
 
 Widgets
 - Widgets you add from the widget store may contact other services to show their content (for example prices, news feeds or radio streams). Each widget's page in the store shows what it runs and which addresses it contacts.
@@ -58,13 +59,13 @@ The App is not intended for children under 13 years of age. We do not knowingly 
 
 As the developer is based in Berlin, Germany, we comply with the General Data Protection Regulation (GDPR) where applicable:
 - Local storage: all data the App stores stays on your device and is under your control.
-- Permissions: microphone and notification access are optional and require your explicit consent.
+- Permissions: microphone, notification access and location are optional and require your explicit consent.
 - Third-party requests: requests to the services in section 4 are made only to provide the features you use.
 
 7. Your Rights
 
 You can:
-- Revoke microphone and notification access at any time in your device settings.
+- Revoke microphone, notification access and location at any time in your device settings.
 - Remove Linux and its files in the App's settings.
 - Remove widgets from your home screen.
 - Choose not to share widgets through dpaste.com; pastes expire on their own after 7 days or one year.
