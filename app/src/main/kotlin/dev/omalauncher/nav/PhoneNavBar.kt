@@ -12,13 +12,13 @@ import android.provider.Settings
 import android.util.Log
 
 /**
- * The phone's own navigation bar on Xiaomi's HyperOS, switched by the launcher so the phone never ends up
- * with neither buttons nor working gestures: its buttons are hidden only while [NavigationService] draws the
- * launcher's gestures, and come back as soon as the service stops or the gestures are turned off.
+ * The phone's own navigation bar, switched by the launcher so the phone never ends up with neither buttons
+ * nor working gestures: its buttons are hidden only while [NavigationService] draws the launcher's gestures,
+ * and come back as soon as the service stops or the gestures are turned off.
  *
- * HyperOS gives its gestures to its own launcher only: with Omalauncher as home, hiding the buttons leaves the
- * phone without any navigation unless the service runs. And Android stops the service (force stop, some
- * reinstalls, HyperOS's cleaners) without telling it, so [repair] also turns it back on whenever the
+ * Some phones give their gestures to their own launcher only: with Omalauncher as home, hiding the buttons
+ * leaves the phone without any navigation unless the service runs. And Android stops the service (force stop,
+ * some reinstalls, the phone's cleaners) without telling it, so [repair] also turns it back on whenever the
  * launcher's process starts.
  *
  * Both need WRITE_SECURE_SETTINGS, which only adb grants ([GRANT_COMMAND]); without it the user switches the
@@ -45,7 +45,7 @@ object PhoneNavBar {
 
     fun grantCommand(context: Context) = "adb shell pm grant ${context.packageName} ${Manifest.permission.WRITE_SECURE_SETTINGS}"
 
-    /** A phone whose bar this switches: HyperOS, where its own gestures don't work with other launchers. */
+    /** A phone whose bar this switches: it has its own gesture switch, apart from Android's navigation mode. */
     fun applies(context: Context) = read(context) != null
 
     /** Granted WRITE_SECURE_SETTINGS (over adb): the launcher may switch the bar and turn its service on itself. */
@@ -60,7 +60,7 @@ object PhoneNavBar {
 
     /**
      * The launcher's gestures are gone: the phone's buttons come back. Also out of the half-way state Android's
-     * own navigation page leaves (gestures there, buttons in Xiaomi's switch, neither working): writing the
+     * own navigation page leaves (gestures there, buttons on the phone's switch, neither working): writing the
      * value the switch already has wouldn't reach SystemUI, so it's flipped there and back.
      */
     fun showButtons(context: Context) = reconcile(context, allowHide = false)
@@ -120,7 +120,7 @@ object PhoneNavBar {
         }.onFailure { Log.w(TAG, "couldn't turn the navigation service back on", it) }
     }
 
-    /** Follows the two settings. Hiding the buttons waits for an explicit [hideButtons]: Xiaomi puts them back on its own. */
+    /** Follows the two settings. Hiding the buttons waits for an explicit [hideButtons]: the phone puts them back on its own. */
     private fun reconcile(
         context: Context,
         allowHide: Boolean,
@@ -138,7 +138,7 @@ object PhoneNavBar {
         val gen = generation
         if (plan.toggleFsg) {
             // The switch already holds the value we want, so SystemUI would ignore the write. Flip it first.
-            // The mode is written now as well: it's the one that hides the bar, and HyperOS may set it again
+            // The mode is written now as well: it's the one that hides the bar, and the phone may set it again
             // while the switch is flipped.
             writeMode(app, plan.mode)
             writeFsg(app, 1 - plan.fsg)
@@ -166,7 +166,7 @@ object PhoneNavBar {
                 }
             }
         app.contentResolver.registerContentObserver(Settings.Secure.getUriFor(SystemNavigation.MODE_KEY), false, observer)
-        app.contentResolver.registerContentObserver(Settings.Global.getUriFor(SystemNavigation.XIAOMI_GESTURES), false, observer)
+        app.contentResolver.registerContentObserver(Settings.Global.getUriFor(SystemNavigation.FULLSCREEN_GESTURES), false, observer)
     }
 
     /** This app is the home screen, so the phone's own gestures are the ones that don't run. */
@@ -174,7 +174,7 @@ object PhoneNavBar {
         runCatching { context.getSystemService(RoleManager::class.java).isRoleHeld(RoleManager.ROLE_HOME) }.getOrDefault(false)
 
     private fun read(context: Context): Int? =
-        runCatching { Settings.Global.getString(context.contentResolver, SystemNavigation.XIAOMI_GESTURES)?.toIntOrNull() }.getOrNull()
+        runCatching { Settings.Global.getString(context.contentResolver, SystemNavigation.FULLSCREEN_GESTURES)?.toIntOrNull() }.getOrNull()
 
     private fun mode(context: Context): Int? =
         runCatching { Settings.Secure.getInt(context.contentResolver, SystemNavigation.MODE_KEY) }.getOrNull()
@@ -183,7 +183,7 @@ object PhoneNavBar {
         context: Context,
         value: Int,
     ) {
-        runCatching { Settings.Global.putInt(context.contentResolver, SystemNavigation.XIAOMI_GESTURES, value) }
+        runCatching { Settings.Global.putInt(context.contentResolver, SystemNavigation.FULLSCREEN_GESTURES, value) }
             .onFailure { Log.w(TAG, "couldn't switch the phone's navigation bar", it) }
     }
 
@@ -199,7 +199,7 @@ object PhoneNavBar {
 /** Buttons, unless the launcher's own gestures are on and their service is actually drawing them. */
 internal enum class BarTarget { Buttons, Gestures }
 
-/** One write of Xiaomi's switch and Android's mode. [toggleFsg] flips the switch away and back so SystemUI notices. */
+/** One write of the phone's gesture switch and Android's mode. [toggleFsg] flips the switch away and back so SystemUI notices. */
 internal data class BarWrite(
     val fsg: Int,
     val mode: Int,
@@ -212,8 +212,8 @@ internal fun barTarget(
 ): BarTarget = if (gesturesEnabled && serviceRunning) BarTarget.Gestures else BarTarget.Buttons
 
 /**
- * What to write so the bar matches [target]. Null where this isn't HyperOS, or where both settings already
- * agree. Two-button mode is left as it is; the stuck state is Android reporting gestures.
+ * What to write so the bar matches [target]. Null where the phone has no gesture switch of its own, or where
+ * both settings already agree. Two-button mode is left as it is; the stuck state is Android reporting gestures.
  */
 internal fun barWrite(
     target: BarTarget,

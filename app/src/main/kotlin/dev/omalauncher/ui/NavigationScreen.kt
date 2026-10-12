@@ -90,13 +90,13 @@ fun NavigationScreen(
                 "now: ${system.effective?.label ?: "unknown"}. " +
                     when {
                         system.split && PhoneNavBar.canSwitch(context) ->
-                            "Xiaomi has buttons selected and Android's navigation page has gestures selected, so the bar is hidden and a swipe does nothing. The buttons are put back."
+                            "The phone says buttons in one place and gestures in the other, so the bar is hidden and a swipe does nothing. The buttons are put back."
                         system.split ->
-                            "Xiaomi has buttons selected and Android's navigation page has gestures selected, so the bar is hidden and a swipe does nothing. Choose buttons again there."
+                            "The phone says buttons in one place and gestures in the other, so the bar is hidden and a swipe does nothing. Choose buttons again there."
                         settings.gestures ->
-                            "The phone's buttons hide while these gestures run, and come back when they stop. On Xiaomi and Poco, Android's navigation page hides the buttons without turning Xiaomi's gestures on."
+                            "The phone's buttons hide while these gestures run, and come back when they stop."
                         else ->
-                            "Where the phone allows it with other launchers (Pixel, Samsung), its own gestures work with Omalauncher."
+                            "The phone's own navigation stays until these gestures are turned on."
                     },
                 "change",
                 Palette.muted,
@@ -131,7 +131,7 @@ private fun Notice(
 @Composable
 private fun Hint(text: String) = BasicText(text, Modifier.padding(vertical = 8.dp), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
 
-/** The phone's own navigation mode, following changes (made on the page this screen opens, or by Xiaomi's switch). */
+/** The phone's own navigation mode, following changes made on the page this screen opens or by the phone's gesture switch. */
 @Composable
 private fun systemNavigation(): NavReading {
     val context = LocalContext.current
@@ -145,7 +145,7 @@ private fun systemNavigation(): NavReading {
             }
         val resolver = context.contentResolver
         resolver.registerContentObserver(Settings.Secure.getUriFor(SystemNavigation.MODE_KEY), false, observer)
-        resolver.registerContentObserver(Settings.Global.getUriFor(SystemNavigation.XIAOMI_GESTURES), false, observer)
+        resolver.registerContentObserver(Settings.Global.getUriFor(SystemNavigation.FULLSCREEN_GESTURES), false, observer)
         onDispose { resolver.unregisterContentObserver(observer) }
     }
     return mode.value

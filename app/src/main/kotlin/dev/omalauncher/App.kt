@@ -12,7 +12,7 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Before any activity: a phone left with Android saying gestures and Xiaomi saying buttons has no
+        // Before any activity: a phone left with gestures selected in one place and buttons in the other has no
         // navigation in the app that's already open.
         PhoneNavBar.repair(this)
     }

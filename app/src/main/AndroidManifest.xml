@@ -14,7 +14,7 @@
     <!-- Closing an app from the launcher's recents (nav/RecentsView) stops its process, as the phone's recents do. -->
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
-    <!-- Puts Xiaomi's navigation bar back when Android's page hid the buttons. Only adb can grant it. -->
+    <!-- Puts the navigation bar back when Android's page hid the buttons. Only adb can grant it. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
 
     <uses-feature

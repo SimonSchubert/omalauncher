@@ -96,7 +96,7 @@ class NavigationService : AccessibilityService() {
 
     /**
      * The lock screen has its own swipe up from the bottom: the strips stay off it. They come back once it's
-     * unlocked, checked for after the screen turns on: HyperOS doesn't always deliver USER_PRESENT to an app
+     * unlocked, checked for after the screen turns on: some phones don't deliver USER_PRESENT to an app
      * in the background.
      */
     private val screenReceiver =

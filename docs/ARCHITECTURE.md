@@ -34,8 +34,8 @@ touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
 - `ui/`: the Compose home screen, the bar and its app list, settings and Files
 - `widgets/`: the widget engine; the language itself is in the `owl` module
 - `theme/`: Omarchy themes, applied to the launcher and the guest
-- `nav/`: gesture navigation for phones that keep gestures to their own
-  launcher (Xiaomi, Poco): an accessibility service draws thin strips along
+- `nav/`: gesture navigation for any phone, including those that keep gestures
+  to their own launcher: an accessibility service draws thin strips along
   the screen's edges and turns swipes into back, home and recents; taps on a
   strip are passed on to the app under it. Swiping up lifts the app into a
   card drawn from a screenshot; holding opens the launcher's own recents

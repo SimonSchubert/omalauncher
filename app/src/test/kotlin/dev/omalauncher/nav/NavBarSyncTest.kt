@@ -5,21 +5,21 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class NavBarSyncTest {
-    @Test fun xiaomiButtonsWinOverAndroidGestures() {
-        assertEquals(SystemNavigation.ThreeButtons, effectiveMode(xiaomiGestures = 0, navigationMode = 2))
+    @Test fun phoneButtonsWinOverAndroidGestures() {
+        assertEquals(SystemNavigation.ThreeButtons, effectiveMode(fullscreenGestures = 0, navigationMode = 2))
     }
 
-    @Test fun xiaomiSwitchOffWithNoModeStillMeansButtons() {
-        assertEquals(SystemNavigation.ThreeButtons, effectiveMode(xiaomiGestures = 0, navigationMode = null))
+    @Test fun switchOffWithNoModeStillMeansButtons() {
+        assertEquals(SystemNavigation.ThreeButtons, effectiveMode(fullscreenGestures = 0, navigationMode = null))
     }
 
-    @Test fun xiaomiGesturesAreGestures() {
-        assertEquals(SystemNavigation.Gestures, effectiveMode(xiaomiGestures = 1, navigationMode = 0))
+    @Test fun phoneGesturesAreGestures() {
+        assertEquals(SystemNavigation.Gestures, effectiveMode(fullscreenGestures = 1, navigationMode = 0))
     }
 
-    @Test fun stockPhoneUsesAndroidMode() {
-        assertEquals(SystemNavigation.TwoButtons, effectiveMode(xiaomiGestures = null, navigationMode = 1))
-        assertNull(effectiveMode(xiaomiGestures = null, navigationMode = null))
+    @Test fun phoneWithoutItsOwnSwitchUsesAndroidMode() {
+        assertEquals(SystemNavigation.TwoButtons, effectiveMode(fullscreenGestures = null, navigationMode = 1))
+        assertNull(effectiveMode(fullscreenGestures = null, navigationMode = null))
     }
 
     @Test fun gesturesNeedTheServiceActuallyRunning() {

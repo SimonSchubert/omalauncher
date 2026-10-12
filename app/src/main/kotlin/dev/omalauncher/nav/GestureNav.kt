@@ -62,7 +62,7 @@ data class NavSettings(
 )
 
 /**
- * Gesture navigation for phones that keep it from third-party launchers (Xiaomi, Poco): back, home and
+ * Gesture navigation for any phone, including those that keep it for their own launcher: back, home and
  * recents from swipes at the screen's edges, performed by [NavigationService]. Settings are in
  * settings › navigation; the service follows them while it runs.
  */
@@ -143,8 +143,8 @@ class GestureNav(
     fun openAccessibilitySettings() = start(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
 
     /**
-     * Opens Android's own page for the navigation mode. On Xiaomi's HyperOS this is the stock Android page,
-     * which hides the buttons without putting the launcher back to Xiaomi's; its own settings page does that.
+     * Opens Android's page for the navigation mode. On some phones that page hides the buttons without
+     * turning the phone's own gestures on, so neither works until the bar is put back.
      */
     fun openSystemNavigationSettings() {
         val candidates =
@@ -192,24 +192,27 @@ enum class SystemNavigation(
 
     companion object {
         /**
-         * The mode the user can actually navigate with. On HyperOS, Xiaomi's switch ([XIAOMI_GESTURES]) is what
-         * turns its gestures on; [MODE_KEY] can still say gestures, which hides the buttons and leaves no
-         * navigation at all.
+         * The mode the user can actually navigate with. Where the phone has its own gesture switch
+         * ([FULLSCREEN_GESTURES]), that switch is what turns gestures on; [MODE_KEY] can still say gestures,
+         * which hides the buttons and leaves no navigation at all.
          */
         fun read(context: Context): SystemNavigation? = reading(context).effective
 
-        /** Both values, so the settings screen can say when Android's page and Xiaomi's switch disagree. */
+        /** Both values, so the settings screen can say when Android's page and the phone's switch disagree. */
         fun reading(context: Context): NavReading {
-            val xiaomi =
-                runCatching { Settings.Global.getString(context.contentResolver, XIAOMI_GESTURES)?.toIntOrNull() }.getOrNull()
+            val fullscreen =
+                runCatching { Settings.Global.getString(context.contentResolver, FULLSCREEN_GESTURES)?.toIntOrNull() }.getOrNull()
             val mode = runCatching { Settings.Secure.getInt(context.contentResolver, MODE_KEY) }.getOrNull()
-            return NavReading(reported = mode?.let { entries.getOrNull(it) }, effective = effectiveMode(xiaomi, mode))
+            return NavReading(reported = mode?.let { entries.getOrNull(it) }, effective = effectiveMode(fullscreen, mode))
         }
 
         const val MODE_KEY = "navigation_mode"
 
-        /** HyperOS's "full screen gestures" switch. 1 hides the buttons, 0 brings them back. Absent on other phones. */
-        const val XIAOMI_GESTURES = "force_fsg_nav_bar"
+        /**
+         * The phone's own full-screen gesture switch, where it has one. 1 hides the buttons, 0 brings them
+         * back. Absent on phones whose gestures follow [MODE_KEY] alone.
+         */
+        const val FULLSCREEN_GESTURES = "force_fsg_nav_bar"
     }
 }
 
@@ -218,21 +221,22 @@ data class NavReading(
     val reported: SystemNavigation?,
     val effective: SystemNavigation?,
 ) {
-    /** Android's page says gestures while Xiaomi's switch says buttons: the bar is hidden and swipes do nothing. */
+    /** Android's page says gestures while the phone's switch says buttons: the bar is hidden and swipes do nothing. */
     val split: Boolean get() = reported == SystemNavigation.Gestures && effective != SystemNavigation.Gestures
 }
 
 /**
- * HyperOS only treats its own switch as gestures. [navigationMode] saying gestures while that switch is off
- * is the stuck state: no buttons, and no gestures either. Elsewhere the switch is absent and Android's mode stands.
+ * Where the phone has its own gesture switch, that switch decides. [navigationMode] saying gestures while the
+ * switch is off is the stuck state: no buttons, and no gestures either. Elsewhere the switch is absent and
+ * Android's mode stands.
  */
 internal fun effectiveMode(
-    xiaomiGestures: Int?,
+    fullscreenGestures: Int?,
     navigationMode: Int?,
 ): SystemNavigation? {
     val reported = navigationMode?.let { SystemNavigation.entries.getOrNull(it) }
-    if (xiaomiGestures == 0 && (reported == null || reported == SystemNavigation.Gestures)) return SystemNavigation.ThreeButtons
-    if (xiaomiGestures == 1) return SystemNavigation.Gestures
+    if (fullscreenGestures == 0 && (reported == null || reported == SystemNavigation.Gestures)) return SystemNavigation.ThreeButtons
+    if (fullscreenGestures == 1) return SystemNavigation.Gestures
     return reported
 }
 
