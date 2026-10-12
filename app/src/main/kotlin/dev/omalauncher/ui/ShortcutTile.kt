@@ -43,10 +43,12 @@ fun ShortcutTile(
     onTap: () -> Unit,
     /** In a paused work profile: drawn dimmed, like stock launchers. */
     paused: Boolean = false,
+    /** In a clone profile: read out as a clone, not a work app. */
+    clone: Boolean = false,
 ) {
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
-    val spoken = spokenLabel(shortcut.label, shortcut.profile)
+    val spoken = spokenLabel(shortcut.label, shortcut.profile, clone)
     BoxWithConstraints(
         modifier
             .alpha(if (paused) PausedAlpha else 1f)

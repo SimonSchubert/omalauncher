@@ -8,6 +8,7 @@ Dates are when the build was uploaded to Play.
 
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
+- Cloned apps carry the clone mark instead of the briefcase, from Android 15 on.
 
 ## 0.5.0 (versionCode 10) – 2026-10-11
 

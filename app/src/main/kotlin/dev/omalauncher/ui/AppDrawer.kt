@@ -76,10 +76,13 @@ internal sealed interface AppHit {
     val key: String
     val label: String
 
-    /** What screen readers say, to tell a work app from the personal one of the same name. */
+    /** What screen readers say, to tell a work app or a clone from the personal one of the same name. */
     val spoken: String get() = label
 
-    /** Another name search matches: a work app's own name with "work" added, so "work" or "whatsapp work" finds it. */
+    /**
+     * Another name search matches: a work app's own name with "work" added, so "work" or "whatsapp work"
+     * finds it; a clone's with "clone".
+     */
     val alias: String? get() = null
 
     /** In a paused work profile: shown dimmed, and opening it turns work apps back on. */
@@ -98,7 +101,7 @@ internal sealed interface AppHit {
         override val key get() = "a:" + app.key
         override val label get() = app.label
         override val spoken get() = app.spoken
-        override val alias get() = if (app.profile != null) "${app.label} work" else null
+        override val alias get() = if (app.profile != null) "${app.label} ${if (app.clone) "clone" else "work"}" else null
 
         override fun paused(runtime: Runtime) = runtime.androidApps.paused(app.profile)
     }

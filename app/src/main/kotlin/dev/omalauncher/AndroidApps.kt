@@ -48,19 +48,26 @@ data class AndroidApp(
     val profile: Long? = null,
     /** Preinstalled and never updated-in-place away from that: can't be uninstalled, only disabled. */
     val system: Boolean = false,
+    /** [user] is a clone profile, holding a second copy of an app the owner has too, rather than a work profile. */
+    val clone: Boolean = false,
 ) {
     /** Stable across restarts and unique across profiles; icons, usage and pinned apps go by it. */
     val key get() = androidAppKey(component, profile)
 
-    /** What screen readers say: "Work WhatsApp" beside "WhatsApp". */
-    val spoken get() = spokenLabel(label, profile)
+    /** What screen readers say: "Work WhatsApp" or "Clone WhatsApp" beside "WhatsApp". */
+    val spoken get() = spokenLabel(label, profile, clone)
 }
 
-/** [label] as screen readers say it; [profile] as in [AndroidApp.profile]. */
+/** [label] as screen readers say it, worded as Android's own badged labels; [profile] and [clone] as in [AndroidApp]. */
 fun spokenLabel(
     label: String,
     profile: Long?,
-) = if (profile == null) label else "Work $label"
+    clone: Boolean = false,
+) = when {
+    profile == null -> label
+    clone -> "Clone $label"
+    else -> "Work $label"
+}
 
 /** The activity alone in the launcher's own profile, as keys were before other profiles were listed; `@serial` in any other. */
 fun androidAppKey(
@@ -71,9 +78,9 @@ fun androidAppKey(
 /**
  * The phone's launchable apps, loaded once per process and kept current through
  * LauncherApps callbacks, so the drawer never waits on PackageManager.
- * Labels arrive first; icons fill in behind them. Apps in a work profile (or a clone profile)
- * are listed beside the owner's, with a briefcase on their icons. Private space stays hidden:
- * listing it takes ACCESS_HIDDEN_PROFILES.
+ * Labels arrive first; icons fill in behind them. Apps in a work profile are listed beside the
+ * owner's with a briefcase on their icons, apps in a clone profile with the clone mark stock
+ * launchers use. Private space stays hidden: listing it takes ACCESS_HIDDEN_PROFILES.
  */
 class AndroidAppCatalog(
     private val context: Context,
@@ -91,6 +98,13 @@ class AndroidAppCatalog(
 
     /** Whether an app in [profile] (as in [AndroidApp.profile]) is paused. */
     fun paused(profile: Long?) = profile != null && profile in pausedProfiles
+
+    /** Serial numbers of the clone profiles, whose apps are second copies of the owner's, not work apps. */
+    var cloneProfiles by mutableStateOf(emptySet<Long>())
+        private set
+
+    /** Whether [profile] (as in [AndroidApp.profile]) is a clone profile. */
+    fun cloned(profile: Long?) = profile != null && profile in cloneProfiles
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val userManager = context.getSystemService(UserManager::class.java)
@@ -202,6 +216,7 @@ class AndroidAppCatalog(
                     masks.keys.removeAll { it.startsWith("$evict/") }
                 }
                 var paused = emptySet<Long>()
+                var clones = emptySet<Long>()
                 val infos =
                     withContext(Dispatchers.IO) {
                         val me = Process.myUserHandle()
@@ -210,17 +225,20 @@ class AndroidAppCatalog(
                         profiles
                             .flatMap { user ->
                                 val profile = if (user == me) null else userManager.getSerialNumberForUser(user)
+                                val clone = profile != null && isClone(user)
                                 if (profile != null && userManager.isQuietModeEnabled(user)) paused += profile
+                                if (profile != null && clone) clones += profile
                                 runCatching { launcherApps.getActivityList(null, user) }
                                     .onFailure { Log.w(TAG, "cannot list apps in $user", it) }
                                     .getOrDefault(emptyList())
                                     .filter { it.componentName.packageName != context.packageName }
-                                    .map { it to AndroidApp(it.label.toString(), it.componentName, user, profile, it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0) }
+                                    .map { it to AndroidApp(it.label.toString(), it.componentName, user, profile, it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0, clone = clone) }
                             }
                             // The same app in two profiles: the owner's one first.
                             .sortedWith(compareBy({ it.second.label.lowercase() }, { it.second.profile != null }))
                     }
                 pausedProfiles = paused
+                cloneProfiles = clones
                 val list = infos.map { it.second }
                 if (list != apps.toList()) {
                     apps.clear()
@@ -241,7 +259,7 @@ class AndroidAppCatalog(
                                     d.setBounds(0, 0, iconPx, iconPx)
                                     d.draw(Canvas(bmp))
                                     var mask = iconMask(d, iconPx)
-                                    if (app.profile != null) mask = addBadge(bmp, mask)
+                                    if (app.profile != null) mask = addBadge(bmp, mask, if (app.clone) cloneMark else briefcase)
                                     bmp.asImageBitmap() to mask.asImageBitmap()
                                 }.getOrNull()
                             }
@@ -255,19 +273,28 @@ class AndroidAppCatalog(
     }
 
     /**
-     * Marks an icon from another profile with a briefcase in its corner, and its silhouette too, where
-     * a gap cut around the briefcase keeps it apart from the logo in one color. Drawn here rather than
-     * taken from the system (PackageManager.getUserBadgedIcon), which leaves some work profiles unbadged.
+     * Whether [user] is a clone profile. Only Android 15 on tells a launcher a profile's kind;
+     * before, every profile beside ours counts as work.
+     */
+    private fun isClone(user: UserHandle) =
+        Build.VERSION.SDK_INT >= 35 &&
+            runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull() == UserManager.USER_TYPE_PROFILE_CLONE
+
+    /**
+     * Marks an icon from another profile with [mark] (a briefcase, or the clone mark) in its corner, and its
+     * silhouette too, where a gap cut around the mark keeps it apart from the logo in one color. Drawn here rather
+     * than taken from the system (PackageManager.getUserBadgedIcon), which leaves some work profiles unbadged.
      */
     private fun addBadge(
         icon: Bitmap,
         silhouette: Bitmap,
+        mark: Path,
     ): Bitmap {
         val mask = if (silhouette.isMutable) silhouette else silhouette.copy(Bitmap.Config.ALPHA_8, true)
         val r = iconPx * 0.2f
         val cx = iconPx - r
         val cy = iconPx - r
-        val glyph = Path(briefcase)
+        val glyph = Path(mark)
         val scale = r * 1.2f / 24f
         glyph.transform(Matrix().apply { setScale(scale, scale); postTranslate(cx - 12 * scale, cy - 12 * scale) })
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -293,6 +320,26 @@ class AndroidAppCatalog(
                         "c1.11,0 2,-0.89 2,-2V8c0,-1.11 -0.89,-2 -2,-2zM14,6h-4V4h4v2z",
                 ).toPath()
                 .asAndroidPath()
+        }
+
+        /** Launcher3's clone mark (ic_clone_app_badge), 24 units square: a disc, and a ring overlapping it. */
+        private val cloneMark by lazy {
+            val disc =
+                PathParser()
+                    .parsePathString("M22,9.5C22,13.642 18.642,17 14.5,17C10.358,17 7,13.642 7,9.5C7,5.358 10.358,2 14.5,2C18.642,2 22,5.358 22,9.5Z")
+                    .toPath()
+                    .asAndroidPath()
+            val ring =
+                PathParser()
+                    .parsePathString(
+                        "M9.5,20.333C12.722,20.333 15.333,17.722 15.333,14.5C15.333,11.278 12.722,8.667 9.5,8.667C6.278,8.667 3.667,11.278 3.667,14.5" +
+                            "C3.667,17.722 6.278,20.333 9.5,20.333ZM9.5,22C13.642,22 17,18.642 17,14.5C17,10.358 13.642,7 9.5,7C5.358,7 2,10.358 2,14.5" +
+                            "C2,18.642 5.358,22 9.5,22Z",
+                    ).toPath()
+                    .asAndroidPath()
+                    .apply { fillType = Path.FillType.EVEN_ODD }
+            // Two paths in Launcher3, one here: the ring's even-odd fill must not cut into the disc.
+            disc.apply { op(ring, Path.Op.UNION) }
         }
 
         private const val BADGE_BACKGROUND = 0xFF3C4043.toInt()
