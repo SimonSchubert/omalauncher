@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        runtime.androidApps.refresh()
         runtime.wm.focus(null)
         removeStaleWindowTasks()
         // The user may have set or replaced the wallpaper while we were in the background.

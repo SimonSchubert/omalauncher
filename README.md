@@ -42,6 +42,13 @@ installed one; the choice is saved in `~/.config/omalauncher/agent`. Hold the mi
 into the field. Speech is recognized by Android (on the device when the phone
 supports it), so only text reaches Linux.
 
+On Android 15 or newer, set Omalauncher as the default home app to see Private
+Space. Its own drawer tab has a lock/unlock action and stays visible while the
+space is locked. Private apps are absent from the personal tab, bar search,
+recent apps, home shortcuts, and widget app lists. The launcher settings have
+a **private space** row to hide or show the tab; hiding it does not change the
+system's Private Space lock state.
+
 Touch input in Linux windows: tap is a left click, long press is a right
 click, drag scrolls; apps with touch support (foot, GTK) get real touch.
 Hardware keyboard shortcuts: Super+Enter (terminal), Super+Space or

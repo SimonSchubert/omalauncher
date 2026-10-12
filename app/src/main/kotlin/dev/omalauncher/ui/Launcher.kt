@@ -135,7 +135,8 @@ private fun DesktopScreen(
     val highlighted = search.highlighted(state.picked)
 
     fun launch(hit: AppHit) {
-        runtime.usage.record(hit.key)
+        if (hit is AppHit.Android && hit.app.isPrivate && !runtime.androidApps.canUsePrivate(hit.app)) return
+        if (hit !is AppHit.Android || !hit.app.isPrivate) runtime.usage.record(hit.key)
         state.query = ""
         state.closeNow()
         when (hit) {
@@ -152,7 +153,7 @@ private fun DesktopScreen(
                 pin = { hit ->
                     when (hit) {
                         is AppHit.Linux -> runtime.widgets.shortcuts.addLinux(hit.app, state.currentPage)
-                        is AppHit.Android -> runtime.widgets.shortcuts.addAndroid(hit.app, state.currentPage)
+                        is AppHit.Android -> if (!hit.app.isPrivate) runtime.widgets.shortcuts.addAndroid(hit.app, state.currentPage)
                     }
                     state.close()
                 },

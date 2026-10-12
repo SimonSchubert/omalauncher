@@ -253,7 +253,18 @@ fun HomeScreen(
         HomeGrid(
             pager = pager,
             pages = pageNumbers,
-            itemsOn = engine::itemsOn,
+            // Old persisted shortcuts can name a profile that is now Private Space.
+            // Filter the folder contents too, so a locked profile never leaves labels on home.
+            itemsOn = { page ->
+                engine.itemsOn(page).mapNotNull { item ->
+                    when (item) {
+                        is Shortcut -> item.takeIf { runtime.androidApps.outsidePrivate(it.profile) }
+                        is Folder -> item.copy(apps = item.apps.filter { runtime.androidApps.outsidePrivate(it.profile) })
+                            .takeIf { it.apps.isNotEmpty() }
+                        else -> item
+                    }
+                }
+            },
             layout = engine.layout,
             arrange = arrange,
             modifier = Modifier.weight(1f).fillMaxWidth(),

@@ -28,6 +28,7 @@ class Notifications(
     private val media: Media,
     /** "work" or "clone" for a profile beside the launcher's own, null for its own. */
     private val profile: (UserHandle) -> String?,
+    private val include: (UserHandle) -> Boolean,
 ) {
     /** App labels by package; the lookup is a binder call. */
     private val labels = HashMap<String, String>()
@@ -37,7 +38,7 @@ class Notifications(
         val listener = MediaListener.connected ?: return emptyList()
         val all = runCatching { listener.activeNotifications }.getOrNull().orEmpty()
         val hidden = Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE or Notification.FLAG_GROUP_SUMMARY
-        return all.filter { it.notification.flags and hidden == 0 && (title(it) != null || text(it) != null) }.sortedByDescending { it.postTime }
+        return all.filter { include(it.user) && it.notification.flags and hidden == 0 && (title(it) != null || text(it) != null) }.sortedByDescending { it.postTime }
     }
 
     private fun title(sbn: StatusBarNotification) = sbn.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.takeIf { it.isNotBlank() }
@@ -87,6 +88,7 @@ class Notifications(
         val listener = MediaListener.connected
         if (!media.granted || listener == null) return media.openAccessSettings()
         val sbn = runCatching { listener.getActiveNotifications(arrayOf(key)) }.getOrNull()?.firstOrNull() ?: return
+        if (!include(sbn.user)) return
         when (command) {
             "open" -> {
                 val intent = sbn.notification.contentIntent ?: return

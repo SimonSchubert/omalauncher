@@ -199,7 +199,10 @@ class Shortcuts(
     fun addAndroid(
         app: AndroidApp,
         page: Int,
-    ) = add(Shortcut("app:" + app.key, page, app.label, component = app.component, profile = app.profile))
+    ) {
+        if (app.isPrivate) return
+        add(Shortcut("app:" + app.key, page, app.label, component = app.component, profile = app.profile))
+    }
 
     fun addLinux(
         app: LinuxApp,

@@ -91,7 +91,7 @@ class WidgetServices(
 
     /** What's playing on the phone. */
     private val media = Media(context)
-    private val notifications = Notifications(context, media, ::profileKind)
+    private val notifications = Notifications(context, media, ::profileKind, { runtime.androidApps.outsidePrivate(it) })
     private val volume = Volume(context)
     private val alarm = Alarm(context)
     private val modes = Modes(context)
@@ -183,9 +183,9 @@ class WidgetServices(
             when (pkg.substringAfter('@', "")) {
                 "work" -> apps.apps.firstOrNull { it.component.packageName == name && it.work }
                 "clone" -> apps.apps.firstOrNull { it.component.packageName == name && it.clone }
-                "" -> apps.apps.firstOrNull { it.component.packageName == name && it.profile == null } ?: apps.apps.firstOrNull { it.component.packageName == name }
+                "" -> apps.apps.firstOrNull { it.component.packageName == name && it.profile == null } ?: apps.apps.firstOrNull { it.component.packageName == name && !it.isPrivate }
                 else -> null
-            } ?: return null
+            }?.takeUnless { it.isPrivate } ?: return null
         val key = androidAppKey(app.component, app.profile)
         return if (LauncherStyle.monochromeIcons) apps.masks[key] else apps.icons[key]
     }
@@ -262,7 +262,7 @@ class WidgetServices(
                 "timezone" to Str(java.util.TimeZone.getDefault().id),
                 "launcher" to Str(BuildConfig.VERSION_NAME),
                 "theme" to (runtime.themes.current?.title?.let(::Str) ?: Null),
-                "apps" to num(runtime.androidApps.apps.size.toLong()),
+                "apps" to num(runtime.androidApps.apps.count { !it.isPrivate }.toLong()),
             ),
         )
     }

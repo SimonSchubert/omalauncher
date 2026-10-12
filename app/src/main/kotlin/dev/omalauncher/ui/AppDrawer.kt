@@ -10,7 +10,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
-import kotlin.math.abs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
@@ -42,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.CircleShape
@@ -112,36 +112,10 @@ internal sealed interface AppHit {
         override val key get() = "a:" + app.key
         override val label get() = app.label
         override val spoken get() = app.spoken
-        override val alias get() = if (app.profile != null) "${app.label} ${if (app.clone) "clone" else "work"}" else null
+        override val alias get() = if (app.profile != null && !app.isPrivate) "${app.label} ${if (app.clone) "clone" else "work"}" else null
 
         override fun paused(runtime: Runtime) = runtime.androidApps.paused(app.profile)
     }
-}
-
-/** The drawer's tabs, each listing one profile's apps while the bar is empty. */
-enum class DrawerTab(
-    val label: String,
-) {
-    Personal("personal"),
-    Work("work"),
-}
-
-/** The tabs the empty bar offers: personal, then work while there's a work profile. */
-internal fun drawerTabs(work: Boolean) = listOfNotNull(DrawerTab.Personal, DrawerTab.Work.takeIf { work })
-
-/**
- * Where a sideways swipe of [dx] px from [current] lands: a finger moving left brings the next tab,
- * as pages turn. Swipes shorter than [threshold] and past the ends stay put.
- */
-internal fun swipedTab(
-    tabs: List<DrawerTab>,
-    current: DrawerTab,
-    dx: Float,
-    threshold: Float,
-): DrawerTab {
-    if (abs(dx) < threshold) return current
-    val i = tabs.indexOf(current)
-    return tabs.getOrNull(if (dx < 0) i + 1 else i - 1) ?: current
 }
 
 /** How far a sideways swipe over the drawer goes before it turns the tab. */
@@ -152,7 +126,11 @@ private fun shownTabs(
     runtime: Runtime,
     state: LauncherState,
 ): Pair<List<DrawerTab>, DrawerTab> {
-    val tabs = drawerTabs(work = runtime.androidApps.workProfiles.isNotEmpty())
+    val tabs = drawerTabs(
+        work = runtime.androidApps.workProfiles.isNotEmpty(),
+        privateSpace = runtime.androidApps.privateProfiles.isNotEmpty(),
+        privateShown = runtime.androidApps.privateShown,
+    )
     return tabs to (state.tab.takeIf { it in tabs } ?: DrawerTab.Personal)
 }
 
@@ -187,7 +165,7 @@ internal class BarSearch(
     fun highlighted(picked: Int?) = picked?.coerceIn(-1, hits.lastIndex) ?: if (opensApp) 0 else -1
 }
 
-private fun allApps(runtime: Runtime): List<AppHit> = runtime.linuxApps.map { AppHit.Linux(it) } + runtime.androidApps.apps.map { AppHit.Android(it) }
+private fun allApps(runtime: Runtime): List<AppHit> = runtime.linuxApps.map { AppHit.Linux(it) } + runtime.androidApps.apps.filterNot { it.isPrivate }.map { AppHit.Android(it) }
 
 internal fun searchApps(
     runtime: Runtime,
@@ -213,7 +191,7 @@ private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>
         is AppHit.Linux -> listOf("add to home" to { handlers.pin(this) })
         is AppHit.Android ->
             listOfNotNull(
-                "add to home" to { handlers.pin(this) },
+                if (app.isPrivate) null else "add to home" to { handlers.pin(this) },
                 "app info" to { handlers.info(app) },
                 if (app.system) null else "uninstall" to { handlers.uninstall(app) },
             )
@@ -440,81 +418,91 @@ internal fun AppPanel(
                 BoxWithConstraints(Modifier.weight(1f, fill = false).clipToBounds().swipeTabs(runtime, state)) {
                     val columns = (maxWidth / 76.dp).toInt().coerceAtLeast(1)
                     // A tab slides in from the side it was swiped or tapped towards; search results just take the list's place.
-                    AnimatedContent(
-                        targetState = tab.takeIf { query.isBlank() },
-                        transitionSpec = {
-                            val from = initialState
-                            val to = targetState
-                            if (from == null || to == null) {
-                                (EnterTransition.None togetherWith ExitTransition.None).using(SizeTransform { _, _ -> snap() })
-                            } else {
-                                val sign = if (to.ordinal > from.ordinal) 1 else -1
-                                slideInHorizontally { it * sign } togetherWith slideOutHorizontally { -it * sign }
-                            }
-                        },
-                        contentAlignment = Alignment.BottomCenter,
-                        label = "drawer tab",
-                    ) { shown ->
-                        val listState = rememberLazyListState()
-                        // New results start at the bar, where the best match is.
-                        if (shown == null) LaunchedEffect(search) { listState.scrollToItem(0) }
-                        // Search results bottom-up, so the best match sits right above the bar; the full list reads
-                        // top-down from its start, like stock drawers, so a drag down there closes the panel right away.
-                        LazyColumn(
-                            state = listState,
-                            reverseLayout = shown == null,
-                            modifier = Modifier.fillMaxWidth().nestedScroll(pullToClose),
-                            contentPadding = PaddingValues(top = 8.dp, bottom = 4.dp),
-                        ) {
-                            fun row(
-                                key: String,
-                                cells: List<AppHit>,
-                                selected: Int = -1,
-                            ) = item(key = key) {
-                                Row(Modifier.fillMaxWidth()) {
-                                    cells.forEachIndexed { i, hit -> Box(Modifier.weight(1f)) { HitCell(runtime, hit, handlers, selected = i == selected) } }
-                                    repeat(columns - cells.size) { Spacer(Modifier.weight(1f)) }
+                    key(apps.privateShown) {
+                        AnimatedContent(
+                            targetState = tab.takeIf { query.isBlank() },
+                            transitionSpec = {
+                                val from = initialState
+                                val to = targetState
+                                if (from == null || to == null) {
+                                    (EnterTransition.None togetherWith ExitTransition.None).using(SizeTransform { _, _ -> snap() })
+                                } else {
+                                    val sign = if (to.ordinal > from.ordinal) 1 else -1
+                                    slideInHorizontally { it * sign } togetherWith slideOutHorizontally { -it * sign }
                                 }
-                            }
-
-                            // One with actions shows its title even without apps.
-                            fun section(
-                                title: String,
-                                hits: List<AppHit>,
-                                actions: List<Pair<String, () -> Unit>> = emptyList(),
+                            },
+                            contentAlignment = Alignment.BottomCenter,
+                            label = "drawer tab",
+                        ) { shown ->
+                            val listState = rememberLazyListState()
+                            // New results start at the bar, where the best match is.
+                            if (shown == null) LaunchedEffect(search) { listState.scrollToItem(0) }
+                            // Search results bottom-up, so the best match sits right above the bar; the full list reads
+                            // top-down from its start, like stock drawers, so a drag down there closes the panel right away.
+                            LazyColumn(
+                                state = listState,
+                                reverseLayout = shown == null,
+                                modifier = Modifier.fillMaxWidth().nestedScroll(pullToClose),
+                                contentPadding = PaddingValues(top = 8.dp, bottom = 4.dp),
                             ) {
-                                if (hits.isEmpty() && actions.isEmpty()) return
-                                item(key = "h:$title") { Section(title, actions) }
-                                hits.chunked(columns).forEachIndexed { r, cells -> row("$title:$r", cells) }
-                            }
-
-                            when (shown) {
-                                null -> search.hits.chunked(columns).forEachIndexed { r, cells -> row("q:$r", cells, highlighted - r * columns) }
-                                DrawerTab.Work -> {
-                                    val paused = apps.workProfiles.any { apps.paused(it) }
-                                    section(
-                                        if (paused) "work apps paused" else "work apps",
-                                        apps.apps.filter { it.work }.map { AppHit.Android(it) },
-                                        listOf((if (paused) "turn on" else "pause") to { apps.pauseWork(!paused) }),
-                                    )
+                                fun row(
+                                    key: String,
+                                    cells: List<AppHit>,
+                                    selected: Int = -1,
+                                ) = item(key = key) {
+                                    Row(Modifier.fillMaxWidth()) {
+                                        cells.forEachIndexed { i, hit -> Box(Modifier.weight(1f)) { HitCell(runtime, hit, handlers, selected = i == selected) } }
+                                        repeat(columns - cells.size) { Spacer(Modifier.weight(1f)) }
+                                    }
                                 }
-                                // Clones too, as stock drawers list them: second copies of the owner's apps.
-                                DrawerTab.Personal -> {
-                                    if (linuxState == LinuxState.Installed) {
-                                        section("linux", runtime.linuxApps.map { AppHit.Linux(it) })
-                                    } else {
-                                        // Linux apps would be listed here; without Linux, one quiet offer instead.
-                                        item(key = "linux-offer") {
-                                            Row(Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                                BasicText("linux apps", Modifier.weight(1f), style = Mono.copy(color = Palette.muted))
-                                                BracketAction(if (linuxState is LinuxState.Installing) "installing…" else "install linux", Palette.accent) {
-                                                    state.closeNow()
-                                                    state.linuxOpen = true
+
+                                // One with actions shows its title even without apps.
+                                fun section(
+                                    title: String,
+                                    hits: List<AppHit>,
+                                    actions: List<Pair<String, () -> Unit>> = emptyList(),
+                                ) {
+                                    if (hits.isEmpty() && actions.isEmpty()) return
+                                    item(key = "h:$title") { Section(title, actions) }
+                                    hits.chunked(columns).forEachIndexed { r, cells -> row("$title:$r", cells) }
+                                }
+
+                                when (shown) {
+                                    null -> search.hits.chunked(columns).forEachIndexed { r, cells -> row("q:$r", cells, highlighted - r * columns) }
+                                    DrawerTab.Private -> {
+                                        val locked = apps.privateProfiles.any { apps.privateLocked(it) }
+                                        section(
+                                            if (locked) "private space locked" else "private apps",
+                                            if (locked) emptyList() else apps.apps.filter { it.isPrivate }.map { AppHit.Android(it) },
+                                            listOf((if (locked) "unlock" else "lock") to { apps.pausePrivate(!locked) }),
+                                        )
+                                    }
+                                    DrawerTab.Work -> {
+                                        val paused = apps.workProfiles.any { apps.paused(it) }
+                                        section(
+                                            if (paused) "work apps paused" else "work apps",
+                                            apps.apps.filter { it.work }.map { AppHit.Android(it) },
+                                            listOf((if (paused) "turn on" else "pause") to { apps.pauseWork(!paused) }),
+                                        )
+                                    }
+                                    // Clones too, as stock drawers list them: second copies of the owner's apps.
+                                    DrawerTab.Personal -> {
+                                        if (linuxState == LinuxState.Installed) {
+                                            section("linux", runtime.linuxApps.map { AppHit.Linux(it) })
+                                        } else {
+                                            // Linux apps would be listed here; without Linux, one quiet offer instead.
+                                            item(key = "linux-offer") {
+                                                Row(Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                    BasicText("linux apps", Modifier.weight(1f), style = Mono.copy(color = Palette.muted))
+                                                    BracketAction(if (linuxState is LinuxState.Installing) "installing…" else "install linux", Palette.accent) {
+                                                        state.closeNow()
+                                                        state.linuxOpen = true
+                                                    }
                                                 }
                                             }
                                         }
+                                        section("android", apps.apps.filter { !it.work && !it.isPrivate }.map { AppHit.Android(it) })
                                     }
-                                    section("android", apps.apps.filter { !it.work }.map { AppHit.Android(it) })
                                 }
                             }
                         }

@@ -50,15 +50,17 @@ data class AndroidApp(
     val system: Boolean = false,
     /** [user] is a clone profile, holding a second copy of an app the owner has too, rather than a work profile. */
     val clone: Boolean = false,
+    /** [user] is Android Private Space. Its apps appear only in the private drawer tab while unlocked. */
+    val isPrivate: Boolean = false,
 ) {
     /** Stable across restarts and unique across profiles; icons, usage and pinned apps go by it. */
     val key get() = androidAppKey(component, profile)
 
-    /** What screen readers say: "Work WhatsApp" or "Clone WhatsApp" beside "WhatsApp". */
-    val spoken get() = spokenLabel(label, profile, clone)
+    /** What screen readers say to distinguish personal, work, clone and private copies. */
+    val spoken get() = spokenLabel(label, profile, clone, isPrivate)
 
-    /** In a work profile: neither the launcher's own nor a clone. */
-    val work get() = profile != null && !clone
+    /** In a work profile: neither the launcher's own, a clone, nor Private Space. */
+    val work get() = profile != null && !clone && !isPrivate
 }
 
 /** [label] as screen readers say it, worded as Android's own badged labels; [profile] and [clone] as in [AndroidApp]. */
@@ -66,8 +68,10 @@ fun spokenLabel(
     label: String,
     profile: Long?,
     clone: Boolean = false,
+    isPrivate: Boolean = false,
 ) = when {
     profile == null -> label
+    isPrivate -> "Private $label"
     clone -> "Clone $label"
     else -> "Work $label"
 }
@@ -83,7 +87,7 @@ fun androidAppKey(
  * LauncherApps callbacks, so the drawer never waits on PackageManager.
  * Labels arrive first; icons fill in behind them. Apps in a work profile are listed beside the
  * owner's with a briefcase on their icons, apps in a clone profile with the clone mark stock
- * launchers use. Private space stays hidden: listing it takes ACCESS_HIDDEN_PROFILES.
+ * launchers use. Private Space apps have a separate, lock-aware drawer tab.
  */
 class AndroidAppCatalog(
     private val context: Context,
@@ -113,6 +117,19 @@ class AndroidAppCatalog(
     var workProfiles by mutableStateOf(emptySet<Long>())
         private set
 
+    /** Known Private Space profiles, including a locked or empty one. */
+    var privateProfiles by mutableStateOf(emptySet<Long>())
+        private set
+
+    private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
+    var privateShown by mutableStateOf(prefs.getBoolean(PRIVATE_SHOWN, true))
+        private set
+
+    fun updatePrivateShown(shown: Boolean) {
+        privateShown = shown
+        prefs.edit().putBoolean(PRIVATE_SHOWN, shown).apply()
+    }
+
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val userManager = context.getSystemService(UserManager::class.java)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -120,6 +137,8 @@ class AndroidAppCatalog(
     @OptIn(ExperimentalCoroutinesApi::class)
     private val iconDispatcher = Dispatchers.IO.limitedParallelism(4)
     private var loading: Job? = null
+    private var generation = 0
+    private var lockGate by mutableStateOf(PrivateLockGate())
 
     /** Icon edge in px: the drawer's 52dp icon at this screen's density. */
     private val iconPx = (52 * context.resources.displayMetrics.density).toInt().coerceAtLeast(48)
@@ -158,9 +177,19 @@ class AndroidAppCatalog(
                 override fun onReceive(
                     context: Context,
                     intent: Intent,
-                ) = reload()
+                ) {
+                    // A lock broadcast must remove already rendered private labels and icons now.
+                    invalidatePrivate()
+                    reload()
+                }
             }
         if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, profileChanged, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, profileChanged)
+        reload()
+    }
+
+    /** Recheck profile visibility and quiet mode after a role change or return from system authentication. */
+    fun refresh() {
+        invalidatePrivate()
         reload()
     }
 
@@ -168,18 +197,23 @@ class AndroidAppCatalog(
      * Opens [app] in its profile. One in a paused work profile asks to turn work apps back on
      * instead (the system may ask for the work PIN first); a second tap then opens it.
      */
-    fun open(app: AndroidApp) = open(app.component, app.user)
+    fun open(app: AndroidApp) {
+        if (!accessible(app)) return
+        open(app.component, app.user)
+    }
 
     /** Opens a pinned app; [profile] as in [AndroidApp.profile]. */
     fun open(
         component: ComponentName,
         profile: Long?,
     ) {
-        val user = if (profile == null) Process.myUserHandle() else userManager.getUserForSerialNumber(profile)
+        val user = if (profile == null) Process.myUserHandle() else userFor(profile)
         if (user == null) {
             Log.w(TAG, "cannot open $component: its profile $profile is gone")
             return
         }
+        // Home shortcuts cannot open Private Space, including stale persisted shortcuts.
+        if (!outsidePrivate(user)) return
         open(component, user)
     }
 
@@ -187,7 +221,7 @@ class AndroidAppCatalog(
         component: ComponentName,
         user: UserHandle,
     ) {
-        if (userManager.isQuietModeEnabled(user)) {
+        if (quiet(user)) {
             runCatching { userManager.requestQuietModeEnabled(false, user) }.onFailure { Log.w(TAG, "cannot resume profile $user", it) }
             return
         }
@@ -196,13 +230,37 @@ class AndroidAppCatalog(
             .onFailure { Log.w(TAG, "cannot open $component in $user", it) }
     }
 
+    /** Locked Private Space must be unlocked through its tab's system action. */
+    fun pausePrivate(pause: Boolean) {
+        if (pause) {
+            lockGate = lockGate.request(privateProfiles)
+            invalidatePrivate()
+        }
+        for (profile in privateProfiles) {
+            val user = userFor(profile) ?: continue
+            // A second tap while locking cannot undo the in-flight lock request.
+            if (!pause && lockGate.blocks(profile)) {
+                if (quietState(user) != true) continue
+                // Android already locked it, even if the catalog scan has not observed that yet.
+                lockGate = lockGate.observedLocked(setOf(profile))
+            }
+            val requested = runCatching { userManager.requestQuietModeEnabled(pause, user) }
+                .onFailure { Log.w(TAG, "cannot ${if (pause) "lock" else "unlock"} private profile $profile", it) }
+                .getOrDefault(false)
+            if (pause && !requested) lockGate = lockGate.failed(profile)
+        }
+        reload()
+    }
+
+    fun privateLocked(profile: Long): Boolean = lockGate.blocks(profile) || paused(profile)
+
     /**
      * Pauses the work profiles or turns them back on, like stock launchers' work apps switch.
      * The system only lets the default launcher, while it's in front; turning them on may ask for the work PIN.
      */
     fun pauseWork(pause: Boolean) {
         for (profile in workProfiles) {
-            val user = userManager.getUserForSerialNumber(profile) ?: continue
+            val user = userFor(profile) ?: continue
             runCatching { userManager.requestQuietModeEnabled(pause, user) }
                 .onFailure { Log.w(TAG, "cannot ${if (pause) "pause" else "resume"} profile $profile", it) }
         }
@@ -210,12 +268,14 @@ class AndroidAppCatalog(
 
     /** The system's App info page, as stock launchers open it. */
     fun openInfo(app: AndroidApp) {
+        if (!accessible(app)) return
         runCatching { launcherApps.startAppDetailsActivity(app.component, app.user, null, null) }
             .onFailure { Log.w(TAG, "cannot open info for ${app.component}", it) }
     }
 
     /** Asks the system to uninstall; the list updates through the package callback. */
     fun uninstall(app: AndroidApp) {
+        if (!accessible(app)) return
         runCatching {
             context.startActivity(
                 Intent(Intent.ACTION_DELETE, Uri.parse("package:" + app.component.packageName))
@@ -225,8 +285,50 @@ class AndroidAppCatalog(
         }.onFailure { Log.w(TAG, "cannot uninstall ${app.component}", it) }
     }
 
+    fun canUsePrivate(app: AndroidApp) =
+        app.isPrivate && privateShown && app.profile in privateProfiles && !lockGate.blocks(app.profile) &&
+            apps.any { it.key == app.key && it.isPrivate } && accessible(app.user)
+
+    private fun accessible(app: AndroidApp) = !app.isPrivate || canUsePrivate(app)
+
+    private fun accessible(user: UserHandle): Boolean {
+        if (user == Process.myUserHandle()) return true
+        return when (profileKind(user)) {
+            ProfileKind.Private -> privateShown && !quiet(user)
+            null -> false
+            else -> true
+        }
+    }
+
+    /** Only ordinary profiles may feed home shortcuts and widget data. */
+    fun outsidePrivate(user: UserHandle): Boolean =
+        user == Process.myUserHandle() || profileKind(user)?.let { it != ProfileKind.Private } == true
+
+    fun outsidePrivate(profile: Long?): Boolean =
+        profile == null || userFor(profile)?.let(::outsidePrivate) == true
+
+    private fun userFor(profile: Long): UserHandle? = runCatching { userManager.getUserForSerialNumber(profile) }.getOrNull()
+
+    private fun quietState(user: UserHandle): Boolean? = runCatching { userManager.isQuietModeEnabled(user) }.getOrNull()
+
+    private fun quiet(user: UserHandle): Boolean = quietState(user) != false
+
+    private fun privateAvailable(app: AndroidApp): Boolean =
+        !lockGate.blocks(app.profile) && profileKind(app.user) == ProfileKind.Private && !quiet(app.user)
+
+    /** Purges private data before an unavailable-profile broadcast can be followed by another frame. */
+    private fun invalidatePrivate() {
+        loading?.cancel()
+        generation++
+        val removed = apps.filter { it.isPrivate }.mapTo(HashSet()) { it.key }
+        apps.removeAll { it.isPrivate }
+        icons.keys.removeAll(removed)
+        masks.keys.removeAll(removed)
+    }
+
     private fun reload(evict: String? = null) {
         loading?.cancel()
+        val current = ++generation
         loading =
             scope.launch {
                 if (evict != null) {
@@ -237,6 +339,8 @@ class AndroidAppCatalog(
                 var paused = emptySet<Long>()
                 var clones = emptySet<Long>()
                 var works = emptySet<Long>()
+                var privates = emptySet<Long>()
+                var confirmedLocked = emptySet<Long>()
                 val infos =
                     withContext(Dispatchers.IO) {
                         val me = Process.myUserHandle()
@@ -244,24 +348,38 @@ class AndroidAppCatalog(
                         val profiles = listOf(me) + runCatching { launcherApps.profiles }.getOrDefault(emptyList()).filter { it != me }
                         profiles
                             .flatMap { user ->
-                                val profile = if (user == me) null else userManager.getSerialNumberForUser(user)
-                                val clone = profile != null && isClone(user)
-                                if (profile != null && userManager.isQuietModeEnabled(user)) paused += profile
+                                val profile = if (user == me) null else runCatching { userManager.getSerialNumberForUser(user) }.getOrNull()?.takeIf { it >= 0 }
+                                if (user != me && profile == null) return@flatMap emptyList()
+                                val kind = if (profile == null) ProfileKind.Personal else profileKind(user)
+                                if (kind == null) return@flatMap emptyList()
+                                val clone = kind == ProfileKind.Clone
+                                val isPrivate = kind == ProfileKind.Private
+                                val quietMode = if (profile == null) false else quietState(user)
+                                if (profile != null && quietMode != false) paused += profile
+                                if (profile != null && kind == ProfileKind.Private && quietMode == true) confirmedLocked += profile
                                 if (profile != null && clone) clones += profile
-                                if (profile != null && !clone) works += profile
-                                runCatching { launcherApps.getActivityList(null, user) }
-                                    .onFailure { Log.w(TAG, "cannot list apps in $user", it) }
+                                if (profile != null && kind == ProfileKind.Work) works += profile
+                                if (profile != null && isPrivate) privates += profile
+                                if (isPrivate && (quietMode != false || lockGate.blocks(profile))) return@flatMap emptyList()
+                                // A profile can lock or disappear while resolving labels, too.
+                                runCatching {
+                                    launcherApps.getActivityList(null, user)
+                                        .filter { it.componentName.packageName != context.packageName }
+                                        .map { it to AndroidApp(it.label.toString(), it.componentName, user, profile, it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0, clone = clone, isPrivate = isPrivate) }
+                                }.onFailure { Log.w(TAG, "cannot list apps in $user", it) }
                                     .getOrDefault(emptyList())
-                                    .filter { it.componentName.packageName != context.packageName }
-                                    .map { it to AndroidApp(it.label.toString(), it.componentName, user, profile, it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0, clone = clone) }
                             }
                             // The same app in two profiles: the owner's one first.
                             .sortedWith(compareBy({ it.second.label.lowercase() }, { it.second.profile != null }))
                     }
+                if (current != generation) return@launch
+                val visibleInfos = infos.filter { (_, app) -> !app.isPrivate || privateAvailable(app) }
+                lockGate = lockGate.observedLocked(confirmedLocked)
                 pausedProfiles = paused
                 cloneProfiles = clones
                 workProfiles = works
-                val list = infos.map { it.second }
+                privateProfiles = privates
+                val list = visibleInfos.map { it.second }
                 if (list != apps.toList()) {
                     apps.clear()
                     apps += list
@@ -269,7 +387,7 @@ class AndroidAppCatalog(
                 val present = list.mapTo(HashSet()) { it.key }
                 icons.keys.retainAll(present)
                 masks.keys.retainAll(present)
-                for ((info, app) in infos) {
+                for ((info, app) in visibleInfos) {
                     if (app.key in icons) continue
                     launch {
                         // Both styles are rendered up front so switching is instant; masks are 1 byte per pixel.
@@ -281,11 +399,15 @@ class AndroidAppCatalog(
                                     d.setBounds(0, 0, iconPx, iconPx)
                                     d.draw(Canvas(bmp))
                                     var mask = iconMask(d, iconPx)
-                                    if (app.profile != null) mask = addBadge(bmp, mask, if (app.clone) cloneMark else briefcase)
+                                    if (app.profile != null) mask = addBadge(bmp, mask, when {
+                                        app.isPrivate -> privateMark
+                                        app.clone -> cloneMark
+                                        else -> briefcase
+                                    })
                                     bmp.asImageBitmap() to mask.asImageBitmap()
                                 }.getOrNull()
                             }
-                        if (rendered != null) {
+                        if (rendered != null && current == generation && (!app.isPrivate || privateAvailable(app))) {
                             icons[app.key] = rendered.first
                             masks[app.key] = rendered.second
                         }
@@ -295,15 +417,17 @@ class AndroidAppCatalog(
     }
 
     /**
-     * Whether [user] is a clone profile. Only Android 15 on tells a launcher a profile's kind;
-     * before, every profile beside ours counts as work.
+     * Only Android 15 on tells a launcher a profile's kind; before, every profile beside
+     * ours counts as work. A failed or unknown classification on modern Android stays hidden.
      */
-    private fun isClone(user: UserHandle) =
-        Build.VERSION.SDK_INT >= 35 &&
-            runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull() == UserManager.USER_TYPE_PROFILE_CLONE
+    private fun profileKind(user: UserHandle): ProfileKind? =
+        classifyProfile(
+            Build.VERSION.SDK_INT,
+            runCatching { if (Build.VERSION.SDK_INT >= 35) launcherApps.getLauncherUserInfo(user)?.userType else null }.getOrNull(),
+        )
 
     /**
-     * Marks an icon from another profile with [mark] (a briefcase, or the clone mark) in its corner, and its
+     * Marks an icon from another profile with [mark] in its corner, and its
      * silhouette too, where a gap cut around the mark keeps it apart from the logo in one color. Drawn here rather
      * than taken from the system (PackageManager.getUserBadgedIcon), which leaves some work profiles unbadged.
      */
@@ -333,6 +457,15 @@ class AndroidAppCatalog(
 
     companion object {
         private const val TAG = "apps"
+        private const val PRIVATE_SHOWN = "private_apps_shown"
+
+        /** Material's lock glyph, distinct from the work briefcase. */
+        private val privateMark by lazy {
+            PathParser()
+                .parsePathString("M18,8h-1V6a5,5 0,0 0,-10 0v2H6c-1.1,0 -2,0.9 -2,2v10c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V10c0,-1.1 -0.9,-2 -2,-2zM9,6a3,3 0,0 1,6 0v2H9V6z")
+                .toPath()
+                .asAndroidPath()
+        }
 
         /** Material's "work" glyph, 24 units square. */
         private val briefcase by lazy {

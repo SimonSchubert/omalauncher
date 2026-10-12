@@ -9,6 +9,15 @@ class DrawerTabsTest {
     @Test fun tabsFollowTheProfiles() {
         assertEquals(listOf(DrawerTab.Personal), drawerTabs(work = false))
         assertEquals(listOf(DrawerTab.Personal, DrawerTab.Work), all)
+        assertEquals(listOf(DrawerTab.Personal, DrawerTab.Private), drawerTabs(work = false, privateSpace = true))
+        assertEquals(listOf(DrawerTab.Personal, DrawerTab.Work, DrawerTab.Private), drawerTabs(work = true, privateSpace = true))
+        assertEquals(listOf(DrawerTab.Personal), drawerTabs(work = false, privateSpace = true, privateShown = false))
+    }
+
+    @Test fun privateTabIsStableWhileLockedOrEmpty() {
+        // Tab membership uses profile existence, not the current launchable-app count.
+        val lockedWithNoApps = drawerTabs(work = false, privateSpace = true)
+        assertEquals(DrawerTab.Private, swipedTab(lockedWithNoApps, DrawerTab.Personal, -80f, 50f))
     }
 
     @Test fun swipingLeftBringsTheNextTab() {
