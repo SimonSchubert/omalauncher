@@ -94,6 +94,9 @@ fun StyleScreen(
             StyleOption("icons", listOf("monochrome", "colored"), if (LauncherStyle.monochromeIcons) 0 else 1) { store.setMonochromeIcons(it == 0) }
             StyleOption("home apps", listOf("boxed", "icon only"), if (LauncherStyle.bareAppIcons) 1 else 0) { store.setBareAppIcons(it == 1) }
             StyleOption("recent apps", listOf("shown", "hidden"), if (LauncherStyle.recentApps) 0 else 1) { store.setRecentApps(it == 0) }
+            if (LauncherStyle.recentApps) {
+                StyleOption("bar apps", listOf("recent", "picked"), if (LauncherStyle.pinnedApps) 1 else 0) { store.setPinnedApps(it == 1) }
+            }
             StyleOption("corners", Corners.entries.map { it.label }, LauncherStyle.corners.ordinal) { store.setCorners(Corners.entries[it]) }
             if (linux == LinuxState.Installed) TerminalSection(runtime.terminalFont)
         }

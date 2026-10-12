@@ -65,6 +65,23 @@ private data class FolderEntry(
 )
 
 /**
+ * The keys ([AppHit.Android.key], the catalog's `a:`-prefixed [AndroidApp.key]) of the Android apps kept
+ * on the home screen, last pinned first, capped at [limit]: what the strip above the bar lists when it shows
+ * picked apps instead of recently used ones. A folder contributes its apps, so the whole folder is on the bar
+ * without listing each app. A pinned Linux app has no Android key, so it never lists.
+ */
+internal fun pinnedShortcuts(
+    items: List<Shortcut>,
+    limit: Int,
+): List<String> =
+    items
+        .asReversed()
+        .filter { it.linux == null }
+        .map { "a:" + it.key.removePrefix("app:") }
+        .distinct()
+        .take(limit)
+
+/**
  * Pinned apps and their folders, saved launcher-side next to the grid layout.
  * Folders are saved apart from the apps, so a launcher that predates them
  * still reads its apps (each back on the grid on its own).
@@ -231,6 +248,13 @@ class Shortcuts(
         }
         save()
     }
+
+    /**
+     * The keys of the Android apps kept on the home screen, last pinned first, for the bar's picked mode.
+     * A folder contributes its apps, so the whole folder is on the bar without listing each app. A pinned
+     * Linux app is left out: the bar opens apps by package, which a .desktop entry doesn't have.
+     */
+    fun pinned(limit: Int): List<String> = pinnedShortcuts(items, limit)
 
     /** Takes an app, or a folder with all its apps, off the home screen. */
     fun remove(key: String) {

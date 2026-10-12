@@ -148,6 +148,7 @@ class ThemeStore(
         LauncherStyle.monochromeIcons = prefs.getBoolean(MONO_ICONS, false)
         LauncherStyle.bareAppIcons = prefs.getBoolean(BARE_APP_ICONS, false)
         LauncherStyle.recentApps = prefs.getBoolean(RECENT_APPS, true)
+        LauncherStyle.pinnedApps = prefs.getBoolean(PINNED_APPS, false)
         LauncherStyle.corners = Corners.of(prefs.getString(CORNERS, null))
     }
 
@@ -164,6 +165,11 @@ class ThemeStore(
     fun setRecentApps(on: Boolean) {
         LauncherStyle.recentApps = on
         prefs.edit().putBoolean(RECENT_APPS, on).apply()
+    }
+
+    fun setPinnedApps(on: Boolean) {
+        LauncherStyle.pinnedApps = on
+        prefs.edit().putBoolean(PINNED_APPS, on).apply()
     }
 
     fun setCorners(corners: Corners) {
@@ -494,6 +500,7 @@ class ThemeStore(
         private const val MONO_ICONS = "mono_icons"
         private const val BARE_APP_ICONS = "bare_app_icons"
         private const val RECENT_APPS = "recent_apps"
+        private const val PINNED_APPS = "pinned_apps"
         private const val CORNERS = "corners"
         private const val RENDERED_BY = "rendered_by"
         private const val DEFAULT_THEME = "tokyo-night"

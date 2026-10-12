@@ -8,6 +8,10 @@ Dates are when the build was uploaded to Play.
 
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
+- The strip above the bar can list the apps you picked (the ones on your home
+  screen, folders included) instead of the ones you opened lately: style ›
+  home screen › bar apps › picked. In that mode, an app's long press can remove it
+  from the bar.
 
 ## 0.5.0 (versionCode 10) – 2026-10-11
 

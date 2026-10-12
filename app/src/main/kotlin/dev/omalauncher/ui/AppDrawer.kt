@@ -125,10 +125,12 @@ internal fun searchApps(
     return BarSearch(ranked.map { it.first }, ranked.firstOrNull()?.let { isStrongMatch(it.second, query) } == true)
 }
 
-/** What the app cells do: open, pin to home, and the Android app's info and uninstall. */
+/** What the app cells do: open, pin to home (add to the bar in picked mode), and the Android app's info and uninstall. */
 internal class AppHandlers(
     val launch: (AppHit) -> Unit,
     val pin: (AppHit) -> Unit,
+    /** Takes an app back off the bar; in picked mode the bar is the home screen, so this unpins it. */
+    val removeFromBar: (AppHit) -> Unit,
     val info: (AndroidApp) -> Unit,
     val uninstall: (AndroidApp) -> Unit,
 )
@@ -140,6 +142,8 @@ private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>
         is AppHit.Android ->
             listOfNotNull(
                 "add to home" to { handlers.pin(this) },
+                // Picked mode lists the pinned apps, so taking one off the home screen takes it off the bar.
+                if (LauncherStyle.pinnedApps) "remove from bar" to { handlers.removeFromBar(this) } else null,
                 "app info" to { handlers.info(app) },
                 if (app.system) null else "uninstall" to { handlers.uninstall(app) },
             )
@@ -178,7 +182,7 @@ internal fun RecentStrip(
     modifier: Modifier = Modifier,
     vertical: Boolean = false,
 ) {
-    val apps = recentApps(runtime, 20)
+    val apps = barApps(runtime, 20)
     // Nothing opened yet: no strip, but its room stays, so home doesn't shift when the first app shows up.
     if (apps.isEmpty()) {
         Spacer(if (vertical) modifier.width(RecentStripHeight) else modifier.height(RecentStripHeight))
@@ -261,13 +265,23 @@ private fun StripCell(
     }
 }
 
-/** The apps opened lately, last opened first; ones not installed (or not loaded yet) are skipped. */
-private fun recentApps(
+/**
+ * The apps the strip above the bar lists: the ones opened lately, or, with pinned apps, the ones
+ * on the home screen (a folder's apps included), so only the apps the user picked show.
+ * Ones not installed (or not loaded yet) are skipped.
+ */
+private fun barApps(
     runtime: Runtime,
     limit: Int,
 ): List<AppHit> {
     val byKey = allApps(runtime).associateBy { it.key }
-    return runtime.usage.recent.mapNotNull { byKey[it] }.take(limit)
+    val keys =
+        if (LauncherStyle.pinnedApps) {
+            runtime.widgets.shortcuts.pinned(limit)
+        } else {
+            runtime.usage.recent
+        }
+    return keys.mapNotNull { byKey[it] }.take(limit)
 }
 
 /**

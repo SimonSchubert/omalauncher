@@ -103,6 +103,9 @@ object LauncherStyle {
     /** The strip of recently used apps above the bar on home. */
     var recentApps by mutableStateOf(true)
 
+    /** The strip lists the pinned apps instead of the recently used ones, so only picked apps show. */
+    var pinnedApps by mutableStateOf(false)
+
     /** How frames (tiles, panels, menus, fields) round their corners. */
     var corners by mutableStateOf(Corners.Edge)
 
