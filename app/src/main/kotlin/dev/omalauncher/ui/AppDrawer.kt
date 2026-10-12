@@ -1,5 +1,16 @@
 package dev.omalauncher.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.abs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
@@ -104,6 +115,66 @@ internal sealed interface AppHit {
         override val alias get() = if (app.profile != null) "${app.label} ${if (app.clone) "clone" else "work"}" else null
 
         override fun paused(runtime: Runtime) = runtime.androidApps.paused(app.profile)
+    }
+}
+
+/** The drawer's tabs, each listing one profile's apps while the bar is empty. */
+enum class DrawerTab(
+    val label: String,
+) {
+    Personal("personal"),
+    Work("work"),
+}
+
+/** The tabs the empty bar offers: personal, then work while there's a work profile. */
+internal fun drawerTabs(work: Boolean) = listOfNotNull(DrawerTab.Personal, DrawerTab.Work.takeIf { work })
+
+/**
+ * Where a sideways swipe of [dx] px from [current] lands: a finger moving left brings the next tab,
+ * as pages turn. Swipes shorter than [threshold] and past the ends stay put.
+ */
+internal fun swipedTab(
+    tabs: List<DrawerTab>,
+    current: DrawerTab,
+    dx: Float,
+    threshold: Float,
+): DrawerTab {
+    if (abs(dx) < threshold) return current
+    val i = tabs.indexOf(current)
+    return tabs.getOrNull(if (dx < 0) i + 1 else i - 1) ?: current
+}
+
+/** How far a sideways swipe over the drawer goes before it turns the tab. */
+private val SwipeDistance = 56.dp
+
+/** The tabs the empty bar offers right now, and the one showing: the one picked, or personal while that one's gone. */
+private fun shownTabs(
+    runtime: Runtime,
+    state: LauncherState,
+): Pair<List<DrawerTab>, DrawerTab> {
+    val tabs = drawerTabs(work = runtime.androidApps.workProfiles.isNotEmpty())
+    return tabs to (state.tab.takeIf { it in tabs } ?: DrawerTab.Personal)
+}
+
+/**
+ * Swiping sideways turns to the next or previous tab, as stock drawers' tabs do, while the bar is empty.
+ * On the list and on the scrim behind the panel, so it works anywhere, even over a short list.
+ */
+internal fun Modifier.swipeTabs(
+    runtime: Runtime,
+    state: LauncherState,
+) = pointerInput(runtime, state) {
+    val threshold = SwipeDistance.toPx()
+    var dragged = 0f
+    detectHorizontalDragGestures(
+        onDragStart = { dragged = 0f },
+        onDragEnd = {
+            val (tabs, tab) = shownTabs(runtime, state)
+            if (state.query.isBlank()) swipedTab(tabs, tab, dragged, threshold).takeIf { it != tab }?.let { state.tab = it }
+        },
+    ) { change, amount ->
+        change.consume()
+        dragged += amount
     }
 }
 
@@ -292,9 +363,9 @@ internal fun AppPanel(
     LaunchedEffect(Unit) { runtime.refreshApps() }
     val linuxState by runtime.bootstrap.state.collectAsState()
     val query = state.query
-    val listState = rememberLazyListState()
-    // New results start at the bar, where the best match is.
-    LaunchedEffect(query.isBlank(), search) { listState.scrollToItem(0) }
+    val apps = runtime.androidApps
+    // With a work profile, the empty bar lists one profile's apps at a time, as stock drawers' tabs do.
+    val (tabs, tab) = shownTabs(runtime, state)
 
     val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     // Pulling down past the end of the list drags the panel closed, like stock drawers.
@@ -332,7 +403,16 @@ internal fun AppPanel(
     Box(modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         // Full width: a wide screen fits more icons in each row rather than leaving the sides empty.
         Column(Modifier.fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp, start = 12.dp, end = 12.dp, bottom = 8.dp), horizontalArrangement = Arrangement.End) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 12.dp, start = 12.dp, end = 12.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Typing searches every profile, so the tabs step aside.
+                if (tabs.size > 1 && query.isBlank()) {
+                    ProfileTabs(tabs, tab, onPick = { state.tab = it })
+                    Spacer(Modifier.weight(1f))
+                }
                 Box(
                     Modifier
                         .size(44.dp)
@@ -357,55 +437,78 @@ internal fun AppPanel(
             // Only as tall as its rows, so taps above a short list reach the scrim behind and close the panel.
             Column(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 12.dp), verticalArrangement = Arrangement.Bottom) {
                 // Clipped, so rows scrolled up or stretched by an overscroll stop short of the settings button.
-                BoxWithConstraints(Modifier.weight(1f, fill = false).clipToBounds()) {
+                BoxWithConstraints(Modifier.weight(1f, fill = false).clipToBounds().swipeTabs(runtime, state)) {
                     val columns = (maxWidth / 76.dp).toInt().coerceAtLeast(1)
-                    // Rows bottom-up: the first item sits right above the bar.
-                    LazyColumn(
-                        state = listState,
-                        reverseLayout = true,
-                        modifier = Modifier.fillMaxWidth().nestedScroll(pullToClose),
-                        contentPadding = PaddingValues(top = 8.dp, bottom = 4.dp),
-                    ) {
-                        fun row(
-                            key: String,
-                            cells: List<AppHit>,
-                            selected: Int = -1,
-                        ) = item(key = key) {
-                            Row(Modifier.fillMaxWidth()) {
-                                cells.forEachIndexed { i, hit -> Box(Modifier.weight(1f)) { HitCell(runtime, hit, handlers, selected = i == selected) } }
-                                repeat(columns - cells.size) { Spacer(Modifier.weight(1f)) }
-                            }
-                        }
-
-                        // Each section reads top-down above the one before it.
-                        fun section(
-                            title: String,
-                            apps: List<AppHit>,
-                        ) {
-                            if (apps.isEmpty()) return
-                            val rows = apps.chunked(columns)
-                            for (r in rows.indices.reversed()) row("$title:$r", rows[r])
-                            item(key = "h:$title") { SectionLabel(title, Modifier.padding(start = 8.dp)) }
-                        }
-
-                        if (query.isNotBlank()) {
-                            search.hits.chunked(columns).forEachIndexed { r, cells -> row("q:$r", cells, highlighted - r * columns) }
-                        } else {
-                            if (linuxState == LinuxState.Installed) {
-                                section("linux", runtime.linuxApps.map { AppHit.Linux(it) })
+                    // A tab slides in from the side it was swiped or tapped towards; search results just take the list's place.
+                    AnimatedContent(
+                        targetState = tab.takeIf { query.isBlank() },
+                        transitionSpec = {
+                            val from = initialState
+                            val to = targetState
+                            if (from == null || to == null) {
+                                (EnterTransition.None togetherWith ExitTransition.None).using(SizeTransform { _, _ -> snap() })
                             } else {
-                                // Linux apps would be listed here; without Linux, one quiet offer instead.
-                                item(key = "linux-offer") {
-                                    Row(Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                        BasicText("linux apps", Modifier.weight(1f), style = Mono.copy(color = Palette.muted))
-                                        BracketAction(if (linuxState is LinuxState.Installing) "installing…" else "install linux", Palette.accent) {
-                                            state.closeNow()
-                                            state.linuxOpen = true
-                                        }
-                                    }
+                                val sign = if (to.ordinal > from.ordinal) 1 else -1
+                                slideInHorizontally { it * sign } togetherWith slideOutHorizontally { -it * sign }
+                            }
+                        },
+                        contentAlignment = Alignment.BottomCenter,
+                        label = "drawer tab",
+                    ) { shown ->
+                        val listState = rememberLazyListState()
+                        // New results start at the bar, where the best match is.
+                        if (shown == null) LaunchedEffect(search) { listState.scrollToItem(0) }
+                        // Rows bottom-up: the first item sits right above the bar.
+                        LazyColumn(
+                            state = listState,
+                            reverseLayout = true,
+                            modifier = Modifier.fillMaxWidth().nestedScroll(pullToClose),
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 4.dp),
+                        ) {
+                            fun row(
+                                key: String,
+                                cells: List<AppHit>,
+                                selected: Int = -1,
+                            ) = item(key = key) {
+                                Row(Modifier.fillMaxWidth()) {
+                                    cells.forEachIndexed { i, hit -> Box(Modifier.weight(1f)) { HitCell(runtime, hit, handlers, selected = i == selected) } }
+                                    repeat(columns - cells.size) { Spacer(Modifier.weight(1f)) }
                                 }
                             }
-                            section("android", runtime.androidApps.apps.map { AppHit.Android(it) })
+
+                            // Each section reads top-down above the one before it.
+                            fun section(
+                                title: String,
+                                hits: List<AppHit>,
+                            ) {
+                                if (hits.isEmpty()) return
+                                val rows = hits.chunked(columns)
+                                for (r in rows.indices.reversed()) row("$title:$r", rows[r])
+                                item(key = "h:$title") { SectionLabel(title, Modifier.padding(start = 8.dp)) }
+                            }
+
+                            when (shown) {
+                                null -> search.hits.chunked(columns).forEachIndexed { r, cells -> row("q:$r", cells, highlighted - r * columns) }
+                                DrawerTab.Work -> section("work apps", apps.apps.filter { it.work }.map { AppHit.Android(it) })
+                                // Clones too, as stock drawers list them: second copies of the owner's apps.
+                                DrawerTab.Personal -> {
+                                    if (linuxState == LinuxState.Installed) {
+                                        section("linux", runtime.linuxApps.map { AppHit.Linux(it) })
+                                    } else {
+                                        // Linux apps would be listed here; without Linux, one quiet offer instead.
+                                        item(key = "linux-offer") {
+                                            Row(Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                                BasicText("linux apps", Modifier.weight(1f), style = Mono.copy(color = Palette.muted))
+                                                BracketAction(if (linuxState is LinuxState.Installing) "installing…" else "install linux", Palette.accent) {
+                                                    state.closeNow()
+                                                    state.linuxOpen = true
+                                                }
+                                            }
+                                        }
+                                    }
+                                    section("android", apps.apps.filter { !it.work }.map { AppHit.Android(it) })
+                                }
+                            }
                         }
                     }
                 }
@@ -480,6 +583,29 @@ internal fun SearchField(
             }
         },
     )
+}
+
+/** Stock drawers' personal | work switch over which profile's apps the empty bar lists. */
+@Composable
+private fun ProfileTabs(
+    tabs: List<DrawerTab>,
+    chosen: DrawerTab,
+    onPick: (DrawerTab) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        for (tab in tabs) {
+            val picked = tab == chosen
+            BasicText(
+                tab.label,
+                Modifier
+                    .clip(LauncherStyle.shape(18.dp))
+                    .then(if (picked) Modifier.background(Palette.surface) else Modifier)
+                    .clickable { onPick(tab) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                style = Mono.copy(color = if (picked) Palette.accent else Palette.muted),
+            )
+        }
+    }
 }
 
 /**

@@ -56,6 +56,9 @@ data class AndroidApp(
 
     /** What screen readers say: "Work WhatsApp" or "Clone WhatsApp" beside "WhatsApp". */
     val spoken get() = spokenLabel(label, profile, clone)
+
+    /** In a work profile: neither the launcher's own nor a clone. */
+    val work get() = profile != null && !clone
 }
 
 /** [label] as screen readers say it, worded as Android's own badged labels; [profile] and [clone] as in [AndroidApp]. */
@@ -105,6 +108,10 @@ class AndroidAppCatalog(
 
     /** Whether [profile] (as in [AndroidApp.profile]) is a clone profile. */
     fun cloned(profile: Long?) = profile != null && profile in cloneProfiles
+
+    /** Serial numbers of the work profiles (Android allows one); the drawer gives their apps a tab of their own, even while there are none. */
+    var workProfiles by mutableStateOf(emptySet<Long>())
+        private set
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val userManager = context.getSystemService(UserManager::class.java)
@@ -217,6 +224,7 @@ class AndroidAppCatalog(
                 }
                 var paused = emptySet<Long>()
                 var clones = emptySet<Long>()
+                var works = emptySet<Long>()
                 val infos =
                     withContext(Dispatchers.IO) {
                         val me = Process.myUserHandle()
@@ -228,6 +236,7 @@ class AndroidAppCatalog(
                                 val clone = profile != null && isClone(user)
                                 if (profile != null && userManager.isQuietModeEnabled(user)) paused += profile
                                 if (profile != null && clone) clones += profile
+                                if (profile != null && !clone) works += profile
                                 runCatching { launcherApps.getActivityList(null, user) }
                                     .onFailure { Log.w(TAG, "cannot list apps in $user", it) }
                                     .getOrDefault(emptyList())
@@ -239,6 +248,7 @@ class AndroidAppCatalog(
                     }
                 pausedProfiles = paused
                 cloneProfiles = clones
+                workProfiles = works
                 val list = infos.map { it.second }
                 if (list != apps.toList()) {
                     apps.clear()

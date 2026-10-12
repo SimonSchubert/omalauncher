@@ -166,7 +166,7 @@ private fun DesktopScreen(
                     orientation = Orientation.Vertical,
                     state = rememberDraggableState { dy -> state.dragBy(-dy / screenHeight) },
                     onDragStopped = { velocity -> state.settle(velocity) },
-                ),
+                ).swipeTabs(runtime, state),
         )
     }
     // The bar and the panel above it; the keyboard lifts both. Nothing here takes touches while the panel is closed,
