@@ -156,6 +156,7 @@ class Review(
                 Regex("""^http GET \(a URL built from widget values\)$""") to "fetches a URL put together while the widget runs, which can send its data anywhere",
                 Regex("""^($IF_LINUX)?read file \(a path built from widget values\)$""") to "reads a file whose path is put together while the widget runs",
                 Regex("""^read Android notifications""") to "sees every notification on the phone; check nothing sends them anywhere",
+                Regex("""^read Android location""") to "reads your approximate location; check nothing sends it anywhere",
             )
 
         fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

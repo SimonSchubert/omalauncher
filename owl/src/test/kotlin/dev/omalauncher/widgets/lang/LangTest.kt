@@ -511,6 +511,15 @@ class LangTest {
         assertTrue(compileError("widget {\n Text { text: 1; onTap: volume(50) } }").contains("volume needs owl 4"))
     }
 
+    @Test fun androidLocation() {
+        val p = Compiler.compile("widget {\n meta { owl: 6 }\n source l = android.location\n Text { text: l.available ? \"\${l.lat},\${l.lon}\" : \"no location\" } }")
+        val src = p.globals[0] as Global.Source
+        assertEquals("android.location", src.kind)
+        assertTrue(p.commands.single().startsWith("read Android location"))
+        assertTrue(!p.needsLinux)
+        assertTrue(compileError("widget {\n source l = android.location\n Text { text: l } }").contains("android.location needs owl 6"))
+    }
+
     @Test fun sliderAndInput() {
         val p =
             Compiler.compile(
