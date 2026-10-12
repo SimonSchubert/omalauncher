@@ -11,6 +11,24 @@ const val BTN_MIDDLE = 0x112
 /** wl_pointer.axis_source values. */
 const val AXIS_SOURCE_WHEEL = 0
 const val AXIS_SOURCE_FINGER = 1
+internal sealed interface TouchInputEvent {
+    data class Down(
+        val surface: Surface,
+        val id: Int,
+        val x: Float,
+        val y: Float,
+    ) : TouchInputEvent
+
+    data class Motion(
+        val id: Int,
+        val x: Float,
+        val y: Float,
+    ) : TouchInputEvent
+
+    data class Up(val id: Int) : TouchInputEvent
+
+    data class Cancel(val ids: List<Int>) : TouchInputEvent
+}
 
 private const val MOD_SHIFT = 1
 private const val MOD_LOCK = 2
@@ -226,12 +244,31 @@ class Input(
     /** Surfaces that received each active touch point's down event; later events go there. */
     private val touchFocus = HashMap<Int, Surface>()
 
+    /** Clients with touch events waiting for the end of the current Android pointer frame. */
+    private val touchFrameClients = linkedSetOf<Client>()
+
     private fun touchesOf(client: Client) = client.all(TouchResource::class.java)
 
     /** Whether the surface's client listens for touch; otherwise touch is emulated with the pointer. */
     fun wantsTouch(surface: Surface) = touchesOf(surface.client).isNotEmpty()
 
-    fun touchDown(
+    /**
+     * Applies one Android pointer frame and emits one wl_touch.frame per affected client.
+     * Keeping this as one server input task preserves the frame boundary across pointers.
+     */
+    internal fun touchEvents(events: List<TouchInputEvent>) {
+        for (event in events) {
+            when (event) {
+                is TouchInputEvent.Down -> touchDown(event.surface, event.id, event.x, event.y)
+                is TouchInputEvent.Motion -> touchMotion(event.id, event.x, event.y)
+                is TouchInputEvent.Up -> touchUp(event.id)
+                is TouchInputEvent.Cancel -> touchCancel(event.ids)
+            }
+        }
+        touchFrame()
+    }
+
+    private fun touchDown(
         surface: Surface,
         id: Int,
         x: Float,
@@ -239,40 +276,62 @@ class Input(
     ) {
         if (surface.destroyed) return
         touchFocus[id] = surface
+        val resources = touchesOf(surface.client)
         val serial = server.nextSerial()
         val time = now()
-        touchesOf(surface.client).forEach {
+        resources.forEach {
             it.send(it.event(0).uint(serial).uint(time).obj(surface.id).int(id).fixed(x).fixed(y))
-            it.send(it.event(3))
         }
+        if (resources.isNotEmpty()) touchFrameClients += surface.client
     }
 
-    fun touchMotion(
+    private fun touchMotion(
         id: Int,
         x: Float,
         y: Float,
     ) {
         val surface = touchFocus[id] ?: return
+        val resources = touchesOf(surface.client)
         val time = now()
-        touchesOf(surface.client).forEach {
+        resources.forEach {
             it.send(it.event(2).uint(time).int(id).fixed(x).fixed(y))
-            it.send(it.event(3))
+        }
+        if (resources.isNotEmpty()) touchFrameClients += surface.client
+    }
+
+    private fun touchUp(id: Int) {
+        val surface = touchFocus.remove(id) ?: return
+        val resources = touchesOf(surface.client)
+        val serial = server.nextSerial()
+        val time = now()
+        resources.forEach {
+            it.send(it.event(1).uint(serial).uint(time).int(id))
+        }
+        if (resources.isNotEmpty()) touchFrameClients += surface.client
+    }
+
+    /** wl_touch.cancel cancels every active point belonging to each affected client. */
+    private fun touchCancel(ids: Collection<Int>) {
+        val clients = linkedSetOf<Client>()
+        ids.forEach { id -> touchFocus[id]?.client?.let(clients::add) }
+        for (client in clients) {
+            touchesOf(client).forEach { it.send(it.event(4)) }
+            touchFocus.entries.removeAll { it.value.client === client }
+            touchFrameClients -= client
         }
     }
 
-    fun touchUp(id: Int) {
-        val surface = touchFocus.remove(id) ?: return
-        val serial = server.nextSerial()
-        val time = now()
-        touchesOf(surface.client).forEach {
-            it.send(it.event(1).uint(serial).uint(time).int(id))
-            it.send(it.event(3))
+    private fun touchFrame() {
+        for (client in touchFrameClients) {
+            touchesOf(client).forEach { it.send(it.event(3)) }
         }
+        touchFrameClients.clear()
     }
 
     fun surfaceDestroyed(surface: Surface) {
         if (pointerFocus === surface) pointerFocus = null
         if (keyboardFocus === surface) keyboardFocus = null
-        touchFocus.values.removeAll { it === surface }
+        val ids = touchFocus.filterValues { it === surface }.keys.toList()
+        if (ids.isNotEmpty()) touchCancel(ids)
     }
 }

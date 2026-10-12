@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.wayland.Keys
+import dev.omalauncher.wayland.TouchInputEvent
 import dev.omalauncher.wayland.Surface
 import dev.omalauncher.wayland.SurfaceHit
 import dev.omalauncher.wayland.WaylandServer
@@ -33,6 +34,8 @@ class WindowManager : WindowManagerHooks {
 
     /** Each window's size in pixels, as its activity lays it out. */
     private val sizes = HashMap<XdgToplevel, Pair<Int, Int>>()
+    /** Touch IDs are shared by all input overlays attached to this seat. */
+    internal val touchPointerIds = TouchPointerIds()
 
     /** Starts the activity for an app window; set by the runtime. */
     var openAppWindow: (handle: String) -> Unit = {}
@@ -165,18 +168,7 @@ class WindowManager : WindowManagerHooks {
 
     fun wantsTouch(surface: Surface) = synchronized(server) { server.input.wantsTouch(surface) }
 
-    fun touchDown(
-        hit: SurfaceHit,
-        id: Int,
-    ) = server.postInput { touchDown(hit.surface, id, hit.x, hit.y) }
-
-    fun touchMotion(
-        id: Int,
-        x: Float,
-        y: Float,
-    ) = server.postInput { touchMotion(id, x, y) }
-
-    fun touchUp(id: Int) = server.postInput { touchUp(id) }
+    internal fun touchInput(events: List<TouchInputEvent>) = server.postInput { touchEvents(events) }
 
     fun scrollStop() = server.postInput { pointerAxisStop() }
 

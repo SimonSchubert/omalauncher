@@ -1,10 +1,15 @@
 package dev.omalauncher.ui
 
+import android.os.SystemClock
+import android.view.MotionEvent
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.isTertiaryPressed
@@ -14,7 +19,9 @@ import dev.omalauncher.wayland.AXIS_SOURCE_WHEEL
 import dev.omalauncher.wayland.BTN_LEFT
 import dev.omalauncher.wayland.BTN_MIDDLE
 import dev.omalauncher.wayland.BTN_RIGHT
+import dev.omalauncher.wayland.Client
 import dev.omalauncher.wayland.SurfaceHit
+import dev.omalauncher.wayland.TouchInputEvent
 import dev.omalauncher.wayland.XdgToplevel
 import kotlin.math.roundToInt
 
@@ -44,73 +51,217 @@ private suspend fun PointerInputScope.handlePointer(
     longPressMs: Long,
 ) = awaitPointerEventScope {
     var mouseButtons = 0
-    while (true) {
-        val event = awaitPointerEvent()
-        val change = event.changes.firstOrNull() ?: continue
-        if (change.type == PointerType.Mouse) {
-            mouseButtons = handleMouse(wm, window, event, mouseButtons)
-            change.consume()
-            continue
-        }
-        if (event.type != PointerEventType.Press || change.isConsumed) continue
+    var fallback: FallbackTouch? = null
+    val touchStream = Any()
+    val touchIds = wm.touchPointerIds
+    val touches = LinkedHashMap<PointerId, ActiveTouch>()
 
-        val start = change.position
-        val hit = window.hitTest(start.x, start.y)
-        change.consume()
-        if (!wm.onPress(window, hit) || hit == null) continue
-
-        // Clients with wl_touch (foot, GTK) get real touch: foot turns hold-and-drag into selection.
-        if (wm.wantsTouch(hit.surface)) {
-            val id = change.id.value.toInt()
-            wm.touchDown(hit, id)
-            while (true) {
-                val next = awaitPointerEvent()
-                val c = next.changes.firstOrNull { it.id == change.id } ?: break
-                // Taken by the home screen (a long press lifts a tile): the touch ends here.
-                if (c.isConsumed || !c.pressed) break
-                c.consume()
-                val d = (c.position - start) / wm.scale.toFloat()
-                wm.touchMotion(id, hit.x + d.x, hit.y + d.y)
+    fun cancelClientTouches(
+        client: Client,
+        updates: MutableList<TouchInputEvent>,
+    ) {
+        val ids = ArrayList<Int>()
+        val iterator = touches.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (entry.value.hit.surface.client === client) {
+                ids += entry.value.id
+                touchIds.release(touchStream, entry.key.value)
+                iterator.remove()
             }
-            wm.touchUp(id)
-            continue
         }
+        if (ids.isNotEmpty()) updates += TouchInputEvent.Cancel(ids)
+    }
 
-        var scrolling = false
-        var longPressed = false
-        var last = start
+    fun cancelAllTouches(updates: MutableList<TouchInputEvent>) {
+        if (touches.isEmpty()) return
+        val ids = ArrayList<Int>(touches.size)
+        for ((pointer, touch) in touches) {
+            ids += touch.id
+            touchIds.release(touchStream, pointer.value)
+        }
+        touches.clear()
+        updates += TouchInputEvent.Cancel(ids)
+    }
+
+    try {
         while (true) {
-            val next =
-                if (!scrolling && !longPressed) {
-                    withTimeoutOrNull(longPressMs) { awaitPointerEvent() }
+            val waiting = fallback
+            val event =
+                if (waiting != null && !waiting.scrolling && !waiting.longPressed) {
+                    val remaining = (waiting.longPressAt - SystemClock.uptimeMillis()).coerceAtLeast(0)
+                    withTimeoutOrNull(remaining) { awaitPointerEvent() }
                 } else {
                     awaitPointerEvent()
                 }
-            if (next == null) {
-                longPressed = true
-                wm.click(hit, BTN_RIGHT)
+            if (event == null) {
+                val pending = fallback
+                if (pending != null && !pending.scrolling && !pending.longPressed) {
+                    pending.longPressed = true
+                    wm.click(pending.hit, BTN_RIGHT)
+                }
                 continue
             }
-            val c = next.changes.firstOrNull { it.id == change.id } ?: break
-            if (c.isConsumed) {
-                if (scrolling) wm.scrollStop()
-                break
+
+            val first = event.changes.firstOrNull()
+            if (first?.type == PointerType.Mouse) {
+                mouseButtons = handleMouse(wm, window, event, mouseButtons)
+                first.consume()
+                continue
             }
-            c.consume()
-            if (!c.pressed) {
-                if (scrolling) wm.scrollStop() else if (!longPressed) wm.click(hit, BTN_LEFT)
-                break
+
+            var updates: ArrayList<TouchInputEvent>? = null
+            fun touchUpdates(): ArrayList<TouchInputEvent> =
+                updates ?: ArrayList<TouchInputEvent>().also { updates = it }
+
+            if (event.isAndroidCancel()) {
+                if (touches.isNotEmpty()) {
+                    val cancelled = ArrayList<TouchInputEvent>()
+                    cancelAllTouches(cancelled)
+                    wm.touchInput(cancelled)
+                }
+                fallback?.let { if (it.scrolling) wm.scrollStop() }
+                fallback = null
+                event.changes.forEach { it.consume() }
+                continue
             }
-            if (!scrolling && !longPressed && (c.position - start).getDistance() > touchSlop) {
-                scrolling = true
-                wm.pointerMove(hit)
+
+            for (change in event.changes) {
+                val touch = touches[change.id]
+                if (touch != null) {
+                    if (change.isConsumed) {
+                        cancelClientTouches(touch.hit.surface.client, touchUpdates())
+                        continue
+                    }
+                    change.consume()
+                    if (change.pressed) {
+                        if (change.position != change.previousPosition) {
+                            val d = (change.position - touch.start) / wm.scale.toFloat()
+                            touchUpdates() += TouchInputEvent.Motion(touch.id, touch.hit.x + d.x, touch.hit.y + d.y)
+                        }
+                    } else {
+                        touchUpdates() += TouchInputEvent.Up(touch.id)
+                        touches.remove(change.id)
+                        touchIds.release(touchStream, change.id.value)
+                    }
+                    continue
+                }
+
+                val gesture = fallback
+                if (gesture?.pointer == change.id) {
+                    if (change.isConsumed) {
+                        if (gesture.scrolling) wm.scrollStop()
+                        fallback = null
+                        continue
+                    }
+                    change.consume()
+                    if (!change.pressed) {
+                        if (gesture.scrolling) {
+                            wm.scrollStop()
+                        } else if (!gesture.longPressed) {
+                            wm.click(gesture.hit, BTN_LEFT)
+                        }
+                        fallback = null
+                        continue
+                    }
+                    if (!gesture.scrolling && !gesture.longPressed &&
+                        (change.position - gesture.start).getDistance() > touchSlop
+                    ) {
+                        gesture.scrolling = true
+                        wm.pointerMove(gesture.hit)
+                    }
+                    if (gesture.scrolling) {
+                        val d = change.position - gesture.last
+                        wm.scroll(-d.x / wm.scale, -d.y / wm.scale, AXIS_SOURCE_FINGER)
+                    }
+                    gesture.last = change.position
+                    continue
+                }
+
+                if (!change.changedToDown() || change.isConsumed) continue
+                val start = change.position
+                val hit = window.hitTest(start.x, start.y)
+                change.consume()
+                if (!wm.onPress(window, hit) || hit == null) continue
+                if (wm.wantsTouch(hit.surface)) {
+                    val id = touchIds.idFor(touchStream, change.id.value)
+                    touches[change.id] = ActiveTouch(id, hit, start)
+                    touchUpdates() += TouchInputEvent.Down(hit.surface, id, hit.x, hit.y)
+                } else if (fallback == null) {
+                    fallback =
+                        FallbackTouch(
+                            pointer = change.id,
+                            hit = hit,
+                            start = start,
+                            last = start,
+                            longPressAt = SystemClock.uptimeMillis() + longPressMs,
+                        )
+                }
             }
-            if (scrolling) {
-                val d = c.position - last
-                wm.scroll(-d.x / wm.scale, -d.y / wm.scale, AXIS_SOURCE_FINGER)
-            }
-            last = c.position
+            updates?.let(wm::touchInput)
         }
+    } finally {
+        if (touches.isNotEmpty()) {
+            val updates = ArrayList<TouchInputEvent>()
+            cancelAllTouches(updates)
+            wm.touchInput(updates)
+        }
+        fallback?.let { if (it.scrolling) wm.scrollStop() }
+    }
+}
+
+private fun PointerEvent.isAndroidCancel() =
+    (motionEvent as? MotionEvent)?.actionMasked == MotionEvent.ACTION_CANCEL
+
+private data class ActiveTouch(
+    val id: Int,
+    val hit: SurfaceHit,
+    val start: Offset,
+)
+
+private data class FallbackTouch(
+    val pointer: PointerId,
+    val hit: SurfaceHit,
+    val start: Offset,
+    var last: Offset,
+    val longPressAt: Long,
+    var scrolling: Boolean = false,
+    var longPressed: Boolean = false,
+)
+
+/** Keeps simultaneous pointer IDs distinct within and across input overlays. */
+internal class TouchPointerIds {
+    private data class PointerKey(val stream: Any, val pointerId: Long)
+
+    private val byPointer = HashMap<PointerKey, Int>()
+    private val inUse = HashSet<Int>()
+    private var nextCandidate = 0
+
+    fun idFor(
+        stream: Any,
+        pointerId: Long,
+    ): Int {
+        val key = PointerKey(stream, pointerId)
+        byPointer[key]?.let { return it }
+        val original = pointerId.toInt()
+        val id =
+            if (inUse.add(original)) {
+                original
+            } else {
+                var candidate = nextCandidate
+                while (!inUse.add(candidate)) candidate++
+                nextCandidate = candidate + 1
+                candidate
+            }
+        byPointer[key] = id
+        return id
+    }
+
+    fun release(
+        stream: Any,
+        pointerId: Long,
+    ) {
+        byPointer.remove(PointerKey(stream, pointerId))?.let(inUse::remove)
     }
 }
 

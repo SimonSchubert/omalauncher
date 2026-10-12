@@ -8,6 +8,8 @@ Dates are when the build was uploaded to Play.
 
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
+- Linux touch input forwards simultaneous contacts with distinct IDs, batched
+  frames and cancellation when Android cancels a gesture or its surface closes.
 
 ## 0.5.0 (versionCode 10) – 2026-10-11
 
