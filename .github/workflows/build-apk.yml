@@ -1,0 +1,49 @@
+name: build-apk
+
+# Builds a debug APK on GitHub's machines and attaches it as a downloadable
+# artifact, so a patch can be tried on a phone without setting up Android Studio.
+#
+# This is a debug build: Android won't let it update over a Play-installed app
+# (a different signature), so the launcher has to be uninstalled first. That
+# deletes its data, Linux and themes included; see the README's release section.
+#
+# Runs on a push (so it doesn't need the token's 'workflow' scope) and by hand
+# from Actions -> build-apk -> Run workflow.
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Termux's proot and its libraries, so the built app can run its Linux side.
+      - name: Fetch proot
+        run: |
+          sudo apt-get update -q && sudo apt-get install -yq libarchive-tools
+          scripts/fetch-proot.sh
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Build
+        run: ./gradlew :app:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omalauncher-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
