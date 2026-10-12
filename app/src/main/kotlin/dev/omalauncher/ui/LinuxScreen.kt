@@ -43,6 +43,9 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 
+/** Runtime permission for LAN access when targeting SDK 37+ (not in older SDK stubs as a const). */
+internal const val ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
+
 /**
  * Everything about the optional Linux system in one place: what it adds and
  * an install button, the install's progress, or, once installed, its size
@@ -68,22 +71,27 @@ fun LinuxScreen(
 }
 
 /**
- * Starts the Linux install and asks (Android 13+) to post notifications: the foreground
- * service's notification shows the install's progress and that Linux is running.
- * The install doesn't wait for the answer, which may never come back: on the welcome
- * screen, becoming the home app moves home to a new task, away from the dialog.
+ * Starts the Linux install and asks for the permissions Linux needs: notifications
+ * (Android 13+) for the session foreground service, and local network (target SDK 37+)
+ * so Arch and widgets can reach LAN hosts. The install doesn't wait for the answers.
  */
 @Composable
 fun rememberLinuxInstall(runtime: Runtime): (List<String>) -> Unit {
     val context = LocalContext.current
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {}
     return { bins ->
         runtime.installLinux(AGENTS.filter { it.bin in bins })
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ask.launch(Manifest.permission.POST_NOTIFICATIONS)
+        val need = buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            if (context.checkSelfPermission(ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
+                add(ACCESS_LOCAL_NETWORK)
+            }
         }
+        if (need.isNotEmpty()) ask.launch(need.toTypedArray())
     }
 }
 

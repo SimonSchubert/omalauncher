@@ -1,9 +1,12 @@
 package dev.omalauncher.ui
 
+import android.content.pm.PackageManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.Canvas
@@ -80,6 +83,13 @@ private fun DesktopScreen(
     state: LauncherState,
 ) {
     val context = LocalContext.current
+    // Target SDK 37 blocks LAN until ACCESS_LOCAL_NETWORK is granted (Linux + local http widgets).
+    val askLocalNet = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        if (context.checkSelfPermission(ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
+            askLocalNet.launch(ACCESS_LOCAL_NETWORK)
+        }
+    }
     BackHandler {
         when {
             state.shared != null -> state.shared = null

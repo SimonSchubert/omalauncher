@@ -58,6 +58,8 @@ Dates are when the build was uploaded to Play.
 
 ## 0.6.0 (versionCode 11) – 2026-10-12
 
+- Ask for local network access (target SDK 37): Linux and widgets can reach
+  LAN hosts again (Cast, printers, `http://192.168.x`, …).
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
 - Cloned apps carry the clone mark instead of the briefcase, from Android 15 on.
