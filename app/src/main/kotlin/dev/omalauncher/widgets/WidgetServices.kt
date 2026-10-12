@@ -35,6 +35,7 @@ import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.bool
+import dev.omalauncher.widgets.runtime.Location
 import dev.omalauncher.widgets.runtime.Media
 import dev.omalauncher.widgets.runtime.Notifications
 import dev.omalauncher.widgets.runtime.Services
@@ -83,6 +84,9 @@ class WidgetServices(
     private val notifications = Notifications(context, media)
     private val volume = Volume(context)
 
+    /** The phone's location, for `android.location`; the home screen watches [Location.wanted] to ask for it. */
+    val location = Location(context)
+
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction: ((String) -> Unit)? = null
 
@@ -116,6 +120,7 @@ class WidgetServices(
             "media" -> media.value()
             "notifications" -> notifications.value()
             "volume" -> volume.value()
+            "location" -> location.value()
             else -> throw WidgetError("unknown android source $name")
         }
 
@@ -124,6 +129,7 @@ class WidgetServices(
             "media" -> media.updates()
             "notifications" -> notifications.updates()
             "volume" -> volume.updates()
+            "location" -> location.updates()
             "battery" ->
                 callbackFlow {
                     val receiver =

@@ -1,5 +1,6 @@
 package dev.omalauncher
 
+import android.Manifest
 import android.app.ActivityManager
 import android.app.role.RoleManager
 import android.content.Intent
@@ -8,8 +9,10 @@ import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withResumed
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +29,19 @@ class MainActivity : ComponentActivity() {
     private val runtime get() = (application as App).runtime
     private val state = LauncherState()
 
+    /** The weather widget's coarse location; asked once, the first time a widget wants it. */
+    private val locationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            getSharedPreferences("launcher", MODE_PRIVATE).edit().putBoolean("location_asked", true).apply()
+            runtime.widgets.location.refresh()
+        }
+
+    /** True once this activity has launched the location dialog. */
+    private var locationAsked = false
+
+    /** Done when the home-role chooser (if any) closes, so the two dialogs never stack. */
+    private val homeRoleDone = CompletableDeferred<Unit>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         applySystemBars(this, Palette.isLight)
@@ -41,19 +57,43 @@ class MainActivity : ComponentActivity() {
         // opting into Linux there brings up.
         lifecycleScope.launch {
             snapshotFlow { runtime.launcherReady }.first { it }
-            withResumed { requestHomeRole() }
+            if (!withResumed { requestHomeRole() }) homeRoleDone.complete(Unit)
+        }
+        // A widget on the home screen wants the phone's location: ask once, from the foreground.
+        lifecycleScope.launch {
+            snapshotFlow { runtime.launcherReady }.first { it }
+            runtime.widgets.location.wanted.first { it }
+            homeRoleDone.await()
+            withResumed { requestLocation() }
         }
     }
 
-    /** Asks once to become the default home app; Android shows its own chooser. */
-    private fun requestHomeRole() {
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != HOME_ROLE_REQUEST) return
+        homeRoleDone.complete(Unit)
+        requestLocation()
+    }
+
+    /** Asks once for the coarse location the weather widget places itself with; a denial is remembered. */
+    private fun requestLocation() {
+        if (runtime.widgets.location.granted || locationAsked) return
+        if (getSharedPreferences("launcher", MODE_PRIVATE).getBoolean("location_asked", false)) return
+        locationAsked = true
+        locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
+
+    /** Asks once to become the default home app; Android shows its own chooser. Whether it asked. */
+    private fun requestHomeRole(): Boolean {
         val roles = getSystemService(RoleManager::class.java)
-        if (!roles.isRoleAvailable(RoleManager.ROLE_HOME) || roles.isRoleHeld(RoleManager.ROLE_HOME)) return
+        if (!roles.isRoleAvailable(RoleManager.ROLE_HOME) || roles.isRoleHeld(RoleManager.ROLE_HOME)) return false
         val prefs = getSharedPreferences("launcher", MODE_PRIVATE)
-        if (prefs.getBoolean("home_role_asked", false)) return
+        if (prefs.getBoolean("home_role_asked", false)) return false
         prefs.edit().putBoolean("home_role_asked", true).apply()
         @Suppress("DEPRECATION")
-        startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_HOME), 1)
+        startActivityForResult(roles.createRequestRoleIntent(RoleManager.ROLE_HOME), HOME_ROLE_REQUEST)
+        return true
     }
 
     /**
@@ -92,6 +132,8 @@ class MainActivity : ComponentActivity() {
         removeStaleWindowTasks()
         // The user may have set or replaced the wallpaper while we were in the background.
         lifecycleScope.launch { runtime.themes.refreshLiveWallpaper() }
+        // Or granted the location permission in Android's settings.
+        runtime.widgets.location.refresh()
     }
 
     /** Drops Recents cards whose Linux window no longer exists (app exited or process restarted). */
@@ -148,5 +190,9 @@ class MainActivity : ComponentActivity() {
             else -> return false
         }
         return true
+    }
+
+    private companion object {
+        const val HOME_ROLE_REQUEST = 1
     }
 }
