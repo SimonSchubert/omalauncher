@@ -7,8 +7,10 @@ widget "today" {
 
   source now = clock every 1m
   state city = "" persist
-  // One request: the city you set, or located by IP when it's empty. Icons and °F countries match omarchy's weather panel.
-  source wx = http("https://wttr.in/${city == "" ? "" : replace(city, " ", "+")}?format=j1") every 30m timeout 10s json
+  // The city, percent-encoded so "/", "?", "&" or "#" in it can't break the URL. Empty means located by IP.
+  let q = city.replace("%", "%25").replace("+", "%2B").replace("/", "%2F").replace("?", "%3F").replace("#", "%23").replace("&", "%26").replace("'", "%27").replace(" ", "+")
+  // One request. Icons and °F countries match omarchy's weather panel.
+  source wx = http("https://wttr.in/${q}?format=j1") every 30m timeout 10s json
   let cur = wx.current_condition[0]
   let day = wx.weather[0]
   let area = wx.nearest_area[0]
