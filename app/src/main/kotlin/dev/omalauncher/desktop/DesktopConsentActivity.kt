@@ -44,7 +44,8 @@ class DesktopConsentActivity : ComponentActivity() {
             .setTitle("Allow external desktop?")
             .setMessage("$label\n${identity.packageName}\n\nThis app can display your widgets and themes, interact with widget data and actions, and request app launches. Linux and agent windows are unavailable through this bridge. You can revoke access in settings → external desktops.\n\nSigning certificate: ${identity.certificate}")
             .setPositiveButton("Allow") { _, _ ->
-                if (!access.grant(token)) Toast.makeText(this, "Desktop request expired. Connect again.", Toast.LENGTH_LONG).show()
+                if (access.grant(token)) setResult(RESULT_OK)
+                else Toast.makeText(this, "Desktop request expired. Connect again.", Toast.LENGTH_LONG).show()
                 finish()
             }
             .setNegativeButton("Deny") { _, _ -> access.deny(token); finish() }

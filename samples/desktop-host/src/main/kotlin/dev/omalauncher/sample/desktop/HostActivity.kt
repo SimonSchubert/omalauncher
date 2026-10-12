@@ -20,7 +20,6 @@ import android.os.Looper
 import android.os.UserHandle
 import android.os.UserManager
 import android.view.Display
-import android.view.SurfaceControlViewHost
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.Button
@@ -49,12 +48,25 @@ class HostActivity : Activity() {
     private lateinit var status: TextView
     private lateinit var query: EditText
     private var bound = false
-    private var consenting = false
+    private var wantDesktop = false
     private var presentation: Presentation? = null
     private var virtual: VirtualDisplay? = null
     private var reader: ImageReader? = null
     private var surface: SurfaceView? = null
     private var display: Display? = null
+    var frameCount = 0
+        private set
+    var frameColors = 0
+        private set
+    var frameSignature = 0L
+        private set
+
+    private fun dropSession() {
+        session = null
+        sessionId = null
+        frameColors = 0
+        surface?.visibility = android.view.View.INVISIBLE
+    }
 
     private val callback = object : IDesktopHost.Stub() {
         override fun onAndroidLaunch(id: String, component: ComponentName, user: UserHandle, serial: Long) = runOnUiThread {
@@ -79,16 +91,21 @@ class HostActivity : Activity() {
             if (id != sessionId) return@runOnUiThread
             lastStatus = state
             show("$state: $message")
-            if (state in listOf("disconnected", "revoked", "failed")) { session = null; surface?.visibility = android.view.View.INVISIBLE }
+            if (state in listOf("disconnected", "revoked", "failed")) dropSession()
         }
     }
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
             bridge = IDesktopBridge.Stub.asInterface(service)
             show(bridge!!.negotiate(1).getString("status").orEmpty())
+            if (wantDesktop) connect()
         }
-        override fun onServiceDisconnected(name: ComponentName) { bridge = null; session = null; surface?.visibility = android.view.View.INVISIBLE; show("disconnected") }
-        override fun onBindingDied(name: ComponentName) { onServiceDisconnected(name) }
+        override fun onServiceDisconnected(name: ComponentName) { bridge = null; dropSession(); show("disconnected") }
+        override fun onBindingDied(name: ComponentName) {
+            onServiceDisconnected(name)
+            if (bound) { unbindService(this); bound = false }
+            if (!isFinishing) bindBridge()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,27 +124,38 @@ class HostActivity : Activity() {
         button("Disconnect") { disconnect() }
         button("Revoke host approval") { bridge?.revokeAccess() }
         setContentView(column)
-        bound = bindService(Intent("dev.omalauncher.action.EXTERNAL_DESKTOP").setPackage("dev.omalauncher"), connection, Context.BIND_AUTO_CREATE)
+        bindBridge()
+    }
+
+    private fun bindBridge() {
+        bound = bindService(Intent("dev.omalauncher.action.EXTERNAL_DESKTOP").setPackage(BuildConfig.PROVIDER_PACKAGE), connection, Context.BIND_AUTO_CREATE)
         if (!bound) show("Provider absent; keep using the host's normal desktop")
     }
 
-    override fun onResume() {
-        super.onResume()
-        if (consenting) { consenting = false; connect() }
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != 1) return
+        if (resultCode == RESULT_OK) connect()
+        else { wantDesktop = false; show("consent_required: approval was not granted") }
     }
 
     fun connect() {
-        val bridge = bridge ?: return show("Provider unavailable")
+        wantDesktop = true
+        val bridge = bridge ?: run {
+            if (bound) { unbindService(connection); bound = false }
+            bindBridge()
+            return show(if (bound) "connecting" else "Provider unavailable")
+        }
         val probe = bridge.negotiate(1)
         when (probe.getString("status")) {
             "consent_required" -> {
                 val request = bridge.requestConsent()
                 @Suppress("DEPRECATION")
                 val consent = request.getParcelable<PendingIntent>("consent") ?: return show("Consent unavailable")
-                consenting = true
                 startIntentSenderForResult(consent.intentSender, 1, null, 0, 0, 0)
             }
-            "ready" -> createDesktop()
+            "ready" -> runCatching { createDesktop() }.onFailure { disconnect(); show("failed: ${it.message}") }
             else -> show(probe.getString("status").orEmpty())
         }
     }
@@ -136,55 +164,78 @@ class HostActivity : Activity() {
         if (session != null) return
         if (presentation != null) { surface?.visibility = android.view.View.VISIBLE; openSurface(); return }
         val manager = getSystemService(DisplayManager::class.java)
-        display = manager.displays.firstOrNull { it.displayId != Display.DEFAULT_DISPLAY }
+        // Tests capture their own display even when the emulator has another monitor.
+        display = if (intent.getBooleanExtra("captureDisplay", false)) null
+            else manager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION).firstOrNull()
         if (display == null) {
             // Allows lifecycle/authorization tests on a phone or emulator without a physical monitor.
             reader = ImageReader.newInstance(1280, 720, PixelFormat.RGBA_8888, 3).also { images ->
-                images.setOnImageAvailableListener({ it.acquireLatestImage()?.close() }, Handler(Looper.getMainLooper()))
+                images.setOnImageAvailableListener({ source ->
+                    source.acquireLatestImage()?.use { image ->
+                        val plane = image.planes[0]
+                        val buffer = plane.buffer
+                        val colors = HashSet<Int>()
+                        var signature = 17L
+                        for (y in 0 until image.height step 16) for (x in 0 until image.width step 16) {
+                            val at = y * plane.rowStride + x * plane.pixelStride
+                            val color = (buffer.get(at).toInt() and 255) or ((buffer.get(at + 1).toInt() and 255) shl 8) or ((buffer.get(at + 2).toInt() and 255) shl 16)
+                            colors += color
+                            signature = 31 * signature + color
+                        }
+                        frameCount++
+                        frameColors = colors.size
+                        frameSignature = signature
+                    }
+                }, Handler(Looper.getMainLooper()))
             }
             virtual = manager.createVirtualDisplay("Desktop bridge test", 1280, 720, 160, reader!!.surface,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY)
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY or DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION)
             display = virtual?.display ?: return show("No external display")
         }
         presentation = object : Presentation(this, display!!) {
             override fun onCreate(savedInstanceState: Bundle?) {
                 super.onCreate(savedInstanceState)
-                surface = SurfaceView(context).apply {
+                surface = SurfaceView(this.context).apply {
                     holder.addCallback(object : SurfaceHolder.Callback {
                         override fun surfaceCreated(holder: SurfaceHolder) = openSurface()
                         override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                            if (session == null) openSurface() else session?.resize(width, height)
+                            if (session == null) openSurface() else runCatching { session?.resize(width, height) }.onFailure { dropSession(); show("disconnected: ${it.message}") }
                         }
                         override fun surfaceDestroyed(holder: SurfaceHolder) { runCatching { session?.close() }; session = null }
                     })
                 }
-                setContentView(surface)
+                // Explicit receiver: Activity.setContentView accepts a nullable View and can
+                // otherwise win overload resolution over Dialog's non-null overload.
+                this.setContentView(checkNotNull(surface))
             }
         }.also { it.show() }
     }
 
     private fun openSurface() {
+        runCatching { attachSurface() }.onFailure { dropSession(); show("failed: ${it.message}") }
+    }
+
+    private fun attachSurface() {
         val view = surface ?: return
         val token = view.hostToken ?: return
         val frame = view.holder.surfaceFrame
         if (session != null || frame.width() < 1 || frame.height() < 1) return
         val metrics = Bundle().apply { putInt("displayId", display!!.displayId); putInt("width", frame.width()); putInt("height", frame.height()); putString("profile", "sample") }
         val result = bridge?.openSession(1, metrics, token, callback) ?: return
-        result.classLoader = SurfaceControlViewHost.SurfacePackage::class.java.classLoader
         show(result.getString("status").orEmpty())
         if (result.getString("status") != "connected") return
         sessionId = result.getString("sessionId")
         session = IDesktopSession.Stub.asInterface(result.getBinder("session"))
-        @Suppress("DEPRECATION")
-        val remote = result.getParcelable<SurfaceControlViewHost.SurfacePackage>("surface") ?: return
-        view.setChildSurfacePackage(remote)
-        // SurfaceView retains its own native reference.
-        remote.release()
+        val remote = session!!.getSurface()
+        try { view.setChildSurfacePackage(remote) }
+        catch (error: Exception) { remote.release(); runCatching { session?.close() }; throw error }
+        // Ownership transfers to SurfaceView; it releases this package when replaced or detached.
     }
 
     private fun show(message: String) { status.text = message }
 
     fun disconnect() {
+        wantDesktop = false
         runCatching { session?.close() }
         session = null
         sessionId = null

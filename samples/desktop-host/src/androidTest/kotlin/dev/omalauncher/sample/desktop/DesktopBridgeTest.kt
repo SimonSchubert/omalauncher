@@ -32,7 +32,7 @@ class DesktopBridgeTest {
     }
 
     @Test fun consentSurfaceLaunchRevocationAndReconnect() {
-        val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, HostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as HostActivity
+        val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, HostActivity::class.java).putExtra("captureDisplay", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as HostActivity
         try {
             await("provider binding") { activity.bridge != null }
             val bridge = activity.bridge!!
@@ -49,11 +49,15 @@ class DesktopBridgeTest {
             assertTrue("provider consent dialog", allow.waitForExists(10_000))
             assertTrue(allow.click())
             await("authorized surface") { activity.session != null }
+            await("rendered desktop pixels") { activity.frameCount > 0 && activity.frameColors > 8 }
             val firstId = activity.sessionId!!
             val session = activity.session!!
+            val beforeHide = activity.frameSignature
             session.resize(1024, 640)
             session.setVisible(false)
+            await("hidden surface is cleared") { activity.frameSignature != beforeHide && activity.frameColors <= 8 }
             session.setVisible(true)
+            await("surface renders after showing") { activity.frameColors > 8 }
             session.search("settings", true)
             await("Android launch callback") { activity.lastLaunch != null }
             assertEquals(firstId, activity.lastLaunch!!.first)
@@ -70,6 +74,7 @@ class DesktopBridgeTest {
             assertTrue(allow.waitForExists(10_000))
             assertTrue(allow.click())
             await("reconnected surface") { activity.session != null }
+            await("reconnected surface renders") { activity.frameColors > 8 }
             assertNotEquals(firstId, activity.sessionId)
             activity.session!!.close()
             await("closed session") { activity.session == null }
@@ -77,10 +82,50 @@ class DesktopBridgeTest {
         } finally { ui { activity.finish() } }
     }
 
+    @Test fun denyingConsentKeepsTheStandaloneHostUsable() {
+        val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, HostActivity::class.java).putExtra("captureDisplay", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as HostActivity
+        try {
+            await("provider binding") { activity.bridge != null }
+            activity.bridge!!.revokeAccess()
+            ui { activity.connect() }
+            val deny = UiDevice.getInstance(instrumentation).findObject(UiSelector().textMatches("(?i)deny"))
+            assertTrue(deny.waitForExists(10_000))
+            assertTrue(deny.click())
+            assertEquals("consent_required", activity.bridge!!.negotiate(1).getString("status"))
+            instrumentation.waitForIdleSync()
+            assertNull(activity.session)
+            assertFalse("denial must not reopen consent", deny.waitForExists(1_000))
+        } finally { ui { activity.finish() } }
+    }
+
+    @Test fun providerDeathInvalidatesItsSurfaceAndReconnectsWithoutNewConsent() {
+        val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, HostActivity::class.java).putExtra("captureDisplay", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as HostActivity
+        try {
+            await("provider binding") { activity.bridge != null }
+            val consentRequired = activity.bridge!!.negotiate(1).getString("status") == "consent_required"
+            ui { activity.performAppLaunch = false; activity.connect() }
+            if (consentRequired) {
+                val allow = UiDevice.getInstance(instrumentation).findObject(UiSelector().textMatches("(?i)allow"))
+                assertTrue(allow.waitForExists(10_000))
+                assertTrue(allow.click())
+            }
+            await("desktop surface") { activity.session != null && activity.frameColors > 8 }
+            val old = activity.session!!
+            val oldId = activity.sessionId
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("am force-stop ${BuildConfig.PROVIDER_PACKAGE}")).use { it.readBytes() }
+            await("provider disconnected") { activity.bridge == null && activity.session == null }
+            assertThrows(android.os.RemoteException::class.java) { old.getSurface() }
+            ui { activity.connect() }
+            await("provider reconnect and fresh pixels") { activity.session != null && activity.frameColors > 8 }
+            assertNotEquals(oldId, activity.sessionId)
+            assertEquals("ready", activity.bridge!!.negotiate(1).getString("status"))
+        } finally { ui { activity.finish() } }
+    }
+
     @Test fun workProfileLaunchKeepsItsUserAndSerial() {
         val serial = InstrumentationRegistry.getArguments().getString("workSerial")?.toLong()
         org.junit.Assume.assumeNotNull(serial)
-        val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, HostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as HostActivity
+        val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, HostActivity::class.java).putExtra("captureDisplay", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as HostActivity
         try {
             await("provider binding") { activity.bridge != null }
             val consentRequired = activity.bridge!!.negotiate(1).getString("status") == "consent_required"

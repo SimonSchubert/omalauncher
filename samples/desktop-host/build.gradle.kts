@@ -1,4 +1,6 @@
 plugins { alias(libs.plugins.android.application) }
+val bridgePreview = providers.gradleProperty("omalauncher.bridgePreview").orNull == "true"
+val providerPackage = if (bridgePreview) "dev.omalauncher.bridgepreview" else "dev.omalauncher"
 
 android {
     namespace = "dev.omalauncher.sample.desktop"
@@ -10,8 +12,10 @@ android {
         versionCode = 1
         versionName = "1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "PROVIDER_PACKAGE", "\"$providerPackage\"")
+        manifestPlaceholders["providerPackage"] = providerPackage
     }
-    buildFeatures { aidl = true }
+    buildFeatures { aidl = true; buildConfig = true }
     sourceSets.getByName("main").aidl.srcDir("../../app/src/main/aidl")
 }
 

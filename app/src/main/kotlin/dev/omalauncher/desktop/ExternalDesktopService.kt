@@ -55,7 +55,7 @@ class ExternalDesktopService : Service() {
     private fun reply(status: String) = Bundle().apply {
         putInt("protocol", DESKTOP_PROTOCOL)
         putString("status", status)
-        putStringArrayList("capabilities", arrayListOf("home_surface", "widgets", "android_launch", "work_profiles", "search", "key", "surface_input"))
+        putStringArrayList("capabilities", if (Build.VERSION.SDK_INT >= 30) arrayListOf("home_surface", "widgets", "android_launch", "work_profiles", "search", "key", "surface_input") else arrayListOf())
     }
 
     private fun status(protocol: Int, identity: DesktopIdentity?): String = when {
@@ -100,7 +100,6 @@ class ExternalDesktopService : Service() {
                 reply("connected").apply {
                     putString("sessionId", session.id)
                     putBinder("session", session.binder)
-                    putParcelable("surface", session.surfacePackage)
                 }
             } catch (e: Exception) {
                 closeWhere("failed") { it.identity.uid == uid }

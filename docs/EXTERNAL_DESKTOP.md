@@ -36,7 +36,7 @@ After `ready`, create a `SurfaceView` in the host's external-display window. Wai
 
 Density/font scaling come from that Android display. Profiles are namespaced by the verified host package and certificate. A host cannot select the phone's layout or another host's profile. The provider currently allows one session per UID, and four sessions overall (`busy` if exceeded).
 
-Only `connected` returns `sessionId`, the `IDesktopSession` Binder in `session`, and a `SurfaceControlViewHost.SurfacePackage` in `surface`. Set the Bundle's class loader for `SurfacePackage` before decoding it. Attach it with `SurfaceView.setChildSurfacePackage`, then release the received parcel's native reference. The host owns its `SurfaceView`; the provider owns the view tree and view host. Use `resize`, `setVisible` and `close` for their respective lifecycle changes.
+Only `connected` returns `sessionId` and the `IDesktopSession` Binder in `session`. Call the typed `session.getSurface()` method to receive a `SurfaceControlViewHost.SurfacePackage`. Attach it with `SurfaceView.setChildSurfacePackage`; ownership transfers to the SurfaceView, which releases the package when replaced or detached. Release it yourself only if attachment fails. The typed AIDL return releases the provider's temporary parcel reference. The host owns its `SurfaceView`; the provider owns the view tree and view host. Use `resize`, `setVisible` and `close` for their respective lifecycle changes.
 
 Android forwards pointer, context-click, focus and IME input through the attached child surface. Search text also has a bounded `search(query, submit)` method; it only searches Android apps, including work aliases such as `settings work`, and submitting an empty query does not launch an app. `key(KeyEvent)` forwards hardware keys to this session. Bounded `action` values are `drawer`, `search`, `widgets`, `dismiss` and `focus`; other values report `unsupported_action` with the session ID. Text is limited to 2048 characters. Hosts that supply a phone-side IME can call `search` without touching the phone launcher's input state; a general cross-process InputConnection proxy is not part of version 1.
 
@@ -54,10 +54,22 @@ Android forwards pointer, context-click, focus and IME input through the attache
 ./gradlew :desktop-host:connectedDebugAndroidTest
 ```
 
-The cross-process instrumentation test covers version mismatch, unauthorized open, provider consent, surface creation/resize/visibility, Android launch identity, immediate revocation, stale handles, and reconnect. The pure policy tests cover UID/package/certificate mismatch and allocation/profile-name bounds. The existing work-profile support is upstream commit `6bef351`; this bridge preserves its keys, badged icons, work search aliases and stable serials.
+The cross-process instrumentation tests create their own captured virtual display, even when other emulator displays exist. They assert rendered pixels, resize/hide/show, version mismatch, unauthorized open, provider consent and denial, Android launch identity, immediate revocation, stale handles, and provider process death/reconnect. The app instrumentation tests exercise shortcut interception alongside ordinary text input, and verify all five extracted native runtime libraries. The pure policy tests cover UID/package/certificate mismatch and allocation/profile-name bounds. The existing work-profile support is upstream commit `6bef351`; this bridge preserves its keys, badged icons, work search aliases and stable serials.
 
 The optional work-profile test runs with `-Pandroid.testInstrumentationRunnerArguments.workSerial=<serial>` and requires an unlocked managed profile containing `com.google.android.deskclock` (Clock), also installed in the owner profile. It asserts the work alias returns that profile's UserHandle and serial instead of the personal copy. Without this fixture, that test is skipped.
 
 Work-app launches, app info and uninstall resolve their stable profile serial again at action time. A removed profile or reused user ID cannot silently target a replacement profile. The bridge also checks a catalog entry's serial before returning its launch request; hosts must revalidate the callback's serial at launch time.
 
-Physical-display input/IME, simultaneous phone/external interaction, host/provider process death, unplug/replug, signing rotation and work-profile lifecycle remain explicit acceptance scenarios for hardware testing. The wire contract should be reviewed upstream before omalateral replaces its current embedded desktop with this adapter.
+Physical-display input/IME, simultaneous phone/external interaction, host process death, unplug/replug, signing rotation and work-profile lifecycle remain explicit acceptance scenarios for hardware testing. The wire contract should be reviewed upstream before omalateral replaces its current embedded desktop with this adapter.
+
+## Building a complete APK on Windows
+
+Run `powershell -File scripts/fetch-proot.ps1` before building. When native source inputs match the current release tag, this helper downloads the official release APK, verifies its GitHub asset SHA-256 digest and extracts only its four patched PRoot runtime libraries. It refuses mismatched native inputs; build modified native sources with `scripts/fetch-proot.sh` under Linux instead. Gradle builds `libwlbridge.so` locally. A launcher APK without the PRoot files can run Android-only screens but cannot start its Linux environment.
+
+For device testing alongside an installed Omalauncher, build both packages with `-Pomalauncher.bridgePreview=true`. The launcher uses `dev.omalauncher.bridgepreview`, the label “Omalauncher bridge preview”, and a separate data directory/FileProvider. The sample binds that preview package. For example:
+
+```sh
+./gradlew -Pomalauncher.bridgePreview=true :app:assembleRelease :desktop-host:assembleDebug
+```
+
+Install the preview launcher and sample host, attach an external display, then open **Omalauncher desktop host sample → Connect desktop → Allow**. Use Search/Open first match to check personal and work aliases, and Disconnect/Revoke to check cleanup. This sample validates the proposed provider API; omalateral needs its own host adapter before it can use the bridge. Linux setup is optional for the Android home and work-app tests.

@@ -78,7 +78,7 @@ internal class DesktopWidgets(
                 val keep = available.map { it.file.name }.toSet()
                 for ((name, instance) in existing) {
                     val spec = available.firstOrNull { it.file.name == name }
-                    if (spec?.program !== instance.program || (spec.program?.needsLinux == true && !linux)) {
+                    if (spec?.program !== instance.program || (spec.program.needsLinux && !linux)) {
                         instance.stop()
                         instances.remove(name)
                     }

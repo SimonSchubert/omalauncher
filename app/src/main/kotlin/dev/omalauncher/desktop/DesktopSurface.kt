@@ -67,8 +67,6 @@ internal class DesktopSurface @RequiresApi(30) constructor(
     val widgets = DesktopWidgets(windowContext, runtime, "external_" + DesktopAccess.digest((identity.packageName + identity.certificate + profile).toByteArray()),
         ::launch, ::uiAction, ::unavailable, ::authorized)
 
-    val surfacePackage get() = host.surfacePackage
-
     fun attach(width: Int, height: Int) {
         view.setViewTreeLifecycleOwner(owner)
         view.setViewTreeSavedStateRegistryOwner(owner)
@@ -159,6 +157,9 @@ internal class DesktopSurface @RequiresApi(30) constructor(
             work()
         }
 
+        // A typed AIDL return carries WRITE_RETURN_VALUE, releasing the provider's parcel reference.
+        override fun getSurface(): SurfaceControlViewHost.SurfacePackage = checked { checkNotNull(host.surfacePackage) }
+
         override fun resize(width: Int, height: Int) = checked {
             DesktopRules.size(width, height)
             updateConfiguration(width, height)
@@ -184,7 +185,7 @@ internal class DesktopSurface @RequiresApi(30) constructor(
     fun dispose(reason: String) {
         if (lease.closed) return
         lease.close()
-        if (linked) { callback.asBinder().unlinkToDeath(death, 0); linked = false }
+        if (linked) { runCatching { callback.asBinder().unlinkToDeath(death, 0) }; linked = false }
         widgets.close()
         view.disposeComposition()
         owner.registry.currentState = Lifecycle.State.DESTROYED
