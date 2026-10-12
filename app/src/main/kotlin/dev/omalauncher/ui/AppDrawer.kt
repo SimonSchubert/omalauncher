@@ -67,6 +67,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.graphics.ColorFilter
 import dev.omalauncher.AndroidApp
+import dev.omalauncher.androidAppKey
 import androidx.compose.runtime.collectAsState
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
@@ -122,7 +123,7 @@ private fun allApps(runtime: Runtime): List<AppHit> = runtime.linuxApps.map { Ap
 /** [AppHit.key]s of the apps pinned to home, on their own or in a folder. */
 private fun pinnedKeys(runtime: Runtime): Set<String> =
     runtime.widgets.shortcuts.items.mapNotNullTo(HashSet()) { s ->
-        s.component?.let { "a:" + it.flattenToShortString() } ?: s.linux?.let { AppHit.Linux(it).key }
+        s.component?.let { "a:" + androidAppKey(it, s.profile) } ?: s.linux?.let { AppHit.Linux(it).key }
     }
 
 internal fun searchApps(
