@@ -3,11 +3,18 @@ widget "today" {
   order: 1
   size: 3x3
   minSize: 3x2
-  meta { description: "The date and the weather where you are, located by IP via wttr.in. Tap it for the next 24 hours, three days, wind, UV, sun and moon"; version: "1.0"; license: "MIT"; category: "world"; owl: 5 }
+  meta { description: "The date and the weather where you are, from the phone's location (wttr.in's IP guess until you allow it). Tap it for the next 24 hours, three days, wind, UV, sun and moon"; version: "1.0"; license: "MIT"; category: "world"; owl: 6 }
 
   source now = clock every 1m
-  // One request, located by IP. Icons and °F countries match omarchy's weather panel.
-  source wx = http("https://wttr.in/?format=j1") every 30m timeout 10s json
+  // The phone's own place, so a VPN or a shared IP can't move the weather.
+  source loc = android.location
+  // ~1 km is plenty for the weather; wttr takes "lat,lon". Without the location permission, wttr falls back to the IP.
+  let hasLoc = loc != null && loc.available
+  let place = hasLoc ? fixed(loc.lat, 3) + "," + fixed(loc.lon, 3) : ""
+  // One request, at the phone's location. Icons and °F countries match omarchy's weather panel.
+  source wx = http("https://wttr.in/" + place + "?format=j1") every 30m timeout 10s json
+  // The permission dialog may be answered after the first fetch, or a new fix arrives as you travel: fetch again.
+  on place { refresh() }
   let cur = wx.current_condition[0]
   let day = wx.weather[0]
   let area = wx.nearest_area[0]

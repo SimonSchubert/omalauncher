@@ -28,6 +28,7 @@ import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.lang.Source
 import dev.omalauncher.widgets.market.Review
 import dev.omalauncher.widgets.market.Shared
+import dev.omalauncher.widgets.runtime.Location
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -97,6 +98,9 @@ class WidgetEngine(
 
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction by services::launcherAction
+
+    /** The phone's location, for `android.location`; the home screen watches [Location.wanted] to ask for the permission. */
+    val location get() = services.location
 
     /** The widget store. */
     val market = Market(this)

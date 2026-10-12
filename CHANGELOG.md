@@ -8,6 +8,8 @@ Dates are when the build was uploaded to Play.
 
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
+- The weather widget uses your phone's location, asked once, instead of guessing
+  it from your IP address, so a VPN no longer moves it.
 
 ## 0.5.0 (versionCode 10) – 2026-10-11
 
