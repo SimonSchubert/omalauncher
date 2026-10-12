@@ -132,6 +132,7 @@ class NavigationService : AccessibilityService() {
                 .toSet()
         recents.onFront = ::shootLater
         nav.running.value = true
+        PhoneNavBar.hideButtons(this)
         ThemeStore.changeListeners.add(onThemeChanged)
         loadBackdrop()
         ContextCompat.registerReceiver(
@@ -199,6 +200,7 @@ class NavigationService : AccessibilityService() {
     override fun onDestroy() {
         if (::windows.isInitialized) {
             nav.running.value = false
+            PhoneNavBar.showButtons(this)
             runCatching { unregisterReceiver(screenReceiver) }
             handler.removeCallbacks(untilUnlocked)
             ThemeStore.changeListeners.remove(onThemeChanged)

@@ -15,6 +15,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.nav.HomeDrawer
+import dev.omalauncher.nav.PhoneNavBar
 import dev.omalauncher.nav.gestureNav
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.applySystemBars
@@ -92,6 +93,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         gestureNav.homeInFront = true
         gestureNav.homeDrawer = homeDrawer
+        PhoneNavBar.repair(this)
         runtime.wm.focus(null)
         removeStaleWindowTasks()
         // The user may have set or replaced the wallpaper while we were in the background.

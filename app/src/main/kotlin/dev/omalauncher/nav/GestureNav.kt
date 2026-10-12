@@ -136,6 +136,7 @@ class GestureNav(
             .putBoolean(ANIMATION, s.animation)
             .putBoolean(OWN_RECENTS, s.ownRecents)
             .apply()
+        if (s.gestures && running.value) PhoneNavBar.hideButtons(context) else PhoneNavBar.showButtons(context)
     }
 
     /** Opens Android's accessibility settings, where [NavigationService] is turned on. */
@@ -190,12 +191,49 @@ enum class SystemNavigation(
     ;
 
     companion object {
-        /** The current mode; null where Android won't say (the setting is hidden, though readable on stock Android). */
-        fun read(context: Context): SystemNavigation? =
-            runCatching { Settings.Secure.getInt(context.contentResolver, MODE_KEY) }.getOrNull()?.let { entries.getOrNull(it) }
+        /**
+         * The mode the user can actually navigate with. On HyperOS, Xiaomi's switch ([XIAOMI_GESTURES]) is what
+         * turns its gestures on; [MODE_KEY] can still say gestures, which hides the buttons and leaves no
+         * navigation at all.
+         */
+        fun read(context: Context): SystemNavigation? = reading(context).effective
+
+        /** Both values, so the settings screen can say when Android's page and Xiaomi's switch disagree. */
+        fun reading(context: Context): NavReading {
+            val xiaomi =
+                runCatching { Settings.Global.getString(context.contentResolver, XIAOMI_GESTURES)?.toIntOrNull() }.getOrNull()
+            val mode = runCatching { Settings.Secure.getInt(context.contentResolver, MODE_KEY) }.getOrNull()
+            return NavReading(reported = mode?.let { entries.getOrNull(it) }, effective = effectiveMode(xiaomi, mode))
+        }
 
         const val MODE_KEY = "navigation_mode"
+
+        /** HyperOS's "full screen gestures" switch. 1 hides the buttons, 0 brings them back. Absent on other phones. */
+        const val XIAOMI_GESTURES = "force_fsg_nav_bar"
     }
+}
+
+/** What Android reports, and what actually navigates. */
+data class NavReading(
+    val reported: SystemNavigation?,
+    val effective: SystemNavigation?,
+) {
+    /** Android's page says gestures while Xiaomi's switch says buttons: the bar is hidden and swipes do nothing. */
+    val split: Boolean get() = reported == SystemNavigation.Gestures && effective != SystemNavigation.Gestures
+}
+
+/**
+ * HyperOS only treats its own switch as gestures. [navigationMode] saying gestures while that switch is off
+ * is the stuck state: no buttons, and no gestures either. Elsewhere the switch is absent and Android's mode stands.
+ */
+internal fun effectiveMode(
+    xiaomiGestures: Int?,
+    navigationMode: Int?,
+): SystemNavigation? {
+    val reported = navigationMode?.let { SystemNavigation.entries.getOrNull(it) }
+    if (xiaomiGestures == 0 && (reported == null || reported == SystemNavigation.Gestures)) return SystemNavigation.ThreeButtons
+    if (xiaomiGestures == 1) return SystemNavigation.Gestures
+    return reported
 }
 
 val Context.gestureNav get() = (applicationContext as App).gestureNav

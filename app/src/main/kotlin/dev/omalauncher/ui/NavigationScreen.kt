@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.dp
 import dev.omalauncher.nav.BackSensitivity
 import dev.omalauncher.nav.GestureLayout
 import dev.omalauncher.nav.GestureNav
+import dev.omalauncher.nav.NavReading
+import dev.omalauncher.nav.PhoneNavBar
 import dev.omalauncher.nav.SystemNavigation
 
 /** Buttons or the launcher's own gestures, and how the gestures behave. Opened from settings. */
@@ -35,6 +37,7 @@ fun NavigationScreen(
     nav: GestureNav,
     onDismiss: () -> Unit,
 ) {
+    val context = LocalContext.current
     val settings by nav.settings.collectAsState()
     val running by nav.running.collectAsState()
     val system = systemNavigation()
@@ -84,12 +87,16 @@ fun NavigationScreen(
             }
             SectionLabel("phone's navigation bar")
             Notice(
-                "now: ${system?.label ?: "unknown"}. " +
-                    if (settings.gestures) {
-                        "To hide its buttons, pick gesture navigation there. On Xiaomi and Poco this page doesn't put the " +
-                            "launcher back to theirs; the phone may bring the buttons back after a restart."
-                    } else {
-                        "Where the phone allows it with other launchers (Pixel, Samsung), its own gestures work with Omalauncher."
+                "now: ${system.effective?.label ?: "unknown"}. " +
+                    when {
+                        system.split && PhoneNavBar.canSwitch(context) ->
+                            "Xiaomi has buttons selected and Android's navigation page has gestures selected, so the bar is hidden and a swipe does nothing. The buttons are put back."
+                        system.split ->
+                            "Xiaomi has buttons selected and Android's navigation page has gestures selected, so the bar is hidden and a swipe does nothing. Choose buttons again there."
+                        settings.gestures ->
+                            "The phone's buttons hide while these gestures run, and come back when they stop. On Xiaomi and Poco, Android's navigation page hides the buttons without turning Xiaomi's gestures on."
+                        else ->
+                            "Where the phone allows it with other launchers (Pixel, Samsung), its own gestures work with Omalauncher."
                     },
                 "change",
                 Palette.muted,
@@ -124,20 +131,22 @@ private fun Notice(
 @Composable
 private fun Hint(text: String) = BasicText(text, Modifier.padding(vertical = 8.dp), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
 
-/** The phone's own navigation mode, following changes (made on the page this screen opens). */
+/** The phone's own navigation mode, following changes (made on the page this screen opens, or by Xiaomi's switch). */
 @Composable
-private fun systemNavigation(): SystemNavigation? {
+private fun systemNavigation(): NavReading {
     val context = LocalContext.current
-    val mode = remember { mutableStateOf(SystemNavigation.read(context)) }
+    val mode = remember { mutableStateOf(SystemNavigation.reading(context)) }
     DisposableEffect(context) {
         val observer =
             object : ContentObserver(Handler(Looper.getMainLooper())) {
                 override fun onChange(selfChange: Boolean) {
-                    mode.value = SystemNavigation.read(context)
+                    mode.value = SystemNavigation.reading(context)
                 }
             }
-        context.contentResolver.registerContentObserver(Settings.Secure.getUriFor(SystemNavigation.MODE_KEY), false, observer)
-        onDispose { context.contentResolver.unregisterContentObserver(observer) }
+        val resolver = context.contentResolver
+        resolver.registerContentObserver(Settings.Secure.getUriFor(SystemNavigation.MODE_KEY), false, observer)
+        resolver.registerContentObserver(Settings.Global.getUriFor(SystemNavigation.XIAOMI_GESTURES), false, observer)
+        onDispose { resolver.unregisterContentObserver(observer) }
     }
     return mode.value
 }
