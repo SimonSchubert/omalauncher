@@ -1,5 +1,6 @@
 package dev.omalauncher.ui
 
+import android.os.Build
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -112,7 +113,7 @@ internal sealed interface AppHit {
         override val key get() = "a:" + app.key
         override val label get() = app.label
         override val spoken get() = app.spoken
-        override val alias get() = if (app.profile != null) "${app.label} ${if (app.clone) "clone" else "work"}" else null
+        override val alias get() = if (app.profile != null) "${app.label} ${if (app.clone) "clone" else if (app.private) "private" else "work"}" else null
 
         override fun paused(runtime: Runtime) = runtime.androidApps.paused(app.profile)
     }
@@ -124,10 +125,20 @@ enum class DrawerTab(
 ) {
     Personal("personal"),
     Work("work"),
+    Private("private"),
 }
 
-/** The tabs the empty bar offers: personal, then work while there's a work profile. */
-internal fun drawerTabs(work: Boolean) = listOfNotNull(DrawerTab.Personal, DrawerTab.Work.takeIf { work })
+/** The tabs the empty bar offers: personal, then work and private while those profiles exist and show. */
+internal fun drawerTabs(
+    work: Boolean,
+    private: Boolean = false,
+) = listOfNotNull(DrawerTab.Personal, DrawerTab.Work.takeIf { work }, DrawerTab.Private.takeIf { private })
+
+/** Typing at least "priv" of "private space" offers to unlock a locked one: the only way to it while it hides. */
+internal fun asksForPrivate(query: String): Boolean {
+    val q = query.trim().lowercase()
+    return q.length >= 4 && "private space".startsWith(q)
+}
 
 /**
  * Where a sideways swipe of [dx] px from [current] lands: a finger moving left brings the next tab,
@@ -152,13 +163,14 @@ private fun shownTabs(
     runtime: Runtime,
     state: LauncherState,
 ): Pair<List<DrawerTab>, DrawerTab> {
-    val tabs = drawerTabs(work = runtime.androidApps.workProfiles.isNotEmpty())
+    val apps = runtime.androidApps
+    val tabs = drawerTabs(work = apps.workProfiles.isNotEmpty(), private = apps.privateProfiles.isNotEmpty() && !apps.privateHidden)
     return tabs to (state.tab.takeIf { it in tabs } ?: DrawerTab.Personal)
 }
 
 /**
  * Swiping sideways turns to the next or previous tab, as stock drawers' tabs do, while the bar is empty.
- * On the list and on the scrim behind the panel, so it works anywhere, even over a short list.
+ * On the list and on the scrim behind the panel, so it works anywhere, even over a locked private space's lone title.
  */
 internal fun Modifier.swipeTabs(
     runtime: Runtime,
@@ -187,7 +199,9 @@ internal class BarSearch(
     fun highlighted(picked: Int?) = picked?.coerceIn(-1, hits.lastIndex) ?: if (opensApp) 0 else -1
 }
 
-private fun allApps(runtime: Runtime): List<AppHit> = runtime.linuxApps.map { AppHit.Linux(it) } + runtime.androidApps.apps.map { AppHit.Android(it) }
+// A locked private space's apps aren't to be found at all, as Android asks of launchers.
+private fun allApps(runtime: Runtime): List<AppHit> =
+    runtime.linuxApps.map { AppHit.Linux(it) } + runtime.androidApps.apps.filterNot { runtime.androidApps.isLocked(it.profile) }.map { AppHit.Android(it) }
 
 internal fun searchApps(
     runtime: Runtime,
@@ -364,7 +378,7 @@ internal fun AppPanel(
     val linuxState by runtime.bootstrap.state.collectAsState()
     val query = state.query
     val apps = runtime.androidApps
-    // With a work profile, the empty bar lists one profile's apps at a time, as stock drawers' tabs do.
+    // With a work profile or private space, the empty bar lists one profile's apps at a time, as stock drawers' tabs do.
     val (tabs, tab) = shownTabs(runtime, state)
 
     val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
@@ -408,7 +422,7 @@ internal fun AppPanel(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Typing searches every profile, so the tabs step aside.
+                // Typing searches every profile (but a locked private space), so the tabs step aside.
                 if (tabs.size > 1 && query.isBlank()) {
                     ProfileTabs(tabs, tab, onPick = { state.tab = it })
                     Spacer(Modifier.weight(1f))
@@ -498,6 +512,29 @@ internal fun AppPanel(
                                         listOf((if (paused) "turn on" else "pause") to { apps.pauseWork(!paused) }),
                                     )
                                 }
+                                // Locked, it lists nothing at all, as Android asks of launchers.
+                                DrawerTab.Private -> {
+                                    val locked = apps.privateLocked
+                                    section(
+                                        if (locked) "private apps locked" else "private apps",
+                                        if (locked) emptyList() else apps.apps.filter { it.private }.map { AppHit.Android(it) },
+                                        if (locked) {
+                                            listOf("unlock" to { apps.lockPrivate(false) })
+                                        } else {
+                                            listOfNotNull(
+                                                if (Build.VERSION.SDK_INT >= 36) {
+                                                    "settings" to {
+                                                        state.closeNow()
+                                                        apps.openPrivateSettings()
+                                                    }
+                                                } else {
+                                                    null
+                                                },
+                                                "lock" to { apps.lockPrivate(true) },
+                                            )
+                                        },
+                                    )
+                                }
                                 // Clones too, as stock drawers list them: second copies of the owner's apps.
                                 DrawerTab.Personal -> {
                                     if (linuxState == LinuxState.Installed) {
@@ -514,15 +551,31 @@ internal fun AppPanel(
                                             }
                                         }
                                     }
-                                    section("android", apps.apps.filter { !it.work }.map { AppHit.Android(it) })
+                                    section("android", apps.apps.filter { !it.work && !it.private }.map { AppHit.Android(it) })
                                 }
                             }
                         }
                     }
                 }
+                if (query.isNotBlank() && apps.privateLocked && asksForPrivate(query)) {
+                    PrivateRow {
+                        apps.lockPrivate(false)
+                        state.tab = DrawerTab.Private
+                        state.query = ""
+                    }
+                }
                 if (query.isNotBlank()) AskRow(runtime, linuxState == LinuxState.Installed, query, highlighted == -1, onAsk)
             }
         }
+    }
+}
+
+/** Above the agent's row while the bar spells the start of "private space" and it's locked: the way to it while it hides. */
+@Composable
+private fun PrivateRow(onUnlock: () -> Unit) {
+    Row(Modifier.padding(start = 12.dp, bottom = 6.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        BasicText("private space", Modifier.weight(1f), style = Mono.copy(color = Palette.muted))
+        BracketAction("unlock", Palette.accent, onUnlock)
     }
 }
 
@@ -609,7 +662,7 @@ private fun Section(
     }
 }
 
-/** Stock drawers' personal | work switch over which profile's apps the empty bar lists. */
+/** Stock drawers' personal | work | private switch over which profile's apps the empty bar lists. */
 @Composable
 private fun ProfileTabs(
     tabs: List<DrawerTab>,

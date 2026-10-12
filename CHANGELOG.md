@@ -11,6 +11,8 @@ Dates are when the build was uploaded to Play.
 - Cloned apps carry the clone mark instead of the briefcase, from Android 15 on.
 - With a work profile, the drawer splits into personal and work tabs; swipe sideways to switch.
 - The work tab pauses work apps and turns them back on.
+- The private space gets its own tab, which locks and unlocks it; locked, its apps show nowhere,
+  and it can hide entirely until "priv" typed in the bar offers to unlock it.
 
 ## 0.5.0 (versionCode 10) – 2026-10-11
 

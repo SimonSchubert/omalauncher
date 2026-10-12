@@ -138,6 +138,7 @@ class Runtime(
         // Saved, so removing Linux later doesn't bring the first-run screen back.
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
         themes.loadStyle()
+        widgets.shortcuts.hidden = { androidApps.concealed(it.profile) }
         androidApps.start()
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
         keyboard.onShortcut = { code ->
