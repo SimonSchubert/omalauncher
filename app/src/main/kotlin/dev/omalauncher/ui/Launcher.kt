@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -28,11 +31,20 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import dev.omalauncher.Runtime
 import dev.omalauncher.widgets.checkSecretsCommand
 import dev.omalauncher.widgets.publishWidgetCommand
@@ -106,6 +118,7 @@ private fun DesktopScreen(
             }
         }
     }
+    if (LauncherStyle.framedSystemBars) SystemBarFrames()
     val covered = remember(state) { { state.homeCovered || runtime.widgets.openScreen != null } }
     CompositionLocalProvider(LocalHomeCovered provides covered) {
         Column(Modifier.fillMaxSize().safePadding()) {
@@ -299,3 +312,42 @@ private fun ThemesOverlay(
 /** Clear of the system bars and of the camera cutout, which landscape puts at a side. */
 @Composable
 private fun Modifier.safePadding() = windowInsetsPadding(WindowInsets.systemBars.union(WindowInsets.displayCutout))
+
+/**
+ * Bands behind Android's status bar and navigation bar, so its clock, notification icons and gesture handle sit on
+ * the same glass as home's tiles rather than on the wallpaper. Each fills its bar out to the screen's edges, with the
+ * tiles' border only along the side facing them, a gap away. Under the drawer and full-screen panels, which cover the
+ * bars themselves.
+ */
+@Composable
+private fun SystemBarFrames() {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    val status = WindowInsets.statusBars
+    val nav = WindowInsets.navigationBars
+    with(density) {
+        val top = status.getTop(density).toDp()
+        val bottom = nav.getBottom(density).toDp()
+        // Three-button navigation stands at a side in a phone's landscape.
+        val left = nav.getLeft(density, direction).toDp()
+        val right = nav.getRight(density, direction).toDp()
+        Box(Modifier.fillMaxSize()) {
+            // Thinner than that leaves no room for a band: a gesture bar hidden in the system's settings, say.
+            fun Dp.band() = takeIf { it >= 8.dp }
+            val across = Modifier.fillMaxWidth()
+            top.band()?.let { Box(across.align(Alignment.TopCenter).height(it).bar { w -> Rect(0f, size.height - w, size.width, size.height) }) }
+            bottom.band()?.let { Box(across.align(Alignment.BottomCenter).height(it).bar { w -> Rect(0f, 0f, size.width, w) }) }
+            // Between the top and bottom ones, a gap from each. Left and right of the screen, whichever way text runs.
+            val between = Modifier.fillMaxSize().padding(top = top + HomeGap, bottom = bottom + HomeGap)
+            left.band()?.let { Box(between.wrapContentWidth(AbsoluteAlignment.Left).width(it).bar { w -> Rect(size.width - w, 0f, size.width, size.height) }) }
+            right.band()?.let { Box(between.wrapContentWidth(AbsoluteAlignment.Right).width(it).bar { w -> Rect(0f, 0f, w, size.height) }) }
+        }
+    }
+}
+
+/** A tile's glass, and its border only where [line] says: the side facing the tiles. */
+private fun Modifier.bar(line: DrawScope.(width: Float) -> Rect) =
+    background(Palette.glass).drawBehind {
+        val r = line(2.dp.toPx())
+        drawRect(Palette.border, r.topLeft, r.size)
+    }

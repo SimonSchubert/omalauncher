@@ -49,6 +49,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorProducer
+import androidx.compose.ui.graphics.ImageBitmapConfig
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -380,7 +381,8 @@ private fun Element(
                 } else {
                     inst.image(src)
                 }
-            val tint = p.observe("tint")?.let { p.color(it) }
+            // An alpha-only image (an app icon's silhouette, with monochrome icons) needs a color to show.
+            val tint = p.observe("tint")?.let { p.color(it) } ?: Palette.foreground.takeIf { bitmap?.config == ImageBitmapConfig.Alpha8 }
             if (bitmap != null) {
                 Image(
                     bitmap,

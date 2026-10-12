@@ -4,8 +4,10 @@ import android.app.ActivityOptions
 import android.app.Notification
 import android.content.Context
 import android.os.Build
+import android.os.UserHandle
 import android.service.notification.StatusBarNotification
 import dev.omalauncher.widgets.lang.Lst
+import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str
@@ -24,6 +26,8 @@ import kotlinx.coroutines.flow.map
 class Notifications(
     private val context: Context,
     private val media: Media,
+    /** "work" or "clone" for a profile beside the launcher's own, null for its own. */
+    private val profile: (UserHandle) -> String?,
 ) {
     /** App labels by package; the lookup is a binder call. */
     private val labels = HashMap<String, String>()
@@ -53,11 +57,15 @@ class Notifications(
         val shown = if (available) shown() else emptyList()
         val items =
             shown.take(MAX_ITEMS).map { sbn ->
+                val kind = profile(sbn.user)
                 Obj(
                     mapOf(
                         "key" to Str(sbn.key),
                         "app" to Str(label(sbn.packageName)),
                         "package" to Str(sbn.packageName),
+                        // From a work profile or a cloned app; icon is the app's icon from that profile, badge included.
+                        "profile" to (kind?.let(::Str) ?: Null),
+                        "icon" to Str("app:" + sbn.packageName + (kind?.let { "@$it" } ?: "")),
                         "title" to Str(title(sbn).orEmpty()),
                         "text" to Str(text(sbn).orEmpty()),
                         "time" to Num(Math.floor(sbn.postTime / 1000.0)),

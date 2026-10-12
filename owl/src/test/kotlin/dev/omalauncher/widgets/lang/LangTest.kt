@@ -518,6 +518,16 @@ class LangTest {
         assertTrue(compileError("widget {\n source c = file(\"/x\")\n Text { text: c } }").contains("file needs owl 4"))
     }
 
+    @Test fun androidAlarmModesAndPhoneActions() {
+        val p = Compiler.compile("widget {\n meta { owl: 7 }\n source a = android.alarm\n source m = android.modes\n Text { text: a.time; onTap: { torch(\"toggle\"); torch(!m.torch); share(\"hi\"); haptic() } } }")
+        assertEquals(listOf("android.alarm", "android.modes"), p.globals.map { (it as Global.Source).kind })
+        assertTrue(!p.needsLinux)
+        assertTrue(compileError("widget {\n meta { owl: 7 }\n Text { text: 1; onTap: torch(\"blink\") } }").contains("torch takes"))
+        assertTrue(compileError("widget {\n meta { owl: 6 }\n source m = android.modes\n Text { text: 1 } }").contains("android.modes needs owl 7"))
+        assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: haptic() } }").contains("haptic needs owl 7"))
+        assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: share(\"x\") } }").contains("share needs owl 7"))
+    }
+
     @Test fun androidNotificationsAndVolume() {
         val p = Compiler.compile("widget {\n meta { owl: 4 }\n source n = android.notifications\n source v = android.volume\n Text { text: n.count; onTap: volume(\"up\") } }")
         assertEquals(listOf("android.notifications", "android.volume"), p.globals.map { (it as Global.Source).kind })

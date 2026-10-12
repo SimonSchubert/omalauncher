@@ -100,6 +100,9 @@ object LauncherStyle {
     /** Home screen apps as bare icons on the wallpaper instead of framed tiles. */
     var bareAppIcons by mutableStateOf(false)
 
+    /** Tiles behind Android's status bar and navigation bar on home, rather than the bare wallpaper. */
+    var framedSystemBars by mutableStateOf(true)
+
     /** The strip of recently used apps above the bar on home. */
     var recentApps by mutableStateOf(true)
 

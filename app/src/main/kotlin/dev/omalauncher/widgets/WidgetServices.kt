@@ -11,14 +11,21 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.app.ActivityManager
+import android.content.ActivityNotFoundException
 import android.hardware.display.DisplayManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
 import android.view.Display
+import android.view.HapticFeedbackConstants
+import android.view.View
+import androidx.compose.ui.graphics.ImageBitmap
 import dev.omalauncher.BuildConfig
+import android.os.Process
 import android.os.SystemClock
+import android.os.UserHandle
+import android.os.UserManager
 import android.util.Log
 import android.widget.Toast
 import dev.omalauncher.MainActivity
@@ -35,7 +42,11 @@ import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.bool
+import dev.omalauncher.androidAppKey
+import dev.omalauncher.ui.LauncherStyle
+import dev.omalauncher.widgets.runtime.Alarm
 import dev.omalauncher.widgets.runtime.Media
+import dev.omalauncher.widgets.runtime.Modes
 import dev.omalauncher.widgets.runtime.Notifications
 import dev.omalauncher.widgets.runtime.Services
 import dev.omalauncher.widgets.runtime.Streams
@@ -80,11 +91,16 @@ class WidgetServices(
 
     /** What's playing on the phone. */
     private val media = Media(context)
-    private val notifications = Notifications(context, media)
+    private val notifications = Notifications(context, media, ::profileKind)
     private val volume = Volume(context)
+    private val alarm = Alarm(context)
+    private val modes = Modes(context)
 
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction: ((String) -> Unit)? = null
+
+    /** The home screen's view, for haptic(): View haptics follow the user's touch feedback setting and need no permission; set by the UI. */
+    var view: View? = null
 
     private val recent = HashMap<String, Pair<Long, Deferred<ShellResult>>>()
 
@@ -116,6 +132,8 @@ class WidgetServices(
             "media" -> media.value()
             "notifications" -> notifications.value()
             "volume" -> volume.value()
+            "alarm" -> alarm.value()
+            "modes" -> modes.value()
             else -> throw WidgetError("unknown android source $name")
         }
 
@@ -124,6 +142,8 @@ class WidgetServices(
             "media" -> media.updates()
             "notifications" -> notifications.updates()
             "volume" -> volume.updates()
+            "alarm" -> alarm.updates()
+            "modes" -> modes.updates()
             "battery" ->
                 callbackFlow {
                     val receiver =
@@ -144,6 +164,31 @@ class WidgetServices(
         }
 
     override fun androidImage(src: String) = media.art(src)
+
+    /** "work" or "clone" for an app in a profile beside the launcher's own, as the drawer marks it; null for its own. */
+    private fun profileKind(user: UserHandle): String? {
+        if (user == Process.myUserHandle()) return null
+        val serial = context.getSystemService(UserManager::class.java).getSerialNumberForUser(user)
+        return if (runtime.androidApps.cloned(serial)) "clone" else "work"
+    }
+
+    /**
+     * An app's icon as the drawer shows it (its silhouette with monochrome icons), badge included. By package, the launcher's
+     * own profile first; `pkg@work` and `pkg@clone` ask for the copy in a work profile or a clone profile, and nothing else.
+     */
+    override fun appIcon(pkg: String): ImageBitmap? {
+        val apps = runtime.androidApps
+        val name = pkg.substringBefore('@')
+        val app =
+            when (pkg.substringAfter('@', "")) {
+                "work" -> apps.apps.firstOrNull { it.component.packageName == name && it.work }
+                "clone" -> apps.apps.firstOrNull { it.component.packageName == name && it.clone }
+                "" -> apps.apps.firstOrNull { it.component.packageName == name && it.profile == null } ?: apps.apps.firstOrNull { it.component.packageName == name }
+                else -> null
+            } ?: return null
+        val key = androidAppKey(app.component, app.profile)
+        return if (LauncherStyle.monochromeIcons) apps.masks[key] else apps.icons[key]
+    }
 
     override fun terminal(
         command: String?,
@@ -279,7 +324,13 @@ class WidgetServices(
             // Named after the command (btop, dua, ...) unless the widget passes a name.
             "terminal" -> runtime.terminal("$arg; exec bash", args.getOrNull(1)?.toString() ?: arg.substringBefore(' '))
             "app" -> runtime.launch(arg)
-            "url" -> context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(arg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            // Any scheme an app handles: tel:, geo:, mailto:, ... One nothing handles mustn't crash the launcher.
+            "url" ->
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(arg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (e: ActivityNotFoundException) {
+                    Toast.makeText(context, "no app opens $arg", Toast.LENGTH_SHORT).show()
+                }
             "launcher" -> launcherAction?.invoke(arg)
             "media" -> media.control(arg)
             "volume" -> volume.control(args[0])
@@ -287,6 +338,9 @@ class WidgetServices(
             "androidApp" -> context.packageManager.getLaunchIntentForPackage(arg)?.let { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             "copy" -> copy(arg)
             "notify" -> notify(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
+            "torch" -> modes.torch(args[0])
+            "share" -> share(arg)
+            "haptic" -> view?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
         }
         // Anything the action changed should show up without waiting for the next interval.
         scope.launch {
@@ -334,6 +388,12 @@ class WidgetServices(
         context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("widget", text))
         // Android 13+ confirms copies itself.
         if (Build.VERSION.SDK_INT < 33) Toast.makeText(context, "copied", Toast.LENGTH_SHORT).show()
+    }
+
+    /** share(text): Android's share sheet, to send the text to any app. */
+    private fun share(text: String) {
+        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+        context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     private var notificationId = 1000

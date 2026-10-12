@@ -101,6 +101,9 @@ class WidgetEngine(
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction by services::launcherAction
 
+    /** The home screen's view, for haptic(); set by the UI. */
+    var view by services::view
+
     /** The widget store. */
     val market = Market(this)
 

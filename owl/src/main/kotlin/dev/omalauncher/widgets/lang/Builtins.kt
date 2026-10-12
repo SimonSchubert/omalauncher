@@ -70,7 +70,7 @@ object Builtins {
     val constants = mapOf("pi" to Num(PI), "transparent" to Col(null, 0))
 
     /** Handler-only calls; they reach [Host.act]. */
-    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..1, "notification" to 2..2, "screen" to 0..0, "close" to 0..0)
+    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..1, "notification" to 2..2, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "share" to 1..1, "haptic" to 0..0)
 
     private fun lst(items: List<Value>) = Lst(if (items.size > MAX_LIST) items.subList(0, MAX_LIST) else items)
 

@@ -67,8 +67,10 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `source dev = android.device` | the phone: `{model, maker, android, sdk, soc}` (the Linux side can't see these) |
 | `source sys = android.system every 5s` | the phone's state, polled: `{kernel, uptime, memory, storage, cpu, display, build, codename, patch, locale, timezone, launcher, theme, apps}`. `uptime` is in seconds; `memory` is `{total, used, available}` and `storage` `{total, used, free}`, in bytes; `cpu` is `{soc, maker, hardware, cores, abi, maxMhz}`; `display` is `{width, height, hz, dpi}`; `patch` is the security patch date, `launcher` this launcher's version, `theme` the Omarchy theme's name and `apps` how many Android apps are installed. See `20-fetch.owl` (owl 5) |
 | `source m = android.media` | what's playing in any app on the phone: `{available, playing, title, artist, album, app, package, position, duration, art}`, updated as it changes (`position` and `duration` in seconds; `art` goes in `Image { src: m.art }`). `available` is false until the user grants notification access; `media(...)` opens that setting then. See `examples/97-now-playing.owl` |
-| `source n = android.notifications` | the phone's notifications, newest first, updated as they come and go: `{available, count, items}`, each item `{key, app, package, title, text, time, clearable}` (`time` in Unix seconds). Ongoing ones (music, downloads) are left out. Needs the same notification access as media. See `examples/98-notifications.owl` (owl 4) |
+| `source n = android.notifications` | the phone's notifications, newest first, updated as they come and go: `{available, count, items}`, each item `{key, app, package, profile, icon, title, text, time, clearable}` (`time` in Unix seconds; `profile` is `work` or `clone` for a notification from a work profile or a cloned app, else null; `icon` is the app's icon for `Image { src: i.icon }`, from that profile, owl 7). Ongoing ones (music, downloads) are left out. Needs the same notification access as media. See `examples/98-notifications.owl` (owl 4) |
 | `source v = android.volume` | the media volume: `{level, muted, steps}` (`level` in percent, `steps` how many the phone has), updated as it changes. Set it with `volume(...)` (owl 4) |
+| `source a = android.alarm` | the next alarm set in any clock app: `{set, time, app}`, updated as it changes. `time` is in Unix seconds (`fmtTime(a.time, "EEE HH:mm")`, or `at a.time`), `app` the clock app's package (`androidApp(a.app)`); both null when no alarm is set (owl 7) |
+| `source m = android.modes` | the phone's modes: `{dnd, saver, ringer, torch}`, updated as they change. `dnd` is Do Not Disturb in any form, `saver` battery saver, `ringer` is `normal`, `vibrate` or `silent`, and `torch` is null on a phone without a flash. Switch the torch with `torch(...)` (owl 7) |
 | `state x = 0` | a value that handlers can change. Add `persist` to keep it across restarts: `state endsAt = 0 persist` |
 | `let x = expr` | a derived value, recomputed only when what it reads changes. It can use sources, state and earlier lets |
 | `let h = history(x, 60)` | the last 60 values of `x`, sampled whenever a source updates (for Sparkline). With `persist` it survives restarts, unless it's older than it would take to fill |
@@ -77,7 +79,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see Sharing) |
-| `meta { owl: 6 }` | the language version the widget needs (this launcher has 6; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, and `Input`'s `focus`, `sh()` and `corners` 6; using them without declaring it is an error |
+| `meta { owl: 7 }` | the language version the widget needs (this launcher has 7; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7; using them without declaring it is an error |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see Screens (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -191,7 +193,7 @@ when lists reorder), and `let x = ...` inside any node.
 | `Progress` | `value`, `max` (100), `color`, `track` |
 | `Ring` | circular progress: `value`, `max` (1), `color`, `track`, `thickness` (6), `start`/`sweep` (degrees; `start: 225; sweep: 270` makes a gauge). 64 dp unless sized |
 | `Sparkline` | `values` (a list, usually a `history`), `min` (0), `max`, `color`, `area: true` or a color, `thickness` |
-| `Image` | `src`: an `asset` or a path in this system (`"~/pics/a.png"`), `fit: contain/cover/fill`, `tint` |
+| `Image` | `src`: an `asset`, a path in this system (`"~/pics/a.png"`) or an Android app's icon (`"app:org.pkg"`, as the drawer shows it, badge included; a silhouette in the foreground color with monochrome icons; `"app:org.pkg@work"` and `"@clone"` ask for the copy in a work profile or the clone, owl 7), `fit: contain/cover/fill`, `tint` |
 | `Canvas` | free drawing, below. Fills the space unless sized |
 | `Shader` | an AGSL shader, below. Fills the space unless sized |
 | `Spacer` | empty space: `size`, `width`, `height` or `weight` |
@@ -231,7 +233,10 @@ the widget that ran it refreshes its sources; other widgets keep their own inter
 | `androidApp("org.pkg")` | opens an Android app by package name |
 | `copy(text)` | copies text to the Android clipboard |
 | `notify("title", "text")` | posts an Android notification (if the launcher may post them) |
-| `url("https://...")` | opens in the Android browser |
+| `url("https://...")` | opens in the Android browser. Other links open in the app that takes them: `tel:` the dialer, `geo:` maps, `mailto:` email |
+| `share(text)` | opens Android's share sheet with the text (owl 7) |
+| `haptic()` | a short tap of haptic feedback, if the user has touch feedback on (owl 7) |
+| `torch(true)` | turns the torch on or off; also `torch("toggle")`. Does nothing on a phone without a flash, or while the camera app holds it (owl 7) |
 | `launcher("style")` | opens a launcher screen: `style` (theme, background, home screen, terminal; `themes` too), `agents`, `store`, `drawer` or `linux` (the sheet that installs Linux) |
 | `refresh()` | re-runs this widget's sources now |
 | `screen()` / `close()` | opens the widget's `screen { }` full screen, or closes it (owl 5) |

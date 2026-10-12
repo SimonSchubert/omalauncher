@@ -22,7 +22,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 6
+        const val LEVEL = 7
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         fun compile(src: String): Program =
@@ -104,7 +104,9 @@ class Compiler private constructor(
                 // owl 5: a full-screen view of the widget.
                 listOf("screen", "close", "screenWidth", "screenHeight", "optional", "linux", "android.system").associateWith { 5 } +
                 // owl 6: properties, named Node.property; values in commands, quoted; the launcher's corner style.
-                listOf("Input.focus", "sh", "corners").associateWith { 6 }
+                listOf("Input.focus", "sh", "corners").associateWith { 6 } +
+                // owl 7: more of the phone, without new permissions.
+                listOf("android.alarm", "android.modes", "torch", "share", "haptic").associateWith { 7 }
 
         // No onLongPress: long-press belongs to the home screen, which lifts the tile to move it.
         /**
@@ -123,14 +125,17 @@ class Compiler private constructor(
         /** What triggers bind in their statements. */
         private val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 
-        /** Data only Android has; battery, media, notifications and volume update as they change, device is fixed. */
-        val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system")
+        /** Data only Android has; battery, media, notifications, volume, alarm and modes update as they change, device is fixed. */
+        val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "alarm", "modes")
 
         /** media("...") commands. */
         val MEDIA = setOf("toggle", "play", "pause", "next", "previous", "open")
 
         /** volume("...") commands; a number sets the level in percent instead. */
         val VOLUME = setOf("up", "down", "mute", "unmute", "toggle")
+
+        /** torch("...") commands; true and false also turn it on and off. */
+        val TORCH = setOf("on", "off", "toggle")
 
         /** notification("...", key) commands. */
         val NOTIFICATION = setOf("open", "dismiss")
@@ -750,6 +755,9 @@ class Compiler private constructor(
                         }
                         if (call.name == "volume") {
                             (args[0].const as? Str)?.v?.let { c -> if (c !in VOLUME && c.toDoubleOrNull() == null) fail("volume takes a level in percent, or ${VOLUME.joinToString()}", call.pos) }
+                        }
+                        if (call.name == "torch") {
+                            (args[0].const as? Str)?.v?.let { c -> if (c !in TORCH) fail("torch takes true, false, ${TORCH.joinToString()}", call.pos) }
                         }
                         if (call.name == "notification") {
                             (args[0].const as? Str)?.v?.let { c -> if (c !in NOTIFICATION) fail("notification takes ${NOTIFICATION.joinToString()} and a notification's key", call.pos) }
