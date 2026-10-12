@@ -29,15 +29,16 @@ const val GRID_COLUMNS = 6
  */
 class WidgetLayout(
     context: Context,
+    profile: String? = null,
 ) {
-    private val prefs = context.getSharedPreferences("widget_grid", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(profile?.let { "widget_grid_$it" } ?: "widget_grid", Context.MODE_PRIVATE)
     private val cells = mutableStateMapOf<String, Cell>()
     /** Read while compiling widgets, off the main thread. */
     private val pages = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     init {
         (Versioned.read(prefs.getString(LAYOUT, null), VERSION) as? JSONObject)?.let(::load)
-        migrateLegacy(context)
+        if (profile == null) migrateLegacy(context)
     }
 
     private fun load(data: JSONObject) {

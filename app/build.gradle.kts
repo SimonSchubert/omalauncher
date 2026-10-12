@@ -22,7 +22,7 @@ android {
         ndk { abiFilters += "arm64-v8a" }
     }
 
-    buildFeatures { buildConfig = true }
+    buildFeatures { buildConfig = true; aidl = true }
 
     externalNativeBuild {
         cmake { path = file("src/main/cpp/CMakeLists.txt") }

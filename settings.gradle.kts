@@ -29,3 +29,5 @@ dependencyResolutionManagement {
 
 include(":app")
 include(":owl")
+include(":desktop-host")
+project(":desktop-host").projectDir = file("samples/desktop-host")
