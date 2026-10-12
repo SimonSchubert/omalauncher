@@ -138,6 +138,7 @@ class Runtime(
         // Saved, so removing Linux later doesn't bring the first-run screen back.
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
         themes.loadStyle()
+        androidApps.onReload = ::forgetDeletedProfiles
         androidApps.start()
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
         keyboard.onShortcut = { code ->
@@ -448,6 +449,14 @@ class Runtime(
     fun open(shortcut: Shortcut) {
         shortcut.linux?.let { pinned -> launch(linuxApps.firstOrNull { it.id == pinned.id } ?: pinned) }
         shortcut.component?.let { androidApps.open(it, shortcut.profile) }
+    }
+
+    /** A deleted profile's pinned apps could never open again, so they leave the home screen with it, as if removed by hand. */
+    private fun forgetDeletedProfiles() {
+        for (shortcut in widgets.shortcuts.items.filter { s -> s.profile?.let { !androidApps.exists(it) } == true }) {
+            widgets.shortcuts.remove(shortcut.key)
+            widgets.layout.remove(shortcut.key)
+        }
     }
 
     fun launch(app: LinuxApp) {

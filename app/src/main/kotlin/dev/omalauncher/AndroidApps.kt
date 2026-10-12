@@ -96,12 +96,18 @@ class AndroidAppCatalog(
     private val userManager = context.getSystemService(UserManager::class.java)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
+    /** Serial numbers of profiles Android announced as removed while it's still tearing them down. */
+    private val removedProfiles = HashSet<Long>()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private val iconDispatcher = Dispatchers.IO.limitedParallelism(4)
     private var loading: Job? = null
 
     /** Icon edge in px: the drawer's 52dp icon at this screen's density. */
     private val iconPx = (52 * context.resources.displayMetrics.density).toInt().coerceAtLeast(48)
+
+    /** Runs after each reload, once [apps] and [pausedProfiles] are current. */
+    var onReload: () -> Unit = {}
 
     fun start() {
         launcherApps.registerCallback(
@@ -137,7 +143,20 @@ class AndroidAppCatalog(
                 override fun onReceive(
                     context: Context,
                     intent: Intent,
-                ) = reload()
+                ) {
+                    // Android says so before it's done removing: until then the profile still answers to its serial number.
+                    if (intent.action == Intent.ACTION_MANAGED_PROFILE_REMOVED || intent.action == Intent.ACTION_PROFILE_REMOVED) {
+                        val user =
+                            if (Build.VERSION.SDK_INT >= 33) {
+                                intent.getParcelableExtra(Intent.EXTRA_USER, UserHandle::class.java)
+                            } else {
+                                @Suppress("DEPRECATION")
+                                intent.getParcelableExtra(Intent.EXTRA_USER)
+                            }
+                        user?.let { userManager.getSerialNumberForUser(it) }?.takeIf { it >= 0 }?.let { removedProfiles += it }
+                    }
+                    reload()
+                }
             }
         if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, profileChanged, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, profileChanged)
         reload()
@@ -192,6 +211,9 @@ class AndroidAppCatalog(
         }.onFailure { Log.w(TAG, "cannot uninstall ${app.component}", it) }
     }
 
+    /** False once [profile] (as in [AndroidApp.profile]) is deleted, for good: Android never hands a serial number out again. A paused one still exists. */
+    fun exists(profile: Long) = profile !in removedProfiles && userManager.getUserForSerialNumber(profile) != null
+
     private fun reload(evict: String? = null) {
         loading?.cancel()
         loading =
@@ -226,6 +248,7 @@ class AndroidAppCatalog(
                     apps.clear()
                     apps += list
                 }
+                onReload()
                 val present = list.mapTo(HashSet()) { it.key }
                 icons.keys.retainAll(present)
                 masks.keys.retainAll(present)
