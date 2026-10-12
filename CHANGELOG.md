@@ -6,6 +6,7 @@ Dates are when the build was uploaded to Play.
 
 ## 0.6.0 (versionCode 11) – 2026-10-12
 
+- Apps pinned from a work profile leave the home screen when the profile is deleted.
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
 - Cloned apps carry the clone mark instead of the briefcase, from Android 15 on.
