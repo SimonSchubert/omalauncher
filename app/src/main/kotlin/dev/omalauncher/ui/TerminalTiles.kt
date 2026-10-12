@@ -177,6 +177,18 @@ class TerminalTiles(
     }
 
     /**
+     * A tap at window point [p] that did not move. Focuses the terminal tile
+     * under it. The tile's own overlay sits on a TextureView, which Compose's
+     * pointer input does not reach, so a tap on the text never arrived there
+     * and only the prompt line, caught elsewhere, woke the tile.
+     */
+    fun activateAt(p: Offset) {
+        if (active != null) return
+        val term = sessions.lastOrNull { it.window != null && it.bounds.translate(0f, -lift).contains(p) } ?: return
+        activate(term)
+    }
+
+    /**
      * The lift that keeps the typing tile's bottom above a soft keyboard of
      * [imeHeight] in a window [windowHeight] tall, but its top below [top] (the
      * status bar); read while drawing, so it follows the keyboard's animation

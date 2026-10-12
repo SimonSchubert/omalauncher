@@ -303,8 +303,25 @@ fun HomeScreen(
         modifier
             .onGloballyPositioned { origin = it.positionInWindow() }
             // Sees every press first, without taking it: one outside the active terminal tile ends its turn.
+            // A tap that stays put also wakes an inactive terminal. The tile's own overlay never hears
+            // taps on its TextureView, so the prompt line was the only place that worked.
             .pointerInput(terminals) {
-                awaitEachGesture { terminals.pressAt(origin + awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position) }
+                val slop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    val start = down.position
+                    terminals.pressAt(origin + start)
+                    var moved = false
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if ((change.position - start).getDistance() > slop) moved = true
+                        if (!change.pressed) {
+                            if (!moved) terminals.activateAt(origin + start)
+                            break
+                        }
+                    }
+                }
             },
     ) {
         // Owns the soft keyboard for terminal tiles.
