@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.AndroidApp
@@ -42,6 +43,8 @@ internal class DesktopWidgets(
     private var pinned by mutableStateOf(prefs.getStringSet("pinned", emptySet()).orEmpty().toSet())
     private val stateDir = File(context.filesDir, "desktop-widget-state/$profile")
     val specs = mutableStateListOf<WidgetSpec>()
+    // WidgetLayout's page map is concurrent for the compiler, not a Compose snapshot map.
+    private var pageRevision by mutableIntStateOf(0)
     val instances = mutableStateMapOf<String, WidgetInstance>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     var visible by mutableStateOf(false)
@@ -106,9 +109,12 @@ internal class DesktopWidgets(
         runtime.androidApps.apps.filter { it.key in pinned && (layout.page("app:" + it.key) ?: 1) == page }
             .map { Shortcut("app:" + it.key, page, it.label, component = it.component, profile = it.profile) }
 
-    val pages get() = (specs.filter { it.file.name !in hidden }.map(::page) + runtime.androidApps.apps.filter { it.key in pinned }.map { layout.page("app:" + it.key) ?: 1 }).distinct().sorted().ifEmpty { listOf(1) }
+    val pages: List<Int> get() {
+        @Suppress("UNUSED_VARIABLE") val revision = pageRevision
+        return (specs.filter { it.file.name !in hidden }.map(::page) + runtime.androidApps.apps.filter { it.key in pinned }.map { layout.page("app:" + it.key) ?: 1 }).distinct().sorted().ifEmpty { listOf(1) }
+    }
 
-    fun move(item: HomeItem, page: Int) { layout.setPage(item.key, page) }
+    fun move(item: HomeItem, page: Int) { layout.setPage(item.key, page); pageRevision++ }
 
     fun noRoom(item: HomeItem) {
         val page = pages.firstOrNull { it > item.page && layout.claim(item, itemsOn(it)) } ?: ((pages.maxOrNull() ?: 1) + 1)
