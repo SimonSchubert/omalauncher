@@ -1,5 +1,6 @@
 package dev.omalauncher.ui
 
+import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.foundation.pager.PagerState
@@ -18,6 +19,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.zIndex
+import dev.omalauncher.widgets.reorderCells
 import dev.omalauncher.widgets.Cell
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.Shortcut
@@ -201,8 +203,10 @@ internal class Arrange {
     var page by mutableStateOf(0)
     var preview by mutableStateOf<Cell?>(null)
     var swapWith by mutableStateOf<String?>(null)
+    /** Tentative neighbour positions, kept separate from the saved layout until release. */
+    var displaced by mutableStateOf<Map<String, Cell>>(emptyMap())
 
-    /** Dropping now puts the carried app into a folder with [swapWith], rather than swapping. */
+    /** Dropping now puts the carried app into a folder with [swapWith]. */
     var grouping by mutableStateOf(false)
 
     /** The open folder's key; its panel covers the grid until a tap outside, Back, or an app lifted out of it. */
@@ -219,6 +223,7 @@ internal class Arrange {
         preview = null
         swapWith = null
         grouping = false
+        displaced = emptyMap()
     }
 }
 
@@ -346,11 +351,13 @@ internal fun HomeGrid(
                         var aim = -1
                         var aimSince = 0L
                         var outSince = 0L
+                        var plannedPage = -1
+                        var plannedCell: Cell? = null
                         while (true) {
                             val waiting = atEdgeSince > 0 || aimSince > 0 || outSince > 0
                             val event = withTimeoutOrNull(if (waiting) 50L else Long.MAX_VALUE) { awaitPointerEvent(PointerEventPass.Initial) }
                             if (event != null) {
-                                val c = event.changes.firstOrNull { it.id == downId } ?: break
+                                val c = event.changes.firstOrNull { it.id == downId } ?: return moved
                                 c.consume()
                                 if (!c.pressed) break
                                 position = c.position
@@ -410,38 +417,40 @@ internal fun HomeGrid(
                             arrange.page = page
                             val others = placedOn(page, g).filter { it.first.key != item.key }
                             val over = others.lastOrNull { (_, r) -> g.rect(r).has(at) }
-                            // Apps group with apps and folders; anything else swaps, except an app from a folder, which has no cell to trade.
+                            // Keep app/folder grouping; widgets make room without trading sizes.
                             val groups = item is Shortcut && (over?.first is Shortcut || over?.first is Folder)
-                            val target = over?.takeIf { groups || !inFolder }
                             arrange.grouping = groups
-                            arrange.swapWith = target?.first?.key
-                            arrange.preview =
-                                if (over != null) {
-                                    target?.second
-                                } else {
-                                    val x = g.colLine(at - hold).coerceIn(0, (g.cols - cell.w).coerceAtLeast(0))
-                                    val y = g.rowLine(at - hold).coerceIn(0, (g.rows - cell.h).coerceAtLeast(0))
-                                    Cell(x, y, cell.w, cell.h).takeIf { n -> others.none { it.second.overlaps(n) } }
+                            arrange.swapWith = over?.first?.key.takeIf { groups }
+                            if (groups) {
+                                plannedCell = null
+                                arrange.displaced = emptyMap()
+                                arrange.preview = over?.second
+                            } else {
+                                val x = g.colLine(at - hold).coerceIn(0, (g.cols - cell.w).coerceAtLeast(0))
+                                val y = g.rowLine(at - hold).coerceIn(0, (g.rows - cell.h).coerceAtLeast(0))
+                                val next = Cell(x, y, cell.w, cell.h)
+                                if (plannedPage != page || plannedCell != next) {
+                                    val plan = reorderCells(
+                                        others.associate { it.first.key to it.second }, next, g.cols, g.rows,
+                                        before = page == from && y * g.cols + x > cell.y * g.cols + cell.x,
+                                    )
+                                    arrange.displaced = plan ?: emptyMap()
+                                    arrange.preview = next.takeIf { plan != null }
+                                    plannedPage = page
+                                    plannedCell = next
                                 }
+                            }
                         }
                         val page = arrange.page
                         val target = arrange.swapWith?.let { key -> itemsOn(page).firstOrNull { it.key == key } }
                         val drop = arrange.preview
                         val grouping = arrange.grouping
+                        val displaced = arrange.displaced
                         arrange.drop()
                         when {
                             target != null && grouping && moved -> onGroup(item as Shortcut, target)
-                            // Swapping trades places and sizes, like swapping windows in Hyprland; across pages it trades pages too.
-                            target != null ->
-                                layout.cell(target.key)?.let { other ->
-                                    layout.set(target.key, cell)
-                                    layout.set(item.key, other)
-                                    if (page != from) {
-                                        onMove(target, from)
-                                        onMove(item, page)
-                                    }
-                                }
                             drop != null && moved -> {
+                                displaced.forEach { (key, cell) -> layout.set(key, cell) }
                                 layout.set(item.key, drop)
                                 if (page != from || inFolder) onMove(item, page)
                             }
@@ -496,6 +505,7 @@ internal fun HomeGrid(
                             try {
                                 moveDrag(down.id, start, open.apps[hit], Cell(0, 0, 1, 1), folderPage, fg.app(hit), fg)
                             } finally {
+                                arrange.drop()
                                 arrange.holding = false
                             }
                             return@awaitEachGesture
@@ -546,6 +556,7 @@ internal fun HomeGrid(
                                     }
                                 }
                             } finally {
+                                arrange.drop()
                                 arrange.holding = false
                             }
                             return@awaitEachGesture
@@ -565,6 +576,7 @@ internal fun HomeGrid(
                             try {
                                 moveDrag(down.id, start, hit.first, hit.second, page, g.screen(g.rect(hit.second), side))
                             } finally {
+                                arrange.drop()
                                 arrange.holding = false
                             }
                         // Like Android, a drag drops and finishes; a plain long-press stays in edit mode.
@@ -697,13 +709,15 @@ private fun TiledPage(
         for (item in items) {
             // The carried tile is drawn above the pager instead.
             if (item.key == carried) continue
-            val cell = layout.cell(item.key)?.let { grid.fit(it, item) } ?: continue
+            val cell = (if (arrange.page == page) arrange.displaced[item.key] else null)
+                ?: layout.cell(item.key)?.let { grid.fit(it, item) } ?: continue
             val rect = grid.rect(cell)
             androidx.compose.runtime.key(item.key) {
+                val position by animateIntOffsetAsState(IntOffset(rect.left, rect.top), label = "widget position")
                 render(
                     item,
                     Modifier
-                        .offset { IntOffset(rect.left, rect.top) }
+                        .offset { position }
                         .size(with(density) { rect.width.toDp() }, with(density) { rect.height.toDp() }),
                     selected == item.key || arrange.swapWith == item.key,
                 )
