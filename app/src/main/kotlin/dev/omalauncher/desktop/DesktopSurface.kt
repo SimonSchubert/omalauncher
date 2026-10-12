@@ -32,7 +32,6 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.Runtime
-import dev.omalauncher.sameAppProfile
 import java.util.UUID
 
 /** One provider-rendered home. No process-wide launcher callback or phone keyboard state changes. */
@@ -110,7 +109,7 @@ internal class DesktopSurface @RequiresApi(30) constructor(
         // This app's UserHandle is essential: a host must use LauncherApps, including for work apps.
         try {
             val serial = windowContext.getSystemService(UserManager::class.java).getSerialNumberForUser(app.user)
-            if (!sameAppProfile(app.profile, serial)) return unavailable("App profile is unavailable")
+            if (serial < 0 || (app.profile != null && app.profile != serial)) return unavailable("App profile is unavailable")
             callback.onAndroidLaunch(id, app.component, app.user, serial)
             runtime.usage.record("a:" + app.key)
             dismiss()

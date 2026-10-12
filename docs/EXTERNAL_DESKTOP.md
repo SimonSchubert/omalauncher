@@ -6,7 +6,7 @@ This is an initial implementation of [proposal #34](https://github.com/SimonSchu
 
 Android 11 (API 30) or newer is required for `SurfaceControlViewHost`. Android 10 still runs the phone launcher; bridge negotiation returns `unsupported`.
 
-Protocol 1 advertises `home_surface`, `widgets`, `android_launch`, `work_profiles`, `search`, `key` and `surface_input`. Linux/agent windows, terminal tiles, arbitrary commands, URLs, theme-changing actions and widget-definition export are unavailable through this API. Existing widget sources and actions still execute inside Omalauncher after consent, including existing guest commands; the host cannot supply a command to execute.
+Protocol 1 advertises `home_surface`, `widgets`, `android_launch`, `work_profiles`, `search`, `key` and `surface_input`. Linux/agent windows, terminal tiles, arbitrary commands, URLs, phone-side sharing/haptics, theme-changing actions and widget-definition export are unavailable through this API. Existing widget sources and actions still execute inside Omalauncher after consent, including existing guest commands; the host cannot supply a command to execute.
 
 Each session has its own widget instances, open widget screen, search field, focus, visibility, persisted widget values, pinned apps and placement profile. Existing widget values seed a new desktop once; subsequent connections reuse that desktop's values. Widget definitions, themes, Android app catalog and underlying data services are shared. The external picker only changes visibility on that desktop, without removing widget source files. Disconnecting stops session widget subscriptions and releases its surface; it does not stop the phone home or shared Linux/agent workloads.
 
@@ -58,7 +58,7 @@ The cross-process instrumentation tests create their own captured virtual displa
 
 The optional work-profile test runs with `-Pandroid.testInstrumentationRunnerArguments.workSerial=<serial>` and requires an unlocked managed profile containing `com.google.android.deskclock` (Clock), also installed in the owner profile. It asserts the work alias returns that profile's UserHandle and serial instead of the personal copy. Without this fixture, that test is skipped.
 
-Work-app launches, app info and uninstall resolve their stable profile serial again at action time. A removed profile or reused user ID cannot silently target a replacement profile. The bridge also checks a catalog entry's serial before returning its launch request; hosts must revalidate the callback's serial at launch time.
+The bridge checks a catalog entry's stable profile serial before returning its launch request; hosts must revalidate the callback's serial at launch time. Phone-side launch, app-info and uninstall hardening is proposed independently in [PR #76](https://github.com/SimonSchubert/omalauncher/pull/76).
 
 Physical-display input/IME, simultaneous phone/external interaction, host process death, unplug/replug, signing rotation and work-profile lifecycle remain explicit acceptance scenarios for hardware testing. The wire contract should be reviewed upstream before omalateral replaces its current embedded desktop with this adapter.
 

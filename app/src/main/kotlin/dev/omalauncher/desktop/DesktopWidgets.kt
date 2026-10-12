@@ -56,7 +56,7 @@ internal class DesktopWidgets(
         override fun act(name: String, args: List<Value>, done: () -> Unit) {
             if (!authorized()) return
             when (name) {
-                "terminal", "app", "url" -> unavailable("$name presentation is unavailable on external desktops")
+                "terminal", "app", "url", "share", "haptic" -> unavailable("$name presentation is unavailable on external desktops")
                 "launcher" -> action(args.firstOrNull()?.toString().orEmpty())
                 "androidApp" -> {
                     val packageName = args.firstOrNull()?.toString()
