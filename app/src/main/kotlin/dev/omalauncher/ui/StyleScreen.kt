@@ -188,14 +188,6 @@ private fun BackgroundSection(
     }
     Heading("background")
     LazyRow(Modifier.bleed(PanelPadding), contentPadding = PaddingValues(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(backgrounds, key = { it.path }) { file ->
-            Thumbnail(
-                file,
-                selected = file == store.background,
-                modifier = Modifier.width(120.dp).aspectRatio(16f / 10f),
-                onClick = { scope.launch { store.setBackground(file) } },
-            )
-        }
         // Omarchy's Install > Style > Background, with Android's image picker instead of a folder.
         item(key = "add") {
             Box(
@@ -208,6 +200,14 @@ private fun BackgroundSection(
             ) {
                 BasicText("[ + image ]", style = Mono.copy(color = Palette.accent))
             }
+        }
+        items(backgrounds, key = { it.path }) { file ->
+            Thumbnail(
+                file,
+                selected = file == store.background,
+                modifier = Modifier.width(120.dp).aspectRatio(16f / 10f),
+                onClick = { scope.launch { store.setBackground(file) } },
+            )
         }
     }
     Row(
