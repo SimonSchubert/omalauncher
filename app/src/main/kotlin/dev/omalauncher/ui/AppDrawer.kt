@@ -476,20 +476,28 @@ internal fun AppPanel(
                                 }
                             }
 
-                            // Each section reads top-down above the one before it.
+                            // Each section reads top-down above the one before it. One with actions shows its title even without apps.
                             fun section(
                                 title: String,
                                 hits: List<AppHit>,
+                                actions: List<Pair<String, () -> Unit>> = emptyList(),
                             ) {
-                                if (hits.isEmpty()) return
+                                if (hits.isEmpty() && actions.isEmpty()) return
                                 val rows = hits.chunked(columns)
                                 for (r in rows.indices.reversed()) row("$title:$r", rows[r])
-                                item(key = "h:$title") { SectionLabel(title, Modifier.padding(start = 8.dp)) }
+                                item(key = "h:$title") { Section(title, actions) }
                             }
 
                             when (shown) {
                                 null -> search.hits.chunked(columns).forEachIndexed { r, cells -> row("q:$r", cells, highlighted - r * columns) }
-                                DrawerTab.Work -> section("work apps", apps.apps.filter { it.work }.map { AppHit.Android(it) })
+                                DrawerTab.Work -> {
+                                    val paused = apps.workProfiles.any { apps.paused(it) }
+                                    section(
+                                        if (paused) "work apps paused" else "work apps",
+                                        apps.apps.filter { it.work }.map { AppHit.Android(it) },
+                                        listOf((if (paused) "turn on" else "pause") to { apps.pauseWork(!paused) }),
+                                    )
+                                }
                                 // Clones too, as stock drawers list them: second copies of the owner's apps.
                                 DrawerTab.Personal -> {
                                     if (linuxState == LinuxState.Installed) {
@@ -583,6 +591,22 @@ internal fun SearchField(
             }
         },
     )
+}
+
+@Composable
+private fun Section(
+    title: String,
+    /** Labels and handlers of bracketed actions at the right end, as the install linux offer has. */
+    actions: List<Pair<String, () -> Unit>> = emptyList(),
+) {
+    if (actions.isEmpty()) {
+        SectionLabel(title, Modifier.padding(start = 8.dp))
+    } else {
+        Row(Modifier.padding(top = 12.dp, bottom = 4.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            BasicText(title, Modifier.weight(1f), style = Mono.copy(color = Palette.muted))
+            for ((label, onClick) in actions) BracketAction(label, Palette.accent, onClick)
+        }
+    }
 }
 
 /** Stock drawers' personal | work switch over which profile's apps the empty bar lists. */

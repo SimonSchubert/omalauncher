@@ -196,6 +196,18 @@ class AndroidAppCatalog(
             .onFailure { Log.w(TAG, "cannot open $component in $user", it) }
     }
 
+    /**
+     * Pauses the work profiles or turns them back on, like stock launchers' work apps switch.
+     * The system only lets the default launcher, while it's in front; turning them on may ask for the work PIN.
+     */
+    fun pauseWork(pause: Boolean) {
+        for (profile in workProfiles) {
+            val user = userManager.getUserForSerialNumber(profile) ?: continue
+            runCatching { userManager.requestQuietModeEnabled(pause, user) }
+                .onFailure { Log.w(TAG, "cannot ${if (pause) "pause" else "resume"} profile $profile", it) }
+        }
+    }
+
     /** The system's App info page, as stock launchers open it. */
     fun openInfo(app: AndroidApp) {
         runCatching { launcherApps.startAppDetailsActivity(app.component, app.user, null, null) }
