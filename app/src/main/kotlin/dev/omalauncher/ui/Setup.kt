@@ -168,6 +168,7 @@ internal fun LinuxSetupOptions(runtime: Runtime, picked: List<String>, onToggleA
     AndroidIntegrationSettings(runtime)
     Spacer(Modifier.height(24.dp))
     AgentPicker(picked, onToggleAgent)
+    if ("codex" in picked) CodexCompatibilitySettings(runtime)
 }
 
 /** The coding agents to install with Linux; the first picked becomes the default. */

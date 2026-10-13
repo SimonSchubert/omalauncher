@@ -1,10 +1,12 @@
 package dev.omalauncher.linux
 
 import android.net.LocalSocket
+import android.content.ContextWrapper
 import android.net.LocalSocketAddress
 import android.system.Os
 import androidx.test.platform.app.InstrumentationRegistry
 import dev.omalauncher.upgrade.ManagedFiles
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -149,6 +151,47 @@ class AndroidIntegrationTest {
         managed.sync(broker.managed(root))
         assertArrayEquals(binary.readBytes(), cli.readBytes())
         assertTrue(cli.canExecute())
+    }
+
+    @Test fun codexCompatibilityPersistsAndOnlyChangesLauncherDefaults() = runBlocking {
+        val isolated = object : ContextWrapper(context) {
+            override fun getFilesDir() = scratch
+        }
+        val proot = Proot(isolated)
+        val files = ManagedFiles(scratch, File(scratch, "managed.json"))
+        lateinit var store: AgentStore
+        store = AgentStore(proot) { files.sync(store.managed()) }
+        store.load()
+        assertFalse(store.codexCompatibility)
+
+        // The choice can be saved before Codex is installed.
+        store.setCodexCompatibility(true)
+        val reloaded = AgentStore(proot) {}
+        reloaded.load()
+        assertTrue(reloaded.codexCompatibility)
+        val shim = File(proot.home, ".local/share/mise/shims/codex")
+        shim.parentFile!!.mkdirs()
+        shim.writeText("installed")
+        val personal = File(proot.home, ".codex/config.toml")
+        personal.parentFile!!.mkdirs()
+        val personalConfig = "model = \"my-model\"\napproval_policy = \"on-request\"\n"
+        personal.writeText(personalConfig)
+        store.onInstalled(AGENTS.single { it.bin == "codex" })
+
+        val systemConfig = File(proot.rootfs, "etc/codex/config.toml")
+        assertTrue(systemConfig.readText().contains("sandbox_mode = \"danger-full-access\""))
+        assertTrue(systemConfig.readText().contains("approval_policy = \"on-request\""))
+        assertTrue(systemConfig.readText().contains("daemon_auto_start = false"))
+        assertEquals(personalConfig, personal.readText())
+
+        // Disabling removes our permission defaults, preserving the user's config.
+        store.setCodexCompatibility(false)
+        assertFalse(systemConfig.readText().contains("sandbox_mode"))
+        assertFalse(systemConfig.readText().contains("approval_policy"))
+        assertTrue(systemConfig.readText().contains("daemon_auto_start = false"))
+        reloaded.load()
+        assertFalse(reloaded.codexCompatibility)
+        assertEquals(personalConfig, personal.readText())
     }
 
     @Test fun prootGuestTransfersBoundCwdAndWritesExternalStorage() {

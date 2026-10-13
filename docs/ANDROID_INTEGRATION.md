@@ -44,6 +44,28 @@ requires a new Linux process because existing PRoot processes retain their bind
 tables. Failures use status 125 (protocol/usage), 126 (could not execute), or
 127 (missing command/broker); otherwise the child's exit status is returned.
 
+## Codex on Android
+
+Codex 0.162.1's Linux sandbox requires mount isolation that Android/PRoot cannot
+provide. This can block every shell command with `cannot establish app-server
+socket mount isolation`, including reading the widget README and invoking ando.
+
+Enable **Codex compatibility mode** in settings › coding agents, or under the
+Codex choice during Linux setup, then close and reopen Codex. This explicit opt-in
+sets `sandbox_mode = "danger-full-access"` and `approval_policy = "on-request"`
+in the launcher-managed `/etc/codex/config.toml`. Codex can access the launcher's
+Linux files and configured Android folders; Android's app permissions remain
+the boundary. Approval requests remain available, but do not gate every command.
+The launcher continues disabling Codex's background daemon under PRoot.
+
+The preference survives restarts and is applied to existing Linux installations.
+Turning it off removes the launcher sandbox/approval defaults for new Codex
+sessions. Personal `~/.codex/config.toml`, project config, profiles and explicit
+CLI options can override these defaults; the launcher never rewrites them.
+Ando remains a shell command, not a separate Codex tool. In a fresh terminal,
+`ando id` checks its connection; Codex can call it through its shell tool once
+shell execution works.
+
 ## Storage binds
 
 Choose **manage storage binds**, enter an Android source directory and an empty
