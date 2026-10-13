@@ -82,6 +82,38 @@ class ExtraKeysLayoutTest {
         assertEquals(listOf(shift), strokes[5].held)
     }
 
+    @Test fun escapedNewlinesInMacrosSendEnter() {
+        // This is a backslash-n inside a quoted Termux configuration string.
+        val save = plain("""[[{macro: ":wq\n"}]]""").strokes
+        assertEquals(2, save.size)
+        assertEquals(":wq", save[0].text)
+        assertEquals(Keys.KEY_ENTER, save[1].code)
+        val sequence = plain("""[[{macro: "CTRL f d\n"}]]""").strokes
+        assertEquals(3, sequence.size)
+        assertEquals(listOf(ctrl), sequence[0].held)
+        assertEquals(Keys.forChar('d')!!.first, sequence[1].code)
+        assertEquals(Keys.KEY_ENTER, sequence[2].code)
+    }
+
+    @Test fun punctuationRetainsItsRequiredShiftWithCtrlAndAlt() {
+        val strokes = plain("""[[{macro: "CTRL ! ALT ? CTRL A CTRL SHIFT A"}]]""").strokes
+        assertEquals(listOf(ctrl, shift), strokes[0].held)
+        assertEquals(Keys.forChar('!')!!.first, strokes[0].code)
+        assertEquals(listOf(alt, shift), strokes[1].held)
+        assertEquals(Keys.forChar('?')!!.first, strokes[1].code)
+        assertEquals(listOf(ctrl), strokes[2].held)
+        assertEquals(listOf(ctrl, shift), strokes[3].held)
+    }
+
+    @Test fun namedPunctuationResolvesToTermuxCharacters() {
+        val strokes = parse("[[BACKSLASH, QUOTE, APOSTROPHE]]")[0].map { (it as Plain).strokes.single() }
+        assertEquals(Keys.forChar('\\')!!.first, strokes[0].code)
+        assertEquals(Keys.forChar('"')!!.first, strokes[1].code)
+        assertEquals(listOf(shift), strokes[1].held)
+        assertEquals(Keys.forChar('\'')!!.first, strokes[2].code)
+        assertTrue(strokes.all { it.text == null })
+    }
+
     @Test fun otherTextIsTyped() {
         val row = parse("""[['ls -la', é]]""")[0]
         assertEquals(listOf("ls -la", "é"), row.map { (it as Plain).strokes.single().text })
