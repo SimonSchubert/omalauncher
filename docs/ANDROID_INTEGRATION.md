@@ -108,3 +108,7 @@ fixture also runs ando inside PRoot with an external directory bind and verifies
 data survives deleting the guest rootfs. The small test runtime is pinned by SHA-256.
 The ABI override is for testing; normal builds target arm64. Fetch PRoot with the existing
 `scripts/fetch-proot.sh` before building a complete Linux-capable APK.
+
+Debug builds install as **omalauncher_debug** (`dev.omalauncher.debug`), alongside
+the release app with separate settings and Linux data. Emulator instrumentation
+uses its own `dev.omalauncher.integrationtest` package.
