@@ -20,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.ui.draganddrop.DragAndDropEvent
 import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.draganddrop.toAndroidDragEvent
@@ -70,7 +72,9 @@ fun DropZoneOverlay(session: SplitDragSession) {
         }
     val app = session.app
     val finger = session.finger
-    val shown by animateFloatAsState(if (app != null && finger != null) 1f else 0f, tween(150), label = "drop zones")
+    // Shown for the whole drag, until the app is let go: when One UI's own zones take over at an edge, the strips stay,
+    // so moving on to another zone still shows where each one is.
+    val shown by animateFloatAsState(if (app != null) 1f else 0f, tween(150), label = "drop zones")
     // What was drawn last, so it fades out with the zones once the drag ends or the finger leaves.
     val last = remember { LastDrawn() }
     if (app != null) last.app = app
@@ -83,7 +87,8 @@ fun DropZoneOverlay(session: SplitDragSession) {
     ) {
         // The session's live values while dragging over home; the last ones while the overlay fades out.
         val drawnApp = session.app ?: last.app
-        val drawnFinger = session.finger ?: last.finger
+        // The finger over home; none while One UI draws its own zone, which shows where the app opens instead of ours.
+        val drawnFinger = if (session.app != null) session.finger else last.finger
         if (shown == 0f || drawnApp == null) return@BoxWithConstraints
         val density = LocalDensity.current
         val direction = LocalLayoutDirection.current
@@ -99,11 +104,13 @@ fun DropZoneOverlay(session: SplitDragSession) {
         val zones = remember(w, h, platform, navEdge) { dropZones(w, h, platform, navEdge) }
         val active = drawnFinger?.let { (x, y) -> zones.zoneAt(x, y) }
         Box(Modifier.fillMaxSize().alpha(shown)) {
-            // Where to go: each zone's trigger, faintly.
+            // Where to go: each zone's trigger, faintly, with what it does, so the edges read as zones too and not
+            // only the pop-up in the middle.
             for (z in zones) {
                 val t = z.trigger ?: continue
                 if (z == active) continue
                 ZoneFrame(t, fill = 0.10f, line = 0.35f, width = LauncherStyle.borderWidth)
+                StripLabel(t, z.label)
             }
             // Where it'll open: the zone under the finger, with what it does.
             if (active != null) {
@@ -117,7 +124,8 @@ fun DropZoneOverlay(session: SplitDragSession) {
                     Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
-                        .padding(top = 12.dp)
+                        // Below the top strip, so its label stays readable.
+                        .padding(top = 12.dp + with(density) { (zones.firstOrNull { it.kind == ZoneKind.FullScreen }?.trigger?.bottom ?: 0f).toDp() })
                         .frame(LauncherStyle.borderWidth, LauncherStyle.tileBorder, Palette.glass, radius = 12.dp)
                         .padding(horizontal = 14.dp, vertical = 8.dp),
             )
@@ -148,6 +156,36 @@ private fun ZoneFrame(
                 .padding(6.dp)
                 .frame(width, Palette.accent.copy(alpha = line), Palette.accent.copy(alpha = fill)),
         )
+    }
+}
+
+/**
+ * What dropping in the strip [box] does, small, along the strip: turned to run down a side strip (reading up on the
+ * left edge, down on the right), level on the top one.
+ */
+@Composable
+private fun StripLabel(
+    box: ZoneBox,
+    label: String,
+) {
+    val upright = box.bottom - box.top > box.right - box.left
+    val turn = if (!upright) 0f else if (box.left == 0f) -90f else 90f
+    val density = LocalDensity.current
+    with(density) {
+        Box(
+            Modifier
+                .offset { IntOffset(box.left.toInt(), box.top.toInt()) }
+                .size((box.right - box.left).toDp(), (box.bottom - box.top).toDp()),
+            contentAlignment = Alignment.Center,
+        ) {
+            BasicText(
+                label,
+                style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
+                softWrap = false,
+                // Measured at its own length, then turned: a side strip is narrower than the label.
+                modifier = Modifier.wrapContentSize(unbounded = true).graphicsLayer { rotationZ = turn },
+            )
+        }
     }
 }
 
