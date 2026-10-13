@@ -43,8 +43,9 @@ import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 
-/** Runtime permission for LAN access when targeting SDK 37+ (not in older SDK stubs as a const). */
-internal const val ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"
+// Request local network access only on Android 17+, where the permission exists.
+internal fun needsLocalNetworkPermission(sdkInt: Int, granted: Boolean): Boolean =
+    sdkInt >= Build.VERSION_CODES.CINNAMON_BUN && !granted
 
 /**
  * Everything about the optional Linux system in one place: what it adds and
@@ -87,8 +88,12 @@ fun rememberLinuxInstall(runtime: Runtime): (List<String>) -> Unit {
             ) {
                 add(Manifest.permission.POST_NOTIFICATIONS)
             }
-            if (context.checkSelfPermission(ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED) {
-                add(ACCESS_LOCAL_NETWORK)
+            if (needsLocalNetworkPermission(
+                    sdkInt = Build.VERSION.SDK_INT,
+                    granted = context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED,
+                )
+            ) {
+                add(Manifest.permission.ACCESS_LOCAL_NETWORK)
             }
         }
         if (need.isNotEmpty()) ask.launch(need.toTypedArray())
