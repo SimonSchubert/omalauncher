@@ -51,6 +51,7 @@ import dev.omalauncher.ui.bitmapMask
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.decodeImageIcon
 import dev.omalauncher.ui.decodeSvgIcon
+import dev.omalauncher.ui.splitdrag.SplitDragSession
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.wayland.AndroidClipboard
 import dev.omalauncher.wayland.GuestImages
@@ -116,6 +117,9 @@ class Runtime(
 
     /** A spoken conversation with a coding agent: the voice screen's (VoiceActivity). */
     val voice by lazy { VoiceSession(context, proot, agents, speaker) }
+
+    /** An app being dragged out of home towards split screen; see SplitDrag. */
+    val splitDrag = SplitDragSession()
     val updates = SystemUpdates(proot, pacman, agents)
     val gpu = Gpu(context, proot, pacman)
 
