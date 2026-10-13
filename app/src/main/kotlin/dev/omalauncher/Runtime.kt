@@ -47,6 +47,7 @@ import dev.omalauncher.ui.bitmapMask
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.decodeImageIcon
 import dev.omalauncher.ui.decodeSvgIcon
+import dev.omalauncher.ui.splitdrag.SplitDragSession
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.wayland.AndroidClipboard
 import dev.omalauncher.wayland.OutputInfo
@@ -91,6 +92,9 @@ class Runtime(
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
+
+    /** An app being dragged out of home towards split screen; see SplitDrag. */
+    val splitDrag = SplitDragSession()
     val updates = SystemUpdates(proot, pacman, agents)
     val gpu = Gpu(context, proot, pacman)
 
