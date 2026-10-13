@@ -36,6 +36,10 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.omalauncher.Runtime
 
+import android.content.Intent
+import android.provider.MediaStore
+import androidx.compose.foundation.layout.Arrangement
+
 /** What a gesture on home does. */
 enum class GestureAction(
     /** Saved in preferences: never rename. */
@@ -43,6 +47,7 @@ enum class GestureAction(
     val label: String,
 ) {
     Drawer("drawer", "app drawer"),
+    Camera("camera", "camera"),
     None("none", "nothing"),
     ;
 
@@ -51,13 +56,20 @@ enum class GestureAction(
     }
 }
 
-/** The actions picked for home's gestures. Swiping up is the only one so far. */
+/** What swiping up on home can do, the default first. */
+val SwipeUpChoices = listOf(GestureAction.Drawer, GestureAction.None)
+
+/** What swiping right on panel 1 can do, the default first. */
+val SwipeRightChoices = listOf(GestureAction.Camera, GestureAction.None)
+
+/** The actions picked for home's gestures. */
 class Gestures(
     context: Context,
 ) {
     private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
 
-    private var up by mutableStateOf(GestureAction.of(prefs.getString(SWIPE_UP, null)) ?: GestureAction.Drawer)
+    private var up by mutableStateOf(saved(SWIPE_UP, SwipeUpChoices))
+    private var right by mutableStateOf(saved(SWIPE_RIGHT, SwipeRightChoices))
 
     /** The app drawer by default, like stock launchers. Saved as it's set. */
     var swipeUp: GestureAction
@@ -67,8 +79,22 @@ class Gestures(
             prefs.edit().putString(SWIPE_UP, action.id).apply()
         }
 
+    /** The camera by default on panel 1, like iOS. Saved as it's set. */
+    var swipeRight: GestureAction
+        get() = right
+        set(action) {
+            right = action
+            prefs.edit().putString(SWIPE_RIGHT, action.id).apply()
+        }
+
+    private fun saved(
+        key: String,
+        choices: List<GestureAction>,
+    ) = GestureAction.of(prefs.getString(key, null))?.takeIf { it in choices } ?: choices.first()
+
     private companion object {
         const val SWIPE_UP = "gesture_swipe_up"
+        const val SWIPE_RIGHT = "gesture_swipe_right"
     }
 }
 
@@ -104,16 +130,12 @@ internal fun Modifier.homeSwipe(
     val drawerShown by remember(state) { derivedStateOf { state.drawer.value > 0f } }
     // Whether the drawer shows is only read when it matters: read here, it would recompose all of home (its Box is
     // inline) each time the drawer opens or closes.
-    val drags =
-        when (runtime.gestures.swipeUp) {
-            GestureAction.Drawer -> true
-            GestureAction.None -> drawerShown
-        }
+    val drags = runtime.gestures.swipeUp == GestureAction.Drawer || drawerShown
     // One drag handler, only turned on or off: a new one mid-swipe (as the drawer starts to show) would drop the drag.
     return drawerSwipe(state, enabled && drags)
 }
 
-/** Gesture settings: what swiping up on home does, picked from a dropdown. */
+/** Gesture settings: what swiping up and right on home do, each picked from a dropdown. */
 @Composable
 fun GesturesScreen(
     runtime: Runtime,
@@ -121,15 +143,34 @@ fun GesturesScreen(
 ) {
     val gestures = runtime.gestures
     OverlayPanel("gestures", onDismiss, contentWidth = ReadingWidth) {
-        GestureRow("swipe up", gestures.swipeUp) { gestures.swipeUp = it }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            GestureRow("swipe up", gestures.swipeUp, SwipeUpChoices) { gestures.swipeUp = it }
+            GestureRow("swipe right on home", gestures.swipeRight, SwipeRightChoices) { gestures.swipeRight = it }
+        }
     }
 }
 
-/** A gesture and the action it runs; tapping the action lists the others under it. */
+/** Opens the default camera app. */
+internal fun launchCamera(context: Context) {
+    val intent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    runCatching {
+        context.startActivity(intent)
+    }.onFailure {
+        val fallback = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        runCatching { context.startActivity(fallback) }
+    }
+}
+
+/** A gesture and the action it runs; tapping the action lists the gesture's [choices] under it. */
 @Composable
 private fun GestureRow(
     label: String,
     action: GestureAction,
+    choices: List<GestureAction>,
     onPick: (GestureAction) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
@@ -161,7 +202,7 @@ private fun GestureRow(
                             .frame(2.dp, Palette.accent, Palette.background)
                             .padding(4.dp),
                     ) {
-                        for (option in GestureAction.entries) {
+                        for (option in choices) {
                             val current = option == action
                             Row(
                                 Modifier

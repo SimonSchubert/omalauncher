@@ -170,13 +170,13 @@
             android:label="Files"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:taskAffinity="dev.omalauncher.files"
+            android:taskAffinity="${applicationId}.files"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="dev.omalauncher.files"
+            android:authorities="${applicationId}.files"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

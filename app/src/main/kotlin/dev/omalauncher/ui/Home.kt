@@ -252,14 +252,19 @@ fun HomeScreen(
                 bottom = if (side != null) 0.dp else barRoom,
             ),
     ) {
-        HomeGrid(
+        CameraSwipeContainer(
             pager = pager,
-            pages = pageNumbers,
-            itemsOn = engine::itemsOn,
-            layout = engine.layout,
-            arrange = arrange,
+            enabled = runtime.gestures.swipeRight == GestureAction.Camera && terminals.active == null && state.editing == null && arrange.folder == null,
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            selected = state.editing,
+        ) {
+            HomeGrid(
+                pager = pager,
+                pages = pageNumbers,
+                itemsOn = engine::itemsOn,
+                layout = engine.layout,
+                arrange = arrange,
+                modifier = Modifier.fillMaxSize(),
+                selected = state.editing,
             onSelect = { state.editing = it },
             actions = { item ->
                 // A pinned Android app offers its shortcuts above the bar, as its long-press menu in the drawer does.
@@ -366,6 +371,7 @@ fun HomeScreen(
             onGroup = { app, target -> engine.shortcuts.group(app, target) },
             onReorder = { app, before -> engine.shortcuts.moveBefore(app.key, before) },
         )
+        }
     }
 
     if (extraKeys) {
