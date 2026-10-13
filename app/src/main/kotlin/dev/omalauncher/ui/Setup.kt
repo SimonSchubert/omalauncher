@@ -91,6 +91,7 @@ internal fun SetupScreen(runtime: Runtime) {
                     ThemeDownloadProgress(themes.choices.firstOrNull { it.name == themes.picked }?.title?.lowercase() ?: themes.picked, error, onRetry = ::fetchTheme, onSkip = runtime::finishWelcome)
                 } else {
                     Welcome(themes, linux, { linux = !linux }, picked) { bin -> picked = if (bin in picked) picked - bin else picked + bin }
+                    if (linux) AndroidIntegrationSettings(runtime)
                 }
             }
         }
@@ -241,7 +242,7 @@ private fun ThemeDownloadProgress(
 
 /** A toggle as a bordered row: [title], a one-line [description], and a check box. */
 @Composable
-private fun Choice(
+internal fun Choice(
     title: String,
     description: String,
     on: Boolean,

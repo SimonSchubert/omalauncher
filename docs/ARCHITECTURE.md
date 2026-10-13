@@ -31,6 +31,7 @@ touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
   (or, for a widget's `Terminal`, into a TextureView in the tile)
 - `linux/`: proot, the rootfs setup and its update steps, pacman, coding
   agents, and the bridges to Android (audio, URLs, /proc)
+  including the [ando broker and configurable storage binds](ANDROID_INTEGRATION.md)
 - `ui/`: the Compose home screen, the bar and its app list, settings and Files
 - `widgets/`: the widget engine; the language itself is in the `owl` module
 - `theme/`: Omarchy themes, applied to the launcher and the guest

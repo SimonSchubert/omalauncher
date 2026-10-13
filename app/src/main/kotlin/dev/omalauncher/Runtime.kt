@@ -72,6 +72,8 @@ class Runtime(
     private val context: Context,
 ) {
     val proot = Proot(context)
+    val androidIntegration = proot.integration
+    val ando = proot.ando
     val wm = WindowManager()
     val server = WaylandServer(proot.waylandSocket.path, wm).also { wm.server = it }
     val keyboard = KeyboardBridge(wm)
@@ -109,6 +111,7 @@ class Runtime(
                 { defaultApps(proot.applications) },
                 { bundledIcons(context, proot.home) },
                 openBridge::managed,
+                { ando.managed(proot.rootfs) },
                 pacman::managed,
                 agents::managed,
                 themes::managed,
@@ -248,7 +251,10 @@ class Runtime(
                 linux = false
                 widgets.linuxChanged(false)
                 audio.stop()
-                withContext(Dispatchers.IO) { proot.killAll() }
+                withContext(Dispatchers.IO) {
+                    ando.stop()
+                    proot.killAll()
+                }
                 bootstrap.remove()
                 withContext(Dispatchers.IO) {
                     updates.forget()
@@ -272,6 +278,17 @@ class Runtime(
     /** Guest configs follow the theme and the installed agents; only while there is a guest. */
     private fun syncGuest() {
         if (linux) provisioner.sync()
+    }
+
+    fun setAndo(enabled: Boolean) {
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                synchronized(ando) {
+                    androidIntegration.setAndo(enabled)
+                    if (enabled && bootstrap.wanted) ando.start() else ando.stop()
+                }
+            }
+        }
     }
 
     /** Whether the bridges and the Wayland server are up; they run until the process ends, even if Linux is removed. */
@@ -533,7 +550,13 @@ class Runtime(
         }
         Log.i(TAG, "launch: $command")
         thread(name = "guest-launch", isDaemon = true) {
-            val code = runCatching { proot.run("exec $command") { Log.i(TAG, "[${command.take(24)}] $it") } }.getOrElse { -1 }
+            val code = runCatching { proot.run("exec $command") { Log.i(TAG, "[${command.take(24)}] $it") } }.getOrElse { failure ->
+                Log.e(TAG, "guest launch failed", failure)
+                scope.launch {
+                    android.widget.Toast.makeText(context, "Linux could not start: ${failure.message}", android.widget.Toast.LENGTH_LONG).show()
+                }
+                -1
+            }
             Log.i(TAG, "exited $code: $command")
             onExit()
         }

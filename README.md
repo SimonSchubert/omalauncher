@@ -26,6 +26,8 @@ window opens as its own Android task, with its own card in Recents.
   terminal widgets, a file manager, and opt-in GPU acceleration on Mali GPUs
 - **Coding agents**: the bar at the bottom sends a prompt to Claude Code, Codex,
   Copilot, opencode and others, which open in a terminal
+- **Android integration**: optional `ando` commands and writable directory binds,
+  configured during Linux setup or in settings; see [usage and limits](docs/ANDROID_INTEGRATION.md)
 - No account, no ads, no tracking
 
 Needs an arm64 phone with Android 10 or newer. Without Linux, the launcher still

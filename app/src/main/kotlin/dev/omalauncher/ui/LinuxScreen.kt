@@ -63,6 +63,9 @@ fun LinuxScreen(
                 LinuxState.Installed -> Installed(runtime)
                 LinuxState.Removing -> BasicText("removing linux…", style = Mono.copy(color = Palette.accent))
             }
+            if (state == LinuxState.NotInstalled || state == LinuxState.Installed || state is LinuxState.Failed) {
+                AndroidIntegrationSettings(runtime)
+            }
         }
     }
 }

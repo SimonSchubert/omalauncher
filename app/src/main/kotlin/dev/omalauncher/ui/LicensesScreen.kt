@@ -53,6 +53,14 @@ private const val APACHE = "apache-2.0"
 private val COMPONENTS =
     listOf(
         Component(
+            "ando",
+            "Android command client, adapted from TAWC",
+            "mit",
+            "Copyright (c) 2026 Sophie Winter",
+            "https://github.com/wmww/tawc",
+            source = "https://github.com/wmww/tawc/tree/e463fee718d04b2c7068b655963e1d3a20b5adb8/tawcroot/ando",
+        ),
+        Component(
             "PRoot",
             "runs the optional Linux system",
             "gpl-2.0",

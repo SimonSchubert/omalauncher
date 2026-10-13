@@ -7,6 +7,9 @@
     <files-path name="xdg" path="xdg/" />
     <files-path name="omarchy" path="omarchy/" />
     <files-path name="widgets" path="widgets/" />
+    <!-- Explicit open/share actions from bound storage; provider remains non-exported. -->
+    <external-path name="android-storage" path="." />
+    <external-files-path name="android-app-storage" path="." />
     <!-- QR codes of widgets, for sharing as an image. -->
     <cache-path name="share" path="share/" />
 </paths>
