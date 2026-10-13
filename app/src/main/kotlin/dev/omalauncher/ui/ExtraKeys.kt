@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.omalauncher.theme.Style
+import dev.omalauncher.wayland.Keys
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -118,55 +119,63 @@ private fun PlainKey(
     modifier: Modifier,
 ) {
     val view = LocalView.current
-    var pressed by remember { mutableStateOf(false) }
-    var swiped by remember { mutableStateOf(false) }
+    var pressed by remember(key) { mutableStateOf(false) }
+    var swiped by remember(key) { mutableStateOf(false) }
+    var confirmation by remember(key) { mutableStateOf<String?>(null) }
     val popup = key.popup
     KeyCap(
         modifier.pointerInput(key) {
             presses { scope, down ->
                 pressed = true
+                confirmation = null
                 view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                // Without a popup the key goes out on the press, and repeats; with one, on the release.
+                // A popup waits for release; without one the key sends on press and can repeat.
                 val press =
-                    if (popup != null) {
-                        null
-                    } else {
-                        scope.launch {
+                    if (popup != null) null else scope.launch {
+                        bridge.send(key.strokes)
+                        if (!key.repeats) return@launch
+                        delay(RepeatDelay)
+                        while (true) {
                             bridge.send(key.strokes)
-                            if (!key.repeats) return@launch
-                            delay(RepeatDelay)
-                            while (true) {
-                                bridge.send(key.strokes)
-                                delay(RepeatInterval)
-                            }
+                            delay(RepeatInterval)
                         }
                     }
-                val release =
-                    release(down, swipes = { popup != null }) { up ->
-                        swiped = up
-                        if (up) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                    }
+                val outcome = release(down, swipes = { popup != null }) { up ->
+                    swiped = up
+                    if (up) view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                }
                 press?.cancel()
                 pressed = false
                 swiped = false
                 if (popup != null) {
-                    when (release) {
+                    when (outcome) {
                         Release.Tap -> bridge.send(key.strokes)
-                        Release.Swipe -> bridge.send(popup.strokes)
+                        Release.Swipe -> {
+                            bridge.send(popup.strokes)
+                            confirmation = popup.label
+                            scope.launch {
+                                delay(240)
+                                if (confirmation == popup.label) confirmation = null
+                            }
+                        }
                         Release.Cancelled -> {}
                     }
                 }
             }
         },
-        fill = if (pressed) Palette.accent else Palette.surface,
+        fill = if (pressed || confirmation != null) Palette.accent else Palette.surface,
     ) {
-        val color = if (pressed) Palette.background else Palette.foreground
+        val popupVisible = (swiped || confirmation != null) && popup != null
+        val color = if (pressed || confirmation != null) Palette.background else Palette.foreground
+        val strokes = if (popupVisible) popup!!.strokes else key.strokes
+        val glyphs = modifierGlyphs(bridge, strokes.firstOrNull()?.held.orEmpty())
+        val label = if (popupVisible) popup!!.label else arrowGlyph(key.arrow) ?: key.label
         when {
-            swiped && popup != null -> KeyLabel(popup.label, color)
-            key.arrow != null -> Image(Icons.Chevron, key.label, Modifier.size(20.dp).rotate(key.arrow), colorFilter = ColorFilter.tint(color))
-            else -> KeyLabel(key.label, color)
+            !popupVisible && glyphs.isEmpty() && key.arrow != null ->
+                Image(Icons.Chevron, key.label, Modifier.size(20.dp).rotate(key.arrow), colorFilter = ColorFilter.tint(color))
+            else -> KeyLabel(glyphs + label, color)
         }
-        if (popup != null && !swiped) PopupHint(popup, if (pressed) Palette.background else Palette.accent)
+        if (popup != null && !popupVisible) PopupHint(popup, if (pressed) Palette.background else Palette.accent)
     }
 }
 
@@ -224,6 +233,22 @@ private fun StickyKey(
         KeyLabel(if (swiped && popup != null) popup.label else key.label, color)
         if (popup != null && !swiped) PopupHint(popup, if (latch == Latch.Locked) Palette.background else Palette.accent)
     }
+}
+
+/** Show the effective combination, including one-shot and locked modifiers. */
+private fun modifierGlyphs(bridge: KeyboardBridge, extra: List<Int>): String = buildString {
+    if (bridge.ctrl.latch != Latch.Off || Keys.KEY_LEFTCTRL in extra) append("⌃")
+    if (bridge.alt.latch != Latch.Off || Keys.KEY_LEFTALT in extra) append("⌥")
+    if (bridge.shift.latch != Latch.Off || Keys.KEY_LEFTSHIFT in extra) append("⇧")
+}
+
+/** Chevron-only arrows become readable glyphs when they need a modifier prefix. */
+private fun arrowGlyph(rotation: Float?): String? = when (rotation) {
+    0f -> "↑"
+    90f -> "→"
+    180f -> "↓"
+    -90f -> "←"
+    else -> null
 }
 
 /** A key's label; a long one, like a popup's while swiping, in smaller type so it fits the cap. */
