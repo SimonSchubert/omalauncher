@@ -91,6 +91,10 @@ object ExtraKeysLayout {
             alias("TAB", Stroke(Keys.KEY_TAB))
             alias("ENTER RETURN", Stroke(Keys.KEY_ENTER))
             alias("SPACE", Stroke(Keys.KEY_SPACE))
+            // Termux's named punctuation keys must send characters, not their literal names.
+            alias("BACKSLASH", Stroke(Keys.forChar('\\')!!.first))
+            alias("QUOTE", Stroke(Keys.forChar('"')!!.first, SHIFT))
+            alias("APOSTROPHE", Stroke(Keys.forChar('\'')!!.first))
             alias("BKSP BACKSPACE", Stroke(Keys.KEY_BACKSPACE))
             alias("DEL DELETE", Stroke(Keys.KEY_DELETE))
             alias("INS INSERT", Stroke(Keys.KEY_INSERT))
@@ -225,7 +229,13 @@ object ExtraKeysLayout {
     private fun macro(macro: String): List<Stroke> {
         val held = ArrayList<Int>()
         val strokes = ArrayList<Stroke>()
-        for (token in macro.trim().split(Regex("\\s+"))) {
+        for (token in Regex("""\r\n|\r|\n|[^\s]+""").findAll(macro).map { it.value }) {
+            // Keep line endings as Enter strokes; :wq\n must not drop its last action.
+            if (token == "\n" || token == "\r" || token == "\r\n") {
+                require(held.isEmpty()) { "in a macro, modifiers must precede a key before Enter" }
+                strokes += Stroke(Keys.KEY_ENTER)
+                continue
+            }
             if (token.isEmpty()) continue
             val mod = modifier(token)
             if (mod != null) {
@@ -235,7 +245,12 @@ object ExtraKeysLayout {
             val stroke = stroke(token)
             require(stroke.text == null || held.isEmpty()) { "in \"$macro\", a modifier goes before a single key, not $token" }
             // "CTRL A" is Ctrl+A, as in Termux, not Ctrl+Shift+A; "CTRL SHIFT A" asks for that.
-            val own = if (held.isNotEmpty()) stroke.held - Keys.KEY_LEFTSHIFT else stroke.held
+            val own =
+                if (held.isNotEmpty() && token.length == 1 && token[0] in 'A'..'Z') {
+                    stroke.held - Keys.KEY_LEFTSHIFT
+                } else {
+                    stroke.held
+                }
             strokes += stroke.copy(held = (held + own).distinct())
             held.clear()
         }
