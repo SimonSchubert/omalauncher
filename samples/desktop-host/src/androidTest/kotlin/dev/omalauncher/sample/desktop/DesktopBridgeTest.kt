@@ -145,4 +145,96 @@ class DesktopBridgeTest {
             assertEquals(activity.sessionId, activity.lastLaunch!!.first)
         } finally { ui { activity.finish() } }
     }
+
+    @Test fun oneApprovedHostCanUsePrimaryAndSecondaryWindowsWithIndependentState() {
+        val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, HostActivity::class.java)
+            .putExtra("captureDisplay", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as HostActivity
+        var primary: dev.omalauncher.desktop.IDesktopSession? = null
+        var phoneSurface: android.view.SurfaceView? = null
+        try {
+            await("provider binding") { activity.bridge != null }
+            val needsConsent = activity.bridge!!.negotiate(1).getString("status") == "consent_required"
+            ui { activity.performAppLaunch = false; activity.connect() }
+            if (needsConsent) {
+                val allow = UiDevice.getInstance(instrumentation).findObject(UiSelector().textMatches("(?i)allow"))
+                assertTrue(allow.waitForExists(10_000)); assertTrue(allow.click())
+            }
+            await("external home") { activity.session != null && activity.frameColors > 8 }
+            val external = activity.session!!
+            ui {
+                phoneSurface = android.view.SurfaceView(activity)
+                activity.addContentView(phoneSurface, android.view.ViewGroup.LayoutParams(640, 480))
+            }
+            await("primary window token") { phoneSurface?.hostToken != null }
+            val callback = object : IDesktopHost.Stub() {
+                override fun onAndroidLaunch(id: String, component: ComponentName, user: UserHandle, serial: Long) = Unit
+                override fun onStatus(id: String, status: String, message: String) = Unit
+            }
+            val metrics = Bundle().apply {
+                putInt("displayId", 0); putInt("width", 640); putInt("height", 480); putString("profile", "primary_window")
+            }
+            val result = activity.bridge!!.openSession(1, metrics, phoneSurface!!.hostToken, callback)
+            assertEquals("connected", result.getString("status"))
+            primary = dev.omalauncher.desktop.IDesktopSession.Stub.asInterface(result.getBinder("session"))
+            val child = primary!!.getSurface()
+            ui { phoneSurface!!.setChildSurfacePackage(child) }
+            assertEquals(0, primary!!.describe().getInt("displayId"))
+            assertEquals("host", primary!!.describe().getString("launchMode"))
+            external.search("external-only", false)
+            primary!!.search("primary-only", false)
+            assertEquals("external-only", external.describe().getString("query"))
+            assertEquals("primary-only", primary!!.describe().getString("query"))
+            assertEquals("busy", activity.bridge!!.openSession(1, metrics, phoneSurface!!.hostToken, callback).getString("status"))
+            primary!!.setVisible(false)
+            assertTrue(external.describe().getBoolean("overlay"))
+            assertFalse(primary!!.describe().getBoolean("overlay"))
+        } finally {
+            runCatching { primary?.close() }
+            ui { (phoneSurface?.parent as? android.view.ViewGroup)?.removeView(phoneSurface); activity.finish() }
+        }
+    }
+
+    @Test fun systemLaunchModeUsesAndroidOnTheSessionDisplayWithoutHostEmbedding() {
+        instrumentation.uiAutomation.adoptShellPermissionIdentity()
+        val activity = instrumentation.startActivitySync(Intent(instrumentation.targetContext, HostActivity::class.java)
+            .putExtra("captureDisplay", true).putExtra("trustedDisplay", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as HostActivity
+        var system: dev.omalauncher.desktop.IDesktopSession? = null
+        try {
+            await("provider binding") { activity.bridge != null }
+            val needsConsent = activity.bridge!!.negotiate(1).getString("status") == "consent_required"
+            ui { activity.performAppLaunch = false; activity.connect() }
+            if (needsConsent) {
+                val allow = UiDevice.getInstance(instrumentation).findObject(UiSelector().textMatches("(?i)allow"))
+                assertTrue(allow.waitForExists(10_000)); assertTrue(allow.click())
+            }
+            await("external home") { activity.session != null && activity.frameColors > 8 }
+            val displayId = activity.session!!.describe().getInt("displayId")
+            val target = activity.javaClass.getDeclaredField("surface").apply { isAccessible = true }.get(activity) as android.view.SurfaceView
+            var hostLaunch = false
+            val callback = object : IDesktopHost.Stub() {
+                override fun onAndroidLaunch(id: String, component: ComponentName, user: UserHandle, serial: Long) { hostLaunch = true }
+                override fun onStatus(id: String, status: String, message: String) = Unit
+            }
+            val metrics = Bundle().apply {
+                putInt("displayId", displayId); putInt("width", 1280); putInt("height", 720)
+                putString("profile", "system_window"); putString("launchMode", "system")
+            }
+            val result = activity.bridge!!.openSession(1, metrics, target.hostToken, callback)
+            assertEquals("connected", result.getString("status"))
+            system = dev.omalauncher.desktop.IDesktopSession.Stub.asInterface(result.getBinder("session"))
+            assertEquals("system", system!!.describe().getString("launchMode"))
+            system!!.search("desktop bridge launch fixture", true)
+            assertNull("System launch must report Android refusal rather than silently reroute", system!!.describe().getString("message"))
+            await("Android launches the separate fixture app on the desktop display") {
+                val dump = android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("dumpsys activity activities"))
+                    .use { String(it.readBytes()) }
+                dump.substringAfter("Display #$displayId ", "").substringBefore("Display #").contains("DesktopLaunchFixtureActivity")
+            }
+            assertFalse("System routing must not also ask the host to launch", hostLaunch)
+        } finally {
+            android.os.ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand("am force-stop --user 0 ${BuildConfig.PROVIDER_PACKAGE}.test")).use { it.readBytes() }
+            runCatching { system?.close() }; ui { activity.finish() }
+            instrumentation.uiAutomation.dropShellPermissionIdentity()
+        }
+    }
 }

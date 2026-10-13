@@ -12,7 +12,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.view.Display
 import dev.omalauncher.App
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -55,7 +54,7 @@ class ExternalDesktopService : Service() {
     private fun reply(status: String) = Bundle().apply {
         putInt("protocol", DESKTOP_PROTOCOL)
         putString("status", status)
-        putStringArrayList("capabilities", if (Build.VERSION.SDK_INT >= 30) arrayListOf("home_surface", "widgets", "android_launch", "work_profiles", "search", "key", "surface_input", "pointer", "home_pages", "appearance") else arrayListOf())
+        putStringArrayList("capabilities", if (Build.VERSION.SDK_INT >= 30) arrayListOf("home_surface", "widgets", "android_launch", "work_profiles", "search", "key", "surface_input", "pointer", "home_pages", "appearance", "multi_display", "system_launch") else arrayListOf())
     }
 
     private fun status(protocol: Int, identity: DesktopIdentity?): String = when {
@@ -84,15 +83,16 @@ class ExternalDesktopService : Service() {
             checkNotNull(identity)
             DesktopRules.size(metrics.getInt("width"), metrics.getInt("height"))
             val profile = DesktopRules.profile(metrics.getString("profile") ?: "default")
+            val launchMode = DesktopRules.launchMode(metrics.getString("launchMode") ?: "host")
             val displayId = metrics.getInt("displayId", -1)
             val display = displays.getDisplay(displayId)
-            if (display == null || displayId == Display.DEFAULT_DISPLAY) return@caller reply("unsupported")
-            if (sessions.size >= 4 || sessions.values.any { it.identity.uid == uid }) return@caller reply("busy")
+            if (display == null) return@caller reply("unsupported")
+            if (sessions.size >= 4 || sessions.values.any { it.identity.uid == uid && it.profile == profile }) return@caller reply("busy")
             if (!host.asBinder().isBinderAlive) return@caller reply("disconnected")
             try {
                 val runtime = (application as App).runtime
                 val session = DesktopSurface(this@ExternalDesktopService, runtime, access, identity, display, profile, hostToken, host,
-                    metrics.getBoolean("pagesSideBySide"), metrics.getBoolean("inheritPhoneLayout")) { id, reason ->
+                    metrics.getBoolean("pagesSideBySide"), metrics.getBoolean("inheritPhoneLayout"), launchMode == "system") { id, reason ->
                     sessions.remove(id)?.dispose(reason)
                 }
                 sessions[session.id] = session

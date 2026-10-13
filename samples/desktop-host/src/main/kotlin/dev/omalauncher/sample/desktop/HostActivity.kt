@@ -128,7 +128,8 @@ class HostActivity : Activity() {
     }
 
     private fun bindBridge() {
-        bound = bindService(Intent("dev.omalauncher.action.EXTERNAL_DESKTOP").setPackage(BuildConfig.PROVIDER_PACKAGE), connection, Context.BIND_AUTO_CREATE)
+        val flags = Context.BIND_AUTO_CREATE or if (android.os.Build.VERSION.SDK_INT >= 34) Context.BIND_ALLOW_ACTIVITY_STARTS else 0
+        bound = bindService(Intent("dev.omalauncher.action.EXTERNAL_DESKTOP").setPackage(BuildConfig.PROVIDER_PACKAGE), connection, flags)
         if (!bound) show("Provider absent; keep using the host's normal desktop")
     }
 
@@ -188,8 +189,10 @@ class HostActivity : Activity() {
                     }
                 }, Handler(Looper.getMainLooper()))
             }
+            // Only instrumentation holding shell permissions can request this test flag.
+            val trusted = if (intent.getBooleanExtra("trustedDisplay", false)) (1 shl 10) else 0
             virtual = manager.createVirtualDisplay("Desktop bridge test", 1280, 720, 160, reader!!.surface,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY or DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION)
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC or DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY or DisplayManager.VIRTUAL_DISPLAY_FLAG_PRESENTATION or trusted)
             display = virtual?.display ?: return show("No external display")
         }
         presentation = object : Presentation(this, display!!) {

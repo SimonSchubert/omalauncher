@@ -19,19 +19,21 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.Runtime
-import dev.omalauncher.ui.Arrange
 import dev.omalauncher.ui.FolderTile
 import dev.omalauncher.ui.HomeGrid
 import dev.omalauncher.ui.LauncherStyle
@@ -51,7 +53,7 @@ internal fun matchingApps(runtime: Runtime, query: String): List<AndroidApp> = i
 
 /** The phone's home is never bound here; only the session's layout, focus and widget screens change. */
 @Composable
-internal fun ExternalHome(runtime: Runtime, session: DesktopSurface) {
+internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
     val widgets = session.widgets
     val pages = widgets.pages
     val per = if (session.pagesSideBySide) pages.size.coerceAtLeast(1) else 1
@@ -74,7 +76,7 @@ internal fun ExternalHome(runtime: Runtime, session: DesktopSurface) {
                             onFix = { session.unavailable("Agent windows are unavailable on this desktop") })
                         is Shortcut -> ShortcutTile(item, runtime.shortcutIcon(item, LauncherStyle.monochromeIcons), focused, tile,
                             onTap = { runtime.androidApps.apps.firstOrNull { "app:" + it.key == item.key }?.let(session::launch)
-                                ?: session.unavailable("This app presentation is unavailable on the external desktop") },
+                                ?: session.unavailable("This app presentation is unavailable on this desktop") },
                             paused = runtime.androidApps.paused(item.profile), clone = runtime.androidApps.cloned(item.profile))
                         is Folder -> FolderTile(item, item.apps.take(4).map { runtime.shortcutIcon(it, LauncherStyle.monochromeIcons) },
                             focused, tile, onTap = { arrange.folder = item.key })
@@ -92,8 +94,10 @@ internal fun ExternalHome(runtime: Runtime, session: DesktopSurface) {
         }
         if (session.drawer) {
             val apps = matchingApps(runtime, session.query)
+            val searchFocus = remember { FocusRequester() }
+            LaunchedEffect(Unit) { searchFocus.requestFocus() }
             OverlayPanel("apps", session::dismiss) {
-                BasicTextField(session.query, { session.query = it.take(2048) }, Modifier.fillMaxWidth().padding(12.dp), textStyle = Mono,
+                BasicTextField(session.query, { session.query = it.take(2048) }, Modifier.fillMaxWidth().padding(12.dp).focusRequester(searchFocus), textStyle = Mono,
                     cursorBrush = SolidColor(Palette.accent), singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { apps.firstOrNull()?.let(session::launch) }))
                 LazyColumn(Modifier.weight(1f), state = session.drawerScroll, verticalArrangement = Arrangement.spacedBy(4.dp)) {

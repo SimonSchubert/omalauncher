@@ -6,6 +6,10 @@ internal data class DesktopIdentity(val uid: Int, val packageName: String, val c
 
 /** Pure policy shared by the Binder boundary and its regression tests. */
 internal object DesktopRules {
+    fun launchMode(value: String): String {
+        require(value == "host" || value == "system") { "invalid launch mode" }
+        return value
+    }
     fun size(width: Int, height: Int) {
         require(width in 1..8192 && height in 1..8192 && width.toLong() * height <= 16_777_216) { "invalid desktop size" }
     }

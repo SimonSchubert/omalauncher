@@ -36,4 +36,10 @@ class DesktopProtocolTest {
             assertThrows(IllegalArgumentException::class.java) { DesktopRules.profile(it) }
         }
     }
+
+    @Test fun launchRoutingDoesNotDependOnTheHostProduct() {
+        assertEquals("host", DesktopRules.launchMode("host"))
+        assertEquals("system", DesktopRules.launchMode("system"))
+        assertThrows(IllegalArgumentException::class.java) { DesktopRules.launchMode("omalateral") }
+    }
 }
