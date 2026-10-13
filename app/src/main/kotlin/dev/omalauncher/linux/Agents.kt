@@ -52,12 +52,13 @@ val AGENTS =
     )
 
 /**
- * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, the others as an argument.
+ * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, Antigravity as -i (it refuses a bare
+ * argument: "unexpected argument"), the others as an argument.
  * Ori's agent is `ori code`, which stays open only with --interactive. Kimi takes a prompt only in
  * print mode, so the session it ran in is continued after the answer.
- * [readOnly], for reading something untrusted: Claude Code starts in plan mode, where it can read but not
- * run commands or change files whatever the user's settings say. The others have no flag for that we can
- * rely on inside proot, and only have the prompt.
+ * [readOnly], for reading something untrusted: Claude Code and Antigravity start in plan mode, where they
+ * can read but not run commands or change files whatever the user's settings say. The others have no flag
+ * for that we can rely on inside proot, and only have the prompt.
  */
 fun agentInvocation(
     agentBin: String,
@@ -70,6 +71,8 @@ fun agentInvocation(
         agentBin == "claude" && readOnly -> "$agentBin --permission-mode plan $quoted"
         agentBin == "ori" -> "ori code --interactive --prompt $quoted"
         agentBin == "kimi" -> "kimi --prompt $quoted && kimi --continue"
+        agentBin == "agy" && readOnly -> "$agentBin --mode plan -i $quoted"
+        agentBin == "agy" -> "$agentBin -i $quoted"
         else -> "$agentBin $quoted"
     }
 }
