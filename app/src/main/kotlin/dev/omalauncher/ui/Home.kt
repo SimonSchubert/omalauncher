@@ -208,8 +208,9 @@ fun HomeScreen(
     Column(
         Modifier
             .fillMaxSize()
-            // Swiping up opens the drawer, like stock launchers, or what gesture settings say; not while editing, in a
-            // folder or typing in a tile. A long-press drag takes its touches first, and the pager only wants sideways ones.
+            // Swiping up opens the drawer and down the notification shade, like stock launchers, or what gesture
+            // settings say; not while editing, in a folder or typing in a tile. A long-press drag takes its touches
+            // first, and the pager only wants sideways ones.
             .homeSwipe(runtime, state, enabled = terminals.active == null && state.editing == null && arrange.folder == null)
             // Typing in a terminal tile: lift the pages so the tile stays above the keyboard, but not under the status
             // bar; a tile too tall for both gives up the rest at its bottom.
