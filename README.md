@@ -56,10 +56,16 @@ The keys above the soft keyboard in terminals are `terminal.extra-keys` in
 extra-keys = '[[ESC, TAB, CTRL, ALT, {key: LEFT, popup: {macro: "ALT b", display: "word"}}, DOWN, UP, RIGHT], [/, -, HOME, END, PGUP, PGDN, PASTE]]'
 ```
 
-Tap ctrl, alt or shift for the next key, or hold it to lock it. Swipe a key up
-and let go to send its popup; a key with one doesn't repeat. A macro sends its
-keys one after another, each with the modifiers named before it: `CTRL f d` is
-Ctrl+F, then D. Up to three rows of ten; `'[]'` hides the bar. Termux's own
+Tap ctrl, alt or shift for the next key, or hold it to lock it; modifier
+keys show NEXT or LOCK, and the next key shows its active chord (⌃/⌥/⇧).
+Swipe a key up and release to send its popup, with the chosen action shown
+on the keycap and a brief confirmation after release. Dragging off to the
+side cancels the gesture. A key with a popup doesn't repeat.
+
+A macro sends keys in order, each with the modifiers named before it:
+`CTRL f d` is Ctrl+F, then D. An escaped `\\n` in a macro sends Enter
+(for example, `":wq\\n"` sends the Vim save-and-quit command).
+The named Termux keys BACKSLASH, QUOTE and APOSTROPHE produce their characters. Up to three rows of ten; `'[]'` hides the bar. Termux's own
 actions (KEYBOARD, DRAWER) aren't keys here, and what can't be read shows in
 the banner on home while the last good layout stays.
 
