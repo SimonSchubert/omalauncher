@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
@@ -61,6 +62,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.LocalView
 import dev.omalauncher.ui.splitdrag.SplitDrag
@@ -341,6 +343,8 @@ private fun StripCell(
     dragOut: (() -> Unit)? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    // Read when the drag starts: a new lambda each recomposition mustn't restart the gesture under the finger.
+    val currentDragOut by rememberUpdatedState(dragOut)
     val haptics = LocalHapticFeedback.current
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
@@ -364,7 +368,9 @@ private fun StripCell(
                 if (dragOut == null) {
                     Modifier
                 } else {
-                    Modifier.pointerInput(dragOut) {
+                    // Keyed on nothing: this branch is there only while dragOut != null, and the callback itself is
+                    // read through currentDragOut.
+                    Modifier.pointerInput(Unit) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                             val held =
@@ -380,9 +386,10 @@ private fun StripCell(
                                 if (!c.pressed) return@awaitEachGesture
                                 // Held: the strip doesn't scroll under the finger any more.
                                 c.consume()
-                                if ((c.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                                // Twice the slop: a finger settling after the long-press doesn't drag the app out yet.
+                                if ((c.position - down.position).getDistance() > viewConfiguration.touchSlop * 2) {
                                     menuOpen = false
-                                    dragOut()
+                                    currentDragOut?.invoke()
                                     return@awaitEachGesture
                                 }
                             }
