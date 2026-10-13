@@ -25,6 +25,10 @@ class SplitDragSession {
     var canPopUp by mutableStateOf(false)
         private set
 
+    /** Whether this is One UI, which decides how the halves lie; see [splitsSideBySide]. */
+    var oneUi by mutableStateOf(false)
+        private set
+
     /** The window's size, which the overlay keeps up to date; the zones are laid out in it. */
     var area: Pair<Float, Float>? = null
 
@@ -32,7 +36,7 @@ class SplitDragSession {
 
     fun zones(): List<DropZone> {
         val (w, h) = area ?: return emptyList()
-        return dropZones(w, h, canSplit, canPopUp)
+        return dropZones(w, h, canSplit, canPopUp, splitsSideBySide(w, h, oneUi))
     }
 
     fun begin(
@@ -41,10 +45,12 @@ class SplitDragSession {
         at: Offset,
         canSplit: Boolean,
         canPopUp: Boolean,
+        oneUi: Boolean,
         onDrop: (DropZone) -> Unit,
     ) {
         this.canSplit = canSplit
         this.canPopUp = canPopUp
+        this.oneUi = oneUi
         this.onDrop = onDrop
         this.icon = icon
         this.label = label

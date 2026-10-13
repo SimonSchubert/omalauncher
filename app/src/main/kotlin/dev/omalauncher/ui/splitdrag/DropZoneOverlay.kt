@@ -49,7 +49,7 @@ fun DropZoneOverlay(session: SplitDragSession) {
         val label = session.label ?: last.label
         if (shown == 0f || label == null) return@BoxWithConstraints
         val finger = session.finger ?: last.finger
-        val zones = dropZones(w, h, session.canSplit, session.canPopUp)
+        val zones = session.zones()
         val active = finger?.let { zones.zoneAt(it.x, it.y) }
         val density = LocalDensity.current
         Box(Modifier.fillMaxSize().alpha(shown)) {

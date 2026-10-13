@@ -346,6 +346,7 @@ internal fun RecentStrip(
                                     at = at,
                                     canSplit = partner != null && SplitDrag.canSplit(context),
                                     canPopUp = SplitDrag.canPopUp(context),
+                                    oneUi = SplitDrag.isOneUi(),
                                 ) { zone -> planOpen(zone, app, partner)?.let { SplitOpen.run(context, it) { handlers.launch(hit) } } }
                             },
                             move = { runtime.splitDrag.move(it) },

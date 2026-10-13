@@ -28,7 +28,11 @@ object SplitDrag {
     /** One UI opens apps in pop-up windows; elsewhere only with desktop-style windows. */
     fun canPopUp(context: Context) = isOneUi() || context.packageManager.hasSystemFeature(PackageManager.FEATURE_FREEFORM_WINDOW_MANAGEMENT)
 
-    private fun isOneUi() =
+    /** Samsung's One UI, which splits and pops up windows its own way; checked once. */
+    fun isOneUi() = oneUi
+
+    private val oneUi by lazy {
         Build.MANUFACTURER.equals("samsung", ignoreCase = true) &&
             runCatching { Class.forName("com.samsung.android.multiwindow.MultiWindowManager") }.isSuccess
+    }
 }

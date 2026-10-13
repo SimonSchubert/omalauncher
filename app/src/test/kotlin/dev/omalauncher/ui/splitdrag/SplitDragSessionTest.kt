@@ -10,7 +10,7 @@ class SplitDragSessionTest {
 
     @Test fun followsTheFinger() {
         val s = session()
-        s.begin("Maps", null, Offset(10f, 20f), canSplit = true, canPopUp = true) {}
+        s.begin("Maps", null, Offset(10f, 20f), canSplit = true, canPopUp = true, oneUi = true) {}
         assertEquals("Maps", s.label)
         assertEquals(Offset(10f, 20f), s.finger)
         s.move(Offset(30f, 40f))
@@ -20,7 +20,7 @@ class SplitDragSessionTest {
     @Test fun lettingGoOpensTheZoneUnderTheFinger() {
         val s = session()
         var dropped: DropZone? = null
-        s.begin("Maps", null, Offset(540f, 2300f), canSplit = true, canPopUp = true) { dropped = it }
+        s.begin("Maps", null, Offset(540f, 2300f), canSplit = true, canPopUp = true, oneUi = true) { dropped = it }
         s.end(Offset(540f, 2000f))
         assertEquals(ZoneKind.SplitBottom, dropped?.kind)
         assertNull(s.label)
@@ -30,15 +30,21 @@ class SplitDragSessionTest {
     @Test fun endingWithoutAPointOpensNothing() {
         val s = session()
         var dropped: DropZone? = null
-        s.begin("Maps", null, Offset(540f, 2300f), canSplit = true, canPopUp = true) { dropped = it }
+        s.begin("Maps", null, Offset(540f, 2300f), canSplit = true, canPopUp = true, oneUi = true) { dropped = it }
         s.end(null)
         assertNull(dropped)
         assertNull(s.label)
     }
 
+    @Test fun stockAndroidSplitsAnUnfoldedScreenTopAndBottom() {
+        val s = SplitDragSession().apply { area = 2076f to 2152f }
+        s.begin("Maps", null, Offset(100f, 100f), canSplit = true, canPopUp = true, oneUi = false) {}
+        assertEquals(listOf(ZoneKind.SplitTop, ZoneKind.SplitBottom), s.zones().map { it.kind }.filter { it != ZoneKind.FullScreen && it != ZoneKind.PopUp })
+    }
+
     @Test fun zonesFollowWhatThePhoneCanDo() {
         val s = session()
-        s.begin("Maps", null, Offset(540f, 2300f), canSplit = false, canPopUp = false) {}
+        s.begin("Maps", null, Offset(540f, 2300f), canSplit = false, canPopUp = false, oneUi = true) {}
         assertEquals(listOf(ZoneKind.FullScreen, ZoneKind.FullScreen), s.zones().map { it.kind })
     }
 }
