@@ -77,6 +77,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.PointerEventPass
+import android.view.MotionEvent
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -442,18 +443,30 @@ private fun StripCell(
                                     fun inWindow(p: Offset) = coords?.localToWindow(p) ?: p
                                     drag.start(inWindow(c.position))
                                     // From here the launcher drags the app itself, until the finger lifts.
-                                    while (true) {
-                                        val m = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
-                                        if (m == null) {
-                                            drag.end(null)
-                                            return@awaitEachGesture
+                                    var ended = false
+                                    try {
+                                        while (true) {
+                                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                                            val m = event.changes.firstOrNull { it.id == down.id }
+                                            if (m == null) {
+                                                ended = true
+                                                drag.end(null)
+                                                return@awaitEachGesture
+                                            }
+                                            m.consume()
+                                            if (!m.pressed) {
+                                                // A system cancel arrives as a synthetic event with no MotionEvent: it opens nothing.
+                                                val action = event.motionEvent?.actionMasked
+                                                val lifted = action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP
+                                                ended = true
+                                                drag.end(if (lifted) inWindow(m.position) else null)
+                                                return@awaitEachGesture
+                                            }
+                                            drag.move(inWindow(m.position))
                                         }
-                                        m.consume()
-                                        if (!m.pressed) {
-                                            drag.end(inWindow(m.position))
-                                            return@awaitEachGesture
-                                        }
-                                        drag.move(inWindow(m.position))
+                                    } finally {
+                                        // The cell left composition or the strip went away mid-drag: don't leave the overlay up.
+                                        if (!ended) drag.end(null)
                                     }
                                 }
                             }
