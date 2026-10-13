@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -240,7 +241,7 @@ private fun StickyKey(
         if (latch != Latch.Off && !showingPopup) {
             BasicText(
                 if (latch == Latch.Locked) "LOCK" else "NEXT",
-                Modifier.padding(top = 28.dp),
+                Modifier.align(Alignment.BottomCenter).padding(bottom = 2.dp),
                 style = Mono.copy(color = color, fontSize = 7.sp),
                 maxLines = 1,
                 softWrap = false,
@@ -278,13 +279,11 @@ private fun KeyLabel(
 
 /** The popup's label in the key's corner, so it's found without trying every key. */
 @Composable
-private fun PopupHint(
+private fun BoxScope.PopupHint(
     popup: Popup,
     color: Color,
 ) {
-    Box(Modifier.fillMaxSize().padding(top = 1.dp, end = 3.dp), contentAlignment = Alignment.TopEnd) {
-        BasicText(popup.label, style = Mono.copy(color = color, fontSize = 7.sp), maxLines = 1, softWrap = false)
-    }
+    BasicText(popup.label, Modifier.align(Alignment.TopEnd).padding(top = 1.dp, end = 3.dp), style = Mono.copy(color = color, fontSize = 7.sp), maxLines = 1, softWrap = false)
 }
 
 @Composable
@@ -292,7 +291,7 @@ private fun KeyCap(
     modifier: Modifier,
     fill: Color,
     outline: Color? = null,
-    content: @Composable () -> Unit,
+    content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = LauncherStyle.shape(8.dp)
     Box(
@@ -328,12 +327,6 @@ private suspend fun AwaitPointerEventScope.release(
             change.consume()
             return if (selected) Release.Swipe else Release.Tap
         }
-        // A swipe may go above the cap; dragging sideways or down away cancels it.
-        // Allow slight upward travel before it has crossed the popup threshold.
-        if (change.position.x < -extendedTouchPadding.width ||
-            change.position.x > size.width + extendedTouchPadding.width ||
-            change.position.y > size.height + extendedTouchPadding.height
-        ) return Release.Cancelled
         val up = swipes() && down.position.y - change.position.y >= distance
         if (up != selected) {
             selected = up
