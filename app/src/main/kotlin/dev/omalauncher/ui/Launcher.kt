@@ -63,8 +63,8 @@ fun LauncherRoot(
 ) {
     state.bindScope()
     val ready = runtime.launcherReady
-    // With our live wallpaper active the window is transparent and Android draws the wallpaper behind it.
-    val showOwnBackground = !ready || !runtime.themes.liveWallpaperActive
+    // With Android drawing the wallpaper (ours active, or the user's own) the window is transparent and needs no background.
+    val showOwnBackground = !ready || !runtime.themes.wallpaperBehind
     Box(
         Modifier
             .fillMaxSize()
@@ -107,7 +107,7 @@ private fun DesktopScreen(
         }
     }
 
-    if (!runtime.themes.liveWallpaperActive) {
+    if (!runtime.themes.wallpaperBehind) {
         runtime.themes.wallpaper?.let { bmp ->
             // Read while drawing, so swiping pages only redraws this.
             Canvas(Modifier.fillMaxSize()) {

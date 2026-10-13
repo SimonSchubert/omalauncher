@@ -111,7 +111,7 @@ fun HomeScreen(
         state.currentPage = pageNumbers.getOrElse(pager.currentPage * per) { 1 }
         engine.activePage = state.currentPage
     }
-    // The background slides with the pages, like stock launchers. Our live wallpaper gets it through Android.
+    // The background slides with the pages, like stock launchers; a wallpaper Android draws (ours, or the user's own) is sent the offsets.
     val view = LocalView.current
     DisposableEffect(engine, view) {
         engine.view = view
@@ -123,10 +123,10 @@ fun HomeScreen(
             val last = pager.pageCount - 1
             val offset = if (last <= 0) 0.5f else ((pager.currentPage + pager.currentPageOffsetFraction) / last).coerceIn(0f, 1f)
             // Also resent when our live wallpaper is picked, which starts out centered.
-            offset to runtime.themes.liveWallpaperActive
-        }.collect { (offset, live) ->
+            offset to runtime.themes.wallpaperBehind
+        }.collect { (offset, behind) ->
             state.wallpaperOffset = offset
-            if (live) {
+            if (behind) {
                 view.windowToken?.let {
                     wallpapers.setWallpaperOffsetSteps(if (pager.pageCount > 1) 1f / (pager.pageCount - 1) else 1f, 1f)
                     wallpapers.setWallpaperOffsets(it, offset, 0.5f)

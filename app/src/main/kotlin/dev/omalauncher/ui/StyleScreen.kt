@@ -96,7 +96,7 @@ fun StyleScreen(
                 },
                 onRemove = { removing = it },
             )
-            store.current?.let { BackgroundSection(store, it) }
+            store.current?.let { BackgroundSection(store, runtime.style, it) }
             // Style choices don't depend on a theme, so they're offered before themes are downloaded too.
             Heading("home screen")
             val style = runtime.style
@@ -201,10 +201,14 @@ private fun ThemeSection(
     }
 }
 
-/** [theme]'s backgrounds, one of the user's own images, and handing it all to Android. */
+/**
+ * The theme's backgrounds and the user's own images, Android's own wallpaper (live ones
+ * included) instead of them, and handing the theme's to Android.
+ */
 @Composable
 private fun BackgroundSection(
     store: ThemeStore,
+    style: StyleStore,
     theme: OmarchyTheme,
 ) {
     val scope = rememberCoroutineScope()
@@ -215,26 +219,39 @@ private fun BackgroundSection(
         if (uri != null) scope.launch { store.addBackground(uri) }
     }
     Heading("background")
-    LazyRow(Modifier.bleed(PanelPadding), contentPadding = PaddingValues(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(backgrounds, key = { it.path }) { file ->
-            Thumbnail(
-                file,
-                selected = file == store.background,
-                modifier = Modifier.width(120.dp).aspectRatio(16f / 10f),
-                onClick = { scope.launch { store.setBackground(file) } },
-            )
-        }
-        // Omarchy's Install > Style > Background, with Android's image picker instead of a folder.
-        item(key = "add") {
-            Box(
-                Modifier
-                    .width(120.dp)
-                    .aspectRatio(16f / 10f)
-                    .frame(2.dp, Palette.border, Palette.surface, radius = 12.dp)
-                    .clickable { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                contentAlignment = Alignment.Center,
-            ) {
-                BasicText("[ + image ]", style = Mono.copy(color = Palette.accent))
+    StyleOption(
+        "wallpaper",
+        listOf("android's", "the theme's"),
+        if (store.androidWallpaper) 0 else 1,
+    ) { i ->
+        style.update { it.with(Style.ANDROID_WALLPAPER, i == 0) }
+        scope.launch { store.refreshLiveWallpaper() }
+    }
+    if (store.androidWallpaper) {
+        // The window stays clear; pages slide Android's wallpaper through its offsets.
+        OptionHint("the launcher draws nothing over it; Linux apps keep the theme's background")
+    } else {
+        LazyRow(Modifier.bleed(PanelPadding), contentPadding = PaddingValues(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(backgrounds, key = { it.path }) { file ->
+                Thumbnail(
+                    file,
+                    selected = file == store.background,
+                    modifier = Modifier.width(120.dp).aspectRatio(16f / 10f),
+                    onClick = { scope.launch { store.setBackground(file) } },
+                )
+            }
+            // Omarchy's Install > Style > Background, with Android's image picker instead of a folder.
+            item(key = "add") {
+                Box(
+                    Modifier
+                        .width(120.dp)
+                        .aspectRatio(16f / 10f)
+                        .frame(2.dp, Palette.border, Palette.surface, radius = 12.dp)
+                        .clickable { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    BasicText("[ + image ]", style = Mono.copy(color = Palette.accent))
+                }
             }
         }
     }
