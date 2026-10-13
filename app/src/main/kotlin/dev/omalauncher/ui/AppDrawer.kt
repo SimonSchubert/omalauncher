@@ -77,9 +77,12 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import dev.omalauncher.ui.splitdrag.SplitDrag
+import dev.omalauncher.ui.splitdrag.SplitOpen
+import dev.omalauncher.ui.splitdrag.planOpen
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.AndroidShortcut
@@ -327,13 +330,26 @@ internal fun RecentStrip(
         val cells: LazyListScope.() -> Unit = {
             items(apps, key = { it.key }) { hit ->
                 val (icon, mask) = hit.icons(runtime)
-                // An Android app can be dragged out towards split screen; see SplitDrag.
-                val view = LocalView.current
-                // Dropped over home on stock Android, it opens as a tap on it does.
+                // An Android app can be dragged out to split the screen with another, or to a pop-up; see SplitDrag.
+                val context = LocalContext.current
                 val app = (hit as? AppHit.Android)?.app
                 val dragOut =
                     if (app != null && SplitDrag.canDrag(app)) {
-                        { SplitDrag.start(view, app, icon?.asAndroidBitmap(), runtime.splitDrag, open = { handlers.launch(hit) }); Unit }
+                        // The other half: the latest other app in the strip.
+                        val partner = apps.firstNotNullOfOrNull { (it as? AppHit.Android)?.app?.takeIf { o -> o.key != app.key && SplitDrag.canDrag(o) } }
+                        StripDrag(
+                            start = { at ->
+                                runtime.splitDrag.begin(
+                                    label = app.label,
+                                    icon = icon,
+                                    at = at,
+                                    canSplit = partner != null && SplitDrag.canSplit(context),
+                                    canPopUp = SplitDrag.canPopUp(context),
+                                ) { zone -> planOpen(zone, app, partner)?.let { SplitOpen.run(context, it) { handlers.launch(hit) } } }
+                            },
+                            move = { runtime.splitDrag.move(it) },
+                            end = { runtime.splitDrag.end(it) },
+                        )
                     } else {
                         null
                     }
@@ -347,6 +363,13 @@ internal fun RecentStrip(
         }
     }
 }
+
+/** The launcher's own drag of a strip app, in window pixels; [end] gets null when it's cancelled. */
+class StripDrag(
+    val start: (Offset) -> Unit,
+    val move: (Offset) -> Unit,
+    val end: (Offset?) -> Unit,
+)
 
 /** An app in the recent strip, drawn like a pinned app's tile: the icon alone, or on a badge when bare. */
 @Composable
@@ -364,11 +387,13 @@ private fun StripCell(
     /** As in [AppHit.paused]: drawn dimmed, like stock launchers. */
     paused: Boolean = false,
     /** Starts dragging the app out, once a long-press is followed by a move; null where it can't be dragged. */
-    dragOut: (() -> Unit)? = null,
+    dragOut: StripDrag? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     // Read when the drag starts: a new lambda each recomposition mustn't restart the gesture under the finger.
     val currentDragOut by rememberUpdatedState(dragOut)
+    // Where the cell is in the window, so the drag reports the finger in window pixels like the overlay draws in.
+    var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val haptics = LocalHapticFeedback.current
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
@@ -378,6 +403,7 @@ private fun StripCell(
             .size(48.dp)
             .alpha(if (paused) PausedAlpha else 1f)
             .clip(LauncherStyle.shape(12.dp))
+            .onGloballyPositioned { coords = it }
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
@@ -385,8 +411,8 @@ private fun StripCell(
                     menuOpen = true
                 },
             )
-            // After the long-press that opens the menu, moving on drags the app out: the menu closes and the system
-            // takes the drag, as on stock launchers. Without the long-press a move is the strip scrolling.
+            // After the long-press that opens the menu, moving on drags the app out: the menu closes and the launcher
+            // drags the app itself, as on stock launchers. Without the long-press a move is the strip scrolling.
             .then(
                 if (dragOut == null) {
                     Modifier
@@ -412,8 +438,23 @@ private fun StripCell(
                                 // Twice the slop: a finger settling after the long-press doesn't drag the app out yet.
                                 if ((c.position - down.position).getDistance() > viewConfiguration.touchSlop * 2) {
                                     menuOpen = false
-                                    currentDragOut?.invoke()
-                                    return@awaitEachGesture
+                                    val drag = currentDragOut ?: return@awaitEachGesture
+                                    fun inWindow(p: Offset) = coords?.localToWindow(p) ?: p
+                                    drag.start(inWindow(c.position))
+                                    // From here the launcher drags the app itself, until the finger lifts.
+                                    while (true) {
+                                        val m = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id }
+                                        if (m == null) {
+                                            drag.end(null)
+                                            return@awaitEachGesture
+                                        }
+                                        m.consume()
+                                        if (!m.pressed) {
+                                            drag.end(inWindow(m.position))
+                                            return@awaitEachGesture
+                                        }
+                                        drag.move(inWindow(m.position))
+                                    }
                                 }
                             }
                         }

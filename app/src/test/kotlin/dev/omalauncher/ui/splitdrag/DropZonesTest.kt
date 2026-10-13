@@ -1,92 +1,68 @@
 package dev.omalauncher.ui.splitdrag
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DropZonesTest {
     // Galaxy Z Fold6: inner screen 2076x2152, outer 1080x2424.
-    private val open = dropZones(2076f, 2152f, SplitPlatform.OneUi, null)
-    private val folded = dropZones(1080f, 2424f, SplitPlatform.OneUi, null)
+    private val open = dropZones(2076f, 2152f, canSplit = true, canPopUp = true)
+    private val folded = dropZones(1080f, 2424f, canSplit = true, canPopUp = true)
 
-    @Test fun oneUiEdgesSplitAndTheMiddlePopsUp() {
-        // t = round(2076 * 0.056) = 116
-        assertEquals(ZoneKind.SplitLeft, open.zoneAt(50f, 1000f)?.kind)
-        assertEquals(ZoneKind.SplitRight, open.zoneAt(2030f, 1000f)?.kind)
-        assertEquals(ZoneKind.FullScreen, open.zoneAt(1000f, 50f)?.kind)
-        assertEquals(ZoneKind.PopUp, open.zoneAt(200f, 1000f)?.kind)
-        assertEquals(ZoneKind.PopUp, open.zoneAt(1038f, 1076f)?.kind)
+    @Test fun unfoldedHalvesSplitSideBySide() {
+        assertEquals(ZoneKind.SplitLeft, open.zoneAt(100f, 1000f)?.kind)
+        assertEquals(ZoneKind.SplitRight, open.zoneAt(1900f, 1000f)?.kind)
+        assertEquals(ZoneBox(0f, 0f, 1038f, 2152f), open.zoneAt(100f, 1000f)?.preview)
+        assertEquals("Split · left", open.zoneAt(100f, 1000f)?.label)
     }
 
-    @Test fun theThresholdIsTheEdge() {
-        assertEquals(ZoneKind.SplitLeft, open.zoneAt(115.9f, 1000f)?.kind)
-        assertEquals(ZoneKind.PopUp, open.zoneAt(116f, 1000f)?.kind)
+    @Test fun foldedHalvesSplitTopAndBottom() {
+        assertEquals(ZoneKind.SplitTop, folded.zoneAt(540f, 600f)?.kind)
+        assertEquals(ZoneKind.SplitBottom, folded.zoneAt(540f, 2000f)?.kind)
+        assertEquals(ZoneBox(0f, 0f, 1080f, 1212f), folded.zoneAt(540f, 600f)?.preview)
+        assertEquals(ZoneBox(0f, 1212f, 1080f, 2424f), folded.zoneAt(540f, 2000f)?.preview)
     }
 
-    @Test fun topCornersBelongToTheSides() {
-        assertEquals(ZoneKind.SplitLeft, open.zoneAt(50f, 50f)?.kind)
-        assertEquals(ZoneKind.SplitRight, open.zoneAt(2030f, 50f)?.kind)
+    @Test fun theMiddlePopsUp() {
+        // upright: 60% of 2076 = 1245.6 wide, 40% of 2152 = 860.8 high, centred
+        val p = open.zoneAt(1038f, 1076f)!!
+        assertEquals(ZoneKind.PopUp, p.kind)
+        assertEquals(1245.6f, p.preview.right - p.preview.left, 0.01f)
+        assertEquals(860.8f, p.preview.bottom - p.preview.top, 0.01f)
+        assertEquals(p.trigger, p.preview)
+        assertEquals(ZoneKind.PopUp, folded.zoneAt(540f, 1212f)?.kind)
     }
 
-    @Test fun splitPreviewsAreTheHalves() {
-        assertEquals(ZoneBox(0f, 0f, 1038f, 2152f), open.single { it.kind == ZoneKind.SplitLeft }.preview)
-        assertEquals(ZoneBox(1038f, 0f, 2076f, 2152f), open.single { it.kind == ZoneKind.SplitRight }.preview)
-        assertEquals(ZoneBox(0f, 0f, 2076f, 2152f), open.single { it.kind == ZoneKind.FullScreen }.preview)
+    @Test fun theTopBandOpensFullScreenOverTheHalves() {
+        // 7% of 2152 = 150.64
+        assertEquals(ZoneKind.FullScreen, open.zoneAt(1038f, 50f)?.kind)
+        assertEquals(ZoneKind.FullScreen, open.zoneAt(100f, 150f)?.kind)
+        assertEquals(ZoneKind.SplitLeft, open.zoneAt(100f, 151f)?.kind)
+        assertEquals(ZoneBox(0f, 0f, 2076f, 2152f), open.zoneAt(1038f, 50f)?.preview)
     }
 
-    @Test fun popUpIsCentered() {
-        // shorter side 2076 * 0.6 = 1245.6 wide, longer side 2152 * 0.5 = 1076 high
-        val p = open.single { it.kind == ZoneKind.PopUp }.preview
-        assertEquals(1245.6f, p.right - p.left, 0.01f)
-        assertEquals(1076f, p.bottom - p.top, 0.01f)
-        assertEquals(1038f, (p.left + p.right) / 2, 0.01f)
-        assertEquals(1076f, (p.top + p.bottom) / 2, 0.01f)
-    }
-
-    @Test fun foldedTheFingersHeightPicksTheHalf() {
-        // t = round(1080 * 0.056) = 60; One UI splits a folded screen top or bottom by where the finger is, either side.
-        val upperLeft = folded.zoneAt(30f, 1000f)!!
-        assertEquals(ZoneKind.SplitTop, upperLeft.kind)
-        assertEquals("Split · top", upperLeft.label)
-        assertEquals(ZoneBox(0f, 0f, 1080f, 1212f), upperLeft.preview)
-        assertEquals(ZoneKind.SplitTop, folded.zoneAt(1050f, 1000f)?.kind)
-        val lowerLeft = folded.zoneAt(30f, 1500f)!!
-        assertEquals(ZoneKind.SplitBottom, lowerLeft.kind)
-        assertEquals(ZoneBox(0f, 1212f, 1080f, 2424f), lowerLeft.preview)
-        assertEquals(ZoneKind.SplitBottom, folded.zoneAt(1050f, 1500f)?.kind)
-        assertEquals(ZoneKind.SplitTop, folded.zoneAt(30f, 1211.9f)?.kind)
-        assertEquals(ZoneKind.SplitBottom, folded.zoneAt(30f, 1212f)?.kind)
-    }
-
-    @Test fun foldedNavigationEdgeKeepsTheOtherSidesHalves() {
-        val zones = dropZones(1080f, 2424f, SplitPlatform.OneUi, NavEdge.Right)
-        assertEquals(ZoneKind.PopUp, zones.zoneAt(1050f, 1000f)?.kind)
-        assertEquals(ZoneKind.SplitTop, zones.zoneAt(30f, 1000f)?.kind)
-        assertEquals(ZoneKind.SplitBottom, zones.zoneAt(30f, 1500f)?.kind)
-    }
-
-    @Test fun theNavigationBarsEdgeHasNoZone() {
-        val zones = dropZones(2152f, 2076f, SplitPlatform.OneUi, NavEdge.Left)
-        assertEquals(ZoneKind.PopUp, zones.zoneAt(30f, 1000f)?.kind)
+    @Test fun withoutSplitTheRestOpensFullScreen() {
+        val zones = dropZones(2076f, 2152f, canSplit = false, canPopUp = true)
+        assertEquals(ZoneKind.FullScreen, zones.zoneAt(100f, 1000f)?.kind)
+        assertEquals(ZoneKind.PopUp, zones.zoneAt(1038f, 1076f)?.kind)
         assertNull(zones.firstOrNull { it.kind == ZoneKind.SplitLeft })
-        assertEquals(ZoneKind.SplitRight, zones.zoneAt(2120f, 1000f)?.kind)
     }
 
-    @Test fun stockAndroidOnlyOpensFullScreen() {
-        val zones = dropZones(2076f, 2152f, SplitPlatform.Stock, null)
-        assertEquals(listOf(ZoneKind.FullScreen), zones.map { it.kind })
-        assertNull(zones.single().trigger)
-        assertEquals(ZoneKind.FullScreen, zones.zoneAt(10f, 10f)?.kind)
-        assertEquals(ZoneKind.FullScreen, zones.zoneAt(1038f, 1076f)?.kind)
+    @Test fun withoutPopUpTheMiddleIsAHalf() {
+        val zones = dropZones(2076f, 2152f, canSplit = true, canPopUp = false)
+        assertEquals(ZoneKind.SplitLeft, zones.zoneAt(1000f, 1076f)?.kind)
+        assertNull(zones.firstOrNull { it.kind == ZoneKind.PopUp })
     }
 
-    @Test fun onStockTheLauncherOpensWhatsDroppedOnIt() {
-        assertTrue(SplitPlatform.Stock.launcherOpensOnDrop())
+    @Test fun landscapePopUpIsWide() {
+        val zones = dropZones(2400f, 1080f, canSplit = true, canPopUp = true)
+        val p = zones.first { it.kind == ZoneKind.PopUp }.preview
+        assertEquals(960f, p.right - p.left, 0.01f)
+        assertEquals(648f, p.bottom - p.top, 0.01f)
     }
 
-    @Test fun oneUiOpensWhatsDroppedItself() {
-        assertFalse(SplitPlatform.OneUi.launcherOpensOnDrop())
+    @Test fun outsideTheScreenIsNoZone() {
+        assertNull(open.zoneAt(-5f, 1000f))
+        assertNull(open.zoneAt(1000f, 2200f))
     }
 }
