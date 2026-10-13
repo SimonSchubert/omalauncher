@@ -73,6 +73,13 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.platform.LocalView
+import dev.omalauncher.ui.splitdrag.SplitDrag
+import kotlinx.coroutines.withTimeoutOrNull
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.AndroidShortcut
 import androidx.compose.runtime.collectAsState
@@ -319,7 +326,13 @@ internal fun RecentStrip(
         val cells: LazyListScope.() -> Unit = {
             items(apps, key = { it.key }) { hit ->
                 val (icon, mask) = hit.icons(runtime)
-                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, spoken = hit.spoken, paused = hit.paused(runtime))
+                // An Android app can be dragged out towards split screen; see SplitDrag.
+                val view = LocalView.current
+                val dragOut =
+                    (hit as? AppHit.Android)?.app?.takeIf(SplitDrag::canDrag)?.let { app ->
+                        { SplitDrag.start(view, app, icon?.asAndroidBitmap(), runtime.splitDrag); Unit }
+                    }
+                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, spoken = hit.spoken, paused = hit.paused(runtime), dragOut = dragOut)
             }
         }
         if (vertical) {
@@ -345,6 +358,8 @@ private fun StripCell(
     spoken: String = label,
     /** As in [AppHit.paused]: drawn dimmed, like stock launchers. */
     paused: Boolean = false,
+    /** Starts dragging the app out, once a long-press is followed by a move; null where it can't be dragged. */
+    dragOut: (() -> Unit)? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
@@ -361,6 +376,38 @@ private fun StripCell(
                 onLongClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     menuOpen = true
+                },
+            )
+            // After the long-press that opens the menu, moving on drags the app out: the menu closes and the system
+            // takes the drag, as on stock launchers. Without the long-press a move is the strip scrolling.
+            .then(
+                if (dragOut == null) {
+                    Modifier
+                } else {
+                    Modifier.pointerInput(dragOut) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            val held =
+                                withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                    while (true) {
+                                        val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: return@withTimeoutOrNull
+                                        if (!c.pressed || (c.position - down.position).getDistance() > viewConfiguration.touchSlop) return@withTimeoutOrNull
+                                    }
+                                } == null
+                            if (!held) return@awaitEachGesture
+                            while (true) {
+                                val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                                if (!c.pressed) return@awaitEachGesture
+                                // Held: the strip doesn't scroll under the finger any more.
+                                c.consume()
+                                if ((c.position - down.position).getDistance() > viewConfiguration.touchSlop) {
+                                    menuOpen = false
+                                    dragOut()
+                                    return@awaitEachGesture
+                                }
+                            }
+                        }
+                    }
                 },
             ),
         contentAlignment = Alignment.Center,
