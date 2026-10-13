@@ -55,19 +55,22 @@ object SplitOpen {
     /** How long the second app of a split waits, so the first is in front to be put next to. */
     private const val ADJACENT_DELAY_MS = 450L
     private const val TAG = "SplitOpen"
+    private val handler = Handler(Looper.getMainLooper())
 
     fun run(
         context: Context,
         plan: OpenPlan<AndroidApp>,
         asTapped: () -> Unit,
     ) {
-        val activity = context.activity() ?: return
         when (plan) {
             is OpenPlan.AsTapped -> asTapped()
-            is OpenPlan.Windowed -> start(activity, plan.app, ActivityOptions.makeBasic().setLaunchBounds(plan.bounds.toRect()).toBundle())
+            is OpenPlan.Windowed -> context.activity()?.let { start(it, plan.app, ActivityOptions.makeBasic().setLaunchBounds(plan.bounds.toRect()).toBundle()) }
             is OpenPlan.Split -> {
+                val activity = context.activity() ?: return
                 start(activity, plan.first, null)
-                Handler(Looper.getMainLooper()).postDelayed({ start(activity, plan.adjacent, null, Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT) }, ADJACENT_DELAY_MS)
+                // A newer drop replaces a second app still waiting from an earlier one.
+                handler.removeCallbacksAndMessages(null)
+                handler.postDelayed({ start(activity, plan.adjacent, null, Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT) }, ADJACENT_DELAY_MS)
             }
         }
     }
