@@ -39,7 +39,7 @@ Omalauncher is not affiliated with Omarchy.
 
 `app/src/main/cpp/ando.c` is adapted from TAWC's ando client at commit
 `e463fee718d04b2c7068b655963e1d3a20b5adb8` (MIT, Copyright (c) 2026 Sophie Winter).
-The full notice is in `app/src/main/cpp/ANDO-LICENSE` and settings › licenses.
+The full notice is in the source header and settings › licenses.
 Omalauncher changes the socket location and diagnostics, fixes empty shell
 arguments and closed standard descriptors, and supplies its own broker.
 

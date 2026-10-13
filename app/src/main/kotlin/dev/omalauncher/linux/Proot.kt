@@ -8,9 +8,9 @@ import java.io.File
 /** Paths and process launching for the proot'd Arch rootfs. */
 class Proot(
     private val context: Context,
-    val integration: AndroidIntegration = AndroidIntegration(context),
 ) {
     private val nativeDir = File(context.applicationInfo.nativeLibraryDir)
+    val integration = AndroidIntegration(context)
     val filesDir: File = context.filesDir
     val rootfs = File(filesDir, "arch")
     val tmpDir = File(filesDir, "tmp")

@@ -37,7 +37,7 @@ class ExamplesTest {
 
     /** The README is what agents learn the language from; its samples must compile. */
     @Test fun readmeSamplesCompile() {
-        val blocks = Regex("```owl\\r?\\n(.*?)```", RegexOption.DOT_MATCHES_ALL).findAll(File("src/main/assets/widgets/README.md").readText()).map { it.groupValues[1] }.toList()
+        val blocks = Regex("```owl\\n(.*?)```", RegexOption.DOT_MATCHES_ALL).findAll(File("src/main/assets/widgets/README.md").readText()).map { it.groupValues[1] }.toList()
         assertTrue(blocks.size >= 4)
         for (b in blocks) {
             val src = if (b.trimStart().startsWith("widget")) b else "widget {\n  state load = 42\n  state cpu = 1\n  state mem = 2\n$b\n}"

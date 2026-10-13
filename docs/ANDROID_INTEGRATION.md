@@ -99,7 +99,7 @@ python scripts/fetch-test-proot.py
 python scripts/check-android-test-results.py
 ```
 
-The second command uses `dev.omalauncher.integrationtest` on an emulator.
+The instrumentation command uses `dev.omalauncher.integrationtest` on an emulator.
 Instrumentation uses disposable cache directories and does not install a distro,
 change storage grants, or edit user settings. It covers the real packaged broker
 and client, streams/argv/env/cwd/uid/status, concurrent and malformed requests,

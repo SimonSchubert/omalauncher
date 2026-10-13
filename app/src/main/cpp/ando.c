@@ -1,8 +1,27 @@
 // Android command client, adapted from wmww/tawc at
 // e463fee718d04b2c7068b655963e1d3a20b5adb8. Copyright (c) 2026 Sophie Winter.
-// MIT license: ANDO-LICENSE. Omalauncher broker/protocol: docs/ANDROID_INTEGRATION.md.
+// Omalauncher broker/protocol: docs/ANDROID_INTEGRATION.md.
 // SCM_RIGHTS passes stdin, stdout, stderr and cwd before the escaped text header.
 // Static bionic runs both inside the glibc guest and as the Android-side broker.
+/*
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 #define _GNU_SOURCE  // O_PATH
 
 #include <errno.h>
@@ -23,10 +42,6 @@ extern char **environ;
 #define SOCKET_ENV "OMALAUNCHER_ANDO_SOCKET"
 // Bound into the guest only when Android commands are enabled.
 #define SOCKET_DEFAULT "/run/omalauncher-ando/ando.sock"
-
-// argv[0] override for the -u/-r su rewrite (test hook, like
-// SOCKET_ENV): lets unrooted tests assert the constructed argv.
-#define SU_ENV "OMALAUNCHER_ANDO_SU"
 
 // Broker header line limit (ando_broker.c MAX_LINE, counted
 // including the newline). -E vars over it are skipped with a warning
@@ -73,7 +88,7 @@ static void forward_signal(int sig) {
     }
 }
 
-// notes/exec-broker.md "Value encoding": \ -> \\, LF -> \n, CR -> \r.
+// Value encoding: \ -> \\, LF -> \n, CR -> \r.
 // Returns a malloc'd string.
 static char *encode_value(const char *s) {
     size_t len = strlen(s);
@@ -232,18 +247,10 @@ static int connect_broker(void) {
     return fd;
 }
 
-// A closed std fd would make the SCM_RIGHTS sendmsg fail with EBADF;
-// substitute /dev/null so `ando cmd 0<&-` still runs.
-static int usable_fd(int fd) {
-    if (fcntl(fd, F_GETFD) != -1) return fd;
-    int nul = open("/dev/null", fd == 0 ? O_RDONLY : O_WRONLY);
-    return nul >= 0 ? nul : fd;
-}
-
 static int send_fds(int sock, int cwd_fd) {
     char byte = 'F';
     struct iovec iov = { .iov_base = &byte, .iov_len = 1 };
-    int fds[4] = { usable_fd(0), usable_fd(1), usable_fd(2), cwd_fd };
+    int fds[4] = { STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO, cwd_fd };
     union {
         char buf[CMSG_SPACE(sizeof(fds))];
         struct cmsghdr align;
@@ -406,9 +413,7 @@ int main(int argc, char **argv) {
     const char *const *final_argv;
     int final_argc;
     if (opt_user) {
-        const char *su = getenv(SU_ENV);
-        if (!su || !*su) su = "su";
-        rewrite[0] = su;
+        rewrite[0] = "su";
         rewrite[1] = opt_user;
         if (joined) {
             rewrite[2] = "-c";
