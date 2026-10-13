@@ -5,9 +5,11 @@ import android.content.res.Configuration
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.Bundle
 import android.os.UserManager
 import android.view.Display
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.SurfaceControlViewHost
 import android.view.WindowManager
 import androidx.activity.OnBackPressedDispatcher
@@ -20,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -45,6 +48,8 @@ internal class DesktopSurface @RequiresApi(30) constructor(
     profile: String,
     hostToken: IBinder,
     private val callback: IDesktopHost,
+    val pagesSideBySide: Boolean,
+    inheritPhoneLayout: Boolean,
     private val remove: (String, String) -> Unit,
 ) {
     val id = UUID.randomUUID().toString()
@@ -63,8 +68,10 @@ internal class DesktopSurface @RequiresApi(30) constructor(
     var drawer by mutableStateOf(false)
     var picker by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
+    val drawerScroll = androidx.compose.foundation.lazy.LazyListState()
+    val arrange = dev.omalauncher.ui.Arrange()
     val widgets = DesktopWidgets(windowContext, runtime, "external_" + DesktopAccess.digest((identity.packageName + identity.certificate + profile).toByteArray()),
-        ::launch, ::uiAction, ::unavailable, ::authorized)
+        ::launch, ::uiAction, ::unavailable, ::authorized, inheritPhoneLayout)
 
     fun attach(width: Int, height: Int) {
         view.setViewTreeLifecycleOwner(owner)
@@ -126,6 +133,8 @@ internal class DesktopSurface @RequiresApi(30) constructor(
         picker = false
         query = ""
         widgets.openScreen = null
+        arrange.folder = null
+        arrange.drop()
         view.clearFocus()
     }
 
@@ -179,6 +188,38 @@ internal class DesktopSurface @RequiresApi(30) constructor(
             else view.dispatchKeyEvent(event)
         }
         override fun close() = checked { remove(id, "disconnected") }
+
+        override fun pointer(event: MotionEvent): Boolean = checked {
+            require(event.pointerCount in 1..16 && event.historySize <= 32)
+            for (index in 0 until event.pointerCount) {
+                require(event.getX(index).isFinite() && event.getY(index).isFinite())
+                require(kotlin.math.abs(event.getX(index)) <= 16384 && kotlin.math.abs(event.getY(index)) <= 16384)
+            }
+            if (!visible) return@checked false
+            if (event.actionMasked in listOf(MotionEvent.ACTION_SCROLL, MotionEvent.ACTION_HOVER_MOVE,
+                    MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_EXIT,
+                    MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.ACTION_BUTTON_RELEASE)) view.dispatchGenericMotionEvent(event)
+            else view.dispatchTouchEvent(event)
+        }
+
+        override fun describe(): Bundle = checked {
+            Bundle().apply {
+                putString("sessionId", id)
+                putIntArray("pages", widgets.pages.toIntArray())
+                putBoolean("pagesSideBySide", pagesSideBySide)
+                putBoolean("overlay", drawer || picker || widgets.openScreen != null || arrange.folder != null)
+                putString("query", query)
+                putInt("drawerScrollIndex", drawerScroll.firstVisibleItemIndex)
+                putInt("drawerScrollOffset", drawerScroll.firstVisibleItemScrollOffset)
+                putString("theme", runtime.themes.picked)
+                putBundle("palette", Bundle().apply {
+                    dev.omalauncher.ui.Palette.current.named.forEach { (name, color) ->
+                        putString(name, "#%06X".format(color.toArgb() and 0xFFFFFF))
+                    }
+                    putString("mode", if (dev.omalauncher.ui.Palette.isLight) "light" else "dark")
+                })
+            }
+        }
     }
 
     fun dispose(reason: String) {

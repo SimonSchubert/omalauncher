@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.Runtime
 import dev.omalauncher.ui.Arrange
+import dev.omalauncher.ui.FolderTile
 import dev.omalauncher.ui.HomeGrid
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Mono
@@ -42,6 +43,7 @@ import dev.omalauncher.ui.WidgetScreenPanel
 import dev.omalauncher.ui.WidgetTile
 import dev.omalauncher.ui.rankMatches
 import dev.omalauncher.widgets.Shortcut
+import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.WidgetItem
 
 internal fun matchingApps(runtime: Runtime, query: String): List<AndroidApp> = if (query.isBlank()) runtime.androidApps.apps.toList() else
@@ -52,8 +54,9 @@ internal fun matchingApps(runtime: Runtime, query: String): List<AndroidApp> = i
 internal fun ExternalHome(runtime: Runtime, session: DesktopSurface) {
     val widgets = session.widgets
     val pages = widgets.pages
-    val pager = rememberPagerState(pageCount = { pages.size })
-    val arrange = remember { Arrange() }
+    val per = if (session.pagesSideBySide) pages.size.coerceAtLeast(1) else 1
+    val pager = rememberPagerState(pageCount = { (pages.size + per - 1) / per })
+    val arrange = session.arrange
     var selected by remember { mutableStateOf<String?>(null) }
     Box(Modifier.fillMaxSize().background(Palette.background)) {
         runtime.themes.wallpaper?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
@@ -61,23 +64,29 @@ internal fun ExternalHome(runtime: Runtime, session: DesktopSurface) {
             HomeGrid(pager, pages, widgets::itemsOn, widgets.layout, arrange, selected, { selected = it },
                 render = { item, tile, focused ->
                     when (item) {
-                        is WidgetItem -> WidgetTile(item.spec, widgets.instances[item.key], widgets.layout.cell(item.key)?.let { it.w to it.h }, focused, tile,
+                        is WidgetItem -> if (item.spec.program?.terminal == true) {
+                            Box(tile.background(Palette.surface).padding(12.dp)) {
+                                BasicText("${item.spec.name}\nTerminal presentation is available on the phone", style = Mono)
+                            }
+                        } else WidgetTile(item.spec, widgets.instances[item.key], widgets.layout.cell(item.key)?.let { it.w to it.h }, focused, tile,
                             onTap = { widgets.tap(item.spec) }, needs = runtime.widgets.missing[item.key].orEmpty(), install = null,
                             onInstall = { session.unavailable("Install widget dependencies from the phone") },
                             onFix = { session.unavailable("Agent windows are unavailable on this desktop") })
                         is Shortcut -> ShortcutTile(item, runtime.shortcutIcon(item, LauncherStyle.monochromeIcons), focused, tile,
-                            onTap = { runtime.androidApps.apps.firstOrNull { "app:" + it.key == item.key }?.let(session::launch) },
-                            paused = runtime.androidApps.paused(item.profile))
-                        else -> Unit
+                            onTap = { runtime.androidApps.apps.firstOrNull { "app:" + it.key == item.key }?.let(session::launch)
+                                ?: session.unavailable("This app presentation is unavailable on the external desktop") },
+                            paused = runtime.androidApps.paused(item.profile), clone = runtime.androidApps.cloned(item.profile))
+                        is Folder -> FolderTile(item, item.apps.take(4).map { runtime.shortcutIcon(it, LauncherStyle.monochromeIcons) },
+                            focused, tile, onTap = { arrange.folder = item.key })
                     }
                 },
                 actions = { item -> BasicText("remove from desktop", Modifier.clickable { widgets.remove(item); selected = null }.padding(8.dp), style = Mono.copy(color = Palette.red)) },
                 onLongPressEmpty = { session.picker = true }, onNoRoom = widgets::noRoom, onMove = widgets::move,
-                onGroup = { _, _ -> }, onReorder = { _, _ -> }, modifier = Modifier.weight(1f).fillMaxWidth())
+                onGroup = widgets::group, onReorder = widgets::reorder, per = per, modifier = Modifier.weight(1f).fillMaxWidth())
             Row(Modifier.fillMaxWidth().background(Palette.background).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 BasicText("apps", Modifier.clickable { session.uiAction("drawer") }, style = Mono)
                 BasicText("widgets", Modifier.clickable { session.uiAction("widgets") }, style = Mono)
-                BasicText("page ${pager.currentPage + 1}/${pages.size}", style = Mono.copy(color = Palette.muted))
+                BasicText(if (session.pagesSideBySide) "${pages.size} home pages" else "page ${pager.currentPage + 1}/${pages.size}", style = Mono.copy(color = Palette.muted))
             }
             session.message?.let { text -> BasicText(text, Modifier.fillMaxWidth().background(Palette.background).clickable { session.message = null }.padding(8.dp), style = Mono.copy(color = Palette.muted)) }
         }
@@ -87,7 +96,7 @@ internal fun ExternalHome(runtime: Runtime, session: DesktopSurface) {
                 BasicTextField(session.query, { session.query = it.take(2048) }, Modifier.fillMaxWidth().padding(12.dp), textStyle = Mono,
                     cursorBrush = SolidColor(Palette.accent), singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { apps.firstOrNull()?.let(session::launch) }))
-                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                LazyColumn(Modifier.weight(1f), state = session.drawerScroll, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(apps, key = { it.key }) { app ->
                         Row(Modifier.fillMaxWidth().alpha(if (runtime.androidApps.paused(app.profile)) 0.5f else 1f).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Row(Modifier.weight(1f).clickable { session.launch(app) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

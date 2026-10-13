@@ -55,7 +55,7 @@ class ExternalDesktopService : Service() {
     private fun reply(status: String) = Bundle().apply {
         putInt("protocol", DESKTOP_PROTOCOL)
         putString("status", status)
-        putStringArrayList("capabilities", if (Build.VERSION.SDK_INT >= 30) arrayListOf("home_surface", "widgets", "android_launch", "work_profiles", "search", "key", "surface_input") else arrayListOf())
+        putStringArrayList("capabilities", if (Build.VERSION.SDK_INT >= 30) arrayListOf("home_surface", "widgets", "android_launch", "work_profiles", "search", "key", "surface_input", "pointer", "home_pages", "appearance") else arrayListOf())
     }
 
     private fun status(protocol: Int, identity: DesktopIdentity?): String = when {
@@ -91,7 +91,8 @@ class ExternalDesktopService : Service() {
             if (!host.asBinder().isBinderAlive) return@caller reply("disconnected")
             try {
                 val runtime = (application as App).runtime
-                val session = DesktopSurface(this@ExternalDesktopService, runtime, access, identity, display, profile, hostToken, host) { id, reason ->
+                val session = DesktopSurface(this@ExternalDesktopService, runtime, access, identity, display, profile, hostToken, host,
+                    metrics.getBoolean("pagesSideBySide"), metrics.getBoolean("inheritPhoneLayout")) { id, reason ->
                     sessions.remove(id)?.dispose(reason)
                 }
                 sessions[session.id] = session

@@ -12,7 +12,10 @@ import dev.omalauncher.AndroidApp
 import dev.omalauncher.Runtime
 import dev.omalauncher.ui.EmbeddedTerminal
 import dev.omalauncher.widgets.HomeItem
+import dev.omalauncher.widgets.GRID_COLUMNS
 import dev.omalauncher.widgets.Shortcut
+import dev.omalauncher.widgets.Shortcuts
+import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.WidgetItem
 import dev.omalauncher.widgets.WidgetLayout
 import dev.omalauncher.widgets.WidgetSpec
@@ -36,11 +39,16 @@ internal class DesktopWidgets(
     private val action: (String) -> Unit,
     private val unavailable: (String) -> Unit,
     private val authorized: () -> Boolean,
+    private val inheritPhoneLayout: Boolean = false,
 ) {
     val layout = WidgetLayout(context, profile)
+    val shortcuts = Shortcuts(context, layout, profile)
     private val prefs = context.getSharedPreferences("desktop_$profile", Context.MODE_PRIVATE)
     private var hidden by mutableStateOf(prefs.getStringSet("hidden", emptySet()).orEmpty().toSet())
     private var pinned by mutableStateOf(prefs.getStringSet("pinned", emptySet()).orEmpty().toSet())
+    private val inheritedPages = mutableStateListOf<Int>().apply {
+        addAll(prefs.getStringSet("sourcePages", emptySet()).orEmpty().mapNotNull { it.toIntOrNull() }.sorted())
+    }
     private val stateDir = File(context.filesDir, "desktop-widget-state/$profile")
     val specs = mutableStateListOf<WidgetSpec>()
     // WidgetLayout's page map is concurrent for the compiler, not a Compose snapshot map.
@@ -71,9 +79,29 @@ internal class DesktopWidgets(
 
     fun start() {
         scope.launch {
-            snapshotFlow { runtime.widgets.specs.toList() to runtime.widgets.linux }.collect { (definitions, linux) ->
-                // Terminal widgets would share phone keyboard/window state: omit until separately negotiated.
-                val available = definitions.filter { it.program?.terminal != true }
+            snapshotFlow { Triple(runtime.widgets.specs.toList(), runtime.widgets.linux, runtime.androidApps.apps.toList()) }.collect { (definitions, linux, apps) ->
+                var seeded = false
+                if (inheritPhoneLayout && !prefs.getBoolean("phoneSeeded", false) && definitions.isNotEmpty()) {
+                    layout.seedFrom(runtime.widgets.layout)
+                    // A phone home need not have been measured before its service starts.
+                    // Keep the compiled page even when no placement override exists yet.
+                    definitions.forEach { layout.setPage(it.file.name, it.page) }
+                    shortcuts.seedFrom(runtime.widgets.shortcuts)
+                    inheritedPages.clear()
+                    inheritedPages += runtime.widgets.pages
+                    prefs.edit().putBoolean("phoneSeeded", true)
+                        .putStringSet("sourcePages", inheritedPages.map(Int::toString).toSet())
+                        .remove("pinned").putBoolean("shortcutsMigrated", true).apply()
+                    pinned = emptySet()
+                    seeded = true
+                }
+                if (!prefs.getBoolean("shortcutsMigrated", false) && (pinned.isEmpty() || apps.isNotEmpty())) {
+                    apps.filter { it.key in pinned }.forEach { shortcuts.addAndroid(it, layout.page("app:" + it.key) ?: 1) }
+                    prefs.edit().remove("pinned").putBoolean("shortcutsMigrated", true).apply()
+                    pinned = emptySet()
+                }
+                // Keep terminal page/placement visible as a placeholder; never share its input/runtime UI.
+                val available = definitions
                 val existing = instances.toMap()
                 val keep = available.map { it.file.name }.toSet()
                 for ((name, instance) in existing) {
@@ -85,8 +113,20 @@ internal class DesktopWidgets(
                 }
                 specs.clear()
                 specs += available
+                if (seeded) {
+                    // Allocate unmeasured tiles on their inherited page before HomeGrid sees
+                    // the desktop aspect ratio. Its used rows then scale to fit the screen.
+                    // Otherwise the first frame can move overflow to a new page permanently.
+                    for (page in pages) {
+                        val items = itemsOn(page)
+                        val used = items.maxOfOrNull { layout.cell(it.key)?.bottom ?: 0 } ?: 0
+                        val extra = items.filter { layout.cell(it.key) == null }.sumOf { it.size?.second ?: 3 }
+                        layout.place(items, GRID_COLUMNS, (used + extra).coerceAtLeast(1))
+                    }
+                }
                 for (spec in available) {
                     val program = spec.program ?: continue
+                    if (program.terminal) continue
                     if (spec.file.name in instances || (program.needsLinux && !linux)) continue
                     val name = spec.file.name
                     val saved = File(stateDir, "$name.json")
@@ -103,18 +143,17 @@ internal class DesktopWidgets(
         }
     }
 
-    fun page(spec: WidgetSpec) = layout.page(spec.file.name) ?: spec.program?.page ?: 1
+    fun page(spec: WidgetSpec) = layout.page(spec.file.name) ?: spec.page
 
     fun itemsOn(page: Int): List<HomeItem> = specs.filter { it.file.name !in hidden && page(it) == page }.map { WidgetItem(it.onPage(page)) } +
-        runtime.androidApps.apps.filter { it.key in pinned && (layout.page("app:" + it.key) ?: 1) == page }
-            .map { Shortcut("app:" + it.key, page, it.label, component = it.component, profile = it.profile) }
+        shortcuts.onGrid().filter { it.page == page }
 
     val pages: List<Int> get() {
         @Suppress("UNUSED_VARIABLE") val revision = pageRevision
-        return (specs.filter { it.file.name !in hidden }.map(::page) + runtime.androidApps.apps.filter { it.key in pinned }.map { layout.page("app:" + it.key) ?: 1 }).distinct().sorted().ifEmpty { listOf(1) }
+        return (inheritedPages + specs.filter { it.file.name !in hidden }.map(::page) + shortcuts.onGrid().map { it.page }).distinct().sorted().ifEmpty { listOf(1) }
     }
 
-    fun move(item: HomeItem, page: Int) { layout.setPage(item.key, page); pageRevision++ }
+    fun move(item: HomeItem, page: Int) { layout.setPage(item.key, page); if (item !is WidgetItem) shortcuts.move(item.key, page); pageRevision++ }
 
     fun noRoom(item: HomeItem) {
         val page = pages.firstOrNull { it > item.page && layout.claim(item, itemsOn(it)) } ?: ((pages.maxOrNull() ?: 1) + 1)
@@ -122,10 +161,12 @@ internal class DesktopWidgets(
     }
 
     fun pin(app: AndroidApp, page: Int) {
-        pinned = pinned + app.key
-        prefs.edit().putStringSet("pinned", pinned).apply()
+        shortcuts.addAndroid(app, page)
         layout.setPage("app:" + app.key, page)
     }
+
+    fun group(app: Shortcut, target: HomeItem) { shortcuts.group(app, target) }
+    fun reorder(app: Shortcut, before: String?) { shortcuts.moveBefore(app.key, before) }
 
     fun show(spec: WidgetSpec) {
         hidden = hidden - spec.file.name
@@ -135,8 +176,7 @@ internal class DesktopWidgets(
     fun remove(item: HomeItem) {
         when (item) {
             is WidgetItem -> { hidden = hidden + item.key; prefs.edit().putStringSet("hidden", hidden).apply() }
-            is Shortcut -> { pinned = pinned - item.key.removePrefix("app:"); prefs.edit().putStringSet("pinned", pinned).apply() }
-            else -> return
+            is Shortcut, is Folder -> shortcuts.remove(item.key)
         }
         layout.remove(item.key)
     }

@@ -86,6 +86,15 @@ class WidgetLayout(
 
     fun cell(name: String) = cells[name]
 
+    /** Copies initial placement into an independent external profile. */
+    internal fun seedFrom(source: WidgetLayout) {
+        cells.clear()
+        cells.putAll(source.cells.toMap())
+        pages.clear()
+        pages.putAll(source.pages.toMap())
+        save()
+    }
+
     /** Live update while dragging; [save] persists. An unchanged cell isn't written, so pointer moves within it don't recompose the page. */
     fun set(
         name: String,
