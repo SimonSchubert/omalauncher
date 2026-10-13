@@ -137,7 +137,8 @@ object Toml {
 
     fun format(v: Any): String =
         when (v) {
-            is String -> "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\t", "\\t").replace("\r", "\\r").replace(CONTROL) { "\\u%04x".format(it.value[0].code) } + "\""
+            // In single quotes when that saves escaping its double ones, like an extra-keys layout's.
+            is String -> if ('"' in v && '\'' !in v && !v.any { it < ' ' || it == '\u007f' }) "'$v'" else "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\t", "\\t").replace("\r", "\\r").replace(CONTROL) { "\\u%04x".format(it.value[0].code) } + "\""
             is Double -> if (v == Math.rint(v) && !v.isInfinite() && kotlin.math.abs(v) < 1e15) v.toLong().toString() else v.toString()
             is Number -> format(v.toDouble())
             else -> v.toString()
