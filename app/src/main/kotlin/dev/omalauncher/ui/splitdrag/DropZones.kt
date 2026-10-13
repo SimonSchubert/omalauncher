@@ -52,8 +52,8 @@ enum class NavEdge { Left, Right }
 private const val EDGE_SHARE = 0.056f
 
 /**
- * The zones for a [width]×[height] window. One UI splits at the left and right edges (top and bottom halves on a
- * narrow, folded screen), opens full screen from the top strip and pops the app up anywhere else. Stock Android
+ * The zones for a [width]×[height] window. One UI splits at the left and right edges (on a narrow, folded screen,
+ * into the top or bottom half by the height the app is let go at), opens full screen from the top strip and pops the app up anywhere else. Stock Android
  * opens it full screen wherever it's dropped.
  */
 fun dropZones(
@@ -72,17 +72,27 @@ fun dropZones(
         SplitPlatform.Stock -> listOf(DropZone(ZoneKind.FullScreen, "Full screen", null, whole))
         SplitPlatform.OneUi -> {
             val t = (shorter * EDGE_SHARE).roundToInt().toFloat()
-            // A folded phone's screen is too narrow to split sideways: its sides split it top and bottom.
+            val left = navEdge != NavEdge.Left
+            val right = navEdge != NavEdge.Right
+            // A folded phone's screen is too narrow to split sideways: either side splits it top or bottom, by the
+            // height the app is let go at, so each side strip is two zones.
             val narrow = width / height < 0.6f
-            val first =
-                if (narrow) DropZone(ZoneKind.SplitTop, "Split · top", null, ZoneBox(0f, 0f, width, height / 2))
-                else DropZone(ZoneKind.SplitLeft, "Split · left", null, ZoneBox(0f, 0f, width / 2, height))
-            val second =
-                if (narrow) DropZone(ZoneKind.SplitBottom, "Split · bottom", null, ZoneBox(0f, height / 2, width, height))
-                else DropZone(ZoneKind.SplitRight, "Split · right", null, ZoneBox(width / 2, 0f, width, height))
             buildList {
-                if (navEdge != NavEdge.Left) add(first.copy(trigger = ZoneBox(0f, 0f, t, height)))
-                if (navEdge != NavEdge.Right) add(second.copy(trigger = ZoneBox(width - t, 0f, width, height)))
+                if (narrow) {
+                    val top = DropZone(ZoneKind.SplitTop, "Split · top", null, ZoneBox(0f, 0f, width, height / 2))
+                    val bottom = DropZone(ZoneKind.SplitBottom, "Split · bottom", null, ZoneBox(0f, height / 2, width, height))
+                    if (left) {
+                        add(top.copy(trigger = ZoneBox(0f, 0f, t, height / 2)))
+                        add(bottom.copy(trigger = ZoneBox(0f, height / 2, t, height)))
+                    }
+                    if (right) {
+                        add(top.copy(trigger = ZoneBox(width - t, 0f, width, height / 2)))
+                        add(bottom.copy(trigger = ZoneBox(width - t, height / 2, width, height)))
+                    }
+                } else {
+                    if (left) add(DropZone(ZoneKind.SplitLeft, "Split · left", ZoneBox(0f, 0f, t, height), ZoneBox(0f, 0f, width / 2, height)))
+                    if (right) add(DropZone(ZoneKind.SplitRight, "Split · right", ZoneBox(width - t, 0f, width, height), ZoneBox(width / 2, 0f, width, height)))
+                }
                 add(DropZone(ZoneKind.FullScreen, "Full screen", ZoneBox(t, 0f, width - t, t), whole))
                 add(DropZone(ZoneKind.PopUp, "Pop-up", null, popUp))
             }
