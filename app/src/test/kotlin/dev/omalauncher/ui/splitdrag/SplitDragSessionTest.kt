@@ -1,43 +1,44 @@
 package dev.omalauncher.ui.splitdrag
 
+import androidx.compose.ui.geometry.Offset
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SplitDragSessionTest {
-    @Test fun followsTheFingerOverTheLauncher() {
-        val s = SplitDragSession()
-        s.begin("Maps") {}
-        assertEquals("Maps", s.app)
-        assertNull(s.finger)
-        s.move(10f, 20f)
-        assertEquals(10f to 20f, s.finger)
+    private fun session() = SplitDragSession().apply { area = 1080f to 2424f }
+
+    @Test fun followsTheFinger() {
+        val s = session()
+        s.begin("Maps", null, Offset(10f, 20f), canSplit = true, canPopUp = true) {}
+        assertEquals("Maps", s.label)
+        assertEquals(Offset(10f, 20f), s.finger)
+        s.move(Offset(30f, 40f))
+        assertEquals(Offset(30f, 40f), s.finger)
     }
 
-    @Test fun leavingHandsOverToTheSystem() {
-        val s = SplitDragSession()
-        s.begin("Maps") {}
-        s.move(10f, 20f)
-        s.leave()
+    @Test fun lettingGoOpensTheZoneUnderTheFinger() {
+        val s = session()
+        var dropped: DropZone? = null
+        s.begin("Maps", null, Offset(540f, 2300f), canSplit = true, canPopUp = true) { dropped = it }
+        s.end(Offset(540f, 2000f))
+        assertEquals(ZoneKind.SplitBottom, dropped?.kind)
+        assertNull(s.label)
         assertNull(s.finger)
-        assertEquals("Maps", s.app)
     }
 
-    @Test fun keepsHowToOpenTheApp() {
-        val s = SplitDragSession()
-        var opened = 0
-        s.begin("Maps") { opened++ }
-        s.open!!()
-        assertEquals(1, opened)
+    @Test fun endingWithoutAPointOpensNothing() {
+        val s = session()
+        var dropped: DropZone? = null
+        s.begin("Maps", null, Offset(540f, 2300f), canSplit = true, canPopUp = true) { dropped = it }
+        s.end(null)
+        assertNull(dropped)
+        assertNull(s.label)
     }
 
-    @Test fun endingClearsEverything() {
-        val s = SplitDragSession()
-        s.begin("Maps") {}
-        s.move(10f, 20f)
-        s.end()
-        assertNull(s.app)
-        assertNull(s.finger)
-        assertNull(s.open)
+    @Test fun zonesFollowWhatThePhoneCanDo() {
+        val s = session()
+        s.begin("Maps", null, Offset(540f, 2300f), canSplit = false, canPopUp = false) {}
+        assertEquals(listOf(ZoneKind.FullScreen, ZoneKind.FullScreen), s.zones().map { it.kind })
     }
 }
