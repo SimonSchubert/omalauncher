@@ -71,13 +71,20 @@ fun DropZoneOverlay(session: SplitDragSession) {
     val app = session.app
     val finger = session.finger
     val shown by animateFloatAsState(if (app != null && finger != null) 1f else 0f, tween(150), label = "drop zones")
+    // What was drawn last, so it fades out with the zones once the drag ends or the finger leaves.
+    val last = remember { LastDrawn() }
+    if (app != null) last.app = app
+    if (finger != null) last.finger = finger
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
             // Only our own drag: text or files dragged over home from another app aren't ours to draw for.
             .dragAndDropTarget(shouldStartDragAndDrop = { session.app != null }, target = target),
     ) {
-        if (shown == 0f || app == null) return@BoxWithConstraints
+        // The session's live values while dragging over home; the last ones while the overlay fades out.
+        val drawnApp = session.app ?: last.app
+        val drawnFinger = session.finger ?: last.finger
+        if (shown == 0f || drawnApp == null) return@BoxWithConstraints
         val density = LocalDensity.current
         val direction = LocalLayoutDirection.current
         val nav = WindowInsets.navigationBars
@@ -90,7 +97,7 @@ fun DropZoneOverlay(session: SplitDragSession) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
         val zones = remember(w, h, platform, navEdge) { dropZones(w, h, platform, navEdge) }
-        val active = finger?.let { (x, y) -> zones.zoneAt(x, y) }
+        val active = drawnFinger?.let { (x, y) -> zones.zoneAt(x, y) }
         Box(Modifier.fillMaxSize().alpha(shown)) {
             // Where to go: each zone's trigger, faintly.
             for (z in zones) {
@@ -104,7 +111,7 @@ fun DropZoneOverlay(session: SplitDragSession) {
                 ZoneLabel(active.preview, active.label)
             }
             BasicText(
-                "Release over a zone to open $app",
+                "Release over a zone to open $drawnApp",
                 style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Body),
                 modifier =
                     Modifier
@@ -116,6 +123,12 @@ fun DropZoneOverlay(session: SplitDragSession) {
             )
         }
     }
+}
+
+/** The dragged app and the finger last seen, to draw while the overlay fades out; not state, nothing waits on it. */
+private class LastDrawn {
+    var app: String? = null
+    var finger: Pair<Float, Float>? = null
 }
 
 /** [box] filled and outlined in the accent; [fill] and [line] are the accent's opacity. */
