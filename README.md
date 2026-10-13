@@ -48,6 +48,21 @@ Hardware keyboard shortcuts: Super+Enter (terminal), Super+Space or
 Super+A (the bar), Super+1..9 (home pages) on the home screen; Super+Enter
 and Super+W (close) in Linux windows.
 
+The keys above the soft keyboard in terminals are `terminal.extra-keys` in
+`~/.config/omalauncher/style/style.toml`, in Termux's extra-keys format:
+
+```toml
+[terminal]
+extra-keys = '[[ESC, TAB, CTRL, ALT, {key: LEFT, popup: {macro: "ALT b", display: "word"}}, DOWN, UP, RIGHT], [/, -, HOME, END, PGUP, PGDN, PASTE]]'
+```
+
+Tap ctrl, alt or shift for the next key, or hold it to lock it. Swipe a key up
+and let go to send its popup; a key with one doesn't repeat. A macro sends its
+keys one after another, each with the modifiers named before it: `CTRL f d` is
+Ctrl+F, then D. Up to three rows of ten; `'[]'` hides the bar. Termux's own
+actions (KEYBOARD, DRAWER) aren't keys here, and what can't be read shows in
+the banner on home while the last good layout stays.
+
 ## Building
 
 ```sh

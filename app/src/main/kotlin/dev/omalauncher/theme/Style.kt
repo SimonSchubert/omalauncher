@@ -1,6 +1,7 @@
 package dev.omalauncher.theme
 
 import androidx.compose.runtime.Immutable
+import dev.omalauncher.ui.ExtraKeysLayout
 
 /**
  * One setting in style.toml. [key] is its place in the file ("widgets.gaps-in");
@@ -52,6 +53,18 @@ sealed class Setting<T>(
         doc: String,
     ) : Setting<String>(key, default, doc) {
         override fun decode(value: Any): String = nonBlank(value, "takes text in quotes")
+    }
+
+    /**
+     * Text in a format of its own, unset by default: [check] reads it, and throws
+     * [IllegalArgumentException] saying what's wrong, so a bad value keeps the last good one.
+     */
+    class Spec(
+        key: String,
+        doc: String,
+        private val check: (String) -> Unit,
+    ) : Setting<String?>(key, null, doc) {
+        override fun decode(value: Any): String? = nonBlank(value, "takes text in quotes").also(check)
     }
 
     protected fun nonBlank(
@@ -159,6 +172,14 @@ class Style(
 
         val TERMINAL_FONT = Setting.Text("terminal.font", "JetBrains Mono", "The terminals' font family; fc-list :spacing=100 lists those installed.")
         val TERMINAL_TEXT = Setting.Number("terminal.text", 12.0, 6.0..32.0, "The terminals' em size in dp, before Android's font size: 10 smaller, 12 default, 14 larger.")
+        val EXTRA_KEYS =
+            Setting.Spec(
+                "terminal.extra-keys",
+                "The keys above the soft keyboard, in Termux's extra-keys format, best in single quotes: " +
+                    "'[[ESC, TAB, CTRL, ALT, {key: LEFT, popup: {macro: \"ALT b\", display: \"word\"}}, DOWN, UP, RIGHT]]'. " +
+                    "Swipe a key up to send its popup. Up to ${ExtraKeysLayout.MAX_ROWS} rows of ${ExtraKeysLayout.MAX_KEYS}; '[]' hides the bar. " +
+                    "Unset: esc / - home up end pgup copy, tab ctrl alt left down right pgdn paste.",
+            ) { ExtraKeysLayout.parse(it) }
     }
 
     /** A system bar's band on home; [name] is its section in the file. */
@@ -199,7 +220,7 @@ object StyleFile {
         with(Style) {
             listOf(THEME, BACKGROUND, APP_TILES, RECENT_APPS, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
-                STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT)
+                STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, EXTRA_KEYS)
         }
 
     private val byKey = ALL.associateBy { it.key }

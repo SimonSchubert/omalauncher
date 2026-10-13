@@ -36,7 +36,15 @@ class KeyboardBridge(
 
     val ctrl = StickyModifier(Keys.KEY_LEFTCTRL)
     val alt = StickyModifier(Keys.KEY_LEFTALT)
-    private val sticky = listOf(ctrl, alt)
+    val shift = StickyModifier(Keys.KEY_LEFTSHIFT)
+    private val sticky = listOf(ctrl, alt, shift)
+
+    fun modifier(mod: Mod) =
+        when (mod) {
+            Mod.Ctrl -> ctrl
+            Mod.Alt -> alt
+            Mod.Shift -> shift
+        }
 
     /** A key sent whole on its press because modifiers were latched; its release is already sent. */
     private var swallowUp: Int? = null
@@ -79,25 +87,30 @@ class KeyboardBridge(
                 if (!Character.isISOControl(cp)) wm.server.postInput { typeCodePoint(cp) }
                 continue
             }
-            val (code, shift) = mapped
-            withLatched {
-                if (shift) key(Keys.KEY_LEFTSHIFT, true)
-                key(code, true)
-                key(code, false)
-                if (shift) key(Keys.KEY_LEFTSHIFT, false)
-            }
+            val (code, shifted) = mapped
+            tap(code, if (shifted) listOf(Keys.KEY_LEFTSHIFT) else emptyList())
         }
     }
 
-    /** Presses and releases [code], with [held] and any latched modifiers held around it. */
+    /**
+     * Presses and releases [code], with [held] and any latched modifiers held around it.
+     * A modifier both latched and in [held] is pressed once: a second press would be lost,
+     * and its release would let go of the latch's too early.
+     */
     fun tap(
         code: Int,
-        held: Int? = null,
-    ) = withLatched {
-        held?.let { key(it, true) }
+        held: List<Int> = emptyList(),
+    ) = withLatched { latched ->
+        val extra = held.distinct().filterNot { it in latched }
+        extra.forEach { key(it, true) }
         key(code, true)
         key(code, false)
-        held?.let { key(it, false) }
+        extra.asReversed().forEach { key(it, false) }
+    }
+
+    /** Sends [strokes] one after another, like typing them: a latch for the next key ends after the first. */
+    fun send(strokes: List<Stroke>) {
+        for (s in strokes) if (s.text != null) type(s.text) else tap(s.code, s.held)
     }
 
     /** Drops every latch, so a modifier left on doesn't surprise the next keystroke. */
@@ -105,10 +118,10 @@ class KeyboardBridge(
 
     private fun latched() = sticky.any { it.latch != Latch.Off }
 
-    private inline fun withLatched(block: () -> Unit) {
+    private inline fun withLatched(block: (latched: Set<Int>) -> Unit) {
         val held = sticky.filter { it.latch != Latch.Off }
         held.forEach { key(it.code, true) }
-        block()
+        block(held.mapTo(HashSet()) { it.code })
         held.forEach { key(it.code, false) }
         held.filter { it.latch == Latch.Once }.forEach { it.latch = Latch.Off }
     }

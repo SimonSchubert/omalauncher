@@ -4,6 +4,12 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- The terminals' extra keys are `terminal.extra-keys` in style.toml, in Termux's extra-keys
+  format: up to three rows, a shift key, keys that type text or a macro, and popups sent by
+  swiping a key up. `'[]'` hides the bar.
+
 ## 0.7.0 (versionCode 12) – 2026-10-13
 
 - The style lives in `~/.config/omalauncher/style/style.toml`, which you or an agent can edit
