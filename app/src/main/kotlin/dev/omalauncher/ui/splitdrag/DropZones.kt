@@ -31,14 +31,19 @@ data class DropZone(
     val preview: ZoneBox,
 )
 
-/** Which system places a dropped app: Samsung's One UI, or stock Android, with or without desktop-style windows. */
+/** Which system places a dropped app: Samsung's One UI, or stock Android. */
 sealed interface SplitPlatform {
     data object OneUi : SplitPlatform
 
-    data class Stock(
-        val freeform: Boolean,
-    ) : SplitPlatform
+    data object Stock : SplitPlatform
 }
+
+/**
+ * Whether the launcher opens an app dropped over its own window. Stock Android takes a drop only at its top and bottom
+ * strips; anywhere else the launcher opens the app full screen itself. One UI opens an unhandled drop where it lands
+ * (pop-up or split), so there the launcher never takes it.
+ */
+fun SplitPlatform.launcherOpensOnDrop(): Boolean = this is SplitPlatform.Stock
 
 /** The side the navigation buttons stand on when they stand beside the screen; One UI gives that edge no zone. */
 enum class NavEdge { Left, Right }
@@ -49,7 +54,7 @@ private const val EDGE_SHARE = 0.056f
 /**
  * The zones for a [width]×[height] window. One UI splits at the left and right edges (top and bottom halves on a
  * narrow, folded screen), opens full screen from the top strip and pops the app up anywhere else. Stock Android
- * opens it full screen, or, where it has desktop-style windows, pops it up in the middle.
+ * opens it full screen wherever it's dropped.
  */
 fun dropZones(
     width: Float,
@@ -64,12 +69,7 @@ fun dropZones(
     val popH = if (width <= height) longer * 0.5f else shorter * 0.6f
     val popUp = ZoneBox((width - popW) / 2, (height - popH) / 2, (width + popW) / 2, (height + popH) / 2)
     return when (platform) {
-        is SplitPlatform.Stock ->
-            if (platform.freeform) {
-                listOf(DropZone(ZoneKind.PopUp, "Pop-up", popUp, popUp), DropZone(ZoneKind.FullScreen, "Full screen", null, whole))
-            } else {
-                listOf(DropZone(ZoneKind.FullScreen, "Full screen", null, whole))
-            }
+        SplitPlatform.Stock -> listOf(DropZone(ZoneKind.FullScreen, "Full screen", null, whole))
         SplitPlatform.OneUi -> {
             val t = (shorter * EDGE_SHARE).roundToInt().toFloat()
             // A folded phone's screen is too narrow to split sideways: its sides split it top and bottom.

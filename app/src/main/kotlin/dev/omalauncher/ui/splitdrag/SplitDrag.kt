@@ -4,9 +4,7 @@ import android.app.ActivityOptions
 import android.app.PendingIntent
 import android.content.ClipData
 import android.content.ClipDescription
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Point
@@ -18,28 +16,33 @@ import dev.omalauncher.AndroidApp
 /**
  * Drags an app out of the launcher for the system to open where it's dropped: split screen, a pop-up window or full
  * screen. The drag carries a PendingIntent the system starts on an unhandled drop (Android 15+); One UI also offers
- * its split-screen zones for it. The launcher itself never takes the drop.
+ * its split-screen zones for it, and there the launcher never takes the drop. Stock Android takes it only at its top
+ * and bottom strips, so a drop over the launcher's window anywhere else is the launcher's: it opens the app full
+ * screen itself.
  */
 object SplitDrag {
     /** Android 15 has the drag; apps in a work or clone profile can't be started from a PendingIntent of ours. */
     fun canDrag(app: AndroidApp) = Build.VERSION.SDK_INT >= 35 && app.profile == null
 
-    /** Samsung's One UI, or stock Android with or without desktop-style windows. */
-    fun platform(context: Context): SplitPlatform {
+    /** Samsung's One UI, or stock Android. */
+    fun platform(): SplitPlatform {
         val oneUi =
             Build.MANUFACTURER.equals("samsung", ignoreCase = true) &&
                 runCatching { Class.forName("com.samsung.android.multiwindow.MultiWindowManager") }.isSuccess
-        if (oneUi) return SplitPlatform.OneUi
-        return SplitPlatform.Stock(freeform = context.packageManager.hasSystemFeature(PackageManager.FEATURE_FREEFORM_WINDOW_MANAGEMENT))
+        return if (oneUi) SplitPlatform.OneUi else SplitPlatform.Stock
     }
 
-    /** Starts dragging [app] from [view]; false, with [session] ended, if the system turned the drag down. */
+    /**
+     * Starts dragging [app] from [view]; false, with [session] ended, if the system turned the drag down. [open] opens
+     * the app full screen, for a drop the launcher takes itself (see [launcherOpensOnDrop]).
+     */
     @Suppress("DEPRECATION") // MODE_BACKGROUND_ACTIVITY_START_ALLOWED: the plain "allow" the launcher needs on API 35
     fun start(
         view: View,
         app: AndroidApp,
         icon: Bitmap?,
         session: SplitDragSession,
+        open: () -> Unit,
     ): Boolean {
         if (!canDrag(app)) return false
         val context = view.context
@@ -56,7 +59,7 @@ object SplitDrag {
         val pending = PendingIntent.getActivity(context, app.key.hashCode(), launch, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT, options)
         val item = ClipData.Item.Builder().setIntentSender(pending.intentSender).build()
         val clip = ClipData(ClipDescription(app.label, arrayOf(ClipDescription.MIMETYPE_TEXT_INTENT)), item)
-        session.begin(app.label)
+        session.begin(app.label, open)
         val started = view.startDragAndDrop(clip, IconShadow(view, icon), null, View.DRAG_FLAG_GLOBAL or View.DRAG_FLAG_START_INTENT_SENDER_ON_UNHANDLED_DRAG)
         if (!started) session.end()
         return started

@@ -17,13 +17,13 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draganddrop.DragAndDropEvent
 import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.draganddrop.toAndroidDragEvent
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
@@ -37,13 +37,14 @@ import dev.omalauncher.ui.frame
 /**
  * While an app is dragged out of home: the zones it can be dropped in, in the theme's accent. Each zone's trigger
  * shows faintly; the zone under the finger shows where the app will open, framed, with what it does. Once the finger
- * reaches an edge the system draws its own zones and this fades. It takes no drop: the system opens the app.
+ * reaches an edge the system draws its own zones and this fades. On One UI it never takes the drop: the system opens
+ * the app. On stock Android a drop over the launcher's window is nobody else's, so the launcher opens the app itself.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DropZoneOverlay(session: SplitDragSession) {
-    val context = LocalContext.current
-    val platform = remember(context) { SplitDrag.platform(context) }
+    val platform = remember { SplitDrag.platform() }
+    val currentPlatform by rememberUpdatedState(platform)
     val target =
         remember(session) {
             object : DragAndDropTarget {
@@ -56,8 +57,15 @@ fun DropZoneOverlay(session: SplitDragSession) {
 
                 override fun onEnded(event: DragAndDropEvent) = session.end()
 
-                // Never ours: an unhandled drop is what makes the system open the app.
-                override fun onDrop(event: DragAndDropEvent) = false
+                // One UI opens an unhandled drop where it lands, so it's never ours there. Stock Android leaves a drop
+                // over our window unhandled and opens nothing: the launcher opens the app full screen. Runs before
+                // onEnded, while the session still holds the app.
+                override fun onDrop(event: DragAndDropEvent): Boolean {
+                    if (!currentPlatform.launcherOpensOnDrop()) return false
+                    val open = session.open ?: return false
+                    open()
+                    return true
+                }
             }
         }
     val app = session.app

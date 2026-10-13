@@ -1,7 +1,9 @@
 package dev.omalauncher.ui.splitdrag
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DropZonesTest {
@@ -61,15 +63,18 @@ class DropZonesTest {
     }
 
     @Test fun stockAndroidOnlyOpensFullScreen() {
-        val zones = dropZones(2076f, 2152f, SplitPlatform.Stock(freeform = false), null)
+        val zones = dropZones(2076f, 2152f, SplitPlatform.Stock, null)
         assertEquals(listOf(ZoneKind.FullScreen), zones.map { it.kind })
+        assertNull(zones.single().trigger)
         assertEquals(ZoneKind.FullScreen, zones.zoneAt(10f, 10f)?.kind)
         assertEquals(ZoneKind.FullScreen, zones.zoneAt(1038f, 1076f)?.kind)
     }
 
-    @Test fun stockWithFreeformPopsUpInTheMiddle() {
-        val zones = dropZones(2076f, 2152f, SplitPlatform.Stock(freeform = true), null)
-        assertEquals(ZoneKind.PopUp, zones.zoneAt(1038f, 1076f)?.kind)
-        assertEquals(ZoneKind.FullScreen, zones.zoneAt(10f, 10f)?.kind)
+    @Test fun onStockTheLauncherOpensWhatsDroppedOnIt() {
+        assertTrue(SplitPlatform.Stock.launcherOpensOnDrop())
+    }
+
+    @Test fun oneUiOpensWhatsDroppedItself() {
+        assertFalse(SplitPlatform.OneUi.launcherOpensOnDrop())
     }
 }

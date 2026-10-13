@@ -7,7 +7,7 @@ import org.junit.Test
 class SplitDragSessionTest {
     @Test fun followsTheFingerOverTheLauncher() {
         val s = SplitDragSession()
-        s.begin("Maps")
+        s.begin("Maps") {}
         assertEquals("Maps", s.app)
         assertNull(s.finger)
         s.move(10f, 20f)
@@ -16,19 +16,28 @@ class SplitDragSessionTest {
 
     @Test fun leavingHandsOverToTheSystem() {
         val s = SplitDragSession()
-        s.begin("Maps")
+        s.begin("Maps") {}
         s.move(10f, 20f)
         s.leave()
         assertNull(s.finger)
         assertEquals("Maps", s.app)
     }
 
+    @Test fun keepsHowToOpenTheApp() {
+        val s = SplitDragSession()
+        var opened = 0
+        s.begin("Maps") { opened++ }
+        s.open!!()
+        assertEquals(1, opened)
+    }
+
     @Test fun endingClearsEverything() {
         val s = SplitDragSession()
-        s.begin("Maps")
+        s.begin("Maps") {}
         s.move(10f, 20f)
         s.end()
         assertNull(s.app)
         assertNull(s.finger)
+        assertNull(s.open)
     }
 }
