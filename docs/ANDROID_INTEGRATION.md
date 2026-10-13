@@ -1,7 +1,9 @@
 # Android tools and storage in Linux
 
-The Linux install screen and settings › linux offer Android commands (`ando`)
-and storage binds. Both are optional and initially off/empty, including when
+The **Linux environment** section in setup and settings › linux offers Android
+commands (`ando`) and storage binds. During setup this section comes before the
+separate **Coding agents** choices. Neither integration requires an agent.
+Both are optional and initially off/empty, including when
 upgrading an existing installation. No extra download is needed for ando.
 
 ## Commands

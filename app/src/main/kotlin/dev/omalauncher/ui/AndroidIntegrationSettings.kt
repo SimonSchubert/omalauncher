@@ -51,7 +51,16 @@ internal fun AndroidIntegrationSettings(runtime: Runtime) {
         error = e.message
         false
     }
-    Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(
+        Modifier.fillMaxWidth().frame(1.dp, Palette.border, Palette.background, radius = 12.dp).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Label("linux environment")
+        BasicText(
+            "Connect Linux terminals and apps to Android commands and folders. " +
+                "These options can be changed later in settings › linux.",
+            style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+        )
         Choice("Android commands (ando)", "Run Android tools as Omalauncher's app user", settings.andoEnabled) {
             runtime.setAndo(!settings.andoEnabled)
         }

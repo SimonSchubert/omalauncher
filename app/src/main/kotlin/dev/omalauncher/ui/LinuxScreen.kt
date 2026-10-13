@@ -63,7 +63,8 @@ fun LinuxScreen(
                 LinuxState.Installed -> Installed(runtime)
                 LinuxState.Removing -> BasicText("removing linux…", style = Mono.copy(color = Palette.accent))
             }
-            if (state == LinuxState.NotInstalled || state == LinuxState.Installed || state is LinuxState.Failed) {
+            if (state == LinuxState.Installed || state is LinuxState.Failed) {
+                Spacer(Modifier.height(24.dp))
                 AndroidIntegrationSettings(runtime)
             }
         }
@@ -101,12 +102,12 @@ private fun InstallOffer(runtime: Runtime) {
         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
     )
     Spacer(Modifier.height(16.dp))
-    // Above the agent list, so it's in reach without scrolling.
+    // Above the optional setup sections, so it's in reach without scrolling.
     PrimaryButton(if (picked.isEmpty()) "install linux" else "install linux and ${picked.size} agent${if (picked.size == 1) "" else "s"}") {
         install(picked)
     }
     Spacer(Modifier.height(24.dp))
-    AgentPicker(picked) { bin -> picked = if (bin in picked) picked - bin else picked + bin }
+    LinuxSetupOptions(runtime, picked) { bin -> picked = if (bin in picked) picked - bin else picked + bin }
 }
 
 @Composable
