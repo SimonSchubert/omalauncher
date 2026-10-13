@@ -329,9 +329,12 @@ internal fun RecentStrip(
                 // An Android app can be dragged out towards split screen; see SplitDrag.
                 val view = LocalView.current
                 // Dropped over home on stock Android, it opens as a tap on it does.
+                val app = (hit as? AppHit.Android)?.app
                 val dragOut =
-                    (hit as? AppHit.Android)?.app?.takeIf(SplitDrag::canDrag)?.let { app ->
+                    if (app != null && SplitDrag.canDrag(app)) {
                         { SplitDrag.start(view, app, icon?.asAndroidBitmap(), runtime.splitDrag, open = { handlers.launch(hit) }); Unit }
+                    } else {
+                        null
                     }
                 StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, spoken = hit.spoken, paused = hit.paused(runtime), dragOut = dragOut)
             }

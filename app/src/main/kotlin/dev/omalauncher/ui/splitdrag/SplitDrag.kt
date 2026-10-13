@@ -11,6 +11,8 @@ import android.graphics.Point
 import android.graphics.Rect
 import android.os.Build
 import android.view.View
+import androidx.annotation.ChecksSdkIntAtLeast
+import androidx.annotation.RequiresApi
 import dev.omalauncher.AndroidApp
 
 /**
@@ -21,7 +23,11 @@ import dev.omalauncher.AndroidApp
  * screen itself.
  */
 object SplitDrag {
-    /** Android 15 has the drag; apps in a work or clone profile can't be started from a PendingIntent of ours. */
+    /**
+     * Android 15 has the drag. Apps in a work or clone profile are left out: no public way found yet to start them
+     * from a PendingIntent of ours.
+     */
+    @ChecksSdkIntAtLeast(api = 35)
     fun canDrag(app: AndroidApp) = Build.VERSION.SDK_INT >= 35 && app.profile == null
 
     /** Samsung's One UI, or stock Android. */
@@ -36,6 +42,7 @@ object SplitDrag {
      * Starts dragging [app] from [view]; false, with [session] ended, if the system turned the drag down. [open] opens
      * the app full screen, for a drop the launcher takes itself (see [launcherOpensOnDrop]).
      */
+    @RequiresApi(35)
     @Suppress("DEPRECATION") // MODE_BACKGROUND_ACTIVITY_START_ALLOWED: the plain "allow" the launcher needs on API 35
     fun start(
         view: View,
