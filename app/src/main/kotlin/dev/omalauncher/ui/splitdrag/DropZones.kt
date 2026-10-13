@@ -28,9 +28,19 @@ data class DropZone(
 private const val BAND = 0.07f
 
 /**
+ * Whether the system splits a [width]×[height] window left and right (true) or top and bottom. One UI goes by shape:
+ * side by side unless the window is narrow (a folded screen, under 0.6 wide for its height). Stock Android goes by
+ * orientation: side by side only in landscape, top and bottom otherwise, an unfolded square-ish screen included.
+ */
+fun splitsSideBySide(
+    width: Float,
+    height: Float,
+    oneUi: Boolean,
+): Boolean = if (oneUi) width / height >= 0.6f else width > height
+
+/**
  * The zones for a [width]×[height] window, whole areas as One UI's own: a band along the top opens the app full screen,
- * the middle pops it up ([canPopUp]), and the halves split the screen with it ([canSplit]): top and bottom on a narrow,
- * folded screen, left and right otherwise. Without split, the rest opens full screen too. The first zone holding a
+ * the middle pops it up ([canPopUp]), and the halves split the screen with it ([canSplit]): left and right when [sideBySide], top and bottom otherwise. Without split, the rest opens full screen too. The first zone holding a
  * point is the one it lands in.
  */
 fun dropZones(
@@ -38,6 +48,7 @@ fun dropZones(
     height: Float,
     canSplit: Boolean,
     canPopUp: Boolean,
+    sideBySide: Boolean,
 ): List<DropZone> {
     val whole = ZoneBox(0f, 0f, width, height)
     val band = height * BAND
@@ -50,7 +61,7 @@ fun dropZones(
         if (canPopUp) add(DropZone(ZoneKind.PopUp, "Pop-up", popUp, popUp))
         when {
             !canSplit -> add(DropZone(ZoneKind.FullScreen, "Full screen", ZoneBox(0f, band, width, height), whole))
-            width / height < 0.6f -> {
+            !sideBySide -> {
                 add(DropZone(ZoneKind.SplitTop, "Split · top", ZoneBox(0f, band, width, height / 2), ZoneBox(0f, 0f, width, height / 2)))
                 add(DropZone(ZoneKind.SplitBottom, "Split · bottom", ZoneBox(0f, height / 2, width, height), ZoneBox(0f, height / 2, width, height)))
             }
