@@ -21,16 +21,21 @@ class AgentDaemon(
     private val proot: Proot,
     private val agents: AgentStore,
 ) {
+    /** Whether the daemon should run; off while Linux is being removed. */
+    @Volatile
+    private var running = false
     private var started = false
 
+    /** Keeps the daemon running, or resumes it after [stop]. */
     fun start() {
+        running = true
         if (started) return
         started = true
         thread(name = TAG, isDaemon = true) {
             var delayMs = MIN_DELAY_MS
             var quickFailures = 0
             while (true) {
-                if (agents.installed.none { it.bin == "claude" }) {
+                if (!running || agents.installed.none { it.bin == "claude" }) {
                     Thread.sleep(POLL_MS)
                     continue
                 }
@@ -46,6 +51,8 @@ class AgentDaemon(
                     }
                 val ranMs = System.currentTimeMillis() - startedAt
                 Log.i(TAG, "exited with $code after ${ranMs / 1000}s")
+                // Ended with the other guest processes as Linux is removed: not a failure.
+                if (!running) continue
                 if (ranMs >= HEALTHY_MS) {
                     quickFailures = 0
                     delayMs = MIN_DELAY_MS
@@ -58,6 +65,11 @@ class AgentDaemon(
                 Thread.sleep(delayMs)
             }
         }
+    }
+
+    /** Stops restarting the daemon; the caller ends the running one along with the other guest processes. */
+    fun stop() {
+        running = false
     }
 
     private companion object {

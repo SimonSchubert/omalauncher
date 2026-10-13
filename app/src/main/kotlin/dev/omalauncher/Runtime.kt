@@ -233,6 +233,7 @@ class Runtime(
                 linux = false
                 widgets.linuxChanged(false)
                 audio.stop()
+                agentDaemon.stop()
                 withContext(Dispatchers.IO) { proot.killAll() }
                 bootstrap.remove()
                 withContext(Dispatchers.IO) {
