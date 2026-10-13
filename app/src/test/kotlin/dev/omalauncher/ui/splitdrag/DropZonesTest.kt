@@ -45,14 +45,26 @@ class DropZonesTest {
         assertEquals(1076f, (p.top + p.bottom) / 2, 0.01f)
     }
 
-    @Test fun foldedSidesSplitTopAndBottom() {
-        // t = round(1080 * 0.056) = 60
-        val left = folded.zoneAt(30f, 1200f)!!
-        assertEquals(ZoneKind.SplitTop, left.kind)
-        assertEquals("Split · top", left.label)
-        assertEquals(ZoneBox(0f, 0f, 1080f, 1212f), left.preview)
-        assertEquals(ZoneKind.SplitBottom, folded.zoneAt(1050f, 1200f)?.kind)
-        assertEquals(ZoneBox(0f, 1212f, 1080f, 2424f), folded.single { it.kind == ZoneKind.SplitBottom }.preview)
+    @Test fun foldedTheFingersHeightPicksTheHalf() {
+        // t = round(1080 * 0.056) = 60; One UI splits a folded screen top or bottom by where the finger is, either side.
+        val upperLeft = folded.zoneAt(30f, 1000f)!!
+        assertEquals(ZoneKind.SplitTop, upperLeft.kind)
+        assertEquals("Split · top", upperLeft.label)
+        assertEquals(ZoneBox(0f, 0f, 1080f, 1212f), upperLeft.preview)
+        assertEquals(ZoneKind.SplitTop, folded.zoneAt(1050f, 1000f)?.kind)
+        val lowerLeft = folded.zoneAt(30f, 1500f)!!
+        assertEquals(ZoneKind.SplitBottom, lowerLeft.kind)
+        assertEquals(ZoneBox(0f, 1212f, 1080f, 2424f), lowerLeft.preview)
+        assertEquals(ZoneKind.SplitBottom, folded.zoneAt(1050f, 1500f)?.kind)
+        assertEquals(ZoneKind.SplitTop, folded.zoneAt(30f, 1211.9f)?.kind)
+        assertEquals(ZoneKind.SplitBottom, folded.zoneAt(30f, 1212f)?.kind)
+    }
+
+    @Test fun foldedNavigationEdgeKeepsTheOtherSidesHalves() {
+        val zones = dropZones(1080f, 2424f, SplitPlatform.OneUi, NavEdge.Right)
+        assertEquals(ZoneKind.PopUp, zones.zoneAt(1050f, 1000f)?.kind)
+        assertEquals(ZoneKind.SplitTop, zones.zoneAt(30f, 1000f)?.kind)
+        assertEquals(ZoneKind.SplitBottom, zones.zoneAt(30f, 1500f)?.kind)
     }
 
     @Test fun theNavigationBarsEdgeHasNoZone() {

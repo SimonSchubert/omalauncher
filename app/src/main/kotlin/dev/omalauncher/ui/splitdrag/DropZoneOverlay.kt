@@ -104,13 +104,14 @@ fun DropZoneOverlay(session: SplitDragSession) {
         val zones = remember(w, h, platform, navEdge) { dropZones(w, h, platform, navEdge) }
         val active = drawnFinger?.let { (x, y) -> zones.zoneAt(x, y) }
         Box(Modifier.fillMaxSize().alpha(shown)) {
-            // Where to go: each zone's trigger, faintly, with what it does, so the edges read as zones too and not
-            // only the pop-up in the middle.
+            // Where to go: each zone, faintly, with what it does, so every one reads as a zone.
             for (z in zones) {
-                val t = z.trigger ?: continue
                 if (z == active) continue
-                ZoneFrame(t, fill = 0.10f, line = 0.35f, width = LauncherStyle.borderWidth)
-                StripLabel(t, z.label)
+                // The pop-up takes whatever no strip does: shown where it opens, so it stays in sight like the strips
+                // once One UI has taken over at an edge and the finger comes back.
+                val box = z.trigger ?: z.preview.takeIf { z.kind == ZoneKind.PopUp } ?: continue
+                ZoneFrame(box, fill = 0.10f, line = 0.35f, width = LauncherStyle.borderWidth)
+                StripLabel(box, z.label, along = z.trigger != null)
             }
             // Where it'll open: the zone under the finger, with what it does.
             if (active != null) {
@@ -167,8 +168,10 @@ private fun ZoneFrame(
 private fun StripLabel(
     box: ZoneBox,
     label: String,
+    /** Turned to run along a side strip; the pop-up's area reads level. */
+    along: Boolean,
 ) {
-    val upright = box.bottom - box.top > box.right - box.left
+    val upright = along && box.bottom - box.top > box.right - box.left
     val turn = if (!upright) 0f else if (box.left == 0f) -90f else 90f
     val density = LocalDensity.current
     with(density) {
