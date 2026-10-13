@@ -188,50 +188,65 @@ private fun StickyKey(
     val view = LocalView.current
     val sticky = bridge.modifier(key.mod)
     val latch = sticky.latch
-    var swiped by remember { mutableStateOf(false) }
+    var swiped by remember(key) { mutableStateOf(false) }
+    var confirmation by remember(key) { mutableStateOf<String?>(null) }
     val popup = key.popup
     KeyCap(
         modifier.pointerInput(key, sticky) {
             presses { scope, down ->
+                confirmation = null
                 view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                 var locked = false
-                val hold =
-                    scope.launch {
-                        delay(RepeatDelay)
-                        sticky.latch = Latch.Locked
-                        locked = true
+                val hold = scope.launch {
+                    delay(RepeatDelay)
+                    sticky.latch = Latch.Locked
+                    locked = true
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                }
+                // A popup swipe cancels the locking timer and sends only on release.
+                val outcome = release(down, swipes = { popup != null && !locked }) { up ->
+                    swiped = up
+                    if (up) {
+                        hold.cancel()
                         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                     }
-                // Swiping up is the popup's, so it doesn't also lock; locked, it isn't a swipe anymore.
-                val release =
-                    release(down, swipes = { popup != null && !locked }) { up ->
-                        swiped = up
-                        if (up) {
-                            hold.cancel()
-                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-                        }
-                    }
+                }
                 hold.cancel()
                 swiped = false
                 when {
-                    locked || release == Release.Cancelled -> {}
-                    release == Release.Swipe && popup != null -> bridge.send(popup.strokes)
+                    locked || outcome == Release.Cancelled -> {}
+                    outcome == Release.Swipe && popup != null -> {
+                        bridge.send(popup.strokes)
+                        confirmation = popup.label
+                        scope.launch {
+                            delay(240)
+                            if (confirmation == popup.label) confirmation = null
+                        }
+                    }
                     else -> sticky.latch = if (sticky.latch == Latch.Off) Latch.Once else Latch.Off
                 }
             }
         },
-        // Once: outlined in the accent, for the next key. Locked: filled, until tapped off.
-        fill = if (latch == Latch.Locked || swiped) Palette.accent else Palette.surface,
-        outline = if (latch == Latch.Once && !swiped) Palette.accent else null,
+        fill = if (latch == Latch.Locked || swiped || confirmation != null) Palette.accent else Palette.surface,
+        outline = if (latch == Latch.Once && !swiped && confirmation == null) Palette.accent else null,
     ) {
-        val color =
-            when {
-                swiped || latch == Latch.Locked -> Palette.background
-                latch == Latch.Once -> Palette.accent
-                else -> Palette.foreground
-            }
-        KeyLabel(if (swiped && popup != null) popup.label else key.label, color)
-        if (popup != null && !swiped) PopupHint(popup, if (latch == Latch.Locked) Palette.background else Palette.accent)
+        val showingPopup = (swiped || confirmation != null) && popup != null
+        val color = when {
+            showingPopup || latch == Latch.Locked -> Palette.background
+            latch == Latch.Once -> Palette.accent
+            else -> Palette.foreground
+        }
+        KeyLabel(if (showingPopup) popup!!.label else key.label, color)
+        if (latch != Latch.Off && !showingPopup) {
+            BasicText(
+                if (latch == Latch.Locked) "LOCK" else "NEXT",
+                Modifier.padding(top = 28.dp),
+                style = Mono.copy(color = color, fontSize = 7.sp),
+                maxLines = 1,
+                softWrap = false,
+            )
+        }
+        if (popup != null && !showingPopup) PopupHint(popup, if (latch == Latch.Locked) Palette.background else Palette.accent)
     }
 }
 
@@ -308,9 +323,17 @@ private suspend fun AwaitPointerEventScope.release(
         val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: return Release.Cancelled
         if (change.isConsumed) return Release.Cancelled
         if (!change.pressed) {
+            // Leaving the key without a valid swipe must never trigger its primary action.
+            if (!selected && change.isOutOfBounds(size, extendedTouchPadding)) return Release.Cancelled
             change.consume()
             return if (selected) Release.Swipe else Release.Tap
         }
+        // A swipe may go above the cap; dragging sideways or down away cancels it.
+        // Allow slight upward travel before it has crossed the popup threshold.
+        if (change.position.x < -extendedTouchPadding.width ||
+            change.position.x > size.width + extendedTouchPadding.width ||
+            change.position.y > size.height + extendedTouchPadding.height
+        ) return Release.Cancelled
         val up = swipes() && down.position.y - change.position.y >= distance
         if (up != selected) {
             selected = up
