@@ -59,6 +59,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Shortcuts other apps pin, such as a browser's "Add to Home screen" (PinnedShortcuts.kt). -->
+        <activity
+            android:name=".PinShortcutActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".LinuxWindowActivity"
             android:label="Linux"

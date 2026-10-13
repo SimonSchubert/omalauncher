@@ -94,6 +94,7 @@ class Runtime(
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
+    val pinned = PinnedShortcuts(context, widgets.shortcuts)
     val updates = SystemUpdates(proot, pacman, agents)
     val gpu = Gpu(context, proot)
 
@@ -155,6 +156,7 @@ class Runtime(
             snapshotFlow { style.style[Style.TERMINAL_FONT] to style.style[Style.TERMINAL_TEXT] }.drop(1).collect { terminalFont.write() }
         }
         androidApps.start()
+        pinned.start()
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
         keyboard.onShortcut = { code ->
             when (code) {
@@ -418,6 +420,7 @@ class Runtime(
         shortcut: Shortcut,
         mono: Boolean,
     ): ImageBitmap? {
+        if (shortcut.pinned != null) return pinned.icon(shortcut, mono)
         shortcut.component?.let { androidAppKey(it, shortcut.profile) }?.let { return if (mono) androidApps.masks[it] else androidApps.icons[it] }
         val id = shortcut.linux?.id ?: return null
         return if (mono) linuxMasks[id] else linuxIcons[id]
@@ -465,6 +468,7 @@ class Runtime(
     fun open(shortcut: Shortcut) {
         shortcut.linux?.let { pinned -> launch(linuxApps.firstOrNull { it.id == pinned.id } ?: pinned) }
         shortcut.component?.let { androidApps.open(it, shortcut.profile) }
+        if (shortcut.pinned != null) pinned.open(shortcut)
     }
 
     fun launch(app: LinuxApp) {

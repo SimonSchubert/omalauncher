@@ -40,12 +40,20 @@ data class Shortcut(
     /** [component]'s profile, as in [AndroidApp.profile]. */
     val profile: Long? = null,
     val linux: LinuxApp? = null,
+    /** A shortcut another app pinned, such as a browser's "Add to Home screen"; see [dev.omalauncher.PinnedShortcuts]. */
+    val pinned: PinnedShortcut? = null,
     val folder: String? = null,
 ) : HomeItem {
     override val size get() = 1 to 1
     override val minSize get() = 1 to 1
     override val resizable get() = false
 }
+
+/** Identifies a pinned shortcut: the app that made it, and its id there. */
+data class PinnedShortcut(
+    val packageName: String,
+    val id: String,
+)
 
 /** Pinned apps grouped under one 1x1 tile, made by dropping an app on another, like stock Android. */
 data class Folder(
@@ -192,6 +200,7 @@ class Shortcuts(
             component = o.optString("component").ifEmpty { null }?.let(ComponentName::unflattenFromString),
             profile = if (o.has("profile")) o.getLong("profile") else null,
             linux = linux,
+            pinned = o.optJSONObject("pinned")?.let { PinnedShortcut(it.getString("package"), it.getString("id")) },
             folder = o.optString("folder").ifEmpty { null },
         )
     }
@@ -205,6 +214,14 @@ class Shortcuts(
         app: LinuxApp,
         page: Int,
     ) = add(Shortcut("linux:" + app.id, page, app.name, linux = app))
+
+    /** [profile] as in [AndroidApp.profile]. Returns the shortcut as added. */
+    fun addPinned(
+        pinned: PinnedShortcut,
+        label: String,
+        profile: Long?,
+        page: Int,
+    ) = Shortcut("pin:" + pinned.packageName + "/" + pinned.id + (profile?.let { "@$it" } ?: ""), page, label, profile = profile, pinned = pinned).also(::add)
 
     /** Pinning an app that's already on the home screen moves it to [Shortcut.page], out of its folder. */
     private fun add(shortcut: Shortcut) {
@@ -254,6 +271,7 @@ class Shortcuts(
                     .putOpt("folder", s.folder)
             s.component?.let { o.put("component", it.flattenToString()) }
             s.profile?.let { o.put("profile", it) }
+            s.pinned?.let { o.put("pinned", JSONObject().put("package", it.packageName).put("id", it.id)) }
             // A snapshot of the desktop entry, for when it's gone; while it exists, the launcher runs the current one.
             s.linux?.let {
                 o.put(
