@@ -6,8 +6,6 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
-- Claude Code's background sessions keep running after you close the terminal
-  that started them (needs a proot build with the uid_map and SO_PEERCRED fixes).
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
 
