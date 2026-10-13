@@ -162,11 +162,22 @@ object Builtins {
 
     private val timeFormats = HashMap<String, DateTimeFormatter>()
 
+    /** The language [timeFormats] name days and months in: the phone's can change while widgets run. */
+    private var timeFormatsLocale: Locale? = null
+
     private fun fmtTime(
         seconds: Double,
         pattern: String,
     ): String {
-        val f = synchronized(timeFormats) { timeFormats.getOrPut(pattern) { DateTimeFormatter.ofPattern(pattern, Locale.getDefault()) } }
+        val locale = Locale.getDefault()
+        val f =
+            synchronized(timeFormats) {
+                if (locale != timeFormatsLocale) {
+                    timeFormats.clear()
+                    timeFormatsLocale = locale
+                }
+                timeFormats.getOrPut(pattern) { DateTimeFormatter.ofPattern(pattern, locale) }
+            }
         return f.format(Instant.ofEpochMilli((seconds * 1000).toLong()).atZone(ZoneId.systemDefault()))
     }
 

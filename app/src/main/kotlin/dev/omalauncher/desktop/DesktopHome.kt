@@ -74,11 +74,12 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                             onTap = { widgets.tap(item.spec) }, needs = runtime.widgets.missing[item.key].orEmpty(), install = null,
                             onInstall = { session.unavailable("Install widget dependencies from the phone") },
                             onFix = { session.unavailable("Agent windows are unavailable on this desktop") })
-                        is Shortcut -> ShortcutTile(item, runtime.shortcutIcon(item, LauncherStyle.monochromeIcons), focused, tile,
-                            onTap = { runtime.androidApps.apps.firstOrNull { "app:" + it.key == item.key }?.let(session::launch)
+                        is Shortcut -> ShortcutTile(item, runtime.shortcutLabel(item), runtime.shortcutIcon(item, LauncherStyle.monochromeIcons), focused, tile,
+                            onTap = { item.component?.let { runtime.androidApps.pinned(it, item.profile) }?.let(session::launch)
                                 ?: session.unavailable("This app presentation is unavailable on this desktop") },
                             paused = runtime.androidApps.paused(item.profile), clone = runtime.androidApps.cloned(item.profile))
                         is Folder -> FolderTile(item, item.apps.take(4).map { runtime.shortcutIcon(it, LauncherStyle.monochromeIcons) },
+                            item.apps.take(4).map(runtime::shortcutLabel),
                             focused, tile, onTap = { arrange.folder = item.key })
                     }
                 },

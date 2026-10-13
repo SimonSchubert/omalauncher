@@ -8,19 +8,17 @@ plugins {
 // The Play upload key, from the gitignored keystore.properties at the repo root.
 val uploadKey = rootProject.file("keystore.properties").takeIf { it.exists() }
     ?.let { f -> Properties().apply { f.inputStream().use(::load) } }
-val bridgePreview = providers.gradleProperty("omalauncher.bridgePreview").orNull == "true"
 
 android {
     namespace = "dev.omalauncher"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = if (bridgePreview) "dev.omalauncher.bridgepreview" else "dev.omalauncher"
-        manifestPlaceholders["launcherLabel"] = if (bridgePreview) "Omalauncher bridge preview" else "Omalauncher"
+        applicationId = "dev.omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 11
-        versionName = "0.6.0"
+        versionCode = 12
+        versionName = "0.7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += "arm64-v8a" }
     }

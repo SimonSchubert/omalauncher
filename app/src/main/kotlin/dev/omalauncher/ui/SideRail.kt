@@ -89,14 +89,15 @@ internal fun homeSide(): HomeSide? {
 internal fun showsTwoPages(window: IntSize) = window.width / 2f / window.height in 0.4f..0.65f
 
 /**
- * Room the side takes beside the grid: the strip, the rail and the gaps after them (the grid's own gap comes before).
+ * Room the side takes beside the grid: the strip and the gap between tiles after it, then the rail and the edge's gap
+ * (the grid's own gap comes before).
  * Added up in whole pixels, each part rounded as [SideRail] lays it out, so the grid ends exactly where the strip starts.
  */
 @Composable
 internal fun sideWidth(): Dp =
     with(LocalDensity.current) {
         val gap = HomeGap.roundToPx()
-        ((if (LauncherStyle.recentApps) RecentStripHeight.roundToPx() + gap else 0) + PromptBarHeight.roundToPx() + gap).toDp()
+        ((if (LauncherStyle.recentApps) RecentStripHeight.roundToPx() + gap else 0) + PromptBarHeight.roundToPx() + EdgeGap.roundToPx()).toDp()
     }
 
 /**
@@ -113,21 +114,21 @@ internal fun SideRail(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier.fillMaxHeight().padding(vertical = 6.dp),
+        modifier.fillMaxHeight().padding(vertical = EdgeGap),
         horizontalArrangement = if (side == HomeSide.Left) Arrangement.Start else Arrangement.End,
     ) {
         // Outward from the grid, like portrait from the grid down: the strip, then the bar.
         val strip = @Composable { if (LauncherStyle.recentApps) RecentStrip(runtime, handlers, vertical = true) }
         if (side == HomeSide.Left) {
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(EdgeGap))
             PromptRail(runtime, state)
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(HomeGap))
             strip()
         } else {
             strip()
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(HomeGap))
             PromptRail(runtime, state)
-            Spacer(Modifier.width(6.dp))
+            Spacer(Modifier.width(EdgeGap))
         }
     }
 }

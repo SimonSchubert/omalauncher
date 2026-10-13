@@ -31,7 +31,7 @@
         android:name=".App"
         android:extractNativeLibs="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="${launcherLabel}"
+        android:label="Omalauncher"
         android:theme="@style/Theme.Omalauncher"
         android:usesCleartextTraffic="true">
 
@@ -57,6 +57,22 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="simonschubert.github.io" android:pathPrefix="/omarchy-widgets/w" />
+            </intent-filter>
+        </activity>
+
+        <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
+             websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
+             gone once left. Not exported: the system starts it, and other apps have no reason to. -->
+        <activity
+            android:name=".PinShortcutActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
             </intent-filter>
         </activity>
 
@@ -155,13 +171,13 @@
             android:label="Files"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:taskAffinity="${applicationId}.files"
+            android:taskAffinity="dev.omalauncher.files"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.files"
+            android:authorities="dev.omalauncher.files"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

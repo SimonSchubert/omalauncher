@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.UserManager
 import android.view.Display
 import android.view.KeyEvent
+import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
@@ -24,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.App
 import dev.omalauncher.ui.Palette
-import dev.omalauncher.ui.interceptKeys
 import dev.omalauncher.ui.applySystemBars
 import androidx.compose.runtime.LaunchedEffect
 
@@ -43,6 +43,16 @@ class NativeDesktopActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         ensureSession()
         runtime.start()
+        val original = checkNotNull(window.callback)
+        window.callback = object : Window.Callback by original {
+            override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+                if (event.isMetaPressed && event.keyCode in listOf(KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_A)) {
+                    if (event.action == KeyEvent.ACTION_DOWN) desktopSession?.uiAction("search")
+                    return true
+                }
+                return original.dispatchKeyEvent(event)
+            }
+        }
         // A display move can retain identical bounds/density and not produce a public
         // Activity configuration callback. Recheck the Activity's display before drawing.
         window.decorView.viewTreeObserver.addOnPreDrawListener {
@@ -50,12 +60,6 @@ class NativeDesktopActivity : ComponentActivity() {
                 window.decorView.post { if (!isFinishing && !isDestroyed) { ensureSession(); desktopSession?.visible(true) } }
             }
             true
-        }
-        interceptKeys { event ->
-            if (event.isMetaPressed && event.keyCode in listOf(KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_A)) {
-                if (event.action == KeyEvent.ACTION_DOWN) desktopSession?.uiAction("search")
-                true
-            } else false
         }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {

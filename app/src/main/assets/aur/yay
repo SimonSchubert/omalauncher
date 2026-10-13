@@ -8,6 +8,11 @@
 # to ours: yay takes an option's first value.
 [ "$(id -u)" = 0 ] || exec /usr/bin/yay "$@"
 
+# The rootfs ships without sudo, and a terminal's yay doesn't come through
+# install.sh: without it makepkg and yay fall back to su and ask for root's
+# password. A full sync, like install.sh: never a partial upgrade.
+pacman -Qq base-devel git >/dev/null 2>&1 || pacman -Syu --noconfirm --needed base-devel git || exit
+
 id builder >/dev/null 2>&1 || useradd -m -s /bin/bash builder
 echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/aur-builder
 chmod 440 /etc/sudoers.d/aur-builder

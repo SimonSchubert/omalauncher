@@ -47,19 +47,26 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.TerminalText
 import dev.omalauncher.theme.OmarchyTheme
+import dev.omalauncher.theme.Setting
+import dev.omalauncher.theme.Style
+import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.theme.ThemeDirs
 import dev.omalauncher.theme.ThemeDownload
 import dev.omalauncher.theme.ThemeStore
+import dev.omalauncher.theme.Toml
+import java.io.File
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /**
  * Omarchy's Style menu: the theme, its background, how the home screen
@@ -92,12 +99,31 @@ fun StyleScreen(
             store.current?.let { BackgroundSection(store, it) }
             // Style choices don't depend on a theme, so they're offered before themes are downloaded too.
             Heading("home screen")
-            StyleOption("icons", listOf("monochrome", "colored"), if (LauncherStyle.monochromeIcons) 0 else 1) { store.setMonochromeIcons(it == 0) }
-            StyleOption("home apps", listOf("boxed", "icon only"), if (LauncherStyle.bareAppIcons) 1 else 0) { store.setBareAppIcons(it == 1) }
-            StyleOption("recent apps", listOf("shown", "hidden"), if (LauncherStyle.recentApps) 0 else 1) { store.setRecentApps(it == 0) }
-            StyleOption("system bars", listOf("framed", "bare"), if (LauncherStyle.framedSystemBars) 0 else 1) { store.setFramedSystemBars(it == 0) }
-            StyleOption("corners", Corners.entries.map { it.label }, LauncherStyle.corners.ordinal) { store.setCorners(Corners.entries[it]) }
-            if (linux == LinuxState.Installed) TerminalSection(runtime.terminalFont, runtime.terminals)
+            val style = runtime.style
+            Flag("icons", "monochrome", "colored", style, Style.MONOCHROME_ICONS)
+            Flag("home apps", "boxed", "icon only", style, Style.APP_TILES)
+            Flag("recent apps", "shown", "hidden", style, Style.RECENT_APPS)
+            NumberOption("corners", Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
+            // Like Hyprland's gaps_in, gaps_out and border_size; the colors are in style.toml.
+            Heading("widgets")
+            Stepper("gaps in", style, Style.GAPS_IN)
+            Stepper("gaps out", style, Style.GAPS_OUT)
+            Stepper("border width", style, Style.TILE_BORDER_WIDTH)
+            Heading("screens")
+            Stepper("gaps out", style, Style.SCREEN_GAPS_OUT)
+            Stepper("border width", style, Style.SCREEN_BORDER_WIDTH)
+            // Both bars at once; style.toml can set them apart. Background is the band behind their icons.
+            Heading("system bars")
+            Flag("background", "shown", "hidden", style, Style.STATUS_BAR.framed, Style.NAVIGATION_BAR.framed)
+            Stepper("border width", style, Style.STATUS_BAR.borderWidth, Style.NAVIGATION_BAR.borderWidth)
+            if (linux == LinuxState.Installed) {
+                TerminalSection(runtime.terminalFont, runtime.terminals, style)
+                BasicText(
+                    "more settings, like border and bar colors: ~/${StyleStore.GUEST_DIR}/defaults.toml",
+                    Modifier.padding(top = 20.dp),
+                    style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+                )
+            }
         }
         if (installOpen) {
             TextDialog(
@@ -237,24 +263,17 @@ private fun BackgroundSection(
 private fun TerminalSection(
     font: TerminalFont,
     tiles: TerminalTiles,
+    style: StyleStore,
 ) {
     LaunchedEffect(Unit) { font.refreshFamilies() }
     Heading("terminal")
-    FontOption(font.families, font.family, font::select)
-    BasicText(
-        "terminals opened from now on · more with pacman, like ttf-cascadia-code",
-        Modifier.padding(start = 104.dp, bottom = 4.dp),
-        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
-    )
-    StyleOption("text", TerminalText.entries.map { it.label }, font.text.ordinal) { font.select(TerminalText.entries[it]) }
+    FontOption(font.families, font.family) { family -> style.update { it.with(Style.TERMINAL_FONT, family) } }
+    OptionHint("terminals opened from now on · more with pacman, like ttf-cascadia-code", Modifier.padding(bottom = 4.dp))
+    NumberOption("text", TerminalText.entries.map { it.label to it.em.toDouble() }, Style.TERMINAL_TEXT, style, unit = " dp")
     // In portrait, where columns run short; landscape has plenty.
     val metrics = LocalContext.current.resources.displayMetrics
     val columns = font.columns(minOf(metrics.widthPixels, metrics.heightPixels))
-    BasicText(
-        "${TerminalFont.format(font.size).removeSuffix(".0")} pt · $columns columns in portrait",
-        Modifier.padding(start = 104.dp, top = 2.dp),
-        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
-    )
+    OptionHint("${TerminalFont.format(font.size).removeSuffix(".0")} pt · $columns columns in portrait", Modifier.padding(top = 2.dp))
     TerminalPreview(font, tiles)
 }
 
@@ -309,7 +328,7 @@ private fun FontOption(
     onSelect: (String) -> Unit,
 ) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        BasicText("font", Modifier.widthIn(min = 104.dp).padding(top = 8.dp, end = 8.dp), style = Mono.copy(color = Palette.muted), softWrap = false)
+        OptionLabel("font", Modifier.padding(top = 8.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for (family in families) {
                 val active = family == selected
@@ -327,16 +346,107 @@ private fun FontOption(
     }
 }
 
-/** A labeled segmented choice: the picked option fills with the accent color. */
+/** The column option names take, so the controls beside them line up. */
+private val LabelWidth = 104.dp
+
+/** An option's name; a long one wraps rather than push its control out of line with the others. */
+@Composable
+private fun OptionLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+) = BasicText(text, modifier.width(LabelWidth).padding(end = 8.dp), style = Mono.copy(color = Palette.muted))
+
+/** A note under an option, lined up with its control. */
+@Composable
+private fun OptionHint(
+    text: String,
+    modifier: Modifier = Modifier,
+) = BasicText(text, modifier.padding(start = LabelWidth), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+
+/**
+ * [Style] numbers stepped together by 1 within their range, from the first one's value; a value set
+ * in style.toml between steps snaps to the next one. Reset shows once one is off its default.
+ */
+@Composable
+private fun Stepper(
+    label: String,
+    style: StyleStore,
+    vararg settings: Setting.Number,
+) {
+    val all = settings.toList()
+    val setting = all.first()
+    val value = style.style[setting]
+    fun set(v: Double) = style.update { it.with(all) { s -> v.coerceIn(s.range) } }
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        OptionLabel(label)
+        Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            val down = value > setting.range.start
+            val up = value < setting.range.endInclusive
+            BasicText(
+                "−",
+                Modifier.clickable(enabled = down) { set(ceil(value - 1)) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                style = Mono.copy(color = if (down) Palette.foreground else Palette.muted),
+            )
+            BasicText(Toml.format(value) + " dp", Modifier.widthIn(min = 64.dp), style = Mono.copy(textAlign = TextAlign.Center), softWrap = false)
+            BasicText(
+                "+",
+                Modifier.clickable(enabled = up) { set(floor(value + 1)) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                style = Mono.copy(color = if (up) Palette.foreground else Palette.muted),
+            )
+        }
+        if (all.any { style.style[it] != it.default }) BracketAction("reset", Palette.muted) { style.update { it.with(all) { s -> s.default } } }
+    }
+    if (style.style.common(all) == null) OptionHint("they differ in style.toml; a step sets them all", Modifier.padding(bottom = 4.dp))
+}
+
+/** [Style] flags as a choice of two, [on] first, set together. */
+@Composable
+private fun Flag(
+    label: String,
+    on: String,
+    off: String,
+    style: StyleStore,
+    vararg settings: Setting.Flag,
+) {
+    val all = settings.toList()
+    val selected =
+        when (style.style.common(all)) {
+            true -> 0
+            false -> 1
+            null -> -1
+        }
+    StyleOption(label, listOf(on, off), selected, "they differ") { i -> style.update { it.with(all) { i == 0 } } }
+}
+
+/** A [Style] number as named [presets]; a value set in style.toml between them shows as custom. */
+@Composable
+private fun NumberOption(
+    label: String,
+    presets: List<Pair<String, Double>>,
+    setting: Setting.Number,
+    style: StyleStore,
+    unit: String = "",
+) {
+    val value = style.style[setting]
+    StyleOption(label, presets.map { it.first }, presets.indexOfFirst { it.second == value }, Toml.format(value) + unit) { i ->
+        style.update { it.with(setting, presets[i].second) }
+    }
+}
+
+/**
+ * A labeled segmented choice: the picked option fills with the accent color.
+ * None is picked for a value set in style.toml outside the options; [custom] says what it is.
+ */
 @Composable
 private fun StyleOption(
     label: String,
     options: List<String>,
     selected: Int,
+    custom: String? = null,
     onSelect: (Int) -> Unit,
 ) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        BasicText(label, Modifier.widthIn(min = 104.dp).padding(end = 8.dp), style = Mono.copy(color = Palette.muted), softWrap = false)
+        OptionLabel(label)
         // At a large Android font size the options may not fit: they scroll rather than wrap.
         Box(Modifier.horizontalScroll(rememberScrollState())) {
             Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp)) {
@@ -355,6 +465,7 @@ private fun StyleOption(
             }
         }
     }
+    if (selected < 0 && custom != null) OptionHint("custom: $custom, from style.toml", Modifier.padding(bottom = 4.dp))
 }
 
 @Composable

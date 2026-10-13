@@ -128,7 +128,7 @@ internal fun SliderNode(
                 val cy = size.height / 2
                 drawRect(track(), Offset(0f, cy - line / 2), Size(size.width, line))
                 drawRect(color(), Offset(0f, cy - line / 2), Size(size.width * f, line))
-                val r = CornerRadius(3.dp.toPx() * LauncherStyle.corners.scale)
+                val r = CornerRadius(3.dp.toPx() * LauncherStyle.cornerScale)
                 drawRoundRect(color(), Offset((size.width - thumbW) * f, cy - thumbH / 2), Size(thumbW, thumbH), r)
             },
     )

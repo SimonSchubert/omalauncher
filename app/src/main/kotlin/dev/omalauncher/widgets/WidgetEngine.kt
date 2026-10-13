@@ -19,6 +19,7 @@ import dev.omalauncher.linux.pacmanInstall
 import dev.omalauncher.linux.runJob
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import dev.omalauncher.widgets.lang.CompileError
@@ -751,6 +752,9 @@ class WidgetEngine(
                 "Saved files show up on the phone within seconds. After saving, run `owl-check <file>`: it prints the errors " +
                 "and the path of a PNG of the tile, drawn with live data; look at it to check the layout. " +
                 "examples/ holds more widgets to learn from or move up to use. Scripts, cron jobs and hooks can set a running " +
-                "widget's state or refresh it with `owl-send <file> set <state> <value>` and `owl-send <file> refresh`.\n"
+                "widget's state or refresh it with `owl-send <file> set <state> <value>` and `owl-send <file> refresh`.\n\n" +
+                "The launcher's look (theme, background, tile spacing and borders, corners, the system bars' colors, the " +
+                "terminals' font) is ~/${StyleStore.GUEST_DIR}/${StyleStore.FILE}; ${StyleStore.DEFAULTS} next to it lists every " +
+                "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n"
     }
 }

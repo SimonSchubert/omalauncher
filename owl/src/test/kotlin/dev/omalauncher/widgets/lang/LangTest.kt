@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.util.Locale
 
 class LangTest {
     /** Just enough runtime for tests: states start at their initial value, lets evaluate on read. */
@@ -651,5 +652,19 @@ class LangTest {
         assertTrue(Compiler.quotable("a ${Compiler.VALUE} 'b' \"c\" d#e ${Compiler.VALUE}"))
         assertFalse(Compiler.quotable("a ${'$'}'x ${Compiler.VALUE}'"))
         assertEquals(listOf("jq"), Compiler.compile("widget {\n meta { owl: 6 }\n state v = \"x\"\n onTap: run(\"jq -n ${'$'}{sh(v)}\")\n Text { text: v } }").programs.toList())
+    }
+
+    @Test fun fmtTimeFollowsLanguageChanges() {
+        val was = Locale.getDefault()
+        try {
+            // Noon on Sunday 4 January 1970 in UTC: the same day from UTC-12 to UTC+11.
+            val sunday = "fmtTime(${3 * 86400 + 43200}, \"EEEE MMMM\")"
+            Locale.setDefault(Locale.ENGLISH)
+            assertEquals("Sunday January", text(sunday))
+            Locale.setDefault(Locale.GERMAN)
+            assertEquals("Sonntag Januar", text(sunday))
+        } finally {
+            Locale.setDefault(was)
+        }
     }
 }

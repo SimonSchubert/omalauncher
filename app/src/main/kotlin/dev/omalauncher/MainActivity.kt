@@ -19,7 +19,6 @@ import dev.omalauncher.ui.applySystemBars
 import dev.omalauncher.ui.LauncherRoot
 import dev.omalauncher.ui.LauncherState
 import dev.omalauncher.ui.PromptRequest
-import dev.omalauncher.ui.interceptKeys
 import dev.omalauncher.widgets.market.Share
 
 /** The home screen: widgets, pinned apps and the drawer; Linux windows open as their own tasks. */
@@ -29,13 +28,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        interceptKeys { event ->
-            when {
-                event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN && shortcut(event.keyCode) -> true
-                event.keyCode != KeyEvent.KEYCODE_BACK && runtime.terminals.active != null -> runtime.keyboard.handle(event)
-                else -> false
-            }
-        }
         applySystemBars(this, Palette.isLight)
         runtime.start()
         setContent {
@@ -98,6 +90,8 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         runtime.wm.focus(null)
         removeStaleWindowTasks()
+        // Made the default home app (or no longer it) while away: only then does Android show us pinned shortcuts.
+        runtime.androidApps.checkShortcutAccess()
         // The user may have set or replaced the wallpaper while we were in the background.
         lifecycleScope.launch { runtime.themes.refreshLiveWallpaper() }
     }
@@ -122,6 +116,13 @@ class MainActivity : ComponentActivity() {
         state.editing = null
         handleDebugExec(intent)
         handleSharedWidget(intent)
+    }
+
+    /** Launcher shortcuts (Super+key), then typing into a terminal tile that has the keyboard. Back stays the launcher's. */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN && shortcut(event.keyCode)) return true
+        if (event.keyCode != KeyEvent.KEYCODE_BACK && runtime.terminals.active != null && runtime.keyboard.handle(event)) return true
+        return super.dispatchKeyEvent(event)
     }
 
     /** Widgets only refresh while the home screen is visible. */

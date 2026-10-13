@@ -139,7 +139,11 @@ fun WidgetScreen(
     }
 }
 
-/** A frame clock for widgets that read `time`, only while they're on screen ([covered] is false). */
+/**
+ * A frame clock for widgets that read `time`, only while they're on screen ([covered] is false)
+ * and something still reads it: a `time` under an `if` that's false, like a backdrop drawn only
+ * while music plays, stops it after a few frames, and the next read starts it again.
+ */
 @Composable
 private fun FrameClock(
     inst: WidgetInstance,
@@ -148,11 +152,19 @@ private fun FrameClock(
     LaunchedEffect(inst, covered) {
         val start = withFrameNanos { it }
         var frame = 0L
+        var unread = 0
         while (true) {
             if (covered()) snapshotFlow { covered() }.first { !it }
+            if (unread >= 3) {
+                inst.awaitTimeRead()
+                unread = 0
+            }
             withFrameNanos { now ->
                 // Widgets that draw slowly get half the frame rate instead of stalling the home screen.
-                if (!inst.slow || frame++ % 2 == 0L) inst.time = (now - start) / 1e9
+                if (inst.slow && frame++ % 2 != 0L) return@withFrameNanos
+                unread = if (inst.timeRead) 0 else unread + 1
+                inst.timeRead = false
+                inst.time = (now - start) / 1e9
             }
         }
     }
@@ -289,7 +301,7 @@ private fun Element(
         "Text" -> TextNode(p, mod)
         "Button" -> {
             val color = p.color("color") { Palette.accent }
-            val radius = p.float("radius", 8f * LauncherStyle.corners.scale)
+            val radius = p.float("radius", 8f * LauncherStyle.cornerScale)
             Box(
                 mod
                     .drawBehind {
@@ -533,7 +545,7 @@ private fun common(
         val borderColor = p.color("borderColor") { Palette.border }
         val border = p.float("border", 0f)
         // Bordered elements (buttons, frames) follow the launcher's corner style unless they set a radius.
-        val radius = p.float("radius", if (p.has("border")) 8f * LauncherStyle.corners.scale else 0f)
+        val radius = p.float("radius", if (p.has("border")) 8f * LauncherStyle.cornerScale else 0f)
         m =
             m.drawBehind {
                 val r = CornerRadius(radius().dp.toPx())

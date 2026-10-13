@@ -21,6 +21,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # The launcher runtime is packaged separately; compile the bridge host and both test APKs.
+      # Unit tests only: a full build needs proot, built by scripts/fetch-proot.sh.
       - name: Test
-        run: ./gradlew :owl:test :app:testDebugUnitTest :owl:owlJar :app:lintDebug :desktop-host:lintDebug :app:assembleDebugAndroidTest :desktop-host:assembleDebug :desktop-host:assembleDebugAndroidTest
+        run: ./gradlew :owl:test :app:testDebugUnitTest :owl:owlJar

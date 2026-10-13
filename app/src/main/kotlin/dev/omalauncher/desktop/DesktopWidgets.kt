@@ -45,7 +45,6 @@ internal class DesktopWidgets(
     val shortcuts = Shortcuts(context, layout, profile)
     private val prefs = context.getSharedPreferences("desktop_$profile", Context.MODE_PRIVATE)
     private var hidden by mutableStateOf(prefs.getStringSet("hidden", emptySet()).orEmpty().toSet())
-    private var pinned by mutableStateOf(prefs.getStringSet("pinned", emptySet()).orEmpty().toSet())
     private val inheritedPages = mutableStateListOf<Int>().apply {
         addAll(prefs.getStringSet("sourcePages", emptySet()).orEmpty().mapNotNull { it.toIntOrNull() }.sorted())
     }
@@ -79,7 +78,7 @@ internal class DesktopWidgets(
 
     fun start() {
         scope.launch {
-            snapshotFlow { Triple(runtime.widgets.specs.toList(), runtime.widgets.linux, runtime.androidApps.apps.toList()) }.collect { (definitions, linux, apps) ->
+            snapshotFlow { runtime.widgets.specs.toList() to runtime.widgets.linux }.collect { (definitions, linux) ->
                 var seeded = false
                 if (inheritPhoneLayout && !prefs.getBoolean("phoneSeeded", false) && definitions.isNotEmpty()) {
                     layout.seedFrom(runtime.widgets.layout)
@@ -90,15 +89,8 @@ internal class DesktopWidgets(
                     inheritedPages.clear()
                     inheritedPages += runtime.widgets.pages
                     prefs.edit().putBoolean("phoneSeeded", true)
-                        .putStringSet("sourcePages", inheritedPages.map(Int::toString).toSet())
-                        .remove("pinned").putBoolean("shortcutsMigrated", true).apply()
-                    pinned = emptySet()
+                        .putStringSet("sourcePages", inheritedPages.map(Int::toString).toSet()).apply()
                     seeded = true
-                }
-                if (!prefs.getBoolean("shortcutsMigrated", false) && (pinned.isEmpty() || apps.isNotEmpty())) {
-                    apps.filter { it.key in pinned }.forEach { shortcuts.addAndroid(it, layout.page("app:" + it.key) ?: 1) }
-                    prefs.edit().remove("pinned").putBoolean("shortcutsMigrated", true).apply()
-                    pinned = emptySet()
                 }
                 // Keep terminal page/placement visible as a placeholder; never share its input/runtime UI.
                 val available = definitions

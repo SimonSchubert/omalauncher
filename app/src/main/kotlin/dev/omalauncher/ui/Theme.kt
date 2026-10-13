@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.omalauncher.R
+import dev.omalauncher.theme.ColorSpec
+import dev.omalauncher.theme.Style
 
 /** `#rrggbb` or `#aarrggbb` as a color; null if it isn't one. */
 fun hexColor(hex: String?): Color? {
@@ -89,33 +91,78 @@ object Palette {
     val green get() = current.green
 
     /** The translucent fill of tiles, bars and rails over the wallpaper. */
-    val glass get() = background.copy(alpha = 0.88f)
+    val glass get() = background.copy(alpha = Style.GLASS.toFloat())
 }
 
-/** How the launcher draws itself, independent of the theme's colors. Saved by ThemeStore. */
+/**
+ * How the launcher draws itself, independent of the theme's colors: the
+ * current [Style], which StyleStore sets, read where it's drawn.
+ */
 object LauncherStyle {
+    var style by mutableStateOf(Style())
+
     /** App icons as silhouettes in the accent color (Omarchy) rather than their own colors. */
-    var monochromeIcons by mutableStateOf(false)
+    val monochromeIcons get() = style[Style.MONOCHROME_ICONS]
 
     /** Home screen apps as bare icons on the wallpaper instead of framed tiles. */
-    var bareAppIcons by mutableStateOf(false)
-
-    /** Tiles behind Android's status bar and navigation bar on home, rather than the bare wallpaper. */
-    var framedSystemBars by mutableStateOf(true)
+    val bareAppIcons get() = !style[Style.APP_TILES]
 
     /** The strip of recently used apps above the bar on home. */
-    var recentApps by mutableStateOf(true)
+    val recentApps get() = style[Style.RECENT_APPS]
 
-    /** How frames (tiles, panels, menus, fields) round their corners. */
-    var corners by mutableStateOf(Corners.Edge)
+    /** The outline of tiles, the prompt bar and the rails. */
+    val tileBorder: Color get() = color(style[Style.TILE_BORDER], Palette.border)
+
+    /** The outline of the tile in use or being arranged. */
+    val focusBorder: Color get() = color(style[Style.TILE_BORDER_FOCUSED], Palette.accent)
+
+    /** How thick tiles' outlines are; 0 for none. */
+    val borderWidth: Dp get() = style[Style.TILE_BORDER_WIDTH].toFloat().dp
+
+    /** How thick full-screen panels' outlines are; 0 for none. */
+    val panelBorderWidth: Dp get() = style[Style.SCREEN_BORDER_WIDTH].toFloat().dp
+
+    /** How thick the focused tile's outline is: never so thin it can't be told apart. */
+    val focusWidth: Dp get() = maxOf(borderWidth, 2.dp)
+
+    /** What frames multiply their corner radius by; 0 is square. */
+    val cornerScale get() = style[Style.CORNER_SCALE].toFloat()
 
     /** The shape frames use: square, or [radius] scaled by the corner style. */
-    fun shape(radius: Dp = 16.dp): Shape = if (corners == Corners.Edge) RectangleShape else RoundedCornerShape(radius * corners.scale)
+    fun shape(radius: Dp = 16.dp): Shape = cornerScale.let { if (it == 0f) RectangleShape else RoundedCornerShape(radius * it) }
+
+    /** [bar]'s band on home, or null without one. */
+    fun barFill(bar: Style.Bar): Color? {
+        if (!style[bar.framed]) return null
+        return color(style[bar.background], Palette.background).copy(alpha = style[bar.opacity].toFloat())
+    }
+
+    /** How thick the line along [bar]'s band is; 0 for none. */
+    fun barLineWidth(bar: Style.Bar): Dp = style[bar.borderWidth].toFloat().dp
+
+    /** The line along [bar]'s band facing the tiles, or null for none. */
+    fun barLine(bar: Style.Bar): Color? =
+        when (val spec = style[bar.border]) {
+            ColorSpec.NONE -> null
+            ColorSpec.THEME -> tileBorder
+            else -> color(spec, Palette.border)
+        }
+
+    /** A color setting's value: [theme] for "theme" or a color this theme lacks. */
+    private fun color(
+        spec: String,
+        theme: Color,
+    ): Color =
+        when {
+            spec == ColorSpec.THEME -> theme
+            spec.startsWith("#") -> hexColor(spec) ?: theme
+            else -> Palette.named(spec) ?: theme
+        }
 }
 
-/** Corner styles, from Omarchy's sharp edges to stock Android's round shapes; [scale] multiplies each frame's radius. */
+/** The Style menu's corner presets, from Omarchy's sharp edges to stock Android's round shapes; [scale] multiplies each frame's radius. */
 enum class Corners(
-    /** Saved in preferences: never rename. */
+    /** What launchers before style.toml saved. */
     val id: String,
     val label: String,
     val scale: Float,
@@ -139,20 +186,33 @@ fun Modifier.frame(
     radius: Dp = 16.dp,
 ): Modifier {
     val shape = LauncherStyle.shape(radius)
-    return clip(shape).background(fill, shape).border(width, color, shape)
+    // 0.dp is Compose's hairline, which border() still draws.
+    return clip(shape).background(fill, shape).then(if (width > 0.dp) Modifier.border(width, color, shape) else Modifier)
 }
 
 /**
- * Omarchy's gap between framed surfaces: between home's tiles, from them to the screen's
- * safe edges, and from full-screen panels to those edges, so a panel's frame lines up with the tiles'.
+ * Omarchy's gaps between framed surfaces, like Hyprland's gaps_in and gaps_out. [HomeGap] is between two of
+ * home's tiles (the grid, the strip and the bar); [EdgeGap] is from them to the screen's safe edges; [PanelGap]
+ * is from full-screen panels to those edges. The user's, from style.toml.
  */
-val HomeGap = 6.dp
+val HomeGap: Dp get() = LauncherStyle.style[Style.GAPS_IN].toFloat().dp
+
+/** See [HomeGap]. */
+val EdgeGap: Dp get() = LauncherStyle.style[Style.GAPS_OUT].toFloat().dp
+
+/** See [HomeGap]. */
+val PanelGap: Dp get() = LauncherStyle.style[Style.SCREEN_GAPS_OUT].toFloat().dp
 
 /** The widest a column of text and rows gets on a big screen: the bar beside landscape home, text-heavy panels. */
 val ReadingWidth = 640.dp
 
-/** A home-screen surface over the wallpaper: tiles, the prompt bar, the rails; accent while [focused]. */
-fun Modifier.tile(focused: Boolean = false): Modifier = frame(2.dp, if (focused) Palette.accent else Palette.border, Palette.glass)
+/** A home-screen surface over the wallpaper: tiles, the prompt bar, the rails; outlined as focused while [focused]. */
+fun Modifier.tile(focused: Boolean = false): Modifier =
+    frame(
+        if (focused) LauncherStyle.focusWidth else LauncherStyle.borderWidth,
+        if (focused) LauncherStyle.focusBorder else LauncherStyle.tileBorder,
+        Palette.glass,
+    )
 
 /** The launcher's text style in the theme's foreground color. */
 val Mono get() = Palette.current.mono

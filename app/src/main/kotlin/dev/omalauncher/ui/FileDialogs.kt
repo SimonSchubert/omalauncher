@@ -42,7 +42,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
-private fun DialogFrame(
+internal fun DialogFrame(
     onDismiss: () -> Unit,
     content: @Composable () -> Unit,
 ) {

@@ -1,5 +1,5 @@
 widget "koi pond" {
-  meta { description: "A pixel-art koi pond in your theme's colors. Tap the water to feed the koi"; version: "1.0"; license: "MIT"; category: "fun" }
+  meta { description: "A pixel-art koi pond in your theme's colors. Tap the water to feed the koi"; version: "1.2"; license: "MIT"; category: "fun" }
   page: 1
   order: 6
   size: 6x3
@@ -7,19 +7,19 @@ widget "koi pond" {
   padding: 0
 
   // Pixel-art koi in theme colors. A Canvas keeps nothing between frames, so
-  // every koi is a function of `time`: the head swims a loop, and the body is
+  // every koi is a function of `time`: the head swims a path, and the body is
   // drawn where the head was a moment ago, as blocky discs on a pixel grid.
   //
-  // Tap the water to feed them: each koi's loop glides over to the food and
-  // tightens around it, so they turn and swim there, then drift home. A tap
-  // stores where the food spot and each koi's pull currently are, so another
-  // tap carries on from there instead of starting over.
+  // Tap the water to feed them. A tap stores each koi's body and speed as they
+  // are, and works out a route from there the way a fish would swim it: turn
+  // in an arc from where it's facing, swim straight, and slip onto a circle
+  // round the food. After a while it leaves along that circle the same way,
+  // onto its home loop. Another tap starts a new route from wherever it is.
   state fedAt = -100
   state foodX = 0
   state foodY = 0
-  state fromX = 0
-  state fromY = 0
-  state fromE = [0, 0]
+  state fromK = []
+  state plan = []
 
   // Paths are in fractions of the tile: x = sin(t), y = cos(ratio * t + ph).
   // `spots` are [segment, side] pairs that get a patch in `spot`.
@@ -34,18 +34,162 @@ widget "koi pond" {
   // frame clock restarts (say, after its page was off screen), so a tap that
   // seems to be in the future was really long ago.
   let since = time >= fedAt ? time - fedAt : 1000
-
-  // Lambdas in lets can't be called directly, only passed to map and friends.
-  let ease = g => g * g * (3 - 2 * g)
-  // How strongly a koi is drawn to the food, from [pull at the last tap, seconds since]:
-  // up to 1 over 2.4 s, then back to 0 after 10 s.
-  let pull = v => min(lerp(v[0], 1, clamp(v[1] / 2.4, 0, 1)), clamp((10 - v[1]) / 2.5, 0, 1))
-  let pullNow = koi.map((f, i) => [fromE[i] ?? 0, since - i * 0.4]).map(pull)
-  // The food spot glides from where it was to the new tap.
-  let glideNow = [clamp(since / 1.6, 0, 1)].map(ease)[0]
+  // Long enough to swim there, eat, swim home and for the body to follow.
+  let feeding = since < 30
 
   // One art pixel, in dp. With no padding the Canvas is the whole tile.
   let p = clamp(round(min(tileWidth ?? 300, tileHeight ?? 200) / 70), 2, 5)
+  // The koi are worked out here rather than in the Canvas, because onTap
+  // stores how they are at the tap. The Canvas fills the tile.
+  let W = tileWidth ?? 300
+  let H = tileHeight ?? 200
+  // Body segments are this far apart, in dp.
+  let ds = 1.5 * p
+  let turn = 2 * rad(180)
+
+  // Lambdas in lets can't be called directly, only passed to map and friends,
+  // so they take one list of arguments.
+
+  // Each koi's home loop and its circle round the food, in dp. `s2` is which
+  // way round the food it swims: 1 turns from x towards y.
+  let rig = koi.map((f, i) => [(12 + i * 6) * p].map(fr => {
+    i: i, f: f, fr: fr, s2: -f.dir, cx: f.cx * W, cy: f.cy * H, rx: f.rx * W, ry: f.ry * H,
+    fx: clamp(foodX, fr + 4 * p, W - fr - 4 * p), fy: clamp(foodY, fr + 4 * p, H - fr - 4 * p)
+  })[0])
+
+  // [rig, angle] → the home loop there as [x, y], and which way it runs, per
+  // unit of angle: [dx, dy].
+  let homeAt = v => [
+    v[0].cx + v[0].rx * sin(v[1]), v[0].cy + v[0].ry * cos(v[0].f.ratio * v[1] + v[0].f.ph),
+    v[0].f.dir * v[0].rx * cos(v[1]), -v[0].f.dir * v[0].ry * v[0].f.ratio * sin(v[0].f.ratio * v[1] + v[0].f.ph)
+  ]
+
+  // Idle, the body is just the loop: step back along it directly, by the
+  // loop's speed halfway back, so the body keeps its length where the loop
+  // speeds up or slows down. From [rig, angle offset].
+  let loop = v => [v[0].f.ph + v[0].f.dir * time * v[0].f.speed + v[1]]
+    .map(th => range(len(profile) + 1).map(k => th - v[0].f.dir * k * ds / 2 / max(sqrt(pow(v[0].rx * cos(th), 2) + pow(v[0].ry * v[0].f.ratio * sin(v[0].f.ratio * th + v[0].f.ph), 2)), 1))
+      .map((m, k) => th - v[0].f.dir * k * ds / max(sqrt(pow(v[0].rx * cos(m), 2) + pow(v[0].ry * v[0].f.ratio * sin(v[0].f.ratio * m + v[0].f.ph), 2)), 1))
+      .map(t => [[v[0], t]].map(homeAt)[0]))[0]
+
+  // [point, centre, angle] → the point turned about the centre.
+  let spin = v => [
+    v[1][0] + (v[0][0] - v[1][0]) * cos(v[2]) - (v[0][1] - v[1][1]) * sin(v[2]),
+    v[1][1] + (v[0][0] - v[1][0]) * sin(v[2]) + (v[0][1] - v[1][1]) * cos(v[2])
+  ]
+
+  // A route: from [point, heading, s1, R, centre, s2, r] turn s1 on a circle of
+  // radius R, then swim straight and join the circle of radius r round the
+  // centre, going s2 (1 or -1) round it. The straight runs along u, from t1 on
+  // the first circle to t2 on the second; phi is the turn before it. `ok` is
+  // false when the two circles are too close for one.
+  let route = v => [[v[0][0] - v[2] * v[3] * v[1][1], v[0][1] + v[2] * v[3] * v[1][0]]]
+    // [first centre, dx, dy, k] between the centres
+    .map(c => [c, v[4][0] - c[0], v[4][1] - c[1], v[5] * v[6] - v[2] * v[3]])
+    // [.., distance², straight length]
+    .map(w => [w[0], w[1], w[2], w[3], max(w[1] * w[1] + w[2] * w[2], 0.001), sqrt(max(w[1] * w[1] + w[2] * w[2] - w[3] * w[3], 0))])
+    .map(w => [w, [(w[5] * w[1] + w[3] * w[2]) / w[4], (w[5] * w[2] - w[3] * w[1]) / w[4]]])
+    .map(w => [w[0], w[1], v[2] * (atan2(w[1][1], w[1][0]) - atan2(v[1][1], v[1][0]))])
+    .map(w => [w[0], w[1], w[2] - turn * floor(w[2] / turn)])
+    .map(w => {
+      ok: w[0][4] > pow(abs(w[0][3]) + 0.01, 2),
+      a: v[0], s1: v[2], R: v[3], c1: w[0][0], phi: w[2], u: w[1], lam: w[0][5],
+      t1: [w[0][0][0] + v[2] * v[3] * w[1][1], w[0][0][1] - v[2] * v[3] * w[1][0]],
+      c2: v[4], s2: v[5], r2: v[6],
+      t2: [v[4][0] + v[5] * v[6] * w[1][1], v[4][1] - v[5] * v[6] * w[1][0]],
+      len: v[3] * w[2] + w[0][5]
+    })[0]
+
+  // [route, distance along it] → [x, y]. Past the straight it carries on round
+  // the second circle.
+  let along = v => v[1] < v[0].R * v[0].phi ? [[v[0].a, v[0].c1, v[0].s1 * v[1] / v[0].R]].map(spin)[0] :
+    v[1] < v[0].R * v[0].phi + v[0].lam ? [v[0].t1[0] + v[0].u[0] * (v[1] - v[0].R * v[0].phi), v[0].t1[1] + v[0].u[1] * (v[1] - v[0].R * v[0].phi)] :
+    [[v[0].t2, v[0].c2, v[0].s2 * (v[1] - v[0].R * v[0].phi - v[0].lam) / v[0].r2]].map(spin)[0]
+
+  // [route, its length, start, speed at the start, speed at the end] → a leg:
+  // the route swum from time t0, taking T seconds. The distance swum eases
+  // from one speed to the other, so it neither jerks off nor brakes hard.
+  let legOf = v => [clamp(v[1] / (20 * p), 0.8, 5)].map(T => {
+    c: v[0], S: max(v[1], 0.001), t0: v[2], T: T,
+    m0: clamp(v[3] * T / max(v[1], 0.001), 0, 3), m1: clamp(v[4] * T / max(v[1], 0.001), 0, 3)
+  })[0]
+  // [leg, tau] → how far along it the koi is at time tau.
+  let swum = v => [clamp((v[1] - v[0].t0) / v[0].T, 0, 1)]
+    .map(g => v[0].S * (3 * g * g - 2 * g * g * g + v[0].m0 * (g * g * g - 2 * g * g + g) + v[0].m1 * (g * g * g - g * g)))[0]
+
+  // Each koi's trip since the last tap: `go` to the food, round it from `arr`,
+  // `back` from `tl`, and home from `ret`, its loop shifted by `dh` so it joins
+  // where it arrives. onTap works these out and keeps them in `plan`, so the
+  // frame after a tap doesn't have to.
+  let trips = rig.map(r => [fromK[r.i]].map(k => k == null ? {r: r, go: null, dh: 0} :
+    // Where the head was at the tap, and which way it faced
+    [[[k.body[0][0], k.body[0][1]], k.body[0][0] - k.body[1][0], k.body[0][1] - k.body[1][1]]]
+      .map(h => [h[0], [h[1] / max(sqrt(h[1] * h[1] + h[2] * h[2]), 0.001), h[2] / max(sqrt(h[1] * h[1] + h[2] * h[2]), 0.001)]])
+      // The shortest route there, turning as tightly as the koi can (7 px)
+      // unless the food is so close that it needs a wider turn.
+      .map(h => flatten([7, 12, 20, 30].map(m => [1, -1].map(s1 => [h[0], h[1], s1, m * p, [r.fx, r.fy], r.s2, r.fr]))).map(route)
+        .filter(c => c.ok).sortBy(c => c.len + c.R)[0])
+      .map(c => [[c, c.len, fedAt, k.speed, r.fr * r.f.speed]].map(legOf)[0])
+      // [go, arrival, angle offset round the food]
+      .map(g => [g, fedAt + g.T, atan2(g.c.t2[0] - r.fx, g.c.t2[1] - r.fy) - r.f.dir * r.f.speed * (fedAt + g.T)])
+      // [.., leaving, its angle round the food]
+      .map(w => [w[0], w[1], w[2], w[1] + 4 + r.i * 0.6, w[2] + r.f.dir * r.f.speed * (w[1] + 4 + r.i * 0.6)])
+      .map(w => [w, [r.fx + r.fr * sin(w[4]), r.fy + r.fr * cos(w[4])], [r.f.dir * cos(w[4]), -r.f.dir * sin(w[4])]])
+      // Home: the shortest route to any of 24 points on the loop, ending on a
+      // turn that lines up with it there. [route, loop angle, speed, length]
+      .map(w => [w[0], flatten(range(24).map(j => [j * turn / 24, [[r, j * turn / 24]].map(homeAt)[0]])
+        .map(q => [q[0], q[1], sqrt(q[1][2] * q[1][2] + q[1][3] * q[1][3])])
+        .map(q => [q[0], q[1], [q[1][2] / q[2], q[1][3] / q[2]], q[2]])
+        .map(q => [1, -1].map(s3 => [1, -1].map(s1 => [w[1], w[2], s1, 7 * p, [q[1][0] - s3 * 7 * p * q[2][1], q[1][1] + s3 * 7 * p * q[2][0]], s3, 7 * p])
+          .map(route).filter(c => c.ok)
+          .map(c => [c, q[0], q[3] * r.f.speed, c.len + 7 * p * [s3 * (atan2(q[2][1], q[2][0]) - atan2(c.u[1], c.u[0]))].map(a => a - turn * floor(a / turn))[0]]))))
+        .map(q => flatten(q)).sortBy(q => q[3])[0]])
+      .map(w => [w[0], [[w[1][0], w[1][3], w[0][3], r.fr * r.f.speed, w[1][2]]].map(legOf)[0], w[1][1]])
+      .map(w => {
+        r: r, go: w[0][0], arr: w[0][1], dl: w[0][2], tl: w[0][3],
+        back: w[1], ret: w[0][3] + w[1].T,
+        dh: w[2] - r.f.ph - r.f.dir * r.f.speed * (w[0][3] + w[1].T)
+      })[0])[0])
+
+  // [trip, tau] → the head at time tau, as [x, y].
+  let headAt = v => v[0].go == null || v[1] >= v[0].ret ? [[v[0].r, v[0].r.f.ph + v[0].r.f.dir * v[0].r.f.speed * v[1] + v[0].dh]].map(homeAt)[0] :
+    v[1] < v[0].arr ? [[v[0].go, v[1]]].map(swum).map(s => [v[0].go.c, s]).map(along)[0] :
+    v[1] < v[0].tl ? [v[0].dl + v[0].r.f.dir * v[0].r.f.speed * v[1]].map(th => [v[0].r.fx + v[0].r.fr * sin(th), v[0].r.fy + v[0].r.fr * cos(th)])[0] :
+    [[v[0].back, v[1]]].map(swum).map(s => [v[0].back.c, s]).map(along)[0]
+
+  // [trip, tau] → how far the head has swum since the tap. Along the home
+  // loop that's its speed summed with Simpson's rule, close enough for the
+  // few seconds the body takes to follow it there.
+  let odometer = v => v[1] < v[0].arr ? [[v[0].go, v[1]]].map(swum)[0] :
+    v[1] < v[0].tl ? v[0].go.S + v[0].r.fr * v[0].r.f.speed * (v[1] - v[0].arr) :
+    v[1] < v[0].ret ? v[0].go.S + v[0].r.fr * v[0].r.f.speed * (v[0].tl - v[0].arr) + [[v[0].back, v[1]]].map(swum)[0] :
+    [[v[0].r.f.ph + v[0].r.f.dir * v[0].r.f.speed * v[0].ret + v[0].dh, v[0].r.f.ph + v[0].r.f.dir * v[0].r.f.speed * v[1] + v[0].dh]]
+      .map(a => [a[0], (a[0] + a[1]) / 2, a[1]].map(th => [[v[0].r, th]].map(homeAt)[0]).map(q => sqrt(q[2] * q[2] + q[3] * q[3])))
+      .map(q => v[0].go.S + v[0].r.fr * v[0].r.f.speed * (v[0].tl - v[0].arr) + v[0].back.S + v[0].r.f.speed * (v[1] - v[0].ret) / 6 * (q[0] + 4 * q[1] + q[2]))[0]
+
+  // The trips planned at the last tap. Before any, and on the home loop, the
+  // loop follows the tile's size now.
+  let live = rig.map((r, i) => plan[i] ?? {r: r, go: null, dh: 0})
+
+  // Each head's speed in dp/s, over the last tenth of a second.
+  let speeds = live.map(t => [[t, time], [t, time - 0.1]].map(headAt))
+    .map(q => sqrt(pow(q[0][0] - q[1][0], 2) + pow(q[0][1] - q[1][1], 2)) / 0.1)
+
+  // Feeding, the body lies along the head's path, a segment's length apart:
+  // find when the head was each distance back, between 32 samples of the
+  // odometer, and put the segment where the head was then. Further back than
+  // the tap it lies along the body as it was at the tap. Once it's all back on
+  // the home loop, the idle body takes over.
+  let bodies = live.map((t, i) => !feeding || t.go == null || time > t.ret + 6 ? [[rig[i], t.dh]].map(loop)[0] :
+    [range(33).map(j => time - j * min(since, 25) / 32)]
+      .map(ts => [ts, ts.map(tau => [t, tau]).map(odometer)])
+      .map(w => [w[0], w[1].map(o => w[1][0] - o)])
+      .map(w => range(len(profile) + 1).map(k => k * ds >= w[1][32] ?
+          [clamp((k * ds - w[1][32]) / ds, 0, len(profile) - 0.001)]
+            .map(x => [fromK[i].body[floor(x)], fromK[i].body[floor(x) + 1], x - floor(x)])
+            .map(q => [lerp(q[0][0], q[1][0], q[2]), lerp(q[0][1], q[1][1], q[2])])[0] :
+          [clamp(count(w[1], o => o <= k * ds) - 1, 0, 31)]
+            .map(j => [[t, lerp(w[0][j], w[0][j + 1], clamp((k * ds - w[1][j]) / max(w[1][j + 1] - w[1][j], 0.001), 0, 1))]].map(headAt)[0])[0]))[0])
 
   // The lily pad only changes with the tile's size, so its rects are worked out
   // here, once, rather than every frame: [x, y, w, h, color]. A pixel disc a row
@@ -76,18 +220,16 @@ widget "koi pond" {
   ].map(group => flatten(group)))
 
   Canvas {
+    let fed = since
+
     onTap: {
-      fromX = max(pullNow) > 0.01 ? lerp(fromX, foodX, glideNow) : x
-      fromY = max(pullNow) > 0.01 ? lerp(fromY, foodY, glideNow) : y
-      fromE = pullNow
+      // Before fedAt changes: bodies and speeds read it.
+      fromK = bodies.map((b, i) => {body: b, speed: speeds[i]})
       fedAt = time
       foodX = x
       foodY = y
+      plan = trips
     }
-
-    let fed = since
-    // Long enough for the pull to fade and for the body to swim off the path it took.
-    let feeding = fed < 25
 
     clip(0, 0, width, height) {
       // Food: a pixel ring where it landed, and pellets the koi nibble away.
@@ -105,53 +247,8 @@ widget "koi pond" {
       }
 
       for f, i in koi {
-        let ds = 1.5 * p
-        let dir = f.dir
-        let ratio = f.ratio
-        let ph = f.ph
-        let cxw = f.cx * width
-        let cyw = f.cy * height
-        let rxw = f.rx * width
-        let ryw = f.ry * height
-
-        // Idle, the path is just the loop: step back along it directly, by the
-        // loop's speed halfway back, so the body keeps its length where the
-        // loop speeds up or slows down.
-        let th = ph + dir * time * f.speed
-        let thStep = ds / max(sqrt(pow(rxw * cos(th), 2) + pow(ryw * ratio * sin(ratio * th + ph), 2)), 1)
-        let looped = range(len(profile) + 1).map(k => th - dir * k * thStep / 2)
-          .map((m, k) => th - dir * k * ds / max(sqrt(pow(rxw * cos(m), 2) + pow(ryw * ratio * sin(ratio * m + ph), 2)), 1))
-          .map(t => [cxw + rxw * sin(t), cyw + ryw * cos(ratio * t + ph), 0])
-
-        // Feeding: where the head is at time tau, as [x, y, pull]. The loop's
-        // centre and radii blend from home to a circle around the food.
-        let fe = fromE[i] ?? 0
-        let fr = (12 + i * 6) * p
-        let lo = fr + 4 * p
-        let at = tau => [[fe, tau - fedAt - i * 0.4]].map(pull).map(ease)
-          .map(e => [e, [clamp((tau - fedAt) / 1.6, 0, 1)].map(ease)[0], ph + dir * tau * f.speed])
-          .map(v => [
-            lerp(cxw, clamp(lerp(fromX, foodX, v[1]), lo, width - lo), v[0]) + lerp(rxw, fr, v[0]) * sin(v[2]),
-            lerp(cyw, clamp(lerp(fromY, foodY, v[1]), lo, height - lo), v[0]) + lerp(ryw, fr, v[0]) * cos(ratio * v[2] + ph),
-            v[0]
-          ])[0]
-        // The body lies along the head's recent path a fixed distance apart, so
-        // it keeps its length whether the koi darts or dawdles: sample the path
-        // over a window sized from the head's speed, then walk along it.
-        let probe = [time, time - 0.1].map(at)
-        let speed = sqrt(pow(probe[0][0] - probe[1][0], 2) + pow(probe[0][1] - probe[1][1], 2)) / 0.1
-        let n = 24
-        let window = 2 * len(profile) * ds / max(speed, 3)
-        let path = range(n + 1).map(j => time - j * window / n).map(at)
-        let steps = range(n).map(j => max(sqrt(pow(path[j][0] - path[j + 1][0], 2) + pow(path[j][1] - path[j + 1][1], 2)), 0.001))
-        let along = range(n + 1).map(j => sum(steps.take(j)))
-        let walked = range(len(profile) + 1).map(k => [k * ds, clamp(count(along, c => c <= k * ds) - 1, 0, n - 1)])
-          .map(v => [v[1], clamp((v[0] - along[v[1]]) / steps[v[1]], 0, 1)])
-          .map(v => [lerp(path[v[0]][0], path[v[0] + 1][0], v[1]), lerp(path[v[0]][1], path[v[0] + 1][1], v[1]), path[v[0]][2]])
-
-        // Lets are lazy: only the one that's used gets computed.
-        let body = feeding ? walked : looped
-        let sway = sin(time * (3 + body[0][2] * 2) + i * 2)
+        let body = bodies[i]
+        let sway = sin(time * 4 + i * 2)
         let fin = mix(f.body, background, 0.25)
 
         // Tail first, so the head lands on top.

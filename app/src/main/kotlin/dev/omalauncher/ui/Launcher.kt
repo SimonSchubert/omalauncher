@@ -1,6 +1,7 @@
 package dev.omalauncher.ui
 
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.graphics.graphicsLayer
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -46,6 +48,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import dev.omalauncher.Runtime
+import dev.omalauncher.theme.Style
+import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.widgets.checkSecretsCommand
 import dev.omalauncher.widgets.publishWidgetCommand
 import dev.omalauncher.widgets.reviewSharedWidgetCommand
@@ -118,7 +122,7 @@ private fun DesktopScreen(
             }
         }
     }
-    if (LauncherStyle.framedSystemBars) SystemBarFrames()
+    SystemBarFrames()
     val covered = remember(state) { { state.homeCovered || runtime.widgets.openScreen != null } }
     CompositionLocalProvider(LocalHomeCovered provides covered) {
         Column(Modifier.fillMaxSize().safePadding()) {
@@ -141,6 +145,7 @@ private fun DesktopScreen(
         when (hit) {
             is AppHit.Linux -> runtime.launch(hit.app)
             is AppHit.Android -> runtime.androidApps.open(hit.app)
+            is AppHit.Shortcut -> runtime.androidApps.open(hit.shortcut)
         }
     }
 
@@ -153,6 +158,7 @@ private fun DesktopScreen(
                     when (hit) {
                         is AppHit.Linux -> runtime.widgets.shortcuts.addLinux(hit.app, state.currentPage)
                         is AppHit.Android -> runtime.widgets.shortcuts.addAndroid(hit.app, state.currentPage)
+                        is AppHit.Shortcut -> runtime.widgets.shortcuts.addAndroidShortcut(hit.shortcut, state.currentPage)
                     }
                     state.close()
                 },
@@ -161,6 +167,13 @@ private fun DesktopScreen(
                     runtime.androidApps.openInfo(app)
                 },
                 uninstall = { app -> runtime.androidApps.uninstall(app) },
+                // Off home too: its tile would only be a name that opens nothing.
+                remove = { shortcut ->
+                    runtime.androidApps.remove(shortcut)
+                    runtime.widgets.shortcuts.removeAndroidShortcut(shortcut)
+                },
+                // Opening one leaves the drawer at once, as opening an app does; pinning one closes it to show the new tile, as pin does.
+                shortcuts = { app -> shortcutMenu(runtime, app, page = { state.currentPage }, onOpen = state::closeNow, onPinned = state::close) },
             )
         }
 
@@ -226,7 +239,36 @@ private fun DesktopScreen(
 
     // Full-screen panels draw over the bar.
     ThemesOverlay(runtime, state)
+    StyleErrors(runtime.style)
 }
+
+/**
+ * What style.toml got wrong, at the top over everything, like Hyprland's bar for config errors: errors.txt is out
+ * of sight without a terminal. A tap hides the problems shown; new ones show again.
+ */
+@Composable
+private fun StyleErrors(style: StyleStore) {
+    var hidden by remember { mutableStateOf(emptySet<String>()) }
+    val shown = style.errors.filterNot { it in hidden }
+    if (shown.isEmpty()) return
+    Box(Modifier.fillMaxSize().safePadding().padding(PanelGap), contentAlignment = Alignment.TopCenter) {
+        Column(
+            Modifier
+                .widthIn(max = ReadingWidth)
+                .fillMaxWidth()
+                .frame(2.dp, Palette.red, Palette.background)
+                .clickable { hidden = hidden + shown }
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            BasicText("style.toml: ${if (shown.size == 1) "1 problem" else "${shown.size} problems"}", style = Mono.copy(color = Palette.red))
+            for (line in shown.take(MAX_ERRORS)) BasicText(line, style = Mono.copy(fontSize = TextSize.Small))
+            val more = if (shown.size > MAX_ERRORS) "${shown.size - MAX_ERRORS} more in errors.txt · " else ""
+            BasicText("${more}tap to hide", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        }
+    }
+}
+
+private const val MAX_ERRORS = 3
 
 @Composable
 private fun ThemesOverlay(
@@ -331,23 +373,40 @@ private fun SystemBarFrames() {
         // Three-button navigation stands at a side in a phone's landscape.
         val left = nav.getLeft(density, direction).toDp()
         val right = nav.getRight(density, direction).toDp()
+        val status = Style.STATUS_BAR
+        val navigation = Style.NAVIGATION_BAR
         Box(Modifier.fillMaxSize()) {
             // Thinner than that leaves no room for a band: a gesture bar hidden in the system's settings, say.
             fun Dp.band() = takeIf { it >= 8.dp }
             val across = Modifier.fillMaxWidth()
-            top.band()?.let { Box(across.align(Alignment.TopCenter).height(it).bar { w -> Rect(0f, size.height - w, size.width, size.height) }) }
-            bottom.band()?.let { Box(across.align(Alignment.BottomCenter).height(it).bar { w -> Rect(0f, 0f, size.width, w) }) }
+            top.band()?.let { Band(across.align(Alignment.TopCenter).height(it), status) { w -> Rect(0f, size.height - w, size.width, size.height) } }
+            bottom.band()?.let { Band(across.align(Alignment.BottomCenter).height(it), navigation) { w -> Rect(0f, 0f, size.width, w) } }
             // Between the top and bottom ones, a gap from each. Left and right of the screen, whichever way text runs.
-            val between = Modifier.fillMaxSize().padding(top = top + HomeGap, bottom = bottom + HomeGap)
-            left.band()?.let { Box(between.wrapContentWidth(AbsoluteAlignment.Left).width(it).bar { w -> Rect(size.width - w, 0f, size.width, size.height) }) }
-            right.band()?.let { Box(between.wrapContentWidth(AbsoluteAlignment.Right).width(it).bar { w -> Rect(0f, 0f, w, size.height) }) }
+            val between = Modifier.fillMaxSize().padding(top = top + EdgeGap, bottom = bottom + EdgeGap)
+            left.band()?.let { Band(between.wrapContentWidth(AbsoluteAlignment.Left).width(it), navigation) { w -> Rect(size.width - w, 0f, size.width, size.height) } }
+            right.band()?.let { Band(between.wrapContentWidth(AbsoluteAlignment.Right).width(it), navigation) { w -> Rect(0f, 0f, w, size.height) } }
         }
     }
 }
 
-/** A tile's glass, and its border only where [line] says: the side facing the tiles. */
-private fun Modifier.bar(line: DrawScope.(width: Float) -> Rect) =
-    background(Palette.glass).drawBehind {
-        val r = line(2.dp.toPx())
-        drawRect(Palette.border, r.topLeft, r.size)
-    }
+/**
+ * [bar]'s band, the tiles' glass unless style.toml says otherwise, and its border only where [line]
+ * says: the side facing the tiles. Nothing when the bar isn't framed.
+ */
+@Composable
+private fun Band(
+    modifier: Modifier,
+    bar: Style.Bar,
+    line: DrawScope.(width: Float) -> Rect,
+) {
+    val fill = LauncherStyle.barFill(bar) ?: return
+    val border = LauncherStyle.barLine(bar)
+    val width = LauncherStyle.barLineWidth(bar)
+    Box(
+        modifier.background(fill).drawBehind {
+            if (border == null || width == 0.dp) return@drawBehind
+            val r = line(width.toPx())
+            drawRect(border, r.topLeft, r.size)
+        },
+    )
+}

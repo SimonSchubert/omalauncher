@@ -3,6 +3,7 @@ package dev.omalauncher.widgets.runtime
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -134,6 +135,9 @@ class WidgetInstance(
     override val budget = Budget()
     val root = Env.root(this)
     private val frameTime = mutableDoubleStateOf(0.0)
+    /** Whether anything read `time` since the frame clock last set it; see [awaitTimeRead]. */
+    @Volatile var timeRead = true
+    private val timeWake = Channel<Unit>(Channel.CONFLATED)
     private val cells = arrayOfNulls<State<Value>>(program.globals.size)
     /** Decoded images by src, filled in off the main thread; see [image]. */
     private val images = mutableStateMapOf<String, ImageBitmap?>()
@@ -248,7 +252,19 @@ class WidgetInstance(
             else -> Palette.named(name)
         }?.toArgb()
 
-    override fun time() = frameTime.doubleValue
+    override fun time(): Double {
+        if (!timeRead) {
+            timeRead = true
+            timeWake.trySend(Unit)
+        }
+        return frameTime.doubleValue
+    }
+
+    /** Suspends until something reads `time`: a `time` under an `if` that's false needs no frames. */
+    suspend fun awaitTimeRead() {
+        while (timeWake.tryReceive().isSuccess) Unit
+        if (!timeRead) timeWake.receive()
+    }
 
     fun setTile(
         cols: Int?,
@@ -274,7 +290,7 @@ class WidgetInstance(
         val v =
             when (name) {
                 "linux" -> return bool(linux())
-                "corners" -> return Num(LauncherStyle.corners.scale.toDouble())
+                "corners" -> return Num(LauncherStyle.cornerScale.toDouble())
                 "screenWidth" -> screenSize.value[0]
                 "screenHeight" -> screenSize.value[1]
                 "cols" -> tileSize.value[0]

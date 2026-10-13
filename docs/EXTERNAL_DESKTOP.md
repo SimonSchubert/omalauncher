@@ -21,7 +21,7 @@ Protocol 1 advertises `home_surface`, `widgets`, `android_launch`, `work_profile
 
 Each session has its own widget instances, open widget screen, search field, focus, visibility, persisted widget values, pinned apps and placement profile. Existing widget values seed a new desktop once; subsequent connections reuse that desktop's values. Widget definitions, themes, Android app catalog and underlying data services are shared. The external picker only changes visibility on that desktop, without removing widget source files. Disconnecting stops session widget subscriptions and releases its surface; it does not stop the phone home or shared Linux/agent workloads.
 
-External widget actions that need an unnegotiated presentation capability report `unsupported_action` instead of redirecting a phone window. Widget `androidApp(package)` actions retain their existing personal-profile meaning. Drawer/pinned work apps carry the actual profile identity.
+External widget actions that need an unnegotiated presentation capability report `unsupported_action` instead of redirecting a phone window. Widget `androidApp(package)` actions retain their existing personal-profile meaning. Drawer/pinned work apps carry the actual profile identity. Pinned Android app shortcuts that open a specific app screen remain unavailable through protocol 1; ordinary app tiles use the current launcher activity and label.
 
 ## Discovery and consent
 
@@ -60,32 +60,19 @@ Android delivers physical input through the attached child surface. Events synth
 
 `onStatus` always carries the originating session ID. Closed handles cannot be reused. Host callback Binder death, service destruction, display removal, uninstall, signing changes and revocation all release sessions. Provider death invalidates all Binder/surface references; drop them and rediscover after `onServiceDisconnected`/`onBindingDied`. A reconnection creates a new session ID and reuses its placement profile. The host must ignore late events for older IDs.
 
-## Running the sample and tests
+## Validation
 
-`samples/desktop-host` is a separate APK demonstrating discovery, consent, a surface, search, launch routing, and reconnect/revoke controls. It uses a real external display if available; otherwise it creates a virtual display for lifecycle tests. This virtual test desktop is off screen. The sample is not included in the launcher APK.
-
-```sh
-./gradlew :owl:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
-./gradlew :app:installDebug :desktop-host:installDebug
-./gradlew :desktop-host:connectedDebugAndroidTest
-```
-
-The cross-process instrumentation tests create their own captured virtual display, even when other emulator displays exist. They assert rendered pixels, resize/hide/show, version mismatch, unauthorized open, provider consent and denial, Android launch identity, immediate revocation, stale handles, and provider process death/reconnect. The app instrumentation tests exercise shortcut interception alongside ordinary text input, and verify all five extracted native runtime libraries. The pure policy tests cover UID/package/certificate mismatch and allocation/profile-name bounds. The existing work-profile support is upstream commit `6bef351`; this bridge preserves its keys, badged icons, work search aliases and stable serials.
-
-The optional work-profile test runs with `-Pandroid.testInstrumentationRunnerArguments.workSerial=<serial>` and requires an unlocked managed profile containing `com.google.android.deskclock` (Clock), also installed in the owner profile. It asserts the work alias returns that profile's UserHandle and serial instead of the personal copy. Without this fixture, that test is skipped.
-
-The bridge checks a catalog entry's stable profile serial before returning its launch request; hosts must revalidate the callback's serial at launch time. Phone-side launch, app-info and uninstall hardening is proposed independently in [PR #76](https://github.com/SimonSchubert/omalauncher/pull/76).
-
-Omalateral's development adapter automatically discovers the canonical provider, or the preview package when the canonical installation has no compatible bridge. It requests approval on PhoneUI, renders all inherited pages side by side, matches the provider palette, and forwards phone touchpad, wheel, search and hardware-key input. Its embedded desktop remains the fallback. Its emulator acceptance test checks rendered content in three columns, cursor visibility and the real phone input routes against a minified provider APK. Physical-display input/IME, simultaneous phone/external interaction, host process death, unplug/replug, signing rotation and work-profile lifecycle remain explicit acceptance scenarios for hardware testing. The wire contract remains proposed for upstream review.
-
-## Building a complete APK on Windows
-
-Run `powershell -File scripts/fetch-proot.ps1` before building. When native source inputs match the current release tag, this helper downloads the official release APK, verifies its GitHub asset SHA-256 digest and extracts only its four patched PRoot runtime libraries. It refuses mismatched native inputs; build modified native sources with `scripts/fetch-proot.sh` under Linux instead. Gradle builds `libwlbridge.so` locally. A launcher APK without the PRoot files can run Android-only screens but cannot start its Linux environment.
-
-For device testing alongside an installed Omalauncher, build both packages with `-Pomalauncher.bridgePreview=true`. The launcher uses `dev.omalauncher.bridgepreview`, the label “Omalauncher bridge preview”, and a separate data directory/FileProvider. The sample binds that preview package. For example:
+Build and run the provider checks with the existing Gradle project:
 
 ```sh
-./gradlew -Pomalauncher.bridgePreview=true :app:assembleRelease :desktop-host:assembleDebug
+./gradlew :owl:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
+./gradlew :app:connectedDebugAndroidTest
 ```
 
-Install the preview launcher and sample host, attach an external display, then open **Omalauncher desktop host sample → Connect desktop → Allow**. Use Search/Open first match to check personal and work aliases, and Disconnect/Revoke to check cleanup. The sample validates the proposed provider API; the Omalateral development APK also implements the host adapter. The preview has its own configuration and cannot read an installed stock launcher's private data. To inherit an existing stock configuration, that installation must receive a bridge-enabled update signed with its existing key. Linux setup is optional for the Android home and work-app tests.
+The native test uses a captured virtual display to check rendered home content, separate Activity instances, keyboard input, resizing and moving an existing window between displays. Layout tests check that inherited cells, pages, folders and profile identities persist independently from the source home. JVM policy tests cover caller identity, revocation, closed leases, layout names and allocation bounds.
+
+At upstream `dc37c66`, lint reports six `RestrictedApi` errors in the unchanged phone and Linux window activities. The same errors occur on an unmodified upstream checkout; this desktop change adds no lint errors.
+
+A separate local host harness has also checked cross-process consent/denial, rendering, resize/hide/show, host callbacks, revocation, provider death/reconnect, independent primary/external sessions and system launches on trusted displays against a minified APK. The harness and preview/build tooling are kept outside this upstream change. An optional managed-profile fixture was unavailable for that run.
+
+Physical/OEM secondary-home selection, input/IME, simultaneous phone/external use, unplug/replug, signing rotation and work-profile lifecycle remain hardware acceptance scenarios. The bridge preserves the existing app catalog and validates stable profile serials; phone-side launch, app-info and uninstall hardening is proposed separately in [PR #76](https://github.com/SimonSchubert/omalauncher/pull/76).

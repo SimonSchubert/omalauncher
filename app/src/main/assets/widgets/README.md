@@ -335,7 +335,9 @@ Canvas {
 Styles: `fill:` (a color or gradient), `stroke:`, `width:` (stroke width),
 `cap: round/butt/square`. Without either, a shape is filled with `color:` or
 the foreground. A widget that reads `time` animates every frame while it's on
-screen.
+screen, and only while it reads it: a `time` under an `if` that's false, like a
+backdrop drawn only while music plays, costs nothing (older launchers
+animate whenever `time` appears at all).
 
 ## Shader
 

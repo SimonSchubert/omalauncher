@@ -4,6 +4,35 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- Websites installed from a browser (Install app, or Add to home screen) show up
+  on the home screen and in the app drawer, like other apps' shortcuts to home.
+  Browsers didn't offer to install them before.
+- Long-pressing an Android app in the drawer, the recent apps or on home lists its
+  shortcuts, such as Maps' "Navigate home", a chat or Chrome's incognito tab. Tap one
+  to open it, or its [+] to put it on the home screen.
+- Apps that change their own icon, like Duolingo or X, no longer leave a blank
+  tile on the home screen that won't open; it shows the new icon and opens the app.
+- The now playing widget's play button works again when it seemed dead: after a
+  long pause (Spotify) it opens the app so playback resumes, and for a player that
+  can't play in the background (YouTube without Premium) it opens the app. Tapping
+  the tile opens the app again on Android 14 and later.
+
+## 0.7.0 (versionCode 12) – 2026-10-13
+
+- The style lives in `~/.config/omalauncher/style/style.toml`, which you or an agent can edit
+  from Linux; changes show within a second, and settings it can't read show in a banner.
+  `defaults.toml` next to it lists every setting. Your earlier style carries over.
+- New style settings, like Hyprland's: gaps between widgets and to the edges, border widths
+  and colors, the focused border, and screen panels' gaps and borders.
+- The status bar and the gesture bar can sit on the same glass as the widgets
+  (style → system bars); they're bare by default.
+- Widgets can show the next alarm and the phone's modes (Do Not Disturb, battery saver,
+  ringer, torch), turn the torch on, share text, buzz, and draw app icons (owl 7).
+- yay in a terminal no longer asks for root's password, and AUR builds no longer print
+  "exec: -v: invalid option".
+
 ## 0.6.0 (versionCode 11) – 2026-10-12
 
 - Apps from a work profile show up next to your own, marked with a briefcase,
