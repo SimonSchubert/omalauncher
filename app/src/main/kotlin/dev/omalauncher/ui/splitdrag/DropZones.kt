@@ -40,8 +40,9 @@ fun splitsSideBySide(
 
 /**
  * The zones for a [width]×[height] window, whole areas as One UI's own: a band along the top opens the app full screen,
- * the middle pops it up ([canPopUp]), and the halves split the screen with it ([canSplit]): left and right when [sideBySide], top and bottom otherwise. Without split, the rest opens full screen too. The first zone holding a
- * point is the one it lands in.
+ * the middle pops it up ([canPopUp]), and the halves split the screen with it ([canSplit]): left and right when
+ * [sideBySide], top and bottom otherwise. Without split, the rest opens full screen too. The first zone holding a point
+ * is the one it lands in.
  */
 fun dropZones(
     width: Float,
