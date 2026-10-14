@@ -4,7 +4,7 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
-## Unreleased
+## 0.7.1 (versionCode 13) – 2026-10-13
 
 - Websites installed from a browser (Install app, or Add to home screen) show up
   on the home screen and in the app drawer, like other apps' shortcuts to home.
@@ -18,6 +18,13 @@ Dates are when the build was uploaded to Play.
   long pause (Spotify) it opens the app so playback resumes, and for a player that
   can't play in the background (YouTube without Premium) it opens the app. Tapping
   the tile opens the app again on Android 14 and later.
+- After you change the phone's language, app names, home tiles and widget dates
+  follow it.
+- Widgets that only animate some of the time, like a backdrop drawn while music
+  plays, stop redrawing while they're still.
+- The koi in the koi pond widget turn in arcs instead of flipping round.
+- Keeping the theme setup suggests (Tokyo Night) no longer loses it, and its wallpaper,
+  the next time the launcher starts.
 
 ## 0.7.0 (versionCode 12) – 2026-10-13
 

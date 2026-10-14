@@ -156,7 +156,7 @@ private fun FrameClock(
         while (true) {
             if (covered()) snapshotFlow { covered() }.first { !it }
             if (unread >= 3) {
-                inst.awaitTimeRead()
+                inst.awaitTimeRead(start)
                 unread = 0
             }
             withFrameNanos { now ->

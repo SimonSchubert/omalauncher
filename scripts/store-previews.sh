@@ -9,7 +9,7 @@
 # store-previews-demo.sh. The launcher renders each tile off screen
 # (WidgetEngine.previewThemes) and takes every theme's colors while it does.
 #
-#   scripts/store-previews.sh [store repo, default ../omarchy-widgets] [widget name...]
+#   scripts/store-previews.sh [store repo, default ../omarchy-widgets] [widget name or author/name...]
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -107,7 +107,13 @@ trap 'demo off; rm -rf "$WORK"' EXIT
 
 dirs=()
 if [ $# -gt 0 ]; then
-  for n in "$@"; do dirs+=("$(dirname "$(ls "$STORE"/widgets/*/"$n"/widget.owl)")"); done
+  # A name, or author/name when two authors share it.
+  for n in "$@"; do
+    case $n in
+      */*) dirs+=("$STORE/widgets/$n") ;;
+      *) dirs+=("$(dirname "$(ls "$STORE"/widgets/*/"$n"/widget.owl)")") ;;
+    esac
+  done
 else
   for f in "$STORE"/widgets/*/*/widget.owl; do dirs+=("$(dirname "$f")"); done
 fi
