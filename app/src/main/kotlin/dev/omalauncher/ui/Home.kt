@@ -263,7 +263,7 @@ fun HomeScreen(
             onSelect = { state.editing = it },
             actions = { item ->
                 // A pinned Android app offers its shortcuts above the bar, as its long-press menu in the drawer does.
-                val app = (item as? Shortcut)?.component?.let { c -> runtime.androidApps.apps.firstOrNull { it.component == c && it.profile == item.profile } }
+                val app = (item as? Shortcut)?.component?.let { runtime.androidApps.pinned(it, item.profile) }
                 val (menu, offered) =
                     offeredShortcuts(item.key) {
                         app?.let { shortcutMenu(runtime, it, page = { item.page }, onOpen = { arrange.folder = null }) }
@@ -328,6 +328,7 @@ fun HomeScreen(
                     is Shortcut ->
                         ShortcutTile(
                             shortcut = item,
+                            label = runtime.shortcutLabel(item),
                             icon = runtime.shortcutIcon(item, LauncherStyle.monochromeIcons),
                             focused = highlighted,
                             modifier = tile,
@@ -343,6 +344,7 @@ fun HomeScreen(
                         FolderTile(
                             folder = item,
                             icons = item.apps.take(4).map { runtime.shortcutIcon(it, LauncherStyle.monochromeIcons) },
+                            labels = item.apps.take(4).map { runtime.shortcutLabel(it) },
                             focused = highlighted,
                             modifier = tile,
                             onTap = { arrange.folder = item.key },

@@ -99,8 +99,25 @@ add `status`: then `x.out` is the output (parsed with `json`), `x.err` is stderr
 source w = cmd("curl -sf wttr.in/?format=j1") every 30m json timeout 20s status
 Text { text: w == null ? "…" : w.ok ? "${w.out.current_condition[0].temp_C}°" : "offline" }
 ``` Keep commands fast. A command
-can depend on state (`cmd("curl wttr.in/${city}")`) and re-runs with the new
+can depend on state (`cmd("curl wttr.in/${sh(city)}")`) and re-runs with the new
 value at its next interval.
+
+## Values in commands
+
+Put a value into a command (`cmd`, `stream`, `run`, `terminal`, `Terminal`) with `sh(value)`,
+on its own and outside any quotes. `sh()` single-quotes the value, so it stays one word and
+can't run as code, whatever text it holds (owl 6):
+
+```
+onTap: run("notify-send ${sh(title)}")        // right
+onTap: run("notify-send '${title}'")          // wrong: a ' in title ends the quote
+onTap: run("notify-send \"${sh(title)}\"")    // wrong: sh() inside quotes doesn't hold
+```
+
+Work on the value inside `sh()`: `${sh(upper(title))}`. Numbers from `int`, `round`, `floor`,
+`ceil`, `abs`, `fixed`, `len`, `count`, `sum`, `min`, `max` and `clamp` need no `sh()`. A command
+with a heredoc (`<<`) can't take values. The widget store only takes commands built this way;
+one shared as a link shows a warning instead.
 
 ## Triggers
 
@@ -148,7 +165,7 @@ second is held back and reported (one that changes what it watches would otherwi
 | functions | |
 |---|---|
 | numbers | `min max clamp(x, lo, hi) lerp(a, b, t) round(x, digits) floor ceil abs sqrt pow sin cos tan atan2 rad deg sign num(x, default) int` |
-| text | `str len trim upper lower lines words split(s, sep) join(list, sep) replace(s, a, b) contains startsWith endsWith sub(s, from, to) pad(x, width, char) fixed(x, digits)` |
+| text | `sh(x)` (one shell word, see Values in commands) `str len trim upper lower lines words split(s, sep) join(list, sep) replace(s, a, b) contains startsWith endsWith sub(s, from, to) pad(x, width, char) fixed(x, digits)` |
 | format | `fmtBytes(n)` → `1.5G`, `fmtDuration(seconds)` → `2h 5m`, `fmtTime(seconds, "EEE HH:mm")` |
 | weather | `weatherIcon(code, night)`: omarchy's weather glyph for a wttr.in `weatherCode` (show it with `font: icon`) |
 | parsing | `match(s, regex)` (groups of the first match), `matchAll(s, regex)`, `parseJson(s)` |
@@ -335,7 +352,9 @@ Canvas {
 Styles: `fill:` (a color or gradient), `stroke:`, `width:` (stroke width),
 `cap: round/butt/square`. Without either, a shape is filled with `color:` or
 the foreground. A widget that reads `time` animates every frame while it's on
-screen.
+screen, and only while it reads it: a `time` under an `if` that's false, like a
+backdrop drawn only while music plays, costs nothing (older launchers
+animate whenever `time` appears at all).
 
 ## Shader
 
@@ -471,6 +490,7 @@ The store needs:
 - `meta` with a `description` (10-200 characters), a `version` and a `license`, and ideally a `category`:
   `news`, `dev`, `productivity`, `time`, `world`, `fun`, `home` or `system`
 - every package in `requires`
+- values in commands passed through `sh()` (see Values in commands)
 - nothing personal: no tokens, personal paths or hard-coded location
 - a higher `version` for each update
 - ideally a `preview.png` next to it: the one `owl-check` points to will do

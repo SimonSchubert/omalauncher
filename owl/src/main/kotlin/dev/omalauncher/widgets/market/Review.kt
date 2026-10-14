@@ -71,7 +71,10 @@ class Review(
         val unquoted = p.commands.filter { UNQUOTED.containsMatchIn(it) }
         for (c in unquoted) {
             errors += "${c.removeSuffix(" built from widget values")} is put together from widget values that aren't quoted: " +
-                "write each one as ${'$'}{sh(value)}, outside any quotes, so it stays one word and can't run as code"
+                "write each one as ${'$'}{sh(value)}, outside any quotes, so it stays one word and can't run as code " +
+                "(run(\"notify-send ${'$'}{sh(title)}\"), not '${'$'}{title}' or \"${'$'}{sh(title)}\"). " +
+                "Other functions go inside it, ${'$'}{sh(upper(title))}, and a heredoc (<<) can't take values. " +
+                "See \"Values in commands\" in the widgets README"
         }
         warnings += risks(p.commands - unquoted.toSet())
 

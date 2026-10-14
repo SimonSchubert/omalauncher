@@ -24,6 +24,7 @@ import android.os.Process
 import android.os.UserHandle
 import android.os.UserManager
 import android.util.Log
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -176,6 +177,23 @@ class AndroidAppCatalog(
     /** Alpha-only silhouettes of the same icons, for the monochrome icon style. */
     val masks = mutableStateMapOf<String, ImageBitmap>()
 
+    /** Names by [AndroidApp.key] and [AndroidShortcut.key], in the phone's language now; home's tiles go by these. */
+    val labels by derivedStateOf { apps.associate { it.key to it.label } + shortcuts.associate { it.key to it.label } }
+
+    private val byKey by derivedStateOf { apps.associateBy { it.key } }
+
+    /**
+     * The app a home tile pinned as [component] in [profile] opens now. Apps that let you pick another icon (Duolingo,
+     * X) do it by switching to another launcher activity, and an update may rename theirs, so a tile whose activity is
+     * gone goes to its app's current one. Null while neither is listed.
+     */
+    fun pinned(
+        component: ComponentName,
+        profile: Long?,
+    ): AndroidApp? =
+        byKey[androidAppKey(component, profile)]
+            ?: apps.firstOrNull { it.component.packageName == component.packageName && it.profile == profile }
+
     /** Serial numbers of the profiles whose apps are paused (work apps turned off); their apps show dimmed. */
     var pausedProfiles by mutableStateOf(emptySet<Long>())
         private set
@@ -233,9 +251,10 @@ class AndroidAppCatalog(
                 }
             },
         )
-        // A work profile added, removed, paused or resumed; the package callback doesn't tell.
-        val profileChanged =
+        // A work profile added, removed, paused or resumed, or the phone's language changed (apps' names with it); the package callback doesn't tell.
+        val changed =
             IntentFilter().apply {
+                addAction(Intent.ACTION_LOCALE_CHANGED)
                 addAction(Intent.ACTION_MANAGED_PROFILE_ADDED)
                 addAction(Intent.ACTION_MANAGED_PROFILE_REMOVED)
                 addAction(Intent.ACTION_MANAGED_PROFILE_AVAILABLE)
@@ -254,7 +273,7 @@ class AndroidAppCatalog(
                     intent: Intent,
                 ) = reload()
             }
-        if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, profileChanged, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, profileChanged)
+        if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, changed, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, changed)
         reload()
     }
 

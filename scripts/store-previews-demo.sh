@@ -7,8 +7,8 @@
 # Claude Code instances. `python` answers
 # codex-quota's and photoprism-random's scripts, widget-maker finds its script set up and a
 # draft waiting, and `ssh` streams a Flipper menu to flipper-zero. `agy` answers agy-limits, agenda
-# reads two calendars from local .ics files, and the voice widgets find themselves set up with
-# a reply read and a sentence dictated. With "off", puts everything back.
+# reads two calendars from local .ics files, 9g420's codex-quota reads a Codex session, and the
+# voice widgets find themselves set up with a reply read and a sentence dictated. With "off", puts everything back.
 set -u
 demo=/tmp/store-previews-demo
 ha=~/.config/omarchy-proot/home-assistant
@@ -25,6 +25,8 @@ agenda=~/.config/gcal-agenda/urls
 voice=~/.local/share/oma-voice/store-version
 voicestate=~/.cache/oma-voice/state.json
 dictated=~/.cache/oma-speak/latest.txt
+codex=~/.codex/sessions/demo/rollout-demo.jsonl
+codexcache=~/.cache/codex-quota-community/account.json
 
 # Moves a real file aside before the demo writes its own; "off" puts it back.
 aside() { [ -f "$1" ] && [ ! -f "$1.before-demo" ] && mv "$1" "$1.before-demo"; mkdir -p "${1%/*}"; }
@@ -37,7 +39,7 @@ if [ "${1:-}" = off ]; then
   rm -rf "$demo" /usr/local/bin/gh /usr/local/bin/curl /usr/local/bin/python3 /usr/local/bin/pgrep \
     /usr/local/bin/python /usr/local/bin/claude /usr/local/bin/ssh /usr/local/bin/agy
   for f in "$ha" "$cursor" "$tesla" "$opencode" "$history" "$photoprism" "$owlmaker" "$owlstatus" "$flipper" \
-    "$agy" "$agenda" "$voice" "$voicestate" "$dictated"; do
+    "$agy" "$agenda" "$voice" "$voicestate" "$dictated" "$codex" "$codexcache"; do
     [ -f "$f.before-demo" ] && mv "$f.before-demo" "$f" || rm -f "$f"
   done
   exit 0
@@ -177,7 +179,7 @@ exec /usr/bin/pgrep "$@"
 EOF
 chmod +x /usr/local/bin/pgrep
 
-# codex-quota and photoprism-random hand their script to `python -`: a Plus account part way
+# rcrohmana's codex-quota and photoprism-random hand their script to `python -`: a Plus account part way
 # through both limits, and a photo of Moraine Lake (public domain, Wikimedia Commons).
 aside "$photoprism"
 echo '{"url": "https://photos.example.com", "username": "demo", "token": "demo", "preview": "public", "scope": "all", "album": ""}' > "$photoprism"
@@ -284,8 +286,16 @@ printf 'Personal = file://%s/personal.ics\nWork = file://%s/work.ics\n' "$demo" 
 # Codex reply read aloud, and a sentence dictated. The voice service itself isn't installed, so
 # nothing overwrites these while the previews are drawn.
 aside "$voice"
-printf '%s' '3.2-a17095f3' > "$voice"
+printf '%s' '3.3-32999871' > "$voice"
 aside "$voicestate"
-printf '{"source":"codex","status":"已朗讀最新回覆","status_en":"Read the latest reply","awaiting":false,"reply_at":%s,"summary":"已修正登入頁的表單驗證，並為空白密碼新增兩個測試；全部測試都通過了。"}\n' "$(( $(date +%s) - 240 ))" > "$voicestate"
+printf '{"source":"codex","status":"播放完成","status_ui":"Playback complete","awaiting":false,"reply_at":%s,"summary":"Fixed the form validation on the login page and added two tests for an empty password; all tests pass."}\n' "$(( $(date +%s) - 240 ))" > "$voicestate"
 aside "$dictated"
-printf '%s' '把首頁的標題改成粗體，然後再跑一次測試。' > "$dictated"
+printf '%s' 'Make the title on the home page bold, then run the tests again.' > "$dictated"
+
+# 9g420's codex-quota reads the rate limits Codex writes into its session files: a Plus account
+# part way through both limits. Its saved snapshot goes aside so it reads this one.
+aside "$codexcache"
+aside "$codex"
+now=$(date +%s)
+printf '{"timestamp":"%s","type":"event_msg","payload":{"type":"token_count","rate_limits":{"limit_id":"codex","primary":{"used_percent":38,"window_minutes":300,"resets_at":%s},"secondary":{"used_percent":61,"window_minutes":10080,"resets_at":%s}}}}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" $((now + 7920)) $((now + 273600)) > "$codex"

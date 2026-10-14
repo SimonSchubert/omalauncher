@@ -19,8 +19,8 @@ android {
         manifestPlaceholders["appLabel"] = "Omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 12
-        versionName = "0.7.0"
+        versionCode = 13
+        versionName = "0.7.1"
         // x86_64 supports isolated broker instrumentation on an emulator; releases stay arm64.
         ndk { abiFilters += integrationTestAbi ?: "arm64-v8a" }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

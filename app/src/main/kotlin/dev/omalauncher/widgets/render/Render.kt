@@ -139,7 +139,11 @@ fun WidgetScreen(
     }
 }
 
-/** A frame clock for widgets that read `time`, only while they're on screen ([covered] is false). */
+/**
+ * A frame clock for widgets that read `time`, only while they're on screen ([covered] is false)
+ * and something still reads it: a `time` under an `if` that's false, like a backdrop drawn only
+ * while music plays, stops it after a few frames, and the next read starts it again.
+ */
 @Composable
 private fun FrameClock(
     inst: WidgetInstance,
@@ -148,11 +152,19 @@ private fun FrameClock(
     LaunchedEffect(inst, covered) {
         val start = withFrameNanos { it }
         var frame = 0L
+        var unread = 0
         while (true) {
             if (covered()) snapshotFlow { covered() }.first { !it }
+            if (unread >= 3) {
+                inst.awaitTimeRead(start)
+                unread = 0
+            }
             withFrameNanos { now ->
                 // Widgets that draw slowly get half the frame rate instead of stalling the home screen.
-                if (!inst.slow || frame++ % 2 == 0L) inst.time = (now - start) / 1e9
+                if (inst.slow && frame++ % 2 != 0L) return@withFrameNanos
+                unread = if (inst.timeRead) 0 else unread + 1
+                inst.timeRead = false
+                inst.time = (now - start) / 1e9
             }
         }
     }

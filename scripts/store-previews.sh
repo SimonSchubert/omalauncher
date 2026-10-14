@@ -9,7 +9,7 @@
 # store-previews-demo.sh. The launcher renders each tile off screen
 # (WidgetEngine.previewThemes) and takes every theme's colors while it does.
 #
-#   scripts/store-previews.sh [store repo, default ../omarchy-widgets] [widget name...]
+#   scripts/store-previews.sh [store repo, default ../omarchy-widgets] [widget name or author/name...]
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -85,6 +85,11 @@ seed() {
   case $1 in
     google-calendar) json='{"cals":[{"name":"Personal","url":"https://calendar.google.com/calendar/ical/demo-personal/basic.ics","color":0,"on":true},{"name":"Work","url":"https://calendar.google.com/calendar/ical/demo-work/basic.ics","color":2,"on":true}],"days":14}' ;;
     gestures) json='{"apps":["com.android.chrome","com.google.android.youtube","com.google.android.apps.maps","com.android.camera2","com.google.android.apps.messaging","com.google.android.dialer","com.google.android.apps.photos","com.google.android.calendar"],"labels":["Chrome","YouTube","Maps","Camera","Messages","Phone","Photos","Calendar"],"migrated":true}' ;;
+    bookmarks) json='{"nextId":4,"links":[{"id":"b3","title":"Omarchy","url":"https://omarchy.org","tag":"linux","auto":true,"desc":"Beautiful, modern and opinionated Linux.","img":""},{"id":"b2","title":"Hacker News","url":"https://news.ycombinator.com","tag":"news","auto":true,"desc":"","img":""},{"id":"b1","title":"Arch Wiki","url":"https://wiki.archlinux.org","tag":"linux","auto":true,"desc":"","img":""},{"id":"b0","title":"Sourdough recipe","url":"https://www.theperfectloaf.com","tag":"cooking","auto":false,"desc":"","img":""}]}' ;;
+    # Due in a few minutes and later today, and one already done.
+    reminders)
+      local now; now=$(date +%s)
+      json=$(printf '{"nextId":5,"delay":1800,"items":[{"id":4,"t":"Take the laundry out","at":%s,"fired":false},{"id":3,"t":"Call the dentist","at":%s,"fired":false},{"id":2,"t":"Water the plants","at":%s,"fired":false},{"id":1,"t":"Pay rent","at":%s,"fired":true}]}' $((now + 1500)) $((now + 7800)) $((now + 30600)) $((now - 3600))) ;;
     # NS's API needs a key, read from the environment so it's never in this file: without one,
     # ns keeps its "add your key" preview.
     ns)
@@ -102,7 +107,13 @@ trap 'demo off; rm -rf "$WORK"' EXIT
 
 dirs=()
 if [ $# -gt 0 ]; then
-  for n in "$@"; do dirs+=("$(dirname "$(ls "$STORE"/widgets/*/"$n"/widget.owl)")"); done
+  # A name, or author/name when two authors share it.
+  for n in "$@"; do
+    case $n in
+      */*) dirs+=("$STORE/widgets/$n") ;;
+      *) dirs+=("$(dirname "$(ls "$STORE"/widgets/*/"$n"/widget.owl)")") ;;
+    esac
+  done
 else
   for f in "$STORE"/widgets/*/*/widget.owl; do dirs+=("$(dirname "$f")"); done
 fi

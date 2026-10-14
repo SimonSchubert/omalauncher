@@ -36,6 +36,8 @@ import dev.omalauncher.widgets.Shortcut
 @Composable
 fun ShortcutTile(
     shortcut: Shortcut,
+    /** Its name now, as the drawer shows it (Runtime.shortcutLabel). */
+    label: String,
     /** From the app catalogs, as the drawer shows it: a silhouette when [LauncherStyle.monochromeIcons]; null for initials. */
     icon: ImageBitmap?,
     focused: Boolean,
@@ -48,7 +50,7 @@ fun ShortcutTile(
 ) {
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
-    val spoken = spokenLabel(shortcut.label, shortcut.profile, clone)
+    val spoken = spokenLabel(label, shortcut.profile, clone)
     BoxWithConstraints(
         modifier
             .alpha(if (paused) PausedAlpha else 1f)
@@ -76,7 +78,7 @@ fun ShortcutTile(
                         if (bmp != null) {
                             Image(bmp, spoken, Modifier.size(iconSize * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
                         } else {
-                            BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.35f).sp))
+                            BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.35f).sp))
                         }
                     }
                 bmp != null ->
@@ -84,10 +86,10 @@ fun ShortcutTile(
                 else ->
                     // Apps without an icon get their initials.
                     Box(Modifier.size(iconSize), contentAlignment = Alignment.Center) {
-                        BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.45f).sp))
+                        BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.45f).sp))
                     }
             }
-            if (showLabel) TileLabel(shortcut.label)
+            if (showLabel) TileLabel(label)
         }
     }
 }
