@@ -37,6 +37,7 @@ import dev.omalauncher.linux.defaultApps
 import dev.omalauncher.linux.matches
 import dev.omalauncher.linux.run
 import dev.omalauncher.linux.shellQuote
+import dev.omalauncher.taskbar.TaskbarSettings
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.theme.ThemeStore
@@ -120,6 +121,9 @@ class Runtime(
 
     /** An app being dragged out of home towards split screen; see SplitDrag. */
     val splitDrag = SplitDragSession()
+
+    /** The floating taskbar's settings; see dev.omalauncher.taskbar.TaskbarService. */
+    val taskbar = TaskbarSettings(context)
     val updates = SystemUpdates(proot, pacman, agents)
     val gpu = Gpu(context, proot, pacman)
 
