@@ -109,6 +109,7 @@ fun StyleScreen(
             Stepper("gaps in", style, Style.GAPS_IN)
             Stepper("gaps out", style, Style.GAPS_OUT)
             Stepper("border width", style, Style.TILE_BORDER_WIDTH)
+            NumberOption("blur", listOf("none" to 0.0, "8" to 8.0, "16" to 16.0, "24" to 24.0, "32" to 32.0), Style.TILE_BLUR, style, unit = " dp")
             Heading("screens")
             Stepper("gaps out", style, Style.SCREEN_GAPS_OUT)
             Stepper("border width", style, Style.SCREEN_BORDER_WIDTH)

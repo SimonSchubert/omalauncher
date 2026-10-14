@@ -288,23 +288,31 @@ internal fun RecentStrip(
     val listState = rememberLazyListState()
     // Back on home, the strip starts at the app opened last, wherever it was scrolled to before.
     LaunchedEffect(runtime.usage.settled) { listState.scrollToItem(0) }
-    Box(
+    val stripModifier =
         modifier
             .then(if (vertical) Modifier.fillMaxHeight().width(RecentStripHeight) else Modifier.padding(horizontal = EdgeGap).fillMaxWidth().height(RecentStripHeight))
-            .then(if (bare) Modifier else Modifier.tile()),
-        contentAlignment = if (vertical) Alignment.TopCenter else Alignment.CenterStart,
-    ) {
-        val cells: LazyListScope.() -> Unit = {
-            items(apps, key = { it.key }) { hit ->
-                val (icon, mask, glyph) = hit.icons(runtime)
-                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, glyph = glyph, spoken = hit.spoken, paused = hit.paused(runtime))
+    val cells: LazyListScope.() -> Unit = {
+        items(apps, key = { it.key }) { hit ->
+            val (icon, mask, glyph) = hit.icons(runtime)
+            StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, glyph = glyph, spoken = hit.spoken, paused = hit.paused(runtime))
+        }
+    }
+    val content = @Composable {
+        Box(
+            Modifier.fillMaxSize(),
+            contentAlignment = if (vertical) Alignment.TopCenter else Alignment.CenterStart,
+        ) {
+            if (vertical) {
+                LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, content = cells)
+            } else {
+                LazyRow(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, content = cells)
             }
         }
-        if (vertical) {
-            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, content = cells)
-        } else {
-            LazyRow(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, content = cells)
-        }
+    }
+    if (bare) {
+        Box(stripModifier) { content() }
+    } else {
+        TileContainer(modifier = stripModifier) { content() }
     }
 }
 

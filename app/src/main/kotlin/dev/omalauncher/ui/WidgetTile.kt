@@ -42,10 +42,9 @@ internal fun WidgetTile(
     waitsForLinux: LinuxState? = null,
     onInstallLinux: () -> Unit = {},
 ) {
-    Box(
-        modifier
-            .tile(focused)
-            .pointerInput(spec) { detectTapGestures(onTap = { onTap() }) },
+    TileContainer(
+        focused = focused,
+        modifier = modifier.pointerInput(spec) { detectTapGestures(onTap = { onTap() }) },
     ) {
         if (waitsForLinux != null) {
             // While an installed Linux starts up the tile stays empty; it only offers an install when there's none.

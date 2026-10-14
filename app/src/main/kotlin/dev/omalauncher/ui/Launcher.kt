@@ -124,12 +124,15 @@ private fun DesktopScreen(
     }
     SystemBarFrames()
     val covered = remember(state) { { state.homeCovered || runtime.widgets.openScreen != null } }
-    CompositionLocalProvider(LocalHomeCovered provides covered) {
+    CompositionLocalProvider(
+        LocalHomeCovered provides covered,
+        LocalWallpaper provides runtime.themes.wallpaper,
+        LocalWallpaperOffset provides state.wallpaperOffset,
+    ) {
         Column(Modifier.fillMaxSize().safePadding()) {
             HomeScreen(runtime, state, Modifier.weight(1f))
         }
-    }
-    HomeMenu(runtime, state)
+        HomeMenu(runtime, state)
 
     // Only whether it shows is read here; the animation itself runs in the layer, without recomposing.
     val panelShown by remember(state) { derivedStateOf { state.drawer.value > 0.01f } }
@@ -235,6 +238,7 @@ private fun DesktopScreen(
                 PromptBar(runtime, state, search = search, highlighted = highlighted, onLaunch = handlers.launch, modifier = Modifier.homeSwipe(runtime, state))
             }
         }
+    }
     }
 
     // Full-screen panels draw over the bar.
