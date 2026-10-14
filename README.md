@@ -27,6 +27,7 @@ window opens as its own Android task, with its own card in Recents.
 - **Coding agents**: the bar at the bottom sends a prompt to Claude Code, Codex,
   Copilot, opencode and others, which open in a terminal
 - No account, no ads, no tracking
+- **Desktop integration (proposed API)**: Android's secondary home and approved alternative desktop shells use independent homes with existing widgets; see [native Android support, the bridge contract and sample](docs/EXTERNAL_DESKTOP.md)
 
 Needs an arm64 phone with Android 10 or newer. Without Linux, the launcher still
 has the themes, wallpapers, Android apps and the widgets that don't run commands.

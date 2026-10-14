@@ -62,6 +62,9 @@ fun SettingsScreen(
                 },
                 Triple("packages", if (installed) "install Linux apps and tools with pacman and the AUR" else "needs linux", if (installed) onPackages else onLinux),
                 Triple("widget store", "add widgets to the home screen", onStore),
+                Triple("external desktops", "review or revoke approved desktop hosts") {
+                    context.startActivity(Intent(context, dev.omalauncher.desktop.DesktopConsentActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                },
                 Triple("android settings", "the phone's system settings") {
                     context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 },

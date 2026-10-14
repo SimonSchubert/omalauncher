@@ -9,7 +9,6 @@ import android.graphics.Typeface
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
-import android.view.KeyEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
@@ -50,6 +49,7 @@ import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.linuxWindowInput
 import dev.omalauncher.ui.applySystemBars
+import dev.omalauncher.ui.interceptKeys
 import dev.omalauncher.wayland.WindowRenderer
 import dev.omalauncher.wayland.XdgToplevel
 import kotlinx.coroutines.flow.first
@@ -71,6 +71,7 @@ class LinuxWindowActivity : InstantActivity() {
             return
         }
         this.window = window
+        interceptKeys(runtime.keyboard::handle)
         applySystemBars(this, Palette.isLight)
         setInstantContent {
             LaunchedEffect(Palette.isLight) { applySystemBars(this@LinuxWindowActivity, Palette.isLight) }
@@ -125,10 +126,6 @@ class LinuxWindowActivity : InstantActivity() {
         if (isFinishing && w in runtime.wm.appWindows) runtime.wm.close(w)
     }
 
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (runtime.keyboard.handle(event)) return true
-        return super.dispatchKeyEvent(event)
-    }
 }
 
 /**

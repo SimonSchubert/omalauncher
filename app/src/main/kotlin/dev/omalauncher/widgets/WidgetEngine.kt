@@ -96,6 +96,9 @@ class WidgetEngine(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val services = WidgetServices(context, proot, runtime, scope)
 
+    /** Shared data services; each external home supplies its own UI and launch actions. */
+    internal fun desktopServices(): dev.omalauncher.widgets.runtime.Services = services
+
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction by services::launcherAction
 

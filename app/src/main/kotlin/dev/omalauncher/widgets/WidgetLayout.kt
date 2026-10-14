@@ -29,15 +29,16 @@ const val GRID_COLUMNS = 6
  */
 class WidgetLayout(
     context: Context,
+    profile: String? = null,
 ) {
-    private val prefs = context.getSharedPreferences("widget_grid", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(profile?.let { "widget_grid_$it" } ?: "widget_grid", Context.MODE_PRIVATE)
     private val cells = mutableStateMapOf<String, Cell>()
     /** Read while compiling widgets, off the main thread. */
     private val pages = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     init {
         (Versioned.read(prefs.getString(LAYOUT, null), VERSION) as? JSONObject)?.let(::load)
-        migrateLegacy(context)
+        if (profile == null) migrateLegacy(context)
     }
 
     private fun load(data: JSONObject) {
@@ -84,6 +85,15 @@ class WidgetLayout(
     }
 
     fun cell(name: String) = cells[name]
+
+    /** Copies initial placement into an independent external profile. */
+    internal fun seedFrom(source: WidgetLayout) {
+        cells.clear()
+        cells.putAll(source.cells.toMap())
+        pages.clear()
+        pages.putAll(source.pages.toMap())
+        save()
+    }
 
     /** Live update while dragging; [save] persists. An unchanged cell isn't written, so pointer moves within it don't recompose the page. */
     fun set(
