@@ -71,7 +71,7 @@ Build and run the provider checks with the existing Gradle project:
 
 The native test uses a captured virtual display to check rendered home content, separate Activity instances, keyboard input, resizing and moving an existing window between displays. Layout tests check that inherited cells, pages, folders and profile identities persist independently from the source home. JVM policy tests cover caller identity, revocation, closed leases, layout names and allocation bounds.
 
-At upstream `dc37c66`, lint reports six `RestrictedApi` errors in the unchanged phone and Linux window activities. The same errors occur on an unmodified upstream checkout; this desktop change adds no lint errors.
+Phone and Linux window keyboard handling uses the public `Window.Callback` API rather than overriding AndroidX's restricted `ComponentActivity.dispatchKeyEvent`. Unhandled keys continue through the original callback. The launcher input test checks normal typing, shortcut interception and AndroidX Back dispatch.
 
 A separate local host harness has also checked cross-process consent/denial, rendering, resize/hide/show, host callbacks, revocation, provider death/reconnect, independent primary/external sessions and system launches on trusted displays against a minified APK. The harness and preview/build tooling are kept outside this upstream change. An optional managed-profile fixture was unavailable for that run.
 
