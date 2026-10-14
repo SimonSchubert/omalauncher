@@ -137,9 +137,23 @@ object Toml {
 
     fun format(v: Any): String =
         when (v) {
-            is String -> "\"" + v.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\t", "\\t").replace("\r", "\\r").replace(CONTROL) { "\\u%04x".format(it.value[0].code) } + "\""
+            // In single quotes when that saves escaping its double ones, like an extra-keys layout's.
+            is String -> formatString(v)
             is Double -> if (v == Math.rint(v) && !v.isInfinite() && kotlin.math.abs(v) < 1e15) v.toLong().toString() else v.toString()
             is Number -> format(v.toDouble())
             else -> v.toString()
         }
+
+    /** Write a literal TOML string when it avoids escaping the layout's double quotes. */
+    private fun formatString(value: String): String {
+        if ('"' in value && '\'' !in value && !value.any { it < ' ' || it == '\u007f' }) return "'$value'"
+        return "\"" +
+            value.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\t", "\\t")
+                .replace("\r", "\\r")
+                .replace(CONTROL) { "\\u%04x".format(it.value[0].code) } +
+            "\""
+    }
 }

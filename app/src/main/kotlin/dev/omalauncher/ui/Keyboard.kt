@@ -36,24 +36,41 @@ class KeyboardBridge(
 
     val ctrl = StickyModifier(Keys.KEY_LEFTCTRL)
     val alt = StickyModifier(Keys.KEY_LEFTALT)
-    private val sticky = listOf(ctrl, alt)
+    val shift = StickyModifier(Keys.KEY_LEFTSHIFT)
+    private val sticky = listOf(ctrl, alt, shift)
 
-    /** A key sent whole on its press because modifiers were latched; its release is already sent. */
-    private var swallowUp: Int? = null
+    fun modifier(mod: Mod) =
+        when (mod) {
+            Mod.Ctrl -> ctrl
+            Mod.Alt -> alt
+            Mod.Shift -> shift
+        }
+
+    /**
+     * A latched physical key was sent as a complete press, so its later Android release is swallowed.
+     * Keep all outstanding codes, not just the last one: hardware keyboards can overlap key presses.
+     */
+    private val swallowUps = HashSet<Int>()
 
     fun handle(event: KeyEvent): Boolean {
         if (event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN && onShortcut(event.keyCode)) return true
         // Volume buttons stay Android's; their scancodes would otherwise reach the window as KEY_VOLUMEUP/DOWN.
         if (event.keyCode in volumeKeys) return false
         val code = Keys.evdev(event) ?: event.scanCode.takeIf { it > 0 } ?: return false
-        if (wm.focused == null) return false
-        if (event.action == KeyEvent.ACTION_UP && code == swallowUp) {
-            swallowUp = null
+        if (wm.focused == null) {
+            // A focus switch can prevent the paired Android key-up reaching this bridge.
+            swallowUps.clear()
+            return false
+        }
+        if (event.action == KeyEvent.ACTION_UP && swallowUps.remove(code)) return true
+        if (event.action == KeyEvent.ACTION_DOWN && code in swallowUps) {
+            // The one-shot chord was sent completely. Ignore hardware auto-repeat:
+            // after consuming Once, replaying it would type an unmodified character.
             return true
         }
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && latched() && !Keys.isModifier(code)) {
             tap(code)
-            swallowUp = code
+            swallowUps += code
             return true
         }
         // Key repeat is ours (clients get rate 0): replay Android's repeats as release + press.
@@ -79,36 +96,44 @@ class KeyboardBridge(
                 if (!Character.isISOControl(cp)) wm.server.postInput { typeCodePoint(cp) }
                 continue
             }
-            val (code, shift) = mapped
-            withLatched {
-                if (shift) key(Keys.KEY_LEFTSHIFT, true)
-                key(code, true)
-                key(code, false)
-                if (shift) key(Keys.KEY_LEFTSHIFT, false)
-            }
+            val (code, shifted) = mapped
+            tap(code, if (shifted) listOf(Keys.KEY_LEFTSHIFT) else emptyList())
         }
     }
 
-    /** Presses and releases [code], with [held] and any latched modifiers held around it. */
+    /**
+     * Presses and releases [code], with [held] and any latched modifiers held around it.
+     * A modifier both latched and in [held] is pressed once: a second press would be lost,
+     * and its release would let go of the latch's too early.
+     */
     fun tap(
         code: Int,
-        held: Int? = null,
-    ) = withLatched {
-        held?.let { key(it, true) }
+        held: List<Int> = emptyList(),
+    ) = withLatched { latched ->
+        val extra = held.distinct().filterNot { it in latched }
+        extra.forEach { key(it, true) }
         key(code, true)
         key(code, false)
-        held?.let { key(it, false) }
+        extra.asReversed().forEach { key(it, false) }
+    }
+
+    /** Sends [strokes] one after another, like typing them: a latch for the next key ends after the first. */
+    fun send(strokes: List<Stroke>) {
+        for (s in strokes) if (s.text != null) type(s.text) else tap(s.code, s.held)
     }
 
     /** Drops every latch, so a modifier left on doesn't surprise the next keystroke. */
-    fun clearLatches() = sticky.forEach { it.latch = Latch.Off }
+    fun clearLatches() {
+        sticky.forEach { it.latch = Latch.Off }
+        swallowUps.clear()
+    }
 
     private fun latched() = sticky.any { it.latch != Latch.Off }
 
-    private inline fun withLatched(block: () -> Unit) {
+    private inline fun withLatched(block: (latched: Set<Int>) -> Unit) {
         val held = sticky.filter { it.latch != Latch.Off }
         held.forEach { key(it.code, true) }
-        block()
+        block(held.mapTo(HashSet()) { it.code })
         held.forEach { key(it.code, false) }
         held.filter { it.latch == Latch.Once }.forEach { it.latch = Latch.Off }
     }

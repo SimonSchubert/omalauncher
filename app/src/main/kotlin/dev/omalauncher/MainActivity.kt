@@ -114,6 +114,7 @@ class MainActivity : ComponentActivity() {
         state.closeScreens()
         runtime.widgets.openScreen = null
         state.editing = null
+        runtime.terminals.deactivate()
         handleDebugExec(intent)
         handleSharedWidget(intent)
     }

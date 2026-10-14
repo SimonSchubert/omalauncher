@@ -23,6 +23,17 @@ object Keys {
     const val KEY_DOWN = 108
     const val KEY_PAGEDOWN = 109
     const val KEY_INSERT = 110
+    const val KEY_DELETE = 111
+    const val KEY_SPACE = 57
+
+    /** F1 to F12; evdev numbers F11 and F12 apart from the first ten. */
+    fun function(n: Int): Int? =
+        when (n) {
+            in 1..10 -> 58 + n
+            11 -> 87
+            12 -> 88
+            else -> null
+        }
 
     private val byKeyCode =
         buildMap {
