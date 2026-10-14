@@ -18,7 +18,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -61,19 +60,21 @@ class TerminalTiles(
     /** Where the extra-keys row sits, in window coordinates, while it shows; pressing it isn't leaving the tile. */
     var extraKeys: Rect? = null
 
+    internal val ime = HomeTileIme()
+
     /** How far the home screen is lifted so the active tile clears the soft keyboard, in pixels. */
-    var lift = 0f
-        private set
+    val lift get() = ime.lift
 
     /** How much of the active tile the keyboard still covers once its top reaches the status bar: the tile gives that up. */
-    var cut by mutableFloatStateOf(0f)
-        private set
+    val cut get() = ime.cut
 
-    /** The soft keyboard is closing on its own (Back) and the active tile lets go once it's gone; home shows its bar meanwhile. */
+    /** The soft keyboard is closing; home shows its bar meanwhile. */
     var keyboardLeaving by mutableStateOf(false)
 
-    /** The active terminal's whole tile, before the [cut], in window pixels as if the home screen weren't lifted. */
-    var tile: Rect? = null
+    /** The typing widget's whole tile, before the [cut], in window pixels as if the home screen weren't lifted. */
+    var tile: Rect?
+        get() = ime.tile
+        set(value) { ime.tile = value }
 
     init {
         wm.claim = { window -> sessions.firstOrNull { it.appId == window.appId }?.attach(window) != null }
@@ -90,6 +91,18 @@ class TerminalTiles(
             return sessions.firstOrNull { it.window === focused }
         }
 
+    internal val typing get() = active != null || ime.inputOwner != null
+
+    internal fun inputFocus(owner: Any, token: Any, focused: Boolean) {
+        if (focused) {
+            if (wm.focused != null) wm.focus(null)
+            keyboard?.relinquish()
+            ime.focusInput(owner, token)
+        } else {
+            ime.releaseInput(token)
+        }
+    }
+
     fun create(
         command: String?,
         fontSize: Double?,
@@ -101,6 +114,7 @@ class TerminalTiles(
 
     fun activate(term: EmbeddedTerminal) {
         val window = term.window ?: return
+        ime.clearInput()
         tile = null
         wm.focus(window)
         keyboard?.show()
@@ -135,19 +149,7 @@ class TerminalTiles(
         top: Float,
         minHeight: Float,
     ): Float {
-        val term = active
-        if (term == null) {
-            lift = 0f
-            cut = 0f
-            return lift
-        }
-        // Its whole tile, so its frame clears the keys too; measured before the cut, which would otherwise feed back into it.
-        val bounds = tile ?: term.bounds
-        fun overlap(ime: Int) = if (ime == 0) 0f else (bounds.bottom + margin - (windowHeight - ime)).coerceAtLeast(0f)
-        val room = (bounds.top - top).coerceAtLeast(0f)
-        lift = minOf(overlap(imeHeight), room)
-        cut = (overlap(imeTarget) - room).coerceIn(0f, (bounds.height - minHeight).coerceAtLeast(0f))
-        return lift
+        return ime.liftFor(active?.bounds, imeHeight, imeTarget, windowHeight, margin, top, minHeight)
     }
 
     internal fun launch(

@@ -249,9 +249,14 @@ class KeyboardSink(
         if (!softKeyboard) return
         val imm = imm()
         imm.hideSoftInputFromWindow(windowToken, 0)
+        relinquish()
+        imm.restartInput(this)
+    }
+
+    /** An Android editor took focus; leave its IME and input connection alone. */
+    fun relinquish() {
         softKeyboard = false
         bridge.clearLatches()
-        imm.restartInput(this)
     }
 }
 

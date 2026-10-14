@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -49,11 +50,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import dev.omalauncher.Runtime
 import dev.omalauncher.widgets.editWidgetCommand
 import dev.omalauncher.widgets.fixDependenciesCommand
+import dev.omalauncher.widgets.render.LocalHomeCovered
+import dev.omalauncher.widgets.render.LocalHomeInputFocus
 
 /** Home pages of JSON widgets on a snap grid, bordered and gapped like Omarchy windows. */
 @Composable
@@ -68,7 +72,8 @@ fun HomeScreen(
     // One empty page always waits after the last one, to drop tiles on or pin apps to. Pages only exist
     // while they hold something, so it becomes a real page once used and a new empty one follows.
     // Unfolded, pages show in pairs: the pager counts pairs, and an odd last page gets an empty partner.
-    val per = if (showsTwoPages(LocalWindowInfo.current.containerSize)) 2 else 1
+    val windowInfo = LocalWindowInfo.current
+    val per = if (showsTwoPages(windowInfo.containerSize)) 2 else 1
     val pageNumbers =
         engine.pages
             .let { if (engine.itemsOn(it.last()).isEmpty()) it else it + (it.last() + 1) }
@@ -84,6 +89,14 @@ fun HomeScreen(
     var menuFor by remember { mutableStateOf<HomeItem?>(null) }
 
     val terminals = runtime.terminals
+    val focus = LocalFocusManager.current
+    val covered = LocalHomeCovered.current
+    fun clearInput() {
+        if (terminals.ime.inputOwner != null) {
+            focus.clearFocus()
+            terminals.ime.clearInput()
+        }
+    }
     BackHandler(enabled = terminals.active != null) { terminals.deactivate() }
     BackHandler(enabled = state.homeMenuOpen) { state.homeMenuOpen = false }
     BackHandler(enabled = state.editing != null && !state.homeMenuOpen) { state.editing = null }
@@ -136,10 +149,16 @@ fun HomeScreen(
             }
         }
     }
-    // A terminal tile keeps the keyboard only while its page shows.
-    LaunchedEffect(pager.currentPage) { terminals.deactivate() }
+    // Tile editors keep focus only while their page is visible.
+    LaunchedEffect(pager.currentPage) {
+        clearInput()
+        terminals.deactivate()
+    }
+    LaunchedEffect(covered, windowInfo) {
+        snapshotFlow { covered() || !windowInfo.isWindowFocused }.collect { if (it) clearInput() }
+    }
     // Its shell exited, or the app lost focus: the soft keyboard goes too.
-    val typing = terminals.active != null
+    val typing = terminals.typing
     LaunchedEffect(typing) { if (!typing) terminals.keyboard?.hide() }
     LaunchedEffect(state.requestedPage) {
         state.requestedPage?.let { if (it < pageNumbers.size) pager.animateScrollToPage(it / per) }
@@ -184,7 +203,9 @@ fun HomeScreen(
     }
     // The bar and recent apps don't wait for that: back as the keyboard starts closing, like the pages.
     LaunchedEffect(terminals) {
-        snapshotFlow { imeTarget.getBottom(density) == 0 && terminals.keyboard?.wanted == true }.collect { terminals.keyboardLeaving = it }
+        snapshotFlow {
+            imeTarget.getBottom(density) == 0 && (terminals.keyboard?.wanted == true || terminals.ime.inputOwner != null)
+        }.collect { terminals.keyboardLeaving = it }
     }
     var origin by remember { mutableStateOf(Offset.Zero) }
     val extraKeys = terminals.active != null && extraKeysWanted()
@@ -213,7 +234,7 @@ fun HomeScreen(
             // Swiping up opens the drawer, like stock launchers, or what gesture settings say; not while editing, in a
             // folder or typing in a tile. A long-press drag takes its touches first, and the pager only wants sideways ones.
             .homeSwipe(runtime, state, enabled = terminals.active == null && state.editing == null && arrange.folder == null)
-            // Typing in a terminal tile: lift the pages so the tile stays above the keyboard, but not under the status
+            // Typing in a Home tile: lift the pages so the tile stays above the keyboard, but not under the status
             // bar; a tile too tall for both gives up the rest at its bottom.
             .graphicsLayer {
                 val keys = if (extraKeys) ExtraKeysHeight.toPx() else 0f
@@ -231,7 +252,7 @@ fun HomeScreen(
             // nothing lifted under the status bar.
             .drawWithContent {
                 val keyboard = ime.getBottom(density)
-                if (terminals.active == null || keyboard == 0) {
+                if (!terminals.typing || keyboard == 0) {
                     drawContent()
                 } else {
                     val keys = if (extraKeys) ExtraKeysHeight.toPx() else 0f
@@ -292,38 +313,50 @@ fun HomeScreen(
             render = { item, tile, highlighted ->
                 when (item) {
                     is WidgetItem -> {
-                        // Whose terminal has the keyboard: the tile gives up what the keyboard covers once the lift is spent.
-                        val typing = engine.instance(item.spec)?.owns(terminals.active) == true
-                        WidgetTile(
-                            spec = item.spec,
-                            instance = engine.instance(item.spec),
-                            // As shown: on its side in landscape.
-                            cells = engine.layout.cell(item.key)?.let { if (turned) it.h to it.w else it.w to it.h },
-                            // Accent like Hyprland's active border: only while one of its terminals has the keyboard.
-                            focused = highlighted || typing,
-                            modifier =
-                                if (typing) {
-                                    tile
-                                        .onGloballyPositioned { terminals.tile = it.boundsInWindow().translate(0f, terminals.lift) }
-                                        .padding(bottom = with(density) { terminals.cut.toDp() })
-                                } else {
-                                    tile
+                        // The focused editor's tile gives up what the keyboard covers once the lift is spent.
+                        val instance = engine.instance(item.spec)
+                        val typing = instance != null && (instance.owns(terminals.active) || terminals.ime.inputOwner === instance)
+                        val inputFocus = remember(instance, terminals) {
+                            { token: Any, focused: Boolean ->
+                                if (instance != null) terminals.inputFocus(instance, token, focused)
+                            }
+                        }
+                        CompositionLocalProvider(LocalHomeInputFocus provides inputFocus) {
+                            WidgetTile(
+                                spec = item.spec,
+                                instance = instance,
+                                // As shown: on its side in landscape.
+                                cells = engine.layout.cell(item.key)?.let { if (turned) it.h to it.w else it.w to it.h },
+                                // Accent like Hyprland's active border while its editor has focus.
+                                focused = highlighted || typing,
+                                modifier =
+                                    if (typing) {
+                                        tile
+                                            .onGloballyPositioned {
+                                                if (instance.owns(terminals.active) || terminals.ime.inputOwner === instance) {
+                                                    terminals.tile = it.boundsInWindow().translate(0f, terminals.lift)
+                                                }
+                                            }
+                                            .padding(bottom = with(density) { terminals.cut.toDp() })
+                                    } else {
+                                        tile
+                                    },
+                                onTap = { engine.tap(item.spec) },
+                                needs = engine.missing[item.spec.file.name].orEmpty(),
+                                install = engine.installs[item.spec.file.name],
+                                onInstall = { engine.installDependencies(item.spec) },
+                                waitsForLinux = if (engine.waitsForLinux(item.spec)) linuxState else null,
+                                onInstallLinux = { state.linuxOpen = true },
+                                onFix = { log ->
+                                    val agent = runtime.agents.default
+                                    if (agent == null) {
+                                        state.agentsOpen = true
+                                    } else {
+                                        runtime.terminal(fixDependenciesCommand(agent.bin, item.spec, log), "Fix ${item.spec.name}", agent)
+                                    }
                                 },
-                            onTap = { engine.tap(item.spec) },
-                            needs = engine.missing[item.spec.file.name].orEmpty(),
-                            install = engine.installs[item.spec.file.name],
-                            onInstall = { engine.installDependencies(item.spec) },
-                            waitsForLinux = if (engine.waitsForLinux(item.spec)) linuxState else null,
-                            onInstallLinux = { state.linuxOpen = true },
-                            onFix = { log ->
-                                val agent = runtime.agents.default
-                                if (agent == null) {
-                                    state.agentsOpen = true
-                                } else {
-                                    runtime.terminal(fixDependenciesCommand(agent.bin, item.spec, log), "Fix ${item.spec.name}", agent)
-                                }
-                            },
-                        )
+                            )
+                        }
                     }
                     is Shortcut ->
                         ShortcutTile(

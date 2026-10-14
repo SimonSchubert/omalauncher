@@ -96,6 +96,9 @@ val LocalHomeCovered = staticCompositionLocalOf<() -> Boolean> { { false } }
 /** Whether an Input's `focus` may take focus: only on a screen the user opened, never on a tile or in a preview. */
 val LocalInputFocus = staticCompositionLocalOf { false }
 
+/** Reports actual editor focus to its Home tile, without granting automatic focus. */
+internal val LocalHomeInputFocus = staticCompositionLocalOf<(Any, Boolean) -> Unit> { { _, _ -> } }
+
 /** The widget's content inside its tile: padding, optional background, and the node tree. */
 @Composable
 fun WidgetContent(

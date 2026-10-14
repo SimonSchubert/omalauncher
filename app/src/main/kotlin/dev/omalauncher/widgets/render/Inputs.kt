@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -162,6 +163,12 @@ internal fun InputNode(
 
     var field by remember(p.el, p.env) { mutableStateOf(TextFieldValue(given.orEmpty())) }
     var focused by remember { mutableStateOf(false) }
+    val homeFocus = LocalHomeInputFocus.current
+    val inputToken = remember(p.el, p.env) { Any() }
+    DisposableEffect(homeFocus, inputToken) {
+        if (focused) homeFocus(inputToken, true)
+        onDispose { homeFocus(inputToken, false) }
+    }
     LaunchedEffect(given) { if (given != null && given != field.text) field = TextFieldValue(given, TextRange(given.length)) }
 
     fun edit(v: TextFieldValue) {
@@ -176,7 +183,10 @@ internal fun InputNode(
         modifier =
             (if (sized) mod else mod.fillMaxWidth())
                 .focusRequester(requester)
-                .onFocusChanged { focused = it.isFocused }
+                .onFocusChanged {
+                    focused = it.isFocused
+                    homeFocus(inputToken, it.isFocused)
+                }
                 .drawBehind {
                     val w = 1.dp.toPx()
                     drawRect(if (focused) Palette.accent else Palette.border, Offset(0f, size.height - w), Size(size.width, w))
