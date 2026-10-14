@@ -29,7 +29,7 @@ class SplitDragSession {
     var oneUi by mutableStateOf(false)
         private set
 
-    /** Lays the zones out instead of home's [dropZones], for drags elsewhere (the taskbar); null for home's. */
+    /** Lays the zones out instead of home's [dropZones], for drags elsewhere (the taskbar); null for home's. Set only with begin(), which also sets the state the overlay reads. */
     private var layout: ((Float, Float) -> List<DropZone>)? = null
 
     /** The window's size, which the overlay keeps up to date; the zones are laid out in it. */

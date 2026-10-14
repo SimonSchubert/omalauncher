@@ -10,8 +10,8 @@ import dev.omalauncher.ui.splitdrag.splitsSideBySide
 
 /**
  * Where an app dragged off the taskbar can go on a [width]×[height] screen showing [state]. Over one app: home's zones,
- * splitting with that app (not with itself). Over a split: full screen, pop-up, and each half replacing its app (not
- * the half the [dragged] app is already in). Otherwise full screen and pop-up only. [labelOf] names an app by package.
+ * splitting with that app (not with itself). Over a split: full screen, pop-up, and each half replacing its app (or, if the [dragged] app is
+ * already in the split, only full screen and pop-up). Otherwise full screen and pop-up only. [labelOf] names an app by package.
  */
 fun taskbarZones(
     state: ScreenState,
@@ -24,19 +24,23 @@ fun taskbarZones(
 ): List<DropZone> =
     when (state) {
         is ScreenState.Single -> dropZones(width, height, canSplit = state.packageName != dragged, canPopUp, splitsSideBySide(width, height, oneUi))
-        is ScreenState.Split -> replaceZones(state, dragged, width, height, canPopUp, labelOf)
+        is ScreenState.Split ->
+            if (dragged == state.first || dragged == state.second) {
+                dropZones(width, height, canSplit = false, canPopUp, sideBySide = true)
+            } else {
+                replaceZones(state, width, height, canPopUp, labelOf)
+            }
         ScreenState.Home, ScreenState.Unknown -> dropZones(width, height, canSplit = false, canPopUp, sideBySide = true)
     }
 
 private fun replaceZones(
     state: ScreenState.Split,
-    dragged: String,
     width: Float,
     height: Float,
     canPopUp: Boolean,
     labelOf: (String) -> String,
 ): List<DropZone> {
-    // The band and the pop-up exactly as home has them; the halves come after, so those win where they overlap.
+    // The band and the pop-up exactly as home has them. They come first, so they win where the halves overlap them.
     val base = dropZones(width, height, canSplit = false, canPopUp, sideBySide = true)
     val band = base.first()
     val popUp = base.firstOrNull { it.kind == ZoneKind.PopUp }
@@ -57,7 +61,6 @@ private fun replaceZones(
         add(band)
         popUp?.let(::add)
         for ((kind, app, preview) in halves) {
-            if (app == dragged) continue
             add(DropZone(kind, "Replace ${labelOf(app)}", preview.copy(top = maxOf(preview.top, below)), preview))
         }
     }
@@ -72,6 +75,7 @@ fun <A> planTaskbarOpen(
     zone: DropZone,
     state: ScreenState,
     dragged: A,
+    draggedPackage: String,
     appOf: (String) -> A?,
 ): OpenPlan<A>? =
     when (zone.kind) {
@@ -82,7 +86,7 @@ fun <A> planTaskbarOpen(
                 is ScreenState.Single -> appOf(state.packageName)?.let { planOpen(zone, dragged, it) }
                 is ScreenState.Split -> {
                     val keep = if (zone.kind == ZoneKind.SplitTop || zone.kind == ZoneKind.SplitLeft) state.second else state.first
-                    appOf(keep)?.let { OpenPlan.Split(it, dragged) }
+                    if (keep == draggedPackage) null else appOf(keep)?.let { OpenPlan.Split(it, dragged) }
                 }
                 ScreenState.Home, ScreenState.Unknown -> null
             }
