@@ -47,4 +47,14 @@ class SplitDragSessionTest {
         s.begin("Maps", null, Offset(540f, 2300f), canSplit = false, canPopUp = false, oneUi = true) {}
         assertEquals(listOf(ZoneKind.FullScreen, ZoneKind.FullScreen), s.zones().map { it.kind })
     }
+
+    @Test fun aLayoutDecidesTheZones() {
+        val s = session()
+        var dropped: DropZone? = null
+        val only = DropZone(ZoneKind.PopUp, "Pop-up", ZoneBox(0f, 0f, 1080f, 2424f), ZoneBox(0f, 0f, 10f, 10f))
+        s.begin("Maps", null, Offset(5f, 5f), canSplit = true, canPopUp = true, oneUi = true, layout = { _, _ -> listOf(only) }) { dropped = it }
+        assertEquals(listOf(only), s.zones())
+        s.end(Offset(500f, 500f))
+        assertEquals(only, dropped)
+    }
 }
