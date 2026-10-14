@@ -37,9 +37,10 @@ sealed interface ScreenState {
 
 /**
  * What's on a [width]×[height] screen, from its app [windows], topmost first. Windows under 5% of the screen are
- * ignored. A window lying inside one below it is floating (a pop-up). The rest are the base: one base window covering
- * half the screen or more is the app in front (home or single), whatever floats over it; two that don't overlap, each
- * 20% or more and together 85% or more, are split screen. Floating over a split, or anything else, is
+ * ignored. A window lying inside one below it is floating: another app's pop-up, or the app's own dialog, which counts
+ * as part of that app. The rest are the base: one base window covering half the screen or more is the app in front
+ * (home or single), whatever floats over it; two that don't overlap, each 20% or more and together 85% or more, are
+ * split screen. Another app floating over a split, or anything else, is
  * [ScreenState.Unknown]: which half is which isn't sure any more. Apps in [opaque] are on screen but can't be a split
  * partner (this launcher's own windows other than home): one in front, or in either half of a split, is Unknown too.
  */
@@ -54,8 +55,11 @@ fun screenState(
     if (screen <= 0f) return ScreenState.Unknown
     fun share(w: AppWindow) = w.bounds.area() / screen
     val seen = windows.filter { share(it) >= 0.05f }
-    val floating = seen.filterIndexed { i, w -> seen.drop(i + 1).any { w.bounds.isInside(it.bounds) } }
-    val base = seen.filter { it !in floating }
+    // Each floating window with the window it lies in: the first one below it that contains it.
+    val containers = seen.mapIndexedNotNull { i, w -> seen.drop(i + 1).firstOrNull { w.bounds.isInside(it.bounds) }?.let { w to it } }
+    val base = seen.filter { w -> containers.none { it.first == w } }
+    // An app's own dialog inside its window is part of that app; only another app's window floats over it.
+    val floating = containers.filter { (w, container) -> w.packageName != container.packageName }.map { it.first }
     when (base.size) {
         1 -> {
             val only = base.first()
