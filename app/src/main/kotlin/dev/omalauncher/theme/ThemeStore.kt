@@ -169,9 +169,19 @@ class ThemeStore(
     var liveWallpaperActive by mutableStateOf(false)
         private set
 
+    /** Whether home shows Android's own wallpaper (Style.ANDROID_WALLPAPER) instead of the theme's picture. */
+    val androidWallpaper: Boolean get() = style.style[Style.ANDROID_WALLPAPER]
+
+    /** Whether Android draws the wallpaper behind the launcher's transparent window: ours, or the user's own. */
+    val wallpaperBehind: Boolean get() = liveWallpaperActive || androidWallpaper
+
     suspend fun refreshLiveWallpaper() {
         liveWallpaperActive = WallpaperManager.getInstance(context).wallpaperInfo?.packageName == context.packageName
-        if (!liveWallpaperActive && wallpaper == null) wallpaper = decodeWallpaper(background)
+        if (wallpaperBehind) {
+            wallpaper = null
+        } else if (wallpaper == null) {
+            wallpaper = decodeWallpaper(background)
+        }
     }
 
     private suspend fun decodeWallpaper(file: File?) = file?.let { withContext(Dispatchers.IO) { decodeForScreen(it, context)?.asImageBitmap() } }
@@ -211,9 +221,9 @@ class ThemeStore(
         // On reload a different background may replace one already showing; it stays up until the new one is decoded.
         val stale = wallpaper != null && bg != background
         background = bg
-        // Decodes the wallpaper on first load, unless ours is the live one.
+        // Decodes the wallpaper on first load, unless Android draws one behind us.
         refreshLiveWallpaper()
-        if (stale && !liveWallpaperActive) wallpaper = decodeWallpaper(bg)
+        if (stale && !wallpaperBehind) wallpaper = decodeWallpaper(bg)
     }
 
     /** After a new release was downloaded: its themes, templates and configs. */
@@ -437,8 +447,9 @@ class ThemeStore(
 
     private suspend fun showBackground(file: File?) {
         background = file
-        // With the live wallpaper active, the launcher is transparent and needs no copy of its own.
-        wallpaper = if (liveWallpaperActive) null else decodeWallpaper(file)
+        // With Android drawing the wallpaper behind us (ours active, or the user's own), the launcher needs no copy of its own;
+        // the file stays linked to the guest, whose apps keep the theme's background.
+        wallpaper = if (wallpaperBehind) null else decodeWallpaper(file)
         if (file != null && isLinux()) withContext(Dispatchers.IO) { guest.linkBackground(file) }
         changeListeners.forEach { it() }
     }

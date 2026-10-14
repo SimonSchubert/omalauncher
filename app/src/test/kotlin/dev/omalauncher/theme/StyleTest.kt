@@ -71,6 +71,15 @@ class StyleTest {
         assertEquals(Style(), decoded.style)
     }
 
+    @Test fun androidWallpaperReadsAndWrites() {
+        val decoded = StyleFile.decode(mapOf("background.android" to true))
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertTrue(decoded.style[Style.ANDROID_WALLPAPER])
+        // The chosen background stays in the file, so turning Android's off brings the theme's picture back.
+        val out = StyleFile.encode(linkedMapOf<String, Any>("version" to 1.0, "background" to "photo.jpg"), decoded.style.with(Style.BACKGROUND, "photo.jpg"))
+        assertEquals(linkedMapOf<String, Any>("version" to 1.0, "background" to "photo.jpg", "background.android" to true), out)
+    }
+
     @Test fun badValuesKeepThePreviousOne() {
         val previous = Style().with(Style.GAPS_IN, 10.0)
         val t = linkedMapOf<String, Any>("widgets.gaps-in" to 99.0, "corners.scale" to "round", "status-bar.background" to "acent", "home.tiles" to true)
