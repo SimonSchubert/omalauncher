@@ -2,4 +2,5 @@
 <resources>
     <string name="wallpaper_label">Omarchy</string>
     <string name="wallpaper_description">The current Omarchy theme background. System colors follow the theme.</string>
+    <string name="taskbar_service_description">Shows Omalauncher\'s taskbar over other apps, to switch apps and drag one into split screen or a pop-up. It reads which apps are on screen and where, never what\'s in them.</string>
 </resources>

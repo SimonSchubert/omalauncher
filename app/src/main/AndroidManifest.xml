@@ -291,5 +291,18 @@
             android:noHistory="false"
             android:taskAffinity="${applicationId}.taskbar"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <!-- The floating taskbar; turned on by the user in the phone's accessibility settings, shown only while on in Omalauncher's settings. -->
+        <service
+            android:name=".taskbar.TaskbarService"
+            android:exported="true"
+            android:label="Omalauncher taskbar"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/taskbar_service" />
+        </service>
     </application>
 </manifest>

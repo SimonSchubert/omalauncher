@@ -366,7 +366,7 @@ internal fun RecentStrip(
     }
 }
 
-/** The launcher's own drag of a strip app, in window pixels; [end] gets null when it's cancelled. */
+/** The launcher's own drag of a strip app, in screen pixels; [end] gets null when it's cancelled. */
 class StripDrag(
     val start: (Offset) -> Unit,
     val move: (Offset) -> Unit,
@@ -375,7 +375,7 @@ class StripDrag(
 
 /** An app in the recent strip, drawn like a pinned app's tile: the icon alone, or on a badge when bare. */
 @Composable
-private fun StripCell(
+internal fun StripCell(
     label: String,
     icon: ImageBitmap?,
     mask: ImageBitmap?,
@@ -394,7 +394,7 @@ private fun StripCell(
     var menuOpen by remember { mutableStateOf(false) }
     // Read when the drag starts: a new lambda each recomposition mustn't restart the gesture under the finger.
     val currentDragOut by rememberUpdatedState(dragOut)
-    // Where the cell is in the window, so the drag reports the finger in window pixels like the overlay draws in.
+    // Where the cell is on screen, so the drag reports the finger in screen pixels like the overlay draws in.
     var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val haptics = LocalHapticFeedback.current
     val mono = LauncherStyle.monochromeIcons
@@ -441,7 +441,8 @@ private fun StripCell(
                                 if ((c.position - down.position).getDistance() > viewConfiguration.touchSlop * 2) {
                                     menuOpen = false
                                     val drag = currentDragOut ?: return@awaitEachGesture
-                                    fun inWindow(p: Offset) = coords?.localToWindow(p) ?: p
+                                    // Where the cell is on screen, so the drag reports the finger in screen pixels: the launcher's window fills the screen, the taskbar's doesn't.
+                                    fun inWindow(p: Offset) = coords?.localToScreen(p) ?: p
                                     drag.start(inWindow(c.position))
                                     // From here the launcher drags the app itself, until the finger lifts.
                                     var ended = false
@@ -491,7 +492,7 @@ private fun StripCell(
             bmp != null -> Image(bmp, spoken, Modifier.size(size * if (mono) 0.85f else 1f), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
             else -> BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Large))
         }
-        if (menuOpen) AppActions(actions(), shortcuts, onDismiss = { menuOpen = false })
+        if (menuOpen) actions().takeIf { it.isNotEmpty() }?.let { AppActions(it, shortcuts, onDismiss = { menuOpen = false }) }
     }
 }
 
