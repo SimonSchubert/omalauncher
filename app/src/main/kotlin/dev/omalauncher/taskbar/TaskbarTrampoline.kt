@@ -1,0 +1,95 @@
+package dev.omalauncher.taskbar
+
+import android.app.Activity
+import android.app.ActivityOptions
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.graphics.Rect
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import dev.omalauncher.AndroidApp
+import dev.omalauncher.ui.splitdrag.LaunchStep
+import kotlin.math.roundToInt
+
+/**
+ * An invisible activity the taskbar opens apps through. LAUNCH_ADJACENT needs an activity to start from, and the
+ * taskbar's window isn't one; this one starts each step in turn, then leaves. It's started once per drop and must not
+ * repeat on being recreated (it may land in a split half): see the manifest's configChanges and the check below.
+ */
+class TaskbarTrampoline : Activity() {
+    private val handler = Handler(Looper.getMainLooper())
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (savedInstanceState != null) {
+            finish()
+            return
+        }
+        // The untyped getters: the typed ones are API 33, the app's floor is 29 (the taskbar itself needs 35).
+        @Suppress("DEPRECATION")
+        val steps = intent.getParcelableArrayListExtra<Bundle>(EXTRA_STEPS).orEmpty()
+        var at = 0L
+        for (step in steps) {
+            at += step.getLong(DELAY)
+            handler.postDelayed({ start(step) }, at)
+        }
+        handler.postDelayed({ finish() }, at + 1000)
+    }
+
+    override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        super.onDestroy()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun start(step: Bundle) {
+        val component = step.getParcelable<ComponentName>(COMPONENT) ?: return
+        val adjacent = if (step.getBoolean(ADJACENT)) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0
+        val intent =
+            Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_LAUNCHER)
+                .setComponent(component)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or adjacent)
+        val options = step.getParcelable<Rect>(BOUNDS)?.let { ActivityOptions.makeBasic().setLaunchBounds(it).toBundle() }
+        runCatching { startActivity(intent, options) }.onFailure { Log.w(TAG, "couldn't open ${component.flattenToShortString()}", it) }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(STARTED, true)
+    }
+
+    companion object {
+        private const val TAG = "TaskbarTrampoline"
+        private const val EXTRA_STEPS = "steps"
+        private const val COMPONENT = "component"
+        private const val ADJACENT = "adjacent"
+        private const val BOUNDS = "bounds"
+        private const val DELAY = "delay"
+        private const val STARTED = "started"
+
+        /** Opens [steps] in order from a new trampoline. */
+        fun start(
+            context: Context,
+            steps: List<LaunchStep<AndroidApp>>,
+        ) {
+            val bundles =
+                steps.mapTo(ArrayList()) { s ->
+                    Bundle().apply {
+                        putParcelable(COMPONENT, s.app.component)
+                        putBoolean(ADJACENT, s.adjacent)
+                        s.bounds?.let { putParcelable(BOUNDS, Rect(it.left.roundToInt(), it.top.roundToInt(), it.right.roundToInt(), it.bottom.roundToInt())) }
+                        putLong(DELAY, s.delayMs)
+                    }
+                }
+            val intent =
+                Intent(context, TaskbarTrampoline::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    .putParcelableArrayListExtra(EXTRA_STEPS, bundles)
+            runCatching { context.startActivity(intent) }.onFailure { Log.w(TAG, "couldn't start the trampoline", it) }
+        }
+    }
+}
