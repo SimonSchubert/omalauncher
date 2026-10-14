@@ -256,6 +256,32 @@ private fun BackgroundSection(
             BasicText("[ use as android wallpaper + system colors ]", style = Mono.copy(color = Palette.accent))
         }
     }
+    StyleOption("system & lock", listOf("off", "on"), if (store.staticWallpaperEnabled) 1 else 0) { store.setStaticWallpaper(it == 1) }
+    BasicText(
+        "also sets home & lock wallpaper · some devices (Samsung, Xiaomi) override the lock screen in system settings",
+        Modifier.padding(start = 104.dp, top = 2.dp, bottom = 4.dp),
+        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+    )
+    if (!store.liveWallpaperActive && store.background != null) {
+        var applied by remember(store.background) { mutableStateOf(false) }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    scope.launch {
+                        store.applyStaticWallpaper(store.background)
+                        applied = true
+                    }
+                }
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicText(
+                if (applied) "✓ applied to system & lock wallpaper" else "[ apply current background to system & lock ]",
+                style = Mono.copy(color = if (applied) Palette.green else Palette.accent),
+            )
+        }
+    }
 }
 
 /** The terminals' font and the size they open at, on top of Android's font size; see [TerminalFont]. */
