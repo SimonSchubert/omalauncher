@@ -21,6 +21,12 @@ enum class SettingsPage {
     Store,
     Packages,
 
+    /** Which pack's icons the apps show, or their own. */
+    IconPacks,
+
+    /** How big app icons draw: the drawer's slot, scaled. */
+    IconSize,
+
     /** Install, progress, remove; opened by anything that needs Linux. */
     Linux,
     Licenses,
@@ -82,6 +88,8 @@ private fun SettingsPage(
                 onLinux = { stack.push(SettingsPage.Linux) },
                 onLicenses = { stack.push(SettingsPage.Licenses) },
                 onGestures = { stack.push(SettingsPage.Gestures) },
+                onIconPacks = { stack.push(SettingsPage.IconPacks) },
+                onIconSize = { stack.push(SettingsPage.IconSize) },
             )
         SettingsPage.Style -> StyleScreen(runtime, onDismiss = close, onBrowse = { stack.push(SettingsPage.Themes) })
         SettingsPage.Themes -> ThemeCatalogScreen(runtime.themes, onDismiss = close)
@@ -99,5 +107,7 @@ private fun SettingsPage(
         SettingsPage.Linux -> LinuxScreen(runtime, onDismiss = close)
         SettingsPage.Licenses -> LicensesScreen(onDismiss = close)
         SettingsPage.Gestures -> GesturesScreen(runtime, onDismiss = close)
+        SettingsPage.IconPacks -> IconPackScreen(runtime, onDismiss = close)
+        SettingsPage.IconSize -> IconSizeScreen(runtime, onDismiss = close)
     }
 }

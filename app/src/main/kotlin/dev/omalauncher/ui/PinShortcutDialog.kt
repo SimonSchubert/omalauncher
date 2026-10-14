@@ -39,8 +39,8 @@ internal fun PinShortcutDialog(
     DialogFrame(onDismiss) {
         BasicText("add to home screen?", style = Mono.copy(fontSize = TextSize.Title))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            icon?.let { Image(it, label, Modifier.size(52.dp)) }
-                ?: Box(Modifier.size(52.dp).clip(LauncherStyle.shape(26.dp)).background(Palette.background), contentAlignment = Alignment.Center) {
+            icon?.let { Image(it, label, Modifier.size(IconSize.dp)) }
+                ?: Box(Modifier.size(IconSize.dp).clip(LauncherStyle.shape(26.dp)).background(Palette.background), contentAlignment = Alignment.Center) {
                     BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
                 }
             Column {

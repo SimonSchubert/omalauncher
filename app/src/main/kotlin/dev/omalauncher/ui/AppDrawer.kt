@@ -326,7 +326,7 @@ private fun StripCell(
     val haptics = LocalHapticFeedback.current
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
-    val size = 40.dp
+    val size = 40.dp * IconSize.scale
     Box(
         Modifier
             .size(48.dp)
@@ -703,13 +703,13 @@ private fun AppCell(
         // Badges are circles when rounded, squares with Omarchy's sharp edges.
         val badge = LauncherStyle.shape(26.dp)
         if (mono && mask != null) {
-            Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
-                Image(mask, spoken, Modifier.size(36.dp), colorFilter = ColorFilter.tint(Palette.accent))
+            Box(Modifier.size(IconSize.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
+                Image(mask, spoken, Modifier.size(36.dp * IconSize.scale), colorFilter = ColorFilter.tint(Palette.accent))
             }
         } else if (!mono && icon != null) {
-            Image(icon, spoken, Modifier.size(52.dp))
+            Image(icon, spoken, Modifier.size(IconSize.dp))
         } else {
-            Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(IconSize.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
                 BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
             }
         }
