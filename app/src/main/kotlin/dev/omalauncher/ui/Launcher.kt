@@ -124,7 +124,11 @@ private fun DesktopScreen(
     }
     SystemBarFrames()
     val covered = remember(state) { { state.homeCovered || runtime.widgets.openScreen != null } }
-    CompositionLocalProvider(LocalHomeCovered provides covered) {
+    CompositionLocalProvider(
+        LocalHomeCovered provides covered,
+        LocalWallpaper provides runtime.themes.wallpaper,
+        LocalWallpaperOffset provides state.wallpaperOffset,
+    ) {
         Column(Modifier.fillMaxSize().safePadding()) {
             HomeScreen(runtime, state, Modifier.weight(1f))
         }

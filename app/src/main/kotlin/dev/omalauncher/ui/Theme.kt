@@ -1,16 +1,31 @@
 package dev.omalauncher.ui
 
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
@@ -119,6 +134,9 @@ object LauncherStyle {
     /** How thick tiles' outlines are; 0 for none. */
     val borderWidth: Dp get() = style[Style.TILE_BORDER_WIDTH].toFloat().dp
 
+    /** Background blur radius behind widgets; 0 for none. */
+    val tileBlur: Dp get() = style[Style.TILE_BLUR].toFloat().dp
+
     /** How thick full-screen panels' outlines are; 0 for none. */
     val panelBorderWidth: Dp get() = style[Style.SCREEN_BORDER_WIDTH].toFloat().dp
 
@@ -213,6 +231,75 @@ fun Modifier.tile(focused: Boolean = false): Modifier =
         if (focused) LauncherStyle.focusBorder else LauncherStyle.tileBorder,
         Palette.glass,
     )
+
+val LocalWallpaper = staticCompositionLocalOf<ImageBitmap?> { null }
+val LocalWallpaperOffset = staticCompositionLocalOf { 0.5f }
+
+/**
+ * A container for a tile that draws a frosted glass background (blurred wallpaper + glass overlay + border)
+ * when [LauncherStyle.tileBlur] > 0 and [LocalWallpaper] is provided, keeping the children (widget content)
+ * completely sharp and unblurred.
+ */
+@Composable
+fun TileContainer(
+    focused: Boolean = false,
+    modifier: Modifier = Modifier,
+    radius: Dp = 16.dp,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val blur = LauncherStyle.tileBlur
+    val wallpaper = LocalWallpaper.current
+    val wallpaperOffset = LocalWallpaperOffset.current
+    val shape = LauncherStyle.shape(radius)
+    var windowPos by remember { mutableStateOf(Offset.Zero) }
+    val context = LocalContext.current
+
+    Box(
+        modifier = modifier
+            .onGloballyPositioned { coords ->
+                windowPos = coords.positionInWindow()
+            }
+            .clip(shape)
+    ) {
+        if (blur > 0.dp && wallpaper != null) {
+            val metrics = context.resources.displayMetrics
+            val screenW = metrics.widthPixels
+            val screenH = metrics.heightPixels
+            val scale = maxOf(screenW.toFloat() / wallpaper.width, screenH.toFloat() / wallpaper.height)
+            val src = wallpaperCrop(wallpaper.width, wallpaper.height, screenW, screenH, wallpaperOffset)
+
+            Canvas(
+                Modifier
+                    .matchParentSize()
+                    .blur(blur)
+            ) {
+                val tileSrcLeft = (src.left + windowPos.x / scale).toInt().coerceIn(0, wallpaper.width - 1)
+                val tileSrcTop = (src.top + windowPos.y / scale).toInt().coerceIn(0, wallpaper.height - 1)
+                val tileSrcW = (size.width / scale).toInt().coerceIn(1, wallpaper.width - tileSrcLeft)
+                val tileSrcH = (size.height / scale).toInt().coerceIn(1, wallpaper.height - tileSrcTop)
+
+                drawImage(
+                    wallpaper,
+                    srcOffset = IntOffset(tileSrcLeft, tileSrcTop),
+                    srcSize = IntSize(tileSrcW, tileSrcH),
+                    dstSize = IntSize(size.width.toInt(), size.height.toInt()),
+                    filterQuality = FilterQuality.Medium,
+                )
+            }
+        }
+
+        val bw = if (focused) LauncherStyle.focusWidth else LauncherStyle.borderWidth
+        val bc = if (focused) LauncherStyle.focusBorder else LauncherStyle.tileBorder
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(Palette.glass)
+                .then(if (bw > 0.dp) Modifier.border(bw, bc, shape) else Modifier)
+        )
+
+        content()
+    }
+}
 
 /** The launcher's text style in the theme's foreground color. */
 val Mono get() = Palette.current.mono
