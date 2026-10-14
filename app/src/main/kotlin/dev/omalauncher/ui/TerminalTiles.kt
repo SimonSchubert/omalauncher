@@ -156,7 +156,8 @@ class TerminalTiles(
     ) {
         val font = term.fontSize?.let { " -o " + shellQuote("main.font=${runtime.terminalFont.family}:size=${TerminalFont.format(it)}") }.orEmpty()
         val command = term.command?.let { " -e bash -c " + shellQuote(it) }.orEmpty()
-        runtime.launch("foot --app-id=${term.appId}$font$command", onExit)
+        val alpha = " -o " + shellQuote("colors-dark.alpha=0.0") + " -o " + shellQuote("colors-light.alpha=0.0")
+        runtime.launch("foot --app-id=${term.appId}$alpha$font$command", onExit)
     }
 
     internal fun close(window: XdgToplevel) = wm.close(window)
@@ -230,7 +231,7 @@ fun TerminalView(
     val window = term.window
     val active = tiles.active === term
     LaunchedEffect(term) { term.start() }
-    val background = Palette.background.toArgb()
+    val background = 0
     Box(modifier.onGloballyPositioned { term.bounds = it.boundsInWindow().translate(0f, tiles.lift) }) {
         AndroidView(
             factory = { EmbeddedWindowView(it, tiles) },
@@ -302,7 +303,7 @@ private class EmbeddedWindowView(
 
     init {
         surfaceTextureListener = this
-        isOpaque = true
+        isOpaque = false
     }
 
     private fun bind() {
