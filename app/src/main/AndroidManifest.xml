@@ -11,6 +11,10 @@
     <!-- Uninstall from the app drawer's long-press menu (ACTION_DELETE). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
+    <!-- Swipe down on home expands the notification shade (StatusBarManager.expandNotificationsPanel).
+         Normal permission, granted at install; no runtime prompt. -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+
     <uses-feature
         android:name="android.software.live_wallpaper"
         android:required="false" />
