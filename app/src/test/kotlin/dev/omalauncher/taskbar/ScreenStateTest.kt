@@ -75,4 +75,9 @@ class ScreenStateTest {
         val wins = listOf(w(own, 935f, 0f, 1856f, 2160f), w("maps", 0f, 0f, 921f, 2160f))
         assertEquals(ScreenState.Unknown, screenState(wins, 1856f, 2160f, home = emptySet(), opaque = setOf(own)))
     }
+
+    @Test fun anAppsOwnDialogInsideItsHalfKeepsTheSplit() {
+        val wins = listOf(w("photos", 300f, 300f, 1600f, 900f), w("photos", 0f, 0f, 2076f, 1068f), w("contacts", 0f, 1084f, 2076f, 2152f))
+        assertEquals(ScreenState.Split("photos", "contacts", sideBySide = false), screenState(wins, 2076f, 2152f, home))
+    }
 }
