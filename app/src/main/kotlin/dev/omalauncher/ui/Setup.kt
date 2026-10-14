@@ -90,7 +90,11 @@ internal fun SetupScreen(runtime: Runtime) {
                 if (started) {
                     ThemeDownloadProgress(themes.choices.firstOrNull { it.name == themes.picked }?.title?.lowercase() ?: themes.picked, error, onRetry = ::fetchTheme, onSkip = runtime::finishWelcome)
                 } else {
-                    Welcome(themes, linux, { linux = !linux }, picked) { bin -> picked = if (bin in picked) picked - bin else picked + bin }
+                    Welcome(themes, linux, { linux = !linux })
+                    if (linux) {
+                        Spacer(Modifier.height(24.dp))
+                        LinuxSetupOptions(runtime, picked) { bin -> picked = if (bin in picked) picked - bin else picked + bin }
+                    }
                 }
             }
         }
@@ -126,8 +130,6 @@ private fun Welcome(
     themes: ThemeStore,
     linux: Boolean,
     onToggleLinux: () -> Unit,
-    picked: List<String>,
-    onToggle: (String) -> Unit,
 ) {
     Appear(0) {
         Column {
@@ -156,12 +158,17 @@ private fun Welcome(
             Label("linux")
             Spacer(Modifier.height(12.dp))
             Choice("also set up Arch Linux", "terminal apps, agents, pacman · ~1 GB", linux, onToggleLinux)
-            if (linux) {
-                Spacer(Modifier.height(24.dp))
-                AgentPicker(picked, onToggle)
-            }
         }
     }
+}
+
+/** Environment capabilities and optional coding tools are separate choices in either setup entry point. */
+@Composable
+internal fun LinuxSetupOptions(runtime: Runtime, picked: List<String>, onToggleAgent: (String) -> Unit) {
+    AndroidIntegrationSettings(runtime)
+    Spacer(Modifier.height(24.dp))
+    AgentPicker(picked, onToggleAgent)
+    if ("codex" in picked) CodexCompatibilitySettings(runtime)
 }
 
 /** The coding agents to install with Linux; the first picked becomes the default. */
@@ -173,7 +180,7 @@ internal fun AgentPicker(
     Column {
         Label("coding agents")
         BasicText(
-            "Pick any to install with Linux. You can add or remove them later in settings.",
+            "Optional coding tools that run in Linux. Pick any to install; add or remove them later in settings.",
             Modifier.padding(top = 4.dp, bottom = 14.dp),
             style = Mono.copy(color = Subtle, fontSize = TextSize.Small),
         )
@@ -241,7 +248,7 @@ private fun ThemeDownloadProgress(
 
 /** A toggle as a bordered row: [title], a one-line [description], and a check box. */
 @Composable
-private fun Choice(
+internal fun Choice(
     title: String,
     description: String,
     on: Boolean,

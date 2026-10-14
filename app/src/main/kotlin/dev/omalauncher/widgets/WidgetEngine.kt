@@ -752,6 +752,10 @@ class WidgetEngine(
                 "widget's state or refresh it with `owl-send <file> set <state> <value>` and `owl-send <file> refresh`.\n\n" +
                 "The launcher's look (theme, background, tile spacing and borders, corners, the system bars' colors, the " +
                 "terminals' font) is ~/${StyleStore.GUEST_DIR}/${StyleStore.FILE}; ${StyleStore.DEFAULTS} next to it lists every " +
-                "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n"
+                "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n\n" +
+                "The optional `ando` shell command runs Android tools with the launcher's Android app permissions. " +
+                "Use `ando id` to check its connection. If disabled, enable Android commands in settings > linux and " +
+                "open a new terminal. It is a CLI, not a separate agent tool. Configured storage binds expose Android " +
+                "folders at the Linux paths chosen in settings > linux.\n"
     }
 }

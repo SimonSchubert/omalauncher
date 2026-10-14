@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
+import dev.omalauncher.upgrade.writeAtomically
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -75,6 +76,11 @@ class AgentStore(
 ) {
     private val mise get() = File(proot.home, ".local/bin/mise")
     private val shims get() = File(proot.home, ".local/share/mise/shims")
+    private val compatibilityFile get() = File(proot.filesDir, "codex-compatibility")
+
+    /** Explicit opt-in, kept outside Linux so it can be selected before installation. */
+    var codexCompatibility by mutableStateOf(false)
+        private set
 
     val states = mutableStateMapOf<String, JobState>()
 
@@ -87,6 +93,7 @@ class AgentStore(
 
     /** Reads what's on disk; call off the main thread before the UI needs [default]. */
     fun load() {
+        codexCompatibility = runCatching { compatibilityFile.readText().trim() == "enabled" }.getOrDefault(false)
         preferred = runCatching { preferredFile.readText().trim() }.getOrNull()
         refresh()
     }
@@ -108,6 +115,12 @@ class AgentStore(
             preferredFile.parentFile?.mkdirs()
             preferredFile.writeText(agent.bin + "\n")
         }.onFailure { Log.w("agents", "cannot save the default agent", it) }
+    }
+
+    suspend fun setCodexCompatibility(enabled: Boolean) = withContext(Dispatchers.IO) {
+        writeAtomically(compatibilityFile, (if (enabled) "enabled\n" else "disabled\n").toByteArray())
+        codexCompatibility = enabled
+        onChanged()
     }
 
     suspend fun install(agent: Agent) =
@@ -156,7 +169,7 @@ class AgentStore(
         } else {
             listOf(
                 Managed.text(File(proot.rootfs, "etc/codex/config.toml"), Policy.Owned) {
-                    "# Written by the launcher.\n[features]\ndaemon_auto_start = false\n"
+                    codexSystemConfig(codexCompatibility)
                 },
             )
         }
@@ -173,4 +186,17 @@ class AgentStore(
             states[agent.bin] = if (ok) JobState.Idle else JobState.Failed(tail.toList())
             ok
         }
+}
+
+/** System defaults only: user/project config and explicit CLI permission choices still win. */
+internal fun codexSystemConfig(compatibility: Boolean): String = buildString {
+    appendLine("# Written by the launcher. Configure compatibility in settings > coding agents.")
+    if (compatibility) {
+        appendLine("# PRoot cannot provide Codex's Linux mount-namespace sandbox.")
+        appendLine("# Android app permissions remain the boundary; approvals stay on request.")
+        appendLine("sandbox_mode = \"danger-full-access\"")
+        appendLine("approval_policy = \"on-request\"")
+    }
+    appendLine("[features]")
+    appendLine("daemon_auto_start = false")
 }

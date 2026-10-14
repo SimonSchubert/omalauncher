@@ -10,7 +10,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,8 +50,45 @@ fun AgentsScreen(
                     onRemove = { scope.launch { store.remove(agent) } },
                     onOpen = { onOpen(agent) },
                 )
+                if (agent.bin == "codex") {
+                    CodexCompatibilitySettings(runtime)
+                }
             }
         }
+    }
+}
+
+/** Agent-specific permission choice, separate from Android commands and storage binds. */
+@Composable
+internal fun CodexCompatibilitySettings(runtime: Runtime) {
+    val store = runtime.agents
+    val scope = rememberCoroutineScope()
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    Column(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Choice("Codex compatibility mode", "Android app permissions · approvals on request", store.codexCompatibility) {
+            if (!saving) {
+                saving = true
+                scope.launch {
+                    try {
+                        store.setCodexCompatibility(!store.codexCompatibility)
+                        error = null
+                    } catch (e: Exception) {
+                        error = e.message ?: "Cannot save Codex compatibility setting"
+                    } finally {
+                        saving = false
+                    }
+                }
+            }
+        }
+        BasicText(
+            "Fixes Codex shell commands failing with socket mount isolation errors on Android. " +
+                "Disables Codex's Linux sandbox: it can access the launcher's Linux files and configured Android folders. " +
+                "Approval requests stay enabled, but do not prompt for every command. Close and reopen Codex after changing this. " +
+                "Your own Codex configuration can override this default.",
+            style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+        )
+        error?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
     }
 }
 

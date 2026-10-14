@@ -10,9 +10,12 @@ class Proot(
     private val context: Context,
 ) {
     private val nativeDir = File(context.applicationInfo.nativeLibraryDir)
+    val integration = AndroidIntegration(context)
     val filesDir: File = context.filesDir
     val rootfs = File(filesDir, "arch")
     val tmpDir = File(filesDir, "tmp")
+    val andoDir = File(filesDir, "ando")
+    val ando = AndoBroker(File(nativeDir, "libando.so"), andoDir)
 
     /** Bound to XDG_RUNTIME_DIR inside the guest; holds the Wayland socket and the bridges' FIFOs. */
     val runtimeDir = File(filesDir, "xdg")
@@ -56,22 +59,28 @@ class Proot(
     private val cjkFont = File("/system/fonts/NotoSansCJK-Regular.ttc")
 
     /** Host directories bound over guest paths by [command]. */
-    private val binds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
+    private fun directoryBinds(storage: List<StorageBind>, andoEnabled: Boolean) =
+        listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds +
+            (if (andoEnabled) listOf(GUEST_ANDO_DIR to andoDir) else emptyList()) +
+            storage.map { it.guestPath to File(it.hostPath) }
+
+    private val binds get() = directoryBinds(integration.checkedBinds(), integration.andoEnabled)
 
     /**
      * Where an absolute guest path lives on the Android side, following the
      * directory binds in [command]: /tmp in the guest isn't rootfs/tmp.
      */
     fun hostFile(guestPath: String): File {
-        for ((guest, host) in binds) {
-            if (guestPath == guest || guestPath.startsWith("$guest/")) return File(host, guestPath.removePrefix(guest).removePrefix("/"))
+        val path = GuestFs { rootfs }.normalize(guestPath)
+        for ((guest, host) in binds.sortedByDescending { it.first.length }) {
+            if (path == guest || path.startsWith("$guest/")) return File(host, path.removePrefix(guest).removePrefix("/"))
         }
-        return File(rootfs, guestPath.removePrefix("/"))
+        return File(rootfs, path.removePrefix("/"))
     }
 
     /** The guest path of a host file, the reverse of [hostFile]; null if the guest can't see it. */
     fun guestPath(host: File): String? {
-        for ((guest, dir) in binds) {
+        for ((guest, dir) in binds.sortedByDescending { it.second.path.length }) {
             if (host.startsWith(dir)) return (guest + "/" + host.relativeTo(dir).path).trimEnd('/')
         }
         return if (host.startsWith(rootfs)) "/" + host.relativeTo(rootfs).path else null
@@ -109,8 +118,18 @@ class Proot(
         if (!bwrapShim.isFile || !bwrapShim.readBytes().contentEquals(shim)) writeAtomically(bwrapShim, shim, executable = true)
     }
 
-    private fun command(script: String): List<String> =
-        listOf(
+    private fun command(script: String): List<String> {
+        // Snapshot once: settings changes affect the next process, not half of this argv.
+        val storage = integration.checkedBinds()
+        val andoEnabled = synchronized(ando) {
+            integration.andoEnabled.also { if (it) ando.start() }
+        }
+        val activeBinds = directoryBinds(storage, andoEnabled)
+        StorageBinds.prepare(rootfs, storage)
+        if (andoEnabled) {
+            File(rootfs, GUEST_ANDO_DIR.removePrefix("/")).mkdirs()
+        }
+        return listOf(
             File(nativeDir, "libproot.so").path,
             "--kill-on-exit",
             "--link2symlink",
@@ -124,7 +143,7 @@ class Proot(
                 "-b", "${sysDir.path}:/sys",
                 "-b", "/sys/devices/system/cpu",
             ) + (if (cjkFont.isFile) listOf("-b", "${cjkFont.path}:$GUEST_CJK_FONT") else emptyList()) +
-            binds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
+            activeBinds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
             listOf(
                 "-b", "${bwrapShim.path}:/usr/bin/bwrap",
                 "-w", GUEST_HOME,
@@ -160,6 +179,7 @@ class Proot(
                 "MOZ_ENABLE_WAYLAND=1",
                 "SDL_VIDEODRIVER=wayland",
             ) + graphicsEnv + listOf("/bin/sh", "-c", script)
+    }
 
     /**
      * Kills every proot we started and every guest process: before the rootfs
@@ -196,6 +216,7 @@ class Proot(
 
         /** XDG_RUNTIME_DIR in the guest, bound to [runtimeDir]. */
         const val GUEST_RUNTIME_DIR = "/run/user/0"
+        const val GUEST_ANDO_DIR = "/run/omalauncher-ando"
 
         private const val GUEST_CJK_FONT = "/usr/share/fonts/android/NotoSansCJK-Regular.ttc"
     }

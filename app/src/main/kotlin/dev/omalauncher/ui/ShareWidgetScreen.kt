@@ -289,7 +289,7 @@ private fun qrImage(
     val file = File(dir, "$slug-qr.png")
     file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     bitmap.recycle()
-    return FileProvider.getUriForFile(context, "dev.omalauncher.files", file)
+    return FileProvider.getUriForFile(context, context.packageName + ".files", file)
 }
 
 /** [link] as a QR code at error correction L, the setting [Share.MAX_LINK] is measured for, with a 2-module margin. */
