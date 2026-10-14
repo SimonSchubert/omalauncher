@@ -254,14 +254,20 @@ internal fun PromptBar(
             )
         }
         Box(Modifier.onSizeChanged { frame = it.height }) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = PromptBarHeight)
-                    .tile(listening || focused)
-                    .padding(start = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            TileContainer(
+                focused = listening || focused,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = PromptBarHeight),
             ) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = PromptBarHeight)
+                        .padding(start = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                 AgentPicker(runtime, onManage = { if (linux) state.agentsOpen = true else offerLinux() })
                 val shown = if (listening) speech.text else text
                 BasicTextField(
@@ -341,6 +347,7 @@ internal fun PromptBar(
                         drawRect(accent, Offset(0f, size.height - h), Size(size.width * (0.05f + 0.95f * level.value), h))
                     },
                 )
+            }
             }
         }
     }

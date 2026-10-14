@@ -147,40 +147,44 @@ private fun PromptRail(
     // The longest that fits the rail: a letter takes a whole line.
     val hints = listOfNotNull(agent?.takeIf { linuxState == LinuxState.Installed }?.let { "open an app or ask ${it.bin}" }, "open an app", "apps")
     val style = Mono.copy(fontSize = TextSize.Item, color = Palette.muted)
-    Column(
-        Modifier
-            .width(PromptBarHeight)
-            .fillMaxHeight()
-            .tile()
-            .clickable { state.open() },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(top = 10.dp), contentAlignment = Alignment.TopCenter) {
-            val line = with(LocalDensity.current) { style.fontSize.toDp() } * 1.3f
-            // Less the prompt sign and the cursor.
-            val room = (maxHeight / line).toInt() - 2
-            val hint = hints.firstOrNull { it.length <= room }.orEmpty()
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(Modifier.height(line), contentAlignment = Alignment.Center) {
-                    BasicText("❯", Modifier.rotate(90f), style = style.copy(color = Palette.accent))
-                }
-                for (c in hint) {
-                    // A space is half a line: enough to part the words.
-                    Box(Modifier.height(if (c == ' ') line / 2 else line), contentAlignment = Alignment.Center) {
-                        if (c != ' ') BasicText(c.toString(), style = style)
-                    }
-                }
-                Box(Modifier.padding(top = 2.dp).size(10.dp, line * 0.8f).background(Palette.accent))
-            }
-        }
-        Box(
+    TileContainer(
+        modifier =
             Modifier
-                .size(PromptBarHeight)
-                .clickable {
-                    state.promptRequest = PromptRequest.Listen
-                    state.open()
-                },
-            contentAlignment = Alignment.Center,
-        ) { MicIcon(Palette.foreground) }
+                .width(PromptBarHeight)
+                .fillMaxHeight()
+                .clickable { state.open() },
+    ) {
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().padding(top = 10.dp), contentAlignment = Alignment.TopCenter) {
+                val line = with(LocalDensity.current) { style.fontSize.toDp() } * 1.3f
+                // Less the prompt sign and the cursor.
+                val room = (maxHeight / line).toInt() - 2
+                val hint = hints.firstOrNull { it.length <= room }.orEmpty()
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(Modifier.height(line), contentAlignment = Alignment.Center) {
+                        BasicText("❯", Modifier.rotate(90f), style = style.copy(color = Palette.accent))
+                    }
+                    for (c in hint) {
+                        // A space is half a line: enough to part the words.
+                        Box(Modifier.height(if (c == ' ') line / 2 else line), contentAlignment = Alignment.Center) {
+                            if (c != ' ') BasicText(c.toString(), style = style)
+                        }
+                    }
+                    Box(Modifier.padding(top = 2.dp).size(10.dp, line * 0.8f).background(Palette.accent))
+                }
+            }
+            Box(
+                Modifier
+                    .size(PromptBarHeight)
+                    .clickable {
+                        state.promptRequest = PromptRequest.Listen
+                        state.open()
+                    },
+                contentAlignment = Alignment.Center,
+            ) { MicIcon(Palette.foreground) }
+        }
     }
 }
