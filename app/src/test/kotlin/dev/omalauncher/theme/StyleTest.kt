@@ -59,6 +59,25 @@ class StyleTest {
         assertEquals("\u00e9", Toml.parse("a = \"\\u00e9\"")["a"])
     }
 
+    /** A layout's double quotes go in single ones, so what the Style menu writes back reads as the user wrote it. */
+    @Test fun extraKeysReadAndWriteInSingleQuotes() {
+        val spec = "[[ESC, {key: LEFT, popup: {macro: \"ALT b\", display: \"word\"}}]]"
+        val decoded = StyleFile.decode(Toml.parse("[terminal]\nextra-keys = '$spec'\n"))
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertEquals(spec, decoded.style[Style.EXTRA_KEYS])
+        val text = Toml.write(StyleFile.encode(linkedMapOf(), decoded.style))
+        assertTrue(text, "extra-keys = '$spec'" in text)
+        assertEquals(decoded.style, StyleFile.decode(Toml.parse(text)).style)
+    }
+
+    @Test fun badExtraKeysKeepThePreviousOnes() {
+        val previous = Style().with(Style.EXTRA_KEYS, "[]")
+        val decoded = StyleFile.decode(Toml.parse("[terminal]\nextra-keys = '[[ESC, KEYBOARD]]'\n"), previous)
+        assertEquals("[]", decoded.style[Style.EXTRA_KEYS])
+        val problem = decoded.problems.single()
+        assertTrue(problem, problem.startsWith("terminal.extra-keys: row 1, key 2: KEYBOARD"))
+    }
+
     @Test fun keepsUnknownKeysReadably() {
         val table = Toml.parse("version = 1\nfuture-thing = 1\n[future]\nnested.key = \"x\"\n")
         val text = Toml.write(StyleFile.encode(table, Style()))
