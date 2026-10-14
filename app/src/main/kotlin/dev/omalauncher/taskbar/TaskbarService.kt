@@ -2,6 +2,7 @@ package dev.omalauncher.taskbar
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.os.Build
@@ -65,12 +66,14 @@ class TaskbarService : AccessibilityService() {
     private val owner = OverlayOwner()
     private lateinit var wm: WindowManager
     private val views = mutableListOf<ComposeView>()
+    private var barView: ComposeView? = null
     private val session = SplitDragSession()
     private var screen by mutableStateOf<ScreenState>(ScreenState.Unknown)
     private var tray by mutableStateOf(false)
     private var poked by mutableIntStateOf(0)
     private var seen by mutableStateOf(emptyList<String>())
-    private var home = emptySet<String>()
+    /** The default home app, unless it's this launcher: ours counts as home only while its home screen is started. */
+    private var defaultHome: String? = null
     private val prefs by lazy { getSharedPreferences("taskbar", MODE_PRIVATE) }
 
     override fun onServiceConnected() {
@@ -78,19 +81,22 @@ class TaskbarService : AccessibilityService() {
         if (Build.VERSION.SDK_INT < 35) return
         TaskbarStatus.serviceOn = true
         wm = getSystemService(WindowManager::class.java)
+        // The launcher's runtime: themes and app icons; started at most once.
         runtime.start()
         seen = prefs.getString(SEEN, null)?.split('\n')?.filter { it.isNotEmpty() } ?: emptyList()
-        home = homePackages()
+        defaultHome = defaultHome()
         owner.start()
         // The drop zones under everything, never touchable; the handle and tray over them.
         add(fullScreen()) { DropZoneOverlay(session) }
-        add(bottomBar()) { Bar() }
+        barView = add(bottomBar()) { Bar() }
         refresh()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (Build.VERSION.SDK_INT < 35 || views.isEmpty()) return
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            // The default home can change in settings; resolving it is cheap.
+            defaultHome = defaultHome()
             event.packageName?.toString()?.let(::personalApp)?.let { app ->
                 if (seen.firstOrNull() != app.key) {
                     seen = moveToFront(seen, app.key)
@@ -102,6 +108,13 @@ class TaskbarService : AccessibilityService() {
     }
 
     override fun onInterrupt() = Unit
+
+    /** Rotated or folded: the bar sits above the navigation bar again, whose height may have changed. */
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (Build.VERSION.SDK_INT < 35 || views.isEmpty()) return
+        barView?.let { runCatching { wm.updateViewLayout(it, bottomBar()) } }
+    }
 
     override fun onUnbind(intent: Intent?): Boolean {
         stop()
@@ -118,6 +131,7 @@ class TaskbarService : AccessibilityService() {
         if (views.isEmpty()) return
         for (v in views) runCatching { wm.removeView(v) }
         views.clear()
+        barView = null
         owner.stop()
     }
 
@@ -135,22 +149,27 @@ class TaskbarService : AccessibilityService() {
                         AppWindow(pkg, ZoneBox(r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat()))
                     }
             val size = wm.currentWindowMetrics.bounds
-            screenState(apps, size.width().toFloat(), size.height().toFloat(), home)
+            // Our own windows other than home (Linux, files) can't be relaunched as a split partner: that would open home.
+            screenState(apps, size.width().toFloat(), size.height().toFloat(), homePackages(), opaque = setOf(packageName))
         }.onSuccess { screen = it }
     }
 
-    /** The home apps: the default one, and this launcher whatever the default is. */
-    private fun homePackages(): Set<String> {
-        val default = packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)?.activityInfo?.packageName
-        return setOfNotNull(default, packageName)
-    }
+    /** The home apps: the default one unless it's this launcher, and this launcher only while its home screen is started. */
+    private fun homePackages(): Set<String> = setOfNotNull(defaultHome, packageName.takeIf { HomeVisibility.shown })
+
+    private fun defaultHome(): String? =
+        packageManager
+            .resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
+            ?.activityInfo
+            ?.packageName
+            ?.takeIf { it != packageName }
 
     private fun personalApp(pkg: String): AndroidApp? = runtime.androidApps.apps.firstOrNull { it.component.packageName == pkg && SplitDrag.canDrag(it) }
 
     private fun add(
         params: WindowManager.LayoutParams,
         content: @Composable () -> Unit,
-    ) {
+    ): ComposeView {
         val view =
             ComposeView(this).apply {
                 setViewTreeLifecycleOwner(owner)
@@ -159,6 +178,7 @@ class TaskbarService : AccessibilityService() {
             }
         wm.addView(view, params)
         views += view
+        return view
     }
 
     @RequiresApi(35)
@@ -194,7 +214,10 @@ class TaskbarService : AccessibilityService() {
     @RequiresApi(35)
     @Composable
     private fun Bar() {
-        if (!runtime.taskbar.enabled || screen == ScreenState.Home) return
+        val hidden = !runtime.taskbar.enabled || screen == ScreenState.Home
+        // Hidden, the tray goes back down: it comes back as the handle.
+        LaunchedEffect(hidden) { if (hidden) tray = false }
+        if (hidden) return
         if (!tray) {
             Handle()
             return
@@ -251,7 +274,7 @@ class TaskbarService : AccessibilityService() {
                     app.label,
                     catalog.icons[app.key],
                     catalog.masks[app.key],
-                    onClick = { open(OpenPlan.AsTapped(app)) },
+                    onClick = { open(OpenPlan.AsTapped(app), app) },
                     actions = { emptyList() },
                     spoken = app.spoken,
                     dragOut = StripDrag(start = { at -> drag(app, at) }, move = { session.move(it) }, end = { session.end(it) }),
@@ -277,11 +300,15 @@ class TaskbarService : AccessibilityService() {
             canPopUp = canPopUp,
             oneUi = oneUi,
             layout = { w, h -> taskbarZones(state, dragged, w, h, canPopUp, oneUi) { pkg -> personalApp(pkg)?.label ?: pkg } },
-        ) { zone -> planTaskbarOpen(zone, state, app, dragged, ::personalApp)?.let(::open) }
+        ) { zone -> planTaskbarOpen(zone, state, app, dragged, ::personalApp)?.let { open(it, app) } }
     }
 
-    private fun open(plan: OpenPlan<AndroidApp>) {
-        if (plan is OpenPlan.AsTapped) runtime.usage.record(plan.app.key)
+    /** Opens [plan]; [app] is the one tapped or dragged, which counts as opened whatever else the plan brings forward. */
+    private fun open(
+        plan: OpenPlan<AndroidApp>,
+        app: AndroidApp,
+    ) {
+        runtime.usage.record(app.key)
         TaskbarTrampoline.start(this, launchSteps(plan))
         tray = false
     }

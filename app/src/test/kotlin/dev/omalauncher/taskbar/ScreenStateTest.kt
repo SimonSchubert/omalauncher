@@ -64,4 +64,15 @@ class ScreenStateTest {
         val wins = listOf(w("notes", 600f, 300f, 1300f, 1200f), w("maps", 0f, 0f, 921f, 2160f), w("mail", 935f, 0f, 1856f, 2160f))
         assertEquals(ScreenState.Unknown, screenState(wins, 1856f, 2160f, home))
     }
+
+    @Test fun ownWindowsOtherThanHomeAreUnknown() {
+        val own = "dev.omalauncher.debug"
+        assertEquals(ScreenState.Unknown, screenState(listOf(w(own, 0f, 0f, 1856f, 2160f)), 1856f, 2160f, home = emptySet(), opaque = setOf(own)))
+    }
+
+    @Test fun aSplitWithAnOpaqueHalfIsUnknown() {
+        val own = "dev.omalauncher.debug"
+        val wins = listOf(w(own, 935f, 0f, 1856f, 2160f), w("maps", 0f, 0f, 921f, 2160f))
+        assertEquals(ScreenState.Unknown, screenState(wins, 1856f, 2160f, home = emptySet(), opaque = setOf(own)))
+    }
 }

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.taskbar.HomeVisibility
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.theme.Style
 import dev.omalauncher.ui.LauncherStyle
@@ -134,15 +135,18 @@ class MainActivity : ComponentActivity() {
         return super.dispatchKeyEvent(event)
     }
 
-    /** Widgets only refresh while the home screen is visible. */
+    /** Widgets only refresh while the home screen is visible; the taskbar hides while it is (see HomeVisibility). */
     override fun onStart() {
         super.onStart()
+        HomeVisibility.shown = true
         runtime.widgets.homeStarted()
         runtime.screenStarted()
     }
 
+    /** Home is out of sight: the taskbar may show over this launcher's other windows again. */
     override fun onStop() {
         super.onStop()
+        HomeVisibility.shown = false
         state.closeNow()
         // An app was just opened from home: it moves to the front of the strip now, out of sight.
         runtime.usage.settle()

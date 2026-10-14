@@ -9,6 +9,11 @@ data class AppWindow(
     val bounds: ZoneBox,
 )
 
+/** Whether this launcher's home screen is started, so the taskbar knows when our own package is home. */
+object HomeVisibility {
+    @Volatile var shown = false
+}
+
 /** What's on screen, for the taskbar to know what a dragged app can go next to or replace. */
 sealed interface ScreenState {
     /** The launcher (or another home app) is in front: the taskbar hides, home has its own strip. */
@@ -35,13 +40,15 @@ sealed interface ScreenState {
  * ignored. A window lying inside one below it is floating (a pop-up). The rest are the base: one base window covering
  * half the screen or more is the app in front (home or single), whatever floats over it; two that don't overlap, each
  * 20% or more and together 85% or more, are split screen. Floating over a split, or anything else, is
- * [ScreenState.Unknown]: which half is which isn't sure any more.
+ * [ScreenState.Unknown]: which half is which isn't sure any more. Apps in [opaque] are on screen but can't be a split
+ * partner (this launcher's own windows other than home): one in front, or in either half of a split, is Unknown too.
  */
 fun screenState(
     windows: List<AppWindow>,
     width: Float,
     height: Float,
     home: Set<String>,
+    opaque: Set<String> = emptySet(),
 ): ScreenState {
     val screen = width * height
     if (screen <= 0f) return ScreenState.Unknown
@@ -53,13 +60,18 @@ fun screenState(
         1 -> {
             val only = base.first()
             if (share(only) < 0.5f) return ScreenState.Unknown
-            return if (only.packageName in home) ScreenState.Home else ScreenState.Single(only.packageName)
+            return when (only.packageName) {
+                in home -> ScreenState.Home
+                in opaque -> ScreenState.Unknown
+                else -> ScreenState.Single(only.packageName)
+            }
         }
         2 -> {
             val (a, b) = base
             if (floating.isNotEmpty() || a.bounds.overlaps(b.bounds)) return ScreenState.Unknown
             if (share(a) < 0.2f || share(b) < 0.2f || share(a) + share(b) < 0.85f) return ScreenState.Unknown
             if (a.packageName in home || b.packageName in home) return ScreenState.Unknown
+            if (a.packageName in opaque || b.packageName in opaque) return ScreenState.Unknown
             val sideBySide = abs(a.bounds.left - b.bounds.left) > abs(a.bounds.top - b.bounds.top)
             val aFirst = if (sideBySide) a.bounds.left <= b.bounds.left else a.bounds.top <= b.bounds.top
             val (first, second) = if (aFirst) a to b else b to a
