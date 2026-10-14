@@ -29,6 +29,9 @@ class SplitDragSession {
     var oneUi by mutableStateOf(false)
         private set
 
+    /** Lays the zones out instead of home's [dropZones], for drags elsewhere (the taskbar); null for home's. */
+    private var layout: ((Float, Float) -> List<DropZone>)? = null
+
     /** The window's size, which the overlay keeps up to date; the zones are laid out in it. */
     var area: Pair<Float, Float>? = null
 
@@ -36,7 +39,7 @@ class SplitDragSession {
 
     fun zones(): List<DropZone> {
         val (w, h) = area ?: return emptyList()
-        return dropZones(w, h, canSplit, canPopUp, splitsSideBySide(w, h, oneUi))
+        return layout?.invoke(w, h) ?: dropZones(w, h, canSplit, canPopUp, splitsSideBySide(w, h, oneUi))
     }
 
     fun begin(
@@ -46,11 +49,13 @@ class SplitDragSession {
         canSplit: Boolean,
         canPopUp: Boolean,
         oneUi: Boolean,
+        layout: ((Float, Float) -> List<DropZone>)? = null,
         onDrop: (DropZone) -> Unit,
     ) {
         this.canSplit = canSplit
         this.canPopUp = canPopUp
         this.oneUi = oneUi
+        this.layout = layout
         this.onDrop = onDrop
         this.icon = icon
         this.label = label
@@ -69,6 +74,7 @@ class SplitDragSession {
         icon = null
         finger = null
         onDrop = null
+        layout = null
         if (zone != null) drop?.invoke(zone)
     }
 }
