@@ -16,13 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
@@ -105,23 +101,6 @@ internal fun Modifier.tileFrame(focused: Boolean) =
         focused -> frame(LauncherStyle.focusWidth, LauncherStyle.focusBorder)
         else -> this
     }
-
-/** The name under an app tile's icon. */
-@Composable
-internal fun TileLabel(text: String) {
-    BasicText(
-        text,
-        style =
-            if (LauncherStyle.bareAppIcons) {
-                // On the wallpaper: light text with a shadow, like stock launchers.
-                Mono.copy(fontSize = TextSize.Small, textAlign = TextAlign.Center, color = Color.White, shadow = Shadow(Color.Black.copy(alpha = 0.7f), blurRadius = 6f))
-            } else {
-                Mono.copy(fontSize = TextSize.Small, textAlign = TextAlign.Center)
-            },
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-    )
-}
 
 internal fun initials(name: String): String {
     val words = name.split(Regex("[^A-Za-z0-9]+")).filter { it.isNotEmpty() }

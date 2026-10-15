@@ -111,6 +111,16 @@ class StyleTest {
         assertEquals(2, StyleFile.decode(mapOf("widgets.border" to "none", "widgets.border-focused" to "none")).problems.size)
     }
 
+    @Test fun labelsAreLightUnlessSetDark() {
+        assertEquals("light", Style()[Style.LABELS])
+        val dark = Toml.parse("[home]\nlabels = \"Dark\"\n")
+        assertEquals("dark", StyleFile.decode(dark).style[Style.LABELS])
+        assertEquals("version = 1\n\n[home]\nlabels = \"dark\"\n", Toml.write(StyleFile.encode(dark, Style().with(Style.LABELS, "dark")), ""))
+        val decoded = StyleFile.decode(Toml.parse("[home]\nlabels = \"white\"\n"))
+        assertEquals("light", decoded.style[Style.LABELS])
+        assertEquals(listOf("home.labels: takes \"light\" or \"dark\"; keeping \"light\""), decoded.problems)
+    }
+
     @Test fun absentKeysAreDefaultsNotThePreviousValues() {
         val previous = Style().with(Style.GAPS_IN, 10.0)
         assertEquals(6.0, StyleFile.decode(emptyMap(), previous).style[Style.GAPS_IN], 0.0)
