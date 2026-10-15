@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -35,8 +36,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.shellQuote
+import dev.omalauncher.wayland.AXIS_SOURCE_FINGER
+import dev.omalauncher.wayland.BTN_LEFT
+import dev.omalauncher.wayland.SurfaceHit
 import dev.omalauncher.wayland.WindowRenderer
 import dev.omalauncher.wayland.XdgToplevel
+import kotlin.math.abs
 
 /**
  * Terminals that live inside home-screen tiles (the widgets' `Terminal` node)
@@ -44,8 +49,9 @@ import dev.omalauncher.wayland.XdgToplevel
  * app_id, and the window manager hands that toplevel to the tile rather than
  * opening an activity for it.
  *
- * A tile is inert until tapped, so swipes still turn pages and open the
- * drawer; tapping it gives it the keyboard and its touches, until a tap
+ * A sideways swipe on an inert tile still turns the page. Dragging up or down
+ * scrolls the terminal on that same press, without a tap first and without the
+ * keyboard. A tap gives the tile the keyboard and its touches, until a tap
  * outside, Back, or leaving the page. Main thread only.
  */
 class TerminalTiles(
@@ -60,6 +66,9 @@ class TerminalTiles(
 
     /** Where the extra-keys row sits, in window coordinates, while it shows; pressing it isn't leaving the tile. */
     var extraKeys: Rect? = null
+
+    /** The ⌨ button, in window coordinates, while the tile is active. A press there is the button's. */
+    var keyboardButton: Rect? = null
 
     /** How far the home screen is lifted so the active tile clears the soft keyboard, in pixels. */
     var lift = 0f
@@ -106,6 +115,10 @@ class TerminalTiles(
         keyboard?.show()
     }
 
+    /** The tile under window point [p], or null. */
+    fun terminalAt(p: Offset): EmbeddedTerminal? =
+        sessions.lastOrNull { it.window != null && it.bounds.translate(0f, -lift).contains(p) }
+
     fun deactivate() {
         if (active != null) wm.focus(null)
         tile = null
@@ -118,6 +131,80 @@ class TerminalTiles(
         if (extraKeys?.contains(p) == true) return
         if (!term.bounds.translate(0f, -lift).contains(p)) deactivate()
     }
+
+    /**
+     * A tap at window point [p] that did not move. Focuses the terminal tile
+     * under it. The tile's own overlay sits on a TextureView, which Compose's
+     * pointer input does not reach, so a tap on the text never arrived there
+     * and only the prompt line, caught elsewhere, woke the tile.
+     */
+    fun activateAt(p: Offset) {
+        if (active != null) return
+        val term = terminalAt(p) ?: return
+        activate(term)
+    }
+
+    /**
+     * A tap on the tile that already has the keyboard. The overlay never sees it
+     * over the TextureView, so the cursor would not move.
+     */
+    fun clickAt(p: Offset) {
+        val term = active ?: return
+        val window = term.window ?: return
+        if (keyboardButton?.contains(p) == true) return
+        val local = term.viewPoint(p)
+        val hit = window.renderer?.hitTest(local.x, local.y) ?: return
+        if (wm.onPress(window, hit)) wm.click(hit, BTN_LEFT)
+    }
+
+    /**
+     * One finger dragging on a tile. [down] and [at] are window points. The first
+     * call starts the touch at [down]; later calls move it. An inert tile is not
+     * focused: the keyboard stays down and a sideways swipe can still turn the page.
+     */
+    fun drag(
+        term: EmbeddedTerminal,
+        pointerId: Int,
+        down: Offset,
+        at: Offset,
+        takeFocus: Boolean,
+    ) {
+        if (finger == null || finger?.term !== term || finger?.pointerId != pointerId) {
+            endDrag()
+            val window = term.window ?: return
+            if (takeFocus && active !== term) {
+                tile = null
+                wm.focus(window)
+            }
+            val origin = term.viewPoint(down)
+            val hit = window.renderer?.hitTest(origin.x, origin.y) ?: return
+            if (takeFocus && !wm.onPress(window, hit)) return
+            val touch = wm.wantsTouch(hit.surface)
+            if (touch) wm.touchDown(hit, pointerId) else wm.pointerMove(hit)
+            finger = TileDrag(term, pointerId, hit, touch, origin, origin, scrolling = !touch)
+        }
+        val session = finger ?: return
+        val local = term.viewPoint(at)
+        if (session.touch) {
+            val d = (local - session.origin) / wm.scale.toFloat()
+            wm.touchMotion(session.pointerId, session.hit.x + d.x, session.hit.y + d.y)
+        } else {
+            val d = local - session.last
+            if (d != Offset.Zero) wm.scroll(-d.x / wm.scale, -d.y / wm.scale, AXIS_SOURCE_FINGER)
+        }
+        session.last = local
+    }
+
+    fun endDrag() {
+        val session = finger ?: return
+        finger = null
+        if (session.touch) wm.touchUp(session.pointerId) else if (session.scrolling) wm.scrollStop()
+    }
+
+    private var finger: TileDrag? = null
+
+    private fun EmbeddedTerminal.viewPoint(windowPoint: Offset) =
+        Offset(windowPoint.x - bounds.left, windowPoint.y - bounds.top + lift)
 
     /**
      * The lift that keeps the active tile's bottom above a soft keyboard of
@@ -169,6 +256,28 @@ class TerminalTiles(
         const val APP_ID_PREFIX = "omarchy.tile-"
     }
 }
+
+private class TileDrag(
+    val term: EmbeddedTerminal,
+    val pointerId: Int,
+    val hit: SurfaceHit,
+    val touch: Boolean,
+    val origin: Offset,
+    var last: Offset,
+    val scrolling: Boolean,
+)
+
+/**
+ * Where a drag past the touch slop goes. An inert tile gives a sideways drag to
+ * the pager and keeps an up or down drag as scrolling. An active tile keeps both.
+ */
+internal enum class TerminalGesture { TurnPage, ScrollTile }
+
+internal fun terminalGesture(
+    tileActive: Boolean,
+    dx: Float,
+    dy: Float,
+): TerminalGesture = if (!tileActive && abs(dx) > abs(dy)) TerminalGesture.TurnPage else TerminalGesture.ScrollTile
 
 /** One tile's terminal. Its foot starts when the tile first shows and runs until the widget goes away. */
 class EmbeddedTerminal internal constructor(
@@ -252,11 +361,14 @@ fun TerminalView(
                     BasicText(if (term.running) "starting…" else "exited · tap to restart", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                 }
             active -> {
+                DisposableEffect(term) { onDispose { tiles.keyboardButton = null } }
                 // Over the TextureView, which Compose's pointer input doesn't reach.
+                // Presses on the text are forwarded from the home screen instead.
                 Box(Modifier.fillMaxSize().linuxWindowInput(tiles.windowManager, window))
                 Box(
                     Modifier
                         .align(Alignment.BottomEnd)
+                        .onGloballyPositioned { tiles.keyboardButton = it.boundsInWindow() }
                         .padding(6.dp)
                         .size(32.dp)
                         .background(Palette.overlay, CircleShape)
