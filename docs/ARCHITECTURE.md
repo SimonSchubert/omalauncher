@@ -46,6 +46,12 @@ snapshots the surface tree, redraws only the dirty region of the SurfaceView
 callbacks. Hidden windows get no frame callbacks, so their clients stop
 drawing.
 
+Touch clients normally receive `wl_touch` directly. Tern (`tern` or
+`so.stencil.tern`) binds touch but does not scroll its terminal on finger
+drags, so `ui/WindowInput.kt` uses the phone's pointer mapping for it:
+tap clicks, long press right-clicks, and dragging sends finger-source
+scroll axes. Other touch clients, including foot and GTK, keep native touch.
+
 ## GPU acceleration
 
 Opt-in, in settings › linux, on Mali GPUs (v10+: Pixel 7 and newer, recent

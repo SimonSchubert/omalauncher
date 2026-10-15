@@ -21,6 +21,13 @@ import kotlin.math.roundToInt
 private const val WHEEL_STEP = 15f
 
 /**
+ * Tern binds wl_touch but does not turn finger drags into terminal scrolling.
+ * Use the phone's tap/hold/drag-to-pointer mapping for it instead.
+ */
+internal fun prefersPointerGestures(appId: String): Boolean =
+    appId == "tern" || appId == "so.stencil.tern"
+
+/**
  * Routes pointer input over a Linux window's view to its surfaces. Mouse input
  * is forwarded as-is. Touch is mapped for a phone: tap = left click, long
  * press = right click, drag = scroll; clients with wl_touch get real touch.
@@ -59,8 +66,9 @@ private suspend fun PointerInputScope.handlePointer(
         change.consume()
         if (!wm.onPress(window, hit) || hit == null) continue
 
-        // Clients with wl_touch (foot, GTK) get real touch: foot turns hold-and-drag into selection.
-        if (wm.wantsTouch(hit.surface)) {
+        // Binding wl_touch alone does not mean the client implements touch scrolling.
+        // Keep native gestures for clients such as foot and GTK, but let Tern use drag-to-scroll.
+        if (!prefersPointerGestures(window.appId) && wm.wantsTouch(hit.surface)) {
             val id = change.id.value.toInt()
             wm.touchDown(hit, id)
             while (true) {
