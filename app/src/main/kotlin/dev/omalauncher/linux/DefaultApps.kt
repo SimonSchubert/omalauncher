@@ -10,6 +10,12 @@ const val FILES_COMMAND = "omarchy-files"
 /** Exec of the Editor entry and Linux's $EDITOR; the launcher's own editor (see OpenBridge's shim). */
 const val EDIT_COMMAND = "omarchy-edit"
 
+/** Runs a command in a terminal docked next to the current window, in Android split-screen (see OpenBridge's shim). */
+const val SPLIT_COMMAND = "omarchy-split"
+
+/** Wayland app_ids that open their window in split-screen, next to the one in front (Runtime.openAppWindow). */
+const val SPLIT_APP_ID_PREFIX = "omarchy.split"
+
 private fun entry(
     name: String,
     exec: String,
