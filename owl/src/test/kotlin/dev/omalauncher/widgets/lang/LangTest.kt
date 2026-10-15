@@ -529,6 +529,13 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: share(\"x\") } }").contains("share needs owl 7"))
     }
 
+    @Test fun androidApps() {
+        val p = Compiler.compile("widget {\n meta { owl: 8 }\n source a = android.apps every 1m\n Image { src: a[0].icon; onTap: androidApp(a[0].key) } }")
+        assertEquals(listOf("android.apps"), p.globals.map { (it as Global.Source).kind })
+        assertEquals(listOf("read installed Android apps (names, packages and icons)"), p.commands)
+        assertTrue(compileError("widget {\n meta { owl: 7 }\n source a = android.apps\n Text { text: 1 } }").contains("android.apps needs owl 8"))
+    }
+
     @Test fun appsAreScreensOfTheirOwn() {
         val app = Compiler.compile("app \"Notes\" {\n meta { owl: 8 }\n title: \"My notes\"\n state n = 0\n Column { Text { text: n }\n Button { text: \"x\"; onTap: close() } } }")
         assertEquals(OwlKind.App, app.kind)

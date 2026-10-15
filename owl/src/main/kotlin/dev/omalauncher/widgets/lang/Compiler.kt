@@ -110,8 +110,8 @@ class Compiler private constructor(
                 listOf("Input.focus", "sh", "corners").associateWith { 6 } +
                 // owl 7: more of the phone, without new permissions.
                 listOf("android.alarm", "android.modes", "torch", "share", "haptic").associateWith { 7 } +
-                // owl 8: apps, files that aren't tiles.
-                listOf("app \"…\" { }").associateWith { 8 }
+                // owl 8: apps, files that aren't tiles; the phone's apps as a list.
+                listOf("app \"…\" { }", "android.apps").associateWith { 8 }
 
         // No onLongPress: long-press belongs to the home screen, which lifts the tile to move it.
         /**
@@ -130,8 +130,8 @@ class Compiler private constructor(
         /** What triggers bind in their statements. */
         private val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 
-        /** Data only Android has; battery, media, notifications, volume, alarm and modes update as they change, device is fixed. */
-        val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "alarm", "modes")
+        /** Data only Android has; battery, media, notifications, volume, alarm and modes update as they change, device is fixed, system and apps are polled. */
+        val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "alarm", "modes", "apps")
 
         /** media("...") commands. */
         val MEDIA = setOf("toggle", "play", "pause", "next", "previous", "open")
@@ -559,6 +559,7 @@ class Compiler private constructor(
                 since("android.${e.name}", e.pos)
                 // Listed with the commands, so the store shows it before anyone installs the widget.
                 if (e.name == "notifications") commands += "read Android notifications (apps, titles and text)"
+                if (e.name == "apps") commands += "read installed Android apps (names, packages and icons)"
                 Global.Source(d.name, "android.${e.name}", null, (every ?: 60.0).coerceAtLeast(1.0), false, 0)
             }
             else -> fail("a source is cmd(\"...\"), stream(\"...\"), http(\"...\"), file(\"...\"), clock, or android.${ANDROID.joinToString("/")}", e.pos)

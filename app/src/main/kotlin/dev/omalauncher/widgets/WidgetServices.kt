@@ -35,6 +35,8 @@ import dev.omalauncher.linux.GuestShell
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.ShellPool
 import dev.omalauncher.linux.ShellResult
+import dev.omalauncher.widgets.lang.Builtins
+import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
@@ -134,6 +136,7 @@ class WidgetServices(
             "volume" -> volume.value()
             "alarm" -> alarm.value()
             "modes" -> modes.value()
+            "apps" -> apps()
             else -> throw WidgetError("unknown android source $name")
         }
 
@@ -267,6 +270,29 @@ class WidgetServices(
         )
     }
 
+    /**
+     * Launchable Android apps for `source a = android.apps`, each `{key, name, package, component, profile, system, icon}`.
+     * `key` is [dev.omalauncher.AndroidApp.key], unique across profiles, for `androidApp(a.key)`; `profile` is `work` or
+     * `clone` as on notifications, else null; `icon` is the `app:` src for that copy.
+     */
+    private fun apps(): Value =
+        Lst(
+            runtime.androidApps.apps.take(Builtins.MAX_LIST).map { app ->
+                val kind = profileKind(app.user)
+                Obj(
+                    mapOf(
+                        "key" to Str(app.key),
+                        "name" to Str(app.label),
+                        "package" to Str(app.component.packageName),
+                        "component" to Str(app.component.flattenToShortString()),
+                        "profile" to (kind?.let(::Str) ?: Null),
+                        "system" to bool(app.system),
+                        "icon" to Str("app:${app.component.packageName}${kind?.let { "@$it" } ?: ""}"),
+                    ),
+                )
+            },
+        )
+
     /** Android hides the battery from the guest (/sys/class/power_supply), so expose it here. */
     private fun battery(): Value {
         val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -335,7 +361,7 @@ class WidgetServices(
             "media" -> media.control(arg)
             "volume" -> volume.control(args[0])
             "notification" -> args.getOrNull(1)?.takeIf { it != Null }?.let { notifications.control(arg, it.toString()) }
-            "androidApp" -> context.packageManager.getLaunchIntentForPackage(arg)?.let { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)) }
+            "androidApp" -> openAndroidApp(arg)
             "copy" -> copy(arg)
             "notify" -> notify(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
             "torch" -> modes.torch(args[0])
@@ -383,6 +409,17 @@ class WidgetServices(
                 ShellResult("", e.message ?: e.toString(), -1)
             }
         }
+
+    /** By an `android.apps` key, which opens that copy in its own profile, or by package, the launcher's own profile's copy. */
+    private fun openAndroidApp(arg: String) {
+        val apps = runtime.androidApps
+        val app = apps.apps.firstOrNull { it.key == arg }
+        if (app != null) {
+            apps.open(app)
+            return
+        }
+        context.packageManager.getLaunchIntentForPackage(arg)?.let { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)) }
+    }
 
     private fun copy(text: String) {
         context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("widget", text))

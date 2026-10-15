@@ -74,6 +74,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `source n = android.notifications` | the phone's notifications, newest first, updated as they come and go: `{available, count, items}`, each item `{key, app, package, profile, icon, title, text, time, clearable}` (`time` in Unix seconds; `profile` is `work` or `clone` for a notification from a work profile or a cloned app, else null; `icon` is the app's icon for `Image { src: i.icon }`, from that profile, owl 7). Ongoing ones (music, downloads) are left out. Needs the same notification access as media. See `examples/98-notifications.owl` (owl 4) |
 | `source v = android.volume` | the media volume: `{level, muted, steps}` (`level` in percent, `steps` how many the phone has), updated as it changes. Set it with `volume(...)` (owl 4) |
 | `source a = android.alarm` | the next alarm set in any clock app: `{set, time, app}`, updated as it changes. `time` is in Unix seconds (`fmtTime(a.time, "EEE HH:mm")`, or `at a.time`), `app` the clock app's package (`androidApp(a.app)`); both null when no alarm is set (owl 7) |
+| `source a = android.apps every 1m` | the phone's launchable apps, polled: a list of `{key, name, package, component, profile, system, icon}`. `key` is unique even with the same app in a work profile or a clone, and `androidApp(a.key)` opens that copy; `profile` is `work` or `clone` for those, else null; `icon` goes in `Image { src: a.icon }` (owl 8) |
 | `source m = android.modes` | the phone's modes: `{dnd, saver, ringer, torch}`, updated as they change. `dnd` is Do Not Disturb in any form, `saver` battery saver, `ringer` is `normal`, `vibrate` or `silent`, and `torch` is null on a phone without a flash. Switch the torch with `torch(...)` (owl 7) |
 | `state x = 0` | a value that handlers can change. Add `persist` to keep it across restarts: `state endsAt = 0 persist` |
 | `let x = expr` | a derived value, recomputed only when what it reads changes. It can use sources, state and earlier lets |
@@ -83,7 +84,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see Sharing) |
-| `meta { owl: 8 }` | the language version the widget needs (this launcher has 8; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files 8; using them without declaring it is an error |
+| `meta { owl: 8 }` | the language version the widget needs (this launcher has 8; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files and `android.apps` 8; using them without declaring it is an error |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see Screens (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -251,7 +252,7 @@ the widget that ran it refreshes its sources; other widgets keep their own inter
 | `app("gtk3-demo")` | starts a graphical Linux app |
 | `run("cmd")` | runs in the background (on its own shell, never retried), then refreshes this widget |
 | `x = run("cmd")` | the same, and puts the command's output into the state `x` when it finishes |
-| `androidApp("org.pkg")` | opens an Android app by package name |
+| `androidApp("org.pkg")` | opens an Android app by package name, or by an `android.apps` key to open that copy in a work profile or clone |
 | `copy(text)` | copies text to the Android clipboard |
 | `notify("title", "text")` | posts an Android notification (if the launcher may post them) |
 | `url("https://...")` | opens in the Android browser. Other links open in the app that takes them: `tel:` the dialer, `geo:` maps, `mailto:` email |
