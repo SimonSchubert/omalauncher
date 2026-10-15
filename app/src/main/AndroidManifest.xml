@@ -24,6 +24,31 @@
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
+        <!-- Icon packs (icon packs for custom app icons): they declare themselves with another launcher's theme action, which Android 11+ hides otherwise. -->
+        <intent>
+            <action android:name="com.novalauncher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="org.adw.launcher.icons.THEMES" />
+        </intent>
+        <intent>
+            <action android:name="com.gau.go.launcherex.theme" />
+        </intent>
+        <intent>
+            <action android:name="com.anddoes.launcher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.teslacoilsw.launcher.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.fede.launcher.THEME_ICONPACK" />
+        </intent>
+        <intent>
+            <action android:name="com.motorola.launcher3.THEME" />
+        </intent>
+        <intent>
+            <action android:name="com.sonymobile.home.THEME" />
+        </intent>
     </queries>
 
     <application

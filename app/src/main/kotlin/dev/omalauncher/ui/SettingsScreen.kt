@@ -36,10 +36,17 @@ fun SettingsScreen(
     onLinux: () -> Unit,
     onLicenses: () -> Unit,
     onGestures: () -> Unit,
+    onIconPacks: () -> Unit,
+    onIconSize: () -> Unit,
 ) {
     val context = LocalContext.current
     val linux by runtime.bootstrap.state.collectAsState()
     val installed = linux == LinuxState.Installed
+    val packSubtitle =
+        when (runtime.iconPacks.chosen) {
+            null -> "the apps' own icons"
+            else -> runtime.iconPacks.chosen?.label.orEmpty()
+        }
     OverlayPanel("settings", onDismiss, contentWidth = ReadingWidth) {
         val linuxStatus =
             when (val l = linux) {
@@ -52,6 +59,8 @@ fun SettingsScreen(
         val rows =
             listOf(
                 Triple("style", runtime.themes.current?.title ?: "theme, background, home screen", onStyle),
+                Triple("icon pack", packSubtitle, onIconPacks),
+                Triple("icon size", IconSize.label, onIconSize),
                 Triple("gestures", "swipe up: ${runtime.gestures.swipeUp.label}", onGestures),
                 Triple("linux", linuxStatus, onLinux),
                 if (installed) {

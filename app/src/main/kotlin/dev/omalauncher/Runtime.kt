@@ -43,6 +43,8 @@ import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.theme.ThemeStore
 import dev.omalauncher.ui.Gestures
+import dev.omalauncher.ui.IconPackStore
+import dev.omalauncher.ui.IconSize
 import dev.omalauncher.ui.KeyboardBridge
 import dev.omalauncher.ui.SettingsPage
 import dev.omalauncher.ui.TerminalTiles
@@ -86,6 +88,8 @@ class Runtime(
     val style = StyleStore(context)
     val terminalFont = TerminalFont(proot, style)
     val gestures = Gestures(context)
+    /** The icon packs on the phone and the chosen one, which replaces the apps' own icons. */
+    val iconPacks = IconPackStore(context)
     val linuxApps = mutableStateListOf<LinuxApp>()
 
     /** Icons of [linuxApps] by desktop id; apps without a PNG icon have no entry. */
@@ -96,7 +100,7 @@ class Runtime(
 
     /** The Icon= each of [linuxIcons] was loaded from, to notice an entry changing it. */
     private val linuxIconNames = HashMap<String, String>()
-    val androidApps = AndroidAppCatalog(context)
+    val androidApps = AndroidAppCatalog(context, iconPacks)
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
@@ -202,6 +206,8 @@ class Runtime(
                 LauncherData.migrate(context)
                 launcherFiles.sync()
                 agents.load()
+                iconPacks.refresh()
+                IconSize.load(context)
             }
             themes.load()
             style.start()
@@ -217,6 +223,14 @@ class Runtime(
         prefs.edit().putBoolean(SETUP_DONE, true).apply()
         launcherReady = true
         scope.launch { themes.ensureRelease() }
+    }
+
+    /**
+     * Reloads the icon packs on the phone and applies the saved one again, as home shows: a pack installed or
+     * uninstalled meanwhile needs a redraw (the apps' own icons come back, which takes a moment).
+     */
+    fun reloadIconPacks() {
+        if (iconPacks.refresh()) androidApps.redrawIcons()
     }
 
     /** Installs Linux in the background, with [agents]; progress shows in [Bootstrap.state] and the notification. */
