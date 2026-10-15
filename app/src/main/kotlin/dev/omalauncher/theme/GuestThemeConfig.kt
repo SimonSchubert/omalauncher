@@ -7,6 +7,7 @@ import dev.omalauncher.linux.run
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import java.io.File
+import kotlin.math.roundToInt
 
 /**
  * What omarchy-theme-set would write inside the guest: the current theme's
@@ -100,8 +101,13 @@ class GuestThemeConfig(
     }
 
     /** Live-recolors running foot terminals with OSC sequences, like omarchy-theme-set-foot. Blocking. */
-    fun recolorTerminals(theme: OmarchyTheme) {
+    fun recolorTerminals(
+        theme: OmarchyTheme,
+        /** foot's background alpha (terminal.opacity); 1 leaves it opaque. */
+        alpha: Double = 1.0,
+    ) {
         val c = footColors(theme.colors)
+        val percent = (alpha.coerceIn(0.0, 1.0) * 100).roundToInt()
         val osc =
             buildString {
                 fun emit(
@@ -109,7 +115,7 @@ class GuestThemeConfig(
                     key: String,
                 ) = c[key]?.let { append("\u001b]$code;$it\u0007") }
                 emit("10", "foreground")
-                emit("11", "background")
+                c["background"]?.let { append("\u001b]11;" + (if (percent < 100) "[$percent]" else "") + it + "\u0007") }
                 emit("12", "cursor")
                 emit("17", "selection_background")
                 emit("19", "selection_foreground")

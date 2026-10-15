@@ -39,6 +39,8 @@ data class SurfaceHit(
 class WindowRenderer(
     private val server: WaylandServer,
     private val window: XdgToplevel,
+    /** Keeps alpha, for a window drawn over the wallpaper; a full-screen one stays opaque. */
+    private val translucent: Boolean = false,
 ) {
     private val thread = HandlerThread("wl-render").apply { start() }
     private val handler = Handler(thread.looper)
@@ -85,7 +87,7 @@ class WindowRenderer(
     ) {
         lock.withLock {
             if (native != 0L) Native.windowRelease(native)
-            native = Native.windowCreate(surface, w, h)
+            native = Native.windowCreate(surface, w, h, translucent)
             width = w
             height = h
             redrawAll = true

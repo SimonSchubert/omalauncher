@@ -139,3 +139,20 @@ private fun MenuItem(
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) { BasicText(label, style = Mono.copy(fontSize = TextSize.Item)) }
 }
+
+/**
+ * A widget's own glass on its long-press bar: − and + in 5% steps from what it
+ * has now; tapping the percentage hands it back to widgets.opacity.
+ */
+@Composable
+internal fun GlassActions(
+    layout: dev.omalauncher.widgets.WidgetLayout,
+    name: String,
+) {
+    val own = layout.glass(name)
+    val value = own ?: LauncherStyle.style[dev.omalauncher.theme.Style.WIDGET_OPACITY]
+    fun step(by: Int) = layout.setGlass(name, (Math.round(value * 20) + by) / 20.0)
+    EditAction("−", if (value > 0.0) Palette.foreground else Palette.muted) { if (value > 0.0) step(-1) }
+    EditAction("${Math.round(value * 100)}%", if (own != null) Palette.accent else Palette.muted) { layout.setGlass(name, null) }
+    EditAction("+", if (value < 1.0) Palette.foreground else Palette.muted) { if (value < 1.0) step(1) }
+}

@@ -35,6 +35,9 @@ class WidgetLayout(
     /** Read while compiling widgets, off the main thread. */
     private val pages = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
+    /** A widget's own glass opacity, set from its long-press bar; without one it has widgets.opacity. */
+    private val glass = mutableStateMapOf<String, Double>()
+
     init {
         (Versioned.read(prefs.getString(LAYOUT, null), VERSION) as? JSONObject)?.let(::load)
         migrateLegacy(context)
@@ -44,6 +47,19 @@ class WidgetLayout(
         val columns = data.optInt("columns", GRID_COLUMNS)
         data.optJSONObject("cells")?.mapEntries { _, c -> rescale(Cell(c.getInt("x"), c.getInt("y"), c.getInt("w"), c.getInt("h")), columns) }?.let(cells::putAll)
         data.optJSONObject("pages")?.let { p -> for (k in p.keys()) pages[k] = p.optInt(k, 1) }
+        data.optJSONObject("glass")?.let { g -> for (k in g.keys()) glass[k] = g.optDouble(k).coerceIn(0.0, 1.0) }
+    }
+
+    /** [name]'s own glass opacity (0 clear, 1 solid), or null for widgets.opacity. */
+    fun glass(name: String) = glass[name]
+
+    /** Sets [name]'s own glass opacity; null goes back to widgets.opacity. */
+    fun setGlass(
+        name: String,
+        opacity: Double?,
+    ) {
+        if (opacity == null) glass.remove(name) else glass[name] = opacity.coerceIn(0.0, 1.0)
+        save()
     }
 
     /**
@@ -180,6 +196,7 @@ class WidgetLayout(
     fun remove(name: String) {
         cells.remove(name)
         pages.remove(name)
+        glass.remove(name)
         save()
     }
 
@@ -212,6 +229,7 @@ class WidgetLayout(
                 .put("columns", GRID_COLUMNS)
                 .put("cells", json)
                 .put("pages", JSONObject(pages as Map<*, *>))
+                .put("glass", JSONObject(glass.toMap() as Map<*, *>))
         prefs.edit().putString(LAYOUT, Versioned.write(VERSION, data)).apply()
     }
 

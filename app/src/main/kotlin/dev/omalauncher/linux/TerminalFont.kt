@@ -138,7 +138,8 @@ class TerminalFont(
     fun write() {
         if (density == 0f) return
         size = pointSize(density, fontScale, scale, em)
-        val content = "[main]\nfont=$family:size=${format(size)}\n"
+        val alpha = String.format(Locale.ROOT, "%.2f", style.style[Style.TERMINAL_OPACITY])
+        val content = "[main]\nfont=$family:size=${format(size)}\n\n[colors-dark]\nalpha=$alpha\n\n[colors-light]\nalpha=$alpha\n"
         val file = File(proot.home, PATH.removePrefix("~/"))
         if (content == written && file.isFile) return
         written = content

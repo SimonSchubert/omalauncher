@@ -143,6 +143,8 @@ class Style(
 
         val GAPS_IN = Setting.Number("widgets.gaps-in", 6.0, 0.0..24.0, "Space in dp between two of home's widgets (all of it, unlike Hyprland's gaps_in, which each window has on its side).")
         val GAPS_OUT = Setting.Number("widgets.gaps-out", 6.0, 0.0..48.0, "Space in dp from home's widgets, the strip and the prompt bar to the screen's edges.")
+        val WIDGET_OPACITY = Setting.Number("widgets.opacity", GLASS, 0.0..1.0, "How much widgets, the prompt bar and the rails cover the wallpaper: 0 clear glass, ${Toml.format(GLASS)} default, 1 solid.")
+        val WIDGET_BLUR = Setting.Number("widgets.blur", 0.0, 0.0..64.0, "Blurs the wallpaper behind widgets, the prompt bar and the rails, in dp, like Hyprland's blur behind Omarchy's windows: 0 none, 20 frosted.")
         val TILE_BORDER_WIDTH = Setting.Number("widgets.border-width", 2.0, 0.0..8.0, "How thick widgets' outlines are, in dp. 0 draws none, but the focused one's.")
         val TILE_BORDER = Setting.Color("widgets.border", "The outline of widgets, the prompt bar and the rails: \"theme\" is the theme's border color.")
         val TILE_BORDER_FOCUSED = Setting.Color("widgets.border-focused", "The outline of the widget in use or being arranged: \"theme\" is the theme's accent.")
@@ -159,6 +161,7 @@ class Style(
 
         val TERMINAL_FONT = Setting.Text("terminal.font", "JetBrains Mono", "The terminals' font family; fc-list :spacing=100 lists those installed.")
         val TERMINAL_TEXT = Setting.Number("terminal.text", 12.0, 6.0..32.0, "The terminals' em size in dp, before Android's font size: 10 smaller, 12 default, 14 larger.")
+        val TERMINAL_OPACITY = Setting.Number("terminal.opacity", 1.0, 0.0..1.0, "How much the terminals' background covers the wallpaper: foot's alpha, for new terminals and open ones alike.")
     }
 
     /** A system bar's band on home; [name] is its section in the file. */
@@ -197,9 +200,9 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, APP_TILES, RECENT_APPS, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, APP_TILES, RECENT_APPS, GAPS_IN, GAPS_OUT, WIDGET_OPACITY, WIDGET_BLUR, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
-                STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT)
+                STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, TERMINAL_OPACITY)
         }
 
     private val byKey = ALL.associateBy { it.key }

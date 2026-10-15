@@ -49,6 +49,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import dev.omalauncher.Runtime
 import dev.omalauncher.theme.Style
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.widgets.checkSecretsCommand
 import dev.omalauncher.widgets.publishWidgetCommand
@@ -89,10 +94,26 @@ private fun DesktopScreen(
         }
     }
 
+    // Frosted glass: a blurred copy of the wallpaper the tiles draw their part of; see Backdrop.
+    val blurDp = LauncherStyle.style[Style.WIDGET_BLUR]
+    val wallpaper = runtime.themes.wallpaper.takeUnless { runtime.themes.liveWallpaperActive }
+    val density = LocalDensity.current.density
+    LaunchedEffect(wallpaper, blurDp, density) {
+        Backdrop.offset = { state.wallpaperOffset }
+        Backdrop.image =
+            if (wallpaper == null || blurDp <= 0.0) {
+                null
+            } else {
+                withContext(Dispatchers.Default) {
+                    runCatching { blurredCopy(wallpaper.asAndroidBitmap(), (blurDp * density / Backdrop.SCALE).roundToInt()).asImageBitmap() }.getOrNull()
+                }
+            }
+    }
     if (!runtime.themes.liveWallpaperActive) {
         runtime.themes.wallpaper?.let { bmp ->
             // Read while drawing, so swiping pages only redraws this.
             Canvas(Modifier.fillMaxSize()) {
+                Backdrop.screen = IntSize(size.width.toInt(), size.height.toInt())
                 val src = wallpaperCrop(bmp.width, bmp.height, size.width.toInt(), size.height.toInt(), state.wallpaperOffset)
                 drawImage(
                     bmp,

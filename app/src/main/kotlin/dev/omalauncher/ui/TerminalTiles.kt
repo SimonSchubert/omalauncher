@@ -230,7 +230,8 @@ fun TerminalView(
     val window = term.window
     val active = tiles.active === term
     LaunchedEffect(term) { term.start() }
-    val background = Palette.background.toArgb()
+    // Clear: foot's own alpha (terminal.opacity) is the one layer over the tile's glass, so nothing stacks unevenly.
+    val background = android.graphics.Color.TRANSPARENT
     Box(modifier.onGloballyPositioned { term.bounds = it.boundsInWindow().translate(0f, tiles.lift) }) {
         AndroidView(
             factory = { EmbeddedWindowView(it, tiles) },
@@ -302,13 +303,13 @@ private class EmbeddedWindowView(
 
     init {
         surfaceTextureListener = this
-        isOpaque = true
+        isOpaque = false
     }
 
     private fun bind() {
         val w = window ?: return
         if (renderer != null || !isAttachedToWindow) return
-        val r = WindowRenderer(tiles.server, w).also { it.background = background }
+        val r = WindowRenderer(tiles.server, w, translucent = true).also { it.background = background }
         renderer = r
         showing.getOrPut(w) { ArrayList() } += r
         w.renderer = r

@@ -46,6 +46,26 @@ snapshots the surface tree, redraws only the dirty region of the SurfaceView
 callbacks. Hidden windows get no frame callbacks, so their clients stop
 drawing.
 
+## Glass
+
+Home tiles, the prompt bar and the rails are glass over the wallpaper.
+`widgets.opacity` (style.toml, default 0.88) is how much of that glass is
+opaque. `widgets.blur` (default 0, up to 64 dp) blurs the wallpaper behind
+them: one small blurred copy of the wallpaper (`ui/Frosted.kt`, an eighth of
+the wallpaper's size), and each surface draws the part behind it, including
+while pages swipe. Widget text is not blurred. With no blur, a live wallpaper,
+or before the copy is ready, the surface is plain glass.
+
+A long-press on a widget sets that widget's own opacity, in 5% steps, stored
+with its layout (`glass` in the layout JSON). Tapping the percentage clears
+it, and the widget uses `widgets.opacity` again.
+
+`terminal.opacity` (default 1) is foot's background alpha. It is written into
+foot's `[colors-dark]` and `[colors-light]`, and sent to terminals already
+open (OSC 11, the same path as a theme change). The terminal window keeps
+that alpha, and the view behind it is clear, so foot's alpha is the only
+layer. Foot itself draws on the CPU.
+
 ## GPU acceleration
 
 Opt-in, in settings › linux, on Mali GPUs (v10+: Pixel 7 and newer, recent

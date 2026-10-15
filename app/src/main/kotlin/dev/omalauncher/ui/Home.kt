@@ -285,6 +285,7 @@ fun HomeScreen(
                                 state.sharing = item.spec
                             }
                         }
+                        if (item is WidgetItem) GlassActions(engine.layout, item.spec.file.name)
                         EditAction("remove", Palette.red) { remove(item) }
                     }
                 }
@@ -315,6 +316,7 @@ fun HomeScreen(
                             onInstall = { engine.installDependencies(item.spec) },
                             waitsForLinux = if (engine.waitsForLinux(item.spec)) linuxState else null,
                             onInstallLinux = { state.show(SettingsPage.Linux) },
+                            glass = engine.layout.glass(item.spec.file.name),
                             onFix = { log ->
                                 val agent = runtime.agents.default
                                 if (agent == null) {

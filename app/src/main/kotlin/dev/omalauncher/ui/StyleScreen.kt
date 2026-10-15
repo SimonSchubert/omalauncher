@@ -109,6 +109,8 @@ fun StyleScreen(
             NumberOption("corners", Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
             // Like Hyprland's gaps_in, gaps_out and border_size; the colors are in style.toml.
             Heading("widgets")
+            OpacityStepper("opacity", style, Style.WIDGET_OPACITY)
+            Stepper("blur", style, Style.WIDGET_BLUR, step = 4.0)
             Stepper("gaps in", style, Style.GAPS_IN)
             Stepper("gaps out", style, Style.GAPS_OUT)
             Stepper("border width", style, Style.TILE_BORDER_WIDTH)
@@ -119,6 +121,7 @@ fun StyleScreen(
             Heading("system bars")
             Flag("background", "shown", "hidden", style, Style.STATUS_BAR.framed, Style.NAVIGATION_BAR.framed)
             Stepper("border width", style, Style.STATUS_BAR.borderWidth, Style.NAVIGATION_BAR.borderWidth)
+            OpacityStepper("opacity", style, Style.STATUS_BAR.opacity, Style.NAVIGATION_BAR.opacity)
             if (linux == LinuxState.Installed) {
                 TerminalSection(runtime.terminalFont, runtime.terminals, style)
                 BasicText(
@@ -291,6 +294,8 @@ private fun TerminalSection(
     FontOption(font.families, font.family) { family -> style.update { it.with(Style.TERMINAL_FONT, family) } }
     OptionHint("terminals opened from now on · more with pacman, like ttf-cascadia-code", Modifier.padding(bottom = 4.dp))
     NumberOption("text", TerminalText.entries.map { it.label to it.em.toDouble() }, Style.TERMINAL_TEXT, style, unit = " dp")
+    OpacityStepper("opacity", style, Style.TERMINAL_OPACITY)
+    OptionHint("see-through also needs foot's alpha, under [colors] in ~/.config/foot/foot.ini", Modifier.padding(bottom = 4.dp))
     // In portrait, where columns run short; landscape has plenty.
     val metrics = LocalContext.current.resources.displayMetrics
     val columns = font.columns(minOf(metrics.widthPixels, metrics.heightPixels))
@@ -393,11 +398,14 @@ private fun Stepper(
     label: String,
     style: StyleStore,
     vararg settings: Setting.Number,
+    step: Double = 1.0,
+    format: (Double) -> String = { Toml.format(it) + " dp" },
 ) {
     val all = settings.toList()
     val setting = all.first()
     val value = style.style[setting]
-    fun set(v: Double) = style.update { it.with(all) { s -> v.coerceIn(s.range) } }
+    // Snapped to the step, so a value set in style.toml between steps lands back on one.
+    fun set(v: Double) = style.update { it.with(all) { s -> (Math.round(v / step) * step).coerceIn(s.range) } }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         OptionLabel(label)
         Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -405,13 +413,13 @@ private fun Stepper(
             val up = value < setting.range.endInclusive
             BasicText(
                 "−",
-                Modifier.clickable(enabled = down) { set(ceil(value - 1)) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier.clickable(enabled = down) { set(ceil(value / step - 1) * step) }.padding(horizontal = 16.dp, vertical = 8.dp),
                 style = Mono.copy(color = if (down) Palette.foreground else Palette.muted),
             )
-            BasicText(Toml.format(value) + " dp", Modifier.widthIn(min = 64.dp), style = Mono.copy(textAlign = TextAlign.Center), softWrap = false)
+            BasicText(format(value), Modifier.widthIn(min = 64.dp), style = Mono.copy(textAlign = TextAlign.Center), softWrap = false)
             BasicText(
                 "+",
-                Modifier.clickable(enabled = up) { set(floor(value + 1)) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier.clickable(enabled = up) { set(floor(value / step + 1) * step) }.padding(horizontal = 16.dp, vertical = 8.dp),
                 style = Mono.copy(color = if (up) Palette.foreground else Palette.muted),
             )
         }
@@ -419,6 +427,14 @@ private fun Stepper(
     }
     if (style.style.common(all) == null) OptionHint("they differ in style.toml; a step sets them all", Modifier.padding(bottom = 4.dp))
 }
+
+/** A 0–1 [Style] number in 5% steps, shown as a percentage: how much a surface covers the wallpaper. */
+@Composable
+private fun OpacityStepper(
+    label: String,
+    style: StyleStore,
+    vararg settings: Setting.Number,
+) = Stepper(label, style, *settings, step = 0.05, format = { "${Math.round(it * 100)}%" })
 
 /** [Style] flags as a choice of two, [on] first, set together. */
 @Composable

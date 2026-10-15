@@ -247,18 +247,21 @@ typedef struct {
     ANativeWindow_Buffer buf;
     ARect dirty;
     int locked;
+    int translucent;
 } Window;
 
-JNIEXPORT jlong JNICALL FN(windowCreate)(JNIEnv *env, jclass cls, jobject surface, jint width, jint height) {
+JNIEXPORT jlong JNICALL FN(windowCreate)(JNIEnv *env, jclass cls, jobject surface, jint width, jint height, jboolean translucent) {
     ANativeWindow *w = ANativeWindow_fromSurface(env, surface);
     if (!w) return 0;
-    // Opaque: we fill every pixel, so SurfaceFlinger needn't blend the window.
-    if (ANativeWindow_setBuffersGeometry(w, width, height, WINDOW_FORMAT_RGBX_8888) != 0) {
+    // Opaque unless translucent: we fill every pixel, so SurfaceFlinger needn't blend a full-screen window,
+    // while a terminal tile keeps its backdrop's and foot's alpha over the wallpaper.
+    if (ANativeWindow_setBuffersGeometry(w, width, height, translucent ? WINDOW_FORMAT_RGBA_8888 : WINDOW_FORMAT_RGBX_8888) != 0) {
         ANativeWindow_release(w);
         return 0;
     }
     Window *win = calloc(1, sizeof(Window));
     win->window = w;
+    win->translucent = translucent;
     return (jlong) (intptr_t) win;
 }
 
@@ -289,7 +292,10 @@ JNIEXPORT jboolean JNICALL FN(windowBegin)(JNIEnv *env, jclass cls, jlong ptr, j
     (*env)->SetIntArrayRegion(env, jdirty, 0, 4, d);
 
     uint32_t bg = (uint32_t) background;
-    uint32_t fill = 0xff000000u | ((bg & 0xffu) << 16) | (bg & 0xff00u) | ((bg >> 16) & 0xffu);
+    // ARGB to the buffer's premultiplied RGBA, keeping alpha so a translucent backdrop shows what's behind.
+    uint32_t a = win->translucent ? bg >> 24 : 0xffu;
+    uint32_t fill = (a << 24) | ((((bg & 0xffu) * a + 127) / 255) << 16) | (((((bg >> 8) & 0xffu) * a + 127) / 255) << 8) |
+                    ((((bg >> 16) & 0xffu) * a + 127) / 255);
     uint32_t *px = win->buf.bits;
     for (int y = r.top; y < r.bottom; y++) {
         uint32_t *row = px + (size_t) y * win->buf.stride;
@@ -342,7 +348,9 @@ JNIEXPORT void JNICALL FN(windowBlit)(JNIEnv *env, jclass cls, jlong ptr, jlong 
                 uint32_t d = dst[x], k = 255 - a;
                 uint32_t rb = ((d & 0x00ff00ffu) * k + 0x00800080u) >> 8 & 0x00ff00ffu;
                 uint32_t g = ((d & 0x0000ff00u) * k + 0x00008000u) >> 8 & 0x0000ff00u;
-                dst[x] = 0xff000000u | ((s & 0x00ffffffu) + rb + g);
+                // Source-over alpha: a + dst.a * (1 - a), so what's under a translucent window still shows.
+                uint32_t outA = win->translucent ? a + (((d >> 24) * k + 127) / 255) : 255;
+                dst[x] = (outA << 24) | ((s & 0x00ffffffu) + rb + g);
             }
             x++;
         }

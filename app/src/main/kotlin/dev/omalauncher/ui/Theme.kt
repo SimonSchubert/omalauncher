@@ -91,7 +91,7 @@ object Palette {
     val green get() = current.green
 
     /** The translucent fill of tiles, bars and rails over the wallpaper. */
-    val glass get() = background.copy(alpha = Style.GLASS.toFloat())
+    val glass get() = background.copy(alpha = LauncherStyle.style[Style.WIDGET_OPACITY].toFloat())
 }
 
 /**
@@ -169,6 +169,7 @@ enum class Corners(
 ) {
     Edge("edge", "edge", 0f),
     Soft("soft", "soft", 0.5f),
+    Sleek("sleek", "sleek", 0.75f),
     Round("round", "round", 1f),
     ;
 
@@ -184,10 +185,12 @@ fun Modifier.frame(
     color: Color,
     fill: Color = Color.Transparent,
     radius: Dp = 16.dp,
+    /** Draws the blurred wallpaper under [fill]: home's surfaces over the wallpaper, see [frosted]. */
+    frosted: Boolean = false,
 ): Modifier {
     val shape = LauncherStyle.shape(radius)
     // 0.dp is Compose's hairline, which border() still draws.
-    return clip(shape).background(fill, shape).then(if (width > 0.dp) Modifier.border(width, color, shape) else Modifier)
+    return clip(shape).then(if (frosted) Modifier.frosted() else Modifier).background(fill, shape).then(if (width > 0.dp) Modifier.border(width, color, shape) else Modifier)
 }
 
 /**
@@ -207,11 +210,16 @@ val PanelGap: Dp get() = LauncherStyle.style[Style.SCREEN_GAPS_OUT].toFloat().dp
 val ReadingWidth = 640.dp
 
 /** A home-screen surface over the wallpaper: tiles, the prompt bar, the rails; outlined as focused while [focused]. */
-fun Modifier.tile(focused: Boolean = false): Modifier =
+fun Modifier.tile(
+    focused: Boolean = false,
+    /** The glass, see [Palette.glass]; a widget with an opacity of its own passes its own. */
+    fill: Color = Palette.glass,
+): Modifier =
     frame(
         if (focused) LauncherStyle.focusWidth else LauncherStyle.borderWidth,
         if (focused) LauncherStyle.focusBorder else LauncherStyle.tileBorder,
-        Palette.glass,
+        fill,
+        frosted = true,
     )
 
 /** The launcher's text style in the theme's foreground color. */

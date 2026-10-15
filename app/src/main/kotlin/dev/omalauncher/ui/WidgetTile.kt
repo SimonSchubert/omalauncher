@@ -41,10 +41,12 @@ internal fun WidgetTile(
     /** Where Linux stands, if the widget needs it and it isn't running: a placeholder keeps its cells. */
     waitsForLinux: LinuxState? = null,
     onInstallLinux: () -> Unit = {},
+    /** Its own glass opacity, from its long-press bar; null has widgets.opacity. */
+    glass: Double? = null,
 ) {
     Box(
         modifier
-            .tile(focused)
+            .tile(focused, glass?.let { Palette.background.copy(alpha = it.toFloat()) } ?: Palette.glass)
             .pointerInput(spec) { detectTapGestures(onTap = { onTap() }) },
     ) {
         if (waitsForLinux != null) {

@@ -419,9 +419,16 @@ class ThemeStore(
                 guest.render(theme)
                 prefs.edit().putString(RENDERED_BY, appStamp(context)).apply()
                 onConfigChanged()
-                guest.recolorTerminals(theme)
+                guest.recolorTerminals(theme, style.style[Style.TERMINAL_OPACITY])
             }.onFailure { Log.e(TAG, "theme ${theme.name} not written to the guest", it) }
         }
+    }
+
+    /** Gives open terminals the current terminal.opacity, as a theme change gives them its colors. */
+    suspend fun retintTerminals() {
+        val theme = current ?: return
+        if (!isLinux()) return
+        withContext(Dispatchers.IO) { runCatching { guest.recolorTerminals(theme, style.style[Style.TERMINAL_OPACITY]) } }
     }
 
     /**
