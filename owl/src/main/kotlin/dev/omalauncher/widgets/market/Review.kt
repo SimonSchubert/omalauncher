@@ -177,6 +177,8 @@ class Review(
                 Regex("""\b(eval|source|$INTERPRETERS)\s+(-\S+\s+)*${Compiler.VALUE}""") to "runs a widget value as code",
                 Regex("""^http GET \(a URL built from widget values\)$""") to "fetches a URL put together while the widget runs, which can send its data anywhere",
                 Regex("""^($IF_LINUX)?read file \(a path built from widget values\)$""") to "reads a file whose path is put together while the widget runs",
+                // The phone's coordinates, where it has been and where it goes (Compiler lists it for android.location).
+                Regex("""^($IF_LINUX)?read the phone's location""") to "reads where the phone is",
                 Regex("""^read Android notifications""") to "sees every notification on the phone; check nothing sends them anywhere",
             )
 

@@ -102,6 +102,9 @@ class WidgetEngine(
     /** The home screen's view, for haptic(); set by the UI. */
     var view by services::view
 
+    /** Asks for the location permission, from location("request"); set by the UI. */
+    var requestLocationPermission by services::requestLocationPermission
+
     /** The widget store. */
     val market = Market(this)
 

@@ -4,6 +4,13 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- Widgets can show where the phone is, with `source l = android.location` and
+  `location("request")` (owl 8): the coordinates, accuracy, speed and altitude,
+  all null until you grant the permission from a widget of your choice. It only
+  ever reads the location a widget asks for while you have granted it.
+
 ## 0.7.2 (versionCode 14) – 2026-10-14
 
 - Text files open in the launcher's own touch-first editor, in the Omarchy theme,
