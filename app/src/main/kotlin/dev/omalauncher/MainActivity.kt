@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         applySystemBars(this, Palette.isLight)
         runtime.start()
+        state.onSettings = { page, homePage -> runtime.openSettings(page, homePage) }
         setContent {
             LauncherRoot(runtime, state)
             LaunchedEffect(Palette.isLight) { applySystemBars(this@MainActivity, Palette.isLight) }
@@ -90,6 +91,8 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         runtime.wm.focus(null)
         removeStaleWindowTasks()
+        // Made the default home app (or no longer it) while away: only then does Android show us pinned shortcuts.
+        runtime.androidApps.checkShortcutAccess()
         // The user may have set or replaced the wallpaper while we were in the background.
         lifecycleScope.launch { runtime.themes.refreshLiveWallpaper() }
     }

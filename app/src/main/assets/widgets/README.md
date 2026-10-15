@@ -67,8 +67,10 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `source dev = android.device` | the phone: `{model, maker, android, sdk, soc}` (the Linux side can't see these) |
 | `source sys = android.system every 5s` | the phone's state, polled: `{kernel, uptime, memory, storage, cpu, display, build, codename, patch, locale, timezone, launcher, theme, apps}`. `uptime` is in seconds; `memory` is `{total, used, available}` and `storage` `{total, used, free}`, in bytes; `cpu` is `{soc, maker, hardware, cores, abi, maxMhz}`; `display` is `{width, height, hz, dpi}`; `patch` is the security patch date, `launcher` this launcher's version, `theme` the Omarchy theme's name and `apps` how many Android apps are installed. See `20-fetch.owl` (owl 5) |
 | `source m = android.media` | what's playing in any app on the phone: `{available, playing, title, artist, album, app, package, position, duration, art}`, updated as it changes (`position` and `duration` in seconds; `art` goes in `Image { src: m.art }`). `available` is false until the user grants notification access; `media(...)` opens that setting then. See `examples/97-now-playing.owl` |
-| `source n = android.notifications` | the phone's notifications, newest first, updated as they come and go: `{available, count, items}`, each item `{key, app, package, title, text, time, clearable}` (`time` in Unix seconds). Ongoing ones (music, downloads) are left out. Needs the same notification access as media. See `examples/98-notifications.owl` (owl 4) |
+| `source n = android.notifications` | the phone's notifications, newest first, updated as they come and go: `{available, count, items}`, each item `{key, app, package, profile, icon, title, text, time, clearable}` (`time` in Unix seconds; `profile` is `work` or `clone` for a notification from a work profile or a cloned app, else null; `icon` is the app's icon for `Image { src: i.icon }`, from that profile, owl 7). Ongoing ones (music, downloads) are left out. Needs the same notification access as media. See `examples/98-notifications.owl` (owl 4) |
 | `source v = android.volume` | the media volume: `{level, muted, steps}` (`level` in percent, `steps` how many the phone has), updated as it changes. Set it with `volume(...)` (owl 4) |
+| `source a = android.alarm` | the next alarm set in any clock app: `{set, time, app}`, updated as it changes. `time` is in Unix seconds (`fmtTime(a.time, "EEE HH:mm")`, or `at a.time`), `app` the clock app's package (`androidApp(a.app)`); both null when no alarm is set (owl 7) |
+| `source m = android.modes` | the phone's modes: `{dnd, saver, ringer, torch}`, updated as they change. `dnd` is Do Not Disturb in any form, `saver` battery saver, `ringer` is `normal`, `vibrate` or `silent`, and `torch` is null on a phone without a flash. Switch the torch with `torch(...)` (owl 7) |
 | `state x = 0` | a value that handlers can change. Add `persist` to keep it across restarts: `state endsAt = 0 persist` |
 | `let x = expr` | a derived value, recomputed only when what it reads changes. It can use sources, state and earlier lets |
 | `let h = history(x, 60)` | the last 60 values of `x`, sampled whenever a source updates (for Sparkline). With `persist` it survives restarts, unless it's older than it would take to fill |
@@ -77,7 +79,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see Sharing) |
-| `meta { owl: 5 }` | the language version the widget needs (this launcher has 5; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5; using them without declaring it is an error |
+| `meta { owl: 7 }` | the language version the widget needs (this launcher has 7; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7; using them without declaring it is an error |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see Screens (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -97,8 +99,25 @@ add `status`: then `x.out` is the output (parsed with `json`), `x.err` is stderr
 source w = cmd("curl -sf wttr.in/?format=j1") every 30m json timeout 20s status
 Text { text: w == null ? "…" : w.ok ? "${w.out.current_condition[0].temp_C}°" : "offline" }
 ``` Keep commands fast. A command
-can depend on state (`cmd("curl wttr.in/${city}")`) and re-runs with the new
+can depend on state (`cmd("curl wttr.in/${sh(city)}")`) and re-runs with the new
 value at its next interval.
+
+## Values in commands
+
+Put a value into a command (`cmd`, `stream`, `run`, `terminal`, `Terminal`) with `sh(value)`,
+on its own and outside any quotes. `sh()` single-quotes the value, so it stays one word and
+can't run as code, whatever text it holds (owl 6):
+
+```
+onTap: run("notify-send ${sh(title)}")        // right
+onTap: run("notify-send '${title}'")          // wrong: a ' in title ends the quote
+onTap: run("notify-send \"${sh(title)}\"")    // wrong: sh() inside quotes doesn't hold
+```
+
+Work on the value inside `sh()`: `${sh(upper(title))}`. Numbers from `int`, `round`, `floor`,
+`ceil`, `abs`, `fixed`, `len`, `count`, `sum`, `min`, `max` and `clamp` need no `sh()`. A command
+with a heredoc (`<<`) can't take values. The widget store only takes commands built this way;
+one shared as a link shows a warning instead.
 
 ## Triggers
 
@@ -146,7 +165,7 @@ second is held back and reported (one that changes what it watches would otherwi
 | functions | |
 |---|---|
 | numbers | `min max clamp(x, lo, hi) lerp(a, b, t) round(x, digits) floor ceil abs sqrt pow sin cos tan atan2 rad deg sign num(x, default) int` |
-| text | `str len trim upper lower lines words split(s, sep) join(list, sep) replace(s, a, b) contains startsWith endsWith sub(s, from, to) pad(x, width, char) fixed(x, digits)` |
+| text | `sh(x)` (one shell word, see Values in commands) `str len trim upper lower lines words split(s, sep) join(list, sep) replace(s, a, b) contains startsWith endsWith sub(s, from, to) pad(x, width, char) fixed(x, digits)` |
 | format | `fmtBytes(n)` → `1.5G`, `fmtDuration(seconds)` → `2h 5m`, `fmtTime(seconds, "EEE HH:mm")` |
 | weather | `weatherIcon(code, night)`: omarchy's weather glyph for a wttr.in `weatherCode` (show it with `font: icon`) |
 | parsing | `match(s, regex)` (groups of the first match), `matchAll(s, regex)`, `parseJson(s)` |
@@ -166,6 +185,13 @@ tile, so a widget can pick a layout to fit (`if cols < 3 { ... } else { ... }`).
 `null` for a moment before the tile is laid out. A widget's own declaration named
 `rows` or `cols` takes precedence.
 
+`corners` is the user's corner style as a multiplier, not a radius: 0 (edge, square), 0.5
+(soft) or 1 (round). Multiply the radius a shape would have on round by it: `radius: 8 *
+corners` for cards and album art, `3 * corners` for small chips, and the same in Canvas
+(`rect(x, y, w, h, radius: 8 * corners)`). The tile, buttons and bordered elements without a
+`radius` follow it on their own; a fixed `radius`, a clipped Box, an Image or a Canvas shape
+doesn't. It needs `meta { owl: 6 }`.
+
 ## Nodes
 
 `Name { prop: value; ...children }`. Structure: `if cond { } else { }`,
@@ -184,12 +210,12 @@ when lists reorder), and `let x = ...` inside any node.
 | `Progress` | `value`, `max` (100), `color`, `track` |
 | `Ring` | circular progress: `value`, `max` (1), `color`, `track`, `thickness` (6), `start`/`sweep` (degrees; `start: 225; sweep: 270` makes a gauge). 64 dp unless sized |
 | `Sparkline` | `values` (a list, usually a `history`), `min` (0), `max`, `color`, `area: true` or a color, `thickness` |
-| `Image` | `src`: an `asset` or a path in this system (`"~/pics/a.png"`), `fit: contain/cover/fill`, `tint` |
+| `Image` | `src`: an `asset`, a path in this system (`"~/pics/a.png"`) or an Android app's icon (`"app:org.pkg"`, as the drawer shows it, badge included; a silhouette in the foreground color with monochrome icons; `"app:org.pkg@work"` and `"@clone"` ask for the copy in a work profile or the clone, owl 7), `fit: contain/cover/fill`, `tint` |
 | `Canvas` | free drawing, below. Fills the space unless sized |
 | `Shader` | an AGSL shader, below. Fills the space unless sized |
 | `Spacer` | empty space: `size`, `width`, `height` or `weight` |
 | `Slider` | a horizontal slider: `value`, `min` (0), `max` (100), `step`, `color`, `track`, `live`. `onChange` gets the chosen `value` when the finger lifts, or at every step while dragging with `live: true`. Full width and 28 dp tall unless sized (owl 4) |
-| `Input` | a one-line text field: `text` (what it shows; replaces what's typed when it changes), `placeholder`, `color`, `fontSize`, `clear: true` (empty it after submitting). `onChange` gets the text as `value` as it's typed, `onSubmit` when the keyboard's send key is pressed (owl 4) |
+| `Input` | a one-line text field: `text` (what it shows; replaces what's typed when it changes), `placeholder`, `color`, `fontSize`, `clear: true` (empty it after submitting), `focus: true` (focus it and raise the keyboard when the screen opens, or when `focus` turns true; only in a `screen { }`, owl 6). `onChange` gets the text as `value` as it's typed, `onSubmit` when the keyboard's send key is pressed (owl 4) |
 | `Terminal` | a live terminal (foot) in the tile: `command` (default: the login shell), `fontSize` (points; foot.ini has 8). Fills the space unless sized. See below |
 
 Every node also takes:
@@ -197,7 +223,8 @@ Every node also takes:
 - `width height size` (dp), `fill: true/width/height`, `weight` (share of the
   space left in a Row or Column), `padding` (`8`, `[h, v]` or `[l, t, r, b]`)
 - `background`, `border` (dp), `borderColor`, `radius`, `clip: true`
-  (without `radius`, bordered elements follow the launcher's corner style: 0 for edge, 4 for soft, 8 for round)
+  (without `radius`, bordered elements follow the launcher's corner style: 0 for edge, 4 for soft, 8 for round;
+  anything else matches it with `radius: 8 * corners`)
 - `opacity`, `rotation` (degrees), `scale`, `offset: [x, y]` (dp), `visible`
 - handlers: `onTap` (with `x`, `y`) and `onDrag` (with `dx`, `dy`, `x`, `y`); `Slider` and `Input` also take
   `onChange`, and `Input` `onSubmit`, both with `value`. Long-press
@@ -223,7 +250,10 @@ the widget that ran it refreshes its sources; other widgets keep their own inter
 | `androidApp("org.pkg")` | opens an Android app by package name |
 | `copy(text)` | copies text to the Android clipboard |
 | `notify("title", "text")` | posts an Android notification (if the launcher may post them) |
-| `url("https://...")` | opens in the Android browser |
+| `url("https://...")` | opens in the Android browser. Other links open in the app that takes them: `tel:` the dialer, `geo:` maps, `mailto:` email |
+| `share(text)` | opens Android's share sheet with the text (owl 7) |
+| `haptic()` | a short tap of haptic feedback, if the user has touch feedback on (owl 7) |
+| `torch(true)` | turns the torch on or off; also `torch("toggle")`. Does nothing on a phone without a flash, or while the camera app holds it (owl 7) |
 | `launcher("style")` | opens a launcher screen: `style` (theme, background, home screen, terminal; `themes` too), `agents`, `store`, `drawer` or `linux` (the sheet that installs Linux) |
 | `refresh()` | re-runs this widget's sources now |
 | `screen()` / `close()` | opens the widget's `screen { }` full screen, or closes it (owl 5) |
@@ -322,7 +352,9 @@ Canvas {
 Styles: `fill:` (a color or gradient), `stroke:`, `width:` (stroke width),
 `cap: round/butt/square`. Without either, a shape is filled with `color:` or
 the foreground. A widget that reads `time` animates every frame while it's on
-screen.
+screen, and only while it reads it: a `time` under an `if` that's false, like a
+backdrop drawn only while music plays, costs nothing (older launchers
+animate whenever `time` appears at all).
 
 ## Shader
 
@@ -458,6 +490,7 @@ The store needs:
 - `meta` with a `description` (10-200 characters), a `version` and a `license`, and ideally a `category`:
   `news`, `dev`, `productivity`, `time`, `world`, `fun`, `home` or `system`
 - every package in `requires`
+- values in commands passed through `sh()` (see Values in commands)
 - nothing personal: no tokens, personal paths or hard-coded location
 - a higher `version` for each update
 - ideally a `preview.png` next to it: the one `owl-check` points to will do

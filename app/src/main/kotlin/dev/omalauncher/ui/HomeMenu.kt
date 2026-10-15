@@ -72,26 +72,26 @@ fun HomeMenu(
         MenuItem("new widget with $agentName") {
             state.homeMenuOpen = false
             when {
-                !linux -> state.linuxOpen = true
-                agent == null -> state.agentsOpen = true
+                !linux -> state.show(SettingsPage.Linux)
+                agent == null -> state.show(SettingsPage.Agents)
                 else -> runtime.terminal(newWidgetCommand(agent.bin), "New widget", agent)
             }
         }
         MenuItem("new app with $agentName") {
             state.homeMenuOpen = false
             when {
-                !linux -> state.linuxOpen = true
-                agent == null -> state.agentsOpen = true
+                !linux -> state.show(SettingsPage.Linux)
+                agent == null -> state.show(SettingsPage.Agents)
                 else -> runtime.terminal(newAppCommand(agent.bin), "New app", agent)
             }
         }
         MenuItem("widget store") {
             state.homeMenuOpen = false
-            state.storeOpen = true
+            state.show(SettingsPage.Store)
         }
         MenuItem("AUR app store") {
             state.homeMenuOpen = false
-            if (linux) state.packagesOpen = true else state.linuxOpen = true
+            if (linux) state.show(SettingsPage.Packages) else state.show(SettingsPage.Linux)
         }
         Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) { ThemeStrip(
                 runtime.themes,
@@ -99,7 +99,7 @@ fun HomeMenu(
                 onPick = ::pickTheme,
                 onBrowse = {
                     state.homeMenuOpen = false
-                    state.themeBrowserOpen = true
+                    state.show(SettingsPage.Themes)
                 },
             ) }
     }

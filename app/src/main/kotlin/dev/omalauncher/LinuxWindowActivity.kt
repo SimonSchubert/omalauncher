@@ -12,16 +12,18 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imeAnimationTarget
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -38,11 +40,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.ui.ExtraKeys
 import dev.omalauncher.ui.KeyboardSink
-import dev.omalauncher.ui.extraKeysWanted
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.linuxWindowInput
@@ -55,7 +58,7 @@ import kotlinx.coroutines.flow.first
  * Shows a single Linux window as its own Android task, so it gets its own
  * Recents card and behaves like a separate app.
  */
-class LinuxWindowActivity : ComponentActivity() {
+class LinuxWindowActivity : InstantActivity() {
     private val runtime get() = (application as App).runtime
     private var window: XdgToplevel? = null
 
@@ -69,13 +72,13 @@ class LinuxWindowActivity : ComponentActivity() {
         }
         this.window = window
         applySystemBars(this, Palette.isLight)
-        setContent {
+        setInstantContent {
             LaunchedEffect(Palette.isLight) { applySystemBars(this@LinuxWindowActivity, Palette.isLight) }
             AppWindow(runtime, window)
-            BackHandler { moveTaskToBack(true) }
+            BackHandler { backInstantly() }
             LaunchedEffect(window) {
                 snapshotFlow { window in runtime.wm.appWindows }.first { !it }
-                finishAndRemoveTask()
+                closeInstantly()
             }
             // Terminals retitle constantly; only a new label changes the Recents card.
             val label = runtime.displayName(window.appId, window.title)
@@ -160,31 +163,47 @@ private fun taskIcon(
     return bmp
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AppWindow(
     runtime: Runtime,
     window: XdgToplevel,
 ) {
     var sink by remember { mutableStateOf<KeyboardSink?>(null) }
-    val background = Palette.surface.toArgb()
+    var surfaceView by remember { mutableStateOf<WindowSurfaceView?>(null) }
+    // Shows wherever the window has yet to draw, as when it grows; the terminal's own background, not a lighter one.
+    val background = Palette.background.toArgb()
+    val density = LocalDensity.current
+    // Where the keyboard ends up, not each frame of its slide, and read here so the extra keys come and go in the same
+    // frame: the window then resizes once, and a terminal reflows once.
+    val keyboard = (WindowInsets.imeAnimationTarget.getBottom(density) - WindowInsets.navigationBars.getBottom(density)).coerceAtLeast(0)
     Box(
         Modifier
             .fillMaxSize()
             .background(Palette.background)
-            .systemBarsPadding()
-            .imePadding(),
+            .systemBarsPadding(),
     ) {
         AndroidView(
             factory = { KeyboardSink(it, runtime.keyboard).also { v -> sink = v } },
             modifier = Modifier.size(1.dp),
         )
-        Column(Modifier.fillMaxSize()) {
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                AndroidView(
-                    factory = { context -> WindowSurfaceView(context, runtime, window) },
-                    update = { it.background = background },
-                    modifier = Modifier.fillMaxSize(),
-                )
+        // Always the whole screen: a SurfaceView that changes size shows its last frame stretched until the next one,
+        // so the keyboard and the extra keys go over it, and only the Linux window gets smaller.
+        AndroidView(
+            factory = { context -> WindowSurfaceView(context, runtime, window).also { surfaceView = it } },
+            update = { it.background = background },
+            modifier = Modifier.fillMaxSize(),
+        )
+        val keyboardHeight = with(density) { keyboard.toDp() }
+        // Where the keyboard is still sliding in, so the window's old frame doesn't show beneath it.
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(keyboardHeight).background(Palette.background))
+        Column(Modifier.fillMaxSize().padding(bottom = keyboardHeight)) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .onSizeChanged { surfaceView?.visibleHeight = it.height },
+            ) {
                 // Over the SurfaceView, which Compose's pointer input doesn't reach.
                 Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window))
                 Box(
@@ -199,16 +218,17 @@ private fun AppWindow(
                     BasicText("⌨", style = Mono.copy(color = Palette.foreground))
                 }
             }
-            // Below the window rather than over it, so the window shrinks and nothing hides behind the keys.
-            if (extraKeysWanted()) ExtraKeys(runtime.keyboard)
+            // Below the window rather than over it, so the window shrinks and nothing hides behind the keys; only over a
+            // docked keyboard (a hardware keyboard's toolbar takes no height, and that keyboard has these keys).
+            if (keyboard > 0) ExtraKeys(runtime.keyboard, Modifier.background(Palette.background))
         }
     }
 }
 
 /**
  * The window's pixels: a [WindowRenderer] draws the Linux surfaces straight
- * into this view's surface, without Compose or bitmaps in between. Its size
- * is the window's size.
+ * into this view's surface, without Compose or bitmaps in between. The
+ * window is as wide as the view and [visibleHeight] tall, at its top.
  */
 private class WindowSurfaceView(
     context: Context,
@@ -219,6 +239,24 @@ private class WindowSurfaceView(
     private val renderer = WindowRenderer(runtime.server, window)
 
     var background by renderer::background
+
+    private var surfaceWidth = 0
+    private var surfaceHeight = 0
+
+    /** How much of the view, from its top, the keyboard and the extra keys leave the window; 0 for all of it. */
+    var visibleHeight = 0
+        set(value) {
+            if (value == field) return
+            field = value
+            layoutWindow()
+        }
+
+    private fun layoutWindow() {
+        if (surfaceWidth == 0) return
+        val h = if (visibleHeight in 1..surfaceHeight) visibleHeight else surfaceHeight
+        renderer.visibleHeight = h
+        runtime.wm.applyAppLayout(window, surfaceWidth, h)
+    }
 
     init {
         holder.addCallback(this)
@@ -243,8 +281,10 @@ private class WindowSurfaceView(
         width: Int,
         height: Int,
     ) {
+        surfaceWidth = width
+        surfaceHeight = height
         renderer.attach(holder.surface, width, height)
-        runtime.wm.applyAppLayout(window, width, height)
+        layoutWindow()
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) = renderer.detach()

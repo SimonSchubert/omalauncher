@@ -3,24 +3,21 @@ package dev.omalauncher.ui
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,46 +28,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import dev.omalauncher.linux.GuestEntry
-import java.io.File
-
-@Composable
-internal fun IconButton(
-    icon: ImageVector,
-    description: String,
-    tint: Color = Palette.foreground,
-    onClick: () -> Unit,
-) {
-    Box(
-        Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(icon, description, Modifier.size(24.dp), colorFilter = ColorFilter.tint(tint))
-    }
-}
-
-@Composable
-internal fun Fab(
-    icon: ImageVector,
-    description: String,
-    modifier: Modifier,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier.size(56.dp).clip(LauncherStyle.shape(16.dp)).background(Palette.accent).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(icon, description, Modifier.size(24.dp), colorFilter = ColorFilter.tint(Palette.background))
-    }
-}
 
 /** The path as tappable segments: / › root › .config. */
 @Composable
@@ -82,7 +46,12 @@ internal fun Breadcrumbs(
     val crumbs = listOf("/" to "/") + parts.indices.map { i -> parts[i] to "/" + parts.take(i + 1).joinToString("/") }
     val state = rememberLazyListState()
     LaunchedEffect(path) { state.scrollToItem(crumbs.lastIndex) }
-    LazyRow(state = state, contentPadding = PaddingValues(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+    LazyRow(
+        Modifier.bleed(PanelPadding),
+        state = state,
+        contentPadding = PaddingValues(horizontal = PanelPadding),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         items(crumbs.size) { i ->
             val (label, target) = crumbs[i]
             val last = i == crumbs.lastIndex
@@ -96,7 +65,7 @@ internal fun Breadcrumbs(
     }
 }
 
-/** Quick jumps, like stock Files' drawer: home, config, the whole system. */
+/** Quick jumps, like stock Files' drawer: home, config, the whole system; the one you're in is in the accent color. */
 @Composable
 internal fun Places(
     path: String,
@@ -108,30 +77,18 @@ internal fun Places(
             listOf("home" to "/root", "config" to "/root/.config", "downloads" to "/root/Downloads", "system" to "/")
                 .filter { exists(it.second) }
         }
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    LazyRow(Modifier.bleed(PanelPadding), contentPadding = PaddingValues(horizontal = PanelPadding - 8.dp)) {
         items(places) { (label, target) ->
-            val active = path == target
-            BasicText(
-                label,
-                Modifier
-                    .clip(LauncherStyle.shape(16.dp))
-                    .background(if (active) Palette.accent else Palette.surface)
-                    .clickable { onNavigate(target) }
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                style = Mono.copy(color = if (active) Palette.background else Palette.foreground),
-            )
+            BracketAction(label, if (path == target) Palette.accent else Palette.muted) { onNavigate(target) }
         }
     }
 }
 
+/** An entry as a settings-style row: folders end in a chevron, selected rows are framed in the accent color. */
 @Composable
 internal fun FileRow(
     entry: GuestEntry,
     selected: Boolean,
-    selecting: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -139,27 +96,26 @@ internal fun FileRow(
     Row(
         Modifier
             .fillMaxWidth()
-            .background(if (selected) Palette.accent.copy(alpha = 0.18f) else Color.Transparent)
+            .frame(if (selected) 2.dp else 0.dp, Palette.accent, if (selected) Palette.accent.copy(alpha = 0.18f) else Palette.surface, radius = 12.dp)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier.size(44.dp).clip(LauncherStyle.shape(22.dp)).background(if (selected) Palette.accent else Palette.surface),
-            contentAlignment = Alignment.Center,
-        ) {
-            val icon =
-                when {
-                    selected -> Icons.Check
-                    entry.isDir -> Icons.Folder
-                    isImage(entry.name) -> Icons.Image
-                    extension(entry.name) in TEXT_EXTENSIONS -> Icons.TextFile
-                    else -> Icons.File
-                }
-            val tint = if (selected) Palette.background else if (entry.isDir) Palette.accent else Palette.foreground
-            Image(icon, null, Modifier.size(22.dp), colorFilter = ColorFilter.tint(tint))
+        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+            if (selected) {
+                Symbol(Glyph.Check, Palette.accent, fontSize = TextSize.Title)
+            } else {
+                val icon =
+                    when {
+                        entry.isDir -> Icons.Folder
+                        isImage(entry.name) -> Icons.Image
+                        extension(entry.name) in TEXT_EXTENSIONS -> Icons.TextFile
+                        else -> Icons.File
+                    }
+                Image(icon, null, Modifier.size(20.dp), colorFilter = ColorFilter.tint(if (entry.isDir) Palette.accent else Palette.muted))
+            }
         }
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             BasicText(
                 entry.name + if (entry.isLink) " ↗" else "",
@@ -175,16 +131,13 @@ internal fun FileRow(
                 }
             BasicText(detail, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small), maxLines = 1)
         }
-        if (selecting && !selected) {
-            Box(Modifier.size(22.dp).border(2.dp, Palette.border, LauncherStyle.shape(11.dp)))
-        }
+        if (entry.isDir) Symbol(Glyph.ChevronRight, Palette.accent, fontSize = TextSize.Title)
     }
 }
 
+/** What to do with the selection, under the list; the count is the panel's title. */
 @Composable
 internal fun SelectionBar(
-    count: Int,
-    onClose: () -> Unit,
     onSelectAll: () -> Unit,
     onCopy: () -> Unit,
     onCut: () -> Unit,
@@ -195,27 +148,24 @@ internal fun SelectionBar(
     onEdit: (() -> Unit)?,
 ) {
     var menu by remember { mutableStateOf(false) }
-    Row(
-        Modifier.fillMaxWidth().height(56.dp).background(Palette.surface).padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(Icons.Close, "clear selection", onClick = onClose)
-        BasicText("$count selected", Modifier.weight(1f).padding(horizontal = 8.dp), style = Mono.copy(fontSize = TextSize.Large))
-        IconButton(Icons.Copy, "copy", onClick = onCopy)
-        IconButton(Icons.Cut, "cut", onClick = onCut)
-        IconButton(Icons.Delete, "delete", tint = Palette.red, onClick = onDelete)
+    BottomBar {
+        BracketAction("copy", Palette.accent, onCopy)
+        BracketAction("cut", Palette.accent, onCut)
+        BracketAction("delete", Palette.red, onDelete)
+        Spacer(Modifier.weight(1f))
         Box {
-            IconButton(Icons.More, "more") { menu = true }
+            BracketAction("more", Palette.muted) { menu = true }
             if (menu) {
                 MenuPopup(
                     listOfNotNull(
                         "select all" to onSelectAll,
                         onRename?.let { "rename" to it },
-                        onEdit?.let { "edit in micro" to it },
+                        onEdit?.let { "edit" to it },
                         onOpenWith?.let { "open with…" to it },
                         onShare?.let { "share" to it },
                     ),
                     onDismiss = { menu = false },
+                    alignment = Alignment.BottomEnd,
                 )
             }
         }
@@ -229,30 +179,32 @@ internal fun PasteBar(
     onCancel: () -> Unit,
     onPaste: () -> Unit,
 ) {
-    Row(
-        Modifier.fillMaxWidth().background(Palette.surface).padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    BottomBar {
         BasicText(
-            (if (count == 1) "1 item" else "$count items") + if (cut) " to move" else " to copy",
-            Modifier.weight(1f),
+            // The button says whether they're copied or moved.
+            if (count == 1) "1 item" else "$count items",
+            Modifier.weight(1f).padding(start = 6.dp),
             style = Mono.copy(color = Palette.muted),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
-        TextButton("cancel", Palette.muted, onCancel)
-        TextButton(if (cut) "move here" else "paste here", Palette.accent, onPaste)
+        BracketAction("cancel", Palette.muted, onCancel)
+        BracketAction(if (cut) "move here" else "paste here", Palette.accent, onPaste)
     }
 }
 
+/** A surface row of [BracketAction]s under the list. */
 @Composable
-internal fun TextButton(
-    label: String,
-    color: Color,
-    onClick: () -> Unit,
-) {
-    BasicText(
-        label,
-        Modifier.clip(LauncherStyle.shape(20.dp)).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 10.dp),
-        style = Mono.copy(color = color, fontSize = TextSize.Item),
+private fun BottomBar(content: @Composable RowScope.() -> Unit) {
+    Row(
+        Modifier
+            .padding(top = 8.dp)
+            .fillMaxWidth()
+            .clip(LauncherStyle.shape(12.dp))
+            .background(Palette.surface)
+            .padding(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
     )
 }
 
@@ -260,8 +212,10 @@ internal fun TextButton(
 internal fun MenuPopup(
     items: List<Pair<String, () -> Unit>>,
     onDismiss: () -> Unit,
+    /** TopEnd drops down from a header; BottomEnd grows up from a bar at the bottom. */
+    alignment: Alignment = Alignment.TopEnd,
 ) {
-    Popup(alignment = Alignment.TopEnd, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
+    Popup(alignment = alignment, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
         MenuItems(items, onDismiss, minWidth = 200.dp, itemPadding = 13.dp, fontSize = TextSize.Item)
     }
 }

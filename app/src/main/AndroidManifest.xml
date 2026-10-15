@@ -59,6 +59,22 @@
             </intent-filter>
         </activity>
 
+        <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
+             websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
+             gone once left. Not exported: the system starts it, and other apps have no reason to. -->
+        <activity
+            android:name=".PinShortcutActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".LinuxWindowActivity"
             android:label="Linux"
@@ -147,14 +163,66 @@
             android:label="Pi"
             android:targetActivity=".LinuxWindowActivity" />
 
+        <activity-alias
+            android:name=".OmpWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_omp"
+            android:label="Oh My Pi"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".OriWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_ori"
+            android:label="Ori"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".MuseWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_muse"
+            android:label="Muse Code"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".KimiWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_kimi"
+            android:label="Kimi"
+            android:targetActivity=".LinuxWindowActivity" />
+
         <activity
             android:name=".FilesActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:exported="false"
+            android:icon="@drawable/files"
             android:label="Files"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:taskAffinity="dev.omalauncher.files"
+            android:theme="@style/Theme.Omalauncher.Window"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".SettingsActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:exported="false"
+            android:label="Settings"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:taskAffinity="dev.omalauncher.settings"
+            android:theme="@style/Theme.Omalauncher.Window"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- One task per file, named after it; launched with the file in the intent's data. -->
+        <activity
+            android:name=".EditorActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:documentLaunchMode="intoExisting"
+            android:exported="false"
+            android:icon="@drawable/editor"
+            android:label="Editor"
+            android:resizeableActivity="true"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
 

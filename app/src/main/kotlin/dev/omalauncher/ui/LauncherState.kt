@@ -19,18 +19,12 @@ import kotlinx.coroutines.Dispatchers
 /** App panel position (above the bar): 0 = closed, 1 = open. Follows the finger while dragging. */
 class LauncherState {
     val drawer = Animatable(0f)
-    var styleOpen by mutableStateOf(false)
 
-    /** The community themes, from the home menu's theme strip or over the style screen. */
-    var themeBrowserOpen by mutableStateOf(false)
-    var agentsOpen by mutableStateOf(false)
-    var storeOpen by mutableStateOf(false)
-    var settingsOpen by mutableStateOf(false)
-    var packagesOpen by mutableStateOf(false)
-    var licensesOpen by mutableStateOf(false)
+    /** Opens a screen of the settings activity, set by the launcher activity; see [show]. */
+    var onSettings: (SettingsPage, Int) -> Unit = { _, _ -> }
 
-    /** The Linux sheet: install, progress, remove. Opened by anything that needs Linux. */
-    var linuxOpen by mutableStateOf(false)
+    /** Opens settings, or one of its screens on its own; the store puts widgets on the page showing now. */
+    fun show(page: SettingsPage = SettingsPage.Settings) = onSettings(page, currentPage)
 
     /** The widget whose share panel is open: a QR code and link, or the store. */
     var sharing by mutableStateOf<dev.omalauncher.widgets.WidgetSpec?>(null)
@@ -43,18 +37,10 @@ class LauncherState {
 
     /** The open drawer or a full-screen panel hides the home screen; animated widgets stop ticking under it. */
     val homeCovered: Boolean
-        get() = drawer.value > 0.99f || settingsOpen || styleOpen || themeBrowserOpen || agentsOpen || storeOpen || packagesOpen || linuxOpen || licensesOpen || shared != null || sharing != null
+        get() = drawer.value > 0.99f || shared != null || sharing != null
 
-    /** Closes every overlay screen (settings and what it opens). */
+    /** Closes every overlay screen (the home menu, widget sharing). */
     fun closeScreens() {
-        styleOpen = false
-        themeBrowserOpen = false
-        agentsOpen = false
-        storeOpen = false
-        packagesOpen = false
-        linuxOpen = false
-        licensesOpen = false
-        settingsOpen = false
         homeMenuOpen = false
         shared = null
         sharing = null
@@ -74,6 +60,9 @@ class LauncherState {
 
     /** Home page currently showing (1-based); the drawer pins apps there. */
     var currentPage by mutableStateOf(1)
+
+    /** The drawer's tab; it stays picked the next time the drawer opens. */
+    var tab by mutableStateOf(DrawerTab.Personal)
 
     private var typed by mutableStateOf("")
 

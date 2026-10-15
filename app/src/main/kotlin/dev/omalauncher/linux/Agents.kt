@@ -20,6 +20,8 @@ data class Agent(
     val description: String,
     /** mise package spec. */
     val pkg: String,
+    /** What starts it without a prompt, when that's more than [bin]. */
+    val command: String = bin,
 ) {
     /** Its activity alias in the manifest (cursor-agent -> CursorAgentWindow), so Recents names its window after it. */
     val windowAlias get() = bin.split('-').joinToString("") { it.replaceFirstChar(Char::uppercase) } + "Window"
@@ -37,10 +39,22 @@ val AGENTS =
         Agent("cursor-agent", "Cursor CLI", "Cursor's agent for the terminal", "cursor-agent"),
         Agent("agy", "Antigravity", "Google's Gemini coding agent", "antigravity-cli"),
         Agent("pi", "Pi", "Minimal, extensible coding agent", "pi"),
+        Agent("omp", "Oh My Pi", "Pi with tools and plugins built in", "github:can1357/oh-my-pi"),
+        Agent("ori", "Ori", "OpenRouter's coding agent", "github:OpenRouterLabs/ori-releases", command = "ori code"),
+        Agent(
+            "muse",
+            "Muse Code",
+            "Meta's coding agent",
+            // Meta's launcher fetches and updates the native binary for this platform.
+            "http:muse[url=https://api.meta.ai/muse-launcher.sh,bin=muse,version_list_url=https://api.meta.ai/muse-code/channels/muse-stable,version_json_path=.version]",
+        ),
+        Agent("kimi", "Kimi", "Moonshot AI's coding agent", "npm:@moonshot-ai/kimi-code"),
     )
 
 /**
  * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, the others as an argument.
+ * Ori's agent is `ori code`, which stays open only with --interactive. Kimi takes a prompt only in
+ * print mode, so the session it ran in is continued after the answer.
  * [readOnly], for reading something untrusted: Claude Code starts in plan mode, where it can read but not
  * run commands or change files whatever the user's settings say. The others have no flag for that we can
  * rely on inside proot, and only have the prompt.
@@ -54,6 +68,8 @@ fun agentInvocation(
     return when {
         agentBin == "opencode" -> "$agentBin --prompt $quoted"
         agentBin == "claude" && readOnly -> "$agentBin --permission-mode plan $quoted"
+        agentBin == "ori" -> "ori code --interactive --prompt $quoted"
+        agentBin == "kimi" -> "kimi --prompt $quoted && kimi --continue"
         else -> "$agentBin $quoted"
     }
 }
@@ -140,7 +156,7 @@ class AgentStore(
     fun managed(): List<Managed> =
         installed.map { agent ->
             Managed.text(File(proot.applications, "agent-${agent.bin}.desktop"), Policy.Owned) {
-                "[Desktop Entry]\nType=Application\nName=${agent.name}\nTerminal=true\nExec=${agent.bin}\nIcon=${bundledIcon("agent-${agent.bin}")}\n"
+                "[Desktop Entry]\nType=Application\nName=${agent.name}\nTerminal=true\nExec=${agent.command}\nIcon=${bundledIcon("agent-${agent.bin}")}\n"
             }
         } + codexConfig()
 

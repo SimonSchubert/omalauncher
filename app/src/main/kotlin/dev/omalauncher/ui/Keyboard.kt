@@ -142,7 +142,7 @@ class KeyboardSink(
         isFocusableInTouchMode = true
     }
 
-    /** Whether the field was last offered as plain text, for a Chinese, Japanese or Korean keyboard. */
+    /** Whether the field last allowed suggestions for a Chinese, Japanese or Korean keyboard. */
     private var cjk = false
 
     /** Restarts the field when the keyboard switches between a CJK language and another one. */

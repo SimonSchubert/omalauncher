@@ -59,6 +59,12 @@ class ThemeCatalog(
         }
     }
 
+    /** The entry for [repo], from the cached page when the catalog wasn't opened since the launcher started. */
+    fun entryFor(repo: ThemeRepo): CatalogTheme? =
+        entries
+            .ifEmpty { runCatching { parse(page.readText()) }.getOrDefault(emptyList()) }
+            .firstOrNull { it.repo.label.equals(repo.label, ignoreCase = true) }
+
     /** [theme]'s screenshot, downloaded once. */
     suspend fun image(theme: CatalogTheme): File? =
         withContext(Dispatchers.IO) {

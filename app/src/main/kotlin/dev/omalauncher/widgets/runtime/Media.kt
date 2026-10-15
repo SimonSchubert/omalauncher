@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets.runtime
 
+import android.app.ActivityOptions
 import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
@@ -10,6 +11,7 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -231,15 +233,45 @@ class Media(
         }
         val c = controller() ?: return
         val t = c.transportControls
+        val s = c.playbackState
+        // A session left in an error state, or one that offers no play action, ignores play(): YouTube without
+        // Premium keeps its session around with "Required premium account to perform action in background".
+        // Open the app instead, where playing works, rather than a button that does nothing.
+        val canPlay = s?.state != PlaybackState.STATE_ERROR && (s == null || s.actions and (PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PLAY_PAUSE) != 0L)
         when (command) {
-            "play" -> t.play()
+            "play" -> if (canPlay) play(c) else open(c)
             "pause" -> t.pause()
-            "toggle" -> if (c.playbackState?.state == PlaybackState.STATE_PLAYING) t.pause() else t.play()
+            "toggle" -> if (s?.state == PlaybackState.STATE_PLAYING) t.pause() else if (canPlay) play(c) else open(c)
             "next" -> t.skipToNext()
             "previous" -> t.skipToPrevious()
-            // send() throws CanceledException, which isn't a RuntimeException: the tap handler wouldn't catch it.
-            "open" -> c.sessionActivity?.let { runCatching { it.send() } } ?: context.packageManager.getLaunchIntentForPackage(c.packageName)?.let { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            "open" -> open(c)
         }
+    }
+
+    // An app paused for a while gets frozen by Android, and the play command waits until something thaws it:
+    // the button seems dead (Spotify after a long pause). If it hasn't started playing or loading shortly
+    // after, open the app, which thaws it so the waiting play goes through.
+    private fun play(c: MediaController) {
+        c.transportControls.play()
+        main.postDelayed({
+            if (c.playbackState?.state !in starting) open(c)
+        }, 2000)
+    }
+
+    private val starting = setOf(PlaybackState.STATE_PLAYING, PlaybackState.STATE_BUFFERING, PlaybackState.STATE_CONNECTING, PlaybackState.STATE_SKIPPING_TO_NEXT, PlaybackState.STATE_SKIPPING_TO_PREVIOUS, PlaybackState.STATE_SKIPPING_TO_QUEUE_ITEM)
+
+    // send() throws CanceledException, which isn't a RuntimeException: the tap handler wouldn't catch it.
+    private fun open(c: MediaController) {
+        c.sessionActivity?.let { runCatching { it.send(context, 0, null, null, null, null, allowLaunch()) } }
+            ?: context.packageManager.getLaunchIntentForPackage(c.packageName)?.let { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+
+    // Since Android 14 a PendingIntent only starts an activity from a backgrounded app (the player is cached
+    // by now) when the sender lends it its own right to: the launcher, on screen, has to opt in or it's blocked.
+    private fun allowLaunch(): Bundle? {
+        if (Build.VERSION.SDK_INT < 34) return null
+        val mode = if (Build.VERSION.SDK_INT >= 36) ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE else ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+        return ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(mode).toBundle()
     }
 
     fun openAccessSettings() {

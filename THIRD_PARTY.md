@@ -22,6 +22,10 @@ agent in the launcher, which is not affiliated with or endorsed by any of them.
 | `agent-opencode` | opencode | opencode | @lobehub/icons (MIT) |
 | `agent-pi` | Pi | pi.dev | drawn for Omalauncher, a π in the colors of Pi's mark |
 | `agent-crush` | Crush | Charm | redrawn from Charm's logo |
+| `agent-omp` | Oh My Pi | can1357 | [oh-my-pi](https://github.com/can1357/oh-my-pi)'s icon (MIT) |
+| `agent-ori` | OpenRouter | OpenRouter | @lobehub/icons (MIT) |
+| `agent-muse` | Meta | Meta | @lobehub/icons (MIT) |
+| `agent-kimi` | Kimi | Moonshot AI | @lobehub/icons (MIT) |
 
 ## Fonts
 

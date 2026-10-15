@@ -47,6 +47,15 @@ class ThemeDirsTest {
         assertEquals(listOf("0-extra.webp", "1.jpg", "2.png"), theme.backgrounds().map { it.name })
     }
 
+    @Test fun onlyExtraBackgroundsAreRemovable() {
+        write("builtin/nord/colors.toml", colors("#2e3440"))
+        write("builtin/nord/backgrounds/1.jpg")
+        write("user/nord/backgrounds/2.png")
+        write("backgrounds/nord/0-extra.webp")
+        val theme = dirs.load("nord")!!
+        assertEquals(listOf("0-extra.webp"), theme.backgrounds().filter(theme::isExtraBackground).map { it.name })
+    }
+
     @Test fun overrideWithoutColorsKeepsBuiltInColors() {
         write("builtin/nord/colors.toml", colors("#2e3440"))
         write("user/nord/backgrounds/2.png")

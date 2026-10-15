@@ -23,6 +23,8 @@ class OpenBridge(
     private val context: Context,
     private val proot: Proot,
     private val onOpenFiles: (String) -> Unit,
+    /** A guest path to edit, and the host path of the FIFO that gets the reply once it's closed. */
+    private val onEdit: (String, String) -> Unit,
 ) {
     private val fifo = File(proot.runtimeDir, "open.fifo")
     private val guestFifo = "${Proot.GUEST_RUNTIME_DIR}/${fifo.name}"
@@ -51,6 +53,11 @@ class OpenBridge(
         val url = target.trim()
         // Written by the omarchy-files shim: open the Files app at a guest path.
         if (url.startsWith(FILES_PREFIX)) return onOpenFiles(url.removePrefix(FILES_PREFIX))
+        // Written by the omarchy-edit shim: its reply FIFO (no spaces, made by mktemp) and the file.
+        if (url.startsWith(EDIT_PREFIX)) {
+            val (reply, path) = url.removePrefix(EDIT_PREFIX).split(' ', limit = 2).takeIf { it.size == 2 } ?: return
+            return onEdit(path, proot.hostFile(reply).path)
+        }
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
             Log.i(TAG, "ignoring non-URL $url")
             return
@@ -82,10 +89,33 @@ class OpenBridge(
                 timeout 2 sh -c 'printf "%s\n" "${'$'}1" > $guestFifo' sh "$FILES_PREFIX${'$'}dir"
                 """.trimIndent() + "\n"
             },
+            Managed.text(File(bin, EDIT_COMMAND), Policy.Owned, executable = true) {
+                """
+                #!/bin/sh
+                # omalauncher: $EDIT_COMMAND, Linux's ${'$'}EDITOR: edits a file in the launcher's editor and waits
+                # until it's closed. micro gets anything else (options, several files, a folder), files the
+                # editor can't take (big, binary), and everything while the launcher doesn't answer (see OpenBridge.kt).
+                [ ${'$'}# -eq 1 ] && [ ! -d "${'$'}1" ] || exec micro "${'$'}@"
+                case ${'$'}1 in -* | +*) exec micro "${'$'}@" ;; esac
+                file=${'$'}(realpath -m -- "${'$'}1") || exec micro "${'$'}@"
+                reply=${'$'}(mktemp -u ${Proot.GUEST_RUNTIME_DIR}/edit.XXXXXX)
+                mkfifo -m 600 "${'$'}reply" || exec micro "${'$'}@"
+                trap 'rm -f "${'$'}reply"; exit 130' INT TERM HUP
+                if timeout 2 sh -c 'printf "%s\n" "${'$'}1" > $guestFifo' sh "$EDIT_PREFIX${'$'}reply ${'$'}file"; then
+                    read -r answer < "${'$'}reply"
+                    rm -f "${'$'}reply"
+                    [ "${'$'}answer" = micro ] && exec micro "${'$'}@"
+                    exit 0
+                fi
+                rm -f "${'$'}reply"
+                exec micro "${'$'}@"
+                """.trimIndent() + "\n"
+            },
         )
     }
 
     private companion object {
         const val FILES_PREFIX = "omarchy-files:"
+        const val EDIT_PREFIX = "omarchy-edit:"
     }
 }

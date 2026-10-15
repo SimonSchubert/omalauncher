@@ -43,15 +43,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** One row's height, keycap and the gap around it; the bar is two rows, like Termux's default. */
-private val RowHeight = 40.dp
-private val KeyGap = 3.dp
-private val FrameWidth = 2.dp
+internal val KeyRowHeight = 40.dp
+internal val KeyGap = 3.dp
+internal val FrameWidth = 2.dp
 
 /** The gap between the bar and the keyboard, and to the screen's sides: the tiles' gap. */
 private val Gap = 6.dp
 
 /** The bar's full height, gap included; the home screen lifts a typing tile by this much more. */
-val ExtraKeysHeight = RowHeight * 2 + (FrameWidth + KeyGap) * 2 + Gap
+val ExtraKeysHeight = KeyRowHeight * 2 + (FrameWidth + KeyGap) * 2 + Gap
 
 private sealed interface ExtraKey
 
@@ -128,7 +128,7 @@ fun ExtraKeys(
             .padding(KeyGap),
     ) {
         for (row in Layout) {
-            Row(Modifier.fillMaxWidth().height(RowHeight)) {
+            Row(Modifier.fillMaxWidth().height(KeyRowHeight)) {
                 for (key in row) {
                     val cap = Modifier.weight(1f).fillMaxHeight().padding(KeyGap)
                     when (key) {
@@ -225,7 +225,7 @@ private fun StickyKey(
 }
 
 @Composable
-private fun KeyCap(
+internal fun KeyCap(
     modifier: Modifier,
     fill: Color,
     outline: Color? = null,
@@ -242,7 +242,7 @@ private fun KeyCap(
 }
 
 /** Runs [press] for each touch on the key, with a scope to start key repeat or long-press timers in. */
-private suspend fun PointerInputScope.presses(press: suspend AwaitPointerEventScope.(CoroutineScope) -> Unit) =
+internal suspend fun PointerInputScope.presses(press: suspend AwaitPointerEventScope.(CoroutineScope) -> Unit) =
     coroutineScope {
         val scope = this
         awaitEachGesture {
@@ -251,5 +251,5 @@ private suspend fun PointerInputScope.presses(press: suspend AwaitPointerEventSc
         }
     }
 
-private const val RepeatDelay = 400L
-private const val RepeatInterval = 50L
+internal const val RepeatDelay = 400L
+internal const val RepeatInterval = 50L

@@ -67,7 +67,16 @@ class Review(
             !in Catalog.CATEGORIES -> errors += "category should be one of ${Catalog.CATEGORIES.joinToString(", ")} (got \"$category\")"
         }
         if (p.size == null) warnings += "no size: set size: 3x2 so it's placed at the size you designed it for"
-        warnings += risks(p.commands)
+        // Shared links warn about these; the store doesn't take them: what they run can change after review.
+        val unquoted = p.commands.filter { UNQUOTED.containsMatchIn(it) }
+        for (c in unquoted) {
+            errors += "${c.removeSuffix(" built from widget values")} is put together from widget values that aren't quoted: " +
+                "write each one as ${'$'}{sh(value)}, outside any quotes, so it stays one word and can't run as code " +
+                "(run(\"notify-send ${'$'}{sh(title)}\"), not '${'$'}{title}' or \"${'$'}{sh(title)}\"). " +
+                "Other functions go inside it, ${'$'}{sh(upper(title))}, and a heredoc (<<) can't take values. " +
+                "See \"Values in commands\" in the widgets README"
+        }
+        warnings += risks(p.commands - unquoted.toSet())
 
         val before = previous
         if (before != null && version != null) {
@@ -137,10 +146,20 @@ class Review(
 
         private val IF_LINUX = Regex.escape(Compiler.IF_LINUX)
 
+        /** What the compiler lists for a command that isn't fixed text and doesn't quote its values (Compiler's `listCommand`). */
+        private val UNQUOTED = Regex("""(\(…\)|^Terminal command) built from widget values$""")
+
+        /** Programs that run code they're given: shells and script interpreters. */
+        private const val INTERPRETERS = "(ba|z|da|fi)?sh|python3?|node|perl|ruby|php|lua|bun|deno|tclsh|awk -f"
+
         /** Patterns a reviewer should look at twice. Warnings, not errors: some widgets have good reasons. */
         val RISKS =
             listOf(
-                Regex("""(curl|wget)[^|\n]*\|\s*(ba|z)?sh\b""") to "pipes a download into a shell",
+                Regex("""(curl|wget)[^|\n]*\|\s*($INTERPRETERS)\b(?!\s+-c\b)""") to "pipes a download into a shell or interpreter",
+                Regex("""\b($INTERPRETERS|source)\s+<\(\s*(curl|wget)\b|-c\s+["']?\$\(\s*(curl|wget)\b""") to "runs a download as code",
+                // Saved first, then run: what it runs is on a server and can change after anyone read the widget.
+                Regex("""(?s)\b(curl|wget)\b.*(^|[\s;&|(])($INTERPRETERS|source)\s+[^-\s<]""", RegexOption.MULTILINE) to "downloads something and runs a file",
+                Regex("""(?s)\b(curl|wget)\b.*\bchmod\s+(-\S+\s+)*([ugoa]*\+[rws]*x|[0-7]*[1357][0-7]{2}\b)""") to "downloads something and makes a file executable",
                 Regex("""\brm\s+-[a-zA-Z]*r[a-zA-Z]*f|\brm\s+-[a-zA-Z]*f[a-zA-Z]*r""") to "deletes recursively",
                 Regex("""\bsudo\b|\bsu\s""") to "asks for root",
                 Regex("""\bbase64\s+(-d|--decode)""") to "decodes base64 (hidden code?)",
@@ -152,7 +171,10 @@ class Review(
                 Regex("""^($IF_LINUX)?read file .*(/\.ssh|/\.gnupg|/\.aws|\.netrc|/\.config/gh|token|secret|passw)""", RegexOption.IGNORE_CASE) to "reads a private file",
                 // What the compiler lists for a command that isn't fixed text (Compiler's `commands`): it could be
                 // anything, a download for one, and can change after anyone read the widget.
-                Regex("""(\(…\)|^Terminal command) built from widget values$""") to "is put together while the widget runs, so what it runs can't be shown here",
+                UNQUOTED to "is put together while the widget runs, so what it runs can't be shown here",
+                // sh(...) keeps a value one word, but not one that is the program, or code for one.
+                Regex("""(^|[;&|(`\n]|\$\()\s*${Compiler.VALUE}""") to "runs a program a widget value names",
+                Regex("""\b(eval|source|$INTERPRETERS)\s+(-\S+\s+)*${Compiler.VALUE}""") to "runs a widget value as code",
                 Regex("""^http GET \(a URL built from widget values\)$""") to "fetches a URL put together while the widget runs, which can send its data anywhere",
                 Regex("""^($IF_LINUX)?read file \(a path built from widget values\)$""") to "reads a file whose path is put together while the widget runs",
                 Regex("""^read Android notifications""") to "sees every notification on the phone; check nothing sends them anywhere",

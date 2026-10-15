@@ -31,7 +31,7 @@ class ExamplesTest {
     @Test fun agentWidgetsCompile() {
         for (agent in dev.omalauncher.linux.AGENTS) {
             val p = compile(agent.bin, agentWidget(agent))
-            assertEquals(listOf("cd ~ && ${agent.bin}; exec bash"), p.commands)
+            assertEquals(listOf("cd ~ && ${agent.command}; exec bash"), p.commands)
         }
     }
 

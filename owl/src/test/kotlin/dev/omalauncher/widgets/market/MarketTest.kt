@@ -51,6 +51,43 @@ class MarketTest {
         assertTrue(w.any { it.contains("deletes recursively") })
     }
 
+    @Test fun downloadsThatRunAreFlagged() {
+        fun risks(cmd: String) = Review.risks(listOf(cmd))
+        assertTrue(risks("curl -s https://x.io/a.py | python3").single().contains("into a shell or interpreter"))
+        assertTrue(risks("bash <(curl -s https://x.io/a)").single().contains("runs a download as code"))
+        assertTrue(risks("sh -c \"$(wget -qO- https://x.io/a)\"").single().contains("runs a download as code"))
+        assertTrue(risks("curl -so /tmp/u.py https://x.io/u.py && python /tmp/u.py").single().contains("runs a file"))
+        assertTrue(risks("wget -qO ~/.cache/u https://x.io/u\nsource ~/.cache/u").single().contains("runs a file"))
+        assertTrue(risks("curl -so ~/bin/u https://x.io/u; chmod +x ~/bin/u; ~/bin/u").any { it.contains("executable") })
+        // Downloads that are only read, and scripts that aren't downloads, are fine.
+        assertTrue(risks("curl -fsm 15 -o \"\$d/a.png\" https://x.io/a.png || rm -f \"\$d/a.png\"").isEmpty())
+        assertTrue(risks("curl -s https://x.io/a.json | jq -r .name").isEmpty())
+        assertTrue(risks("curl -s https://x.io/a.json | python3 -c 'import json,sys; print(1)'").isEmpty())
+        assertTrue(risks("python3 ~/bin/stats.py").isEmpty())
+        // jq's `.` and a download read through a redirect are data too.
+        assertTrue(risks("read -r a b < <(curl -s https://x.io/a.json | jq -r '.a, .b')").isEmpty())
+        assertTrue(risks("curl -s https://x.io/a.json | jq '.[] | . as \$g | . + {t: \$g.t}'").isEmpty())
+        assertTrue(risks("ssh host uptime; curl -s https://x.io").isEmpty())
+    }
+
+    @Test fun theStoreTakesValuesInCommandsOnlyQuoted() {
+        fun review(cmd: String) =
+            Review(
+                "widgets/simon/disk/widget.owl",
+                good.replace("license: \"MIT\"", "license: \"MIT\"; owl: 6")
+                    .replace("Text { text: df }", "state v = \"x\"\n  onTap: run(\"$cmd\")\n  Text { text: df }"),
+            )
+        val bad = review("notify-send ${'$'}{v}")
+        assertTrue(bad.errors.single().contains("run(…) is put together from widget values that aren't quoted"))
+        val ok = review("notify-send ${'$'}{sh(v)}")
+        assertEquals(emptyList<String>(), ok.errors)
+        assertTrue(ok.markdown().contains("notify-send ${Compiler.VALUE}"))
+        assertTrue(review("${'$'}{sh(v)} --help").warnings.any { it.contains("runs a program a widget value names") })
+        assertTrue(review("bash -c ${'$'}{sh(v)}").warnings.any { it.contains("runs a widget value as code") })
+        // A shared link only warns.
+        assertTrue(Shared(good.replace("license: \"MIT\"", "license: \"MIT\"; owl: 6").replace("Text { text: df }", "state v = \"x\"\n onTap: run(\"echo ${'$'}{v}\")\n Text { text: df }")).risks.single().contains("can't be shown here"))
+    }
+
     @Test fun catalogRoundTrips() {
         val e = Review("widgets/simon/disk/widget.owl", good).entry("widgets/simon/disk/preview.png")
         val parsed = Catalog.parse(Catalog.write(listOf(e), "2026-09-30T00:00:00Z"))

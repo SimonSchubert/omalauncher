@@ -21,7 +21,8 @@ interface Host {
 
     /**
      * The tile's size: cols and rows in grid cells, tileWidth and tileHeight in dp; null until it's laid out.
-     * Also screenWidth and screenHeight (its screen's size), and linux: whether Linux is installed and running.
+     * Also screenWidth and screenHeight (its screen's size), linux: whether Linux is installed and running,
+     * and corners: the launcher's corner style as a radius scale, 0 (edge), 0.5 (soft) or 1 (round).
      */
     fun tile(name: String): Value = Null
 

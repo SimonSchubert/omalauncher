@@ -189,7 +189,7 @@ class GuestThemeConfig(
         val BASHRC =
             """
             export OMARCHY_PATH=/root/.local/share/omarchy
-            export EDITOR=micro
+            export EDITOR=omarchy-edit VISUAL=omarchy-edit
             [[ $- != *i* ]] && return
             [[ -f ${'$'}OMARCHY_PATH/default/bash/rc ]] && source "${'$'}OMARCHY_PATH/default/bash/rc"
             """.trimIndent() + "\n"

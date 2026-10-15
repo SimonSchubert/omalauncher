@@ -34,6 +34,9 @@ object LauncherData {
     /** Widget files. The guest sees ~/.config/omalauncher/widgets. */
     fun widgetsDir(context: Context) = File(context.filesDir, "widgets")
 
+    /** style.toml and its defaults; see [dev.omalauncher.theme.StyleStore]. The guest sees ~/.config/omalauncher/style. */
+    fun styleDir(context: Context) = File(context.filesDir, "style")
+
     /** Manifest of the launcher-side [dev.omalauncher.upgrade.Provisioner]; the guest's is managed.json. */
     const val LAUNCHER_MANIFEST = "launcher-managed.json"
     const val GUEST_MANIFEST = "managed.json"

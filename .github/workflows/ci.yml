@@ -21,6 +21,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # Unit tests only: a full build needs Termux's proot (scripts/fetch-proot.sh).
+      # Unit tests only: a full build needs proot, built by scripts/fetch-proot.sh.
       - name: Test
         run: ./gradlew :owl:test :app:testDebugUnitTest :owl:owlJar
