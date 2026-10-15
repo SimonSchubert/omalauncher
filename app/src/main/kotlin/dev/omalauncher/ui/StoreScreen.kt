@@ -59,7 +59,7 @@ import kotlinx.coroutines.launch
 /**
  * The store, with a toggle between widgets and apps. Widgets: built-in terminal tiles (a plain shell,
  * and one per installed coding agent), then reviewed widgets from the marketplace repo as a grid of
- * previews, with search and category tabs. Apps: the reviewed apps, the same way. Tapping one opens
+ * previews, with search and category tabs (and one for the newest widgets). Apps: the reviewed apps, the same way. Tapping one opens
  * its page, which shows what it installs and runs; from there a widget goes on the current page and
  * an app in the drawer (or either updates).
  */
@@ -202,7 +202,14 @@ private fun StoreList(
         val tabs =
             buildList {
                 add(ALL to market.entries.size)
-                for (c in Catalog.CATEGORIES) market.entries.count { it.category == c }.takeIf { it > 0 }?.let { add(c to it) }
+                // There even when nothing is new.
+                if (!apps) add(NEW to market.entries.count { it.new })
+                // The biggest categories first, ties in the catalog's order. Ones the store added after this launcher was built
+                // get a tab too, so a new category doesn't wait for an update.
+                val known = { c: String -> Catalog.CATEGORIES.indexOf(c).takeIf { it >= 0 } ?: Int.MAX_VALUE }
+                market.entries.mapNotNull { it.category }.filter { it != OTHER }.groupingBy { it }.eachCount().entries
+                    .sortedWith(compareBy({ -it.value }, { known(it.key) }, { it.key }))
+                    .forEach { (c, n) -> add(c to n) }
                 market.entries.count { it.category == null }.takeIf { it > 0 }?.let { add(OTHER to it) }
                 if (installed.isNotEmpty()) add(INSTALLED to installed.size)
             }
@@ -213,11 +220,14 @@ private fun StoreList(
                 .filter { e ->
                     when (filter.tab) {
                         ALL -> true
+                        NEW -> e.new
                         INSTALLED -> e in installed
                         OTHER -> e.category == null
                         else -> e.category == filter.tab
                     }
                 }.filter { e -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { q in it.lowercase() } }
+                // Newest first; a stable sort, so a day's widgets keep the catalog's order.
+                .let { l -> if (filter.tab == NEW) l.sortedByDescending { it.added } else l }
         val updates = installed.count { market.hasUpdate(it) }
 
         SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = "search ${market.entries.size} $noun")
@@ -268,6 +278,7 @@ private fun StoreList(
                         market.loading && market.entries.isEmpty() -> BasicText("loading…", style = Mono.copy(color = Palette.muted))
                         market.error != null && market.entries.isEmpty() -> BasicText(market.error.orEmpty(), style = Mono.copy(color = Palette.red))
                         market.entries.isEmpty() -> BasicText("no $noun yet", style = Mono.copy(color = Palette.muted))
+                        shown.isEmpty() && q.isEmpty() && filter.tab == NEW -> BasicText("no new $noun", style = Mono.copy(color = Palette.muted))
                         shown.isEmpty() -> BasicText("nothing matches \"${filter.query.trim()}\"", style = Mono.copy(color = Palette.muted))
                     }
                 }
@@ -278,6 +289,7 @@ private fun StoreList(
 }
 
 private const val ALL = "all"
+private const val NEW = "new"
 private const val OTHER = "other"
 private const val INSTALLED = "installed"
 
@@ -369,7 +381,10 @@ private fun Card(
                 }
             }
         }
-        BasicText(e.name, style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (e.new) NewBadge()
+        }
         val (status, color) =
             when {
                 busy != null -> busy to Palette.accent
@@ -382,6 +397,15 @@ private fun Card(
         BasicText(status, style = Mono.copy(color = color, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
+
+/** Marks an entry added to the store in the last few days, beside its name; its status stays as it is. */
+@Composable
+private fun NewBadge() =
+    BasicText(
+        "new",
+        Modifier.frame(1.dp, Palette.accent, Palette.accent.copy(alpha = 0.15f), radius = 6.dp).padding(horizontal = 5.dp, vertical = 1.dp),
+        style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
+    )
 
 /** A widget's or app's page: a large preview, what it is, what it installs and runs, and the button that adds it. */
 @Composable
@@ -423,7 +447,10 @@ private fun Detail(
             }
         }
         Spacer(Modifier.height(4.dp))
-        BasicText(e.name, style = Mono.copy(fontSize = TextSize.Title))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Title))
+            if (e.new) NewBadge()
+        }
         val size = e.size?.let { " · ${it.first}x${it.second}" } ?: ""
         BasicText("${e.category ?: OTHER} · ${e.author} · v${e.version} · ${e.license}$size", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
         BasicText(e.description, style = Mono.copy(fontSize = TextSize.Body))

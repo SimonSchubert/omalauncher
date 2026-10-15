@@ -549,7 +549,7 @@ can't). By hand, open a pull request that adds it as `widgets/<github-username>/
 The store needs:
 
 - `meta` with a `description` (10-200 characters), a `version` and a `license`, and ideally a `category`:
-  `news`, `dev`, `productivity`, `time`, `world`, `fun`, `home` or `system`
+  `news`, `dev`, `productivity`, `time`, `world`, `sport`, `finance`, `media`, `games`, `pets`, `fun`, `home` or `system`
 - every package in `requires`
 - values in commands passed through `sh()` (see Values in commands)
 - nothing personal: no tokens, personal paths or hard-coded location

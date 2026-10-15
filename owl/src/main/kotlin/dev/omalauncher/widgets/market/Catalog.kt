@@ -4,11 +4,13 @@ import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.Json
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Num
+import dev.omalauncher.widgets.lang.Bool
 import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.num
+import java.time.LocalDate
 
 /**
  * One widget in the marketplace catalog (index.json). Built by CI from the
@@ -37,6 +39,10 @@ data class CatalogEntry(
     val category: String? = null,
     /** Previews drawn in each Omarchy theme, by theme name (paths relative to the catalog); [preview] is the fallback. */
     val themePreviews: Map<String, String> = emptyMap(),
+    /** The UTC day of the commit that added it to the store repo, as `YYYY-MM-DD`; null when git couldn't tell. */
+    val added: String? = null,
+    /** Added in the last [Catalog.NEW_DAYS] days, as of the catalog's [Catalog.write]; the store publishes often enough to keep it current. */
+    val new: Boolean = false,
 ) {
     /** The preview drawn in [theme], or the default one. */
     fun previewFor(theme: String?) = themePreviews[theme] ?: preview
@@ -55,7 +61,19 @@ object Catalog {
     const val FORMAT = 1
 
     /** What `meta { category: ... }` may say, in the order the store shows them. */
-    val CATEGORIES = listOf("news", "dev", "productivity", "time", "world", "fun", "home", "system")
+    val CATEGORIES = listOf("news", "dev", "productivity", "time", "world", "sport", "finance", "media", "games", "pets", "fun", "home", "system")
+
+    /** A widget is new on the day it was added and the [NEW_DAYS] - 1 days after, in UTC. */
+    const val NEW_DAYS = 3L
+
+    /** Whether a widget [added] on that day is new on [today]; a missing, malformed or future date never is. */
+    fun isNew(
+        added: String?,
+        today: LocalDate,
+    ): Boolean {
+        val day = added?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return false
+        return day <= today && day > today.minusDays(NEW_DAYS)
+    }
 
     private val ID = Regex("""[a-z0-9][a-z0-9-]{0,38}/[a-z0-9][a-z0-9-]{0,38}""")
 
@@ -95,6 +113,8 @@ object Catalog {
             owl = f["owl"]?.num()?.toInt() ?: 1,
             category = s("category"),
             themePreviews = (f["themes"] as? Obj)?.fields.orEmpty().mapNotNull { (k, v) -> (v as? Str)?.v?.let { k to it } }.toMap(),
+            added = s("added"),
+            new = (f["new"] as? Bool)?.v == true,
         )
     }
 
@@ -144,6 +164,8 @@ object Catalog {
                 sb.append(e.themePreviews.entries.joinToString(",") { (t, p) -> "\n        ${q(t)}: ${q(p)}" })
                 sb.append("\n      }")
             }
+            e.added?.let { sb.append(",\n      \"added\": ${q(it)}") }
+            if (e.new) sb.append(",\n      \"new\": true")
             sb.append("\n    }")
         }
         sb.append("\n  ]\n}\n")

@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 
 class MarketTest {
     private val good =
@@ -146,6 +147,25 @@ class MarketTest {
         val apps = Catalog.write(listOf(e), "2026-10-15T00:00:00Z").replace("\"widgets\": [", "\"apps\": [")
         assertEquals(e.id, Catalog.parse(apps, "apps").single().id)
         assertTrue(Catalog.parse(apps).isEmpty())
+    }
+
+    @Test fun newLastsThreeUtcDaysFromTheDayAdded() {
+        val today = LocalDate.parse("2026-10-21")
+        assertTrue(Catalog.isNew("2026-10-21", today))
+        assertTrue(Catalog.isNew("2026-10-19", today))
+        assertFalse(Catalog.isNew("2026-10-19", today.plusDays(1)))
+        assertFalse(Catalog.isNew("2026-10-22", today))
+        assertFalse(Catalog.isNew(null, today))
+        assertFalse(Catalog.isNew("last week", today))
+    }
+
+    @Test fun addedAndNewRoundTripAndOlderCatalogsHaveNeither() {
+        val e = Review("widgets/simon/disk/widget.owl", good).entry(null).copy(added = "2026-10-15", new = true)
+        val index = Catalog.write(listOf(e), "2026-10-15T00:00:00Z")
+        assertEquals(e, Catalog.parse(index).single())
+        val old = Catalog.parse(index.replace(",\n      \"added\": \"2026-10-15\",\n      \"new\": true", "")).single()
+        assertEquals(null, old.added)
+        assertFalse(old.new)
     }
 
     @Test fun aNewerCatalogFormatAsksForAnUpdate() {

@@ -7,6 +7,8 @@ import dev.omalauncher.widgets.market.Catalog
 import dev.omalauncher.widgets.market.Review
 import java.io.File
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlin.system.exitProcess
 
 private const val USAGE = """owl: the widget language checker
@@ -89,9 +91,13 @@ private fun programs(files: List<String>): Int {
     return 0
 }
 
-/** Every widget that passes review goes into the catalog; broken ones are left out and reported on stderr. */
+/**
+ * Every widget that passes review goes into the catalog; broken ones are left out and reported on stderr.
+ * Each is dated by the commit that added it (needs the full history) and marked new for its first [Catalog.NEW_DAYS] days.
+ */
 private fun index(args: List<String>): Int {
     val repo = File(args.firstOrNull() ?: usage())
+    val today = LocalDate.now(ZoneOffset.UTC)
     val entries =
         File(repo, "widgets").walkTopDown().filter { it.name == "widget.owl" }.sortedBy { it.path }.mapNotNull { f ->
             val path = f.relativeTo(repo).invariantSeparatorsPath
@@ -105,10 +111,28 @@ private fun index(args: List<String>): Int {
             val themes =
                 File(f.parentFile, "previews").listFiles { p -> p.extension in setOf("webp", "png") }.orEmpty().sortedBy { it.name }
                     .associate { it.nameWithoutExtension to it.relativeTo(repo).invariantSeparatorsPath }
-            r.entry(preview, themes)
+            val added = firstCommit(repo, path)
+            r.entry(preview, themes).copy(added = added, new = Catalog.isNew(added, today))
         }.toList()
     val order = File(repo, "order.txt").takeIf { it.exists() }?.readText().orEmpty()
     File(repo, "index.json").writeText(Catalog.write(Catalog.ordered(entries, order), Instant.now().toString()))
     System.err.println("index.json: ${entries.size} widgets")
     return 0
 }
+
+/**
+ * The UTC day [path] was first committed to [repo], or null outside git or in a shallow clone, where every
+ * file looks added by the one commit there: undated rather than all new at once.
+ */
+private fun firstCommit(
+    repo: File,
+    path: String,
+): String? =
+    runCatching {
+        fun git(vararg a: String) =
+            ProcessBuilder("git", "-C", repo.path, *a).redirectErrorStream(true).apply { environment()["TZ"] = "UTC" }.start().let { p ->
+                p.inputStream.bufferedReader().readText().trim().takeIf { p.waitFor() == 0 }
+            }
+        if (git("rev-parse", "--is-shallow-repository") != "false") return null
+        git("log", "--diff-filter=A", "--follow", "--date=format-local:%Y-%m-%d", "--format=%cd", "--", path)?.lines()?.lastOrNull()?.takeIf { it.isNotBlank() }
+    }.getOrNull()
