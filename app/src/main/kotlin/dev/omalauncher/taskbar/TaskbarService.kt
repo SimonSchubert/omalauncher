@@ -1,11 +1,13 @@
 package dev.omalauncher.taskbar
 
 import android.accessibilityservice.AccessibilityService
+import android.app.ActivityOptions
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.os.Build
+import android.util.Log
 import android.view.Gravity
 import android.view.WindowInsets
 import android.view.WindowManager
@@ -54,6 +56,7 @@ import dev.omalauncher.ui.splitdrag.ZoneBox
 import dev.omalauncher.ui.splitdrag.launchSteps
 import dev.omalauncher.ui.tile
 import kotlinx.coroutines.delay
+import kotlin.math.roundToInt
 
 /**
  * The floating taskbar: a handle at the bottom of other apps that pulls up the apps (recent, or pinned and recent),
@@ -303,14 +306,42 @@ class TaskbarService : AccessibilityService() {
         ) { zone -> planTaskbarOpen(zone, state, app, dragged, ::personalApp)?.let { open(it, app) } }
     }
 
-    /** Opens [plan]; [app] is the one tapped or dragged, which counts as opened whatever else the plan brings forward. */
+    /**
+     * Opens [plan]; [app] is the one tapped or dragged, which counts as opened whatever else the plan brings forward.
+     * Only a split goes through the invisible trampoline, as it needs a source activity for LAUNCH_ADJACENT. Full screen
+     * and pop-up start straight from the service: the trampoline lands in the focused split half, and an app it starts
+     * inherits that half, so a pop-up dropped during a split would replace one half instead.
+     */
     private fun open(
         plan: OpenPlan<AndroidApp>,
         app: AndroidApp,
     ) {
         runtime.usage.record(app.key)
-        TaskbarTrampoline.start(this, launchSteps(plan))
+        when (plan) {
+            is OpenPlan.Split -> TaskbarTrampoline.start(this, launchSteps(plan))
+            is OpenPlan.AsTapped -> startDirect(plan.app, null)
+            is OpenPlan.Windowed -> startDirect(plan.app, plan.bounds)
+        }
         tray = false
+    }
+
+    /** Starts [app] from the service, full screen, or as a pop-up at [bounds]. */
+    private fun startDirect(
+        app: AndroidApp,
+        bounds: ZoneBox?,
+    ) {
+        runCatching {
+            val intent =
+                Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_LAUNCHER)
+                    .setComponent(app.component)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            val options =
+                bounds?.let {
+                    ActivityOptions.makeBasic().setLaunchBounds(Rect(it.left.roundToInt(), it.top.roundToInt(), it.right.roundToInt(), it.bottom.roundToInt())).toBundle()
+                }
+            startActivity(intent, options)
+        }.onFailure { Log.w("TaskbarService", "Could not open ${app.component}", it) }
     }
 
     private companion object {
