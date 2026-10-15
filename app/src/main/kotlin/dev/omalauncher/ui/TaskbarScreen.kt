@@ -14,9 +14,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
@@ -36,13 +41,15 @@ fun TaskbarScreen(
     val context = LocalContext.current
     val taskbar = runtime.taskbar
     val supported = Build.VERSION.SDK_INT >= 35
+    var query by rememberSaveable { mutableStateOf("") }
     OverlayPanel("taskbar", onDismiss, contentWidth = ReadingWidth) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item(key = "on") {
                 SettingRow(
                     "taskbar",
                     if (!supported) "needs Android 15" else "a handle at the bottom of other apps: switch apps, drag one to split the screen",
-                    if (taskbar.enabled) "on" else "off",
+                    if (!supported) "unavailable" else if (taskbar.enabled) "on" else "off",
+                    valueColor = if (supported) Palette.accent else Palette.muted,
                 ) { if (supported) taskbar.enabled = !taskbar.enabled }
             }
             if (taskbar.enabled && !TaskbarStatus.serviceOn) {
@@ -58,7 +65,16 @@ fun TaskbarScreen(
                 }
             }
             if (taskbar.mode == TaskbarMode.PinnedAndRecent) {
-                val apps = runtime.androidApps.apps.filter { SplitDrag.canDrag(it) }.sortedBy { it.label.lowercase() }
+                val all = runtime.androidApps.apps.filter { SplitDrag.canDrag(it) }
+                val apps =
+                    if (query.isBlank()) {
+                        val alphabetical = all.sortedBy { it.label.lowercase() }
+                        val pinnedFirst = taskbar.pinned.mapNotNull { key -> alphabetical.firstOrNull { it.key == key } }
+                        pinnedFirst + (alphabetical - pinnedFirst.toSet())
+                    } else {
+                        rankMatches(all, query.trim(), name = { it.label }).map { it.first }
+                    }
+                item(key = "search") { SearchField(query, { query = it }, onGo = {}, placeholder = "search apps") }
                 items(apps, key = { it.key }) { app ->
                     val pinned = app.key in taskbar.pinned
                     SettingRow(app.label, if (pinned) "pinned #${taskbar.pinned.indexOf(app.key) + 1}" else "not pinned", if (pinned) "●" else "○") {
@@ -77,6 +93,7 @@ private fun SettingRow(
     subtitle: String,
     value: String,
     warning: Boolean = false,
+    valueColor: Color = Palette.accent,
     onClick: () -> Unit,
 ) {
     Row(
@@ -92,6 +109,6 @@ private fun SettingRow(
             BasicText(title, style = Mono.copy(color = if (warning) Palette.red else Palette.foreground, fontSize = TextSize.Item))
             BasicText(subtitle, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
         }
-        BasicText(value, Modifier.padding(start = 12.dp), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Item))
+        BasicText(value, Modifier.padding(start = 12.dp), style = Mono.copy(color = valueColor, fontSize = TextSize.Item))
     }
 }
