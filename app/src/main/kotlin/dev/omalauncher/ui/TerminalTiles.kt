@@ -170,7 +170,7 @@ class TerminalTiles(
     }
 }
 
-/** One tile's terminal. Its foot starts when the tile first shows and runs until the widget goes away. */
+/** One tile's terminal. Starts on first display; after exit, only an explicit tap starts it again. */
 class EmbeddedTerminal internal constructor(
     internal val tiles: TerminalTiles,
     val appId: String,
@@ -187,12 +187,19 @@ class EmbeddedTerminal internal constructor(
         private set
 
     private var closed = false
+    private var started = false
 
     /** Where the tile is, in window pixels, as if the home screen weren't lifted. */
     internal var bounds = Rect.Zero
 
+    /** Paging a tile back into composition must not restart an exited terminal. */
+    internal fun autoStart() {
+        if (!started) start()
+    }
+
     fun start() {
         if (running || closed) return
+        started = true
         running = true
         tiles.launch(this) {
             main.post {
@@ -229,7 +236,7 @@ fun TerminalView(
     val tiles = term.tiles
     val window = term.window
     val active = tiles.active === term
-    LaunchedEffect(term) { term.start() }
+    LaunchedEffect(term) { term.autoStart() }
     val background = Palette.background.toArgb()
     Box(modifier.onGloballyPositioned { term.bounds = it.boundsInWindow().translate(0f, tiles.lift) }) {
         AndroidView(
