@@ -529,6 +529,15 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: share(\"x\") } }").contains("share needs owl 7"))
     }
 
+    @Test fun androidLocation() {
+        val p = Compiler.compile("widget {\n meta { owl: 8 }\n source l = android.location\n Text { text: l.latitude; onTap: location(\"request\") } }")
+        assertEquals(listOf("android.location"), p.globals.map { (it as Global.Source).kind })
+        assertTrue(!p.needsLinux)
+        assertTrue(compileError("widget {\n meta { owl: 7 }\n source l = android.location\n Text { text: 1 } }").contains("android.location needs owl 8"))
+        assertTrue(compileError("widget {\n meta { owl: 7 }\n Text { text: 1; onTap: location(\"request\") } }").contains("location needs owl 8"))
+        assertTrue(compileError("widget {\n meta { owl: 8 }\n Text { text: 1; onTap: location(\"where\") } }").contains("location takes"))
+    }
+
     @Test fun androidNotificationsAndVolume() {
         val p = Compiler.compile("widget {\n meta { owl: 4 }\n source n = android.notifications\n source v = android.volume\n Text { text: n.count; onTap: volume(\"up\") } }")
         assertEquals(listOf("android.notifications", "android.volume"), p.globals.map { (it as Global.Source).kind })
