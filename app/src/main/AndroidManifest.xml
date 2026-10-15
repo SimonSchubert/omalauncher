@@ -228,7 +228,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="dev.omalauncher.files"
+            android:authorities="${applicationId}.files"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
