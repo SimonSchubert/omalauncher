@@ -52,10 +52,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toOffset
@@ -71,12 +73,16 @@ import kotlinx.coroutines.launch
  *
  * [per] pages stand side by side, each [width] wide (two on a foldable's inner screen); a page's
  * cells are in its own coordinates, [local] and [screen] convert.
+ *
+ * [gap] is between tiles; [pad] is around them on each side of a page: the gap to the screen's
+ * edge, or the gap between tiles on the side the strip and the bar follow.
  */
 @Immutable
 private class Grid(
     val width: Int,
     height: Int,
     val gap: Int,
+    val pad: GridPad,
     val turned: Boolean = false,
     portraitRows: Int? = null,
     used: Int = 0,
@@ -84,20 +90,38 @@ private class Grid(
 ) {
     val cols = GRID_COLUMNS
     val height = height
-    val rows = maxOf(if (turned) portraitRows ?: squareRows(height, width, gap) else squareRows(width, height, gap), used)
 
-    /** A screen cell's width and height. */
-    val cellW = (width - gap) / (if (turned) rows else cols).toFloat()
-    val cellH = (height - gap) / (if (turned) cols else rows).toFloat()
+    /** The room the cells share across and down: a cell is a tile and the gap after it, so the last gap is the pad's. */
+    private val across = width - pad.left - pad.right + gap
+    private val down = height - pad.top - pad.bottom + gap
+
+    val rows = maxOf(if (turned) portraitRows ?: squareRows(down, across) else squareRows(across, down), used)
+
+    /** A screen cell's width and height, the gap after it included. */
+    val cellW = across / (if (turned) rows else cols).toFloat()
+    val cellH = down / (if (turned) cols else rows).toFloat()
 
     // Rounded, not truncated: rows * cellH can come out a hair under the grid's height, which would leave the
     // bottom row a pixel short of the strip below.
     fun rect(c: Cell) =
         if (turned) {
-            IntRect((gap + c.y * cellW).roundToInt(), (gap + c.x * cellH).roundToInt(), (c.bottom * cellW).roundToInt(), (c.right * cellH).roundToInt())
+            rect(c.y, c.x, c.bottom, c.right)
         } else {
-            IntRect((gap + c.x * cellW).roundToInt(), (gap + c.y * cellH).roundToInt(), (c.right * cellW).roundToInt(), (c.bottom * cellH).roundToInt())
+            rect(c.x, c.y, c.right, c.bottom)
         }
+
+    /** Screen cells [x0] to [x1] across and [y0] to [y1] down, less the gap after the last. */
+    private fun rect(
+        x0: Int,
+        y0: Int,
+        x1: Int,
+        y1: Int,
+    ) = IntRect(
+        (pad.left + x0 * cellW).roundToInt(),
+        (pad.top + y0 * cellH).roundToInt(),
+        (pad.left + x1 * cellW - gap).roundToInt(),
+        (pad.top + y1 * cellH - gap).roundToInt(),
+    )
 
     /** A saved cell as shown on this grid; only affects display, the saved cell stays as it is. */
     fun fit(
@@ -110,14 +134,16 @@ private class Grid(
     }
 
     /** Nearest column line to a point on screen. */
-    fun colLine(p: Offset) = (if (turned) line(p.y, cellH) else line(p.x, cellW)).coerceIn(0, cols)
+    fun colLine(p: Offset) = (if (turned) line(p.y, pad.top, cellH) else line(p.x, pad.left, cellW)).coerceIn(0, cols)
 
-    fun rowLine(p: Offset) = (if (turned) line(p.x, cellW) else line(p.y, cellH)).coerceIn(0, rows)
+    fun rowLine(p: Offset) = (if (turned) line(p.x, pad.left, cellW) else line(p.y, pad.top, cellH)).coerceIn(0, rows)
 
+    /** Lines run down the middle of the gaps between cells. */
     private fun line(
         px: Float,
+        start: Int,
         cell: Float,
-    ) = ((px - gap / 2f) / cell).roundToInt()
+    ) = ((px - start + gap / 2f) / cell).roundToInt()
 
     /** The tile edges under the screen edges a press grabbed. */
     fun edges(e: Edges) = if (turned) Edges(left = e.top, top = e.left, right = e.bottom, bottom = e.right) else e
@@ -138,12 +164,27 @@ private class Grid(
     ) = r.translate(side * width, 0)
 }
 
-/** How many rows of square-ish cells fit [long] beside [GRID_COLUMNS] of them across [short]. */
+/**
+ * How many rows of square-ish cells fit [long] beside [GRID_COLUMNS] of them across [short]. A window narrower than
+ * the gaps around it leaves no room across: one row then, and never more than [MAX_SQUARE_ROWS], or a sliver would
+ * make millions of them.
+ */
 private fun squareRows(
     short: Int,
     long: Int,
-    gap: Int,
-) = ((long - gap) / ((short - gap) / GRID_COLUMNS.toFloat())).toInt().coerceAtLeast(1)
+) = if (short <= 0) 1 else (long / (short / GRID_COLUMNS.toFloat())).toInt().coerceIn(1, MAX_SQUARE_ROWS)
+
+/** Cells four times as tall as wide: far past any phone's shape (20:9 makes 13 rows). */
+private const val MAX_SQUARE_ROWS = 4 * GRID_COLUMNS
+
+/** Room around a page's tiles, in pixels; see [Grid]. */
+@Immutable
+private data class GridPad(
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int,
+)
 
 internal fun IntRect.has(p: Offset) = p.x >= left && p.x < right && p.y >= top && p.y < bottom
 
@@ -262,6 +303,8 @@ internal fun HomeGrid(
     modifier: Modifier = Modifier,
     room: Dp = 0.dp,
     turned: Boolean = false,
+    /** Where the strip and the bar stand beside the grid; null for below it. */
+    side: HomeSide? = null,
     per: Int = 1,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -270,6 +313,15 @@ internal fun HomeGrid(
     BoxWithConstraints(modifier) {
         val density = LocalDensity.current
         val gap = with(density) { HomeGap.roundToPx() }
+        val outer = with(density) { EdgeGap.roundToPx() }
+        // The screen's edge on every side but the one the strip and the bar follow, which gets the gap between tiles.
+        val pad =
+            GridPad(
+                left = if (side == HomeSide.Left) gap else outer,
+                top = outer,
+                right = if (side == HomeSide.Right) gap else outer,
+                bottom = if (side == null) gap else outer,
+            )
         // The grid stops [room] short of the bottom; the pages and their gestures go on below it.
         val height = constraints.maxHeight - with(density) { room.roundToPx() }
         val width = constraints.maxWidth / per
@@ -283,9 +335,9 @@ internal fun HomeGrid(
             derivedStateOf { pages.flatMap(itemsOn).maxOfOrNull { item -> layout.cell(item.key)?.let { if (item.resizable) it.bottom else it.y + 1 } ?: 0 } ?: 0 }
         }
         val grid =
-            remember(width, height, gap, turned, windowSize, used, per) {
+            remember(width, height, gap, pad, turned, windowSize, used, per) {
                 // Not seen in portrait yet: square cells across.
-                Grid(width, height, gap, turned, if (turned) layout.portraitRows(windowSize) else null, used, per)
+                Grid(width, height, gap, pad, turned, if (turned) layout.portraitRows(windowSize) else null, used, per)
             }
         if (!turned) SideEffect { layout.setPortraitRows(windowSize, grid.rows) }
         // Previews draw tiles at the size they have here.
@@ -746,22 +798,25 @@ private fun TiledPage(
                     )
                 }
             }
-            // Action bar above the tile, or below it when the tile is at the top.
-            val barAbove = r.top > with(density) { 56.dp.roundToPx() }
             if (!arrange.holding) {
-                val at =
-                    with(density) {
-                        IntOffset(
-                            r.left.coerceAtMost(pageWidth - 220.dp.roundToPx()).coerceAtLeast(0),
-                            if (barAbove) r.top - 48.dp.roundToPx() else r.bottom + 8.dp.roundToPx(),
-                        )
-                    }
+                // Above the tile, or below it when there's no room for it there: as tall as it turned out, since an
+                // app's shortcuts stack above its bar. Lined up with the tile's left edge, pulled in by however wide
+                // the bar turned out when that would run past the grid's edge, which keeps the gap tiles keep from the
+                // screen: a lone "remove" for an app at the edge stays next to it.
+                val barGap = with(density) { 8.dp.roundToPx() }
+                fun at(size: IntSize): IntOffset {
+                    val above = r.top - size.height - barGap
+                    return IntOffset(r.left.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left), if (above >= 0) above else r.bottom + barGap)
+                }
                 DisposableEffect(Unit) { onDispose { arrange.bar = null } }
                 Box(
                     Modifier
                         .zIndex(3f)
-                        .offset { at }
-                        .onSizeChanged { arrange.bar = IntRect(at, it) },
+                        .layout { measurable, constraints ->
+                            val bar = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+                            layout(bar.width, bar.height) { bar.place(at(IntSize(bar.width, bar.height))) }
+                        }
+                        .onSizeChanged { arrange.bar = IntRect(at(it), it) },
                 ) { actions(sel) }
             }
         }

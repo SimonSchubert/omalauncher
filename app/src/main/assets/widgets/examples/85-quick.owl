@@ -1,0 +1,37 @@
+widget "quick" {
+  page: 3
+  order: 4
+  size: 6x2
+  minSize: 4x2
+
+  meta { owl: 7; description: "The next alarm, the phone's modes and a torch switch, without Linux."; version: "1.0"; license: "MIT"; category: "system" }
+
+  // Both follow the phone as it changes: quick settings, a clock app, a schedule.
+  source a = android.alarm
+  source m = android.modes
+
+  Column {
+    gap: 6
+    fill: true
+    Row {
+      align: center
+      Column {
+        gap: 0
+        weight: 1
+        Text { text: "next alarm"; style: label }
+        Text { text: a.set ? fmtTime(a.time, "EEE HH:mm") : "none"; style: title; color: a.set ? foreground : muted }
+      }
+      if a.app != null {
+        Image { src: "app:${a.app}"; size: 28; onTap: { haptic(); androidApp(a.app) } }
+      }
+    }
+    Row {
+      gap: 6
+      Text { text: m.dnd ? "do not disturb" : m.ringer; style: small; color: m.dnd || m.ringer != "normal" ? yellow : muted; weight: 1 }
+      if m.saver { Text { text: "saver"; style: small; color: orange; width: 40 } }
+      if m.torch != null {
+        Button { text: m.torch ? "torch off" : "torch"; color: m.torch ? accent : muted; onTap: { haptic(); torch("toggle") } }
+      }
+    }
+  }
+}

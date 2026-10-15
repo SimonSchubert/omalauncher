@@ -1,0 +1,1 @@
+Text files open in the launcher's own editor, in the Omarchy theme, which is also Linux's $EDITOR. Files gets a new look and can create files. Settings open in their own window and come back as you left them. Terminals no longer flicker when the keyboard opens or closes. New coding agents: Oh My Pi, Ori, Muse Code and Kimi.

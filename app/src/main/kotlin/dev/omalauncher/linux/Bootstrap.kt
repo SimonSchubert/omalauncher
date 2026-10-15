@@ -36,7 +36,7 @@ private const val NETWORK_TRIES = 3
 private val PACKAGES =
     listOf(
         "foot", "ttf-dejavu", "btop", "fastfetch", "ttf-jetbrains-mono", "ttf-nerd-fonts-symbols-mono",
-        "neovim", "lazygit", "starship", "eza", "bat", "fd", "ripgrep", "fzf", "zoxide", "tmux", "gum", "jq", "tealdeer",
+        "neovim", "starship", "eza", "bat", "fd", "ripgrep", "fzf", "zoxide", "tmux", "gum", "jq", "tealdeer",
         "man-db", "less", "dua-cli", "inxi", "whois", "git", "bash-completion", "pulseaudio", "pulseaudio-alsa", "micro",
     )
 

@@ -39,6 +39,8 @@ jobs:
       - name: Fetch proot
         run: |
           sudo apt-get update -q && sudo apt-get install -yq libarchive-tools
+          ndk=$(sed -n 's/^NDK_VERSION=//p' scripts/fetch-proot.sh)
+          [ -d "$ANDROID_HOME/ndk/$ndk" ] || yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" >/dev/null
           scripts/fetch-proot.sh
 
       # The upload key, so the APK has the fingerprint assetlinks.json already lists.

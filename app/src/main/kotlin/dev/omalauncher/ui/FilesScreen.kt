@@ -7,15 +7,13 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -35,13 +33,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import dev.omalauncher.Runtime
@@ -122,7 +118,7 @@ fun FilesScreen(
         }
     }
 
-    fun edit(entry: GuestEntry) = runtime.terminal("micro ${shellQuote(entry.path)}", entry.name)
+    fun edit(entry: GuestEntry) = runtime.edit(entry.path)
 
     fun open(entry: GuestEntry) {
         if (entry.isDir) return navigate(fs.resolve(entry.path))
@@ -147,82 +143,59 @@ fun FilesScreen(
         }
     }
 
-    Column(Modifier.fillMaxSize().background(Palette.background).systemBarsPadding().imePadding()) {
-        if (selected.isNotEmpty()) {
-            val single = entries?.firstOrNull { it.path == selected.singleOrNull() }
-            // Sniffing a file for text reads it: off the main thread, once per selection.
-            val singleIsText by produceState(false, single?.path) {
-                value = single?.takeIf { !it.isDir }?.let { s -> withContext(Dispatchers.IO) { isText(s.name, fs.host(s.path)) } } == true
-            }
-            SelectionBar(
-                count = selected.size,
-                onClose = { selected.clear() },
-                onSelectAll = {
-                    selected.clear()
-                    selected += shown.orEmpty().map { it.path }
-                },
-                onCopy = {
-                    FileClipboard.paths = selected.toList()
-                    FileClipboard.cut = false
-                    selected.clear()
-                },
-                onCut = {
-                    FileClipboard.paths = selected.toList()
-                    FileClipboard.cut = true
-                    selected.clear()
-                },
-                onDelete = { dialog = FileDialog.Delete(selected.toList()) },
-                onRename = single?.let { { dialog = FileDialog.Rename(it) } },
-                onShare = single?.takeIf { !it.isDir }?.let { { openWithAndroid(fs.host(it.path), share = true) } },
-                onOpenWith = single?.takeIf { !it.isDir }?.let { { openWithAndroid(fs.host(it.path)) } },
-                onEdit = single?.takeIf { singleIsText }?.let { { edit(it) } },
-            )
-        } else {
-            Row(Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(Icons.Back, "back") {
-                    val up = fs.parent(path)
-                    if (up != null) navigate(up) else onExit()
+    Box(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding().padding(PanelGap)) {
+        val q = query
+        PanelFrame(
+            // Like back, the close mark leaves the selection or the search first.
+            onClose = {
+                when {
+                    selected.isNotEmpty() -> selected.clear()
+                    q != null -> query = null
+                    else -> onExit()
                 }
-                val q = query
-                if (q != null) {
-                    val focus = remember { FocusRequester() }
-                    LaunchedEffect(Unit) { focus.requestFocus() }
-                    BasicTextField(
-                        value = q,
-                        onValueChange = { query = it },
-                        singleLine = true,
-                        textStyle = Mono.copy(fontSize = TextSize.Large),
-                        cursorBrush = SolidColor(Palette.accent),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                        keyboardActions = KeyboardActions(onSearch = {}),
-                        modifier = Modifier.weight(1f).focusRequester(focus).padding(horizontal = 8.dp),
-                        decorationBox = { inner ->
-                            Box {
-                                if (q.isEmpty()) BasicText("filter this folder", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Large))
-                                inner()
-                            }
-                        },
-                    )
-                    IconButton(Icons.Close, "close search") { query = null }
-                } else {
-                    Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                        BasicText(
+            },
+            title = {
+                when {
+                    selected.isNotEmpty() -> PanelTitle("${selected.size} selected")
+                    q != null -> {
+                        val focus = remember { FocusRequester() }
+                        LaunchedEffect(Unit) { focus.requestFocus() }
+                        BasicTextField(
+                            value = q,
+                            onValueChange = { query = it },
+                            singleLine = true,
+                            textStyle = Mono.copy(fontSize = TextSize.Title),
+                            cursorBrush = SolidColor(Palette.accent),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = {}),
+                            modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                            decorationBox = { inner ->
+                                Box {
+                                    if (q.isEmpty()) BasicText("filter this folder", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
+                                    inner()
+                                }
+                            },
+                        )
+                    }
+                    else ->
+                        PanelTitle(
                             when (path) {
                                 "/" -> "/"
                                 "/root" -> "home"
                                 else -> path.substringAfterLast('/')
                             },
-                            style = Mono.copy(fontSize = TextSize.Title),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
                         )
-                    }
-                    IconButton(Icons.Search, "search") { query = "" }
+                }
+            },
+            actions = {
+                if (selected.isEmpty() && q == null) {
+                    PanelIcon(Icons.Search, "search") { query = "" }
                     Box {
-                        IconButton(Icons.More, "more") { menuOpen = true }
+                        PanelIcon(Icons.More, "more") { menuOpen = true }
                         if (menuOpen) {
                             MenuPopup(
                                 listOf(
+                                    "new file" to { dialog = FileDialog.NewFile },
                                     "new folder" to { dialog = FileDialog.NewFolder },
                                     (if (showHidden) "hide hidden files" else "show hidden files") to { showHidden = !showHidden },
                                     "open terminal here" to { runtime.terminal("cd ${shellQuote(path)} && exec bash", "Terminal") },
@@ -232,57 +205,82 @@ fun FilesScreen(
                         }
                     }
                 }
-            }
-        }
+            },
+            contentWidth = ReadingWidth,
+        ) {
+            Breadcrumbs(path, onNavigate = ::navigate)
+            Places(path, exists = fs::isDir, onNavigate = ::navigate)
+            Spacer(Modifier.height(4.dp))
 
-        Breadcrumbs(path, onNavigate = ::navigate)
-        Places(path, exists = fs::isDir, onNavigate = ::navigate)
-
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when {
-                shown == null -> {}
-                shown.isEmpty() ->
-                    BasicText(
-                        if (query.isNullOrBlank()) "empty folder" else "nothing matches",
-                        Modifier.align(Alignment.Center),
-                        style = Mono.copy(color = Palette.muted),
-                    )
-                else ->
-                    LazyColumn(state = listState, contentPadding = PaddingValues(bottom = 96.dp)) {
-                        items(shown, key = { it.path }) { entry ->
-                            FileRow(
-                                entry = entry,
-                                selected = entry.path in selected,
-                                selecting = selected.isNotEmpty(),
-                                onClick = {
-                                    if (selected.isEmpty()) {
-                                        open(entry)
-                                    } else if (!selected.remove(entry.path)) {
-                                        selected += entry.path
-                                    }
-                                },
-                                onLongClick = { if (entry.path !in selected) selected += entry.path },
-                            )
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when {
+                    shown == null -> {}
+                    shown.isEmpty() ->
+                        BasicText(
+                            if (query.isNullOrBlank()) "empty folder" else "nothing matches",
+                            Modifier.align(Alignment.Center),
+                            style = Mono.copy(color = Palette.muted),
+                        )
+                    else ->
+                        LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(shown, key = { it.path }) { entry ->
+                                FileRow(
+                                    entry = entry,
+                                    selected = entry.path in selected,
+                                    onClick = {
+                                        if (selected.isEmpty()) {
+                                            open(entry)
+                                        } else if (!selected.remove(entry.path)) {
+                                            selected += entry.path
+                                        }
+                                    },
+                                    onLongClick = { if (entry.path !in selected) selected += entry.path },
+                                )
+                            }
                         }
-                    }
+                }
             }
-            if (selected.isEmpty() && query == null) {
-                Fab(Icons.NewFolder, "new folder", Modifier.align(Alignment.BottomEnd).padding(20.dp)) { dialog = FileDialog.NewFolder }
-            }
-        }
 
-        val clip = FileClipboard.paths
-        if (clip.isNotEmpty()) {
-            PasteBar(
-                count = clip.size,
-                cut = FileClipboard.cut,
-                onCancel = { FileClipboard.paths = emptyList() },
-                onPaste = {
-                    val cut = FileClipboard.cut
-                    FileClipboard.paths = emptyList()
-                    operate { fs.paste(clip, path, move = cut) }
-                },
-            )
+            val clip = FileClipboard.paths
+            if (selected.isNotEmpty()) {
+                val single = entries?.firstOrNull { it.path == selected.singleOrNull() }
+                // Sniffing a file for text reads it: off the main thread, once per selection.
+                val singleIsText by produceState(false, single?.path) {
+                    value = single?.takeIf { !it.isDir }?.let { s -> withContext(Dispatchers.IO) { isText(s.name, fs.host(s.path)) } } == true
+                }
+                SelectionBar(
+                    onSelectAll = {
+                        selected.clear()
+                        selected += shown.orEmpty().map { it.path }
+                    },
+                    onCopy = {
+                        FileClipboard.paths = selected.toList()
+                        FileClipboard.cut = false
+                        selected.clear()
+                    },
+                    onCut = {
+                        FileClipboard.paths = selected.toList()
+                        FileClipboard.cut = true
+                        selected.clear()
+                    },
+                    onDelete = { dialog = FileDialog.Delete(selected.toList()) },
+                    onRename = single?.let { { dialog = FileDialog.Rename(it) } },
+                    onShare = single?.takeIf { !it.isDir }?.let { { openWithAndroid(fs.host(it.path), share = true) } },
+                    onOpenWith = single?.takeIf { !it.isDir }?.let { { openWithAndroid(fs.host(it.path)) } },
+                    onEdit = single?.takeIf { singleIsText }?.let { { edit(it) } },
+                )
+            } else if (clip.isNotEmpty()) {
+                PasteBar(
+                    count = clip.size,
+                    cut = FileClipboard.cut,
+                    onCancel = { FileClipboard.paths = emptyList() },
+                    onPaste = {
+                        val cut = FileClipboard.cut
+                        FileClipboard.paths = emptyList()
+                        operate { fs.paste(clip, path, move = cut) }
+                    },
+                )
+            }
         }
     }
 
@@ -290,6 +288,16 @@ fun FilesScreen(
 
     when (val d = dialog) {
         null -> {}
+        FileDialog.NewFile ->
+            TextDialog("new file", "", "create", onDismiss = { dialog = null }) { name ->
+                dialog = null
+                scope.launch {
+                    val created = withContext(Dispatchers.IO) { runCatching { fs.createFile(path, name) } }
+                    created.exceptionOrNull()?.let { toast(it.message ?: "failed") }
+                    reload++
+                    created.getOrNull()?.let { runtime.edit(it) }
+                }
+            }
         FileDialog.NewFolder ->
             TextDialog("new folder", "", "create", onDismiss = { dialog = null }) { name ->
                 dialog = null
@@ -311,6 +319,8 @@ fun FilesScreen(
 }
 
 private sealed interface FileDialog {
+    data object NewFile : FileDialog
+
     data object NewFolder : FileDialog
 
     data class Rename(

@@ -5,11 +5,11 @@
 #
 # Needs a debug build on an emulator (adb root) with Linux installed, so widgets
 # that run commands show real data, and the packages they require (curl, jq,
-# python, github-cli). Widgets that need an account show demo data instead; see
+# python, sqlite, github-cli). Widgets that need an account show demo data instead; see
 # store-previews-demo.sh. The launcher renders each tile off screen
 # (WidgetEngine.previewThemes) and takes every theme's colors while it does.
 #
-#   scripts/store-previews.sh [store repo, default ../omarchy-widgets] [widget name...]
+#   scripts/store-previews.sh [store repo, default ../omarchy-widgets] [widget name or author/name...]
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -18,6 +18,7 @@ shift || true
 export ANDROID_SERIAL="${ANDROID_SERIAL:-emulator-5554}"
 DEFAULT_THEME=tokyo-night
 APP=/data/data/dev.omalauncher/files/widgets
+STATE=/data/data/dev.omalauncher/files/widget-state
 WORK="$(mktemp -d)"
 
 adb root >/dev/null
@@ -77,12 +78,42 @@ demo() {
   wait_for 60 "test -f $APP/.demo.done" || echo "demo $1 didn't finish" >&2
   adb shell "rm -f $APP/.demo.sh $APP/.demo-run.sh $APP/.demo.done"
 }
+# Saved `persist` state for widgets whose demo data hangs off settings the user makes, written
+# where the launcher keeps it (filesDir/widget-state) before the widget loads.
+seed() {
+  local json
+  case $1 in
+    google-calendar) json='{"cals":[{"name":"Personal","url":"https://calendar.google.com/calendar/ical/demo-personal/basic.ics","color":0,"on":true},{"name":"Work","url":"https://calendar.google.com/calendar/ical/demo-work/basic.ics","color":2,"on":true}],"days":14}' ;;
+    gestures) json='{"apps":["com.android.chrome","com.google.android.youtube","com.google.android.apps.maps","com.android.camera2","com.google.android.apps.messaging","com.google.android.dialer","com.google.android.apps.photos","com.google.android.calendar"],"labels":["Chrome","YouTube","Maps","Camera","Messages","Phone","Photos","Calendar"],"migrated":true}' ;;
+    bookmarks) json='{"nextId":4,"links":[{"id":"b3","title":"Omarchy","url":"https://omarchy.org","tag":"linux","auto":true,"desc":"Beautiful, modern and opinionated Linux.","img":""},{"id":"b2","title":"Hacker News","url":"https://news.ycombinator.com","tag":"news","auto":true,"desc":"","img":""},{"id":"b1","title":"Arch Wiki","url":"https://wiki.archlinux.org","tag":"linux","auto":true,"desc":"","img":""},{"id":"b0","title":"Sourdough recipe","url":"https://www.theperfectloaf.com","tag":"cooking","auto":false,"desc":"","img":""}]}' ;;
+    # Due in a few minutes and later today, and one already done.
+    reminders)
+      local now; now=$(date +%s)
+      json=$(printf '{"nextId":5,"delay":1800,"items":[{"id":4,"t":"Take the laundry out","at":%s,"fired":false},{"id":3,"t":"Call the dentist","at":%s,"fired":false},{"id":2,"t":"Water the plants","at":%s,"fired":false},{"id":1,"t":"Pay rent","at":%s,"fired":true}]}' $((now + 1500)) $((now + 7800)) $((now + 30600)) $((now - 3600))) ;;
+    # NS's API needs a key, read from the environment so it's never in this file: without one,
+    # ns keeps its "add your key" preview.
+    ns)
+      [ -n "${NS_API_KEY:-}" ] || return 0
+      json=$(printf '{"apiKey":"%s","station":{"uic":"8400058","name":"Amsterdam Centraal","lat":52.3791,"lng":4.9003},"saved":[],"favs":[{"uic":"8400621","name":"Utrecht Centraal","label":"Utrecht"},{"uic":"8400530","name":"Rotterdam Centraal","label":"Rotterdam"}]}' "$NS_API_KEY") ;;
+    *) return 0 ;;
+  esac
+  printf '{"v":1,"savedAt":%s,"values":%s}' "$(date +%s)" "$json" > "$WORK/state.json"
+  adb push "$WORK/state.json" /data/local/tmp/store-preview-state.json >/dev/null
+  adb shell "cp /data/local/tmp/store-preview-state.json $STATE/$2.json && chown $owner $STATE/$2.json && chmod 600 $STATE/$2.json && chcon $(adb shell ls -Zd $STATE | cut -d' ' -f1) $STATE/$2.json"
+}
+
 demo on
 trap 'demo off; rm -rf "$WORK"' EXIT
 
 dirs=()
 if [ $# -gt 0 ]; then
-  for n in "$@"; do dirs+=("$(dirname "$(ls "$STORE"/widgets/*/"$n"/widget.owl)")"); done
+  # A name, or author/name when two authors share it.
+  for n in "$@"; do
+    case $n in
+      */*) dirs+=("$STORE/widgets/$n") ;;
+      *) dirs+=("$(dirname "$(ls "$STORE"/widgets/*/"$n"/widget.owl)")") ;;
+    esac
+  done
 else
   for f in "$STORE"/widgets/*/*/widget.owl; do dirs+=("$(dirname "$f")"); done
 fi
@@ -92,6 +123,7 @@ for dir in "${dirs[@]}"; do
   hash=$(shasum -a 256 "$dir/widget.owl" | cut -d' ' -f1)
   echo "$(basename "$dir")"
   adb shell "rm -rf $APP/.preview/themes/$name.done"
+  seed "$(basename "$dir")" "$name"
   put "$dir/widget.owl" "$name"
   if ! wait_for 30 "grep -q $hash $APP/.check/$name.txt"; then
     echo "  didn't compile in time; skipped" >&2

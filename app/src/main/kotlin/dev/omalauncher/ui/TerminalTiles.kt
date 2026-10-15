@@ -219,11 +219,12 @@ class EmbeddedTerminal internal constructor(
     }
 }
 
-/** The tile's content: the terminal's pixels, and its input once it's tapped. */
+/** The tile's content: the terminal's pixels, and its input once it's tapped, if it's [interactive]. */
 @Composable
 fun TerminalView(
     term: EmbeddedTerminal,
     modifier: Modifier,
+    interactive: Boolean = true,
 ) {
     val tiles = term.tiles
     val window = term.window
@@ -265,7 +266,7 @@ fun TerminalView(
                     BasicText("⌨", style = Mono.copy(color = Palette.foreground))
                 }
             }
-            else -> Box(Modifier.fillMaxSize().pointerInput(term) { detectTapGestures { tiles.activate(term) } })
+            interactive -> Box(Modifier.fillMaxSize().pointerInput(term) { detectTapGestures { tiles.activate(term) } })
         }
     }
 }

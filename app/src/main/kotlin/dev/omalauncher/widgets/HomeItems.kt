@@ -3,6 +3,8 @@ package dev.omalauncher.widgets
 import android.content.ComponentName
 import android.content.Context
 import dev.omalauncher.AndroidApp
+import dev.omalauncher.AndroidShortcut
+import dev.omalauncher.ShortcutRef
 import androidx.compose.runtime.mutableStateListOf
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.upgrade.Versioned
@@ -31,15 +33,19 @@ data class WidgetItem(
     override val minSize get() = spec.minSize
 }
 
-/** An app pinned from the drawer: an Android activity or a Linux .desktop entry. In [folder], it has no cell of its own. */
+/**
+ * An app pinned from the drawer: an Android activity, a Linux .desktop entry, or a shortcut an Android app made
+ * (see [AndroidShortcut]). In [folder], it has no cell of its own.
+ */
 data class Shortcut(
     override val key: String,
     override val page: Int,
     val label: String,
     val component: ComponentName? = null,
-    /** [component]'s profile, as in [AndroidApp.profile]. */
+    /** [component]'s or [androidShortcut]'s profile, as in [AndroidApp.profile]. */
     val profile: Long? = null,
     val linux: LinuxApp? = null,
+    val androidShortcut: ShortcutRef? = null,
     val folder: String? = null,
 ) : HomeItem {
     override val size get() = 1 to 1
@@ -192,6 +198,7 @@ class Shortcuts(
             component = o.optString("component").ifEmpty { null }?.let(ComponentName::unflattenFromString),
             profile = if (o.has("profile")) o.getLong("profile") else null,
             linux = linux,
+            androidShortcut = o.optJSONObject("shortcut")?.let { ShortcutRef(it.getString("package"), it.getString("id")) },
             folder = o.optString("folder").ifEmpty { null },
         )
     }
@@ -205,6 +212,21 @@ class Shortcuts(
         app: LinuxApp,
         page: Int,
     ) = add(Shortcut("linux:" + app.id, page, app.name, linux = app))
+
+    fun addAndroidShortcut(
+        shortcut: AndroidShortcut,
+        page: Int,
+    ) = add(Shortcut(keyOf(shortcut), page, shortcut.label, profile = shortcut.profile, androidShortcut = shortcut.ref))
+
+    /** Takes [shortcut] off the home screen, cell and all, once it's removed from the phone. */
+    fun removeAndroidShortcut(shortcut: AndroidShortcut) {
+        val key = keyOf(shortcut)
+        if (items.none { it.key == key }) return
+        layout.remove(key)
+        remove(key)
+    }
+
+    private fun keyOf(shortcut: AndroidShortcut) = "shortcut:" + shortcut.key
 
     /** Pinning an app that's already on the home screen moves it to [Shortcut.page], out of its folder. */
     private fun add(shortcut: Shortcut) {
@@ -254,6 +276,7 @@ class Shortcuts(
                     .putOpt("folder", s.folder)
             s.component?.let { o.put("component", it.flattenToString()) }
             s.profile?.let { o.put("profile", it) }
+            s.androidShortcut?.let { o.put("shortcut", JSONObject().put("package", it.packageName).put("id", it.id)) }
             // A snapshot of the desktop entry, for when it's gone; while it exists, the launcher runs the current one.
             s.linux?.let {
                 o.put(

@@ -127,7 +127,7 @@ internal fun PromptBar(
         focusManager.clearFocus()
         keyboard?.hide()
         state.closeNow()
-        state.linuxOpen = true
+        state.show(SettingsPage.Linux)
     }
 
     fun send(prompt: String) {
@@ -138,7 +138,7 @@ internal fun PromptBar(
         val target = runtime.agents.default
         if (target == null) {
             state.query = p
-            state.agentsOpen = true
+            state.show(SettingsPage.Agents)
             return
         }
         runtime.terminal("${agentInvocation(target.bin, p)}; exec bash", target.name, target)
@@ -226,7 +226,8 @@ internal fun PromptBar(
     // with the panel open the bar can grow by lines of text that home shouldn't make room for.
     var frame by remember { mutableIntStateOf(0) }
     val gap = with(LocalDensity.current) { HomeGap.roundToPx() }
-    LaunchedEffect(frame, panelShown, gap) { if (frame > 0 && !panelShown) state.barHeight = frame + 2 * gap }
+    val edge = with(LocalDensity.current) { EdgeGap.roundToPx() }
+    LaunchedEffect(frame, panelShown, gap, edge) { if (frame > 0 && !panelShown) state.barHeight = frame + gap + edge }
     // The whole bar and the gutter around it focus the field, not just the text: it's the main way in.
     Column(
         modifier
@@ -236,7 +237,7 @@ internal fun PromptBar(
                     focus.requestFocus()
                     keyboard?.show()
                 }
-            }.padding(6.dp),
+            }.padding(start = EdgeGap, top = HomeGap, end = EdgeGap, bottom = EdgeGap),
     ) {
         speech.error?.takeIf { !listening }?.let {
             BasicText(
@@ -261,7 +262,7 @@ internal fun PromptBar(
                     .padding(start = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AgentPicker(runtime, onManage = { if (linux) state.agentsOpen = true else offerLinux() })
+                AgentPicker(runtime, onManage = { if (linux) state.show(SettingsPage.Agents) else offerLinux() })
                 val shown = if (listening) speech.text else text
                 BasicTextField(
                     value = shown,

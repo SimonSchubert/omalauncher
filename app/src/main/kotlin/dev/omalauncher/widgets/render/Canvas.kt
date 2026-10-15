@@ -13,6 +13,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmapConfig
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ShaderBrush
@@ -268,6 +270,13 @@ private class Painter(
                     bitmap,
                     dstOffset = IntOffset(v[1].toInt(), v[2].toInt()),
                     dstSize = IntSize(v[3].toInt(), v[4].toInt()),
+                    // An alpha-only image (an app icon's silhouette, with monochrome icons) is a shape: color it like one.
+                    colorFilter =
+                        if (bitmap.config == ImageBitmapConfig.Alpha8) {
+                            ColorFilter.tint(androidx.compose.ui.graphics.Color(named["color"]?.let { Builtins.argb(it, inst) } ?: Palette.foreground.toArgb()))
+                        } else {
+                            null
+                        },
                 )
             }
             "sprite" -> {

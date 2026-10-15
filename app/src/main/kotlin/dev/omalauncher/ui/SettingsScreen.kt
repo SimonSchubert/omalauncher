@@ -13,8 +13,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,6 +36,7 @@ fun SettingsScreen(
     onStore: () -> Unit,
     onLinux: () -> Unit,
     onLicenses: () -> Unit,
+    onGestures: () -> Unit,
 ) {
     val context = LocalContext.current
     val linux by runtime.bootstrap.state.collectAsState()
@@ -54,6 +53,7 @@ fun SettingsScreen(
         val rows =
             listOf(
                 Triple("style", runtime.themes.current?.title ?: "theme, background, home screen", onStyle),
+                Triple("gestures", "swipe up: ${runtime.gestures.swipeUp.label}", onGestures),
                 Triple("linux", linuxStatus, onLinux),
                 if (installed) {
                     Triple("coding agents", runtime.agents.default?.let { "default: ${it.name}" } ?: "install Claude Code, OpenCode, …", onAgents)
@@ -161,10 +161,8 @@ private fun UpdatesRow(runtime: Runtime) {
             when {
                 working || updates.checking -> {}
                 (pending?.count ?: 0) > 0 -> BracketAction("update all", Palette.accent, runtime::updateSystem)
-                else -> {
-                    val scope = rememberCoroutineScope()
-                    BracketAction("check", Palette.muted) { scope.launch { updates.check(force = true) } }
-                }
+                // Not a composition scope: this branch leaves composition as soon as checking starts, which would cancel the check.
+                else -> BracketAction("check", Palette.muted, runtime::checkUpdates)
             }
         }
         JobLog(job)

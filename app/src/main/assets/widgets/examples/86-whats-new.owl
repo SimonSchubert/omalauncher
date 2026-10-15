@@ -1,0 +1,79 @@
+widget "what's new" {
+  page: 2
+  order: 9
+  size: 3x2
+  minSize: 2x2
+  meta { description: "What's new in the launcher, from its changelog on GitHub. Tap it for every release"; version: "1.0"; license: "MIT"; category: "news"; owl: 5 }
+
+  source log = http("https://raw.githubusercontent.com/SimonSchubert/omalauncher/main/CHANGELOG.md") every 6h timeout 10s status
+  source sys = android.system every 1h
+
+  // Each "## 0.5.0 (versionCode 10) – 2026-10-11" section, with its "- " items.
+  // An item's wrapped lines are indented by two spaces, so they're joined first.
+  let releases = split(log.ok ? log.out : "", "\n## ").drop(1).map(s => {
+    version: lower(words(first(lines(s)))[0]),
+    date: match(first(lines(s)), "\\d{4}-\\d{2}-\\d{2}"),
+    items: lines(replace(s, "\n  ", " ")).filter(l => startsWith(l, "- ")).map(l => replace(sub(l, 2), "`", ""))
+  }).filter(r => len(r.items) > 0)
+  // "Unreleased" is what's coming; the tile shows the newest release.
+  let latest = releases.find(r => r.date != null)
+  let behind = latest != null && sys.launcher != null && latest.version != sys.launcher
+
+  onTap: screen()
+
+  Column {
+    gap: 2
+    Text { text: "what's new"; style: muted }
+    if latest != null {
+      Row {
+        gap: 6
+        align: bottom
+        Text { text: latest.version; style: title; color: accent; width: 76; maxLines: 1 }
+        Text { text: behind ? "update" : latest.date; style: small; color: behind ? yellow : muted; align: end; weight: 1; maxLines: 1 }
+      }
+      // Every change, cut off with "…" where the tile ends.
+      Text { text: join(latest.items.map(i => "• ${i}"), "\n"); style: small; maxLines: 40; weight: 1 }
+    } else {
+      Text { text: log == null ? "…" : "offline"; style: title; color: muted }
+    }
+  }
+
+  screen {
+    title: "what's new"
+    if len(releases) == 0 {
+      Text { text: log == null ? "loading…" : "couldn't reach github"; style: body; color: muted }
+    } else {
+      Column {
+        scroll: true
+        gap: 18
+        for r in releases key r.version {
+          let installed = r.version == sys.launcher
+          Column {
+            gap: 6
+            Row {
+              gap: 8
+              align: bottom
+              Text { text: r.date == null ? "coming next" : r.version; style: title; color: r.date == null ? muted : accent; weight: 1; maxLines: 1 }
+              if installed {
+                Text { text: "installed"; style: label; color: green; width: 72; align: end }
+              }
+              Text { text: r.date ?? ""; style: small; color: muted; width: 88; align: end }
+            }
+            for item in r.items {
+              Row {
+                gap: 8
+                align: top
+                Text { text: "•"; style: body; color: r.date == null ? muted : accent; width: 10 }
+                Text { text: item; style: body; color: r.date == null ? muted : foreground; weight: 1 }
+              }
+            }
+          }
+        }
+        Row {
+          justify: end
+          Button { text: "open on github ↗"; color: muted; onTap: url("https://github.com/SimonSchubert/omalauncher/blob/main/CHANGELOG.md") }
+        }
+      }
+    }
+  }
+}

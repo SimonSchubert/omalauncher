@@ -43,6 +43,8 @@ fun FolderTile(
     folder: Folder,
     /** The first four apps' icons, as [ShortcutTile] gets them. */
     icons: List<ImageBitmap?>,
+    /** Their names, as [ShortcutTile] gets them. */
+    labels: List<String>,
     focused: Boolean,
     modifier: Modifier,
     onTap: () -> Unit,
@@ -67,7 +69,7 @@ fun FolderTile(
                             for (col in 0 until 2) {
                                 val i = row * 2 + col
                                 Box(Modifier.size(mini), contentAlignment = Alignment.Center) {
-                                    folder.apps.getOrNull(i)?.let { AppGlyph(it.label, icons.getOrNull(i), mini) }
+                                    labels.getOrNull(i)?.let { AppGlyph(it, icons.getOrNull(i), mini) }
                                 }
                             }
                         }

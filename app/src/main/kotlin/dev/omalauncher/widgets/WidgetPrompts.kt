@@ -117,6 +117,6 @@ fun agentWidget(agent: Agent) =
       meta { owl: 2; description: "${agent.name} in a terminal on the home screen" }
 
       // Tap to type; tap outside or press Back to let go. When ${agent.name} exits, the shell stays.
-      Terminal { command: 'cd ~ && ${agent.bin}; exec bash' }
+      Terminal { command: 'cd ~ && ${agent.command}; exec bash' }
     }
     """.trimIndent() + "\n"

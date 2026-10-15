@@ -3,6 +3,7 @@ package dev.omalauncher.widgets.runtime
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +23,7 @@ import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.linux.ShellResult
 import dev.omalauncher.ui.EmbeddedTerminal
+import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.widgets.lang.Budget
 import dev.omalauncher.widgets.lang.Env
@@ -90,6 +92,9 @@ interface Services {
     /** An image Android holds, like album art: `Image { src: m.art }`. */
     fun androidImage(src: String): Bitmap? = null
 
+    /** An Android app's icon, `Image { src: "app:org.pkg" }`; null until the launcher has loaded it, or if there's no such app. */
+    fun appIcon(pkg: String): ImageBitmap? = null
+
     /** Runs an action; [done] is called once its effects should be visible, to refresh the widget that ran it. */
     fun act(
         name: String,
@@ -130,6 +135,13 @@ class WidgetInstance(
     override val budget = Budget()
     val root = Env.root(this)
     private val frameTime = mutableDoubleStateOf(0.0)
+    /** Whether anything read `time` since the frame clock last set it; see [awaitTimeRead]. */
+    @Volatile var timeRead = true
+    private val timeWake = Channel<Unit>(Channel.CONFLATED)
+    /** The parked frame clock's start, or [RUNNING]; see [awaitTimeRead]. */
+    @Volatile private var parkedStart = RUNNING
+    /** The latest time a read got while the clock was parked. */
+    @Volatile private var parkedTime = 0.0
     private val cells = arrayOfNulls<State<Value>>(program.globals.size)
     /** Decoded images by src, filled in off the main thread; see [image]. */
     private val images = mutableStateMapOf<String, ImageBitmap?>()
@@ -244,7 +256,36 @@ class WidgetInstance(
             else -> Palette.named(name)
         }?.toArgb()
 
-    override fun time() = frameTime.doubleValue
+    override fun time(): Double {
+        if (!timeRead) {
+            timeRead = true
+            timeWake.trySend(Unit)
+        }
+        val t = frameTime.doubleValue
+        val start = parkedStart
+        if (start == RUNNING) return t
+        // The last frame's time is old by now: a tap that keeps `time`, like `rollAt = time`
+        // under a `since = time - rollAt` drawn only while it rolls, needs the real one.
+        parkedTime = maxOf(parkedTime, (System.nanoTime() - start) / 1e9)
+        return maxOf(t, parkedTime)
+    }
+
+    /**
+     * Suspends until something reads `time`: a `time` under an `if` that's false needs no frames.
+     * [start] is the frame clock's start, in [System.nanoTime], so reads meanwhile get the real time.
+     */
+    suspend fun awaitTimeRead(start: Long) {
+        while (timeWake.tryReceive().isSuccess) Unit
+        if (timeRead) return
+        parkedTime = 0.0
+        parkedStart = start
+        try {
+            timeWake.receive()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            parkedStart = RUNNING
+            throw e
+        }
+    }
 
     fun setTile(
         cols: Int?,
@@ -270,6 +311,7 @@ class WidgetInstance(
         val v =
             when (name) {
                 "linux" -> return bool(linux())
+                "corners" -> return Num(LauncherStyle.cornerScale.toDouble())
                 "screenWidth" -> screenSize.value[0]
                 "screenHeight" -> screenSize.value[1]
                 "cols" -> tileSize.value[0]
@@ -284,7 +326,9 @@ class WidgetInstance(
     var time: Double
         get() = frameTime.doubleValue
         set(v) {
-            frameTime.doubleValue = v
+            // The first frame after parking doesn't go back before a time a read already got.
+            frameTime.doubleValue = if (parkedStart == RUNNING) v else maxOf(v, parkedTime)
+            parkedStart = RUNNING
         }
 
     override fun runInto(
@@ -381,6 +425,8 @@ class WidgetInstance(
      * to call while drawing: it only reads state.
      */
     fun image(src: String): ImageBitmap? {
+        // The launcher already holds every app's icon, as snapshot state: reading it redraws once it loads.
+        if (src.startsWith("app:")) return services.appIcon(src.removePrefix("app:"))
         // Album art changes with every track: Android holds the current one. Only its wrapper is
         // kept, so asking again for the same art gives the same image and redraws nothing.
         if (src.startsWith("media:")) {
@@ -790,6 +836,9 @@ class WidgetInstance(
 
     companion object {
         private const val SLOW_DRAW_NANOS = 4_000_000.0
+
+        /** [parkedStart] while the frame clock runs. */
+        private const val RUNNING = Long.MIN_VALUE
 
         /** Draws at the start that aren't timed: about two seconds at full rate. */
         private const val WARMUP_DRAWS = 120

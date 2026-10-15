@@ -1,0 +1,1 @@
+Your style is now a file, style.toml, that you or a coding agent can edit from Linux; changes show within a second. New settings for gaps, borders and the system bars, which can sit on the same glass as your widgets. Widgets can show your next alarm, Do Not Disturb and battery saver, turn on the torch, share text and use app icons. yay in a terminal no longer asks for a password.

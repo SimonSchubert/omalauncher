@@ -1,0 +1,1 @@
+Apps from a work profile show up beside your own, and with one the drawer splits into personal and work tabs, where you can pause work apps. Swipe up on home to open the app drawer, or turn it off in settings. Widgets can follow your corner style, and the widget store only takes widgets that pass values into commands safely. Widget screens can raise the keyboard as they open.

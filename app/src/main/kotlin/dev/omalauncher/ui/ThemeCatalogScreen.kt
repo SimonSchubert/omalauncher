@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +33,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -77,9 +75,7 @@ fun ThemeCatalogScreen(
         "community themes",
         onDismiss,
         actions = {
-            Box(Modifier.clip(CircleShape).clickable { scope.launch { catalog.refresh() } }.padding(6.dp)) {
-                Image(Icons.Refresh, "refresh", Modifier.size(20.dp), colorFilter = ColorFilter.tint(Palette.muted))
-            }
+            RefreshButton(catalog.loading) { scope.launch { catalog.refresh() } }
         },
     ) {
         val q = query.trim().lowercase()

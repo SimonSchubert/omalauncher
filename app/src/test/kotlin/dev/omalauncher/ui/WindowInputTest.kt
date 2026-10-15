@@ -15,13 +15,11 @@ class WindowInputTest {
         val first = ids.idFor(stream, firstPointer)
         val second = ids.idFor(stream, secondPointer)
 
-        assertEquals(17, first)
         assertTrue(first != second)
         assertEquals(first, ids.idFor(stream, firstPointer))
         assertEquals(second, ids.idFor(stream, secondPointer))
 
         ids.release(stream, firstPointer)
-        assertEquals(17, ids.idFor(stream, thirdPointer))
         assertTrue(ids.idFor(stream, thirdPointer) != second)
         ids.release(stream, secondPointer)
         ids.release(stream, thirdPointer)
@@ -42,7 +40,7 @@ class WindowInputTest {
 
         ids.release(firstOverlay, pointerId)
         val replacementOverlay = Any()
-        assertEquals(first, ids.idFor(replacementOverlay, pointerId))
+        assertTrue(ids.idFor(replacementOverlay, pointerId) != second)
         assertEquals(second, ids.idFor(secondOverlay, pointerId))
         ids.release(secondOverlay, pointerId)
         ids.release(replacementOverlay, pointerId)

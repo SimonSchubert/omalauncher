@@ -1,9 +1,11 @@
 package dev.omalauncher.widgets.lang
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.util.Locale
 
 class LangTest {
     /** Just enough runtime for tests: states start at their initial value, lets evaluate on read. */
@@ -162,6 +164,12 @@ class LangTest {
         assertEquals("[a, b]", text("split(\"a,b\", \",\")"))
         assertEquals("  7", text("pad(7, 3)"))
         assertEquals("[10, 20]", text("match(\"x=10 y=20\", \"x=(\\\\d+) y=(\\\\d+)\")"))
+    }
+
+    @Test fun plusKeepsSpacesInStrings() {
+        assertEquals("- a", text("\"- \" + \"a\""))
+        assertEquals("x y", text("\"x\" + \" \" + \"y\""))
+        assertEquals("n: 2", text("\"n: \" + 2"))
     }
 
     @Test fun letsSeeEarlierLetsAndSources() {
@@ -366,6 +374,16 @@ class LangTest {
         assertEquals("2", text("len(rows)", "state rows = [1, 2]"))
     }
 
+    @Test fun cornersFollowTheLauncherStyle() {
+        val soft =
+            object : Host by TestHost(0) {
+                override fun tile(name: String): Value = if (name == "corners") Num(0.5) else Null
+            }
+        val p = Compiler.compile("widget {\n meta { owl: 6 }\n Text { text: \"${'$'}{8 * corners}\" } }")
+        assertEquals("4", (p.root.single() as WNode.Element).props["text"]!!(Env.root(soft)).text())
+        assertTrue(compileError("widget {\n meta { owl: 5 }\n Text { text: corners } }").contains("corners needs owl 6"))
+    }
+
     @Test fun requiresDeclaresPackagesPerManager() {
         val p = Compiler.compile("widget {\n  requires { pacman: [\"jq\", \"curl\"] }\n  requires { pacman: \"jq\" }\n  Text { text: \"x\" }\n}")
         assertEquals(mapOf("pacman" to listOf("jq", "curl")), p.requires)
@@ -501,6 +519,16 @@ class LangTest {
         assertTrue(compileError("widget {\n source c = file(\"/x\")\n Text { text: c } }").contains("file needs owl 4"))
     }
 
+    @Test fun androidAlarmModesAndPhoneActions() {
+        val p = Compiler.compile("widget {\n meta { owl: 7 }\n source a = android.alarm\n source m = android.modes\n Text { text: a.time; onTap: { torch(\"toggle\"); torch(!m.torch); share(\"hi\"); haptic() } } }")
+        assertEquals(listOf("android.alarm", "android.modes"), p.globals.map { (it as Global.Source).kind })
+        assertTrue(!p.needsLinux)
+        assertTrue(compileError("widget {\n meta { owl: 7 }\n Text { text: 1; onTap: torch(\"blink\") } }").contains("torch takes"))
+        assertTrue(compileError("widget {\n meta { owl: 6 }\n source m = android.modes\n Text { text: 1 } }").contains("android.modes needs owl 7"))
+        assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: haptic() } }").contains("haptic needs owl 7"))
+        assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: share(\"x\") } }").contains("share needs owl 7"))
+    }
+
     @Test fun androidNotificationsAndVolume() {
         val p = Compiler.compile("widget {\n meta { owl: 4 }\n source n = android.notifications\n source v = android.volume\n Text { text: n.count; onTap: volume(\"up\") } }")
         assertEquals(listOf("android.notifications", "android.volume"), p.globals.map { (it as Global.Source).kind })
@@ -550,6 +578,15 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 5 }\n $many }").contains("more than 500 nodes"))
     }
 
+    @Test fun inputFocus() {
+        val p = Compiler.compile("widget {\n meta { owl: 6 }\n state s = \"\"\n Text { text: 1 }\n screen { Input { focus: s == \"\" } } }")
+        assertTrue("focus" in (p.screen!!.single() as WNode.Element).props)
+        // A component can go in either; on a tile the launcher ignores focus.
+        Compiler.compile("widget {\n meta { owl: 6 }\n component Field() { Input { focus: true } }\n Field { }\n screen { Field { } } }")
+        assertTrue(compileError("widget {\n meta { owl: 5 }\n Text { text: 1 }\n screen { Input { focus: true } } }").contains("Input.focus needs owl 6"))
+        assertTrue(compileError("widget {\n meta { owl: 6 }\n Input { focus: true } }").contains("only works in a screen"))
+    }
+
     @Test fun optionalSources() {
         val p = Compiler.compile("widget {\n meta { owl: 5 }\n source x = cmd(\"uname\") optional\n Text { text: linux ? x : \"no linux\"; onTap: terminal(\"btop\") } }")
         assertTrue((p.globals[0] as Global.Source).optional)
@@ -592,5 +629,42 @@ class LangTest {
         }
         assertEquals(Str("[".repeat(100_000)), Json.parseOrText("[".repeat(100_000)))
         assertEquals(Lst(listOf(Lst(emptyList()))), Json.parse("[[]]"))
+    }
+
+    @Test fun shQuotesAValueAsOneShellWord() {
+        val owl6 = "meta { owl: 6 }"
+        assertEquals("'a b'", text("sh(\"a b\")", owl6))
+        assertEquals("'it'\\''s; rm -rf ~'", text("sh(\"it's; rm -rf ~\")", owl6))
+        assertEquals("''", text("sh(null)", owl6))
+        assertEquals("'3'", text("sh(3)", owl6))
+        assertTrue(compileError("widget {\n Text { text: sh(\"x\") } }").contains("sh needs owl 6"))
+    }
+
+    @Test fun commandsWithQuotedValuesAreListedAsTemplates() {
+        fun commands(body: String) = Compiler.compile("widget {\n meta { owl: 6 }\n state v = \"x\"\n state n = 1\n$body\n Text { text: v } }").commands
+        assertEquals(listOf("sed -i ${Compiler.NUMBER}d ~/todo.md"), commands("onTap: run(\"sed -i ${'$'}{int(n)}d ~/todo.md\")"))
+        assertEquals(listOf("true", "curl -d ${Compiler.VALUE} https://ha.local"), commands("onTap: run(n > 1 ? \"true\" : \"curl -d ${'$'}{sh(v)} https://ha.local\")"))
+        assertEquals(listOf("echo ${Compiler.VALUE}x"), commands("source o = cmd(\"echo \" + sh(v) + \"x\") every 1m"))
+        // Unquoted, or quoted where bash would undo it: it could run anything.
+        for (bad in listOf("echo ${'$'}{v}", "echo \\\"${'$'}{sh(v)}\\\"", "echo '${'$'}{sh(v)}'", "echo ok # ${'$'}{sh(v)}", "cat <<E\\n${'$'}{sh(v)}\\nE")) {
+            assertEquals(bad, listOf("run(…) built from widget values"), commands("onTap: run(\"$bad\")"))
+        }
+        assertTrue(Compiler.quotable("a ${Compiler.VALUE} 'b' \"c\" d#e ${Compiler.VALUE}"))
+        assertFalse(Compiler.quotable("a ${'$'}'x ${Compiler.VALUE}'"))
+        assertEquals(listOf("jq"), Compiler.compile("widget {\n meta { owl: 6 }\n state v = \"x\"\n onTap: run(\"jq -n ${'$'}{sh(v)}\")\n Text { text: v } }").programs.toList())
+    }
+
+    @Test fun fmtTimeFollowsLanguageChanges() {
+        val was = Locale.getDefault()
+        try {
+            // Noon on Sunday 4 January 1970 in UTC: the same day from UTC-12 to UTC+11.
+            val sunday = "fmtTime(${3 * 86400 + 43200}, \"EEEE MMMM\")"
+            Locale.setDefault(Locale.ENGLISH)
+            assertEquals("Sunday January", text(sunday))
+            Locale.setDefault(Locale.GERMAN)
+            assertEquals("Sonntag Januar", text(sunday))
+        } finally {
+            Locale.setDefault(was)
+        }
     }
 }

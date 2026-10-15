@@ -60,6 +60,7 @@ class Market(
     private val record get() = File(engine.dir, ".market.json")
 
     suspend fun refresh() {
+        if (loading) return
         loading = true
         error = null
         try {

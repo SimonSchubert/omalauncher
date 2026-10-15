@@ -1,5 +1,12 @@
 package dev.omalauncher.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -15,15 +22,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -47,29 +62,84 @@ fun OverlayPanel(
             .background(Palette.overlay)
             .clickable(onClick = onDismiss)
             .safeDrawingPadding()
-            .padding(HomeGap),
+            .padding(PanelGap),
     ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .frame(2.dp, Palette.accent, Palette.background, radius = 20.dp)
-                // Taps inside the panel don't reach the scrim behind it.
-                .pointerInput(Unit) { detectTapGestures { } }
-                .padding(PanelPadding),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BasicText(title, style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
-                Spacer(Modifier.weight(1f))
-                actions()
-                Symbol(Glyph.Close, Palette.red, Modifier.clickable(onClick = onDismiss).padding(8.dp), TextSize.Title)
-            }
-            Spacer(Modifier.height(8.dp))
-            if (contentWidth == Dp.Unspecified) {
-                content()
-            } else {
-                Column(Modifier.weight(1f).widthIn(max = contentWidth).fillMaxWidth().align(Alignment.CenterHorizontally), content = content)
-            }
+        PanelFrame(
+            onClose = onDismiss,
+            // Taps inside the panel don't reach the scrim behind it.
+            modifier = Modifier.pointerInput(Unit) { detectTapGestures { } },
+            title = { PanelTitle(title) },
+            actions = actions,
+            contentWidth = contentWidth,
+            content = content,
+        )
+    }
+}
+
+/** [OverlayPanel]'s frame without the scrim, for a screen of its own (Files): [title] fills the header up to the [actions] and close mark. */
+@Composable
+fun PanelFrame(
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+    title: @Composable () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
+    contentWidth: Dp = Dp.Unspecified,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier
+            .fillMaxSize()
+            .frame(LauncherStyle.panelBorderWidth, Palette.accent, Palette.background, radius = 20.dp)
+            .padding(PanelPadding),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { title() }
+            actions()
+            Symbol(Glyph.Close, Palette.red, Modifier.clickable(onClick = onClose).padding(8.dp), TextSize.Title)
         }
+        Spacer(Modifier.height(8.dp))
+        if (contentWidth == Dp.Unspecified) {
+            content()
+        } else {
+            Column(Modifier.weight(1f).widthIn(max = contentWidth).fillMaxWidth().align(Alignment.CenterHorizontally), content = content)
+        }
+    }
+}
+
+/** A panel's title, in the accent color. */
+@Composable
+fun PanelTitle(text: String) = BasicText(text, style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title), maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+/** An [OverlayPanel] action drawn with one of [Icons]: muted, the size of [RefreshButton]. */
+@Composable
+fun PanelIcon(
+    icon: ImageVector,
+    description: String,
+    /** Degrees, to point [Icons.Chevron] another way. */
+    rotation: Float = 0f,
+    onClick: () -> Unit,
+) {
+    Box(Modifier.clip(CircleShape).clickable(onClick = onClick).padding(6.dp)) {
+        Image(icon, description, Modifier.size(20.dp).rotate(rotation), colorFilter = ColorFilter.tint(Palette.muted))
+    }
+}
+
+/** An [OverlayPanel] action that reloads a list; it spins in the accent color while [loading], and taps then do nothing. */
+@Composable
+fun RefreshButton(
+    loading: Boolean,
+    onRefresh: () -> Unit,
+) {
+    Box(Modifier.clip(CircleShape).clickable(enabled = !loading, onClick = onRefresh).padding(6.dp)) {
+        val turn =
+            if (loading) {
+                val angle by rememberInfiniteTransition(label = "refresh")
+                    .animateFloat(0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Restart), label = "turn")
+                Modifier.rotate(angle)
+            } else {
+                Modifier
+            }
+        Image(Icons.Refresh, if (loading) "refreshing" else "refresh", Modifier.size(20.dp).then(turn), colorFilter = ColorFilter.tint(if (loading) Palette.accent else Palette.muted))
     }
 }
 
@@ -131,7 +201,7 @@ fun JobLog(
     for (line in log.takeLast(lines)) BasicText(line, style = style, maxLines = if (state is JobState.Failed) 3 else 1)
 }
 
-/** The items of a popup menu; picking one closes the menu first. */
+/** The items of a popup menu, framed like home's edit bar and menu; picking one closes the menu first. */
 @Composable
 fun MenuItems(
     items: List<Pair<String, () -> Unit>>,
@@ -139,14 +209,17 @@ fun MenuItems(
     minWidth: Dp,
     itemPadding: Dp,
     fontSize: TextUnit,
+    /** Above the items, inside the frame: an app's shortcuts ([ShortcutRows]). */
+    top: @Composable ColumnScope.() -> Unit = {},
 ) {
     Column(
         Modifier
             .width(IntrinsicSize.Max)
             .widthIn(min = minWidth)
-            .frame(1.dp, Palette.border, Palette.surface)
+            .frame(2.dp, Palette.accent, Palette.background)
             .padding(vertical = 6.dp),
     ) {
+        top()
         for ((label, action) in items) {
             BasicText(
                 label,
