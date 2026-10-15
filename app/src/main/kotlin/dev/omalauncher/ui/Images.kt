@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.ImageDecoder
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.IntRect
 import com.caverock.androidsvg.SVG
 import java.io.File
@@ -65,6 +67,22 @@ fun decodeForScreen(
             decoder.allocator = ImageDecoder.ALLOCATOR_HARDWARE
         }
     }.getOrNull()
+}
+
+/** [file]'s luminance, [cols] cells across; null if it doesn't decode. */
+fun lumaGrid(
+    file: File,
+    cols: Int = 64,
+): LumaGrid? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.path, bounds)
+    val small = decodeSampled(file, cols) ?: return null
+    val rows = (cols * small.height / small.width).coerceAtLeast(1)
+    val cells = Bitmap.createScaledBitmap(small, cols, rows, true)
+    val pixels = IntArray(cols * rows).also { cells.getPixels(it, 0, cols, 0, 0, cols, rows) }
+    if (cells !== small) cells.recycle()
+    small.recycle()
+    return LumaGrid(cols, FloatArray(pixels.size) { Color(pixels[it]).luminance() }, bounds.outWidth, bounds.outHeight)
 }
 
 /**

@@ -5,7 +5,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +50,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalWindowInfo
 import dev.omalauncher.Runtime
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
@@ -106,7 +110,7 @@ private fun DesktopScreen(
     }
     SystemBarFrames()
     val covered = remember(state) { { state.homeCovered || runtime.widgets.openScreen != null } }
-    CompositionLocalProvider(LocalHomeCovered provides covered) {
+    CompositionLocalProvider(LocalHomeCovered provides covered, LocalLabelBackdrop provides labelBackdrop(runtime, state)) {
         Column(Modifier.fillMaxSize().safePadding()) {
             HomeScreen(runtime, state, Modifier.weight(1f))
         }
@@ -219,6 +223,21 @@ private fun DesktopScreen(
     // Full-screen panels draw over the bar.
     ThemesOverlay(runtime, state)
     StyleErrors(runtime.style)
+}
+
+@Composable
+private fun labelBackdrop(
+    runtime: Runtime,
+    state: LauncherState,
+): LabelBackdrop? {
+    val auto = LauncherStyle.bareAppIcons && LauncherStyle.style[Style.LABELS] == "auto"
+    val file = runtime.themes.background
+    val grid by produceState<LumaGrid?>(null, file, auto) {
+        value = null
+        if (auto && file != null) value = withContext(Dispatchers.IO) { lumaGrid(file) }
+    }
+    val screen = LocalWindowInfo.current.containerSize
+    return remember(grid, screen, state) { grid?.let { wallpaperBackdrop(it, screen) { state.wallpaperOffset } } }
 }
 
 /**

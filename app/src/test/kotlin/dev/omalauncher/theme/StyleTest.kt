@@ -118,7 +118,7 @@ class StyleTest {
         assertEquals("version = 1\n\n[home]\nlabels = \"dark\"\n", Toml.write(StyleFile.encode(dark, Style().with(Style.LABELS, "dark")), ""))
         val decoded = StyleFile.decode(Toml.parse("[home]\nlabels = \"white\"\n"))
         assertEquals("light", decoded.style[Style.LABELS])
-        assertEquals(listOf("home.labels: takes \"light\" or \"dark\"; keeping \"light\""), decoded.problems)
+        assertEquals(listOf("home.labels: takes \"light\" or \"dark\" or \"auto\"; keeping \"light\""), decoded.problems)
     }
 
     @Test fun absentKeysAreDefaultsNotThePreviousValues() {
