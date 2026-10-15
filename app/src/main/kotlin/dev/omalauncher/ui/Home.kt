@@ -82,6 +82,7 @@ fun HomeScreen(
         showPage = null
     }
     var menuFor by remember { mutableStateOf<HomeItem?>(null) }
+    var renaming by remember { mutableStateOf<Folder?>(null) }
 
     val terminals = runtime.terminals
     BackHandler(enabled = terminals.active != null) { terminals.deactivate() }
@@ -278,6 +279,12 @@ fun HomeScreen(
                     }
                     EditBar {
                         if (item is WidgetItem) EditAction("edit") { edit(item) }
+                        if (item is Folder) {
+                            EditAction("rename") {
+                                state.editing = null
+                                renaming = item
+                            }
+                        }
                         // As a QR code or link, or (your own) to the store. An agent's tile is a terminal, not a widget to pass on.
                         if (item is WidgetItem && !item.spec.file.name.startsWith("agent-")) {
                             EditAction("share") {
@@ -365,7 +372,15 @@ fun HomeScreen(
             },
             onGroup = { app, target -> engine.shortcuts.group(app, target) },
             onReorder = { app, before -> engine.shortcuts.moveBefore(app.key, before) },
+            onRenameFolder = { renaming = it },
         )
+    }
+
+    renaming?.let { folder ->
+        TextDialog("folder name", folder.name.orEmpty(), "rename", hint = "blank for none", allowBlank = true, onDismiss = { renaming = null }) { name ->
+            engine.shortcuts.rename(folder.key, name)
+            renaming = null
+        }
     }
 
     if (extraKeys) {

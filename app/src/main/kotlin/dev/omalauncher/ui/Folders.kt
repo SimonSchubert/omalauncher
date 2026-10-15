@@ -23,6 +23,9 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -37,7 +40,7 @@ import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-/** A folder on the home grid: its first four apps in a 2x2 badge. */
+/** A folder on the home grid: its first four apps in a 2x2 badge, and its name under it like an app's. */
 @Composable
 fun FolderTile(
     folder: Folder,
@@ -49,15 +52,20 @@ fun FolderTile(
     modifier: Modifier,
     onTap: () -> Unit,
 ) {
-    val bare = LauncherStyle.bareAppIcons
     BoxWithConstraints(
         modifier
             .tileFrame(focused)
+            .clearAndSetSemantics { contentDescription = folder.name?.let { "$it folder" } ?: "folder" }
             .pointerInput(folder.key) { detectTapGestures(onTap = { onTap() }) }
             .padding(4.dp),
     ) {
-        val badge = min(maxWidth, maxHeight) * if (bare) 0.95f else 0.85f
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val showLabel = showsLabel()
+        val badge = tileIconSize(showLabel)
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+        ) {
             Box(
                 Modifier.size(badge).clip(LauncherStyle.shape(badge / 3)).background(Palette.surface),
                 contentAlignment = Alignment.Center,
@@ -76,6 +84,7 @@ fun FolderTile(
                     }
                 }
             }
+            if (showLabel) TileLabel(folder.name.orEmpty())
         }
     }
 }
@@ -96,7 +105,7 @@ private fun AppGlyph(
 
 /**
  * Where an open folder draws, in the home grid's pixels: a panel in the middle of the
- * grid with the apps at home's cell size, smaller only
+ * grid with its name on top and the apps at home's cell size, smaller only
  * when that doesn't fit. The grid's gestures and the panel's drawing share it.
  */
 internal class FolderGeometry(
@@ -112,11 +121,12 @@ internal class FolderGeometry(
     private val rows = ((count + cols - 1) / cols).coerceAtLeast(1)
     private val pad = with(density) { 16.dp.roundToPx() }
     private val margin = with(density) { 16.dp.roundToPx() }
+    private val head = with(density) { 40.dp.roundToPx() }
     private val scale =
         minOf(
             1f,
             (width - 2 * margin - 2 * pad) / (cols * cellW),
-            (height - 2 * margin - 2 * pad) / (rows * cellH),
+            (height - 2 * margin - 2 * pad - head) / (rows * cellH),
         )
     private val w = cellW * scale
     private val h = cellH * scale
@@ -125,22 +135,25 @@ internal class FolderGeometry(
     val panel: IntRect =
         run {
             val pw = (cols * w).roundToInt() + 2 * pad
-            val ph = (rows * h).roundToInt() + 2 * pad
+            val ph = (rows * h).roundToInt() + 2 * pad + head
             val left = (width - pw) / 2
             val top = (height - ph) / 2
             IntRect(left, top, left + pw, top + ph)
         }
 
+    /** The folder's name, across the panel's top; a tap there renames it. */
+    val header: IntRect get() = IntRect(panel.left, panel.top, panel.right, panel.top + pad + head)
+
     /** The [i]th app's tile, gapped like home's. */
     fun app(i: Int): IntRect {
         val left = panel.left + pad + (i % cols) * w
-        val top = panel.top + pad + (i / cols) * h
+        val top = panel.top + pad + head + (i / cols) * h
         return IntRect((left + gap / 2f).roundToInt(), (top + gap / 2f).roundToInt(), (left + w - gap / 2f).roundToInt(), (top + h - gap / 2f).roundToInt())
     }
 }
 
 /**
- * An open folder over the home grid: a scrim, the panel and its apps drawn by [render].
+ * An open folder over the home grid: a scrim, the panel with the folder's name and its apps drawn by [render].
  * Taps, long-presses and drags are [HomeGrid]'s, like every touch on home.
  */
 @Composable
@@ -160,6 +173,21 @@ internal fun FolderPanel(
                 .size(with(density) { p.width.toDp() }, with(density) { p.height.toDp() })
                 .frame(2.dp, Palette.accent, Palette.background, radius = 20.dp),
         )
+        val hd = geometry.header
+        Box(
+            Modifier
+                .offset { IntOffset(hd.left, hd.top) }
+                .size(with(density) { hd.width.toDp() }, with(density) { hd.height.toDp() })
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            BasicText(
+                folder.name ?: "name this folder",
+                style = Mono.copy(color = if (folder.name == null) Palette.muted else Palette.foreground, fontSize = TextSize.Item),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
         folder.apps.forEachIndexed { i, app ->
             if (app.key == carried) return@forEachIndexed
             val r = geometry.app(i)

@@ -63,6 +63,8 @@ internal fun TextDialog(
     initial: String,
     confirm: String,
     hint: String? = null,
+    /** Confirms an empty text too, for a name that may be cleared. */
+    allowBlank: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
@@ -79,7 +81,7 @@ internal fun TextDialog(
             textStyle = Mono.copy(fontSize = TextSize.Large),
             cursorBrush = SolidColor(Palette.accent),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { if (text.isNotBlank()) onConfirm(text.trim()) }),
+            keyboardActions = KeyboardActions(onDone = { if (allowBlank || text.isNotBlank()) onConfirm(text.trim()) }),
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -90,7 +92,7 @@ internal fun TextDialog(
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             BracketAction("cancel", Palette.muted, onDismiss)
-            BracketAction(confirm, Palette.accent) { if (text.isNotBlank()) onConfirm(text.trim()) }
+            BracketAction(confirm, Palette.accent) { if (allowBlank || text.isNotBlank()) onConfirm(text.trim()) }
         }
     }
 }

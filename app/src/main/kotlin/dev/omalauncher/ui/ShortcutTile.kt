@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -58,10 +59,8 @@ fun ShortcutTile(
             .pointerInput(shortcut.key) { detectTapGestures(onTap = { onTap() }) }
             .padding(4.dp),
     ) {
-        // Label only when the tile is tall enough to fit it under the icon.
-        val showLabel = maxHeight > 64.dp
-        // Bare icons have no frame to fill, so they take nearly the whole cell.
-        val iconSize = min(maxWidth, maxHeight - if (showLabel) 18.dp else 0.dp) * if (bare) 0.95f else 0.85f
+        val showLabel = showsLabel()
+        val iconSize = tileIconSize(showLabel)
         Column(
             Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -93,6 +92,12 @@ fun ShortcutTile(
         }
     }
 }
+
+/** Whether a tile is tall enough to fit its label under the icon. */
+internal fun BoxWithConstraintsScope.showsLabel() = maxHeight > 64.dp
+
+/** An app tile's icon edge, leaving room for the label when [label]. Bare icons have no frame to fill, so they take nearly the whole cell. */
+internal fun BoxWithConstraintsScope.tileIconSize(label: Boolean) = min(maxWidth, maxHeight - if (label) 18.dp else 0.dp) * if (LauncherStyle.bareAppIcons) 0.95f else 0.85f
 
 /** How opaque an app from a paused work profile is drawn. */
 internal const val PausedAlpha = 0.4f
