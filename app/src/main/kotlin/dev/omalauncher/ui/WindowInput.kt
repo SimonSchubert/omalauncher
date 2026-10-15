@@ -30,7 +30,8 @@ private const val WHEEL_STEP = 15f
 /**
  * Routes pointer input over a Linux window's view to its surfaces. Mouse input
  * is forwarded as-is. Touch is mapped for a phone: tap = left click, long
- * press = right click, drag = scroll; clients with wl_touch get real touch.
+ * press = right click, drag = scroll; native touch clients get real touch
+ * except Tern, which needs the pointer mapping for terminal scrolling.
  */
 fun Modifier.linuxWindowInput(
     wm: WindowManager,
@@ -183,7 +184,8 @@ private suspend fun PointerInputScope.handlePointer(
                 val hit = window.hitTest(start.x, start.y)
                 change.consume()
                 if (!wm.onPress(window, hit) || hit == null) continue
-                if (wm.wantsTouch(hit.surface)) {
+                // Tern binds wl_touch but does not turn finger drags into terminal scrolling.
+                if (window.appId != "tern" && window.appId != "so.stencil.tern" && wm.wantsTouch(hit.surface)) {
                     val id = touchIds.idFor(touchStream, change.id.value)
                     touches[change.id] = ActiveTouch(id, hit, start)
                     touchUpdates() += TouchInputEvent.Down(hit.surface, id, hit.x, hit.y)

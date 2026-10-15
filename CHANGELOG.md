@@ -8,6 +8,9 @@ Dates are when the build was uploaded to Play.
 
 - Linux touch input forwards simultaneous contacts with distinct IDs, batched
   frames and cancellation when Android cancels a gesture or its surface closes.
+- Tern terminal touch gestures use tap-to-click, long-press right-click and
+  drag-to-scroll even when Tern binds native touch; other touch clients keep
+  their native gestures.
 
 ## 0.7.2 (versionCode 14) – 2026-10-14
 
