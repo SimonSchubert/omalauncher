@@ -5,7 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.ImageDecoder
-import android.graphics.Rect
+import androidx.compose.ui.unit.IntRect
 import com.caverock.androidsvg.SVG
 import java.io.File
 import kotlin.math.roundToInt
@@ -78,12 +78,12 @@ fun wallpaperCrop(
     w: Int,
     h: Int,
     offset: Float,
-): Rect {
+): IntRect {
     val scale = maxOf(w.toFloat() / bmpW, h.toFloat() / bmpH)
     val srcW = (w / scale).toInt()
     val srcH = (h / scale).toInt()
     val travel = minOf(bmpW - srcW, srcW / 2)
     val left = (bmpW - srcW - travel) / 2 + (travel * offset.coerceIn(0f, 1f)).roundToInt()
     val top = (bmpH - srcH) / 2
-    return Rect(left, top, left + srcW, top + srcH)
+    return IntRect(left, top, left + srcW, top + srcH)
 }

@@ -97,7 +97,7 @@ private fun DesktopScreen(
                 drawImage(
                     bmp,
                     srcOffset = IntOffset(src.left, src.top),
-                    srcSize = IntSize(src.width(), src.height()),
+                    srcSize = IntSize(src.width, src.height),
                     dstSize = IntSize(size.width.toInt(), size.height.toInt()),
                     filterQuality = FilterQuality.Medium,
                 )
