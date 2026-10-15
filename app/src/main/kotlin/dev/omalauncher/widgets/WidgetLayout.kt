@@ -1,7 +1,10 @@
 package dev.omalauncher.widgets
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.setValue
 import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapEntries
 import org.json.JSONObject
@@ -17,10 +20,20 @@ data class Cell(
     val bottom get() = y + h
 
     fun overlaps(o: Cell) = x < o.right && o.x < right && y < o.bottom && o.y < bottom
+
+    /** This cell, placed on a grid of [from] columns, moved onto one of [to]: its left edge and width scale down to whole cells. */
+    fun rescaled(
+        from: Int,
+        to: Int,
+    ): Cell {
+        if (from == to) return this
+        val x = x * to / from
+        return copy(x = x, w = (w * to / from).coerceIn(1, to - x))
+    }
 }
 
-/** Columns of the home grid. Saved with the layout, so changing it rescales saved cells rather than scrambling them. */
-const val GRID_COLUMNS = 6
+/** The home grid's columns before they could be set: a saved layout that doesn't say has this many. */
+const val CLASSIC_COLUMNS = 6
 
 /**
  * Where each widget and pinned app sits on the home grid, keyed by file name
@@ -35,14 +48,23 @@ class WidgetLayout(
     /** Read while compiling widgets, off the main thread. */
     private val pages = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
+    /** Columns of the home grid the cells are on, saved with them. */
+    var columns by mutableIntStateOf(CLASSIC_COLUMNS)
+        private set
+
     init {
-        (Versioned.read(prefs.getString(LAYOUT, null), VERSION) as? JSONObject)?.let(::load)
+        (Versioned.read(prefs.getString(LAYOUT, null), VERSION) as? JSONObject)?.let { data ->
+            columns = columnsOf(data)
+            load(data)
+        }
         migrateLegacy(context)
     }
 
+    private fun columnsOf(data: JSONObject) = data.optInt("columns", CLASSIC_COLUMNS).takeIf { it > 0 } ?: CLASSIC_COLUMNS
+
     private fun load(data: JSONObject) {
-        val columns = data.optInt("columns", GRID_COLUMNS)
-        data.optJSONObject("cells")?.mapEntries { _, c -> rescale(Cell(c.getInt("x"), c.getInt("y"), c.getInt("w"), c.getInt("h")), columns) }?.let(cells::putAll)
+        val saved = columnsOf(data)
+        data.optJSONObject("cells")?.mapEntries { _, c -> Cell(c.getInt("x"), c.getInt("y"), c.getInt("w"), c.getInt("h")).rescaled(saved, columns) }?.let(cells::putAll)
         data.optJSONObject("pages")?.let { p -> for (k in p.keys()) pages[k] = p.optInt(k, 1) }
     }
 
@@ -60,16 +82,6 @@ class WidgetLayout(
         save()
         prefs.edit().remove(LEGACY_CELLS).apply()
         oldPages.edit().clear().apply()
-    }
-
-    /** A cell saved on a grid of [columns], moved onto today's. */
-    private fun rescale(
-        c: Cell,
-        columns: Int,
-    ): Cell {
-        if (columns == GRID_COLUMNS || columns <= 0) return c
-        val x = c.x * GRID_COLUMNS / columns
-        return c.copy(x = x, w = (c.w * GRID_COLUMNS / columns).coerceIn(1, GRID_COLUMNS - x))
     }
 
     /** The page [name] was moved to on the phone, if it was. */
@@ -197,7 +209,7 @@ class WidgetLayout(
         val (cellW, cellH, gap) =
             geometry ?: run {
                 val gap = Math.round(6 * metrics.density)
-                val cell = (metrics.widthPixels - gap) / GRID_COLUMNS.toFloat()
+                val cell = (metrics.widthPixels - gap) / columns.toFloat()
                 Triple(cell, cell, gap)
             }
         val (across, down) = if (turned) cells.second to cells.first else cells
@@ -209,7 +221,7 @@ class WidgetLayout(
         for ((name, c) in cells) json.put(name, JSONObject().put("x", c.x).put("y", c.y).put("w", c.w).put("h", c.h))
         val data =
             JSONObject()
-                .put("columns", GRID_COLUMNS)
+                .put("columns", columns)
                 .put("cells", json)
                 .put("pages", JSONObject(pages as Map<*, *>))
         prefs.edit().putString(LAYOUT, Versioned.write(VERSION, data)).apply()

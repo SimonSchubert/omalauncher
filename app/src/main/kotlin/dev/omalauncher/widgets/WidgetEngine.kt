@@ -496,7 +496,7 @@ class WidgetEngine(
             }
         if (skip != null) return writeCheck(spec.file, hash, "ok", "preview-skipped $hash $skip")
         val inst = instance(spec)!!
-        val cells = layout.cell(name)?.let { it.w to it.h } ?: spec.size?.let { (w, h) -> w.coerceIn(1, GRID_COLUMNS) to h.coerceAtLeast(1) } ?: (3 to 3)
+        val cells = layout.cell(name)?.let { it.w to it.h } ?: spec.size?.let { (w, h) -> w.coerceIn(1, layout.columns) to h.coerceAtLeast(1) } ?: (3 to 3)
         val (w, h) = layout.tilePx(cells, context.resources.displayMetrics)
         previewing += name
         val loaded: suspend () -> Unit = { snapshotFlow { inst.loaded() }.first { it } }
@@ -530,7 +530,7 @@ class WidgetEngine(
     private suspend fun previewThemes(name: String) {
         val spec = specs.firstOrNull { it.file.name == name } ?: return
         val inst = instance(spec) ?: return
-        val cells = layout.cell(name)?.let { it.w to it.h } ?: spec.size?.let { (w, h) -> w.coerceIn(1, GRID_COLUMNS) to h.coerceAtLeast(1) } ?: (3 to 3)
+        val cells = layout.cell(name)?.let { it.w to it.h } ?: spec.size?.let { (w, h) -> w.coerceIn(1, layout.columns) to h.coerceAtLeast(1) } ?: (3 to 3)
         val (w, h) = layout.tilePx(cells, context.resources.displayMetrics)
         val themes = withContext(Dispatchers.IO) { runtime.themes.bundled }
         val before = Palette.current

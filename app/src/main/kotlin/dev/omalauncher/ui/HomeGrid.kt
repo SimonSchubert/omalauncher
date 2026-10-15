@@ -21,7 +21,6 @@ import androidx.compose.ui.zIndex
 import dev.omalauncher.widgets.Cell
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.Shortcut
-import dev.omalauncher.widgets.GRID_COLUMNS
 import dev.omalauncher.widgets.HomeItem
 import dev.omalauncher.widgets.WidgetLayout
 import kotlin.math.roundToInt
@@ -83,19 +82,19 @@ private class Grid(
     height: Int,
     val gap: Int,
     val pad: GridPad,
+    val cols: Int,
     val turned: Boolean = false,
     portraitRows: Int? = null,
     used: Int = 0,
     val per: Int = 1,
 ) {
-    val cols = GRID_COLUMNS
     val height = height
 
     /** The room the cells share across and down: a cell is a tile and the gap after it, so the last gap is the pad's. */
     private val across = width - pad.left - pad.right + gap
     private val down = height - pad.top - pad.bottom + gap
 
-    val rows = maxOf(if (turned) portraitRows ?: squareRows(down, across) else squareRows(across, down), used)
+    val rows = maxOf(if (turned) portraitRows ?: squareRows(down, across, cols) else squareRows(across, down, cols), used)
 
     /** A screen cell's width and height, the gap after it included. */
     val cellW = across / (if (turned) rows else cols).toFloat()
@@ -165,17 +164,18 @@ private class Grid(
 }
 
 /**
- * How many rows of square-ish cells fit [long] beside [GRID_COLUMNS] of them across [short]. A window narrower than
- * the gaps around it leaves no room across: one row then, and never more than [MAX_SQUARE_ROWS], or a sliver would
- * make millions of them.
+ * How many rows of square-ish cells fit [long] beside [cols] of them across [short]. A window narrower than
+ * the gaps around it leaves no room across: one row then, and never more than [MAX_CELL_ASPECT] times [cols],
+ * or a sliver would make millions of them.
  */
 private fun squareRows(
     short: Int,
     long: Int,
-) = if (short <= 0) 1 else (long / (short / GRID_COLUMNS.toFloat())).toInt().coerceIn(1, MAX_SQUARE_ROWS)
+    cols: Int,
+) = if (short <= 0) 1 else (long / (short / cols.toFloat())).toInt().coerceIn(1, MAX_CELL_ASPECT * cols)
 
-/** Cells four times as tall as wide: far past any phone's shape (20:9 makes 13 rows). */
-private const val MAX_SQUARE_ROWS = 4 * GRID_COLUMNS
+/** Cells four times as tall as wide: far past any phone's shape (20:9 makes 13 rows of 6 columns). */
+private const val MAX_CELL_ASPECT = 4
 
 /** Room around a page's tiles, in pixels; see [Grid]. */
 @Immutable
@@ -334,10 +334,11 @@ internal fun HomeGrid(
         val used by remember(pages, itemsOn, layout) {
             derivedStateOf { pages.flatMap(itemsOn).maxOfOrNull { item -> layout.cell(item.key)?.let { if (item.resizable) it.bottom else it.y + 1 } ?: 0 } ?: 0 }
         }
+        val cols = layout.columns
         val grid =
-            remember(width, height, gap, pad, turned, windowSize, used, per) {
+            remember(width, height, gap, pad, cols, turned, windowSize, used, per) {
                 // Not seen in portrait yet: square cells across.
-                Grid(width, height, gap, pad, turned, if (turned) layout.portraitRows(windowSize) else null, used, per)
+                Grid(width, height, gap, pad, cols, turned, if (turned) layout.portraitRows(windowSize) else null, used, per)
             }
         if (!turned) SideEffect { layout.setPortraitRows(windowSize, grid.rows) }
         // Previews draw tiles at the size they have here.
@@ -574,7 +575,8 @@ internal fun HomeGrid(
                                             val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
                                             c.consume()
                                             if (!c.pressed) break
-                                            val (minW, minH) = item.minSize
+                                            val minW = item.minSize.first.coerceAtMost(g.cols)
+                                            val minH = item.minSize.second
                                             val p = g.local(c.position, selSide)
                                             val x0 = if (edges.left) g.colLine(p).coerceAtMost(cell.right - minW) else cell.x
                                             val x1 = if (edges.right) g.colLine(p).coerceAtLeast(cell.x + minW) else cell.right
