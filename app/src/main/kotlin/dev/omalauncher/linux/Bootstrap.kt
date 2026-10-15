@@ -132,6 +132,11 @@ class Bootstrap(
 
     val isInstalled get() = _state.value == LinuxState.Installed
 
+    /** Reports an installed system as installed without running its steps, for a session the user stopped. */
+    fun restoreInstalled() {
+        if (wanted) _state.value = LinuxState.Installed
+    }
+
     /** An install was started (and may still need to finish), or one finished. */
     val wanted get() = journal.setupComplete || choiceFile.exists() || File(proot.filesDir, "rootfs-ready").exists()
 

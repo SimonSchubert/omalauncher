@@ -118,15 +118,29 @@ private fun Installed(runtime: Runtime) {
         Column(Modifier.weight(1f)) {
             BasicText("arch linux", style = Mono.copy(fontSize = TextSize.Item))
             BasicText(
-                "installed · " + (size?.let(::formatSize) ?: "measuring…"),
+                "installed · " + (size?.let(::formatSize) ?: "measuring…") + (if (runtime.linuxRunning) "" else " · stopped"),
                 style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
         }
+        if (runtime.linuxRunning) {
+            BracketAction("stop", Palette.red, runtime::stopLinux)
+        } else {
+            BracketAction("start", Palette.accent, runtime::startLinux)
+        }
     }
-    if (runtime.gpu.supported) {
+    if (runtime.linuxRunning && runtime.gpu.supported) {
         Spacer(Modifier.height(8.dp))
         GpuRow(runtime)
     }
+    Spacer(Modifier.height(16.dp))
+    BasicText(
+        if (runtime.linuxRunning) {
+            "Stop ends the Linux session without deleting anything; start it again here."
+        } else {
+            "Stopped. Arch Linux and everything in /root stay installed; start it when you need it."
+        },
+        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+    )
     Spacer(Modifier.height(16.dp))
     if (!confirm) {
         BracketAction("remove linux", Palette.red) { confirm = true }

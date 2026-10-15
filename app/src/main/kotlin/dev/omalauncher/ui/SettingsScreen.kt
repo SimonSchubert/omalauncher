@@ -43,7 +43,7 @@ fun SettingsScreen(
     OverlayPanel("settings", onDismiss, contentWidth = ReadingWidth) {
         val linuxStatus =
             when (val l = linux) {
-                LinuxState.Installed -> "installed · remove"
+                LinuxState.Installed -> if (runtime.linuxRunning) "installed · running" else "installed · stopped"
                 is LinuxState.Installing -> "installing" + (l.progress?.let { " ${(it * 100).toInt()}%" } ?: "") + " · ${l.stage.label}"
                 is LinuxState.Failed -> "setup stopped · retry"
                 LinuxState.Removing -> "removing…"
