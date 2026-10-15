@@ -111,6 +111,15 @@ class OpenBridge(
                 exec micro "${'$'}@"
                 """.trimIndent() + "\n"
             },
+            Managed.text(File(bin, SPLIT_COMMAND), Policy.Owned, executable = true) {
+                """
+                #!/bin/sh
+                # omalauncher: $SPLIT_COMMAND [command...] runs it in a terminal docked next to the window in
+                # front, in Android split-screen (a shell if no command). See Runtime.openAppWindow.
+                [ ${'$'}# -gt 0 ] || set -- bash
+                exec foot --app-id=$SPLIT_APP_ID_PREFIX -e "${'$'}@"
+                """.trimIndent() + "\n"
+            },
         )
     }
 

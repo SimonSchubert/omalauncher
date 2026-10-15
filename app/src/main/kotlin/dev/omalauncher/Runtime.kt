@@ -30,6 +30,7 @@ import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.LinuxState
+import dev.omalauncher.linux.SPLIT_APP_ID_PREFIX
 import dev.omalauncher.linux.SystemUpdates
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.bundledIcons
@@ -183,12 +184,15 @@ class Runtime(
                     "btop" -> "BtopWindow"
                     else -> agentOf(window?.appId.orEmpty(), name)?.windowAlias ?: "LinuxWindowActivity"
                 }
+            // omarchy-split's windows (a password prompt, a log to watch) dock beside the window in front.
+            val adjacent = window?.appId.orEmpty().startsWith(SPLIT_APP_ID_PREFIX)
             InstantActivity.startInstantly(
                 context,
                 Intent()
                     .setClassName(context, "dev.omalauncher.$activity")
                     .setData(Uri.parse("omarchy://window/$handle"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                    .apply { if (adjacent) addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT) },
             )
         }
     }
