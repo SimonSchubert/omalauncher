@@ -111,6 +111,18 @@ class StyleTest {
         assertEquals(2, StyleFile.decode(mapOf("widgets.border" to "none", "widgets.border-focused" to "none")).problems.size)
     }
 
+    @Test fun columnsAreAWholeNumberFromFourToSix() {
+        assertEquals(6, Style()[Style.COLUMNS])
+        val five = Toml.parse("[home]\ncolumns = 5\n")
+        assertEquals(5, StyleFile.decode(five).style[Style.COLUMNS])
+        assertEquals("version = 1\n\n[home]\ncolumns = 5\n", Toml.write(StyleFile.encode(five, Style().with(Style.COLUMNS, 5)), ""))
+        for (bad in listOf(5.5, 3.0, 7.0)) {
+            val decoded = StyleFile.decode(mapOf("home.columns" to bad), Style().with(Style.COLUMNS, 5))
+            assertEquals(5, decoded.style[Style.COLUMNS])
+            assertEquals(listOf("home.columns: takes a whole number from 4 to 6; keeping 5"), decoded.problems)
+        }
+    }
+
     @Test fun absentKeysAreDefaultsNotThePreviousValues() {
         val previous = Style().with(Style.GAPS_IN, 10.0)
         assertEquals(6.0, StyleFile.decode(emptyMap(), previous).style[Style.GAPS_IN], 0.0)

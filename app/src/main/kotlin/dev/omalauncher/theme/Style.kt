@@ -46,6 +46,19 @@ sealed class Setting<T>(
         override fun decode(value: Any): String? = nonBlank(value, "takes a name in quotes")
     }
 
+    class Count(
+        key: String,
+        default: Int,
+        val range: IntRange,
+        doc: String,
+    ) : Setting<Int>(key, default, doc) {
+        override fun decode(value: Any): Int {
+            val v = value as? Double
+            require(v != null && v == Math.rint(v) && v.toInt() in range) { "takes a whole number from ${range.first} to ${range.last}" }
+            return v.toInt()
+        }
+    }
+
     class Text(
         key: String,
         default: String,
@@ -140,6 +153,7 @@ class Style(
 
         val APP_TILES = Setting.Flag("home.app-tiles", true, "Apps on home in a tile like a widget; false draws bare icons on the wallpaper.")
         val RECENT_APPS = Setting.Flag("home.recent-apps", true, "The strip of recently used apps above the prompt bar.")
+        val COLUMNS = Setting.Count("home.columns", 6, 4..6, "Columns of home's grid. Fewer make bigger cells, and apps show their names under their icons once a cell is tall enough.")
 
         val GAPS_IN = Setting.Number("widgets.gaps-in", 6.0, 0.0..24.0, "Space in dp between two of home's widgets (all of it, unlike Hyprland's gaps_in, which each window has on its side).")
         val GAPS_OUT = Setting.Number("widgets.gaps-out", 6.0, 0.0..48.0, "Space in dp from home's widgets, the strip and the prompt bar to the screen's edges.")
@@ -197,7 +211,7 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, APP_TILES, RECENT_APPS, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, APP_TILES, RECENT_APPS, COLUMNS, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
                 STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT)
         }

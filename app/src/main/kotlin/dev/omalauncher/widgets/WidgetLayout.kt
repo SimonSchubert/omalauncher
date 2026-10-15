@@ -21,14 +21,19 @@ data class Cell(
 
     fun overlaps(o: Cell) = x < o.right && o.x < right && y < o.bottom && o.y < bottom
 
-    /** This cell, placed on a grid of [from] columns, moved onto one of [to]: its left edge and width scale down to whole cells. */
+    /**
+     * This cell, placed on a grid of [from] columns, moved onto one of [to]: its left edge and width scale down
+     * to whole cells, and it stays at least [minWidth] wide, or the whole width, by moving left.
+     */
     fun rescaled(
         from: Int,
         to: Int,
+        minWidth: Int = 1,
     ): Cell {
         if (from == to) return this
         val x = x * to / from
-        return copy(x = x, w = (w * to / from).coerceIn(1, to - x))
+        val w = maxOf((w * to / from).coerceIn(1, to - x), minWidth.coerceAtMost(to))
+        return copy(x = x.coerceAtMost(to - w), w = w)
     }
 }
 
@@ -48,7 +53,7 @@ class WidgetLayout(
     /** Read while compiling widgets, off the main thread. */
     private val pages = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
-    /** Columns of the home grid the cells are on, saved with them. */
+    /** Columns of the home grid the cells are on; saved with them, so [regrid] can move them onto another. */
     var columns by mutableIntStateOf(CLASSIC_COLUMNS)
         private set
 
@@ -82,6 +87,30 @@ class WidgetLayout(
         save()
         prefs.edit().remove(LEGACY_CELLS).apply()
         oldPages.edit().clear().apply()
+    }
+
+    /**
+     * Moves every cell onto a grid of [to] columns (see [Cell.rescaled]); a widget stays as wide as its
+     * [HomeItem.minSize] allows. A tile that lands on one before it on its page in [tiles] (each page's, in the
+     * order they keep their spots) loses its cell, so its page places it afresh in its first free spot, or moves
+     * it to a page with room.
+     */
+    fun regrid(
+        to: Int,
+        tiles: List<List<HomeItem>>,
+    ) {
+        if (to == columns) return
+        val minWidth = tiles.flatten().associate { it.key to it.minSize.first }
+        for ((key, c) in cells.toMap()) cells[key] = c.rescaled(columns, to, minWidth[key] ?: 1)
+        columns = to
+        for (items in tiles) {
+            val kept = ArrayList<Cell>()
+            for (item in items) {
+                val c = cells[item.key]?.let { if (item.resizable) it else it.copy(w = 1, h = 1) } ?: continue
+                if (kept.any { it.overlaps(c) }) cells.remove(item.key) else kept += c
+            }
+        }
+        save()
     }
 
     /** The page [name] was moved to on the phone, if it was. */

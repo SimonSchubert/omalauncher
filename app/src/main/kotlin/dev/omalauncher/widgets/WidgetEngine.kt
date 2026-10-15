@@ -19,6 +19,7 @@ import dev.omalauncher.linux.pacmanInstall
 import dev.omalauncher.linux.runJob
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
@@ -369,6 +370,10 @@ class WidgetEngine(
                         if (path != null && path.endsWith(".owl")) changes.trySend(Unit)
                     }
                 }.also { it.startWatching() }
+            launch {
+                snapshotFlow { loaded }.first { it }
+                snapshotFlow { runtime.style.style[Style.COLUMNS] }.collect { layout.regrid(it, pages.map(::itemsOn)) }
+            }
             changes.trySend(Unit)
             for (unit in changes) {
                 // Editors write in several steps (truncate, write, rename); let them finish.
@@ -463,7 +468,7 @@ class WidgetEngine(
     }
 
     /** The first load is done; see [reload]. */
-    private var loaded = false
+    private var loaded by mutableStateOf(false)
 
     private val previews = Previews(context)
     private val previewQueue = Channel<String>(Channel.UNLIMITED)
