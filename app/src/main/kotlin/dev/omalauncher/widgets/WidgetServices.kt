@@ -271,14 +271,16 @@ class WidgetServices(
     }
 
     /**
-     * Launchable Android apps for `source a = android.apps`, each `{key, name, package, component, profile, system, icon}`.
+     * Launchable Android apps for `source a = android.apps`, each `{key, name, package, component, profile, system, icon, score, last}`.
      * `key` is [dev.omalauncher.AndroidApp.key], unique across profiles, for `androidApp(a.key)`; `profile` is `work` or
-     * `clone` as on notifications, else null; `icon` is the `app:` src for that copy.
+     * `clone` as on notifications, else null; `icon` is the `app:` src for that copy. `score` and `last` are what the
+     * search ranks by ([dev.omalauncher.AppUsage]), so a widget can rank apps the same way.
      */
     private fun apps(): Value =
         Lst(
             runtime.androidApps.apps.take(Builtins.MAX_LIST).map { app ->
                 val kind = profileKind(app.user)
+                val usage = "a:" + app.key
                 Obj(
                     mapOf(
                         "key" to Str(app.key),
@@ -288,6 +290,8 @@ class WidgetServices(
                         "profile" to (kind?.let(::Str) ?: Null),
                         "system" to bool(app.system),
                         "icon" to Str("app:${app.component.packageName}${kind?.let { "@$it" } ?: ""}"),
+                        "score" to Num(Math.round(runtime.usage.score(usage) * 10.0) / 10.0),
+                        "last" to (runtime.usage.last(usage)?.let { Num((it / 1000).toDouble()) } ?: Null),
                     ),
                 )
             },
@@ -410,11 +414,15 @@ class WidgetServices(
             }
         }
 
-    /** By an `android.apps` key, which opens that copy in its own profile, or by package, the launcher's own profile's copy. */
+    /**
+     * By an `android.apps` key, which opens that copy in its own profile, or by package, the launcher's own profile's copy.
+     * Counts like an open from the drawer, for the search's ranking and the recent apps.
+     */
     private fun openAndroidApp(arg: String) {
         val apps = runtime.androidApps
-        val app = apps.apps.firstOrNull { it.key == arg }
+        val app = apps.apps.firstOrNull { it.key == arg } ?: apps.apps.firstOrNull { it.component.packageName == arg && it.profile == null }
         if (app != null) {
+            runtime.usage.record("a:" + app.key)
             apps.open(app)
             return
         }
