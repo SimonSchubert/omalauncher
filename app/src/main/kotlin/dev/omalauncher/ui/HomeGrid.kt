@@ -271,7 +271,7 @@ internal class Arrange {
  * lift it and drag it right away, or release to select it. A selected widget
  * shows resize handles; drag them (or the frame) to resize, drag the tile to
  * move it, tap outside or press Back to finish. Hold a carried tile against a
- * side edge to turn the page; the last page is always an empty one. Drop an app
+ * side edge to turn the page; an empty page follows the last one while arranging. Drop an app
  * on another app to put both in a folder, or on a folder to add it; tap a folder
  * to open it, tap its name to type a new one, and long-press an app in it to drag it
  * to another place in it, or back out.
