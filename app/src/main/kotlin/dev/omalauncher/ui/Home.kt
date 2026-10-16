@@ -65,14 +65,13 @@ fun HomeScreen(
     val engine = runtime.widgets
     val linuxState by runtime.bootstrap.state.collectAsState()
     val arrange = remember { Arrange() }
-    // One empty page always waits after the last one, to drop tiles on or pin apps to. Pages only exist
-    // while they hold something, so it becomes a real page once used and a new empty one follows.
+    // While arranging (a tile selected or being carried), one empty page waits after the last one, to drop
+    // tiles on. It becomes a real page once used. Outside arranging it isn't shown, so swiping doesn't end
+    // on a blank page; an emptied or fresh home still shows its single empty page.
     // Unfolded, pages show in pairs: the pager counts pairs, and an odd last page gets an empty partner.
     val per = if (showsTwoPages(LocalWindowInfo.current.containerSize)) 2 else 1
-    val pageNumbers =
-        engine.pages
-            .let { if (engine.itemsOn(it.last()).isEmpty()) it else it + (it.last() + 1) }
-            .let { if (it.size % per == 0) it else it + (it.last() + 1) }
+    val arranging = state.editing != null || arrange.carry != null
+    val pageNumbers = homePageNumbers(engine.pages, engine.itemsOn(engine.pages.last()).isNotEmpty(), arranging, per)
     val pager = rememberPagerState { pageNumbers.size / per }
     // A tile dropped on another page: show that page once the page list has caught up.
     var showPage by remember { mutableStateOf<Int?>(null) }
@@ -81,6 +80,8 @@ fun HomeScreen(
         if (i >= 0) pager.scrollToPage(i / per)
         showPage = null
     }
+    // Finishing arranging drops the empty page; leave it if the pager was showing it.
+    LaunchedEffect(pageNumbers.size / per) { if (pager.currentPage >= pager.pageCount) pager.scrollToPage(pager.pageCount - 1) }
     var menuFor by remember { mutableStateOf<HomeItem?>(null) }
 
     val terminals = runtime.terminals
@@ -110,7 +111,7 @@ fun HomeScreen(
     }
     // The drawer pins apps to whichever page is showing (the left one of a pair).
     LaunchedEffect(pager.currentPage, pageNumbers) {
-        state.currentPage = pageNumbers.getOrElse(pager.currentPage * per) { 1 }
+        state.currentPage = pageNumbers.getOrElse(pager.currentPage * per) { pageNumbers.last() }
         engine.activePage = state.currentPage
     }
     // The background slides with the pages, like stock launchers. Our live wallpaper gets it through Android.
@@ -381,4 +382,3 @@ fun HomeScreen(
 
     }
 }
-
