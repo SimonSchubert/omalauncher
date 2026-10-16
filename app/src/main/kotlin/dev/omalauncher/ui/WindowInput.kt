@@ -2,8 +2,10 @@ package dev.omalauncher.ui
 
 import android.os.SystemClock
 import android.view.MotionEvent
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerId
@@ -23,21 +25,65 @@ import dev.omalauncher.wayland.Client
 import dev.omalauncher.wayland.SurfaceHit
 import dev.omalauncher.wayland.TouchInputEvent
 import dev.omalauncher.wayland.XdgToplevel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private const val WHEEL_STEP = 15f
 
 /**
+ * Tern binds wl_touch but does not turn finger drags into terminal scrolling.
+ * Claim its touch stream for native terminal gestures instead of raw forwarding.
+ */
+internal fun prefersPointerGestures(appId: String): Boolean =
+    appId == "tern" || appId == "so.stencil.tern"
+
+/** The recognizer and session currently receiving touch, readable from the focus watcher. */
+private class GestureHolder {
+    var gesture: TernTouchGesture? = null
+    var session: TernGestureSession? = null
+}
+
+/**
  * Routes pointer input over a Linux window's view to its surfaces. Mouse input
- * is forwarded as-is. Touch is mapped for a phone: tap = left click, long
- * press = right click, drag = scroll; native touch clients get real touch
- * except Tern, which needs the pointer mapping for terminal scrolling.
+ * is forwarded as-is. Generic touch maps tap to left click, long press to
+ * right click and drag to scroll; clients with wl_touch get real touch.
+ * Tern instead gets native tap/select/scroll/pinch/tab gestures.
  */
 fun Modifier.linuxWindowInput(
     wm: WindowManager,
     window: XdgToplevel,
 ) = pointerInput(wm, window) {
-    handlePointer(wm, window, viewConfiguration.touchSlop, viewConfiguration.longPressTimeoutMillis)
+    coroutineScope {
+        val holder = GestureHolder()
+        // Focus can move to another window without another touch event ever arriving;
+        // clean up the in-flight session the moment this window loses focus.
+        val watcher =
+            launch {
+                snapshotFlow { wm.focused }.collect { focused ->
+                    if (focused !== window) {
+                        // Quarantine the claimed touch stream and drop the session immediately.
+                        holder.gesture?.cancel()
+                        holder.session?.invalidate()
+                    }
+                }
+            }
+        try {
+            handlePointer(
+                wm,
+                window,
+                viewConfiguration.touchSlop,
+                viewConfiguration.longPressTimeoutMillis,
+                density,
+                holder,
+            )
+        } finally {
+            watcher.cancel()
+            holder.gesture?.cancel()
+            holder.session?.invalidate()
+        }
+    }
 }
 
 private fun XdgToplevel.hitTest(
@@ -50,6 +96,8 @@ private suspend fun PointerInputScope.handlePointer(
     window: XdgToplevel,
     touchSlop: Float,
     longPressMs: Long,
+    density: Float,
+    holder: GestureHolder,
 ) = awaitPointerEventScope {
     var mouseButtons = 0
     var fallback: FallbackTouch? = null
@@ -104,13 +152,6 @@ private suspend fun PointerInputScope.handlePointer(
                 continue
             }
 
-            val first = event.changes.firstOrNull()
-            if (first?.type == PointerType.Mouse) {
-                mouseButtons = handleMouse(wm, window, event, mouseButtons)
-                first.consume()
-                continue
-            }
-
             var updates: ArrayList<TouchInputEvent>? = null
             fun touchUpdates(): ArrayList<TouchInputEvent> =
                 updates ?: ArrayList<TouchInputEvent>().also { updates = it }
@@ -127,7 +168,27 @@ private suspend fun PointerInputScope.handlePointer(
                 continue
             }
 
+            // A mixed frame still carries every native contact's motion or release.
+            // Dispatch only its actual, unconsumed mouse contact through the mouse path.
+            val mouse = event.changes.any { it.type == PointerType.Mouse && !it.isConsumed }
+            if (mouse) mouseButtons = handleMouse(wm, window, event, mouseButtons)
+
+            // Claim Tern's real touch stream before either raw wl_touch or fallback.
+            // A simultaneous mouse takeover leaves those fingers quarantined until all-lift.
+            if (touches.isEmpty() && fallback == null &&
+                prefersPointerGestures(window.appId) && event.changes.any { it.type == PointerType.Touch }
+            ) {
+                if (!mouse) {
+                    mouseButtons =
+                        handleTernTouch(
+                            wm, window, event, density, size.width.toFloat(), touchSlop, longPressMs, holder, mouseButtons,
+                        )
+                }
+                continue
+            }
+
             for (change in event.changes) {
+                if (change.type == PointerType.Mouse) continue
                 val touch = touches[change.id]
                 if (touch != null) {
                     if (change.isConsumed) {
@@ -180,12 +241,17 @@ private suspend fun PointerInputScope.handlePointer(
                 }
 
                 if (!change.changedToDown() || change.isConsumed) continue
+                // An existing native/fallback stream keeps its route even if app_id
+                // changes to Tern; new fingers must not start a second route beside it.
+                if (change.type == PointerType.Touch && prefersPointerGestures(window.appId)) {
+                    change.consume()
+                    continue
+                }
                 val start = change.position
                 val hit = window.hitTest(start.x, start.y)
                 change.consume()
                 if (!wm.onPress(window, hit) || hit == null) continue
-                // Tern binds wl_touch but does not turn finger drags into terminal scrolling.
-                if (window.appId != "tern" && window.appId != "so.stencil.tern" && wm.wantsTouch(hit.surface)) {
+                if (!prefersPointerGestures(window.appId) && wm.wantsTouch(hit.surface)) {
                     val id = touchIds.idFor(touchStream, change.id.value)
                     touches[change.id] = ActiveTouch(id, hit, start)
                     touchUpdates() += TouchInputEvent.Down(hit.surface, id, hit.x, hit.y)
@@ -267,13 +333,195 @@ internal class TouchPointerIds {
     }
 }
 
+/**
+ * Runs one claimed Tern touch gesture from its press [event]. Every touch change
+ * in the claimed stream is consumed (lifts included; mouse and stylus are left
+ * alone); [TernTouchGesture.frame] is fed pressed touch contacts, plus the original
+ * contact's final release position when all fingers lift. The press event is
+ * included so simultaneously arriving fingers are counted. The hold deadline is
+ * absolute, so a burst of jitter never extends it. A mouse event interleaved
+ * with the touch cancels the gesture and goes down the ordinary mouse path.
+ *
+ * A normal all-lift completes FIFO via [TernGestureSession.finish]; any other
+ * exit (stolen input, mouse, coroutine cancellation) invalidates the session.
+ */
+private suspend fun AwaitPointerEventScope.handleTernTouch(
+    wm: WindowManager,
+    window: XdgToplevel,
+    event: PointerEvent,
+    density: Float,
+    width: Float,
+    touchSlop: Float,
+    longPressMs: Long,
+    holder: GestureHolder,
+    mouseButtons: Int,
+): Int {
+    val down = event.changes.firstOrNull {
+        it.type == PointerType.Touch && it.pressed && !it.previousPressed && !it.isConsumed
+    } ?: return mouseButtons
+    // A parent-owned or abandoned stream must fully lift before another gesture
+    // can begin; a new finger must not revive an already-cancelled contact.
+    if (event.changes.any { it.type == PointerType.Touch && (it.isConsumed || it.previousPressed) }) {
+        return mouseButtons
+    }
+    val start = down.position
+    val hit = window.hitTest(start.x, start.y)
+    for (c in event.changes) if (c.type == PointerType.Touch) c.consume()
+    if (!wm.onPress(window, hit) || hit == null) return mouseButtons
+
+    val session = wm.ternGestureSession(window, hit, start.x, start.y)
+    val gesture =
+        TernTouchGesture(
+            pointerId = down.id.value,
+            startX = start.x,
+            startY = start.y,
+            startMillis = down.uptimeMillis,
+            touchSlop = touchSlop,
+            longPressMillis = longPressMs,
+            density = density,
+            width = width,
+            sink = session,
+        )
+    holder.gesture = gesture
+    holder.session = session
+    var allUp = false
+    var buttons = mouseButtons
+    try {
+        // Two fingers can already be down in the press event; feed it before awaiting more.
+        var startCount = 0
+        var id0 = -1L
+        var x0 = 0f
+        var y0 = 0f
+        var id1 = -1L
+        var x1 = 0f
+        var y1 = 0f
+        for (c in event.changes) {
+            if (c.type != PointerType.Touch || !c.pressed) continue
+            when (startCount) {
+                0 -> {
+                    id0 = c.id.value
+                    x0 = c.position.x
+                    y0 = c.position.y
+                }
+                1 -> {
+                    id1 = c.id.value
+                    x1 = c.position.x
+                    y1 = c.position.y
+                }
+            }
+            startCount++
+        }
+        gesture.frame(down.uptimeMillis, startCount, id0, x0, y0, id1, x1, y1)
+        allUp = gesture.finished
+
+        while (!allUp) {
+            val remaining = gesture.timeoutMillis(SystemClock.uptimeMillis())
+            val next =
+                if (remaining != null) {
+                    withTimeoutOrNull(remaining) { awaitPointerEvent() }
+                } else {
+                    awaitPointerEvent()
+                }
+            if (next == null) {
+                gesture.tick(SystemClock.uptimeMillis())
+                if (gesture.finished) {
+                    allUp = true
+                    break
+                }
+                continue
+            }
+
+            var count = 0
+            var firstId = -1L
+            var firstX = 0f
+            var firstY = 0f
+            var secondId = -1L
+            var secondX = 0f
+            var secondY = 0f
+            var releasedId = -1L
+            var releasedX = 0f
+            var releasedY = 0f
+            var touchFrame = false
+            var mouse = false
+            var stolen = false
+            for (c in next.changes) {
+                if (c.type == PointerType.Mouse) {
+                    if (!c.isConsumed) mouse = true
+                    continue
+                }
+                if (c.type != PointerType.Touch) continue
+                touchFrame = true
+                if (c.isConsumed) {
+                    stolen = true
+                    if (c.pressed) count++
+                    continue
+                }
+                c.consume()
+                if (!c.pressed) {
+                    if (c.id == down.id) {
+                        releasedId = c.id.value
+                        releasedX = c.position.x
+                        releasedY = c.position.y
+                    }
+                    continue
+                }
+                when (count) {
+                    0 -> {
+                        firstId = c.id.value
+                        firstX = c.position.x
+                        firstY = c.position.y
+                    }
+                    1 -> {
+                        secondId = c.id.value
+                        secondX = c.position.x
+                        secondY = c.position.y
+                    }
+                }
+                count++
+            }
+            if (mouse) {
+                gesture.cancel()
+                session.invalidate()
+                buttons = handleMouse(wm, window, next, buttons)
+            }
+            if (stolen || next.isAndroidCancel()) {
+                gesture.cancel()
+                session.invalidate()
+            }
+            // Mouse-only events do not imply that the held fingers have lifted.
+            if (!touchFrame) continue
+            if (count == 0) {
+                firstId = releasedId
+                firstX = releasedX
+                firstY = releasedY
+            }
+            val stamp = next.changes.firstOrNull()?.uptimeMillis ?: SystemClock.uptimeMillis()
+            gesture.frame(stamp, count, firstId, firstX, firstY, secondId, secondX, secondY)
+            if (gesture.finished) {
+                allUp = true
+                break
+            }
+        }
+    } finally {
+        gesture.cancel()
+        if (allUp) session.finish() else session.invalidate()
+        holder.gesture = null
+        holder.session = null
+    }
+    return buttons
+}
+
 private fun handleMouse(
     wm: WindowManager,
     window: XdgToplevel,
     event: PointerEvent,
     previousButtons: Int,
 ): Int {
-    val change = event.changes.first()
+    // Pick the actual unconsumed mouse contact, never the first (possibly touch) contact;
+    // an already-consumed mouse change must not dispatch.
+    val change = event.changes.firstOrNull { it.type == PointerType.Mouse && !it.isConsumed } ?: return previousButtons
+    wm.cancelTernGestures()
+    change.consume()
     when (event.type) {
         PointerEventType.Exit -> {
             wm.pointerMove(null)

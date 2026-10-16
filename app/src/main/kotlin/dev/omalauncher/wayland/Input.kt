@@ -157,6 +157,43 @@ class Input(
         k.send(k.event(4).uint(server.nextSerial()).uint(depressedMods).uint(0).uint(lockedMods).uint(0))
     }
 
+    /**
+     * Presses Ctrl+[code], optionally with Shift, [times] times. Only modifiers
+     * not already held are added and released; a held action key is left alone.
+     * Physical Ctrl/Shift and all other user-held modifiers are preserved.
+     */
+    fun ctrlChord(
+        code: Int,
+        times: Int = 1,
+        withShift: Boolean = false,
+    ) {
+        if (times <= 0) return
+        // Extra modifiers could turn a Tern gesture into a different command.
+        if (withShift && (depressedMods and (MOD_ALT or MOD_SUPER)) != 0) return
+        // An action key already held by the user is left alone; skip before touching Ctrl.
+        if (code in pressedKeys) return
+        val addedCtrl = Keys.KEY_LEFTCTRL !in pressedKeys && Keys.KEY_RIGHTCTRL !in pressedKeys
+        val addedShift = withShift && Keys.KEY_LEFTSHIFT !in pressedKeys && Keys.KEY_RIGHTSHIFT !in pressedKeys
+        try {
+            if (addedCtrl) key(Keys.KEY_LEFTCTRL, true)
+            if (addedShift) key(Keys.KEY_LEFTSHIFT, true)
+            repeat(times) {
+                try {
+                    key(code, true)
+                } finally {
+                    // Always lift the synthetic action key, even if its press send failed.
+                    key(code, false)
+                }
+            }
+        } finally {
+            try {
+                if (addedShift) key(Keys.KEY_LEFTSHIFT, false)
+            } finally {
+                if (addedCtrl) key(Keys.KEY_LEFTCTRL, false)
+            }
+        }
+    }
+
     private fun modifierBit(code: Int) =
         when (code) {
             42, 54 -> MOD_SHIFT
@@ -236,7 +273,9 @@ class Input(
         val s = pointerFocus ?: return
         val time = now()
         pointersOf(s.client).filter { it.version >= 5 }.forEach { p ->
+            // Stop both axes in one frame; a horizontal finger scroll must end too.
             p.send(p.event(7).uint(time).uint(0))
+            p.send(p.event(7).uint(time).uint(1))
             p.frame()
         }
     }
