@@ -71,8 +71,9 @@ Alt/Super modifiers suppress Tern gesture chords instead of changing commands.
 Remapping those Tern shortcuts also changes what the gesture chords invoke.
 
 Native touch contacts have seat-wide IDs across input overlays, with updates
-batched per pointer frame. Android cancellation, consumed contacts and overlay
-disposal cancel affected touches rather than synthesizing clicks.
+batched per pointer frame. Final movement precedes `wl_touch.up`, which carries
+no coordinates. Android cancellation, consumed contacts and overlay disposal
+cancel affected touches rather than synthesizing clicks.
 
 ## GPU acceleration
 

@@ -196,12 +196,13 @@ private suspend fun PointerInputScope.handlePointer(
                         continue
                     }
                     change.consume()
-                    if (change.pressed) {
-                        if (change.position != change.previousPosition) {
-                            val d = (change.position - touch.start) / wm.scale.toFloat()
-                            touchUpdates() += TouchInputEvent.Motion(touch.id, touch.hit.x + d.x, touch.hit.y + d.y)
-                        }
-                    } else {
+                    // wl_touch.up has no coordinates; include any last movement in
+                    // this frame before releasing the contact.
+                    if (change.position != change.previousPosition) {
+                        val d = (change.position - touch.start) / wm.scale.toFloat()
+                        touchUpdates() += TouchInputEvent.Motion(touch.id, touch.hit.x + d.x, touch.hit.y + d.y)
+                    }
+                    if (!change.pressed) {
                         touchUpdates() += TouchInputEvent.Up(touch.id)
                         touches.remove(change.id)
                         touchIds.release(touchStream, change.id.value)
