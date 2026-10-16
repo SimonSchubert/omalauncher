@@ -47,6 +47,8 @@ class Proot(
             "$GUEST_HOME/.config/omalauncher/style" to LauncherData.styleDir(context),
             "$GUEST_HOME/.config/omarchy/themes" to LauncherData.userThemesDir(context),
             "$GUEST_HOME/.config/omarchy/backgrounds" to LauncherData.userBackgroundsDir(context),
+            // The phone's shared storage, so the guest sees it as Termux does ($HOME/storage).
+            "/sdcard" to File("/storage/emulated/0"),
         )
 
     /**
