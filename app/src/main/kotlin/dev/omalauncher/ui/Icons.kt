@@ -91,4 +91,11 @@ object Icons {
 
     /** Points up; rotate it for the other arrow keys. */
     val Chevron by lazy { icon("chevron", "M7.41,15.41L12,10.83l4.59,4.58L18,14l-6,-6 -6,6z") }
+
+    val Camera by lazy {
+        icon(
+            "camera",
+            "M12,12m-3.2,0a3.2,3.2 0,1 0,6.4 0a3.2,3.2 0,1 0,-6.4 0M9,2L7.17,4H4c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V6c0,-1.1 -0.9,-2 -2,-2h-3.17L15,2H9zm3,15c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5z",
+        )
+    }
 }
