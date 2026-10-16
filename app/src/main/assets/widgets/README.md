@@ -571,8 +571,9 @@ widget "shell" {
   the keyboard and its touches (drag scrolls, hold-and-drag selects). A tap
   outside it, Back or another page lets go. The ⌨ button toggles the soft keyboard.
 - The terminal keeps running while its page is off screen. It ends when the widget
-  is removed or its file changes. When `command` exits, the tile offers a restart;
-  use `"btop; exec bash"` to fall back to a shell.
+  is removed or its file changes. When `command` exits, it stays stopped until you
+  tap the restart hint, even after leaving and returning to its page. Use
+  `"btop; exec bash"` to fall back to a shell.
 - `padding: 0` lets the terminal fill the tile's frame.
 
 ## From scripts
