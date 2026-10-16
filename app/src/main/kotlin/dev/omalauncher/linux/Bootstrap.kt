@@ -8,7 +8,6 @@ import android.util.Log
 import dev.omalauncher.CountingInputStream
 import dev.omalauncher.LauncherData
 import dev.omalauncher.hex
-import dev.omalauncher.openHttp
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.upgrade.StepJournal
 import dev.omalauncher.upgrade.writeAtomically
@@ -23,12 +22,13 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
+import java.net.URL
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.util.zip.GZIPInputStream
 
 private const val TAG = "bootstrap"
-private const val ROOTFS_URL = "http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
+private const val ROOTFS_URL = "https://de3.mirror.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
 private const val TARBALL = "ArchLinuxARM-aarch64-latest.tar.gz"
 
 /** Attempts per network step before setup (or an update) reports a failure. */
@@ -413,25 +413,56 @@ class Bootstrap(
         check(!journal.setupComplete) { "refusing to replace a set-up system" }
         // A half-unpacked rootfs from an earlier try only takes up room the download needs.
         LauncherData.deleteTree(proot.rootfs)
-        val tarball =
+        val obtained =
             try {
                 obtainTarball()
             } catch (e: Exception) {
                 throw if (e.outOfSpace()) outOfSpace(e) else e
             }
+        // External storage can change independently: verify and extract the same internal snapshot.
+        val supplied = obtained.parentFile != context.cacheDir
+        val tarball = if (supplied) File(context.cacheDir, "$TARBALL.supplied") else obtained
+        var verificationStarted = false
+        var keepCached = false
         try {
-            extract(tarball)
+            check(obtained.length() <= 3L * 1024 * 1024 * 1024) { "Linux archive is too large" }
+            if (supplied) {
+                obtained.copyTo(tarball, overwrite = true)
+            }
+            report(Stage.Download, "Verifying Arch Linux ARM signature")
+            val signature = if (supplied) {
+                val detached = File(obtained.path + ".sig")
+                check(detached.isFile && detached.length() <= 16 * 1024) { "Provide the matching .tar.gz.sig beside the Linux archive" }
+                detached.readBytes()
+            } else {
+                readHttps(URL("$ROOTFS_URL.sig"), 16 * 1024)
+            }
+            verificationStarted = true
+            context.assets.open("security/archlinuxarm.asc").use { key ->
+                signature.inputStream().use { RootfsSignature.verify(tarball, it, key) }
+            }
+            try {
+                extract(tarball)
+            } catch (e: Exception) {
+                if (e is NoRetry || e is CancellationException || e.outOfSpace()) {
+                    // The verified archive is safe to reuse after a transient storage/cancellation failure.
+                    keepCached = true
+                    runCatching { LauncherData.deleteTree(proot.rootfs) }
+                    throw if (e is NoRetry || e is CancellationException) e else outOfSpace(e)
+                }
+                throw e
+            }
         } catch (e: Exception) {
             if (e is NoRetry || e is CancellationException || e.outOfSpace()) {
-                // The download is fine and kept for the next try; what was unpacked gives its room back.
-                runCatching { LauncherData.deleteTree(proot.rootfs) }
-                throw if (e is NoRetry || e is CancellationException) e else outOfSpace(e)
+                throw e
             }
-            // A truncated or bogus download (a captive portal's page) would fail every retry otherwise.
-            if (tarball.parentFile == context.cacheDir) tarball.delete()
+            // Invalid signatures and malformed archives must not be retried forever from the same bytes.
+            if (verificationStarted && !keepCached) tarball.delete()
             throw e
+        } finally {
+            if (supplied) tarball.delete()
         }
-        tarball.delete() // ~830 MB we no longer need
+        obtained.delete() // ~830 MB we no longer need
     }
 
     /** Stops before writing when the app's storage has less than [bytes] free: a full phone fails at once, not after the download. */
@@ -459,7 +490,9 @@ class Bootstrap(
         val validator = File(context.cacheDir, "$TARBALL.version")
         requireSpace(TARBALL_SPACE - (if (partial.exists()) partial.length() else 0L) + SYSTEM_SPACE)
         report(Stage.Download, "Downloading Arch Linux ARM", 0f)
-        val conn = openHttp(ROOTFS_URL)
+        val have = if (partial.exists() && validator.exists()) partial.length() else 0L
+        val headers = if (have > 0) mapOf("Range" to "bytes=$have-", "If-Range" to validator.readText()) else emptyMap()
+        val conn = openHttps(URL(ROOTFS_URL), headers)
         connection = conn
         try {
             checkCancelled()
@@ -482,10 +515,6 @@ class Bootstrap(
         validator: File,
     ) {
         val have = if (partial.exists() && validator.exists()) partial.length() else 0L
-        if (have > 0) {
-            conn.setRequestProperty("Range", "bytes=$have-")
-            conn.setRequestProperty("If-Range", validator.readText())
-        }
         val resumed = conn.responseCode == HttpURLConnection.HTTP_PARTIAL
         if (conn.responseCode !in 200..299) error("download failed: HTTP ${conn.responseCode}")
         val start = if (resumed) have else 0L
@@ -502,6 +531,7 @@ class Bootstrap(
                     if (n < 0) break
                     out.write(buf, 0, n)
                     done += n
+                    check(done <= 3L * 1024 * 1024 * 1024) { "Linux download is too large" }
                     if (done - lastReport > 4 shl 20) {
                         lastReport = done
                         report(
