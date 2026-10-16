@@ -14,6 +14,9 @@
     <!-- Uninstall from the app drawer's long-press menu (ACTION_DELETE). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
+    <!-- Swiping down on home pulls down the notification shade (StatusBarManager). -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+
     <uses-feature
         android:name="android.software.live_wallpaper"
         android:required="false" />

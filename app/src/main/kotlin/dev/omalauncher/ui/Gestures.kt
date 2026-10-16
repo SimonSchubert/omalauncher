@@ -1,11 +1,14 @@
 package dev.omalauncher.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -25,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
@@ -43,6 +47,7 @@ enum class GestureAction(
     val label: String,
 ) {
     Drawer("drawer", "app drawer"),
+    Notifications("notifications", "notifications"),
     None("none", "nothing"),
     ;
 
@@ -51,13 +56,20 @@ enum class GestureAction(
     }
 }
 
-/** The actions picked for home's gestures. Swiping up is the only one so far. */
+/** What swiping up on home can do, the default first. */
+private val SwipeUpChoices = listOf(GestureAction.Drawer, GestureAction.None)
+
+/** What swiping down on home can do, the default first. */
+private val SwipeDownChoices = listOf(GestureAction.Notifications, GestureAction.None)
+
+/** The actions picked for home's gestures. */
 class Gestures(
     context: Context,
 ) {
     private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
 
-    private var up by mutableStateOf(GestureAction.of(prefs.getString(SWIPE_UP, null)) ?: GestureAction.Drawer)
+    private var up by mutableStateOf(saved(SWIPE_UP, SwipeUpChoices))
+    private var down by mutableStateOf(saved(SWIPE_DOWN, SwipeDownChoices))
 
     /** The app drawer by default, like stock launchers. Saved as it's set. */
     var swipeUp: GestureAction
@@ -67,8 +79,23 @@ class Gestures(
             prefs.edit().putString(SWIPE_UP, action.id).apply()
         }
 
+    /** Android's notification shade by default, like stock launchers. Saved as it's set. */
+    var swipeDown: GestureAction
+        get() = down
+        set(action) {
+            down = action
+            prefs.edit().putString(SWIPE_DOWN, action.id).apply()
+        }
+
+    /** The action saved for [key] if the gesture offers it, else its default. */
+    private fun saved(
+        key: String,
+        choices: List<GestureAction>,
+    ) = GestureAction.of(prefs.getString(key, null))?.takeIf { it in choices } ?: choices.first()
+
     private companion object {
         const val SWIPE_UP = "gesture_swipe_up"
+        const val SWIPE_DOWN = "gesture_swipe_down"
     }
 }
 
@@ -91,9 +118,29 @@ internal fun Modifier.drawerSwipe(
     )
 }
 
+/** What a swipe on home moves. */
+internal enum class SwipeTarget { Drawer, Shade, None }
+
 /**
- * Swiping up on home (the pages, the recent apps strip, the bar) does what's picked in gesture settings. With
- * the drawer open, the swipe drags it whatever the setting, so it can still be pulled closed.
+ * What a swipe on home moves, from how far the drawer is open and the swipe's first step ([dy] > 0 is down). With
+ * the drawer showing, the swipe drags it whatever the settings, so it can still be pulled closed.
+ */
+internal fun swipeTarget(
+    drawer: Float,
+    dy: Float,
+    up: GestureAction,
+    down: GestureAction,
+) = when {
+    drawer > 0f -> SwipeTarget.Drawer
+    dy > 0f && down == GestureAction.Notifications -> SwipeTarget.Shade
+    // With nothing set for swiping down, the drawer still follows a swipe that starts down and turns up.
+    up == GestureAction.Drawer -> SwipeTarget.Drawer
+    else -> SwipeTarget.None
+}
+
+/**
+ * Swiping on home (the pages, the recent apps strip, the bar) does what's picked in gesture settings: up opens the
+ * drawer under the finger, down pulls down Android's notification shade.
  */
 @Composable
 internal fun Modifier.homeSwipe(
@@ -101,19 +148,49 @@ internal fun Modifier.homeSwipe(
     state: LauncherState,
     enabled: Boolean = true,
 ): Modifier {
+    val context = LocalContext.current
+    val gestures = runtime.gestures
     val drawerShown by remember(state) { derivedStateOf { state.drawer.value > 0f } }
     // Whether the drawer shows is only read when it matters: read here, it would recompose all of home (its Box is
     // inline) each time the drawer opens or closes.
-    val drags =
-        when (runtime.gestures.swipeUp) {
-            GestureAction.Drawer -> true
-            GestureAction.None -> drawerShown
-        }
+    val drags = gestures.swipeUp == GestureAction.Drawer || gestures.swipeDown == GestureAction.Notifications || drawerShown
+    val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+    // Picked by the swipe's first step, so one that starts down and turns up doesn't open the drawer under the shade.
+    var target by remember { mutableStateOf<SwipeTarget?>(null) }
     // One drag handler, only turned on or off: a new one mid-swipe (as the drawer starts to show) would drop the drag.
-    return drawerSwipe(state, enabled && drags)
+    return draggable(
+        orientation = Orientation.Vertical,
+        enabled = enabled && drags,
+        state =
+            rememberDraggableState { dy ->
+                if (target == null && dy != 0f) {
+                    target = swipeTarget(state.drawer.value, dy, gestures.swipeUp, gestures.swipeDown)
+                    if (target == SwipeTarget.Shade) expandNotifications(context)
+                }
+                if (target == SwipeTarget.Drawer) state.dragBy(-dy / screenHeight)
+            },
+        onDragStarted = { target = null },
+        onDragStopped = { velocity -> if (target == SwipeTarget.Drawer) state.settle(velocity) },
+    )
 }
 
-/** Gesture settings: what swiping up on home does, picked from a dropdown. */
+/**
+ * Pulls down Android's notification shade. There's no public call for it: launchers that aren't part of the system,
+ * like Lawnchair, call StatusBarManager's hidden expandNotificationsPanel, which needs EXPAND_STATUS_BAR.
+ */
+@SuppressLint("WrongConstant")
+private fun expandNotifications(context: Context) {
+    runCatching {
+        Class
+            .forName("android.app.StatusBarManager")
+            .getMethod("expandNotificationsPanel")
+            .invoke(context.getSystemService("statusbar"))
+    }.onFailure { Log.w(TAG, "cannot pull down the notification shade", it) }
+}
+
+private const val TAG = "gestures"
+
+/** Gesture settings: what swiping up and down on home do, each picked from a dropdown. */
 @Composable
 fun GesturesScreen(
     runtime: Runtime,
@@ -121,15 +198,19 @@ fun GesturesScreen(
 ) {
     val gestures = runtime.gestures
     OverlayPanel("gestures", onDismiss, contentWidth = ReadingWidth) {
-        GestureRow("swipe up", gestures.swipeUp) { gestures.swipeUp = it }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            GestureRow("swipe up", gestures.swipeUp, SwipeUpChoices) { gestures.swipeUp = it }
+            GestureRow("swipe down", gestures.swipeDown, SwipeDownChoices) { gestures.swipeDown = it }
+        }
     }
 }
 
-/** A gesture and the action it runs; tapping the action lists the others under it. */
+/** A gesture and the action it runs; tapping the action lists the gesture's [choices] under it. */
 @Composable
 private fun GestureRow(
     label: String,
     action: GestureAction,
+    choices: List<GestureAction>,
     onPick: (GestureAction) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
@@ -161,7 +242,7 @@ private fun GestureRow(
                             .frame(2.dp, Palette.accent, Palette.background)
                             .padding(4.dp),
                     ) {
-                        for (option in GestureAction.entries) {
+                        for (option in choices) {
                             val current = option == action
                             Row(
                                 Modifier
