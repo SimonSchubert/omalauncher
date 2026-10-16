@@ -123,6 +123,8 @@ class KeyboardBridge(
 class KeyboardSink(
     context: Context,
     private val bridge: KeyboardBridge,
+    /** Whether to offer the field as plain text so the keyboard shows its microphone (terminal.keyboard-text). */
+    private val keyboardText: () -> Boolean = { false },
 ) : View(context) {
     /**
      * Only claim to be a text editor while the soft keyboard is wanted. A focused
@@ -167,8 +169,12 @@ class KeyboardSink(
         cjk = cjkKeyboard()
         // Like Termux: no suggestions or autocorrect, raw keys where the IME allows. Gboard
         // drops pinyin and the like in such a field, so those get plain text, autocorrect and all.
+        // It also hides its microphone in a password field, so voice typing asks for plain text too;
+        // dictated words arrive as composing text and are typed when each phrase is finished.
         outAttrs.inputType =
             if (cjk) {
+                InputType.TYPE_CLASS_TEXT
+            } else if (keyboardText()) {
                 InputType.TYPE_CLASS_TEXT
             } else {
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or

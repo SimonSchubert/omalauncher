@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import android.app.WallpaperManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.theme.Style
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.HomeItem
 import dev.omalauncher.widgets.Shortcut
@@ -203,7 +204,7 @@ fun HomeScreen(
     ) {
         // Owns the soft keyboard for terminal tiles.
         AndroidView(
-            factory = { KeyboardSink(it, runtime.keyboard).also { sink -> terminals.keyboard = sink } },
+            factory = { KeyboardSink(it, runtime.keyboard) { runtime.style.style[Style.TERMINAL_KEYBOARD_TEXT] }.also { sink -> terminals.keyboard = sink } },
             onRelease = { if (terminals.keyboard === it) terminals.keyboard = null },
             modifier = Modifier.size(1.dp),
         )
