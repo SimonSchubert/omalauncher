@@ -5,6 +5,7 @@ import android.view.KeyEvent
 /** Maps Android key codes and characters to Linux evdev codes (US layout). */
 object Keys {
     const val KEY_LEFTSHIFT = 42
+    const val KEY_RIGHTSHIFT = 54
     const val KEY_BACKSPACE = 14
     const val KEY_ENTER = 28
     const val KEY_ESC = 1
@@ -13,6 +14,7 @@ object Keys {
     const val KEY_EQUAL = 13
     const val KEY_SLASH = 53
     const val KEY_LEFTCTRL = 29
+    const val KEY_RIGHTCTRL = 97
     const val KEY_LEFTALT = 56
     const val KEY_HOME = 102
     const val KEY_UP = 103
