@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -43,6 +45,7 @@ enum class GestureAction(
     val label: String,
 ) {
     Drawer("drawer", "app drawer"),
+    Notifications("notifications", "notifications"),
     None("none", "nothing"),
     ;
 
@@ -51,13 +54,14 @@ enum class GestureAction(
     }
 }
 
-/** The actions picked for home's gestures. Swiping up is the only one so far. */
+/** The actions picked for home's gestures: swipe up opens the drawer, swipe down the shade. */
 class Gestures(
     context: Context,
 ) {
     private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
 
     private var up by mutableStateOf(GestureAction.of(prefs.getString(SWIPE_UP, null)) ?: GestureAction.Drawer)
+    private var down by mutableStateOf(GestureAction.of(prefs.getString(SWIPE_DOWN, null)) ?: GestureAction.Notifications)
 
     /** The app drawer by default, like stock launchers. Saved as it's set. */
     var swipeUp: GestureAction
@@ -67,8 +71,17 @@ class Gestures(
             prefs.edit().putString(SWIPE_UP, action.id).apply()
         }
 
+    /** The notification shade by default, like stock launchers. Saved as it's set. */
+    var swipeDown: GestureAction
+        get() = down
+        set(action) {
+            down = action
+            prefs.edit().putString(SWIPE_DOWN, action.id).apply()
+        }
+
     private companion object {
         const val SWIPE_UP = "gesture_swipe_up"
+        const val SWIPE_DOWN = "gesture_swipe_down"
     }
 }
 
@@ -76,24 +89,62 @@ class Gestures(
  * Dragging up opens the drawer under the finger and dragging down closes it, as on stock launchers: the panel
  * follows the drag and a fling or how far it got decides where it settles. Scrollables inside (a widget's
  * list, the recent apps strip) take their own direction first.
+ *
+ * When the drawer starts closed, a swipe in either direction can run [onSwipeUp]/[onSwipeDown] instead of
+ * settling the drawer: home uses swipe-down to expand the notification shade. Closing an open drawer
+ * never triggers them.
  */
 @Composable
 internal fun Modifier.drawerSwipe(
     state: LauncherState,
     enabled: Boolean = true,
+    onSwipeUp: (() -> Unit)? = null,
+    onSwipeDown: (() -> Unit)? = null,
 ): Modifier {
     val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+    var startValue by remember(state) { mutableStateOf(0f) }
+    var downPx by remember(state) { mutableStateOf(0f) }
+    var upPx by remember(state) { mutableStateOf(0f) }
     return draggable(
         orientation = Orientation.Vertical,
         enabled = enabled,
-        state = rememberDraggableState { dy -> state.dragBy(-dy / screenHeight) },
-        onDragStopped = { velocity -> state.settle(velocity) },
+        onDragStarted = {
+            startValue = state.drawer.value
+            downPx = 0f
+            upPx = 0f
+        },
+        state = rememberDraggableState { dy ->
+            if (dy > 0f) downPx += dy else upPx -= dy
+            state.dragBy(-dy / screenHeight)
+        },
+        onDragStopped = { velocity ->
+            val startedClosed = startValue < 0.05f
+            val stillClosed = state.drawer.value < 0.15f
+            val swipedDown = velocity > SWIPE_FLING || downPx > screenHeight * SWIPE_FRACTION
+            val swipedUp = velocity < -SWIPE_FLING || upPx > screenHeight * SWIPE_FRACTION
+            if (startedClosed && stillClosed && swipedDown && onSwipeDown != null) {
+                state.close()
+                onSwipeDown()
+            } else if (startedClosed && swipedUp && onSwipeUp != null) {
+                state.close()
+                onSwipeUp()
+            } else {
+                state.settle(velocity)
+            }
+        },
     )
 }
 
+/** Fling fast enough to count as a swipe, in px/s. Matches the drawer's open/close fling. */
+private const val SWIPE_FLING = 800f
+
+/** Drag far enough to count as a swipe even without a fling: 8% of screen height. */
+private const val SWIPE_FRACTION = 0.08f
+
 /**
- * Swiping up on home (the pages, the recent apps strip, the bar) does what's picked in gesture settings. With
- * the drawer open, the swipe drags it whatever the setting, so it can still be pulled closed.
+ * Swiping up on home (the pages, the recent apps strip, the bar) does what's picked in gesture settings, and
+ * swiping down expands the shade. With the drawer open, the swipe drags it whatever the setting, so it can
+ * still be pulled closed.
  */
 @Composable
 internal fun Modifier.homeSwipe(
@@ -101,19 +152,40 @@ internal fun Modifier.homeSwipe(
     state: LauncherState,
     enabled: Boolean = true,
 ): Modifier {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val drawerShown by remember(state) { derivedStateOf { state.drawer.value > 0f } }
     // Whether the drawer shows is only read when it matters: read here, it would recompose all of home (its Box is
     // inline) each time the drawer opens or closes.
-    val drags =
-        when (runtime.gestures.swipeUp) {
-            GestureAction.Drawer -> true
-            GestureAction.None -> drawerShown
-        }
+    val swipeUpAction = runtime.gestures.swipeUp
+    val swipeDownAction = runtime.gestures.swipeDown
+    val wantsUp = swipeUpAction != GestureAction.None
+    val wantsDown = swipeDownAction != GestureAction.None
     // One drag handler, only turned on or off: a new one mid-swipe (as the drawer starts to show) would drop the drag.
-    return drawerSwipe(state, enabled && drags)
+    return drawerSwipe(
+        state,
+        enabled && (wantsUp || wantsDown || drawerShown),
+        onSwipeUp =
+            when (swipeUpAction) {
+                GestureAction.Notifications -> ({ expandNotificationsPanel(context) })
+                // Drawer is the drag itself (settle opens it); no override needed.
+                else -> null
+            },
+        onSwipeDown =
+            if (!wantsDown) {
+                null
+            } else {
+                {
+                    when (swipeDownAction) {
+                        GestureAction.Notifications -> expandNotificationsPanel(context)
+                        GestureAction.Drawer -> state.open()
+                        GestureAction.None -> {}
+                    }
+                }
+            },
+    )
 }
 
-/** Gesture settings: what swiping up on home does, picked from a dropdown. */
+/** Gesture settings: what swiping up/down on home does, picked from dropdowns. */
 @Composable
 fun GesturesScreen(
     runtime: Runtime,
@@ -122,6 +194,8 @@ fun GesturesScreen(
     val gestures = runtime.gestures
     OverlayPanel("gestures", onDismiss, contentWidth = ReadingWidth) {
         GestureRow("swipe up", gestures.swipeUp) { gestures.swipeUp = it }
+        Spacer(Modifier.height(8.dp))
+        GestureRow("swipe down", gestures.swipeDown) { gestures.swipeDown = it }
     }
 }
 
