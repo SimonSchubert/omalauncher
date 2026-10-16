@@ -29,6 +29,7 @@ android {
     }
 
     packaging {
+        resources.merges += setOf("META-INF/LICENSE.md", "META-INF/NOTICE.md")
         jniLibs {
             // Extract .so files to nativeLibraryDir: proot is exec'd from there.
             useLegacyPackaging = true
@@ -70,6 +71,7 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.compose.ui)
     implementation(libs.commons.compress)
+    implementation(libs.bcpg)
     implementation(libs.androidsvg)
     implementation(libs.zxing.core)
     implementation(project(":owl"))

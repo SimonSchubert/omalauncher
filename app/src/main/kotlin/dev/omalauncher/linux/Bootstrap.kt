@@ -22,7 +22,7 @@ import java.net.URL
 import java.util.zip.GZIPInputStream
 
 private const val TAG = "bootstrap"
-private const val ROOTFS_URL = "http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
+private const val ROOTFS_URL = "https://de3.mirror.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
 private const val TARBALL = "ArchLinuxARM-aarch64-latest.tar.gz"
 
 /** Attempts per network step before setup (or an update) reports a failure. */
@@ -367,15 +367,37 @@ class Bootstrap(
     private fun installRootfs() {
         // Unpacking replaces the rootfs: the user's home, packages and agents. Only ever before a setup finished.
         check(!journal.setupComplete && !File(proot.filesDir, "rootfs-ready").exists()) { "refusing to replace a set-up system" }
-        val tarball = obtainTarball()
+        val obtained = obtainTarball()
+        // External storage can change independently: verify and extract the same internal snapshot.
+        val supplied = obtained.parentFile != context.cacheDir
+        val tarball = if (supplied) File(context.cacheDir, "$TARBALL.supplied") else obtained
+        var verificationStarted = false
         try {
+            if (supplied) {
+                check(obtained.length() <= 3L * 1024 * 1024 * 1024) { "Linux archive is too large" }
+                obtained.copyTo(tarball, overwrite = true)
+            }
+            report(Stage.Download, "Verifying Arch Linux ARM signature")
+            val signature = if (supplied) {
+                val detached = File(obtained.path + ".sig")
+                check(detached.isFile && detached.length() <= 16 * 1024) { "Provide the matching .tar.gz.sig beside the Linux archive" }
+                detached.readBytes()
+            } else {
+                readHttps(URL("$ROOTFS_URL.sig"), 16 * 1024)
+            }
+            verificationStarted = true
+            context.assets.open("security/archlinuxarm.asc").use { key ->
+                signature.inputStream().use { RootfsSignature.verify(tarball, it, key) }
+            }
             extract(tarball)
         } catch (e: Exception) {
-            // A truncated or bogus download (a captive portal's page) would fail every retry otherwise.
-            if (tarball.parentFile == context.cacheDir) tarball.delete()
+            // Discard a failed image, but keep a complete download if only fetching its signature failed.
+            if (verificationStarted) tarball.delete()
             throw e
+        } finally {
+            if (supplied) tarball.delete()
         }
-        tarball.delete() // ~830 MB we no longer need
+        obtained.delete() // ~830 MB we no longer need
     }
 
     /**
@@ -391,45 +413,43 @@ class Bootstrap(
         val partial = File(context.cacheDir, "$TARBALL.part")
         val validator = File(context.cacheDir, "$TARBALL.version")
         report(Stage.Download, "Downloading Arch Linux ARM", 0f)
-        val conn = URL(ROOTFS_URL).openConnection() as HttpURLConnection
-        conn.connectTimeout = 15_000
-        conn.readTimeout = 30_000
         val have = if (partial.exists() && validator.exists()) partial.length() else 0L
-        if (have > 0) {
-            conn.setRequestProperty("Range", "bytes=$have-")
-            conn.setRequestProperty("If-Range", validator.readText())
-        }
-        val resumed = conn.responseCode == HttpURLConnection.HTTP_PARTIAL
-        if (conn.responseCode !in 200..299) error("download failed: HTTP ${conn.responseCode}")
-        val start = if (resumed) have else 0L
-        val total = conn.contentLengthLong.let { if (it > 0) it + start else -1L }
-        (conn.getHeaderField("ETag") ?: conn.getHeaderField("Last-Modified"))?.let(validator::writeText) ?: validator.delete()
-        conn.inputStream.use { input ->
-            java.io.FileOutputStream(partial, resumed).use { out ->
-                val buf = ByteArray(1 shl 16)
-                var done = start
-                var lastReport = 0L
-                while (true) {
-                    val n = input.read(buf)
-                    if (n < 0) break
-                    out.write(buf, 0, n)
-                    done += n
-                    if (done - lastReport > 4 shl 20) {
-                        lastReport = done
-                        report(
-                            Stage.Download,
-                            if (total > 0) "${done shr 20} of ${total shr 20} MB" else "${done shr 20} MB",
-                            if (total > 0) done.toFloat() / total else null,
-                        )
+        val headers = if (have > 0) mapOf("Range" to "bytes=$have-", "If-Range" to validator.readText()) else emptyMap()
+        val conn = openHttps(URL(ROOTFS_URL), headers)
+        try {
+            val resumed = conn.responseCode == HttpURLConnection.HTTP_PARTIAL
+            if (conn.responseCode !in 200..299) error("download failed: HTTP ${conn.responseCode}")
+            val start = if (resumed) have else 0L
+            val total = conn.contentLengthLong.let { if (it > 0) it + start else -1L }
+            (conn.getHeaderField("ETag") ?: conn.getHeaderField("Last-Modified"))?.let(validator::writeText) ?: validator.delete()
+            conn.inputStream.use { input ->
+                java.io.FileOutputStream(partial, resumed).use { out ->
+                    val buf = ByteArray(1 shl 16)
+                    var done = start
+                    var lastReport = 0L
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        out.write(buf, 0, n)
+                        done += n
+                        check(done <= 3L * 1024 * 1024 * 1024) { "Linux download is too large" }
+                        if (done - lastReport > 4 shl 20) {
+                            lastReport = done
+                            report(
+                                Stage.Download,
+                                if (total > 0) "${done shr 20} of ${total shr 20} MB" else "${done shr 20} MB",
+                                if (total > 0) done.toFloat() / total else null,
+                            )
+                        }
                     }
                 }
             }
-        }
-        // Only a complete download is kept for a retry.
-        check(total <= 0 || partial.length() == total) { "the download was cut short; retry to continue it" }
-        partial.renameTo(target)
-        validator.delete()
-        return target
+            // Only a complete download is kept for a retry.
+            check(total <= 0 || partial.length() == total) { "the download was cut short; retry to continue it" }
+            check(partial.renameTo(target)) { "Cannot save Linux download" }
+            validator.delete()
+            return target
+        } finally { conn.disconnect() }
     }
 
     private fun extract(tarball: File) {

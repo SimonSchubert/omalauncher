@@ -53,3 +53,17 @@ It is installed into the Linux guest when GPU acceleration is turned on for an A
 talloc (LGPL-3.0) and libandroid-shmem (BSD-3-Clause); they are not in this
 repository. The app lists every component it ships, with its license, under
 settings › licenses (`ui/LicensesScreen.kt`, texts in `app/src/main/assets/licenses/`).
+
+## Linux image verification
+
+Bouncy Castle Java 1.86 (`bcpg-jdk18on`, `bcprov-jdk18on`, `bcutil-jdk18on`)
+is used for OpenPGP verification under its MIT license. Copyright (c)
+2000-2026 The Legion of the Bouncy Castle Inc.
+The license is bundled in `app/src/main/assets/licenses/bouncycastle.txt`.
+Source: https://github.com/bcgit/bc-java
+
+`app/src/main/assets/security/archlinuxarm.asc` is the public Arch Linux ARM
+build-system signing key. Its fingerprint is independently published at
+https://archlinuxarm.org/about/package-signing and is checked by the verifier.
+The armored public key was retrieved from keyserver.ubuntu.com using that
+complete fingerprint; the keyserver is not the trust authority.
