@@ -44,6 +44,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import dev.omalauncher.theme.Style
 import dev.omalauncher.ui.ExtraKeys
 import dev.omalauncher.ui.KeyboardSink
 import dev.omalauncher.ui.Mono
@@ -184,7 +185,7 @@ private fun AppWindow(
             .systemBarsPadding(),
     ) {
         AndroidView(
-            factory = { KeyboardSink(it, runtime.keyboard).also { v -> sink = v } },
+            factory = { KeyboardSink(it, runtime.keyboard) { runtime.style.style[Style.TERMINAL_KEYBOARD_TEXT] }.also { v -> sink = v } },
             modifier = Modifier.size(1.dp),
         )
         // Always the whole screen: a SurfaceView that changes size shows its last frame stretched until the next one,
