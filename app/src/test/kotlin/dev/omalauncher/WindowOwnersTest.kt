@@ -1,5 +1,6 @@
 package dev.omalauncher
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,5 +31,15 @@ class WindowOwnersTest {
         owners.take("btop", "b")
         assertFalse(owners.release("btop", "a"))
         assertTrue(owners.release("terminal", "a"))
+    }
+
+    @Test fun anActivityThatStillOwnsItsWindowHasNotHandedItOver() {
+        owners.take("terminal", "old")
+        assertEquals("old", owners.ownerOf("terminal"))
+        assertFalse(owners.handedOver("terminal", "old"))
+        owners.take("terminal", "new")
+        assertEquals("new", owners.ownerOf("terminal"))
+        assertTrue(owners.handedOver("terminal", "old"))
+        assertFalse(owners.handedOver("terminal", "new"))
     }
 }

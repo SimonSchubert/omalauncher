@@ -191,7 +191,8 @@ class TaskbarService : AccessibilityService() {
                         AppWindow(pkg, ZoneBox(r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat()), w.title?.toString())
                     }
             val size = wm.currentWindowMetrics.bounds
-            val linux = linuxTasks().map { it.window }
+            // Only ours can be Linux windows; reading the tasks otherwise is wasted.
+            val linux = if (apps.any { it.packageName == packageName }) linuxTasks().map { it.window } else emptyList()
             // Our own windows other than home and Linux (Files, settings) can't be relaunched as a split partner: that would open home.
             linux.associateBy { it.id } to
                 screenState(apps, size.width().toFloat(), size.height().toFloat(), homePackages(), opaque = launchers, own = packageName, linux = linux)
@@ -399,7 +400,7 @@ class TaskbarService : AccessibilityService() {
 
     /**
      * Opens [app], dropped in a split zone of [kind], next to the Linux window [id]; see [linuxPartnerSteps]. Its task is
-     * looked up again: it may have gone since the drag began, and then nothing opens.
+     * looked up again: it may have gone since the drag began, and then the app opens full screen.
      */
     @RequiresApi(35)
     private fun nextToLinux(
@@ -407,7 +408,7 @@ class TaskbarService : AccessibilityService() {
         kind: ZoneKind,
         id: String,
     ) {
-        val task = linuxTasks().firstOrNull { it.window.id == id } ?: return
+        val task = linuxTasks().firstOrNull { it.window.id == id } ?: return open(OpenPlan.AsTapped(app), app)
         // A new activity for the same window, in a task of its own.
         val reopen = Intent(task.intent).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
         val steps = linuxPartnerSteps(kind, app, task.taskId, reopen) ?: return

@@ -10,6 +10,12 @@
         <item name="android:windowBackground">#FF1A1B26</item>
     </style>
 
+    <!-- A Linux window: no starting window (a splash with the launcher's icon), so a window moved into a split half
+         by the taskbar just shows up; its first frame comes on this background. -->
+    <style name="Theme.Omalauncher.LinuxWindow" parent="Theme.Omalauncher.Window">
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+
     <!-- Only a dialog shows, over the app that opened it. -->
     <style name="Theme.Omalauncher.Dialog" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@android:color/transparent</item>
