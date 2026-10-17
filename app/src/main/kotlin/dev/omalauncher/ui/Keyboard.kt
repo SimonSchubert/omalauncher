@@ -47,6 +47,9 @@ class KeyboardBridge(
         if (event.keyCode in volumeKeys) return false
         val code = Keys.evdev(event) ?: event.scanCode.takeIf { it > 0 } ?: return false
         if (wm.focused == null) return false
+        // Android's Caps Lock state rides on every key, also the ones that stop here.
+        val capsLock = event.isCapsLockOn
+        wm.server.postInput { syncCapsLock(capsLock) }
         if (event.action == KeyEvent.ACTION_UP && code == swallowUp) {
             swallowUp = null
             return true
@@ -59,14 +62,14 @@ class KeyboardBridge(
         // Key repeat is ours (clients get rate 0): replay Android's repeats as release + press.
         if (event.repeatCount > 0) {
             if (event.action == KeyEvent.ACTION_DOWN) {
-                key(code, false)
-                key(code, true)
+                key(code, false, capsLock)
+                key(code, true, capsLock)
             }
             return true
         }
         when (event.action) {
-            KeyEvent.ACTION_DOWN -> key(code, true)
-            KeyEvent.ACTION_UP -> key(code, false)
+            KeyEvent.ACTION_DOWN -> key(code, true, capsLock)
+            KeyEvent.ACTION_UP -> key(code, false, capsLock)
         }
         return true
     }
@@ -116,7 +119,8 @@ class KeyboardBridge(
     private fun key(
         code: Int,
         pressed: Boolean,
-    ) = wm.server.postInput { key(code, pressed) }
+        capsLock: Boolean? = null,
+    ) = wm.server.postInput { key(code, pressed, capsLock) }
 }
 
 /** An invisible view that owns the soft keyboard and feeds it into [KeyboardBridge]. */
