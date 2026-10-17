@@ -250,6 +250,19 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- Lets any Android app browse and edit the Arch files (/root of the proot'd system) through SAF: -->
+        <!-- document pickers, file managers, editors. The provider lives in .files (ArchDocsProvider). -->
+        <provider
+            android:name=".files.ArchDocsProvider"
+            android:authorities="dev.omalauncher.arch.documents"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+
         <service
             android:name=".theme.OmarchyWallpaperService"
             android:exported="true"

@@ -84,6 +84,8 @@ Dates are when the build was uploaded to Play.
 
 ## 0.6.0 (versionCode 11) – 2026-10-12
 
+- The Arch files are open to every Android app: file managers, editors and
+  Open/Save dialogs can browse, read and edit them through SAF.
 - Apps from a work profile show up next to your own, marked with a briefcase,
   and dimmed while work apps are paused.
 - Cloned apps carry the clone mark instead of the briefcase, from Android 15 on.
