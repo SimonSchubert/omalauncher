@@ -87,6 +87,7 @@ fun HomeScreen(
     val terminals = runtime.terminals
     BackHandler(enabled = terminals.typing) { terminals.deactivate() }
     BackHandler(enabled = state.homeMenuOpen) { state.homeMenuOpen = false }
+    BackHandler(enabled = state.screensOverviewOpen) { state.screensOverviewOpen = false }
     BackHandler(enabled = state.editing != null && !state.homeMenuOpen) { state.editing = null }
     BackHandler(enabled = arrange.folder != null && !state.homeMenuOpen) { arrange.folder = null }
     LaunchedEffect(engine) {
@@ -145,6 +146,12 @@ fun HomeScreen(
     LaunchedEffect(state.requestedPage) {
         state.requestedPage?.let { if (it < pageNumbers.size) pager.animateScrollToPage(it / per) }
         state.requestedPage = null
+    }
+    LaunchedEffect(state.requestedPageNumber, pageNumbers) {
+        val p = state.requestedPageNumber ?: return@LaunchedEffect
+        val i = pageNumbers.indexOf(p)
+        if (i >= 0) pager.animateScrollToPage(i / per)
+        state.requestedPageNumber = null
     }
 
     fun openMenu(item: HomeItem?) {
@@ -214,9 +221,22 @@ fun HomeScreen(
     Column(
         Modifier
             .fillMaxSize()
+            // Pinching on home triggers the configured pinch action (arranging screens by default).
+            .homePinch(
+                enabled = !terminals.typing && state.editing == null && arrange.folder == null && !state.homeMenuOpen && !state.screensOverviewOpen,
+            ) {
+                // Gesture settings offer arranging screens, the drawer or nothing for the pinch.
+                val action = runtime.gestures.pinch
+                if (action == GestureAction.Screens) state.screensOverviewOpen = true
+                if (action == GestureAction.Drawer) state.open()
+            }
             // Swiping up opens the drawer, like stock launchers, or what gesture settings say; not while editing, in a
             // folder or typing in a tile. A long-press drag takes its touches first, and the pager only wants sideways ones.
-            .homeSwipe(runtime, state, enabled = !terminals.typing && state.editing == null && arrange.folder == null)
+            .homeSwipe(
+                runtime,
+                state,
+                enabled = !terminals.typing && state.editing == null && arrange.folder == null && !state.screensOverviewOpen,
+            )
             // Typing in a tile (its terminal or a widget's text field): lift the pages so the tile stays above the keyboard,
             // but not under the status bar; a tile too tall for both gives up the rest at its bottom.
             .graphicsLayer {

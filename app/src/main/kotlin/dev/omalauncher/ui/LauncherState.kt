@@ -36,13 +36,17 @@ class LauncherState {
     /** The menu from long-pressing empty home space. */
     var homeMenuOpen by mutableStateOf(false)
 
+    /** Whether the screen overview / reorder panel is open. */
+    var screensOverviewOpen by mutableStateOf(false)
+
     /** The open drawer or a full-screen panel hides the home screen; animated widgets stop ticking under it. */
     val homeCovered: Boolean
-        get() = drawer.value > 0.99f || shared != null || sharing != null
+        get() = drawer.value > 0.99f || shared != null || sharing != null || screensOverviewOpen
 
-    /** Closes every overlay screen (the home menu, widget sharing). */
+    /** Closes every overlay screen (the home menu, widget sharing, screen overview). */
     fun closeScreens() {
         homeMenuOpen = false
+        screensOverviewOpen = false
         shared = null
         sharing = null
     }
@@ -83,6 +87,9 @@ class LauncherState {
 
     /** Home page to scroll to (e.g. from Super+number); consumed by the pager. */
     var requestedPage by mutableStateOf<Int?>(null)
+
+    /** Specific 1-based page number to scroll to (e.g. from screen overview); consumed by HomeScreen. */
+    var requestedPageNumber by mutableStateOf<Int?>(null)
 
     /** A composition scope: animations need its frame clock. Null until the UI is composed. */
     private var composeScope: CoroutineScope? = null

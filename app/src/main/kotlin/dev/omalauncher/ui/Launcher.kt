@@ -232,6 +232,7 @@ private fun DesktopScreen(
 
     // Full-screen panels draw over the bar.
     ThemesOverlay(runtime, state)
+    ScreensOverview(runtime, state)
     StyleErrors(runtime.style)
 }
 
