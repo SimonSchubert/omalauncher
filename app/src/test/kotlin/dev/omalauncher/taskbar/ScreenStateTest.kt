@@ -124,4 +124,15 @@ class ScreenStateTest {
         val wins = listOf(w(own, 0f, 0f, 10f, 10f), w(own, 0f, 0f, 20f, 20f), w("maps", 0f, 0f, 30f, 30f))
         assertEquals(wins, linuxWindows(wins, own, listOf(terminal)))
     }
+
+    @Test fun ourHomeInFrontIsNeverALinuxWindow() {
+        val state = screenState(listOf(w(own, 0f, 0f, 1856f, 2160f)), 1856f, 2160f, home = setOf(own), opaque = setOf(own), own = own, linux = listOf(terminal))
+        assertEquals(ScreenState.Home, state)
+    }
+
+    @Test fun evenATinyWindowOfOursCountsWhenPairing() {
+        // Two windows of ours, one too small to see, and one Linux window: which is which is unsure, so neither is named.
+        val wins = listOf(w(own, 0f, 0f, 50f, 50f), w(own, 0f, 0f, 1856f, 2160f))
+        assertEquals(ScreenState.Unknown, screenState(wins, 1856f, 2160f, home = emptySet(), opaque = setOf(own), own = own, linux = listOf(terminal)))
+    }
 }

@@ -81,7 +81,7 @@
         <activity
             android:name=".LinuxWindowActivity"
             android:label="Linux"
-            android:theme="@style/Theme.Omalauncher.Window"
+            android:theme="@style/Theme.Omalauncher.LinuxWindow"
             android:autoRemoveFromRecents="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:documentLaunchMode="always"

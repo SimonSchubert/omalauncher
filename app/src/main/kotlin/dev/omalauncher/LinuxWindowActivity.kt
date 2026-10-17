@@ -124,14 +124,34 @@ class LinuxWindowActivity : InstantActivity() {
 
         /**
          * Closes the activity in task [taskId] without an animation, as a window handed to a newer activity leaves its
-         * old task; false if no activity of ours is in that task.
+         * old task. Only once handed over: an activity that still owns its window (the new one didn't start, or hasn't
+         * yet) stays, window and all. See [Leaving].
          */
-        fun leave(taskId: Int): Boolean {
-            val activity = live.firstOrNull { it.taskId == taskId } ?: return false
+        fun leave(taskId: Int): Leaving {
+            val activity = live.firstOrNull { it.taskId == taskId } ?: return Leaving.NotOurs
+            if (!activity.handedOver()) return Leaving.Kept
             if (Build.VERSION.SDK_INT >= 34) activity.overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
             activity.closeInstantly()
-            return true
+            return Leaving.Left
         }
+
+        /** Whether the activity in task [taskId] still owns its window, so the task must stay. */
+        fun keeps(taskId: Int): Boolean = live.firstOrNull { it.taskId == taskId }?.handedOver() == false
+    }
+
+    /** Whether this activity's window has gone to a newer activity. */
+    private fun handedOver(): Boolean = window?.let { owners.handedOver(it, this) } ?: true
+
+    /** What [leave] did with a task. */
+    enum class Leaving {
+        /** Its activity is on its way out. */
+        Left,
+
+        /** Its activity still owns its window: nothing closes. */
+        Kept,
+
+        /** No activity of ours is in it, as when it's left over in Recents. */
+        NotOurs,
     }
 
     // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
@@ -155,6 +175,15 @@ internal class WindowOwners<W : Any, A : Any> {
     ) {
         owners[window] = owner
     }
+
+    /** Who owns [window] now, if anyone. */
+    fun ownerOf(window: W): A? = owners[window]
+
+    /** Whether [from] has handed [window] over: it no longer owns it, so it may leave without closing it. */
+    fun handedOver(
+        window: W,
+        from: A,
+    ): Boolean = ownerOf(window) !== from
 
     /** Lets go of [window] if [owner] owns it; whether it did. */
     fun release(

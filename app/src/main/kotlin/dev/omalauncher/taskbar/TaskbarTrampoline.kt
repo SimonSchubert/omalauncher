@@ -2,6 +2,7 @@ package dev.omalauncher.taskbar
 
 import android.app.Activity
 import android.app.ActivityManager
+import android.app.ActivityOptions
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -103,7 +104,8 @@ class TaskbarTrampoline : Activity() {
             step.containsKey(REMOVE) -> remove(step.getInt(REMOVE))
             step.containsKey(INTENT) -> {
                 val intent = Intent(step.getParcelable<Intent>(INTENT) ?: return).addFlags(if (step.getBoolean(ADJACENT)) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0)
-                runCatching { startActivity(intent) }.onFailure { Log.w(TAG, "couldn't start ${intent.data ?: intent.component}", it) }
+                // No opening animation: it only moves a window that's already on screen.
+                runCatching { startActivity(intent, ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()) }.onFailure { Log.w(TAG, "couldn't start ${intent.data ?: intent.component}", it) }
             }
             else -> open(step)
         }
@@ -124,9 +126,20 @@ class TaskbarTrampoline : Activity() {
     /** This launcher's task [id], if it's still there. */
     private fun ownTask(id: Int): ActivityManager.AppTask? = getSystemService(ActivityManager::class.java).appTasks.firstOrNull { runCatching { it.taskInfo?.taskId }.getOrNull() == id }
 
-    /** Closes task [id]: a Linux window's leaves without an animation (see [LinuxWindowActivity.leave]); any other the plain way. */
+    /**
+     * Closes task [id]: a Linux window's leaves without an animation (see [LinuxWindowActivity.leave]), and is closed
+     * the plain way if it's still there a little later; any other the plain way. A Linux window's task whose activity
+     * still owns the window stays.
+     */
     private fun remove(id: Int) {
-        if (LinuxWindowActivity.leave(id)) return
+        when (LinuxWindowActivity.leave(id)) {
+            LinuxWindowActivity.Leaving.Kept -> return
+            LinuxWindowActivity.Leaving.Left -> handler.postDelayed({ if (!LinuxWindowActivity.keeps(id)) finishTask(id) }, LEAVE_MS)
+            LinuxWindowActivity.Leaving.NotOurs -> finishTask(id)
+        }
+    }
+
+    private fun finishTask(id: Int) {
         ownTask(id)?.let { runCatching { it.finishAndRemoveTask() }.onFailure { e -> Log.w(TAG, "couldn't close a task", e) } }
     }
 
@@ -149,6 +162,9 @@ class TaskbarTrampoline : Activity() {
         private const val INTENT = "intent"
         private const val FRONT = "front"
         private const val REMOVE = "remove"
+
+        /** How long a Linux window's old task gets to leave on its own before it's closed. */
+        private const val LEAVE_MS = 300L
 
         /** How long a replacing trampoline waits to have settled in its half before looking where it is. */
         private const val SETTLE_MS = 200L

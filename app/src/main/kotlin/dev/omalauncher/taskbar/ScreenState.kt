@@ -57,7 +57,7 @@ sealed interface ScreenState {
 /**
  * What's on a [width]×[height] screen, from its app [windows], topmost first. Windows under 5% of the screen are
  * ignored. This launcher's ([own]) windows that are its visible [linux] windows count as those, by their ids (see
- * [linuxWindows]). Two windows that don't overlap, each 20% or more and together 85% or more, are split screen, whatever floats
+ * [linuxWindows]), all of them, however small; none while our home is in front ([own] in [home]). Two windows that don't overlap, each 20% or more and together 85% or more, are split screen, whatever floats
  * over them (pop-ups, dialogs): a pop-up opened before the split stays over it on One UI. Otherwise the largest window,
  * if it covers half the screen or more, is the app in front (home or single), again whatever floats over it. Anything
  * else is [ScreenState.Unknown]. Apps in [opaque] are on screen but can't be a split partner (other launchers, this
@@ -76,7 +76,8 @@ fun screenState(
     val screen = width * height
     if (screen <= 0f) return ScreenState.Unknown
     fun share(w: AppWindow) = w.bounds.area() / screen
-    val seen = linuxWindows(windows.filter { share(it) >= 0.05f }, own, linux)
+    val named = if (own in home) windows else linuxWindows(windows, own, linux)
+    val seen = named.filter { share(it) >= 0.05f }
     val big = seen.filter { share(it) >= 0.2f }
     val pair =
         big.indices.asSequence()
