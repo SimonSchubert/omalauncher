@@ -94,6 +94,10 @@ fun HomeMenu(
             state.homeMenuOpen = false
             state.show(SettingsPage.Store)
         }
+        MenuItem("arrange screens") {
+            state.homeMenuOpen = false
+            state.screensOverviewOpen = true
+        }
         Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             ThemeStrip(
                 runtime.themes,

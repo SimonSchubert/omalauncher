@@ -271,6 +271,22 @@ class WidgetEngine(
         }
     }
 
+    /**
+     * Applies a new screen order: [orderedPages] holds the current page numbers in their new
+     * order, and each becomes its position (1-based). Every move is worked out before any is
+     * made, so a widget moving to page 2 can't be taken for one already on page 2.
+     */
+    fun applyScreenOrder(orderedPages: List<Int>) {
+        val widgets = pageMoves(orderedPages, specs.map { it.file.name to it.page })
+        val apps = pageMoves(orderedPages, shortcuts.onGrid().map { it.key to it.page })
+        for ((fileName, page) in widgets) {
+            setPage(fileName, page)
+            val i = specs.indexOfFirst { it.file.name == fileName }
+            if (i >= 0) specs[i] = specs[i].onPage(page)
+        }
+        for ((key, page) in apps) shortcuts.move(key, page)
+    }
+
     private fun agentWidgetFile(agent: Agent) = "$AGENT_PREFIX${agent.bin}.owl"
 
     /** An agent's terminal tile, which [addAgentWidget] made. */
@@ -900,4 +916,16 @@ class WidgetEngine(
                 "terminals' font) is ~/${StyleStore.GUEST_DIR}/${StyleStore.FILE}; ${StyleStore.DEFAULTS} next to it lists every " +
                 "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n"
     }
+}
+
+/**
+ * The items that change page when the screens are put in [orderedPages]' order: each listed
+ * page becomes its 1-based position there. Items on a page not in the list stay where they are.
+ */
+internal fun <K> pageMoves(
+    orderedPages: List<Int>,
+    items: List<Pair<K, Int>>,
+): List<Pair<K, Int>> {
+    val target = orderedPages.withIndex().associate { (i, page) -> page to i + 1 }
+    return items.mapNotNull { (key, page) -> target[page]?.takeIf { it != page }?.let { key to it } }
 }
