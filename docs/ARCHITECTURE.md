@@ -7,6 +7,13 @@ as its Wayland compositor. The home screen (widgets, pinned apps, the bar
 and its app list) is Jetpack Compose; every Linux window opens as its own Android task,
 so it gets a Recents card and behaves like a separate app.
 
+Home's long-press menu lists `WindowManager.appWindows`, excluding terminal-widget
+surfaces. `Runtime.openWindow` resolves the live per-process handle and foregrounds
+its Android task, or attaches an activity to the same window if its task is gone.
+Linux window tasks use `intoExisting` document identity (stable activity alias and
+handle URI), so repeated recovery does not create duplicate tasks. This neither
+starts a guest process nor restores windows after their client or compositor exits.
+
 Linux is optional. Without it the launcher still has Omarchy's themes and
 wallpapers, Android apps from the bar and the widgets that don't run commands.
 Everything else is offered as an install from settings › linux and wherever

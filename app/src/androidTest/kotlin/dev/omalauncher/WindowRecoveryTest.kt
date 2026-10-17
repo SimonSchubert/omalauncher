@@ -14,14 +14,18 @@ import dev.omalauncher.wayland.Client
 import dev.omalauncher.wayland.Surface
 import dev.omalauncher.wayland.XdgSurface
 import dev.omalauncher.wayland.XdgToplevel
-import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.Callable
 import java.util.concurrent.FutureTask
 import kotlin.concurrent.thread
 import org.junit.After
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -50,14 +54,14 @@ class WindowRecoveryTest {
         val firstHandle = handle(first)
         val secondHandle = handle(second)
         await { tasks(firstHandle).size == 1 && tasks(secondHandle).size == 1 && onMain { runtime.wm.focused === second } }
-        val firstTask = tasks(firstHandle).single().taskInfo.taskId
-        val secondTask = tasks(secondHandle).single().taskInfo.taskId
+        val firstTask = checkNotNull(tasks(firstHandle).single().taskInfo).taskId
+        val secondTask = checkNotNull(tasks(secondHandle).single().taskInfo).taskId
         assertNotEquals(firstTask, secondTask)
 
         assertTrue(onMain { runtime.openWindow(first) })
         await { onMain { runtime.wm.focused === first } }
-        assertEquals(firstTask, tasks(firstHandle).single().taskInfo.taskId)
-        assertEquals(secondTask, tasks(secondHandle).single().taskInfo.taskId)
+        assertEquals(firstTask, checkNotNull(tasks(firstHandle).single().taskInfo).taskId)
+        assertEquals(secondTask, checkNotNull(tasks(secondHandle).single().taskInfo).taskId)
         assertSame(first, onMain { runtime.wm.windowByHandle(firstHandle) })
     }
 
@@ -73,10 +77,10 @@ class WindowRecoveryTest {
         }
         await { tasks(handle).size == 1 && onMain { runtime.wm.focused === window } }
         instrumentation.waitForIdleSync()
-        val taskId = tasks(handle).single().taskInfo.taskId
+        val taskId = checkNotNull(tasks(handle).single().taskInfo).taskId
         assertTrue(onMain { runtime.openWindow(window) })
         instrumentation.waitForIdleSync()
-        assertEquals(taskId, tasks(handle).single().taskInfo.taskId)
+        assertEquals(taskId, checkNotNull(tasks(handle).single().taskInfo).taskId)
         assertSame(window, onMain { runtime.wm.windowByHandle(handle) })
     }
 
@@ -108,11 +112,6 @@ class WindowRecoveryTest {
             await { node("#$firstNumber · Tern") != null && node("#$secondNumber · Tern") != null }
             onMain { title(first, "k3s dotfiles") }
             await { node("#$firstNumber · k3s dotfiles") != null }
-            val screenshot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
-            File(context.getExternalFilesDir(null), "window-recovery-menu.png").outputStream().use {
-                screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-            }
-            screenshot.recycle()
             var target = node("#$firstNumber · k3s dotfiles")!!
             while (!target.isClickable) target = target.parent ?: error("Window row is not clickable")
             assertTrue(target.performAction(AccessibilityNodeInfo.ACTION_CLICK))
@@ -166,7 +165,7 @@ class WindowRecoveryTest {
 
     private fun tasks(handle: String): List<ActivityManager.AppTask> =
         context.getSystemService(ActivityManager::class.java).appTasks.filter {
-            runCatching { it.taskInfo.baseIntent.data?.toString() == "omarchy://window/$handle" }.getOrDefault(false)
+            runCatching { it.taskInfo?.baseIntent?.data?.toString() == "omarchy://window/$handle" }.getOrDefault(false)
         }
 
     private fun node(text: String): AccessibilityNodeInfo? {
