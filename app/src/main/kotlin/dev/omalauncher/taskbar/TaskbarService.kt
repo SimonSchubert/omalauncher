@@ -236,7 +236,7 @@ class TaskbarService : AccessibilityService() {
     @RequiresApi(35)
     private fun linuxAppInFront(className: String?): LinuxApp? {
         if (!runtime.bootstrap.isInstalled) return null
-        val task = frontTask(linuxTasks(), className, LinuxWindowActivity::class.java.name) ?: return null
+        val task = frontTask(linuxTasks(), className, LinuxWindowActivity::class.java.name) { it.intent.component?.className } ?: return null
         val window = runtime.wm.windowByHandle(task.window.handle) ?: return null
         val names = listOf(runtime.displayName(window.appId, window.title), window.title)
         return appOfWindow(runtime.linuxApps.apps, window.appId, names, LinuxApp::matches) { it.name }

@@ -67,14 +67,18 @@ fun <A> appOfWindow(
 
 /**
  * Which of the Linux window [tasks] on screen, most recent first, just came to the front, from the system's [className]
- * for it: the first, when that's the window activity ([windowClass], which the system names whatever alias opened it) or
- * unnamed. Null for another of the launcher's screens (Files, the taskbar's trampoline, home).
+ * for it: the one whose activity alias [classOf] gives that name (the system names the alias that opened it); else, when
+ * it's the window activity itself ([windowClass]) or unnamed, the most recent. Null for another of the launcher's screens
+ * (Files, the taskbar's trampoline, home).
  */
 fun <T> frontTask(
     tasks: List<T>,
     className: String?,
     windowClass: String,
-): T? = tasks.firstOrNull()?.takeIf { className == null || className == windowClass }
+    classOf: (T) -> String?,
+): T? =
+    tasks.firstOrNull { className != null && classOf(it) == className }
+        ?: tasks.firstOrNull()?.takeIf { className == null || className == windowClass }
 
 /** [keys] with [key] first, at most [max] long. */
 fun moveToFront(
