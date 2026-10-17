@@ -74,6 +74,18 @@ class TaskbarService : AccessibilityService() {
     private var barView: ComposeView? = null
     private val session = SplitDragSession()
     private var screen by mutableStateOf<ScreenState>(ScreenState.Unknown)
+
+    /** The lock screen is up (or the screen is off): the taskbar shows nothing there, so it opens no apps past it. */
+    private var locked by mutableStateOf(false)
+
+    /** Screen off, on and unlocked: the lock screen comes and goes without an app window changing. */
+    private val lockWatch =
+        object : android.content.BroadcastReceiver() {
+            override fun onReceive(
+                context: android.content.Context,
+                intent: Intent,
+            ) = updateLocked()
+        }
     private var tray by mutableStateOf(false)
     private var poked by mutableIntStateOf(0)
     private var seen by mutableStateOf(emptyList<String>())
@@ -97,11 +109,27 @@ class TaskbarService : AccessibilityService() {
         // The drop zones under everything, never touchable; the handle and tray over them.
         add(fullScreen()) { DropZoneOverlay(session) }
         barView = add(bottomBar()) { Bar() }
+        registerReceiver(
+            lockWatch,
+            android.content.IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_SCREEN_ON)
+                addAction(Intent.ACTION_USER_PRESENT)
+            },
+        )
+        updateLocked()
         refresh()
+    }
+
+    private fun updateLocked() {
+        val keyguard = getSystemService(android.app.KeyguardManager::class.java)
+        val display = getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(android.view.Display.DEFAULT_DISPLAY)
+        locked = keyguard.isKeyguardLocked || display?.state == android.view.Display.STATE_OFF
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (Build.VERSION.SDK_INT < 35 || views.isEmpty()) return
+        updateLocked()
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             // The default home can change in settings; resolving it is cheap.
             defaultHome = defaultHome()
@@ -138,6 +166,7 @@ class TaskbarService : AccessibilityService() {
     private fun stop() {
         TaskbarStatus.serviceOn = false
         if (views.isEmpty()) return
+        runCatching { unregisterReceiver(lockWatch) }
         for (v in views) runCatching { wm.removeView(v) }
         views.clear()
         barView = null
@@ -230,7 +259,7 @@ class TaskbarService : AccessibilityService() {
     @RequiresApi(35)
     @Composable
     private fun Bar() {
-        val hidden = !runtime.taskbar.enabled || screen == ScreenState.Home
+        val hidden = !runtime.taskbar.enabled || screen == ScreenState.Home || locked
         // Hidden, the tray goes back down: it comes back as the handle.
         LaunchedEffect(hidden) { if (hidden) tray = false }
         if (hidden) return
