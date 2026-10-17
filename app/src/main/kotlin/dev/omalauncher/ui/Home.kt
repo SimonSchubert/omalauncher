@@ -2,12 +2,14 @@ package dev.omalauncher.ui
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableIntStateOf
 import android.app.WallpaperManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.HomeItem
+import dev.omalauncher.widgets.Profile
+import dev.omalauncher.widgets.foldedPageOf
+import dev.omalauncher.widgets.openPageOf
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.WidgetItem
 import androidx.compose.foundation.layout.Box
@@ -44,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -66,13 +69,20 @@ fun HomeScreen(
     val engine = runtime.widgets
     val linuxState by runtime.bootstrap.state.collectAsState()
     val arrange = remember { Arrange() }
+    // With home.unfolded-layout, an unfolded inner screen has a home of its own, one wide page; see HomeProfiles.
+    val profile = homeProfile(windowSize())
+    SideEffect { engine.switchTo(profile) }
+    // The profile whose pages are listed: the one showing once switchTo has run, until then the one before.
+    val listProfile = engine.profiles.active
+    // Pages read the items of the profile whose layout they get, not of whichever shows by then.
+    val itemsOn = remember(listProfile) { { page: Int -> engine.itemsOn(page, listProfile) } }
     // One empty page always waits after the last one, to drop tiles on or pin apps to. Pages only exist
     // while they hold something, so it becomes a real page once used and a new empty one follows.
     // Unfolded, pages show in pairs: the pager counts pairs, and an odd last page gets an empty partner.
     val per = if (showsTwoPages(windowSize())) 2 else 1
     val pageNumbers =
         engine.pages
-            .let { if (engine.itemsOn(it.last()).isEmpty()) it else it + (it.last() + 1) }
+            .let { if (itemsOn(it.last()).isEmpty()) it else it + (it.last() + 1) }
             .let { if (it.size % per == 0) it else it + (it.last() + 1) }
     val pager = rememberPagerState { pageNumbers.size / per }
     // A tile dropped on another page: show that page once the page list has caught up.
@@ -87,6 +97,7 @@ fun HomeScreen(
     val terminals = runtime.terminals
     BackHandler(enabled = terminals.typing) { terminals.deactivate() }
     BackHandler(enabled = state.homeMenuOpen) { state.homeMenuOpen = false }
+    BackHandler(enabled = state.hiddenOpen) { state.hiddenOpen = false }
     BackHandler(enabled = state.editing != null && !state.homeMenuOpen) { state.editing = null }
     BackHandler(enabled = arrange.folder != null && !state.homeMenuOpen) { arrange.folder = null }
     LaunchedEffect(engine) {
@@ -102,12 +113,35 @@ fun HomeScreen(
         }
     }
     // Folding or unfolding keeps the page that was showing: unfolded, the pair it's in; folded, the left one of the pair.
-    var shownPer by remember { mutableIntStateOf(per) }
-    LaunchedEffect(per) {
-        if (per == shownPer) return@LaunchedEffect
-        val i = pageNumbers.indexOf(state.currentPage)
-        shownPer = per
-        if (i >= 0) pager.scrollToPage(i / per)
+    // With home.unfolded-layout each profile has its own pages instead: a switch goes back to the page last shown there
+    // (the first time, to the one pairing with the page showing). Editing and an open folder end, as their tile may be elsewhere.
+    // One effect for both, so a switch that also changes how many pages show (turning the setting on unfolded) scrolls once.
+    var shown by remember { mutableStateOf(profile to per) }
+    val lastPage = remember { mutableMapOf<Profile, Int>() }
+    // The page showing when a switch began; kept across a cancelled, retried scroll, which would otherwise read a later one.
+    var switchFrom by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(profile, per, listProfile, pageNumbers) {
+        val (shownProfile, shownPer) = shown
+        // Nothing to switch, or back on what's shown: any switch that was cancelled is over.
+        if (profile == shownProfile && per == shownPer) {
+            switchFrom = null
+            return@LaunchedEffect
+        }
+        val switching = profile != shownProfile
+        // Wait for the page list of the profile now showing (switchTo has run); the earlier list is the old profile's.
+        if (switching && listProfile != profile) return@LaunchedEffect
+        val from = switchFrom ?: state.currentPage.also { switchFrom = it; if (switching) lastPage[shownProfile] = it }
+        if (switching) {
+            val target = lastPage[profile] ?: if (profile == Profile.Open) openPageOf(from) else foldedPageOf(from)
+            state.editing = null
+            arrange.folder = null
+            pager.scrollToPage(pageNumbers.indexOf(target).coerceAtLeast(0) / per)
+        } else {
+            val i = pageNumbers.indexOf(from)
+            if (i >= 0) pager.scrollToPage(i / per)
+        }
+        shown = profile to per
+        switchFrom = null
     }
     // The drawer pins apps to whichever page is showing (the left one of a pair).
     LaunchedEffect(pager.currentPage, pageNumbers) {
@@ -159,6 +193,12 @@ fun HomeScreen(
             is Shortcut, is Folder -> engine.shortcuts.remove(item.key)
         }
         engine.profiles.forget(item.key)
+    }
+
+    /** Off this profile's home only; it can come back from the home menu's hidden list. */
+    fun hide(item: HomeItem) {
+        state.editing = null
+        engine.hide(item.key)
     }
 
     /** Opens the default agent on the widget's file; with no agent installed, the agents screen instead. */
@@ -259,8 +299,8 @@ fun HomeScreen(
         HomeGrid(
             pager = pager,
             pages = pageNumbers,
-            itemsOn = engine::itemsOn,
-            layout = engine.layout,
+            itemsOn = itemsOn,
+            layout = engine.profiles.layoutOf(listProfile),
             arrange = arrange,
             modifier = Modifier.weight(1f).fillMaxWidth(),
             selected = state.editing,
@@ -289,6 +329,8 @@ fun HomeScreen(
                                 state.sharing = item.spec
                             }
                         }
+                        // Only while each profile has its own layout; with one shared, removing is the same thing.
+                        if (engine.profiles.enabled()) EditAction("hide") { hide(item) }
                         EditAction("remove", Palette.red) { remove(item) }
                     }
                 }
@@ -303,7 +345,7 @@ fun HomeScreen(
                             spec = item.spec,
                             instance = engine.instance(item.spec),
                             // As shown: on its side in landscape.
-                            cells = engine.layout.cell(item.key)?.let { if (turned) it.h to it.w else it.w to it.h },
+                            cells = engine.profiles.layoutOf(listProfile).cell(item.key)?.let { if (turned) it.h to it.w else it.w to it.h },
                             // Accent like Hyprland's active border: only while one of its terminals has the keyboard.
                             focused = highlighted || typing,
                             modifier =
@@ -355,6 +397,8 @@ fun HomeScreen(
             turned = turned,
             side = side,
             per = per,
+            // The profile this frame was composed for is the one showing (switchTo has run for it).
+            showing = { it === engine.layout && engine.profiles.active == profile },
             onLongPressEmpty = { openMenu(null) },
             onNoRoom = { item -> showPage = engine.moveToFreePage(item) },
             onMove = { item, page ->

@@ -36,13 +36,17 @@ class LauncherState {
     /** The menu from long-pressing empty home space. */
     var homeMenuOpen by mutableStateOf(false)
 
+    /** The list of what the home profile showing hides, from the home menu. */
+    var hiddenOpen by mutableStateOf(false)
+
     /** The open drawer or a full-screen panel hides the home screen; animated widgets stop ticking under it. */
     val homeCovered: Boolean
         get() = drawer.value > 0.99f || shared != null || sharing != null
 
-    /** Closes every overlay screen (the home menu, widget sharing). */
+    /** Closes every overlay screen (the home menu and its hidden list, widget sharing). */
     fun closeScreens() {
         homeMenuOpen = false
+        hiddenOpen = false
         shared = null
         sharing = null
     }

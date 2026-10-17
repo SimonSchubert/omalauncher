@@ -306,6 +306,12 @@ internal fun HomeGrid(
     /** Names a folder as its name is typed; blank for none. */
     onRenameFolder: (Folder, String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Whether [layout] is still the one showing. Folding or unfolding composes a frame with the new screen's size
+     * but the old layout (the switch to the new one runs after it); placing that layout's tiles on a grid of the
+     * wrong size, or moving those that don't fit, would act on the profile showing by then.
+     */
+    showing: (WidgetLayout) -> Boolean = { true },
     room: Dp = 0.dp,
     turned: Boolean = false,
     /** Where the strip and the bar stand beside the grid; null for below it. */
@@ -345,9 +351,10 @@ internal fun HomeGrid(
                 // Not seen in portrait yet: square cells across.
                 Grid(width, height, gap, pad, cols, turned, if (turned) layout.portraitRows(windowSize) else null, used, per)
             }
-        if (!turned) SideEffect { layout.setPortraitRows(windowSize, grid.rows) }
+        if (!turned) SideEffect { if (showing(layout)) layout.setPortraitRows(windowSize, grid.rows) }
         // Previews draw tiles at the size they have here.
         SideEffect {
+            if (!showing(layout)) return@SideEffect
             layout.geometry = Triple(grid.cellW, grid.cellH, gap)
             layout.turned = turned
         }
@@ -377,7 +384,8 @@ internal fun HomeGrid(
         Box(
             Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
+                // Restarts when a fold or unfold switches layouts: the handler keeps the layout and items it started with.
+                .pointerInput(layout, itemsOn) {
                     /**
                      * Follows the finger, carrying [item] from [cell] on page [from]; returns whether it moved.
                      * [origin] is where the tile is on screen: its cell, or for an app lifted out of a folder,
@@ -637,7 +645,7 @@ internal fun HomeGrid(
                 Row(Modifier.fillMaxSize()) {
                     for (page in pagesAt(slot, pages, grid)) {
                         Box(Modifier.width(with(density) { grid.width.toDp() }).fillMaxHeight()) {
-                            TiledPage(page, itemsOn(page), layout, grid, arrange, selected, render, actions, onNoRoom)
+                            TiledPage(page, itemsOn(page), layout, grid, arrange, selected, render, actions, onNoRoom, showing)
                         }
                     }
                 }
@@ -729,11 +737,13 @@ private fun TiledPage(
     render: @Composable (HomeItem, Modifier, Boolean) -> Unit,
     actions: @Composable (HomeItem) -> Unit,
     onNoRoom: (HomeItem) -> Unit,
+    showing: (WidgetLayout) -> Boolean,
 ) {
     val density = LocalDensity.current
     val carried = arrange.carry?.item?.key
-    LaunchedEffect(items.map { it.key }, grid.cols, grid.rows) {
-        layout.place(items, grid.cols, grid.rows).forEach(onNoRoom)
+    // Runs after the frame that composed it, when a fold or unfold may have switched layouts since; see HomeGrid's showing.
+    LaunchedEffect(items.map { it.key }, grid.cols, grid.rows, layout) {
+        if (showing(layout)) layout.place(items, grid.cols, grid.rows).forEach(onNoRoom)
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val pageWidth = constraints.maxWidth
