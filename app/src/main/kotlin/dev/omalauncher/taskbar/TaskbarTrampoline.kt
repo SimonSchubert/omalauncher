@@ -1,7 +1,6 @@
 package dev.omalauncher.taskbar
 
 import android.app.Activity
-import android.app.ActivityOptions
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -14,6 +13,19 @@ import dev.omalauncher.AndroidApp
 import dev.omalauncher.ui.splitdrag.LaunchStep
 import dev.omalauncher.ui.splitdrag.ZoneBox
 import kotlin.math.roundToInt
+
+/** Whether the middle of a view at [left], [top] sized [width]×[height] (screen pixels) is inside [half]. */
+internal fun landsIn(
+    half: ZoneBox,
+    left: Float,
+    top: Float,
+    width: Float,
+    height: Float,
+): Boolean {
+    val x = left + width / 2
+    val y = top + height / 2
+    return x >= half.left && x < half.right && y >= half.top && y < half.bottom
+}
 
 /**
  * An invisible activity the taskbar opens apps through. LAUNCH_ADJACENT needs an activity to start from, and the
@@ -54,8 +66,7 @@ class TaskbarTrampoline : Activity() {
                 .addCategory(Intent.CATEGORY_LAUNCHER)
                 .setComponent(component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or adjacent)
-        val options = step.getParcelable<Rect>(BOUNDS)?.let { ActivityOptions.makeBasic().setLaunchBounds(it).toBundle() }
-        runCatching { startActivity(intent, options) }.onFailure { Log.w(TAG, "couldn't open ${component.flattenToShortString()}", it) }
+        runCatching { startActivity(intent) }.onFailure { Log.w(TAG, "couldn't open ${component.flattenToShortString()}", it) }
     }
 
     /** Whether this trampoline sits in [half] (screen pixels): its middle is inside it. */
@@ -63,14 +74,7 @@ class TaskbarTrampoline : Activity() {
         half ?: return false
         val view = window.decorView
         val at = IntArray(2).also(view::getLocationOnScreen)
-        val inside = half.contains(at[0] + view.width / 2, at[1] + view.height / 2)
-        Log.i(TAG, "replace: trampoline at ${at[0]},${at[1]} ${view.width}x${view.height}, target $half, in it: $inside")
-        return inside
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-        outState.putBoolean(STARTED, true)
+        return landsIn(ZoneBox(half.left.toFloat(), half.top.toFloat(), half.right.toFloat(), half.bottom.toFloat()), at[0].toFloat(), at[1].toFloat(), view.width.toFloat(), view.height.toFloat())
     }
 
     companion object {
@@ -78,9 +82,7 @@ class TaskbarTrampoline : Activity() {
         private const val EXTRA_STEPS = "steps"
         private const val COMPONENT = "component"
         private const val ADJACENT = "adjacent"
-        private const val BOUNDS = "bounds"
         private const val DELAY = "delay"
-        private const val STARTED = "started"
         private const val REPLACE = "replace"
         private const val TARGET = "target"
 
@@ -99,7 +101,6 @@ class TaskbarTrampoline : Activity() {
                     Bundle().apply {
                         putParcelable(COMPONENT, s.app.component)
                         putBoolean(ADJACENT, s.adjacent)
-                        s.bounds?.let { putParcelable(BOUNDS, Rect(it.left.roundToInt(), it.top.roundToInt(), it.right.roundToInt(), it.bottom.roundToInt())) }
                         putLong(DELAY, s.delayMs)
                     }
                 }
@@ -133,7 +134,7 @@ class TaskbarTrampoline : Activity() {
         ) {
             val intent =
                 Intent(context, TaskbarTrampoline::class.java)
-                    // A task of its own every time: a relayed trampoline would otherwise just bring the first one's back.
+                    // A task of its own every time: a trampoline started while an earlier one still lingers would otherwise just bring that one back, without running its steps.
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
                     .putParcelableArrayListExtra(EXTRA_STEPS, bundles)
             runCatching { context.startActivity(intent) }.onFailure { Log.w(TAG, "couldn't start the trampoline", it) }

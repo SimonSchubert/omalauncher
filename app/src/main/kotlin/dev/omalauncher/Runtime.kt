@@ -152,6 +152,7 @@ class Runtime(
     private val scope =
         CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e -> Log.e(TAG, "background job failed", e) })
     private var started = false
+    private var overlayStarted = false
     private var prepared = false
 
     private val prefs = LauncherData.prefs(context)
@@ -225,6 +226,8 @@ class Runtime(
     fun start() {
         if (started) return
         started = true
+        val lightDone = overlayStarted
+        overlayStarted = true
         scope.launch {
             withContext(Dispatchers.IO) {
                 launcherFiles.sync()
@@ -235,11 +238,26 @@ class Runtime(
             // Widgets don't wait for the theme: they draw with the palette, which is already loaded, and the
             // wallpaper decode is the slow part of themes.load().
             widgets.start()
-            themes.load()
-            style.start()
+            if (!lightDone) {
+                themes.load()
+                style.start()
+            }
             // On the first-run screen the download is the screen's job, with progress.
             if (launcherReady) scope.launch { themes.ensureRelease() }
             if (bootstrap.wanted) runLinux { bootstrap.run() } else bootstrap.run()
+        }
+    }
+
+    /**
+     * Just what the taskbar overlay needs: the themes and the style (the app catalog starts with the runtime). No Linux, no
+     * widgets. Runs once, and not at all when [start] already did.
+     */
+    fun startForOverlay() {
+        if (overlayStarted) return
+        overlayStarted = true
+        scope.launch {
+            themes.load()
+            style.start()
         }
     }
 
