@@ -153,8 +153,16 @@ class TaskbarService : AccessibilityService() {
                     }
             val size = wm.currentWindowMetrics.bounds
             // Our own windows other than home (Linux, files) can't be relaunched as a split partner: that would open home.
-            screenState(apps, size.width().toFloat(), size.height().toFloat(), homePackages(), opaque = setOf(packageName))
+            screenState(apps, size.width().toFloat(), size.height().toFloat(), homePackages(), opaque = launchers)
         }.onSuccess { screen = it }
+    }
+
+    /**
+     * Apps with a home screen (this launcher, another Omalauncher, One UI Home…): their windows, say a Linux window of the
+     * release Omalauncher, can't be a split partner, as relaunching the app would open its home screen instead.
+     */
+    private val launchers by lazy {
+        packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0).map { it.activityInfo.packageName }.toSet() + packageName
     }
 
     /** The home apps: the default one unless it's this launcher, and this launcher only while its home screen is started. */

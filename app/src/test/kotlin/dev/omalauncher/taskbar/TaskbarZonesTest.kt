@@ -32,7 +32,9 @@ class TaskbarZonesTest {
         assertEquals(ZoneBox(0f, 0f, 928f, 2160f), left.preview)
         assertEquals("Replace Mail", zones.zoneAt(1700f, 1000f)?.label)
         assertEquals(ZoneKind.FullScreen, zones.zoneAt(900f, 50f)?.kind)
-        assertEquals(ZoneKind.PopUp, zones.zoneAt(928f, 1080f)?.kind)
+        // No pop-up over a split: the middle belongs to the halves.
+        assertEquals(null, zones.firstOrNull { it.kind == ZoneKind.PopUp })
+        assertEquals(ZoneKind.SplitLeft, zones.zoneAt(900f, 1080f)?.kind)
     }
 
     @Test fun foldedSplitReplacesTopAndBottom() {
