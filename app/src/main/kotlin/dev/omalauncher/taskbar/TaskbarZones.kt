@@ -59,7 +59,7 @@ private fun replaceZones(
  * What dropping [dragged] in [zone] opens over [state]: full screen, a pop-up, or over one app a split with it, as home
  * does with that app as the partner. [appOf] finds the app for a package; null when it can't, and then nothing opens. Over
  * a split nothing is planned: a half is replaced by the trampoline (see [TaskbarTrampoline.replace]). Nor next to a Linux
- * window, which isn't an app to relaunch: see [linuxPartnerSteps].
+ * window, which isn't an app to relaunch: see [splitHalves].
  */
 fun <A> planTaskbarOpen(
     zone: DropZone,
@@ -72,20 +72,6 @@ fun <A> planTaskbarOpen(
         ZoneKind.PopUp -> OpenPlan.Windowed(dragged, zone.preview)
         else -> (state as? ScreenState.Single)?.let { s -> appOf(s.packageName)?.let { planOpen(zone, dragged, it) } }
     }
-
-/**
- * The trampoline's steps that put [dragged], dropped in a split zone of [kind], next to a Linux window in its task
- * [taskId]; null for any other zone. The bottom or right half: the window's task comes back to the front, then the app
- * opens next to it. The top or left half: the app opens full screen, then the window gets a new activity next to it, by
- * [reopen] (the window's own intent, in a new task), and its old task goes; the new activity takes the window over, so
- * that doesn't close it. See [splitHalves].
- */
-fun <A, I> linuxPartnerSteps(
-    kind: ZoneKind,
-    dragged: A,
-    taskId: Int,
-    reopen: I,
-): List<TrampolineStep<A, I>>? = splitHalves(kind, SplitHalf.App(dragged), SplitHalf.Task(taskId, reopen))
 
 /** What one half of a split the trampoline puts together holds. [A] is an app and [I] an intent, as in [TrampolineStep]. */
 sealed interface SplitHalf<out A, out I> {

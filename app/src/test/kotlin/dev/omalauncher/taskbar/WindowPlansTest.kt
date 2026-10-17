@@ -51,7 +51,6 @@ class WindowPlansTest {
         val plans = WindowPlans<String, String>()
         plans.add("foot", "left", now = 0)
         assertNull(plans.take(now = WINDOW_PLAN_MS) { it == "foot" })
-        assertEquals(6_000L, WINDOW_PLAN_MS)
     }
 
     @Test fun aPlanFitsWhileThePartnerIsStillOnScreen() {

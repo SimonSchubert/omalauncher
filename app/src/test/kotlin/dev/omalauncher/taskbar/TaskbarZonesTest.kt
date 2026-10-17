@@ -96,9 +96,9 @@ class TaskbarZonesTest {
     @Test fun rightOfALinuxWindowItComesForwardThenTheAppNextToIt() {
         assertEquals(
             listOf(TrampolineStep.Front(7, 0), TrampolineStep.Open("notes", adjacent = true, delayMs = 450)),
-            linuxPartnerSteps(ZoneKind.SplitRight, "notes", 7, "window"),
+            nextToWindow(ZoneKind.SplitRight),
         )
-        assertEquals(linuxPartnerSteps(ZoneKind.SplitRight, "notes", 7, "window"), linuxPartnerSteps(ZoneKind.SplitBottom, "notes", 7, "window"))
+        assertEquals(nextToWindow(ZoneKind.SplitRight), nextToWindow(ZoneKind.SplitBottom))
     }
 
     @Test fun leftOfALinuxWindowTheAppOpensThenTheWindowMovesNextToIt() {
@@ -108,15 +108,13 @@ class TaskbarZonesTest {
                 TrampolineStep.Start("window", adjacent = true, delayMs = 450),
                 TrampolineStep.Remove(7, HANDOVER_DELAY_MS),
             ),
-            linuxPartnerSteps(ZoneKind.SplitLeft, "notes", 7, "window"),
+            nextToWindow(ZoneKind.SplitLeft),
         )
-        assertEquals(linuxPartnerSteps(ZoneKind.SplitLeft, "notes", 7, "window"), linuxPartnerSteps(ZoneKind.SplitTop, "notes", 7, "window"))
+        assertEquals(nextToWindow(ZoneKind.SplitLeft), nextToWindow(ZoneKind.SplitTop))
     }
 
-    @Test fun fullScreenAndPopUpNeedNoLinuxSteps() {
-        assertNull(linuxPartnerSteps(ZoneKind.FullScreen, "notes", 7, "window"))
-        assertNull(linuxPartnerSteps(ZoneKind.PopUp, "notes", 7, "window"))
-    }
+    /** An app dragged into [kind] next to the Linux window in task 7. */
+    private fun nextToWindow(kind: ZoneKind) = splitHalves<String, String>(kind, SplitHalf.App("notes"), SplitHalf.Task(7, "window"))
 
     @Test fun overALinuxWindowFullScreenStillOpensAsTapped() {
         val zone = taskbarZones(linux, "notes", 1856f, 2160f, true, true, label).first { it.kind == ZoneKind.FullScreen }

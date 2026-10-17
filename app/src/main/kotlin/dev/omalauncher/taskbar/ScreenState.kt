@@ -57,8 +57,9 @@ sealed interface ScreenState {
 /**
  * What's on a [width]×[height] screen, from its app [windows], topmost first. Windows under 5% of the screen are
  * ignored. This launcher's ([own]) windows that are its visible [linux] windows count as those, by their ids (see
- * [linuxWindows]), all of them, however small; none while our home is in front ([own] in [home]). Two windows that don't overlap, each 20% or more and together 85% or more, are split screen, whatever floats
- * over them (pop-ups, dialogs): a pop-up opened before the split stays over it on One UI. Otherwise the largest window,
+ * [linuxWindows]), all of them, however small; none while our home is in front ([own] in [home]). Two windows that
+ * don't overlap, each 20% or more and together 85% or more, are split screen, whatever floats over them (pop-ups,
+ * dialogs): a pop-up opened before the split stays over it on One UI. Otherwise the largest window,
  * if it covers half the screen or more, is the app in front (home or single), again whatever floats over it. Anything
  * else is [ScreenState.Unknown]. Apps in [opaque] are on screen but can't be a split partner (other launchers, this
  * launcher's own windows other than home and Linux): one in front is Unknown too, and so is a split with one in either
@@ -104,7 +105,8 @@ fun screenState(
 /**
  * [windows] with this launcher's ([own]) ones that show its [linux] windows going by those windows' ids. Which is which
  * only the counts tell for sure: as many windows of ours as Linux windows on screen. They pair by title where a window's
- * is a Linux window's label, the rest in order. Otherwise (a Linux window and, say, Files) they keep the package.
+ * is a Linux window's label, the rest in order, which may swap two Linux halves whose titles say nothing. Otherwise (a
+ * Linux window and, say, Files) they keep the package.
  */
 internal fun linuxWindows(
     windows: List<AppWindow>,
