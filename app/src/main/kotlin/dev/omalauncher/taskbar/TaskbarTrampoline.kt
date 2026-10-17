@@ -103,8 +103,8 @@ class TaskbarTrampoline : Activity() {
             step.containsKey(FRONT) -> ownTask(step.getInt(FRONT))?.let { runCatching { it.moveToFront() }.onFailure { e -> Log.w(TAG, "couldn't bring a task forward", e) } }
             step.containsKey(REMOVE) -> remove(step.getInt(REMOVE))
             step.containsKey(INTENT) -> {
-                val intent = Intent(step.getParcelable<Intent>(INTENT) ?: return).addFlags(if (step.getBoolean(ADJACENT)) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0)
-                // No opening animation: it only moves a window that's already on screen.
+                val intent = Intent(step.getParcelable<Intent>(INTENT) ?: return).addFlags(adjacentFlag(step))
+                // No opening animation: a Linux window's activity, which shows a window already there or just made.
                 runCatching { startActivity(intent, ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()) }.onFailure { Log.w(TAG, "couldn't start ${intent.data ?: intent.component}", it) }
             }
             else -> open(step)
@@ -114,7 +114,7 @@ class TaskbarTrampoline : Activity() {
     @Suppress("DEPRECATION")
     private fun open(step: Bundle) {
         val component = step.getParcelable<ComponentName>(COMPONENT) ?: return
-        val adjacent = if (step.getBoolean(ADJACENT) || (step.getBoolean(REPLACE) && !inHalf(step.getParcelable<Rect>(TARGET)))) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0
+        val adjacent = adjacentFlag(step)
         val intent =
             Intent(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_LAUNCHER)
@@ -122,6 +122,11 @@ class TaskbarTrampoline : Activity() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or adjacent)
         runCatching { startActivity(intent) }.onFailure { Log.w(TAG, "couldn't open ${component.flattenToShortString()}", it) }
     }
+
+    /** LAUNCH_ADJACENT for a [step] that opens next to the app in front, or that replaces a half and sits in the other one. */
+    @Suppress("DEPRECATION")
+    private fun adjacentFlag(step: Bundle) =
+        if (step.getBoolean(ADJACENT) || (step.getBoolean(REPLACE) && !inHalf(step.getParcelable<Rect>(TARGET)))) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0
 
     /** This launcher's task [id], if it's still there. */
     private fun ownTask(id: Int): ActivityManager.AppTask? = getSystemService(ActivityManager::class.java).appTasks.firstOrNull { runCatching { it.taskInfo?.taskId }.getOrNull() == id }
@@ -208,14 +213,39 @@ class TaskbarTrampoline : Activity() {
             app: AndroidApp,
             target: ZoneBox,
         ) {
-            val step =
-                Bundle().apply {
-                    putParcelable(COMPONENT, app.component)
-                    putBoolean(REPLACE, true)
-                    putParcelable(TARGET, Rect(target.left.roundToInt(), target.top.roundToInt(), target.right.roundToInt(), target.bottom.roundToInt()))
-                    putLong(DELAY, SETTLE_MS)
-                }
-            launch(context, arrayListOf(step))
+            launch(context, arrayListOf(replaceStep(target) { putParcelable(COMPONENT, app.component) }))
+        }
+
+        /**
+         * Starts [intent] (a Linux window's, in a new task) in the split half at [target], as [replace] opens an app.
+         * [leaving] is the window's old task, if it had one: it goes once the new activity has taken the window over.
+         */
+        fun replace(
+            context: Context,
+            intent: Intent,
+            target: ZoneBox,
+            leaving: Int?,
+        ) {
+            val steps = arrayListOf(replaceStep(target) { putParcelable(INTENT, intent) })
+            if (leaving != null) {
+                steps +=
+                    Bundle().apply {
+                        putInt(REMOVE, leaving)
+                        putLong(DELAY, HANDOVER_DELAY_MS)
+                    }
+            }
+            launch(context, steps)
+        }
+
+        /** A step that opens what [what] puts in it in the half at [target], replacing what's there. */
+        private fun replaceStep(
+            target: ZoneBox,
+            what: Bundle.() -> Unit,
+        ) = Bundle().apply {
+            what()
+            putBoolean(REPLACE, true)
+            putParcelable(TARGET, Rect(target.left.roundToInt(), target.top.roundToInt(), target.right.roundToInt(), target.bottom.roundToInt()))
+            putLong(DELAY, SETTLE_MS)
         }
 
         private fun launch(

@@ -17,4 +17,5 @@
     <string name="taskbar_search">搜索应用</string>
     <string name="taskbar_pinned">已固定 #%1$d</string>
     <string name="taskbar_not_pinned">未固定</string>
+    <string name="taskbar_linux_app">linux · %1$s</string>
 </resources>

@@ -17,4 +17,5 @@
     <string name="taskbar_search">cari aplikasi</string>
     <string name="taskbar_pinned">disematkan #%1$d</string>
     <string name="taskbar_not_pinned">tidak disematkan</string>
+    <string name="taskbar_linux_app">linux · %1$s</string>
 </resources>

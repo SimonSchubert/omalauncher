@@ -27,10 +27,11 @@ class TaskbarSettings(
             prefs.edit().putString(MODE, value.id).apply()
         }
 
-    /** App keys, in the order they were pinned. */
-    var pinned by mutableStateOf(prefs.getString(PINNED, null)?.split('\n')?.filter { it.isNotEmpty() } ?: emptyList())
+    /** Usage keys of the apps pinned (see [usageKey], [linuxKey]), in the order they were pinned; older pins read as Android ones. */
+    var pinned by mutableStateOf(prefs.getString(PINNED, null)?.split('\n')?.filter { it.isNotEmpty() }?.map(::pinnedKey)?.distinct() ?: emptyList())
         private set
 
+    /** Pins the app with usage [key], or unpins it; saves the keys prefixed from then on. */
     fun togglePin(key: String) {
         pinned = if (key in pinned) pinned - key else pinned + key
         prefs.edit().putString(PINNED, pinned.joinToString("\n")).apply()
