@@ -39,7 +39,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -266,7 +266,8 @@ class TaskbarService : AccessibilityService() {
         val catalog = runtime.androidApps
         val byKey = catalog.apps.filter { SplitDrag.canDrag(it) }.associateBy { it.key }
         val apps = taskbarApps(settings.mode, settings.pinned, seen, runtime.usage.recent, byKey.keys).mapNotNull { byKey[it] }
-        val maxWidth = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() - 32.dp }
+        // The screen width from the configuration: the bar window itself only wraps its content.
+        val maxWidth = LocalConfiguration.current.screenWidthDp.dp - 32.dp
         LazyRow(
             Modifier
                 .widthIn(max = maxWidth)
