@@ -12,6 +12,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -46,6 +49,8 @@ import dev.omalauncher.ui.ExtraKeys
 import dev.omalauncher.ui.KeyboardSink
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.ui.TouchpadCursor
+import dev.omalauncher.ui.TouchpadState
 import dev.omalauncher.ui.linuxWindowInput
 import dev.omalauncher.ui.applySystemBars
 import dev.omalauncher.wayland.WindowRenderer
@@ -155,6 +160,11 @@ private fun AppWindow(
 ) {
     var sink by remember { mutableStateOf<KeyboardSink?>(null) }
     var surfaceView by remember { mutableStateOf<WindowSurfaceView?>(null) }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("launcher", Context.MODE_PRIVATE) }
+    // Remembered per app: a slicer stays a touchpad, a terminal stays a touchscreen.
+    val touchpadKey = "touchpad_" + window.appId
+    val touchpad = remember(touchpadKey) { TouchpadState(prefs.getBoolean(touchpadKey, false)) }
     // Shows wherever the window has yet to draw, as when it grows; the terminal's own background, not a lighter one.
     val background = Palette.background.toArgb()
     val density = LocalDensity.current
@@ -189,17 +199,36 @@ private fun AppWindow(
                     .onSizeChanged { surfaceView?.visibleHeight = it.height },
             ) {
                 // Over the SurfaceView, which Compose's pointer input doesn't reach.
-                Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window))
-                Box(
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(12.dp)
-                        .size(40.dp)
-                        .background(Palette.overlay, CircleShape)
-                        .clickable { sink?.toggle() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    BasicText("⌨", style = Mono.copy(color = Palette.foreground))
+                Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window, touchpad))
+                TouchpadCursor(touchpad, Modifier.fillMaxSize())
+                Column(Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
+                    // Shows the mode a tap switches to: a touchpad, or a finger for the touchscreen.
+                    Box(
+                        Modifier
+                            .padding(bottom = 12.dp)
+                            .size(40.dp)
+                            .background(Palette.overlay, CircleShape)
+                            .clickable {
+                                touchpad.on = !touchpad.on
+                                prefs.edit().putBoolean(touchpadKey, touchpad.on).apply()
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (touchpad.on) {
+                            BasicText("\u261D\uFE0E", style = Mono.copy(color = Palette.foreground))
+                        } else {
+                            Box(Modifier.size(18.dp, 13.dp).border(1.5.dp, Palette.foreground, RoundedCornerShape(2.dp)))
+                        }
+                    }
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .background(Palette.overlay, CircleShape)
+                            .clickable { sink?.toggle() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        BasicText("⌨", style = Mono.copy(color = Palette.foreground))
+                    }
                 }
             }
             // Below the window rather than over it, so the window shrinks and nothing hides behind the keys; only over a

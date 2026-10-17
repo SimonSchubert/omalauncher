@@ -24,12 +24,14 @@ private const val WHEEL_STEP = 15f
  * Routes pointer input over a Linux window's view to its surfaces. Mouse input
  * is forwarded as-is. Touch is mapped for a phone: tap = left click, long
  * press = right click, drag = scroll; clients with wl_touch get real touch.
+ * With [touchpad] on, touch drives a cursor instead (see [TouchpadState]).
  */
 fun Modifier.linuxWindowInput(
     wm: WindowManager,
     window: XdgToplevel,
-) = pointerInput(wm, window) {
-    handlePointer(wm, window, viewConfiguration.touchSlop, viewConfiguration.longPressTimeoutMillis)
+    touchpad: TouchpadState? = null,
+) = pointerInput(wm, window, touchpad) {
+    handlePointer(wm, window, touchpad, viewConfiguration.touchSlop, viewConfiguration.longPressTimeoutMillis)
 }
 
 private fun XdgToplevel.hitTest(
@@ -40,6 +42,7 @@ private fun XdgToplevel.hitTest(
 private suspend fun PointerInputScope.handlePointer(
     wm: WindowManager,
     window: XdgToplevel,
+    touchpad: TouchpadState?,
     touchSlop: Float,
     longPressMs: Long,
 ) = awaitPointerEventScope {
@@ -53,6 +56,11 @@ private suspend fun PointerInputScope.handlePointer(
             continue
         }
         if (event.type != PointerEventType.Press || change.isConsumed) continue
+        if (touchpad?.on == true) {
+            touchpad.bounds = size
+            touchpadGesture(wm, window, touchpad, event, touchSlop)
+            continue
+        }
 
         val start = change.position
         val hit = window.hitTest(start.x, start.y)
