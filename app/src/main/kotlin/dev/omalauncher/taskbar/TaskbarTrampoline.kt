@@ -12,6 +12,7 @@ import android.os.Looper
 import android.util.Log
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.ui.splitdrag.LaunchStep
+import dev.omalauncher.ui.splitdrag.ZoneBox
 import kotlin.math.roundToInt
 
 /**
@@ -46,16 +47,8 @@ class TaskbarTrampoline : Activity() {
 
     @Suppress("DEPRECATION")
     private fun start(step: Bundle) {
-        // Relayed: started from a fresh trampoline, which lands in the half in front now. LAUNCH_ADJACENT puts an app in
-        // the half other than its source's, so this makes the app replace the half that wasn't just brought forward.
-        if (step.getBoolean(RELAY)) {
-            step.remove(RELAY)
-            step.putLong(DELAY, RELAY_DELAY_MS)
-            launch(this, arrayListOf(step))
-            return
-        }
         val component = step.getParcelable<ComponentName>(COMPONENT) ?: return
-        val adjacent = if (step.getBoolean(ADJACENT)) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0
+        val adjacent = if (step.getBoolean(ADJACENT) || (step.getBoolean(REPLACE) && !inHalf(step.getParcelable<Rect>(TARGET)))) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0
         val intent =
             Intent(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_LAUNCHER)
@@ -63,6 +56,16 @@ class TaskbarTrampoline : Activity() {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or adjacent)
         val options = step.getParcelable<Rect>(BOUNDS)?.let { ActivityOptions.makeBasic().setLaunchBounds(it).toBundle() }
         runCatching { startActivity(intent, options) }.onFailure { Log.w(TAG, "couldn't open ${component.flattenToShortString()}", it) }
+    }
+
+    /** Whether this trampoline sits in [half] (screen pixels): its middle is inside it. */
+    private fun inHalf(half: Rect?): Boolean {
+        half ?: return false
+        val view = window.decorView
+        val at = IntArray(2).also(view::getLocationOnScreen)
+        val inside = half.contains(at[0] + view.width / 2, at[1] + view.height / 2)
+        Log.i(TAG, "replace: trampoline at ${at[0]},${at[1]} ${view.width}x${view.height}, target $half, in it: $inside")
+        return inside
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -78,20 +81,18 @@ class TaskbarTrampoline : Activity() {
         private const val BOUNDS = "bounds"
         private const val DELAY = "delay"
         private const val STARTED = "started"
-        private const val RELAY = "relay"
+        private const val REPLACE = "replace"
+        private const val TARGET = "target"
 
-        /** How long a relayed trampoline waits before its start, to have settled in its half. */
-        private const val RELAY_DELAY_MS = 250L
+        /** How long a replacing trampoline waits to have settled in its half before looking where it is. */
+        private const val SETTLE_MS = 200L
 
         /**
-         * Opens [steps] in order from a new trampoline. With [relayLast] the last step is started from a second trampoline,
-         * opened once the steps before it are done: replacing a half of a split, where the first step brings the half to
-         * keep forward and the second trampoline lands in it.
+         * Opens [steps] in order from a new trampoline.
          */
         fun start(
             context: Context,
             steps: List<LaunchStep<AndroidApp>>,
-            relayLast: Boolean = false,
         ) {
             val bundles =
                 steps.mapTo(ArrayList()) { s ->
@@ -102,8 +103,28 @@ class TaskbarTrampoline : Activity() {
                         putLong(DELAY, s.delayMs)
                     }
                 }
-            if (relayLast) bundles.lastOrNull()?.putBoolean(RELAY, true)
             launch(context, bundles)
+        }
+
+        /**
+         * Opens [app] in the split half at [target] (screen pixels), replacing what's there. A new trampoline lands in one
+         * of the halves, which one is up to the system (One UI: the bottom or right one, whatever is focused). Once it's
+         * there it looks where it is: in the target half it opens the app plainly, which keeps it in that half; in the
+         * other half it opens it LAUNCH_ADJACENT, which puts it in the half other than its source's.
+         */
+        fun replace(
+            context: Context,
+            app: AndroidApp,
+            target: ZoneBox,
+        ) {
+            val step =
+                Bundle().apply {
+                    putParcelable(COMPONENT, app.component)
+                    putBoolean(REPLACE, true)
+                    putParcelable(TARGET, Rect(target.left.roundToInt(), target.top.roundToInt(), target.right.roundToInt(), target.bottom.roundToInt()))
+                    putLong(DELAY, SETTLE_MS)
+                }
+            launch(context, arrayListOf(step))
         }
 
         private fun launch(
