@@ -23,6 +23,7 @@ android {
         targetSdk = 37
         versionCode = 15
         versionName = "0.8.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += "arm64-v8a" }
     }
 
@@ -89,4 +90,6 @@ dependencies {
     testImplementation(libs.junit)
     // android.jar only has stubs of org.json.
     testImplementation(libs.org.json)
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.runner)
 }

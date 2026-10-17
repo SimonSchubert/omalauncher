@@ -4,6 +4,12 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- Home's long-press menu lists running Linux windows by title and number. Tap one
+  to return to its existing task, or reattach its live window when its Recents card
+  is missing, without starting another terminal or agent.
+
 ## 0.8.0 (versionCode 15) – 2026-10-17
 
 - Apps: an owl file can be a full-screen app (`app "name" { }`, owl 8) that opens

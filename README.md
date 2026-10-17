@@ -42,6 +42,12 @@ installed one; the choice is saved in `~/.config/omalauncher/agent`. Hold the mi
 into the field. Speech is recognized by Android (on the device when the phone
 supports it), so only text reaches Linux.
 
+Long-press empty home space to see **running windows**. Each live Linux window
+has its current title and a distinct number; tap it to return to that window,
+even if its Android Recents card is missing. This does not start another app
+or terminal session. Embedded terminal widgets are not listed. Windows whose
+Linux app has exited cannot be recovered this way.
+
 Touch input in Linux windows: tap is a left click, long press is a right
 click, drag scrolls; apps with touch support (foot, GTK) get real touch.
 Hardware keyboard shortcuts: Super+Enter (terminal), Super+Space or
@@ -59,6 +65,10 @@ adb push ArchLinuxARM-aarch64-latest.tar.gz /sdcard/Android/data/dev.omalauncher
 
 Tests: `./gradlew :owl:test :app:testDebugUnitTest`. `./gradlew :owl:owlJar`
 builds `owl/build/cli/owl.jar`, the checker the widget store's CI runs.
+
+Window recovery has Android device tests:
+`./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=dev.omalauncher.WindowRecoveryTest`.
+Use a disposable development install/device, not an install holding live work.
 
 In debug builds you can launch guest commands with
 `adb shell am start -n dev.omalauncher/.MainActivity --es exec foot`.
