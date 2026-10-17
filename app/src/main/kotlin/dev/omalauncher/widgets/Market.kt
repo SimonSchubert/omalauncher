@@ -12,6 +12,7 @@ import dev.omalauncher.ui.decodeImageIcon
 import dev.omalauncher.ui.decodeSvgIcon
 import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapEntries
+import dev.omalauncher.upgrade.strings
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.market.Catalog
@@ -107,7 +108,10 @@ class Market(
     /** An update runs different commands or needs other packages than what the user approved. */
     fun changedSinceApproval(e: CatalogEntry) = installedVersion(e)?.let { it.commands != e.commands || it.requires != e.requires } == true
 
-    /** Downloads, verifies and installs [e] on [page]; its packages install right after. Returns an error, or null. */
+    /**
+     * Downloads, verifies and installs [e] on [page]; its packages install right after. An update keeps its page, or,
+     * if the home showing hides it, comes back on [page]. Returns an error, or null.
+     */
     suspend fun install(
         e: CatalogEntry,
         page: Int,
@@ -116,10 +120,12 @@ class Market(
         try {
             val bytes = withContext(Dispatchers.IO) { httpGet(BASE + e.path) }
             if (Review.sha256(bytes) != e.sha256) return "the download doesn't match the reviewed version; try again later"
+            val existed = installedVersion(e) != null
             val name = installedVersion(e)?.file ?: fileFor(e)
             withContext(Dispatchers.IO) {
-                // An update keeps its page; a new install goes where the user is. Apps go in the drawer, on no page.
-                if (kind == OwlKind.Widget && installedVersion(e) == null) engine.setPage(name, page)
+                // An update keeps its page, or, if the home showing hides it, comes back on this one; a new install goes
+                // where the user is. Apps go in the drawer, on no page.
+                if (kind == OwlKind.Widget) engine.arrive(name, existed, page)
                 engine.installDependenciesWhenLoaded(name)
                 File(engine.dir, name).writeBytes(bytes)
             }
@@ -194,8 +200,6 @@ class Market(
             },
         )
     }
-
-    private fun JSONArray.strings() = (0 until length()).map { getString(it) }
 
     private fun save() {
         val data = JSONObject()

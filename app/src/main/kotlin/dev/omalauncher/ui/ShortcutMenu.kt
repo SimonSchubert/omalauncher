@@ -55,7 +55,7 @@ internal fun shortcutMenu(
     },
     pin = { offered ->
         runtime.androidApps.pin(offered) {
-            runtime.widgets.shortcuts.addAndroidShortcut(it, page())
+            runtime.widgets.pinAndroidShortcut(it, page())
             onPinned()
         }
     },

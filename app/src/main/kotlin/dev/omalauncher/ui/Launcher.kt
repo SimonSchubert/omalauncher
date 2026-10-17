@@ -113,6 +113,7 @@ private fun DesktopScreen(
         }
     }
     HomeMenu(runtime, state)
+    HiddenMenu(runtime, state)
 
     // Only whether it shows is read here; the animation itself runs in the layer, without recomposing.
     val panelShown by remember(state) { derivedStateOf { state.drawer.value > 0.01f } }
@@ -140,10 +141,10 @@ private fun DesktopScreen(
                 // Pins to the page that's showing; the panel closes so the new tile is visible.
                 pin = { hit ->
                     when (hit) {
-                        is AppHit.Linux -> runtime.widgets.shortcuts.addLinux(hit.app, state.currentPage)
-                        is AppHit.Android -> runtime.widgets.shortcuts.addAndroid(hit.app, state.currentPage)
-                        is AppHit.Shortcut -> runtime.widgets.shortcuts.addAndroidShortcut(hit.shortcut, state.currentPage)
-                        is AppHit.Owl -> runtime.widgets.shortcuts.addOwl(hit.spec, state.currentPage)
+                        is AppHit.Linux -> runtime.widgets.pinLinux(hit.app, state.currentPage)
+                        is AppHit.Android -> runtime.widgets.pinAndroid(hit.app, state.currentPage)
+                        is AppHit.Shortcut -> runtime.widgets.pinAndroidShortcut(hit.shortcut, state.currentPage)
+                        is AppHit.Owl -> runtime.widgets.pinOwl(hit.spec, state.currentPage)
                     }
                     state.close()
                 },

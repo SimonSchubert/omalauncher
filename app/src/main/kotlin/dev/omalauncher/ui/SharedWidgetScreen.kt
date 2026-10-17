@@ -92,7 +92,16 @@ fun SharedWidgetScreen(
                 else -> {
                     val same = engine.sharedWidgetIsSame(shared)
                     when (same) {
-                        true -> AddedMark(app)
+                        // Added before, but this home hides it: brought back rather than copied.
+                        true ->
+                            if (!app && engine.profiles.isHidden(shared.fileName)) {
+                                BracketAction("show on page $page", Palette.accent) {
+                                    engine.reveal(shared.fileName, page)
+                                    onDismiss()
+                                }
+                            } else {
+                                AddedMark(app)
+                            }
                         false ->
                             BracketAction("replace the ${shared.name} shared before", Palette.accent) {
                                 scope.launch {

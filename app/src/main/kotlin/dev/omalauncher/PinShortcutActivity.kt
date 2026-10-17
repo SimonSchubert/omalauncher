@@ -33,7 +33,7 @@ class PinShortcutActivity : ComponentActivity() {
                 from = catalog.apps.firstOrNull { it.component.packageName == info.`package` && it.user == info.userHandle }?.label,
                 loadIcon = { catalog.iconOf(info) },
                 onAdd = {
-                    catalog.accept(request)?.let { runtime.widgets.shortcuts.addAndroidShortcut(it, runtime.widgets.activePage) }
+                    catalog.accept(request)?.let { runtime.widgets.pinAndroidShortcut(it, runtime.widgets.activePage) }
                     finish()
                 },
                 onDismiss = ::finish,

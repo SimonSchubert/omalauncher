@@ -1,6 +1,7 @@
 package dev.omalauncher.widgets
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -44,17 +45,21 @@ const val CLASSIC_COLUMNS = 6
  * Where each widget and pinned app sits on the home grid, keyed by file name
  * (or shortcut key), and the page a widget was moved to on the phone. Kept on
  * the launcher side so rearranging never rewrites the widget files agents own.
+ *
+ * A layout that has nothing saved yet starts [initialColumns] wide. One that [heal]s places afresh any cell
+ * [place] finds past the grid's edge or over another; see [phone] and [unfolded].
  */
 class WidgetLayout(
-    context: Context,
+    private val prefs: SharedPreferences,
+    initialColumns: Int = CLASSIC_COLUMNS,
+    private val heal: Boolean = false,
 ) {
-    private val prefs = context.getSharedPreferences("widget_grid", Context.MODE_PRIVATE)
     private val cells = mutableStateMapOf<String, Cell>()
     /** Read while compiling widgets, off the main thread. */
     private val pages = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
     /** Columns of the home grid the cells are on; saved with them, so [regrid] can move them onto another. */
-    var columns by mutableIntStateOf(CLASSIC_COLUMNS)
+    var columns by mutableIntStateOf(initialColumns)
         private set
 
     init {
@@ -99,12 +104,14 @@ class WidgetLayout(
     /** The page [name] was moved to on the phone, if it was. */
     fun page(name: String) = pages[name]
 
+    /** Saves unless [persist] is false, for callers setting many at once and saving after. */
     fun setPage(
         name: String,
         page: Int,
+        persist: Boolean = true,
     ) {
         pages[name] = page
-        save()
+        if (persist) save()
     }
 
     fun cell(name: String) = cells[name]
@@ -137,6 +144,7 @@ class WidgetLayout(
      * Gives widgets that have no cell yet one at their declared size, in the
      * first free spot. Saved cells are never rewritten here: a temporarily
      * small page (keyboard, rotation) must not destroy the user's layout.
+     * A layout that [heal]s drops only cells off the grid or over another first.
      *
      * Returns the items that don't fit at their size; they get no cell, so
      * the caller can move them to a page with room instead of squeezing them
@@ -149,7 +157,7 @@ class WidgetLayout(
         rows: Int,
     ): List<HomeItem> {
         grid = cols to rows
-        var changed = false
+        var changed = heal && healed(items, cols)
         val homeless = ArrayList<HomeItem>()
         for (item in items) {
             if (cells[item.key] != null) continue
@@ -163,6 +171,29 @@ class WidgetLayout(
         }
         if (changed) save()
         return homeless
+    }
+
+    /**
+     * Drops the cells of [items] past the edge of a grid of [cols] columns, or over one kept before it, so [place]
+     * lays them out afresh: tiles drawn on top of each other can't be moved or resized. A drop on the inner screen's
+     * grid could save such cells while the window was still changing, in early builds of its own home. True if any went.
+     */
+    private fun healed(
+        items: List<HomeItem>,
+        cols: Int,
+    ): Boolean {
+        var changed = false
+        val kept = ArrayList<Cell>()
+        for (item in items) {
+            val c = cells[item.key]?.let { if (item.resizable) it else it.copy(w = 1, h = 1) } ?: continue
+            if (c.x < 0 || c.right > cols || kept.any { it.overlaps(c) }) {
+                cells.remove(item.key)
+                changed = true
+            } else {
+                kept += c
+            }
+        }
+        return changed
     }
 
     /**
@@ -200,11 +231,20 @@ class WidgetLayout(
         return null
     }
 
-    /** Forgets everything about [name]: its cell and page. */
-    fun remove(name: String) {
-        cells.remove(name)
-        pages.remove(name)
-        save()
+    /** Drops [name]'s cell but keeps its page, so it's placed afresh in the first free spot there. */
+    fun clearCell(
+        name: String,
+        persist: Boolean = true,
+    ) {
+        if (cells.remove(name) != null && persist) save()
+    }
+
+    /** Forgets everything about [name]: its cell and page. Saves only if there was either, and returns whether there was. */
+    fun remove(name: String): Boolean {
+        val hadCell = cells.remove(name) != null
+        val had = pages.remove(name) != null || hadCell
+        if (had) save()
+        return had
     }
 
     /** The home grid's cell width and height on screen and the gap between tiles, in pixels, as last laid out. */
@@ -239,9 +279,18 @@ class WidgetLayout(
         prefs.edit().putString(LAYOUT, Versioned.write(VERSION, data)).apply()
     }
 
-    private companion object {
-        const val LAYOUT = "layout"
-        const val VERSION = 1
-        const val PORTRAIT_ROWS = "portrait_rows_"
+    companion object {
+        /** Home's layout on phones and tablets, and on a foldable but for the inner screen's own home: where launchers always kept it. */
+        fun phone(context: Context) = WidgetLayout(context.getSharedPreferences("widget_grid", Context.MODE_PRIVATE))
+
+        /** The inner screen's own home with home.unfolded-layout, [columns] wide until it's saved. */
+        fun unfolded(
+            context: Context,
+            columns: Int,
+        ) = WidgetLayout(context.getSharedPreferences("widget_grid_open", Context.MODE_PRIVATE), columns, heal = true)
+
+        private const val LAYOUT = "layout"
+        private const val VERSION = 1
+        private const val PORTRAIT_ROWS = "portrait_rows_"
     }
 }

@@ -123,6 +123,30 @@ class StyleTest {
         }
     }
 
+    @Test fun theUnfoldedLayoutIsOffAndTwelveColumnsWide() {
+        assertFalse(Style()[Style.UNFOLDED_LAYOUT])
+        assertEquals(12, Style()[Style.UNFOLDED_COLUMNS])
+        val on = Toml.parse("[home]\nunfolded-layout = true\nunfolded-columns = 8\n")
+        val decoded = StyleFile.decode(on)
+        assertTrue(decoded.style[Style.UNFOLDED_LAYOUT])
+        assertEquals(8, decoded.style[Style.UNFOLDED_COLUMNS])
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertEquals(
+            "version = 1\n\n[home]\nunfolded-layout = true\nunfolded-columns = 8\n",
+            Toml.write(StyleFile.encode(on, decoded.style), ""),
+        )
+        // Defaults aren't written out.
+        assertEquals(linkedMapOf<String, Any>("version" to 1.0), StyleFile.encode(linkedMapOf("version" to 1.0), Style().with(Style.UNFOLDED_LAYOUT, false).with(Style.UNFOLDED_COLUMNS, 12)))
+    }
+
+    @Test fun unfoldedColumnsAreAWholeNumberFromSixToTwelve() {
+        for (bad in listOf(5.0, 13.0, 7.5)) {
+            val decoded = StyleFile.decode(mapOf("home.unfolded-columns" to bad), Style().with(Style.UNFOLDED_COLUMNS, 9))
+            assertEquals(9, decoded.style[Style.UNFOLDED_COLUMNS])
+            assertEquals(listOf("home.unfolded-columns: takes a whole number from 6 to 12; keeping 9"), decoded.problems)
+        }
+    }
+
     @Test fun absentKeysAreDefaultsNotThePreviousValues() {
         val previous = Style().with(Style.GAPS_IN, 10.0)
         assertEquals(6.0, StyleFile.decode(emptyMap(), previous).style[Style.GAPS_IN], 0.0)
