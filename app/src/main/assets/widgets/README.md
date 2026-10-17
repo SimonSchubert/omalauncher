@@ -64,7 +64,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 |---|---|
 | `source x = cmd("...") every 5s` | runs a bash command in this Arch system; `x` is its output (stdout, trimmed). Add `json` to parse JSON output, `timeout 30s` to allow more than 10 s, `status` to get `{out, err, code, ok}` instead (see below), `optional` to let the widget work without Linux (see Without Linux). Default interval: 60 s |
 | `source x = stream("...")` | a long-running command; every line it prints becomes the new value. Add `json` for JSON lines. At most 4 different streams run at once |
-| `source x = http("https://...") every 10m` | an HTTP GET from Android, no curl or shell needed. Takes `json`, `timeout` and `status` like cmd (with `status`, `code` is the HTTP status and `ok` means 2xx), and optionally headers: `http(url, {Accept: "application/json"})`. The response is capped at 1 MB and the interval at 5 s or more. Prefer it over `cmd("curl ...")` |
+| `source x = http("https://...") every 10m` | an HTTP GET from Android, no curl or shell needed. Takes `json`, `timeout` and `status` like cmd (with `status`, `code` is the HTTP status and `ok` means 2xx), and optionally headers: `http(url, {Accept: "application/json"})`. The response is capped at 1 MB and the interval at 5 s or more. Prefer it over `cmd("curl ...")`. A URL can hold values, through `enc()` (see Values in URLs); it's fetched again as soon as it changes, and a `null` URL pauses the source, keeping its last value: `http(tab == "news" ? "https://..." : null)` fetches only while that tab shows. A failed fetch (offline, an error status, a rate limit) is tried again after 30 s |
 | `source x = file("~/.cache/x.json")` | a file in this system, read again whenever it changes (no polling, no shell). Add `json` to parse it. A missing file reads as `""`; at most 1 MB is read. Prefer it over `cmd("cat ...") every 5s` (owl 4) |
 | `source now = clock every 1s` | Unix time in seconds, with no shell involved. Use `fmtTime(now, "HH:mm")` |
 | `source bat = android.battery` | `{level, charging, status, temp, voltage, health, plugged, technology, cycles}` from Android, updated as it changes (`temp` in °C, `voltage` in V; `health`, `plugged`, `technology` and `cycles` are null when the phone doesn't say) |
@@ -84,7 +84,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see Sharing) |
-| `meta { owl: 8 }` | the language version the widget needs (this launcher has 8; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, images from the web and `sound` 8; using them without declaring it is an error |
+| `meta { owl: 8 }` | the language version the widget needs (this launcher has 8; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, `enc`, `post`, images from the web, `sound` and `screenInset` 8; using them without declaring it is an error |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see Screens (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -123,6 +123,24 @@ Work on the value inside `sh()`: `${sh(upper(title))}`. Numbers from `int`, `rou
 `ceil`, `abs`, `fixed`, `len`, `count`, `sum`, `min`, `max` and `clamp` need no `sh()`. A command
 with a heredoc (`<<`) can't take values. The widget store only takes commands built this way;
 one shared as a link shows a warning instead.
+
+## Values in URLs
+
+The same holds for `http(...)`: put a value into its URL with `enc(value)`, which percent-encodes
+it, so a `/`, `?`, `&` or `#` in it can't change the path or add parameters, and keep the scheme
+and host fixed text (owl 8):
+
+```
+source coin = http("https://api.example.com/coins/${enc(id)}?days=${int(days)}") json   // right
+source coin = http("https://api.example.com/coins/${id}") json                          // wrong: not through enc()
+source coin = http("https://${enc(host)}/coins") json                                   // wrong: the host is a value
+```
+
+The store lists such a URL with `‹value›` where each value goes, and one built any other way as
+fetching "a URL put together while the widget runs". `owl-check` warns about those, with the line and
+the fix to make. A fixed base in a `let` counts as fixed text: `let api = "https://api.example.com"`, then
+`"${api}/coins/${enc(id)}"`. A value that is a path with `/` in it can't go through `enc()` (it would
+encode the slashes): write the fixed parts of the path out and `enc()` only what goes between them.
 
 ## Triggers
 
@@ -170,7 +188,7 @@ second is held back and reported (one that changes what it watches would otherwi
 | functions | |
 |---|---|
 | numbers | `min max clamp(x, lo, hi) lerp(a, b, t) round(x, digits) floor ceil abs sqrt pow sin cos tan atan2 rad deg sign num(x, default) int` |
-| text | `sh(x)` (one shell word, see Values in commands) `str len trim upper lower lines words split(s, sep) join(list, sep) replace(s, a, b) contains startsWith endsWith sub(s, from, to) pad(x, width, char) fixed(x, digits)` |
+| text | `sh(x)` (one shell word, see Values in commands), `enc(x)` (one URL component, see Values in URLs) `str len trim upper lower lines words split(s, sep) join(list, sep) replace(s, a, b) contains startsWith endsWith sub(s, from, to) pad(x, width, char) fixed(x, digits)` |
 | format | `fmtBytes(n)` → `1.5G`, `fmtDuration(seconds)` → `2h 5m`, `fmtTime(seconds, "EEE HH:mm")` |
 | weather | `weatherIcon(code, night)`: omarchy's weather glyph for a wttr.in `weatherCode` (show it with `font: icon`) |
 | parsing | `match(s, regex)` (groups of the first match), `matchAll(s, regex)`, `parseJson(s)` |
@@ -255,6 +273,7 @@ the widget that ran it refreshes its sources; other widgets keep their own inter
 | `androidApp("org.pkg")` | opens an Android app by package name, or by an `android.apps` key to open that copy in a work profile or clone |
 | `copy(text)` | copies text to the Android clipboard |
 | `notify("title", "text")` | posts an Android notification (if the launcher may post them) |
+| `post("https://...", body, headers)` | sends an HTTP POST from Android: a map or list `body` goes as JSON, text as it is; `headers` is a map like `http(...)`'s. `x = post(...)` puts the answer into the state `x` when it arrives: `{code, ok, out}`, with `out` parsed when it's JSON. Never retried; a null URL sends nothing. When it succeeds, the widget's sources run again. See Sending (owl 8) |
 | `url("https://...")` | opens in the Android browser. Other links open in the app that takes them: `tel:` the dialer, `geo:` maps, `mailto:` email |
 | `share(text)` | opens Android's share sheet with the text (owl 7) |
 | `haptic()` | a short tap of haptic feedback, if the user has touch feedback on (owl 7) |
@@ -285,6 +304,30 @@ app "flags" {
 Like `http(...)`, the URLs are listed for whoever reviews the file: `image GET https://flagcdn.com/…`.
 Keep the start of the URL fixed, up to its first `/` after the server, so the server is known; a URL
 built entirely from values is flagged. Plain `http://` isn't loaded.
+
+## Sending
+
+`http(...)` sources only read. For the rest of a web API (signing in, saving a change) a handler sends a
+POST with `post(url, body, headers)` (owl 8). It goes out from Android, so it needs no Linux, once per
+tap. When the server accepts it (a 2xx answer), the widget's sources run again, so what changed shows:
+
+```owl
+app "todo" {
+  meta { owl: 8 }
+  state added = null
+  source items = http("https://api.example.com/items") json
+  on added { notify("todo", value.ok ? "added" : "couldn't add: ${value.code}") }
+  Column {
+    Input { placeholder: "add…"; clear: true; onSubmit: added = post("https://api.example.com/items", {title: value}) }
+    for i in items ?? [] { Text { text: i.title } }
+  }
+}
+```
+
+Handlers have no `if`, so a `post` that only sometimes goes out takes a null URL the rest of the time:
+`every 5s { tok = post(code == "" ? null : "https://…/token", {code: code}) }` polls only while there is a
+code. The URLs are listed for review like `http(...)`'s, as `http POST https://…`, under the same rule:
+keep the server fixed and put values into the URL with `enc(...)`.
 
 ## Sounds
 
@@ -355,7 +398,7 @@ A file can also be an app instead of a widget: a screen of its own, listed in th
 The nodes at the top are the whole view, with the room and limits of a `screen { }`, and it takes
 the same declarations as a widget (sources, state, lets, components, triggers, `requires`, `meta`).
 There's no tile, so no `size`, `minSize`, `page`, `order`, `padding`, `background`, `onTap` or
-`screen { }`; the properties are `title`, `icon` and `back` (with its `onBack`), and `close()` closes it. Apps need owl 8 and
+`screen { }`; the properties are `title`, `icon`, `back` (with its `onBack`) and `edge`, and `close()` closes it. Apps need owl 8 and
 run only while open.
 
 ```owl
@@ -380,6 +423,26 @@ app "notes" {
 and no margin, so the app decides where its content sits. For text, lists and forms, give the top
 node `padding: [12, 0]`, which lines them up with the title. Leave it off (or pad only the parts
 inside) for what should run to the edges, like a photo, a map, a canvas or a bar along the bottom.
+
+**Under the navigation bar.** An app ends above Android's navigation bar (the gesture handle or the
+three buttons). With `edge: true` it runs on under it, like a list that scrolls behind the bar:
+`screenHeight` then reaches the screen's bottom, and `screenInset` is how much of it the bar covers,
+in dp (0 without `edge`, and while the keyboard is up; only apps have it, since a widget's screen ends above the bar). Taps there go to Android, so keep buttons
+and the last row of a list above it: end a scrolling list with `Spacer { height: screenInset }`, and
+pad a view with buttons along its bottom by `screenInset`. `edge` is `true` or `false`, not an expression.
+
+```owl
+app "photos" {
+  meta { owl: 8 }
+  edge: true
+  Column {
+    scroll: true
+    padding: [12, 0]
+    for p in range(40) { Text { text: "photo ${p}" } }
+    Spacer { height: screenInset }   // the last row scrolls up clear of the bar
+  }
+}
+```
 
 **Going back.** An app with views inside it (a list, then one item) says when Back goes up a
 level with `back`, and how with `onBack`. While `back` is true, the window shows a chevron before

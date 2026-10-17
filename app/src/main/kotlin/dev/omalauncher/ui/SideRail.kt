@@ -1,5 +1,6 @@
 package dev.omalauncher.ui
 
+import android.content.res.Configuration
 import android.hardware.display.DisplayManager
 import android.os.Handler
 import android.os.Looper
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -41,10 +43,22 @@ import dev.omalauncher.linux.LinuxState
 /** Where landscape home keeps the recent apps strip and the bar: the side portrait's bottom turned to. */
 enum class HomeSide { Left, Right }
 
+/**
+ * The window's size, turned to match the configuration's orientation. Before Android 14, Compose hears of a
+ * configuration change through the application, before the activity's own bounds follow: coming back from an
+ * app that forced landscape, it measured the window as still landscape and kept that until the next change.
+ */
+@Composable
+internal fun windowSize(): IntSize {
+    val size = LocalWindowInfo.current.containerSize
+    val portrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    return if (portrait == size.width > size.height) IntSize(size.height, size.width) else size
+}
+
 /** Whether home turns portrait's grid on its side: landscape, unless the window shows two pages. */
 @Composable
 internal fun homeTurned(): Boolean {
-    val window = LocalWindowInfo.current.containerSize
+    val window = windowSize()
     return window.width > window.height && !showsTwoPages(window)
 }
 
@@ -73,7 +87,7 @@ internal fun homeSide(): HomeSide? {
         displays.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
         onDispose { displays.unregisterDisplayListener(listener) }
     }
-    val window = LocalWindowInfo.current.containerSize
+    val window = windowSize()
     val tablet = with(LocalDensity.current) { minOf(window.width, window.height).toDp() } >= 600.dp
     return when {
         !homeTurned() || tablet -> null

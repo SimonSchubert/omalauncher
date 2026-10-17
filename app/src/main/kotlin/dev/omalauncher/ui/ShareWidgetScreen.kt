@@ -8,7 +8,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,9 +45,9 @@ import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import dev.omalauncher.BuildConfig
+import dev.omalauncher.openUrl
 import dev.omalauncher.widgets.Market
 import dev.omalauncher.widgets.WidgetSpec
-import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.market.Catalog
 import dev.omalauncher.widgets.market.Review
 import dev.omalauncher.widgets.market.Paste
@@ -106,11 +105,7 @@ fun ShareWidgetScreen(
                     if (showSource) BracketAction("check for secrets with agent", Palette.accent, onCheck)
                 }
                 if (showSource) {
-                    BasicText(
-                        text,
-                        Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).padding(6.dp),
-                        style = Mono.copy(fontSize = TextSize.Small),
-                    )
+                    CodeBlock(text)
                 }
             }
             when {
@@ -259,7 +254,7 @@ private fun StoreIssue(
             runCatching { withContext(Dispatchers.IO) { Paste.upload(text, userAgent(), Paste.STORE_DAYS) } }
                 .onSuccess { id ->
                     val url = Submit.issueUrl(Market.REPO, spec.name, Catalog.metaText(spec.program?.meta?.get("description")).orEmpty(), id, spec.kind)
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    if (!context.openUrl(url)) error = "no browser to open $url"
                 }.onFailure { error = (it as? ShareError)?.message ?: "something went wrong" }
             uploading = false
         }

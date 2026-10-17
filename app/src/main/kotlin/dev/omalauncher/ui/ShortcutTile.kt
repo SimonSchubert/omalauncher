@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
@@ -70,10 +72,7 @@ fun ShortcutTile(
             when {
                 // Bare silhouettes and initials sit on a badge, as in the drawer, so they read on any wallpaper.
                 bare && (mono || bmp == null) ->
-                    Box(
-                        Modifier.size(iconSize).clip(LauncherStyle.shape(iconSize / 2)).background(Palette.surface),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    IconBadge(iconSize) {
                         if (bmp != null) {
                             Image(bmp, spoken, Modifier.size(iconSize * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
                         } else {
@@ -133,6 +132,14 @@ internal fun TileLabel(text: String) {
         overflow = TextOverflow.Ellipsis,
     )
 }
+
+/** An app's badge: a circle when rounded, a square with Omarchy's sharp edges, [fill]ed, with [content] centered. */
+@Composable
+internal fun IconBadge(
+    size: Dp,
+    fill: Color = Palette.surface,
+    content: @Composable BoxScope.() -> Unit,
+) = Box(Modifier.size(size).clip(LauncherStyle.shape(size / 2)).background(fill), contentAlignment = Alignment.Center, content = content)
 
 internal fun initials(name: String): String {
     val words = name.split(Regex("[^A-Za-z0-9]+")).filter { it.isNotEmpty() }

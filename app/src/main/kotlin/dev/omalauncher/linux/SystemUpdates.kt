@@ -8,7 +8,6 @@ import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapObjects
 import dev.omalauncher.upgrade.writeAtomically
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -144,16 +143,7 @@ class SystemUpdates(
     /** Upgrades everything: a full pacman sync, then mise's tools. Returns whether it worked. */
     suspend fun updateAll(): Boolean {
         if (job is JobState.Working) return false
-        job = JobState.Working("waiting", emptyList())
-        val ok =
-            pacman.lock.withLock {
-                withContext(Dispatchers.IO) {
-                    job = JobState.Working("updating", emptyList())
-                    val (ok, tail) = proot.runJob(UPDATE_SCRIPT) { job = JobState.Working("updating", it) }
-                    job = if (ok) JobState.Idle else JobState.Failed(tail.toList())
-                    ok
-                }
-            }
+        val (ok, _) = proot.trackedJob("updating", UPDATE_SCRIPT, pacman.lock) { job = it }
         // Agents may have changed, and what's left to update is worth knowing either way.
         withContext(Dispatchers.IO) { agents.load() }
         check(force = true)
@@ -187,6 +177,6 @@ class SystemUpdates(
         /** Databases refreshed (-Syy) even if pacman thinks they're current: mirrors lag each other. */
         val UPDATE_SCRIPT =
             "pacman -Syyu --noconfirm && $CLEAN_PACMAN_CACHE && " +
-                "if command -v mise >/dev/null; then mise upgrade && mise prune -y && mise cache clear; fi"
+                "if command -v mise >/dev/null; then $MISE_SELF_UPDATE && $MISE_NODE_FOR_AGENTS && mise upgrade && mise prune -y && mise cache clear; fi"
     }
 }

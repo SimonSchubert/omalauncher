@@ -43,14 +43,23 @@ data class CatalogEntry(
     val added: String? = null,
     /** Added in the last [Catalog.NEW_DAYS] days, as of the catalog's [Catalog.write]; the store publishes often enough to keep it current. */
     val new: Boolean = false,
+    /** An app's `icon:` SVG, shown beside its name in the store; null for widgets and apps without one, or with an image icon. */
+    val icon: String? = null,
+    /** Path of an app's image icon (its `icon:` asset) relative to the catalog, written out by the store's CI. */
+    val iconFile: String? = null,
+    /** An app's other screens after its preview, drawn in each Omarchy theme, by theme name (paths relative to the catalog). */
+    val screens: Map<String, List<String>> = emptyMap(),
 ) {
     /** The preview drawn in [theme], or the default one. */
     fun previewFor(theme: String?) = themePreviews[theme] ?: preview
 
+    /** The other screens drawn in [theme], or in the default theme, like [preview], for a theme the store has none in. */
+    fun screensFor(theme: String?) = screens[theme] ?: screens[Catalog.DEFAULT_THEME].orEmpty()
+
     val supported get() = owl <= Compiler.LEVEL
 
     /** Runs commands in the guest or installs packages, like [dev.omalauncher.widgets.lang.Program.needsLinux]; http requests, web images and sounds don't count. */
-    val needsLinux get() = requires.isNotEmpty() || commands.any { !it.startsWith("http GET ") && !it.startsWith("image GET ") && !it.startsWith("sound GET ") && !it.startsWith(Compiler.IF_LINUX) }
+    val needsLinux get() = requires.isNotEmpty() || commands.any { !it.startsWith("http GET ") && !it.startsWith("http POST ") && !it.startsWith("image GET ") && !it.startsWith("sound GET ") && !it.startsWith(Compiler.IF_LINUX) }
 }
 
 object Catalog {
@@ -59,6 +68,9 @@ object Catalog {
      * fields don't need it. Per-widget compatibility is [CatalogEntry.owl].
      */
     const val FORMAT = 1
+
+    /** The Omarchy theme a widget's preview.png is drawn in, and its screens are shown in for themes the store has none in. */
+    const val DEFAULT_THEME = "tokyo-night"
 
     /** What `meta { category: ... }` may say, in the order the store shows them. */
     val CATEGORIES = listOf("news", "dev", "productivity", "time", "world", "sport", "finance", "media", "games", "pets", "fun", "home", "system")
@@ -115,6 +127,11 @@ object Catalog {
             themePreviews = (f["themes"] as? Obj)?.fields.orEmpty().mapNotNull { (k, v) -> (v as? Str)?.v?.let { k to it } }.toMap(),
             added = s("added"),
             new = (f["new"] as? Bool)?.v == true,
+            icon = s("icon"),
+            iconFile = s("iconFile"),
+            screens =
+                (f["screens"] as? Obj)?.fields.orEmpty().mapValues { (_, v) -> (v as? Lst)?.items.orEmpty().mapNotNull { (it as? Str)?.v } }
+                    .filterValues { it.isNotEmpty() },
         )
     }
 
@@ -168,6 +185,13 @@ object Catalog {
             }
             e.added?.let { sb.append(",\n      \"added\": ${q(it)}") }
             if (e.new) sb.append(",\n      \"new\": true")
+            e.icon?.let { sb.append(",\n      \"icon\": ${q(it)}") }
+            e.iconFile?.let { sb.append(",\n      \"iconFile\": ${q(it)}") }
+            if (e.screens.isNotEmpty()) {
+                sb.append(",\n      \"screens\": {")
+                sb.append(e.screens.entries.joinToString(",") { (t, l) -> "\n        ${q(t)}: [${l.joinToString(", ") { q(it) }}]" })
+                sb.append("\n      }")
+            }
             sb.append("\n    }")
         }
         sb.append("\n  ]\n}\n")

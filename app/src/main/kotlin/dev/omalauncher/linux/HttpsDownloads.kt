@@ -1,5 +1,6 @@
 package dev.omalauncher.linux
 
+import dev.omalauncher.readUpTo
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -36,15 +37,7 @@ internal fun readHttps(url: URL, maxBytes: Int): ByteArray {
     try {
         check(c.responseCode == 200) { "Download failed: HTTP ${c.responseCode}" }
         return c.inputStream.use { input ->
-            val out = java.io.ByteArrayOutputStream()
-            val buffer = ByteArray(8192)
-            while (true) {
-                val n = input.read(buffer, 0, minOf(buffer.size, maxBytes + 1 - out.size()))
-                if (n < 0) break
-                out.write(buffer, 0, n)
-                check(out.size() <= maxBytes) { "Download is too large" }
-            }
-            out.toByteArray()
+            input.readUpTo(maxBytes + 1).also { check(it.size <= maxBytes) { "Download is too large" } }
         }
     } finally {
         c.disconnect()

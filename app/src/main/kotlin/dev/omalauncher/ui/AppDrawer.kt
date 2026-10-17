@@ -208,7 +208,7 @@ internal class BarSearch(
 }
 
 private fun allApps(runtime: Runtime): List<AppHit> =
-    runtime.widgets.apps().map { AppHit.Owl(it) } + runtime.linuxApps.map { AppHit.Linux(it) } + runtime.androidApps.apps.map { AppHit.Android(it) } +
+    runtime.widgets.apps().map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } + runtime.androidApps.apps.map { AppHit.Android(it) } +
         runtime.androidApps.shortcuts.map { AppHit.Shortcut(it) }
 
 internal fun searchApps(
@@ -268,7 +268,7 @@ private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>
 /** The app's icon and its silhouette, each null until loaded or if it has none. */
 private fun AppHit.icons(runtime: Runtime): Pair<ImageBitmap?, ImageBitmap?> =
     when (this) {
-        is AppHit.Linux -> runtime.linuxIcons[app.id] to runtime.linuxMasks[app.id]
+        is AppHit.Linux -> runtime.linuxApps.icons[app.id] to runtime.linuxApps.masks[app.id]
         is AppHit.Owl -> runtime.owlIcon(spec, mono = false) to runtime.owlIcon(spec, mono = true)
         is AppHit.Android -> runtime.androidApps.icons[app.key] to runtime.androidApps.masks[app.key]
         is AppHit.Shortcut -> runtime.androidApps.icons[shortcut.key] to runtime.androidApps.masks[shortcut.key]
@@ -369,7 +369,7 @@ private fun StripCell(
         when {
             // Bare silhouettes and initials sit on a badge, as pinned apps do, so they read on any wallpaper.
             bare && (mono || bmp == null) ->
-                Box(Modifier.size(size).clip(LauncherStyle.shape(size / 2)).background(Palette.surface), contentAlignment = Alignment.Center) {
+                IconBadge(size) {
                     if (bmp != null) {
                         Image(bmp, spoken, Modifier.size(size * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
                     } else {
@@ -552,7 +552,7 @@ internal fun AppPanel(
                                 DrawerTab.Personal -> {
                                     section("apps", runtime.widgets.apps().map { AppHit.Owl(it) })
                                     if (linuxState == LinuxState.Installed) {
-                                        section("linux", runtime.linuxApps.map { AppHit.Linux(it) })
+                                        section("linux", runtime.linuxApps.apps.map { AppHit.Linux(it) })
                                     } else {
                                         // Linux apps would be listed here; without Linux, one quiet offer instead.
                                         item(key = "linux-offer") {
@@ -725,16 +725,14 @@ private fun AppCell(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         val mono = LauncherStyle.monochromeIcons
-        // Badges are circles when rounded, squares with Omarchy's sharp edges.
-        val badge = LauncherStyle.shape(26.dp)
         if (mono && mask != null) {
-            Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
+            IconBadge(52.dp) {
                 Image(mask, spoken, Modifier.size(36.dp), colorFilter = ColorFilter.tint(Palette.accent))
             }
         } else if (!mono && icon != null) {
             Image(icon, spoken, Modifier.size(52.dp))
         } else {
-            Box(Modifier.size(52.dp).clip(badge).background(Palette.surface), contentAlignment = Alignment.Center) {
+            IconBadge(52.dp) {
                 BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
             }
         }

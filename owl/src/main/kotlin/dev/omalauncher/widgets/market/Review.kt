@@ -99,6 +99,7 @@ class Review(
     fun entry(
         preview: String?,
         themePreviews: Map<String, String> = emptyMap(),
+        iconFile: String? = null,
     ): CatalogEntry {
         val p = program!!
         return CatalogEntry(
@@ -117,6 +118,8 @@ class Review(
             owl = p.level,
             category = Catalog.metaText(p.meta["category"]),
             themePreviews = themePreviews,
+            icon = p.icon,
+            iconFile = iconFile,
         )
     }
 
@@ -181,6 +184,7 @@ class Review(
                 Regex("""(^|[;&|(`\n]|\$\()\s*${Compiler.VALUE}""") to "runs a program a widget value names",
                 Regex("""\b(eval|source|$INTERPRETERS)\s+(-\S+\s+)*${Compiler.VALUE}""") to "runs a widget value as code",
                 Regex("""^http GET \(a URL built from widget values\)$""") to "fetches a URL put together while the widget runs, which can send its data anywhere",
+                Regex("""^http POST \(a URL built from widget values\)$""") to "sends to a URL put together while the widget runs, which can send its data anywhere",
                 // An image or sound URL whose host comes from widget values (Compiler's webFile): it can go anywhere too.
                 Regex("""^(image|sound) GET https://[^/\s]*…$""") to "loads a file from a server put together while the widget runs, which can send its data anywhere",
                 Regex("""^($IF_LINUX)?read file \(a path built from widget values\)$""") to "reads a file whose path is put together while the widget runs",

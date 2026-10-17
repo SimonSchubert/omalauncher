@@ -89,8 +89,7 @@ class Shortcuts(
     private val folderEntries = mutableStateListOf<FolderEntry>()
 
     init {
-        // Version 0 (before versioning) is the same array, unwrapped.
-        (Versioned.read(prefs.getString(ITEMS, null), VERSION) { _, data -> data } as? JSONArray)?.let { array ->
+        (Versioned.read(prefs.getString(ITEMS, null), VERSION) as? JSONArray)?.let { array ->
             items += array.mapObjects(::parse)
         }
         (Versioned.read(prefs.getString(FOLDERS, null), VERSION) as? JSONArray)?.let { array ->

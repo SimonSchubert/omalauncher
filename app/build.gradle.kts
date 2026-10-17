@@ -9,16 +9,20 @@ plugins {
 val uploadKey = rootProject.file("keystore.properties").takeIf { it.exists() }
     ?.let { f -> Properties().apply { f.inputStream().use(::load) } }
 
+// The NDK proot is built with (scripts/fetch-proot.sh); wlbridge uses the same one.
+val prootNdk = rootProject.file("scripts/fetch-proot.sh").readLines().first { it.startsWith("NDK_VERSION=") }.substringAfter('=')
+
 android {
     namespace = "dev.omalauncher"
     compileSdk = 37
+    ndkVersion = prootNdk
 
     defaultConfig {
         applicationId = "dev.omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 14
-        versionName = "0.7.2"
+        versionCode = 15
+        versionName = "0.8.0"
         ndk { abiFilters += "arm64-v8a" }
     }
 
@@ -55,10 +59,19 @@ android {
         release {
             // Shrinks the APK and drops what the app doesn't use, like the owl module's unused parts.
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfig = signingConfigs.getByName(if (uploadKey != null) "release" else "debug")
         }
     }
+}
+
+// ExamplesTest reads the widget examples and the README from here, so editing them reruns it.
+tasks.withType<Test>().configureEach { inputs.dir("src/main/assets/widgets") }
+
+// Gitignored, built by scripts/fetch-proot.sh. Without it a release still builds, but every Linux command fails.
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    val proot = file("src/main/jniLibs/arm64-v8a/libproot.so")
+    doFirst { check(proot.exists()) { "$proot is missing; run scripts/fetch-proot.sh" } }
 }
 
 composeCompiler {

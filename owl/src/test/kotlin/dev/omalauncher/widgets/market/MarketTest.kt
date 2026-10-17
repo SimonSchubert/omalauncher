@@ -93,6 +93,13 @@ class MarketTest {
         assertTrue(risks("image GET https://x.test").isEmpty())
     }
 
+    @Test fun urlsWithAFixedHostAreNotFlagged() {
+        assertTrue(Review.risks(listOf("http GET https://a.b/c/${Compiler.VALUE}?d=${Compiler.NUMBER}")).isEmpty())
+        assertTrue(Review.risks(listOf("http GET (a URL built from widget values)")).single().contains("send its data anywhere"))
+        assertTrue(Review.risks(listOf("http POST (a URL built from widget values)")).single().contains("send its data anywhere"))
+        assertTrue(Review.risks(listOf("http POST https://a.b/c/${Compiler.VALUE}")).isEmpty())
+    }
+
     @Test fun theStoreTakesValuesInCommandsOnlyQuoted() {
         fun review(cmd: String) =
             Review(
@@ -188,6 +195,27 @@ class MarketTest {
         val old = Catalog.parse(index.replace(",\n      \"added\": \"2026-10-15\",\n      \"new\": true", "")).single()
         assertEquals(null, old.added)
         assertFalse(old.new)
+    }
+
+    @Test fun appIconsRoundTripAndWidgetsHaveNone() {
+        val svg = "<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"currentColor\"/></svg>"
+        val app = "app \"notes\" {\n  meta { owl: 8; description: \"notes\"; version: \"1.0\"; license: \"MIT\" }\n  icon: \"\"\"$svg\"\"\"\n  Text { text: \"x\" }\n}"
+        val e = Review("apps/simon/notes/app.owl", app).entry(null)
+        assertEquals(svg, e.icon)
+        val parsed = Catalog.parse(Catalog.write(listOf(e.copy(iconFile = "apps/simon/notes/store-icon.png")), "now", "apps"), "apps").single()
+        assertEquals(svg, parsed.icon)
+        assertEquals("apps/simon/notes/store-icon.png", parsed.iconFile)
+        assertEquals(null, Review("widgets/simon/disk/widget.owl", good).entry(null).icon)
+    }
+
+    @Test fun screensRoundTripAndFallBackToTheDefaultTheme() {
+        val screens = mapOf("nord" to listOf("apps/a/b/screens/2/nord.webp", "apps/a/b/screens/3/nord.webp"), Catalog.DEFAULT_THEME to listOf("apps/a/b/screens/2/${Catalog.DEFAULT_THEME}.webp"))
+        val e = Review("widgets/simon/disk/widget.owl", good).entry(null).copy(screens = screens)
+        val parsed = Catalog.parse(Catalog.write(listOf(e), "now")).single()
+        assertEquals(screens, parsed.screens)
+        assertEquals(screens["nord"], parsed.screensFor("nord"))
+        assertEquals(screens[Catalog.DEFAULT_THEME], parsed.screensFor("my-own-theme"))
+        assertTrue(Review("widgets/simon/disk/widget.owl", good).entry(null).screensFor("nord").isEmpty())
     }
 
     @Test fun aNewerCatalogFormatAsksForAnUpdate() {

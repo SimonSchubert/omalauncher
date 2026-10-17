@@ -27,9 +27,10 @@ and third-party installers retain their upstream trust model.
 
 ## Validation
 
-Run `./gradlew :owl:test :app:testDebugUnitTest :owl:owlJar :app:assembleDebug :app:assembleRelease :app:lintVitalRelease`.
+Run `./gradlew :owl:test :app:testDebugUnitTest :owl:owlJar :app:assembleDebug :app:lintDebug :app:lintRelease`.
 The tests cover valid/altered archives, wrong keys, malformed/missing signatures,
-weak hashes, the bundled key fingerprint, HTTPS downgrade rejection and redirects.
+weak hashes, the bundled key fingerprint, HTTPS downgrade rejection and redirects,
+including resume headers being set before connecting and preserved on redirects.
 
 To repeat the Android bootstrap checks in a separate ARM64 emulator:
 
@@ -39,21 +40,20 @@ To repeat the Android bootstrap checks in a separate ARM64 emulator:
 3. Verify the authentic image extracts and Linux commands execute.
 4. Test the normal HTTPS download path and retry behavior.
 
-Local validation on October 16, 2026: all 214 unit tests pass (95 OWL and 119
-app), debug/release APKs build, and release-critical lint passes. Full
-`:app:lintRelease` reports the same seven errors on both this branch and an
-untouched upstream `fec24c8` checkout: one `NewApi` in `Gpu.kt` and six
-`RestrictedApi` reports in `MainActivity.kt`/`LinuxWindowActivity.kt`. No lint
-suppression or unrelated fixes are included.
+Local validation on October 17, 2026, after merging upstream `66e07c1`: all
+234 unit tests pass (106 OWL and 128 app), the debug APK and OWL CLI jar build,
+and full debug and release lint pass. Native PRoot was rebuilt with upstream's
+pinned NDK 30.0.16248370. No lint suppressions or unrelated fixes are included.
 
-An isolated Android 16 / API 36 ARM64 emulator (system image revision 2, emulator
+On October 17, an isolated Android 16 / API 36 ARM64 emulator (system image
+revision 2, emulator
 37.2.12) rejected an altered archive and a missing signature while preserving a
 rootfs sentinel. The official 829,367,415-byte image then verified and extracted;
 PRoot successfully ran Bash, `uname -m` (`aarch64`) and `pacman -Q glibc`.
 The live HTTPS downloader also resumed the final 64 KiB using Range/If-Range,
 fetched the detached signature, verified the entire image and extracted it
-(39.5 seconds; 0.12 MiB received across emulator network interfaces). With the
-emulator offline, a failed signature fetch retained the completed cached image
+(41.6 seconds). An earlier October 16 check with the emulator offline confirmed
+that a failed signature fetch retained the completed cached image
 and the rootfs sentinel. The verified bootstrap continued through pacman
 configuration into package installation. These checks validate image handling
 and native guest execution; they do not claim every optional package or agent

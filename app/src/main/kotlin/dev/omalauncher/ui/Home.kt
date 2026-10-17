@@ -3,7 +3,6 @@ package dev.omalauncher.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.ui.platform.LocalWindowInfo
 import android.app.WallpaperManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.snapshotFlow
@@ -68,7 +67,7 @@ fun HomeScreen(
     // One empty page always waits after the last one, to drop tiles on or pin apps to. Pages only exist
     // while they hold something, so it becomes a real page once used and a new empty one follows.
     // Unfolded, pages show in pairs: the pager counts pairs, and an odd last page gets an empty partner.
-    val per = if (showsTwoPages(LocalWindowInfo.current.containerSize)) 2 else 1
+    val per = if (showsTwoPages(windowSize())) 2 else 1
     val pageNumbers =
         engine.pages
             .let { if (engine.itemsOn(it.last()).isEmpty()) it else it + (it.last() + 1) }
@@ -163,8 +162,7 @@ fun HomeScreen(
     /** Opens the default agent on the widget's file; with no agent installed, the agents screen instead. */
     fun edit(item: WidgetItem) {
         state.editing = null
-        val agent = runtime.agents.default
-        if (agent == null) state.show(SettingsPage.Agents) else runtime.terminal(editWidgetCommand(agent.bin, item.spec), "Edit ${item.spec.name}", agent)
+        state.withAgent(runtime, "Edit ${item.spec.name}") { editWidgetCommand(it, item.spec) }
     }
 
     // Overlays below are siblings of the pager inside this Box, so they never change the page's size.
@@ -279,7 +277,7 @@ fun HomeScreen(
                     EditBar {
                         if (item is WidgetItem) EditAction("edit") { edit(item) }
                         // As a QR code or link, or (your own) to the store. An agent's tile is a terminal, not a widget to pass on.
-                        if (item is WidgetItem && !item.spec.file.name.startsWith("agent-")) {
+                        if (item is WidgetItem && !engine.isAgentWidget(item.spec)) {
                             EditAction("share") {
                                 state.editing = null
                                 state.sharing = item.spec
@@ -315,14 +313,7 @@ fun HomeScreen(
                             onInstall = { engine.installDependencies(item.spec) },
                             waitsForLinux = if (engine.waitsForLinux(item.spec)) linuxState else null,
                             onInstallLinux = { state.show(SettingsPage.Linux) },
-                            onFix = { log ->
-                                val agent = runtime.agents.default
-                                if (agent == null) {
-                                    state.show(SettingsPage.Agents)
-                                } else {
-                                    runtime.terminal(fixDependenciesCommand(agent.bin, item.spec, log), "Fix ${item.spec.name}", agent)
-                                }
-                            },
+                            onFix = { log -> state.withAgent(runtime, "Fix ${item.spec.name}") { fixDependenciesCommand(it, item.spec, log) } },
                         )
                     }
                     is Shortcut ->

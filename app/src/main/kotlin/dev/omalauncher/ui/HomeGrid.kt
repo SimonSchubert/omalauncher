@@ -518,6 +518,19 @@ internal fun HomeGrid(
                         }
                     } == null
 
+                    /** Takes [downId]'s moves until it lifts, giving [onMove] each position while pressed; where it lifted, or null if it went away. */
+                    suspend fun AwaitPointerEventScope.trackUntilUp(
+                        downId: PointerId,
+                        onMove: (Offset) -> Unit = {},
+                    ): Offset? {
+                        while (true) {
+                            val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == downId } ?: return null
+                            c.consume()
+                            if (!c.pressed) return c.position
+                            onMove(c.position)
+                        }
+                    }
+
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                         val start = down.position
@@ -540,14 +553,7 @@ internal fun HomeGrid(
                             if (hit == null) {
                                 down.consume()
                                 if (!fg.panel.has(start)) arrange.folder = null
-                                while (true) {
-                                    val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
-                                    c.consume()
-                                    if (!c.pressed) {
-                                        arrange.naming = fg.header.has(start) && fg.header.has(c.position)
-                                        break
-                                    }
-                                }
+                                trackUntilUp(down.id)?.let { up -> arrange.naming = fg.header.has(start) && fg.header.has(up) }
                                 return@awaitEachGesture
                             }
                             if (!awaitLongPress(down.id, start)) return@awaitEachGesture
@@ -578,12 +584,9 @@ internal fun HomeGrid(
                                 when {
                                     edges.any -> {
                                         val others = placed.filter { it.first.key != item.key }.map { it.second }
-                                        while (true) {
-                                            val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
-                                            c.consume()
-                                            if (!c.pressed) break
+                                        trackUntilUp(down.id) { position ->
                                             val (minW, minH) = item.minSize
-                                            val p = g.local(c.position, selSide)
+                                            val p = g.local(position, selSide)
                                             val x0 = if (edges.left) g.colLine(p).coerceAtMost(cell.right - minW) else cell.x
                                             val x1 = if (edges.right) g.colLine(p).coerceAtLeast(cell.x + minW) else cell.right
                                             val y0 = if (edges.top) g.rowLine(p).coerceAtMost(cell.bottom - minH) else cell.y
@@ -598,11 +601,7 @@ internal fun HomeGrid(
                                     else -> {
                                         // Tap outside finishes editing; a drag outside does nothing.
                                         onSelect(null)
-                                        while (true) {
-                                            val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
-                                            c.consume()
-                                            if (!c.pressed) break
-                                        }
+                                        trackUntilUp(down.id)
                                     }
                                 }
                             } finally {
@@ -818,11 +817,19 @@ private fun TiledPage(
                 // Above the tile, or below it when there's no room for it there: as tall as it turned out, since an
                 // app's shortcuts stack above its bar. Lined up with the tile's left edge, pulled in by however wide
                 // the bar turned out when that would run past the grid's edge, which keeps the gap tiles keep from the
-                // screen: a lone "remove" for an app at the edge stays next to it.
+                // screen: a lone "remove" for an app at the edge stays next to it. A tile with room on neither side (one
+                // filling the page) gets it inside, centred below the top handle, where it covers no handle's grab zone;
+                // below the grid it would sit under the strip and take the bottom handle's touches.
                 val barGap = with(density) { 8.dp.roundToPx() }
+                val inset = with(density) { 28.dp.roundToPx() }
                 fun at(size: IntSize): IntOffset {
                     val above = r.top - size.height - barGap
-                    return IntOffset(r.left.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left), if (above >= 0) above else r.bottom + barGap)
+                    val below = r.bottom + barGap
+                    return when {
+                        above >= 0 -> IntOffset(r.left.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left), above)
+                        below + size.height <= grid.height -> IntOffset(r.left.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left), below)
+                        else -> IntOffset(r.center.x - size.width / 2, r.top + inset)
+                    }
                 }
                 DisposableEffect(Unit) { onDispose { arrange.bar = null } }
                 Box(

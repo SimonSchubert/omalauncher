@@ -26,7 +26,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
@@ -112,7 +111,7 @@ private fun Installed(runtime: Runtime) {
     LaunchedEffect(Unit) { size = withContext(Dispatchers.IO) { diskUsage(runtime.proot.rootfs) } }
     var confirm by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().clip(LauncherStyle.shape(12.dp)).background(Palette.surface).padding(14.dp),
+        Modifier.card(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -132,7 +131,7 @@ private fun Installed(runtime: Runtime) {
         BracketAction("remove linux", Palette.red) { confirm = true }
     } else {
         Column(
-            Modifier.fillMaxWidth().clip(LauncherStyle.shape(12.dp)).background(Palette.surface).padding(14.dp),
+            Modifier.card(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             BasicText("remove linux?", style = Mono.copy(color = Palette.red))
@@ -163,7 +162,7 @@ private fun GpuRow(runtime: Runtime) {
             state is JobState.Failed -> "the GPU failed its check; apps stay in software"
             else -> "experimental · ${gpu.driverLabel} · faster OpenGL and Vulkan apps and games; terminal apps don't change"
         }
-    Column(Modifier.fillMaxWidth().clip(LauncherStyle.shape(12.dp)).background(Palette.surface).padding(14.dp)) {
+    Column(Modifier.card()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 BasicText("gpu acceleration", style = Mono.copy(fontSize = TextSize.Item))

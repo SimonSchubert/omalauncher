@@ -4,6 +4,32 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 0.8.0 (versionCode 15) – 2026-10-17
+
+- Apps: an owl file can be a full-screen app (`app "name" { }`, owl 8) that opens
+  from the app drawer, with its own Recents card. Back goes back a level inside it.
+  The store lists apps like Braincup's brain games, Yoga and Linux commands; an app's
+  page swipes through its screens, drawn in your theme.
+- Widgets and apps can show images from the web (SVG drawn as vectors), play sounds,
+  send HTTP POSTs and read the installed apps (`android.apps`). Values in URLs go
+  through `enc()`, and the store's reviewer sees each URL a widget can reach.
+- GPU acceleration for Linux apps on Adreno 6xx and newer (Turnip). The patched Mesa
+  now ships in the app for Adreno and Mali, so OpenGL apps run on the GPU through
+  zink, and windows with MSAA (PrusaSlicer's G-code viewer) no longer crash.
+- Folders can have a name, set in place in their header.
+- Home can hide the status bar.
+- App search matches names with their accents stripped.
+- The store marks widgets added in the last three days with a "new" badge and tab,
+  and has more categories (sport, finance, media, games, pets). Its pages and
+  settings pages opened from another have a back chevron.
+- Themes installed from the catalog show its screenshot in the theme list.
+- OpenCode 2 installs and updates again: agent installs and system updates update
+  mise first and add node for OpenCode.
+- Prompts start Antigravity and GitHub Copilot in interactive mode, and Antigravity
+  in plan mode for untrusted prompts.
+- Fixes: submitting to the store no longer crashes without a browser, links from
+  Linux keep opening after an error, and turning the GPU on waits for package installs.
+
 ## 0.7.2 (versionCode 14) – 2026-10-14
 
 - Text files open in the launcher's own touch-first editor, in the Omarchy theme,

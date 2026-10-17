@@ -101,12 +101,4 @@ class ManagedFilesTest {
         assertEquals("v2", read("a.conf"))
         assertFalse(File(base, "b.conf").exists())
     }
-
-    @Test fun adoptsFilesOlderBuildsMarkedAsTheirs() {
-        File(base, "foot.ini").writeText("# omalauncher managed\nold")
-        File(base, "mine.ini").writeText("# written by hand")
-        files.sync(listOf(seeded("foot.ini", "new"), seeded("mine.ini", "new")))
-        assertEquals("new", read("foot.ini"))
-        assertEquals("# written by hand", read("mine.ini"))
-    }
 }

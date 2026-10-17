@@ -11,12 +11,20 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.linux.LinuxState
@@ -127,10 +135,27 @@ internal fun OwlAppWindow(
     val up: (() -> Unit)? = if (instance.canGoUp()) { { instance.goUp() } } else null
     // Full screen like any Android app: no window border or side gap, and no ✕ (Back leaves the app and
     // Recents closes it; close() still does). The view runs to the screen's edges.
-    Column(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding()) {
+    // With `edge` it runs on under the navigation bar too: only the keyboard pushes its bottom up.
+    val insets =
+        if (instance.program.edge) {
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).union(WindowInsets.ime)
+        } else {
+            WindowInsets.safeDrawing
+        }
+    Column(Modifier.fillMaxSize().background(Palette.background).windowInsetsPadding(insets)) {
         Box(Modifier.padding(horizontal = PanelPadding, vertical = 8.dp)) { BackTitle(title, up) }
         WidgetScreen(instance, Modifier.weight(1f).fillMaxWidth())
     }
+    if (instance.program.edge) ScreenInset(instance)
+}
+
+/** Tells an `edge` app's `screenInset` how much of its bottom the navigation bar covers; none while the keyboard is up. */
+@Composable
+private fun ScreenInset(instance: WidgetInstance) {
+    val density = LocalDensity.current
+    val covered = (WindowInsets.safeDrawing.getBottom(density) - WindowInsets.ime.getBottom(density)).coerceAtLeast(0)
+    val dp = with(density) { covered.toDp().value.toDouble() }
+    SideEffect { instance.setScreenInset(dp) }
 }
 
 /** A widget's screen { }, full screen over home in an Omarchy window titled by its `title` or the widget's name. */

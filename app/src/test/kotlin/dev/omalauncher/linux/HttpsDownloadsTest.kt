@@ -53,4 +53,28 @@ class HttpsDownloadsTest {
         assertNull(requests[1]["X-API-Key"])
         assertEquals(listOf("application/octet-stream"), requests[1]["Accept"])
     }
+    @Test fun resumeHeadersAreSetBeforeConnectingAndSurviveHttpsRedirects() {
+        val requests = mutableListOf<Map<String, List<String>>>()
+        val handler = object : URLStreamHandler() {
+            override fun openConnection(url: URL): URLConnection = object : HttpURLConnection(url) {
+                override fun getResponseCode(): Int {
+                    requests += requestProperties
+                    connected = true // setting headers after this must fail
+                    return if (url.path == "/image") 302 else HTTP_PARTIAL
+                }
+                override fun getHeaderField(name: String?) = if (name == "Location") "/archive" else null
+                override fun connect() = Unit
+                override fun disconnect() = Unit
+                override fun usingProxy() = false
+            }
+        }
+        val connection = openHttps(URL(null, "https://trusted.example/image", handler), mapOf("Range" to "bytes=123-", "If-Range" to "version-one"))
+        connection.disconnect()
+        assertEquals(2, requests.size)
+        requests.forEach {
+            assertEquals(listOf("bytes=123-"), it["Range"])
+            assertEquals(listOf("version-one"), it["If-Range"])
+        }
+    }
+
 }

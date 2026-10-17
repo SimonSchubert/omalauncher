@@ -20,11 +20,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -42,11 +44,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.widgets.Market
@@ -81,71 +85,79 @@ fun StoreScreen(
     val filters = remember { OwlKind.entries.associateWith { StoreFilter() } }
     val filter = filters.getValue(kind)
     LaunchedEffect(market) { market.refresh() }
-    OverlayPanel(
-        "store",
-        onDismiss,
-        actions = {
-            KindToggle(kind) {
-                kind = it
-                open = null
-                message = null
-            }
-            RefreshButton(market.loading) { scope.launch { market.refresh() } }
-        },
-    ) {
-        BoxWithConstraints {
-            val wide = maxWidth >= 720.dp
-            val paneWidth = (maxWidth * 0.42f).coerceIn(340.dp, 520.dp)
-            val detail = open?.let { id -> market.entries.firstOrNull { it.id == id } }
-            val select = { id: String ->
-                open = id
-                message = null
-            }
-            val showDetail = @Composable { e: CatalogEntry, showBack: Boolean, modifier: Modifier ->
-                Detail(
-                    market = market,
-                    e = e,
-                    theme = theme,
-                    linux = engine.linux,
-                    page = page,
-                    message = message,
-                    showBack = showBack,
-                    modifier = modifier,
-                    onBack = {
+    val detail = open?.let { id -> market.entries.firstOrNull { it.id == id } }
+    val back = {
+        open = null
+        message = null
+    }
+    BoxWithConstraints {
+        // What the panel's content gets: the screen less the gap and padding on both sides.
+        val wide = maxWidth - (PanelGap + PanelPadding) * 2 >= 720.dp
+        // On its own, an entry's page takes the header: a chevron back to the grid and its name, nothing else.
+        val alone = detail?.takeIf { !wide }
+        OverlayPanel(
+            alone?.name ?: "store",
+            onDismiss,
+            onBack = if (alone != null) back else LocalPanelBack.current,
+            actions = {
+                if (alone == null) {
+                    KindToggle(kind) {
+                        kind = it
                         open = null
                         message = null
-                    },
-                    onInstall = {
-                        scope.launch {
-                            message = market.install(e, page)
-                            if (message == null) onDismiss()
-                        }
-                    },
-                )
-            }
-            val list = @Composable { modifier: Modifier ->
-                StoreList(engine, market, agents, page, theme, filter, if (wide) open else null, modifier, select, onDismiss)
-            }
-            when {
-                // Side by side: the grid, and the picked widget's page beside it.
-                wide ->
-                    Row {
-                        list(Modifier.weight(1f))
-                        Box(Modifier.padding(horizontal = 12.dp).width(1.dp).fillMaxHeight().background(Palette.border))
-                        val pane = Modifier.width(paneWidth).fillMaxHeight()
-                        if (detail != null) {
-                            showDetail(detail, false, pane)
-                        } else {
-                            Box(pane, contentAlignment = Alignment.Center) {
-                                BasicText("pick ${if (kind == OwlKind.App) "an app" else "a widget"} to see what it installs and runs", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                    }
+                    RefreshButton(market.loading) { scope.launch { market.refresh() } }
+                }
+            },
+        ) {
+            BoxWithConstraints {
+                val paneWidth = (maxWidth * 0.42f).coerceIn(340.dp, 520.dp)
+                val select = { id: String ->
+                    open = id
+                    message = null
+                }
+                val showDetail = @Composable { e: CatalogEntry, modifier: Modifier ->
+                    Detail(
+                        market = market,
+                        e = e,
+                        theme = theme,
+                        linux = engine.linux,
+                        page = page,
+                        message = message,
+                        modifier = modifier,
+                        onInstall = {
+                            scope.launch {
+                                message = market.install(e, page)
+                                // A widget closes the store to show it on its page; an app stays, its page saying it's in the drawer.
+                                if (message == null && market.kind == OwlKind.Widget) onDismiss()
+                            }
+                        },
+                    )
+                }
+                val list = @Composable { modifier: Modifier ->
+                    StoreList(engine, market, agents, page, theme, filter, if (wide) open else null, modifier, select, onDismiss)
+                }
+                when {
+                    // Side by side: the grid, and the picked widget's page beside it.
+                    wide ->
+                        Row {
+                            list(Modifier.weight(1f))
+                            Box(Modifier.padding(horizontal = 12.dp).width(1.dp).fillMaxHeight().background(Palette.border))
+                            val pane = Modifier.width(paneWidth).fillMaxHeight()
+                            if (detail != null) {
+                                showDetail(detail, pane)
+                            } else {
+                                Box(pane, contentAlignment = Alignment.Center) {
+                                    BasicText("pick ${if (kind == OwlKind.App) "an app" else "a widget"} to see what it installs and runs", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                                }
                             }
                         }
+                    detail != null -> {
+                        BackHandler(onBack = back)
+                        showDetail(detail, Modifier.padding(top = 8.dp).widthIn(max = ReadingWidth).align(Alignment.TopCenter))
                     }
-                detail != null -> {
-                    BackHandler { open = null }
-                    showDetail(detail, true, Modifier.widthIn(max = ReadingWidth).align(Alignment.TopCenter))
+                    else -> list(Modifier)
                 }
-                else -> list(Modifier)
             }
         }
     }
@@ -293,6 +305,15 @@ private const val NEW = "new"
 private const val OTHER = "other"
 private const val INSTALLED = "installed"
 
+private val CardIconSize = 32.dp
+private val DetailIconSize = 48.dp
+
+/** How tall an entry's page shows its preview and screens, so its description stays in view. */
+private val ScreenHeight = 320.dp
+
+/** Width over height of a phone screen, for an app's screens before they load. */
+private const val PHONE_RATIO = 0.45f
+
 @Composable
 private fun Caption(text: String) = BasicText(text, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
 
@@ -350,6 +371,19 @@ private fun rememberPreview(
     return preview
 }
 
+/** [e]'s icon, as the drawer draws it, or null while it loads or when it has none. */
+@Composable
+private fun rememberIcon(
+    market: Market,
+    e: CatalogEntry,
+    size: Dp,
+): ImageBitmap? {
+    val px = with(LocalDensity.current) { size.roundToPx() }
+    val accent = Palette.accent.toArgb()
+    val icon by produceState<ImageBitmap?>(null, e.icon, e.iconFile, px, accent) { value = market.icon(e, px, accent) }
+    return icon
+}
+
 /** A grid cell: the preview, the name, and whether it's installed; [selected] while its page shows beside the grid. */
 @Composable
 private fun Card(
@@ -373,17 +407,16 @@ private fun Card(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Box(Modifier.fillMaxWidth().height(104.dp), contentAlignment = Alignment.Center) {
-            if (preview != null) {
+            if (preview != null && market.kind == OwlKind.App) {
+                // A whole phone screen would be a sliver this high: its top, as wide as the card, reads as the app.
+                Image(preview, null, Modifier.fillMaxSize(), alignment = Alignment.TopCenter, contentScale = ContentScale.FillWidth)
+            } else if (preview != null) {
                 Image(preview, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
             } else {
                 Box(Modifier.fillMaxSize().background(Palette.surface), contentAlignment = Alignment.Center) {
                     BasicText(e.name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                 }
             }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (e.new) NewBadge()
         }
         val (status, color) =
             when {
@@ -394,7 +427,20 @@ private fun Card(
                 !linux && e.needsLinux -> "needs linux" to Palette.muted
                 else -> "${e.category ?: OTHER}${e.size?.let { " · ${it.first}x${it.second}" } ?: ""}" to Palette.muted
             }
-        BasicText(status, style = Mono.copy(color = color, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // An app's icon goes before its name and status, as in the drawer; widgets have none.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (e.icon != null || e.iconFile != null) {
+                val icon = rememberIcon(market, e, CardIconSize)
+                Box(Modifier.size(CardIconSize)) { icon?.let { Image(it, null, Modifier.fillMaxSize()) } }
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (e.new) NewBadge()
+                }
+                BasicText(status, style = Mono.copy(color = color, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
     }
 }
 
@@ -407,6 +453,25 @@ private fun NewBadge() =
         style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
     )
 
+/** An app's [preview] and its other [screens] side by side, swiped through; each one loads as it scrolls into view. */
+@Composable
+private fun Screens(
+    market: Market,
+    preview: ImageBitmap?,
+    screens: List<String>,
+) {
+    // Until one has loaded, a slot is phone-shaped.
+    val ratio = preview?.let { it.width.toFloat() / it.height } ?: PHONE_RATIO
+    val shot = Modifier.height(ScreenHeight).aspectRatio(ratio).frame(1.dp, Palette.border, radius = 8.dp).clip(RoundedCornerShape(8.dp))
+    LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        item(key = "preview") { Box(shot.background(Palette.surface)) { preview?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) } } }
+        items(screens, key = { it }) { path ->
+            val img by produceState<ImageBitmap?>(null, path) { value = market.image(path) }
+            Box(shot.background(Palette.surface)) { img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) } }
+        }
+    }
+}
+
 /** A widget's or app's page: a large preview, what it is, what it installs and runs, and the button that adds it. */
 @Composable
 private fun Detail(
@@ -416,10 +481,7 @@ private fun Detail(
     linux: Boolean,
     page: Int,
     message: String?,
-    /** The way back to the grid; off where the grid stays beside the page. */
-    showBack: Boolean,
     modifier: Modifier,
-    onBack: () -> Unit,
     onInstall: () -> Unit,
 ) = key(e.id) {
     val installed = market.installedVersion(e)
@@ -428,70 +490,84 @@ private fun Detail(
     val busy = market.busy[e.id]
     // Keyed by the widget, so picking another one beside the grid starts its page at the top.
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (showBack) {
-            Row(
-                Modifier.clip(RoundedCornerShape(6.dp)).clickable(onClick = onBack).padding(vertical = 6.dp).padding(end = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Image(Icons.Back, null, Modifier.size(16.dp), colorFilter = ColorFilter.tint(Palette.muted))
-                BasicText(if (market.kind == OwlKind.App) "all apps" else "all widgets", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
-            }
-        }
-        preview?.let {
-            // As wide as the panel, but no taller than 320 dp, so a tall widget doesn't push its description off screen:
-            // narrowing the width keeps the image inside its slot instead of drawing over the text below.
-            val ratio = it.width.toFloat() / it.height
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                Image(it, null, Modifier.widthIn(max = 320.dp * ratio).fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Fit)
+        val screens = e.screensFor(theme)
+        if (screens.isNotEmpty()) {
+            Screens(market, preview, screens)
+        } else {
+            preview?.let {
+                // As wide as the panel, but no taller than 320 dp, so a tall widget doesn't push its description off screen:
+                // narrowing the width keeps the image inside its slot instead of drawing over the text below.
+                val ratio = it.width.toFloat() / it.height
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Image(it, null, Modifier.widthIn(max = ScreenHeight * ratio).fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Fit)
+                }
             }
         }
         Spacer(Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Title))
-            if (e.new) NewBadge()
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (e.icon != null || e.iconFile != null) {
+                val icon = rememberIcon(market, e, DetailIconSize)
+                Box(Modifier.size(DetailIconSize)) { icon?.let { Image(it, null, Modifier.fillMaxSize()) } }
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Title))
+                    if (e.new) NewBadge()
+                }
+                val size = e.size?.let { " · ${it.first}x${it.second}" } ?: ""
+                BasicText("${e.category ?: OTHER} · ${e.author} · v${e.version} · ${e.license}$size", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+            }
         }
-        val size = e.size?.let { " · ${it.first}x${it.second}" } ?: ""
-        BasicText("${e.category ?: OTHER} · ${e.author} · v${e.version} · ${e.license}$size", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
         BasicText(e.description, style = Mono.copy(fontSize = TextSize.Body))
         Spacer(Modifier.height(4.dp))
         when {
             busy != null -> BasicText(busy, style = Mono.copy(color = Palette.accent))
             !e.supported -> BasicText("needs a newer launcher (owl ${e.owl}); update the launcher to install it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
             update -> BracketAction("update ${installed?.version} → ${e.version}", Palette.accent, onInstall)
-            installed != null -> BasicText(if (market.kind == OwlKind.App) "✓ in your app drawer" else "✓ on your home screen", style = Mono.copy(color = Palette.green))
-            else -> BracketAction(if (market.kind == OwlKind.App) "add to the app drawer" else "add to page $page", Palette.accent, onInstall)
+            installed != null -> AddedMark(market.kind == OwlKind.App)
+            else -> BracketAction(if (market.kind == OwlKind.App) "install" else "add to page $page", Palette.accent, onInstall)
         }
         message?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
-        if (!linux && e.needsLinux) {
-            BasicText(
-                if (market.kind == OwlKind.App) {
-                    "needs Linux: it runs commands in Arch, so it shows in the app drawer once you install Linux in settings"
-                } else {
-                    "needs Linux: it runs commands in Arch, so it waits as a placeholder until you install Linux in settings"
-                },
-                style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
-            )
-        }
+        if (!linux && e.needsLinux) NeedsLinuxNote(market.kind == OwlKind.App)
 
-        // What it installs and runs, before it's added.
         Spacer(Modifier.height(4.dp))
-        val packages = e.requires.entries.joinToString("; ") { (m, l) -> "$m: ${l.joinToString(", ")}" }.ifEmpty { "none" }
-        BasicText("installs packages: $packages", style = Mono.copy(fontSize = TextSize.Small))
-        if (market.changedSinceApproval(e)) {
-            BasicText("its commands or packages changed since the version you approved", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
-        }
-        BasicText(if (e.commands.isEmpty()) "runs no commands" else "runs these commands in Arch:", style = Mono.copy(fontSize = TextSize.Small))
-        for (c in e.commands) {
-            BasicText(
-                c.trimEnd(),
-                Modifier
-                    .fillMaxWidth()
-                    .background(Palette.surface)
-                    .horizontalScroll(rememberScrollState())
-                    .padding(6.dp),
-                style = Mono.copy(fontSize = TextSize.Small),
-            )
+        InstallDisclosure(e.requires, e.commands) {
+            if (market.changedSinceApproval(e)) {
+                BasicText("its commands or packages changed since the version you approved", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
+            }
         }
     }
+}
+
+/** Where an added widget or app went. */
+@Composable
+internal fun AddedMark(app: Boolean) = BasicText(if (app) "✓ in your app drawer" else "✓ on your home screen", style = Mono.copy(color = Palette.green))
+
+/** Why one that runs commands in Arch doesn't work yet, and where it waits meanwhile. */
+@Composable
+internal fun NeedsLinuxNote(app: Boolean) =
+    BasicText(
+        if (app) {
+            "needs Linux: it runs commands in Arch, so it shows in the app drawer once you install Linux in settings"
+        } else {
+            "needs Linux: it runs commands in Arch, so it waits as a placeholder until you install Linux in settings"
+        },
+        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+    )
+
+/**
+ * What a widget or app installs and runs, shown before it's added: the store's
+ * entries and shared links say it the same way. [notice] goes between the two.
+ */
+@Composable
+internal fun InstallDisclosure(
+    requires: Map<String, List<String>>,
+    commands: List<String>,
+    notice: @Composable () -> Unit = {},
+) {
+    val packages = requires.entries.joinToString("; ") { (m, l) -> "$m: ${l.joinToString(", ")}" }.ifEmpty { "none" }
+    BasicText("installs packages: $packages", style = Mono.copy(fontSize = TextSize.Small))
+    notice()
+    BasicText(if (commands.isEmpty()) "runs no commands" else "runs these commands in Arch:", style = Mono.copy(fontSize = TextSize.Small))
+    for (c in commands) CodeBlock(c.trimEnd())
 }

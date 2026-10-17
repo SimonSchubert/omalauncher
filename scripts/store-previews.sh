@@ -4,6 +4,11 @@
 # app, whose picture is its view at the phone's size), plus preview.png in the default theme
 # for launchers that don't know about themes.
 #
+# An app with a screens.txt beside it is drawn on several screens: one line per screen, the
+# states to set first (`view = "watch"; openId = ""`), each starting from the screen before;
+# `wait = 60` there pauses first, for an API that allows only so many calls a minute.
+# The first is its preview as above; the rest go to apps/<author>/<name>/screens/<n>/<theme>.webp.
+#
 # Needs a debug build on an emulator (adb root) with Linux installed, so widgets
 # that run commands show real data, and the packages they require (curl, jq,
 # python, sqlite, github-cli). Widgets that need an account show demo data instead; see
@@ -137,18 +142,32 @@ for dir in "${dirs[@]}"; do
     echo "  didn't compile in time; skipped" >&2
     continue
   fi
-  adb shell "echo > $APP/.check/$name.themes"
-  if ! wait_for 120 "test -f $APP/.preview/themes/$name.done"; then
-    echo "  no previews after 2 minutes; skipped" >&2
+  # The screens to draw, if any; each takes a few seconds per theme.
+  if [ -f "$dir/screens.txt" ]; then cp "$dir/screens.txt" "$WORK/screens.txt"; else : > "$WORK/screens.txt"; fi
+  screens=$(awk '{ sub(/#.*/, "") } /[^[:space:]]/ { n++ } END { print n + 0 }' "$WORK/screens.txt")
+  adb push "$WORK/screens.txt" /data/local/tmp/store-preview-screens.txt >/dev/null
+  # The launcher reads it once it's written and closed, then deletes it.
+  adb shell "cp /data/local/tmp/store-preview-screens.txt $APP/.check/$name.themes"
+  waits=$(awk '{ sub(/#.*/, "") } match($0, /wait *= *[0-9]+/) { w = substr($0, RSTART, RLENGTH); sub(/[^0-9]+/, "", w); s += w } END { print s + 0 }' "$WORK/screens.txt")
+  if ! wait_for $((120 + 60 * screens + waits)) "test -f $APP/.preview/themes/$name.done"; then
+    echo "  no previews in time; skipped" >&2
     adb shell "rm -f $APP/$name"
     continue
   fi
-  rm -rf "$WORK/png" && mkdir -p "$WORK/png" "$dir/previews"
+  rm -rf "$WORK/png" "$dir/screens" && mkdir -p "$WORK/png" "$dir/previews"
   for theme in $(adb shell "ls $APP/.preview/themes" | grep -v '\.done$'); do
     adb exec-out cat "$APP/.preview/themes/$theme/$name.png" > "$WORK/png/$theme.png"
     cwebp -quiet -q 80 ${resize[@]+"${resize[@]}"} "$WORK/png/$theme.png" -o "$dir/previews/$theme.webp"
+    # Not seq: on macOS, seq 2 1 counts down.
+    for ((n = 2; n <= screens; n++)); do
+      mkdir -p "$dir/screens/$n"
+      adb exec-out cat "$APP/.preview/themes/$theme/$name.$n.png" > "$WORK/png/$theme.$n.png"
+      cwebp -quiet -q 80 ${resize[@]+"${resize[@]}"} "$WORK/png/$theme.$n.png" -o "$dir/screens/$n/$theme.webp"
+    done
   done
   small_png "$WORK/png/$DEFAULT_THEME.png" "$dir/preview.png"
-  echo "  $(ls "$dir/previews" | wc -l | tr -d ' ') themes, $(du -sh "$dir/previews" | cut -f1)"
+  extra=""
+  [ "$screens" -gt 1 ] && extra=", $screens screens, $(du -sh "$dir/screens" | cut -f1) more"
+  echo "  $(ls "$dir/previews" | wc -l | tr -d ' ') themes, $(du -sh "$dir/previews" | cut -f1)$extra"
   adb shell "rm -f $APP/$name; rm -rf $APP/.preview/themes"
 done

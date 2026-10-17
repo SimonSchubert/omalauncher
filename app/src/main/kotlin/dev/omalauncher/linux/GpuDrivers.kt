@@ -1,5 +1,10 @@
 package dev.omalauncher.linux
 
+import dev.omalauncher.readUpTo
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.LinkOption
+
 /**
  * The pinned Vulkan drivers [Gpu] can install. Detection and the guest
  * scripts live here, with no Android types, so they can be tested on the JVM.
@@ -38,11 +43,18 @@ internal data class GpuDriver(
     val icdPath: String,
     val apiVersion: String,
     /**
-     * How OpenGL finds this GPU. Mali uses Arch's zink. Adreno also sets
-     * MESA_LOADER_DRIVER_OVERRIDE so Mesa keeps zink on the shm/kopper path,
-     * and points EGL at the patched libEGL under /usr/local/omalauncher-mesa.
+     * How OpenGL finds this GPU: zink, through the patched libEGL under
+     * /usr/local/omalauncher-mesa. Stock Mesa clears Zink when Wayland DRM
+     * init fails, then the shm buffer stays black; that happens on every GPU
+     * here, Mali included. The override keeps Zink set. The two paths select
+     * the patched libEGL and its matching zink, not Arch's.
      */
-    val openGlEnv: List<String> = listOf("GALLIUM_DRIVER=zink"),
+    val openGlEnv: List<String> = listOf(
+        "MESA_LOADER_DRIVER_OVERRIDE=zink",
+        "GALLIUM_DRIVER=zink",
+        "LIBGL_DRIVERS_PATH=/usr/local/omalauncher-mesa/lib/dri",
+        "__EGL_VENDOR_LIBRARY_FILENAMES=/usr/local/share/glvnd/egl_vendor.d/50_mesa.json",
+    ),
 ) {
     /**
      * Vulkan through this ICD, presented as wl_shm; OpenGL is zink on top of it.
@@ -62,15 +74,19 @@ internal data class GpuDriver(
         }
 }
 
+/** Mesa's CPU Vulkan driver, from Arch's vulkan-swrast. */
+internal const val LAVAPIPE_ICD = "/usr/share/vulkan/icd.d/lvp_icd.json"
+
 /**
- * Software rendering. VK_ICD_FILENAMES and VK_DRIVER_FILES point at a file
- * that is never created, so the loader does not scan the default ICD directories
- * and cannot pick up a driver that was left behind.
+ * Software rendering. VK_ICD_FILENAMES and VK_DRIVER_FILES name only lavapipe,
+ * so the loader does not scan the default ICD directories and cannot pick up a
+ * GPU driver that was left behind, while Vulkan apps still run on the CPU when
+ * vulkan-swrast is installed.
  */
 internal val SOFTWARE_ENV = listOf(
     "LIBGL_ALWAYS_SOFTWARE=1",
-    "VK_ICD_FILENAMES=/usr/local/share/vulkan/icd.d/omalauncher-software.json",
-    "VK_DRIVER_FILES=/usr/local/share/vulkan/icd.d/omalauncher-software.json",
+    "VK_ICD_FILENAMES=$LAVAPIPE_ICD",
+    "VK_DRIVER_FILES=$LAVAPIPE_ICD",
 )
 
 /**
@@ -110,7 +126,24 @@ internal object GpuDrivers {
     const val LEGACY_MALI_ICD = "/usr/share/vulkan/icd.d/panfrost_icd.aarch64.json"
 
     /**
-     * Patched Mesa 26.2.4 (scripts/mesa/0001-egl-wayland-keep-zink-on-shm.patch).
+     * Deletes [legacy], the host file of [LEGACY_MALI_ICD], if it is our manifest for [driver]:
+     * a regular file naming its library. Mesa's own Panfrost manifest has that name too.
+     */
+    fun retireLegacyManifest(
+        driver: GpuDriver,
+        legacy: File,
+    ) {
+        if (driver.kind != GpuKind.MALI) return
+        val path = legacy.toPath()
+        val head = runCatching {
+            if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) return@runCatching null
+            Files.newInputStream(path).use { it.readUpTo(4096).decodeToString() }
+        }.getOrNull()
+        if (head?.contains(driver.driverPath) == true) Files.deleteIfExists(path)
+    }
+
+    /**
+     * Patched Mesa 26.2.4 (scripts/mesa/0001-egl-wayland-keep-zink-on-shm.patch and 0002-zink-acquire-swapchain-resolve-before-use.patch).
      * The tar is staged into the guest from the APK before [installScript] runs.
      * Not on the default linker path, so software mode keeps Arch's Mesa.
      */
@@ -118,9 +151,14 @@ internal object GpuDrivers {
     const val MESA_ZINK_LIB = "/usr/local/omalauncher-mesa/lib/libEGL_mesa.so"
     const val MESA_EGL_JSON = "/usr/local/share/glvnd/egl_vendor.d/50_mesa.json"
     /** Whole archive, checked before any extract. */
-    const val MESA_ZINK_TAR_SHA256 = "104daac072cf1a0148a5928f8f773eab760512ed1bf9b05d02cc670d8150dfe3"
+    const val MESA_ZINK_TAR_SHA256 = "2f9a58343997e972bd2c82bb78c6a30fbbda342ac3e0df4ad148732ced541f93"
     /** libEGL_mesa.so after extract. sha256sum follows the symlink. */
     const val MESA_ZINK_LIB_SHA256 = "bf9ea007f4babd55c86cfe87e8fd7b0cfa47e78fc34aa89b72fa60c7b84837e9"
+    /**
+     * The archive's sha256, written after a good extract. Zink lives in
+     * libgallium, so a rebuilt bundle can keep the same libEGL; this changes anyway.
+     */
+    const val MESA_ZINK_STAMP = "/usr/local/omalauncher-mesa/bundle.sha256"
 
     private val mali = GpuDriver(
         kind = GpuKind.MALI,
@@ -153,15 +191,6 @@ internal object GpuDrivers {
         driverPath = "/usr/local/lib64/libvulkan_freedreno.so",
         icdPath = "/usr/local/share/vulkan/icd.d/freedreno_icd.aarch64.json",
         apiVersion = "1.4.359",
-        // Stock Mesa clears Zink when Wayland DRM init fails, then the shm
-        // buffer stays black. The override keeps Zink set. The two paths
-        // select the patched libEGL and its matching zink, not Arch's.
-        openGlEnv = listOf(
-            "MESA_LOADER_DRIVER_OVERRIDE=zink",
-            "GALLIUM_DRIVER=zink",
-            "LIBGL_DRIVERS_PATH=/usr/local/omalauncher-mesa/lib/dri",
-            "__EGL_VENDOR_LIBRARY_FILENAMES=/usr/local/share/glvnd/egl_vendor.d/50_mesa.json",
-        ),
     )
 
     fun of(kind: GpuKind): GpuDriver = when (kind) {
@@ -171,20 +200,20 @@ internal object GpuDrivers {
 
     /** Pacman for Mesa and the loader, then the pinned blob unless that exact file is already there. */
     fun installScript(driver: GpuDriver): String {
-        val mesa = if (driver.kind == GpuKind.TURNIP) " && " + mesaZinkScript() else ""
-        return pacmanInstall(driver.packages) + " && " + fetch(driver) + mesa
+        return pacmanInstall(driver.packages) + " && " + fetch(driver) + " && " + mesaZinkScript()
     }
 
     /**
-     * Unpacks the patched libEGL and zink next to each other. The sha256 is the
-     * installed libEGL, so a later APK that carries a new build replaces it.
+     * Unpacks the patched libEGL and zink next to each other. The stamp names
+     * the archive it came from, so a later APK that carries a new build replaces it.
      */
-    private fun mesaZinkScript(): String {
+    fun mesaZinkScript(): String {
         val json = """{"file_format_version":"1.0.0","ICD":{"library_path":"$MESA_ZINK_LIB"}}"""
         val bundle = shellQuote(MESA_ZINK_BUNDLE)
         val list = shellQuote("/tmp/omalauncher-mesa.list")
         val tarOk = "echo '$MESA_ZINK_TAR_SHA256  $MESA_ZINK_BUNDLE' | sha256sum -c -"
         val libOk = "echo '$MESA_ZINK_LIB_SHA256  $MESA_ZINK_LIB' | sha256sum -c -"
+        val stamp = shellQuote(MESA_ZINK_STAMP)
         // Refuse a member that leaves the prefix or walks up. Then extract.
         // Arch's tar is GNU tar. It has no --no-absolute-names (that flag is
         // bsdtar) and exits 64 before unpacking. GNU tar already strips a
@@ -195,8 +224,9 @@ internal object GpuDrivers {
                 "! grep -Ev '^usr/local/omalauncher-mesa/' $list && " +
                 "! grep -E '(^/|\\.\\.)' $list"
         val unpack =
-            "$tarOk && $members && tar -xJf $bundle -C / && $libOk && rm -f $list"
-        return "{ $libOk 2>/dev/null || { $unpack; }; } && rm -f $list && " +
+            "$tarOk && $members && tar -xJf $bundle -C / && $libOk && rm -f $list && " +
+                "echo '$MESA_ZINK_TAR_SHA256' > $stamp"
+        return "{ grep -qx '$MESA_ZINK_TAR_SHA256' $stamp 2>/dev/null || { $unpack; }; } && rm -f $list && " +
             "mkdir -p ${shellQuote(MESA_EGL_JSON.substringBeforeLast('/'))} && " +
             "printf '%s\\n' ${shellQuote(json)} > ${shellQuote(MESA_EGL_JSON)}"
     }
@@ -239,12 +269,7 @@ internal object GpuDrivers {
     private fun writeManifest(driver: GpuDriver): String {
         val icdDir = driver.icdPath.substringBeforeLast('/')
         val icd = """{"file_format_version":"1.0.1","ICD":{"library_path":"${driver.driverPath}","api_version":"${driver.apiVersion}"}}"""
-        val retireLegacy = if (driver.kind == GpuKind.MALI) {
-            "if grep -F -q ${shellQuote(driver.driverPath)} ${shellQuote(LEGACY_MALI_ICD)} 2>/dev/null; then rm -f ${shellQuote(LEGACY_MALI_ICD)}; fi && "
-        } else {
-            ""
-        }
-        return retireLegacy + "mkdir -p ${shellQuote(icdDir)} && printf '%s\\n' ${shellQuote(icd)} > ${shellQuote(driver.icdPath)}"
+        return "mkdir -p ${shellQuote(icdDir)} && printf '%s\\n' ${shellQuote(icd)} > ${shellQuote(driver.icdPath)}"
     }
 
     /**

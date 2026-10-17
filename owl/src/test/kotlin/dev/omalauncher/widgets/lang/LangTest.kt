@@ -51,6 +51,15 @@ class LangTest {
             actions += "runInto $slot $command"
         }
 
+        override fun post(
+            url: String,
+            body: Value,
+            headers: Map<String, String>,
+            slot: Int?,
+        ) {
+            actions += "post $slot $url $body $headers"
+        }
+
         override val budget = Budget(10_000)
     }
 
@@ -82,6 +91,40 @@ class LangTest {
         assertEquals("2.5", text("5 / 2"))
         assertEquals("1", text("-3 % 2"))
         assertEquals("true", text("1 < 2 && 2 <= 2"))
+    }
+
+    /** A list walks its items and a map its {key, value} entries, both capped; anything else walks nothing. */
+    @Test fun iterableWalksListsAndMaps() {
+        assertEquals(listOf(Num(1.0), Num(2.0)), Builtins.iterable(Lst(listOf(Num(1.0), Num(2.0)))))
+        val entries = Builtins.iterable(Obj(mapOf("a" to Num(1.0))))
+        assertEquals("a", (entries.single() as Obj).fields["key"].toString())
+        assertEquals(Num(1.0), (entries.single() as Obj).fields["value"])
+        assertEquals(emptyList<Value>(), Builtins.iterable(Str("abc")))
+        assertEquals(Builtins.MAX_LIST, Builtins.iterable(Lst(List(Builtins.MAX_LIST + 5) { Num(it.toDouble()) })).size)
+        assertEquals(Builtins.MAX_LIST, Builtins.iterable(Obj((0..Builtins.MAX_LIST + 5).associate { "k$it" to Null })).size)
+    }
+
+    /** Every fast-path built-in gives what its general entry gives for numbers, or NaN; NaN in is NaN out. */
+    @Test fun everyNumericFastPathMatchesItsBuiltin() {
+        val inputs = listOf(0.0, -0.0, 1.0, -2.5, 0.5, 3.7, 1e6, -1e-9, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY)
+
+        fun check(
+            name: String,
+            xs: List<Double>,
+            fast: Double,
+        ) {
+            val general = runCatching { Builtins.all.getValue(name).impl(Args(xs.map(::Num), null)) }.getOrNull()
+            val where = "$name(${xs.joinToString()})"
+            if (xs.any { it.isNaN() }) assertTrue("$where: NaN in, $fast out", fast.isNaN())
+            if (fast.isNaN()) return
+            assertTrue("$where: fast $fast, general $general", general is Num && general.v == fast)
+        }
+        assertEquals(setOf("floor", "ceil", "abs", "sqrt", "sin", "cos", "tan", "rad", "deg", "sign", "round"), Builtins.numeric1.keys)
+        for ((name, g) in Builtins.numeric1) for (x in inputs) check(name, listOf(x), g.of(x))
+        for ((name, g) in Builtins.numeric2) for (x in inputs) for (y in inputs) check(name, listOf(x, y), g.of(x, y))
+        for ((name, g) in Builtins.numeric3) {
+            for (x in inputs) for (y in inputs) for (z in inputs) check(name, listOf(x, y, z), g.of(x, y, z))
+        }
     }
 
     /** Arithmetic runs on doubles when every input is a number, and the general way when one isn't: same results. */
@@ -203,6 +246,27 @@ class LangTest {
         assertTrue(s.headers != null && s.status)
         assertEquals(listOf("http GET https://x.test/a"), p.commands)
         assertTrue(compileError("widget {\nsource w = http(\"file:///etc/passwd\")\nText { text: w }\n}").contains("http:// or https://"))
+    }
+
+    @Test fun postSendsFromHandlers() {
+        val p =
+            Compiler.compile(
+                "app \"t\" {\n meta { owl: 8 }\n state id = \"a b\"\n state tok = null\n state sent = null\n back: true\n" +
+                    " onBack: { tok = post(\"https://x.test/token\", {code: id}, {Authorization: \"Bearer ${'$'}{id}\"}); post(\"https://x.test/s/${'$'}{enc(id)}\") }\n" +
+                    " every 5s { sent = post(tok == null ? null : \"https://x.test/poll\", \"raw\") }\n Text { text: id } }",
+            )
+        val host = TestHost(p)
+        p.onBack!!.run(Env.root(host), emptyList())
+        assertEquals(listOf("post 1 https://x.test/token {code: a b} {Authorization=Bearer a b}", "post null https://x.test/s/a%20b null {}"), host.actions)
+        // A null URL sends nothing, like any action whose value hasn't loaded.
+        host.actions.clear()
+        p.triggers.single().action.run(Env.root(host), emptyList())
+        assertEquals(emptyList<String>(), host.actions)
+        assertEquals(setOf("http POST https://x.test/token", "http POST https://x.test/s/${Compiler.VALUE}", "http POST https://x.test/poll"), p.commands.toSet())
+        assertFalse(p.needsLinux)
+        assertTrue(compileError("widget {\n meta { owl: 7 }\n onTap: post(\"https://x.test/\")\n Text { text: 1 } }").contains("post needs owl 8"))
+        assertTrue(compileError("app \"t\" {\n meta { owl: 8 }\n back: true\n onBack: post(\"file:///x\")\n Text { text: 1 } }").contains("http:// or https://"))
+        assertEquals(listOf("http POST (a URL built from widget values)"), Compiler.compile("app \"t\" {\n meta { owl: 8 }\n state u = \"\"\n back: true\n onBack: post(u)\n Text { text: 1 } }").commands)
     }
 
     @Test fun imagesFromTheWeb() {
@@ -400,6 +464,23 @@ class LangTest {
         assertTrue(compileError("widget \"t\" {\nlet d = 2 persist\nText { text: d }\n}").contains("persist a state"))
     }
 
+    @Test fun persistedValuesRoundTrip() {
+        val p = Compiler.compile("widget \"t\" {\nsource x = clock every 10s\nstate n = 0 persist\nstate m = 1\nlet h = history(x, 5) persist\nText { text: n }\n}")
+        assertEquals(listOf(1, 3), PersistedValues.slots(p))
+        val hist = Lst((1..5).map { Num(it.toDouble()) })
+        val text = PersistedValues.encode(p, listOf(Num(7.0), hist), 1000)
+        assertTrue(text.startsWith("{\"v\":1,\"savedAt\":1000,"))
+        assertEquals(mapOf(1 to Num(7.0), 3 to hist), PersistedValues.decode(p, text, 1010.0))
+        // A history older than its source takes to fill it (5 samples, 10 s apart) is all gap: state still comes back.
+        assertEquals(mapOf(1 to Num(7.0)), PersistedValues.decode(p, text, 1050.0))
+        // A longer one saved by an older version of the widget keeps its newest samples.
+        val long = PersistedValues.encode(p, listOf(Num(7.0), Lst((1..8).map { Num(it.toDouble()) })), 1000)
+        assertEquals(Lst((4..8).map { Num(it.toDouble()) }), PersistedValues.decode(p, long, 1001.0)[3])
+        // Unknown names, values of the wrong shape and unreadable files restore nothing.
+        assertEquals(emptyMap<Int, Value>(), PersistedValues.decode(p, "{\"v\":1,\"savedAt\":1000,\"values\":{\"old\":1,\"h\":3}}", 1001.0))
+        assertEquals(emptyMap<Int, Value>(), PersistedValues.decode(p, "not json", 1001.0))
+    }
+
     @Test fun jsonWritesWhatItReads() {
         val v = Json.parse("""{"a": [1, 2.5, null, true], "s": "q\"\\\n\u0001", "o": {}}""")
         assertEquals(v, Json.parse(Json.write(v)!!))
@@ -535,7 +616,7 @@ class LangTest {
                 }
                 """.trimIndent(),
             )
-        assertEquals(listOf("every", "at", "when", "on", "when"), p.triggers.map { it.kind })
+        assertEquals(listOf("every", "at", "when", "on", "when"), p.triggers.map { it.kind.word })
         assertEquals(Num(10.0), p.triggers[0].expr.const)
         val host = TestHost(p)
         val root = Env.root(host)
@@ -600,6 +681,16 @@ class LangTest {
         assertNull(Compiler.compile("app {\n meta { owl: 8 }\n Text { text: 1 } }").onBack)
     }
 
+    @Test fun edgeAppsDrawUnderTheNavigationBar() {
+        val app = Compiler.compile("app {\n meta { owl: 8 }\n edge: true\n Column { scroll: true\n Spacer { height: screenInset } } }")
+        assertTrue(app.edge)
+        assertFalse(Compiler.compile("app {\n meta { owl: 8 }\n Text { text: 1 } }").edge)
+        assertTrue(compileError("app {\n meta { owl: 8 }\n state e = true\n edge: e\n Text { text: 1 } }").contains("edge is true or false"))
+        assertTrue(compileError("widget {\n meta { owl: 8 }\n Text { text: 1 }\n screen { Text { text: screenInset } } }").contains("screenInset is for apps"))
+        // Not reserved: a widget's own screenInset still works.
+        Compiler.compile("widget {\n let screenInset = 0\n Text { text: screenInset } }")
+    }
+
     @Test fun appsAreScreensOfTheirOwn() {
         val app = Compiler.compile("app \"Notes\" {\n meta { owl: 8 }\n title: \"My notes\"\n state n = 0\n Column { Text { text: n }\n Button { text: \"x\"; onTap: close() } } }")
         assertEquals(OwlKind.App, app.kind)
@@ -612,7 +703,7 @@ class LangTest {
         assertEquals(OwlKind.Widget, Compiler.compile("widget {\n Text { text: 1 } }").kind)
 
         assertTrue(compileError("app {\n Text { text: 1 } }").contains("needs owl 8"))
-        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon and back"))
+        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon, back and edge"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onTap: close()\n Text { text: 1 } }").contains("handlers go on the nodes"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n back: true\n Text { text: 1 } }").contains("back and onBack go together"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onBack: close()\n Text { text: 1 } }").contains("back and onBack go together"))
@@ -652,6 +743,9 @@ class LangTest {
         assertTrue(!p.needsLinux)
         assertTrue(compileError("widget {\n meta { owl: 4 }\n Text { text: 1; onTap: volume(\"loud\") } }").contains("volume takes"))
         assertTrue(compileError("widget {\n meta { owl: 4 }\n Text { text: 1; onTap: notification(\"read\", \"k\") } }").contains("notification takes"))
+        assertTrue(compileError("widget {\n Text { text: 1; onTap: media(\"rewind\") } }").contains("media takes"))
+        // The words themselves, and a level in percent for volume, compile.
+        Compiler.compile("widget {\n meta { owl: 7 }\n Text { text: 1; onTap: { media(\"next\"); volume(\"50\"); volume(\"mute\"); torch(\"on\"); notification(\"dismiss\", \"k\") } } }")
         assertTrue(compileError("widget {\n Text { text: 1; onTap: volume(50) } }").contains("volume needs owl 4"))
     }
 
@@ -765,9 +859,48 @@ class LangTest {
         for (bad in listOf("echo ${'$'}{v}", "echo \\\"${'$'}{sh(v)}\\\"", "echo '${'$'}{sh(v)}'", "echo ok # ${'$'}{sh(v)}", "cat <<E\\n${'$'}{sh(v)}\\nE")) {
             assertEquals(bad, listOf("run(…) built from widget values"), commands("onTap: run(\"$bad\")"))
         }
-        assertTrue(Compiler.quotable("a ${Compiler.VALUE} 'b' \"c\" d#e ${Compiler.VALUE}"))
-        assertFalse(Compiler.quotable("a ${'$'}'x ${Compiler.VALUE}'"))
+        assertTrue(ShellWords.quotable("a ${Compiler.VALUE} 'b' \"c\" d#e ${Compiler.VALUE}"))
+        assertFalse(ShellWords.quotable("a ${'$'}'x ${Compiler.VALUE}'"))
         assertEquals(listOf("jq"), Compiler.compile("widget {\n meta { owl: 6 }\n state v = \"x\"\n onTap: run(\"jq -n ${'$'}{sh(v)}\")\n Text { text: v } }").programs.toList())
+    }
+
+    @Test fun encEncodesAValueAsOneUrlComponent() {
+        val owl8 = "meta { owl: 8 }"
+        assertEquals("a%20b%2Fc%3Fd%26e%23f%3Dg", text("enc(\"a b/c?d&e#f=g\")", owl8))
+        assertEquals("%C3%BC", text("enc(\"ü\")", owl8))
+        assertEquals("", text("enc(null)", owl8))
+        assertEquals("3", text("enc(3)", owl8))
+        assertTrue(compileError("widget {\n meta { owl: 7 }\n Text { text: enc(\"x\") } }").contains("enc needs owl 8"))
+    }
+
+    @Test fun urlsWithEncodedValuesAreListedAsTemplates() {
+        fun commands(url: String) = Compiler.compile("widget {\n meta { owl: 8 }\n state v = \"x\"\n state n = 1\n source s = http($url) json\n Text { text: v } }").commands
+        val v = Compiler.VALUE
+        assertEquals(listOf("http GET https://a.b/c/$v?d=${Compiler.NUMBER}"), commands("\"https://a.b/c/${'$'}{enc(v)}?d=${'$'}{int(n)}\""))
+        // A null branch pauses the source: nothing to list for it.
+        assertEquals(listOf("http GET https://a.b/q?x=$v"), commands("n > 1 ? \"https://a.b/q?x=\" + enc(v) : null"))
+        assertEquals(listOf("http GET https://a.b/1", "http GET http://c.d:8080/2"), commands("n > 1 ? \"https://a.b/1\" : \"http://c.d:8080/2\""))
+        // A value in the host, or not through enc(...), could send it anywhere.
+        for (bad in listOf("\"https://${'$'}{enc(v)}/x\"", "\"https://a.b${'$'}{enc(v)}/x\"", "\"https://a.b/${'$'}{v}\"", "\"https://a.b/${'$'}{sh(v)}\"", "\"${'$'}{enc(v)}\"", "n > 1 ? null : null")) {
+            assertEquals(bad, listOf("http GET (a URL built from widget values)"), commands(bad))
+        }
+    }
+
+    @Test fun urlValuesNotThroughEncAreWarnedAboutWithTheFix() {
+        fun warnings(url: String) = Compiler.compile("widget {\n meta { owl: 8 }\n state v = \"x\"\n source s = http($url) json\n Text { text: v } }").warnings
+        assertEquals(listOf("4:35: a value in this URL isn't put through enc(), so the store's review can't show where it goes: write \${enc(lower(v))} (a number can go through int(n) or fixed(n, 4) instead; a path with / in it can't, so write its fixed parts out and enc() only the values between them)"), warnings("\"https://a.b/q=${'$'}{lower(v)}\""))
+        assertTrue(warnings("\"https://a.b/q=\" + v").single().contains("write enc(v)"))
+        assertTrue(warnings("\"https://a.b/${'$'}{sh(v)}\"").single().contains("enc(...) instead of sh(...)"))
+        assertTrue(warnings("\"https://${'$'}{enc(v)}/x\"").single().contains("the server in this URL comes from a value"))
+        assertEquals(emptyList<String>(), warnings("\"https://a.b/${'$'}{enc(v)}\""))
+        // The whole URL from a value: enc() would break it, so the fix is to write it out.
+        assertTrue(warnings("v").single().contains("this URL is all a value (v)"))
+        assertTrue(warnings("v == \"\" ? null : v").single().contains("this URL is all a value"))
+        assertTrue(warnings("\"https://a.b/${'$'}{replace(v, \" \", \"%20\")}\"").single().contains("drop the replace(...)"))
+        // A fixed let is fixed text: listed, nothing to warn about.
+        val p = Compiler.compile("widget {\n meta { owl: 8 }\n let api = \"https://a.b\"\n state v = \"x\"\n source s = http(\"${'$'}{api}/q/${'$'}{enc(v)}\") json\n Text { text: v } }")
+        assertEquals(listOf("http GET https://a.b/q/${Compiler.VALUE}"), p.commands)
+        assertEquals(emptyList<String>(), p.warnings)
     }
 
     @Test fun fmtTimeFollowsLanguageChanges() {

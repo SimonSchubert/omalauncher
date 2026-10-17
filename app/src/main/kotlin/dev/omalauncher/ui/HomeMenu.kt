@@ -12,12 +12,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
+import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.newOwlCommand
 import kotlinx.coroutines.launch
@@ -58,7 +60,7 @@ fun HomeMenu(
     val agent = runtime.agents.default
     val agentName = agent?.name?.lowercase() ?: "an agent"
     // These need Linux; without it they open its install sheet.
-    val linux = runtime.bootstrap.isInstalled
+    val linux = runtime.bootstrap.state.collectAsState().value == LinuxState.Installed
     val scope = rememberCoroutineScope()
 
     /** Recolors right away, then applies the full theme: its first background, like omarchy-theme-set, and the guest's configs. */
@@ -76,11 +78,7 @@ fun HomeMenu(
                 for ((kind, label) in listOf(OwlKind.Widget to "widget", OwlKind.App to "app")) {
                     BracketAction(label, Palette.accent) {
                         state.homeMenuOpen = false
-                        when {
-                            !linux -> state.show(SettingsPage.Linux)
-                            agent == null -> state.show(SettingsPage.Agents)
-                            else -> runtime.terminal(newOwlCommand(agent.bin, kind), "New ${kind.word}", agent)
-                        }
+                        if (linux) state.withAgent(runtime, "New ${kind.word}") { newOwlCommand(it, kind) } else state.show(SettingsPage.Linux)
                     }
                 }
             }

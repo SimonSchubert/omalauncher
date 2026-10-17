@@ -3,7 +3,10 @@ package dev.omalauncher.linux
 import android.content.Context
 import android.system.Os
 import android.util.Log
+import dev.omalauncher.CountingInputStream
 import dev.omalauncher.LauncherData
+import dev.omalauncher.httpGet
+import dev.omalauncher.sha256Hex
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.upgrade.StepJournal
 import dev.omalauncher.upgrade.writeAtomically
@@ -15,8 +18,6 @@ import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.io.BufferedInputStream
 import java.io.File
-import java.io.FilterInputStream
-import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.zip.GZIPInputStream
@@ -43,6 +44,7 @@ private val PACKAGES =
 /** Omarchy's Winamp-style player; not in Arch's ARM repos, but upstream ships an arm64 build. */
 private const val CLIAMP_VERSION = "v2.3.0"
 private const val CLIAMP_URL = "https://github.com/bjarneo/cliamp/releases/download/$CLIAMP_VERSION/cliamp-linux-arm64"
+private const val CLIAMP_SHA256 = "827b4aa879feecab33ea621dc1460c60ffa765c210b5046d679ce5a4073d2b32"
 
 private val MIRRORS =
     listOf(
@@ -133,7 +135,7 @@ class Bootstrap(
     val isInstalled get() = _state.value == LinuxState.Installed
 
     /** An install was started (and may still need to finish), or one finished. */
-    val wanted get() = journal.setupComplete || choiceFile.exists() || File(proot.filesDir, "rootfs-ready").exists()
+    val wanted get() = journal.setupComplete || choiceFile.exists()
 
     /** Update steps running after the home screen is up; Idle when there are none. */
     private val _updates = MutableStateFlow<JobState>(JobState.Idle)
@@ -193,20 +195,6 @@ class Bootstrap(
     }
 
     /**
-     * Launchers before the step journal marked a finished setup with files/rootfs-ready
-     * (and the app packages with apps-vN). Such a system is set up: record what those
-     * builds did, so only newer steps run. Never let it look like a fresh install.
-     */
-    private fun adoptLegacySetup() {
-        val ready = File(proot.filesDir, "rootfs-ready")
-        if (journal.setupComplete || !ready.exists()) return
-        for (id in listOf("rootfs", "etc-1", "keyring-1", "no-kernel-1", "packages-1")) journal.mark(id)
-        if (File(proot.rootfs, "usr/local/bin/cliamp").exists()) journal.mark("cliamp-$CLIAMP_VERSION")
-        journal.completeSetup()
-        proot.filesDir.listFiles { f -> f.name == "rootfs-ready" || f.name.startsWith("apps-v") }?.forEach { it.delete() }
-    }
-
-    /**
      * Brings Linux to [LinuxState.Installed] if it's wanted: updates an
      * installed system, or continues an install that was started (also
      * after the app was killed during it). Otherwise reports NotInstalled.
@@ -214,7 +202,6 @@ class Bootstrap(
     suspend fun run() =
         withContext(Dispatchers.IO) {
             try {
-                adoptLegacySetup()
                 when {
                     journal.setupComplete -> update()
                     !choiceFile.exists() -> {
@@ -366,7 +353,7 @@ class Bootstrap(
     /** Always a fresh unpack: this step only runs until one completed, so a rootfs here is a half-unpacked one. */
     private fun installRootfs() {
         // Unpacking replaces the rootfs: the user's home, packages and agents. Only ever before a setup finished.
-        check(!journal.setupComplete && !File(proot.filesDir, "rootfs-ready").exists()) { "refusing to replace a set-up system" }
+        check(!journal.setupComplete) { "refusing to replace a set-up system" }
         val obtained = obtainTarball()
         // External storage can change independently: verify and extract the same internal snapshot.
         val supplied = obtained.parentFile != context.cacheDir
@@ -417,39 +404,51 @@ class Bootstrap(
         val headers = if (have > 0) mapOf("Range" to "bytes=$have-", "If-Range" to validator.readText()) else emptyMap()
         val conn = openHttps(URL(ROOTFS_URL), headers)
         try {
-            val resumed = conn.responseCode == HttpURLConnection.HTTP_PARTIAL
-            if (conn.responseCode !in 200..299) error("download failed: HTTP ${conn.responseCode}")
-            val start = if (resumed) have else 0L
-            val total = conn.contentLengthLong.let { if (it > 0) it + start else -1L }
-            (conn.getHeaderField("ETag") ?: conn.getHeaderField("Last-Modified"))?.let(validator::writeText) ?: validator.delete()
-            conn.inputStream.use { input ->
-                java.io.FileOutputStream(partial, resumed).use { out ->
-                    val buf = ByteArray(1 shl 16)
-                    var done = start
-                    var lastReport = 0L
-                    while (true) {
-                        val n = input.read(buf)
-                        if (n < 0) break
-                        out.write(buf, 0, n)
-                        done += n
-                        check(done <= 3L * 1024 * 1024 * 1024) { "Linux download is too large" }
-                        if (done - lastReport > 4 shl 20) {
-                            lastReport = done
-                            report(
-                                Stage.Download,
-                                if (total > 0) "${done shr 20} of ${total shr 20} MB" else "${done shr 20} MB",
-                                if (total > 0) done.toFloat() / total else null,
-                            )
-                        }
+            download(conn, partial, validator, have)
+        } finally {
+            conn.disconnect()
+        }
+        // Only a complete download is kept for a retry.
+        check(partial.renameTo(target)) { "can't move the download into place" }
+        validator.delete()
+        return target
+    }
+
+    /** Into [partial], continuing it if the server still has the version [validator] names. Throws if it ends short. */
+    private fun download(
+        conn: HttpURLConnection,
+        partial: File,
+        validator: File,
+        have: Long,
+    ) {
+        val resumed = conn.responseCode == HttpURLConnection.HTTP_PARTIAL
+        if (conn.responseCode !in 200..299) error("download failed: HTTP ${conn.responseCode}")
+        val start = if (resumed) have else 0L
+        val total = conn.contentLengthLong.let { if (it > 0) it + start else -1L }
+        (conn.getHeaderField("ETag") ?: conn.getHeaderField("Last-Modified"))?.let(validator::writeText) ?: validator.delete()
+        conn.inputStream.use { input ->
+            java.io.FileOutputStream(partial, resumed).use { out ->
+                val buf = ByteArray(1 shl 16)
+                var done = start
+                var lastReport = 0L
+                while (true) {
+                    val n = input.read(buf)
+                    if (n < 0) break
+                    out.write(buf, 0, n)
+                    done += n
+                    check(done <= 3L * 1024 * 1024 * 1024) { "Linux download is too large" }
+                    if (done - lastReport > 4 shl 20) {
+                        lastReport = done
+                        report(
+                            Stage.Download,
+                            if (total > 0) "${done shr 20} of ${total shr 20} MB" else "${done shr 20} MB",
+                            if (total > 0) done.toFloat() / total else null,
+                        )
                     }
                 }
             }
-            // Only a complete download is kept for a retry.
-            check(total <= 0 || partial.length() == total) { "the download was cut short; retry to continue it" }
-            check(partial.renameTo(target)) { "Cannot save Linux download" }
-            validator.delete()
-            return target
-        } finally { conn.disconnect() }
+        }
+        check(total <= 0 || partial.length() == total) { "the download was cut short; retry to continue it" }
     }
 
     private fun extract(tarball: File) {
@@ -530,7 +529,9 @@ class Bootstrap(
     }
 
     private fun installCliamp() {
-        val bytes = URL(CLIAMP_URL).openStream().use { it.readBytes() }
+        // Runs under pacman's lock, so a stalled download must time out rather than hold it.
+        val bytes = httpGet(CLIAMP_URL)
+        check(sha256Hex(bytes) == CLIAMP_SHA256) { "cliamp download doesn't match $CLIAMP_VERSION" }
         writeAtomically(File(proot.rootfs, "usr/local/bin/cliamp"), bytes, executable = true)
     }
 
@@ -539,19 +540,4 @@ class Bootstrap(
         val code = proot.run(script) { line -> if (log.add(line)) report(stage, step) }
         check(code == 0) { "`${script.take(60)}` failed (exit $code)" }
     }
-}
-
-private class CountingInputStream(
-    input: InputStream,
-) : FilterInputStream(input) {
-    var count = 0L
-        private set
-
-    override fun read(): Int = super.read().also { if (it >= 0) count++ }
-
-    override fun read(
-        b: ByteArray,
-        off: Int,
-        len: Int,
-    ): Int = super.read(b, off, len).also { if (it > 0) count += it }
 }

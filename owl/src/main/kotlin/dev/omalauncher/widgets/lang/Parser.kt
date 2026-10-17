@@ -14,15 +14,13 @@ class Parser private constructor(
     companion object {
         fun parse(src: String): WidgetAst = Parser(src, Lexer(src).run()).widget()
 
-        fun parseExpr(src: String): Expr = Parser(src, Lexer(src).run()).run { expr().also { expect(T.Eof) } }
-
         /** Declarations written as a block: `meta { ... }`, `requires { ... }`. */
         private val BLOCK_DECLS = setOf("meta", "requires")
 
         private val DECLS = setOf("source", "state", "let", "asset", "component", "meta", "requires")
 
         /** Statements that run on a timer or a change, not a touch: `when cond { ... }`. */
-        val TRIGGERS = setOf("every", "at", "when", "on")
+        val TRIGGERS = TriggerKind.entries.mapTo(HashSet()) { it.word }
     }
 
     private val t get() = tokens[p]

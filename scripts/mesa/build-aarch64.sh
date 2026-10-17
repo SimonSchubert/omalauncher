@@ -1,6 +1,7 @@
 #!/bin/bash
-# Reproduce the Adreno OpenGL bundle: Mesa 26.2.4 plus
-# 0001-egl-wayland-keep-zink-on-shm.patch, built for aarch64 under qemu-user.
+# Reproduce the OpenGL bundle: Mesa 26.2.4 plus
+# 0001-egl-wayland-keep-zink-on-shm.patch and
+# 0002-zink-acquire-swapchain-resolve-before-use.patch, built for aarch64 under qemu-user.
 #
 # Usage:
 #   scripts/mesa/build-aarch64.sh
@@ -14,6 +15,7 @@ set -euo pipefail
 CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/oma-mesa-build"
 ROOT="$CACHE/root"
 PATCH="$(cd "$(dirname "$0")" && pwd)/0001-egl-wayland-keep-zink-on-shm.patch"
+PATCH_ZINK="$(cd "$(dirname "$0")" && pwd)/0002-zink-acquire-swapchain-resolve-before-use.patch"
 
 MESA_URL="https://gitlab.freedesktop.org/mesa/mesa/-/archive/mesa-26.2.4/mesa-mesa-26.2.4.tar.gz"
 MESA_SHA256="89d4c3bf09fac8968f4198d00a6328e5e0df02f18d4b17b8eedc6b1a5773ae6b"
@@ -54,6 +56,10 @@ fi
 if ! grep -q 'disp->Options.ForceSoftware || disp->Options.Zink' \
   "$MESA_SRC/src/egl/drivers/dri2/platform_wayland.c"; then
   patch -p1 -d "$MESA_SRC" < "$PATCH"
+fi
+if ! grep -q 'must be acquired before the batch uses' \
+  "$MESA_SRC/src/gallium/drivers/zink/zink_context.c"; then
+  patch -p1 -d "$MESA_SRC" < "$PATCH_ZINK"
 fi
 
 if [ ! -x "$ROOT/bin/bash" ]; then

@@ -51,6 +51,7 @@ private fun check(files: List<String>): Int {
         try {
             val p = Compiler.compile(text)
             println("ok  $f  (${p.name}, ${p.nodeCount} nodes)")
+            for (w in p.warnings) println("  warning: $w")
         } catch (e: CompileError) {
             failed++
             println("ERR $f:" + Source(text).format(e))
@@ -123,14 +124,37 @@ private fun index(args: List<String>): Int {
             val themes =
                 File(f.parentFile, "previews").listFiles { p -> p.extension in setOf("webp", "png") }.orEmpty().sortedBy { it.name }
                     .associate { it.nameWithoutExtension to it.relativeTo(repo).invariantSeparatorsPath }
+            // An image icon (an asset) is written out beside the app for the store to load, like a preview; an SVG goes in the catalog.
+            val iconFile =
+                r.program?.iconImage?.let { bytes ->
+                    val ext = imageExtension(bytes) ?: return@let null
+                    File(f.parentFile, "store-icon.$ext").apply { writeBytes(bytes) }.relativeTo(repo).invariantSeparatorsPath
+                }
+            // screens/<n>/<omarchy theme>.webp: an app's other screens, from 2 on, in each theme.
+            val screens =
+                File(f.parentFile, "screens").listFiles { d -> d.isDirectory && d.name.toIntOrNull() != null }.orEmpty().sortedBy { it.name.toInt() }
+                    .flatMap { d -> d.listFiles { p -> p.extension in setOf("webp", "png") }.orEmpty().map { it.nameWithoutExtension to it.relativeTo(repo).invariantSeparatorsPath } }
+                    .groupBy({ it.first }, { it.second }).toSortedMap()
             val added = firstCommit(repo, path)
-            r.entry(preview, themes).copy(added = added, new = Catalog.isNew(added, today))
+            r.entry(preview, themes, iconFile).copy(screens = screens).copy(added = added, new = Catalog.isNew(added, today))
         }.toList()
     val order = File(repo, "order.txt").takeIf { it.exists() }?.readText().orEmpty()
     val out = if (kind == OwlKind.App) "apps.json" else "index.json"
     File(repo, out).writeText(Catalog.write(Catalog.ordered(entries, order), Instant.now().toString(), "${kind.word}s"))
     System.err.println("$out: ${entries.size} ${kind.word}s")
     return 0
+}
+
+/** The file extension for an image asset's bytes, by their signature; null for anything a store icon can't be. */
+private fun imageExtension(bytes: ByteArray): String? {
+    fun starts(vararg b: Int) = bytes.size >= b.size && b.indices.all { bytes[it] == b[it].toByte() }
+    return when {
+        starts(0x89, 'P'.code, 'N'.code, 'G'.code) -> "png"
+        starts(0xff, 0xd8, 0xff) -> "jpg"
+        starts('G'.code, 'I'.code, 'F'.code) -> "gif"
+        starts('R'.code, 'I'.code, 'F'.code, 'F'.code) && bytes.size >= 12 && String(bytes, 8, 4) == "WEBP" -> "webp"
+        else -> null
+    }
 }
 
 /**

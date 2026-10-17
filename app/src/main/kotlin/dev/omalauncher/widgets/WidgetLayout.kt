@@ -37,29 +37,12 @@ class WidgetLayout(
 
     init {
         (Versioned.read(prefs.getString(LAYOUT, null), VERSION) as? JSONObject)?.let(::load)
-        migrateLegacy(context)
     }
 
     private fun load(data: JSONObject) {
         val columns = data.optInt("columns", GRID_COLUMNS)
         data.optJSONObject("cells")?.mapEntries { _, c -> rescale(Cell(c.getInt("x"), c.getInt("y"), c.getInt("w"), c.getInt("h")), columns) }?.let(cells::putAll)
         data.optJSONObject("pages")?.let { p -> for (k in p.keys()) pages[k] = p.optInt(k, 1) }
-    }
-
-    /**
-     * Launchers before versioning kept the cells under "cells" (6 columns) and
-     * page overrides in their own preferences. Those are the user's arrangement:
-     * they win over anything placed since, and are removed once carried over.
-     */
-    private fun migrateLegacy(context: Context) {
-        val old = prefs.getString(LEGACY_CELLS, null)
-        val oldPages = context.getSharedPreferences(LEGACY_PAGES, Context.MODE_PRIVATE)
-        if (old == null && oldPages.all.isEmpty()) return
-        old?.let { runCatching { load(JSONObject().put("columns", 6).put("cells", JSONObject(it))) } }
-        for ((k, v) in oldPages.all) (v as? Int)?.let { pages[k] = it }
-        save()
-        prefs.edit().remove(LEGACY_CELLS).apply()
-        oldPages.edit().clear().apply()
     }
 
     /** A cell saved on a grid of [columns], moved onto today's. */
@@ -218,8 +201,6 @@ class WidgetLayout(
     private companion object {
         const val LAYOUT = "layout"
         const val VERSION = 1
-        const val LEGACY_CELLS = "cells"
         const val PORTRAIT_ROWS = "portrait_rows_"
-        const val LEGACY_PAGES = "widget_pages"
     }
 }

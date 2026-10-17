@@ -8,6 +8,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import dev.omalauncher.httpGet
+import dev.omalauncher.ui.decodeImageIcon
+import dev.omalauncher.ui.decodeSvgIcon
 import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapEntries
 import dev.omalauncher.upgrade.writeAtomically
@@ -59,6 +61,7 @@ class Market(
     val busy = mutableStateMapOf<String, String>()
     val installed = mutableStateMapOf<String, Installed>()
     private val previews = HashMap<String, ImageBitmap?>()
+    private val icons = HashMap<Pair<String, Int>, ImageBitmap?>()
     private val catalog = if (kind == OwlKind.App) "apps.json" else "index.json"
 
     /** Each kind keeps its own records: an app and a widget may share an id. */
@@ -117,8 +120,10 @@ class Market(
     suspend fun preview(
         e: CatalogEntry,
         theme: String?,
-    ): ImageBitmap? {
-        val path = e.previewFor(theme) ?: return null
+    ): ImageBitmap? = e.previewFor(theme)?.let { image(it) }
+
+    /** A preview or screen from the store, by its path in the catalog; null when it can't be loaded. */
+    suspend fun image(path: String): ImageBitmap? {
         synchronized(previews) { if (path in previews) return previews[path] }
         val img =
             withContext(Dispatchers.IO) {
@@ -128,10 +133,30 @@ class Market(
         return img
     }
 
+    /**
+     * [e]'s icon at [size] px square, as the drawer draws it: an SVG with `currentColor` in [accent], an image as it is;
+     * null when it has none.
+     */
+    suspend fun icon(
+        e: CatalogEntry,
+        size: Int,
+        accent: Int,
+    ): ImageBitmap? {
+        val key = (e.icon ?: e.iconFile ?: return null) to (if (e.icon != null) accent else 0)
+        synchronized(icons) { if (key in icons) return icons[key] }
+        val img =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    if (e.icon != null) decodeSvgIcon(e.icon!!, size, accent) else decodeImageIcon(httpGet(BASE + e.iconFile), size)
+                }.getOrNull()?.asImageBitmap()
+            }
+        synchronized(icons) { icons[key] = img }
+        return img
+    }
+
     /** Reads the install records; call off the main thread before the store opens. */
     fun load() {
-        // Version 0 (before versioning) is the same object, unwrapped.
-        val data = Versioned.read(record.takeIf { it.exists() }?.readText(), VERSION) { _, d -> d } as? JSONObject ?: return
+        val data = Versioned.read(record.takeIf { it.exists() }?.readText(), VERSION) as? JSONObject ?: return
         installed.putAll(
             data.mapEntries { id, f ->
                 Installed(

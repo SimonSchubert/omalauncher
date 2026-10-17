@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
+import dev.omalauncher.Runtime
 
 /** App panel position (above the bar): 0 = closed, 1 = open. Follows the finger while dragging. */
 class LauncherState {
@@ -130,4 +131,14 @@ class LauncherState {
             else -> close()
         }
     }
+}
+
+/** Opens the default agent in a terminal named [title] on [command] for its binary; with no agent installed, the agents screen. */
+fun LauncherState.withAgent(
+    runtime: Runtime,
+    title: String,
+    command: (bin: String) -> String,
+) {
+    val agent = runtime.agents.default ?: return show(SettingsPage.Agents)
+    runtime.terminal(command(agent.bin), title, agent)
 }

@@ -161,8 +161,7 @@ private fun DesktopScreen(
                 shortcuts = { app -> shortcutMenu(runtime, app, page = { state.currentPage }, onOpen = state::closeNow, onPinned = state::close) },
                 edit = { spec ->
                     state.closeNow()
-                    val agent = runtime.agents.default
-                    if (agent == null) state.show(SettingsPage.Agents) else runtime.terminal(editWidgetCommand(agent.bin, spec), "Edit ${spec.name}", agent)
+                    state.withAgent(runtime, "Edit ${spec.name}") { editWidgetCommand(it, spec) }
                 },
                 // The same screen a widget is shared from: a link or QR code, or the store.
                 share = { spec ->
@@ -281,10 +280,7 @@ private fun ThemesOverlay(
             link,
             state.currentPage,
             // Stays open underneath, to add it once the agent has had its say.
-            onReview = { path ->
-                val agent = runtime.agents.default
-                if (agent == null) state.show(SettingsPage.Agents) else runtime.terminal(reviewSharedWidgetCommand(agent.bin, path), "Review widget", agent)
-            },
+            onReview = { path -> state.withAgent(runtime, "Review widget") { reviewSharedWidgetCommand(it, path) } },
             onDismiss = { state.shared = null },
         )
     }
@@ -299,15 +295,13 @@ private fun ThemesOverlay(
                     {
                         state.sharing = null
                         // The default agent opens a pull request (or an issue) on the store repo.
-                        val agent = runtime.agents.default
-                        if (agent == null) state.show(SettingsPage.Agents) else runtime.terminal(publishWidgetCommand(agent.bin, spec), "Publish ${spec.name}", agent)
+                        state.withAgent(runtime, "Publish ${spec.name}") { publishWidgetCommand(it, spec) }
                     }
                 },
             // Closes the screen: what the agent changes would be shared from a fresh one.
             onCheck = {
                 state.sharing = null
-                val agent = runtime.agents.default
-                if (agent == null) state.show(SettingsPage.Agents) else runtime.terminal(checkSecretsCommand(agent.bin, spec), "Check ${spec.name}", agent)
+                state.withAgent(runtime, "Check ${spec.name}") { checkSecretsCommand(it, spec) }
             },
             onDismiss = { state.sharing = null },
         )
