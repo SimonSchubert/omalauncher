@@ -112,7 +112,8 @@ class TaskbarTrampoline : Activity() {
         ) {
             val intent =
                 Intent(context, TaskbarTrampoline::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    // A task of its own every time: a relayed trampoline would otherwise just bring the first one's back.
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
                     .putParcelableArrayListExtra(EXTRA_STEPS, bundles)
             runCatching { context.startActivity(intent) }.onFailure { Log.w(TAG, "couldn't start the trampoline", it) }
         }
