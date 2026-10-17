@@ -44,6 +44,21 @@ class Notifications(
 
     private fun text(sbn: StatusBarNotification) = sbn.notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.takeIf { it.isNotBlank() }
 
+    /** The conversation's messages of a MessagingStyle notification, oldest first. */
+    private fun messages(sbn: StatusBarNotification): List<Value> {
+        val style = sbn.notification.extras.getParcelableArray(Notification.EXTRA_MESSAGING_STYLE)
+            ?.filterIsInstance<Notification.MessagingStyle>()?.lastOrNull() ?: return emptyList()
+        return style.messages.map { m ->
+            Obj(
+                mapOf(
+                    "sender" to Str(m.senderPerson?.name?.toString().orEmpty()),
+                    "text" to Str(m.text?.toString().orEmpty()),
+                    "time" to Num(Math.floor(m.timestamp / 1000.0)),
+                ),
+            )
+        }
+    }
+
     private fun label(pkg: String) =
         labels.getOrPut(pkg) {
             runCatching {
@@ -70,6 +85,7 @@ class Notifications(
                         "text" to Str(text(sbn).orEmpty()),
                         "time" to Num(Math.floor(sbn.postTime / 1000.0)),
                         "clearable" to bool(sbn.isClearable),
+                        "messages" to Lst(messages(sbn)),
                     ),
                 )
             }
