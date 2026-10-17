@@ -90,4 +90,15 @@ class TaskbarAppsTest {
         assertEquals(null, frontTask(tasks, "dev.omalauncher.FilesActivity", window, alias::get))
         assertEquals(null, frontTask(tasks, "dev.omalauncher.taskbar.TaskbarTrampoline", window, alias::get))
     }
+
+    @Test fun ourFilesScreenStandsInForItsLinuxEntry() {
+        val screens = mapOf("dev.omalauncher.FilesActivity" to "omarchy-files", "dev.omalauncher.EditorActivity" to "omarchy-edit")
+        val apps = listOf("btop" to "btop", "files" to "omarchy-files", "editor" to "omarchy-edit")
+        assertEquals("files" to "omarchy-files", appOfScreen("dev.omalauncher.FilesActivity", screens, apps) { it.second })
+        assertEquals("editor" to "omarchy-edit", appOfScreen("dev.omalauncher.EditorActivity", screens, apps) { it.second })
+        // Another screen of ours, or Files when the catalog has no entry for it, stands in for nothing.
+        assertEquals(null, appOfScreen("dev.omalauncher.SettingsActivity", screens, apps) { it.second })
+        assertEquals(null, appOfScreen(null, screens, apps) { it.second })
+        assertEquals(null, appOfScreen("dev.omalauncher.FilesActivity", screens, apps.take(1)) { it.second })
+    }
 }

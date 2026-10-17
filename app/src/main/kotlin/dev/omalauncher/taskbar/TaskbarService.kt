@@ -47,7 +47,11 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.App
 import dev.omalauncher.InstantActivity
+import dev.omalauncher.EditorActivity
+import dev.omalauncher.FilesActivity
 import dev.omalauncher.LinuxWindowActivity
+import dev.omalauncher.linux.EDIT_COMMAND
+import dev.omalauncher.linux.FILES_COMMAND
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.matches
 import dev.omalauncher.ui.LauncherStyle
@@ -230,12 +234,13 @@ class TaskbarService : AccessibilityService() {
 
     /**
      * The Linux app whose window of ours just came to the front ([className] is the system's name for the activity that
-     * did; see [frontTask]), so the tray lists it as recent as an Android app seen there; null for our other screens, or a
-     * window of no app.
+     * did; see [frontTask]), or whose entry our Files or editor screen stands in for, so the tray lists it as recent as an
+     * Android app seen there; null for our other screens, or a window of no app.
      */
     @RequiresApi(35)
     private fun linuxAppInFront(className: String?): LinuxApp? {
         if (!runtime.bootstrap.isInstalled) return null
+        appOfScreen(className, LINUX_SCREENS, runtime.linuxApps.apps) { it.exec }?.let { return it }
         val task = frontTask(linuxTasks(), className, LinuxWindowActivity::class.java.name) { it.intent.component?.className } ?: return null
         val window = runtime.wm.windowByHandle(task.window.handle) ?: return null
         val names = listOf(runtime.displayName(window.appId, window.title), window.title)
@@ -635,6 +640,9 @@ class TaskbarService : AccessibilityService() {
         const val HIDE_AFTER_MS = 4000L
         const val LINUX_SCHEME = "omarchy"
         val SPLIT_KINDS = setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight, ZoneKind.SplitTop, ZoneKind.SplitBottom)
+
+        /** Our screens that open for a Linux catalog entry's command; see [appOfScreen]. */
+        val LINUX_SCREENS = mapOf(FilesActivity::class.java.name to FILES_COMMAND, EditorActivity::class.java.name to EDIT_COMMAND)
     }
 }
 

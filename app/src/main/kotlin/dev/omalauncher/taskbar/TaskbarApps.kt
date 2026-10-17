@@ -80,6 +80,17 @@ fun <T> frontTask(
     tasks.firstOrNull { className != null && classOf(it) == className }
         ?: tasks.firstOrNull()?.takeIf { className == null || className == windowClass }
 
+/**
+ * The Linux catalog entry one of the launcher's own screens stands in for, from the system's [className] for it: [screens]
+ * maps such a screen (Files, the editor) to the command its entry runs, which the launcher opens that screen for instead.
+ */
+fun <A> appOfScreen(
+    className: String?,
+    screens: Map<String, String>,
+    apps: List<A>,
+    execOf: (A) -> String,
+): A? = screens[className]?.let { command -> apps.firstOrNull { execOf(it) == command } }
+
 /** [keys] with [key] first, at most [max] long. */
 fun moveToFront(
     keys: List<String>,
