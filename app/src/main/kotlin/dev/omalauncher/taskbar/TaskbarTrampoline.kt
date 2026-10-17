@@ -108,7 +108,7 @@ class TaskbarTrampoline : Activity() {
             step.containsKey(INTENT) -> {
                 val intent = Intent(step.getParcelable<Intent>(INTENT) ?: return).addFlags(adjacentFlag(step))
                 // No opening animation and a splash in the window's own colour (see the theme): a Linux window's activity,
-                // which shows a window already there or just made.
+                // which shows a window already there or just made, or one of our own screens.
                 val options = ActivityOptions.makeCustomAnimation(this, 0, 0)
                 if (Build.VERSION.SDK_INT >= 33) options.setSplashScreenStyle(SplashScreen.SPLASH_SCREEN_STYLE_SOLID_COLOR)
                 runCatching { startActivity(intent, options.toBundle()) }.onFailure { Log.w(TAG, "couldn't start ${intent.data ?: intent.component}", it) }
@@ -225,7 +225,8 @@ class TaskbarTrampoline : Activity() {
         }
 
         /**
-         * Starts [intent] (a Linux window's, in a new task) in the split half at [target], as [replace] opens an app.
+         * Starts [intent] (a Linux window's, or one of our own screens', in a new task) in the split half at [target], as
+         * [replace] opens an app.
          * [leaving] is the window's old task, if it had one: it goes once the new activity has taken the window over.
          */
         fun replace(

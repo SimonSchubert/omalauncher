@@ -615,6 +615,17 @@ class Runtime(
         if (widgets.isApp(name)) InstantActivity.startInstantly(context, OwlAppActivity.intent(context, name))
     }
 
+    /**
+     * The intent of the launcher's own screen [app] stands for (Files, the editor), in a task of its own, for opening it
+     * somewhere else than [launch] does, say in a split half; null for an app that opens a Linux window.
+     */
+    fun screenIntent(app: LinuxApp): Intent? =
+        when (app.exec) {
+            FILES_COMMAND -> Intent(context, FilesActivity::class.java)
+            EDIT_COMMAND -> EditorActivity.intent(context, null)
+            else -> null
+        }?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
     /** Opens the Files app, at [path] (a guest path) if given. */
     fun openFiles(path: String? = null) {
         InstantActivity.startInstantly(context, Intent(context, FilesActivity::class.java).putExtra(FilesActivity.EXTRA_PATH, path))
