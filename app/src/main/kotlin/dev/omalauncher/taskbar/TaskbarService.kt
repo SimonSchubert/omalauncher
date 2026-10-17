@@ -517,7 +517,7 @@ class TaskbarService : AccessibilityService() {
      * Opens the Linux [app], dropped in a split zone of [kind], next to the app or Linux window [partner] on screen; see
      * [splitHalves]. A window the app has goes there, its task brought forward or a new activity for it; an app without
      * one starts, and its first window goes there once it shows up (see [dev.omalauncher.Runtime.launch]). The app just
-     * opens if the partner has gone since the drag began, or the app opens no Linux window (Files, the editor).
+     * opens if the partner has gone since the drag began. Files and the editor, our own screens, go there as an app does.
      */
     @RequiresApi(35)
     private fun nextTo(
@@ -533,7 +533,15 @@ class TaskbarService : AccessibilityService() {
                     personalApp(partner)?.let { SplitHalf.App(it) }
                 }
             ) ?: return open(app)
-        if (!runtime.opensLinuxWindow(app)) return open(app)
+        if (!runtime.opensLinuxWindow(app)) {
+            val intent = runtime.screenIntent(app) ?: return open(app)
+            val steps = splitHalves(kind, SplitHalf.Fresh(intent), half) ?: return open(app)
+            runtime.cancelWindowPlans()
+            runtime.usage.record(linuxKey(app.id))
+            TaskbarTrampoline.start(this, steps)
+            tray = false
+            return
+        }
         runtime.usage.record(linuxKey(app.id))
         tray = false
         val window = runtime.windowOf(app)
@@ -555,14 +563,21 @@ class TaskbarService : AccessibilityService() {
     /**
      * Opens the Linux [app] in the split half at [half], replacing what's there; see [TaskbarTrampoline.replace]. A window
      * it has gets a new activity there, and its old task goes; an app without one starts, and its first window goes
-     * there once it shows up.
+     * there once it shows up. Files and the editor, our own screens, go there as an app does.
      */
     @RequiresApi(35)
     private fun replace(
         app: LinuxApp,
         half: ZoneBox,
     ) {
-        if (!runtime.opensLinuxWindow(app)) return open(app)
+        if (!runtime.opensLinuxWindow(app)) {
+            val intent = runtime.screenIntent(app) ?: return open(app)
+            runtime.cancelWindowPlans()
+            runtime.usage.record(linuxKey(app.id))
+            TaskbarTrampoline.replace(this, intent, half, leaving = null)
+            tray = false
+            return
+        }
         runtime.usage.record(linuxKey(app.id))
         tray = false
         val window = runtime.windowOf(app)
