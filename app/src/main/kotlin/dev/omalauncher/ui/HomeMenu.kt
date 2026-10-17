@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -20,6 +21,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
+import dev.omalauncher.widgets.Folder
+import dev.omalauncher.widgets.HomeItem
+import dev.omalauncher.widgets.Shortcut
+import dev.omalauncher.widgets.WidgetItem
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.newOwlCommand
 import kotlinx.coroutines.launch
@@ -94,6 +99,14 @@ fun HomeMenu(
             state.homeMenuOpen = false
             state.show(SettingsPage.Store)
         }
+        // Only with the unfolded layout on: what the home showing hides.
+        val hidden = engine.hiddenItems()
+        if (hidden.isNotEmpty()) {
+            MenuItem("hidden (${hidden.size})") {
+                state.homeMenuOpen = false
+                state.hiddenOpen = true
+            }
+        }
         Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             ThemeStrip(
                 runtime.themes,
@@ -107,6 +120,30 @@ fun HomeMenu(
         }
     }
 }
+
+/** What the home showing hides; a tap brings one back to the page showing. */
+@Composable
+fun HiddenMenu(
+    runtime: Runtime,
+    state: LauncherState,
+) {
+    if (!state.hiddenOpen) return
+    val engine = runtime.widgets
+    val items = engine.hiddenItems()
+    LaunchedEffect(items.isEmpty()) { if (items.isEmpty()) state.hiddenOpen = false }
+    Menu(onDismiss = { state.hiddenOpen = false }) {
+        for (item in items) {
+            MenuItem(hiddenLabel(item)) { engine.reveal(item.key, state.currentPage) }
+        }
+    }
+}
+
+private fun hiddenLabel(item: HomeItem) =
+    when (item) {
+        is WidgetItem -> item.spec.name
+        is Shortcut -> item.label
+        is Folder -> "folder · " + item.apps.joinToString(", ") { it.label }
+    }
 
 @Composable
 private fun Menu(

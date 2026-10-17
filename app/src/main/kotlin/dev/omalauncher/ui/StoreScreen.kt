@@ -123,8 +123,14 @@ fun StoreScreen(
                         theme = theme,
                         linux = engine.linux,
                         page = page,
+                        // Installed, but this home hides it: offered back instead of a second copy.
+                        shown = market.installedVersion(e)?.let { !engine.profiles.isHidden(it.file) } != false,
                         message = message,
                         modifier = modifier,
+                        onShow = {
+                            market.installedVersion(e)?.let { engine.reveal(it.file, page) }
+                            onDismiss()
+                        },
                         onInstall = {
                             scope.launch {
                                 message = market.install(e, page)
@@ -480,9 +486,11 @@ private fun Detail(
     theme: String?,
     linux: Boolean,
     page: Int,
+    shown: Boolean,
     message: String?,
     modifier: Modifier,
     onInstall: () -> Unit,
+    onShow: () -> Unit,
 ) = key(e.id) {
     val installed = market.installedVersion(e)
     val update = market.hasUpdate(e)
@@ -524,6 +532,7 @@ private fun Detail(
             busy != null -> BasicText(busy, style = Mono.copy(color = Palette.accent))
             !e.supported -> BasicText("needs a newer launcher (owl ${e.owl}); update the launcher to install it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
             update -> BracketAction("update ${installed?.version} → ${e.version}", Palette.accent, onInstall)
+            market.kind == OwlKind.Widget && installed != null && !shown -> BracketAction("show on page $page", Palette.accent, onShow)
             installed != null -> AddedMark(market.kind == OwlKind.App)
             else -> BracketAction(if (market.kind == OwlKind.App) "install" else "add to page $page", Palette.accent, onInstall)
         }

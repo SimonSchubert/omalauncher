@@ -108,7 +108,10 @@ class Market(
     /** An update runs different commands or needs other packages than what the user approved. */
     fun changedSinceApproval(e: CatalogEntry) = installedVersion(e)?.let { it.commands != e.commands || it.requires != e.requires } == true
 
-    /** Downloads, verifies and installs [e] on [page]; its packages install right after. Returns an error, or null. */
+    /**
+     * Downloads, verifies and installs [e] on [page]; its packages install right after. An update keeps the widget's
+     * page and reveals it if the home showing hides it. Returns an error, or null.
+     */
     suspend fun install(
         e: CatalogEntry,
         page: Int,
@@ -119,8 +122,9 @@ class Market(
             if (Review.sha256(bytes) != e.sha256) return "the download doesn't match the reviewed version; try again later"
             val name = installedVersion(e)?.file ?: fileFor(e)
             withContext(Dispatchers.IO) {
-                // An update keeps its page; a new install goes where the user is. Apps go in the drawer, on no page.
-                if (kind == OwlKind.Widget && installedVersion(e) == null) engine.setPage(name, page)
+                // An update keeps its page, and brings back the widget if this home hides it; a new install goes where the
+                // user is. Apps go in the drawer, on no page.
+                if (kind == OwlKind.Widget) engine.arrive(name, File(engine.dir, name).exists(), page)
                 engine.installDependenciesWhenLoaded(name)
                 File(engine.dir, name).writeBytes(bytes)
             }

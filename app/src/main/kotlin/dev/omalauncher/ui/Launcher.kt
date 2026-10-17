@@ -113,6 +113,7 @@ private fun DesktopScreen(
         }
     }
     HomeMenu(runtime, state)
+    HiddenMenu(runtime, state)
 
     // Only whether it shows is read here; the animation itself runs in the layer, without recomposing.
     val panelShown by remember(state) { derivedStateOf { state.drawer.value > 0.01f } }
