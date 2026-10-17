@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
+import dev.omalauncher.widgets.Profile
 
 /** Where landscape home keeps the recent apps strip and the bar: the side portrait's bottom turned to. */
 enum class HomeSide { Left, Right }
@@ -55,11 +56,11 @@ internal fun windowSize(): IntSize {
     return if (portrait == size.width > size.height) IntSize(size.height, size.width) else size
 }
 
-/** Whether home turns portrait's grid on its side: landscape, unless the window shows two pages. */
+/** Whether home turns portrait's grid on its side: landscape, unless the window shows two pages or the inner screen's own home. */
 @Composable
 internal fun homeTurned(): Boolean {
     val window = windowSize()
-    return window.width > window.height && !showsTwoPages(window)
+    return window.width > window.height && !showsTwoPages(window) && homeProfile(window) != Profile.Open
 }
 
 /**
@@ -97,18 +98,27 @@ internal fun homeSide(): HomeSide? {
 }
 
 /**
- * Whether home shows two pages side by side: when each half of the window is phone-shaped and wide
- * enough to be worth a page of its own, as on a foldable's inner screen in either orientation. Phones,
- * tablets, phone landscape, and a square screen too narrow to split usefully show one; so does
- * [LauncherStyle.forceSinglePage]. A screen's shape alone can't tell a real foldable from a phone
- * that's merely square, which [TWO_PAGES_MIN_WIDTH] rules out by width.
+ * Whether the window is shaped like a foldable's inner screen: each half of it phone-shaped and wide enough to be
+ * worth a page of its own, in either orientation. Phones, tablets, phone landscape, and a square screen too narrow to
+ * split usefully aren't. A screen's shape alone can't tell a real foldable from a phone that's merely square, which
+ * [TWO_PAGES_MIN_WIDTH] rules out by width.
  */
 @Composable
-internal fun showsTwoPages(window: IntSize): Boolean {
-    if (LauncherStyle.forceSinglePage) return false
+internal fun isUnfolded(window: IntSize): Boolean {
     if (window.width / 2f / window.height !in 0.4f..0.65f) return false
     return with(LocalDensity.current) { (window.width / 2).toDp() } >= TWO_PAGES_MIN_WIDTH
 }
+
+/** Which home shows: the inner screen's own on an unfolded foldable with [LauncherStyle.unfoldedLayout], else the phone's. */
+@Composable
+internal fun homeProfile(window: IntSize) = if (LauncherStyle.unfoldedLayout && isUnfolded(window)) Profile.Open else Profile.Folded
+
+/**
+ * Whether home shows the phone's pages two side by side: on an unfolded foldable ([isUnfolded]), unless
+ * [LauncherStyle.forceSinglePage] asks for one, or the inner screen shows its own home ([homeProfile]), one wide page.
+ */
+@Composable
+internal fun showsTwoPages(window: IntSize) = !LauncherStyle.forceSinglePage && homeProfile(window) == Profile.Folded && isUnfolded(window)
 
 /** Narrower than this, a "page" isn't worth having its own: smaller than the shortest common phone width. */
 private val TWO_PAGES_MIN_WIDTH = 320.dp

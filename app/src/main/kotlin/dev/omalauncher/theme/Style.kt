@@ -158,7 +158,20 @@ class Style(
             Setting.Flag(
                 "home.single-page",
                 false,
-                "One page even on a screen shaped like an unfolded foldable's; false shows two there, auto-detected from the screen's shape and width.",
+                "One page even on a screen shaped like an unfolded foldable's; false shows two there, auto-detected from the screen's shape and width. With home.unfolded-layout, that screen shows its own home, one page already.",
+            )
+        val UNFOLDED_LAYOUT =
+            Setting.Flag(
+                "home.unfolded-layout",
+                false,
+                "A foldable's inner screen keeps a home of its own, one wide page whose tiles can span the hinge; false shows the phone's pages there, two side by side. Wins over home.single-page.",
+            )
+        val UNFOLDED_COLUMNS =
+            Setting.Count(
+                "home.unfolded-columns",
+                12,
+                6..12,
+                "Columns of the inner screen's own home, with home.unfolded-layout. Twice home.columns lays the phone's pages out side by side as they were.",
             )
 
         val GAPS_IN = Setting.Number("widgets.gaps-in", 6.0, 0.0..24.0, "Space in dp between two of home's widgets (all of it, unlike Hyprland's gaps_in, which each window has on its side).")
@@ -222,7 +235,7 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, UNFOLDED_LAYOUT, UNFOLDED_COLUMNS, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
                 listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT)
         }
