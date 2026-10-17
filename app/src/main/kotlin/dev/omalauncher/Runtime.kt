@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import androidx.compose.runtime.getValue
@@ -35,6 +36,9 @@ import dev.omalauncher.linux.defaultApps
 import dev.omalauncher.linux.matches
 import dev.omalauncher.linux.run
 import dev.omalauncher.linux.shellQuote
+import dev.omalauncher.taskbar.TaskbarSettings
+import dev.omalauncher.taskbar.WINDOW_PLAN_MS
+import dev.omalauncher.taskbar.WindowPlans
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.theme.ThemeStore
@@ -47,6 +51,7 @@ import dev.omalauncher.ui.bitmapMask
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.decodeImageIcon
 import dev.omalauncher.ui.decodeSvgIcon
+import dev.omalauncher.ui.splitdrag.SplitDragSession
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.wayland.AndroidClipboard
 import dev.omalauncher.wayland.OutputInfo
@@ -91,6 +96,15 @@ class Runtime(
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
+
+    /** Linux apps dropped in a split off the taskbar, waiting for their first window; see [launch] with a placement. */
+    private val windowPlans = WindowPlans<LinuxApp, (Intent) -> Unit>()
+
+    /** An app being dragged out of home towards split screen; see SplitDrag. */
+    val splitDrag = SplitDragSession()
+
+    /** The floating taskbar's settings; see dev.omalauncher.taskbar.TaskbarService. */
+    val taskbar = TaskbarSettings(context)
     val updates = SystemUpdates(proot, pacman, agents)
     val gpu = Gpu(context, proot, pacman)
 
@@ -118,6 +132,7 @@ class Runtime(
     private val scope =
         CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e -> Log.e(TAG, "background job failed", e) })
     private var started = false
+    private var overlayStarted = false
     private var prepared = false
 
     private val prefs = LauncherData.prefs(context)
@@ -173,13 +188,14 @@ class Runtime(
                     "btop" -> "BtopWindow"
                     else -> agentOf(window?.appId.orEmpty(), name)?.windowAlias ?: "LinuxWindowActivity"
                 }
-            InstantActivity.startInstantly(
-                context,
+            val intent =
                 Intent()
                     .setClassName(context, "dev.omalauncher.$activity")
                     .setData(Uri.parse("omarchy://window/$handle"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
-            )
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            // The first window of an app dropped in a split off the taskbar goes where it was dropped.
+            val place = window?.let { w -> windowPlans.take(SystemClock.elapsedRealtime()) { app -> app.ownsNew(w) } }
+            if (place != null) place(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) else InstantActivity.startInstantly(context, intent)
         }
     }
 
@@ -187,17 +203,34 @@ class Runtime(
     fun start() {
         if (started) return
         started = true
+        val lightDone = overlayStarted
+        overlayStarted = true
         scope.launch {
             withContext(Dispatchers.IO) {
                 launcherFiles.sync()
                 agents.load()
             }
-            themes.load()
-            style.start()
+            if (!lightDone) {
+                themes.load()
+                style.start()
+            }
             widgets.start()
             // On the first-run screen the download is the screen's job, with progress.
             if (launcherReady) scope.launch { themes.ensureRelease() }
             if (bootstrap.wanted) runLinux { bootstrap.run() } else bootstrap.run()
+        }
+    }
+
+    /**
+     * Just what the taskbar overlay needs: the themes and the style (the app catalog starts with the runtime). No Linux, no
+     * widgets. Runs once, and not at all when [start] already did.
+     */
+    fun startForOverlay() {
+        if (overlayStarted) return
+        overlayStarted = true
+        scope.launch {
+            themes.load()
+            style.start()
         }
     }
 
@@ -493,13 +526,48 @@ class Runtime(
         if (app.exec == EDIT_COMMAND) return edit()
         if (app.terminal) return terminal(app.exec, app.name)
         // Like an Android icon: an app that already has a window comes back to it. Single-instance
-        // apps would otherwise just exit on a second launch, showing nothing. Quickshell apps (App Finder)
-        // all share the app_id org.quickshell, so their window title, which is their name, decides.
-        wm.appWindows
-            .firstOrNull { (it.appId.isNotEmpty() && app.matches(it.appId)) || it.title.equals(app.name, ignoreCase = true) }
-            ?.let { if (bringToFront(it)) return }
+        // apps would otherwise just exit on a second launch, showing nothing.
+        windowOf(app)?.let { if (bringToFront(it)) return }
         launch(app.exec)
     }
+
+    /**
+     * Starts [app] as [launch] does, and opens its first window by [place], given the window's intent (in a new task),
+     * if it shows up within [WINDOW_PLAN_MS]; a window that comes later opens as usual. Meant for an app with no window
+     * yet (see [windowOf]): one with a window just comes back to it, and the plan would wait for nothing.
+     */
+    fun launch(
+        app: LinuxApp,
+        place: (Intent) -> Unit,
+    ) {
+        windowPlans.add(app, place, SystemClock.elapsedRealtime())
+        launch(app)
+    }
+
+    /** Drops the plans of Linux apps dropped in a split that wait for their first window; see [launch] with a placement. */
+    fun cancelWindowPlans() = windowPlans.clear()
+
+    /**
+     * The window [app] already has, which [launch] brings back; null if it has none, and always for the apps [launch]
+     * opens anew each time (terminal apps) or that aren't Linux windows (Files, the editor). Quickshell apps (App
+     * Finder) all share the app_id org.quickshell, so their window title, which is their name, decides.
+     */
+    fun windowOf(app: LinuxApp): XdgToplevel? {
+        if (!opensLinuxWindow(app) || app.terminal) return null
+        return wm.appWindows.firstOrNull { (it.appId.isNotEmpty() && app.matches(it.appId)) || it.title.equals(app.name, ignoreCase = true) }
+    }
+
+    /** Whether [app] opens a Linux window; Files and the editor are the launcher's own screens. */
+    fun opensLinuxWindow(app: LinuxApp) = app.exec != FILES_COMMAND && app.exec != EDIT_COMMAND
+
+    /**
+     * Whether the new [window] is [app]'s: as in [windowOf], or a terminal [launch] started under the app's name. Only
+     * what the window says at its first commit counts: an app whose window has an app_id matching neither its desktop
+     * id, StartupWMClass nor reverse-DNS tail, and no title (yet) equal to its name, isn't recognised, and its window
+     * opens as usual.
+     */
+    private fun LinuxApp.ownsNew(window: XdgToplevel) =
+        (window.appId.isNotEmpty() && matches(window.appId)) || window.title.equals(name, ignoreCase = true) || launchedNames[window.appId] == name
 
     /** Moves [window]'s Android task to the front; false if it has none (yet). */
     private fun bringToFront(window: XdgToplevel): Boolean {
@@ -546,6 +614,17 @@ class Runtime(
     fun openOwlApp(name: String) {
         if (widgets.isApp(name)) InstantActivity.startInstantly(context, OwlAppActivity.intent(context, name))
     }
+
+    /**
+     * The intent of the launcher's own screen [app] stands for (Files, the editor), in a task of its own, for opening it
+     * somewhere else than [launch] does, say in a split half; null for an app that opens a Linux window.
+     */
+    fun screenIntent(app: LinuxApp): Intent? =
+        when (app.exec) {
+            FILES_COMMAND -> Intent(context, FilesActivity::class.java)
+            EDIT_COMMAND -> EditorActivity.intent(context, null)
+            else -> null
+        }?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     /** Opens the Files app, at [path] (a guest path) if given. */
     fun openFiles(path: String? = null) {
