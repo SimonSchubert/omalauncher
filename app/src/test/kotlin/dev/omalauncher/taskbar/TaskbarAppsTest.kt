@@ -76,15 +76,18 @@ class TaskbarAppsTest {
         assertEquals(null, appOfWindow(apps, "", listOf("", "Files"), { a, id -> a.id == id }, { it.name }))
     }
 
-    @Test fun aWindowActivityInFrontIsTheMostRecentLinuxTask() {
+    @Test fun theTaskInFrontGoesByItsAliasElseIsTheMostRecent() {
         val window = "dev.omalauncher.LinuxWindowActivity"
-        // Most recent first, as the system lists the tasks; it names the activity, never the alias that opened it.
-        val tasks = listOf("btop", "terminal")
-        assertEquals("btop", frontTask(tasks, window, window))
-        assertEquals("btop", frontTask(tasks, null, window))
-        assertEquals(null, frontTask(emptyList<String>(), window, window))
+        val alias = mapOf("btop" to "dev.omalauncher.BtopWindow", "terminal" to "dev.omalauncher.TerminalWindow", "calc" to window)
+        // Most recent first, as the system lists the tasks.
+        val tasks = listOf("btop", "calc", "terminal")
+        assertEquals("terminal", frontTask(tasks, "dev.omalauncher.TerminalWindow", window, alias::get))
+        assertEquals("calc", frontTask(tasks, window, window, alias::get))
+        assertEquals("btop", frontTask(listOf("btop", "terminal"), window, window, alias::get))
+        assertEquals("btop", frontTask(tasks, null, window, alias::get))
+        assertEquals(null, frontTask(emptyList<String>(), window, window, alias::get))
         // Files or the trampoline coming forward next to a Linux window isn't that window.
-        assertEquals(null, frontTask(tasks, "dev.omalauncher.FilesActivity", window))
-        assertEquals(null, frontTask(tasks, "dev.omalauncher.taskbar.TaskbarTrampoline", window))
+        assertEquals(null, frontTask(tasks, "dev.omalauncher.FilesActivity", window, alias::get))
+        assertEquals(null, frontTask(tasks, "dev.omalauncher.taskbar.TaskbarTrampoline", window, alias::get))
     }
 }
