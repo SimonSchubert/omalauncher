@@ -11,7 +11,7 @@
     </style>
 
     <!-- A Linux window: no starting window (a splash with the launcher's icon), so a window moved into a split half
-         by the taskbar just shows up; its first frame comes on this background. -->
+         by the taskbar just shows up; its first frame comes on this background. Android 12+: see values-v31. -->
     <style name="Theme.Omalauncher.LinuxWindow" parent="Theme.Omalauncher.Window">
         <item name="android:windowDisablePreview">true</item>
     </style>

@@ -7,10 +7,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.window.SplashScreen
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.LinuxWindowActivity
 import dev.omalauncher.ui.splitdrag.LaunchStep
@@ -104,8 +106,11 @@ class TaskbarTrampoline : Activity() {
             step.containsKey(REMOVE) -> remove(step.getInt(REMOVE))
             step.containsKey(INTENT) -> {
                 val intent = Intent(step.getParcelable<Intent>(INTENT) ?: return).addFlags(adjacentFlag(step))
-                // No opening animation: a Linux window's activity, which shows a window already there or just made.
-                runCatching { startActivity(intent, ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle()) }.onFailure { Log.w(TAG, "couldn't start ${intent.data ?: intent.component}", it) }
+                // No opening animation and a splash in the window's own colour (see the theme): a Linux window's activity,
+                // which shows a window already there or just made.
+                val options = ActivityOptions.makeCustomAnimation(this, 0, 0)
+                if (Build.VERSION.SDK_INT >= 33) options.setSplashScreenStyle(SplashScreen.SPLASH_SCREEN_STYLE_SOLID_COLOR)
+                runCatching { startActivity(intent, options.toBundle()) }.onFailure { Log.w(TAG, "couldn't start ${intent.data ?: intent.component}", it) }
             }
             else -> open(step)
         }
@@ -132,23 +137,18 @@ class TaskbarTrampoline : Activity() {
     private fun ownTask(id: Int): ActivityManager.AppTask? = getSystemService(ActivityManager::class.java).appTasks.firstOrNull { runCatching { it.taskInfo?.taskId }.getOrNull() == id }
 
     /**
-     * Closes task [id]: a Linux window's leaves without an animation (see [LinuxWindowActivity.leave]), and is closed
-     * the plain way if it's still there a little later; any other the plain way. A Linux window's task whose activity
-     * still owns the window stays, unless it hands the window over within [KEPT_TRIES] looks [LEAVE_MS] apart.
+     * Closes task [id] where it is, behind: nothing comes to the front, so nothing animates. A Linux window's task whose
+     * activity still owns the window stays, unless it hands the window over within [KEPT_TRIES] looks [KEPT_MS] apart.
      */
     private fun remove(
         id: Int,
         tries: Int = KEPT_TRIES,
     ) {
-        when (LinuxWindowActivity.leave(id)) {
+        if (LinuxWindowActivity.keeps(id)) {
             // The new activity may not have taken the window over yet: looked at again a little later.
-            LinuxWindowActivity.Leaving.Kept -> if (tries > 0) handler.postDelayed({ remove(id, tries - 1) }, LEAVE_MS)
-            LinuxWindowActivity.Leaving.Left -> handler.postDelayed({ if (!LinuxWindowActivity.keeps(id)) finishTask(id) }, LEAVE_MS)
-            LinuxWindowActivity.Leaving.NotOurs -> finishTask(id)
+            if (tries > 0) handler.postDelayed({ remove(id, tries - 1) }, KEPT_MS)
+            return
         }
-    }
-
-    private fun finishTask(id: Int) {
         ownTask(id)?.let { runCatching { it.finishAndRemoveTask() }.onFailure { e -> Log.w(TAG, "couldn't close a task", e) } }
     }
 
@@ -172,8 +172,8 @@ class TaskbarTrampoline : Activity() {
         private const val FRONT = "front"
         private const val REMOVE = "remove"
 
-        /** How long a Linux window's old task gets to leave on its own before it's closed. */
-        private const val LEAVE_MS = 300L
+        /** How long until a Linux window's old task that still owns its window is looked at again. */
+        private const val KEPT_MS = 300L
 
         /** How many more times a Linux window's old task that still owns its window is looked at, within the trampoline's last second. */
         private const val KEPT_TRIES = 2

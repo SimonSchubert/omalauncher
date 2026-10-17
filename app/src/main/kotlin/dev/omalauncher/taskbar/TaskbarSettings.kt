@@ -28,7 +28,7 @@ class TaskbarSettings(
         }
 
     /** Usage keys of the apps pinned (see [usageKey], [linuxKey]), in the order they were pinned; older pins read as Android ones. */
-    var pinned by mutableStateOf(prefs.getString(PINNED, null)?.split('\n')?.filter { it.isNotEmpty() }?.map(::pinnedKey)?.distinct() ?: emptyList())
+    var pinned by mutableStateOf(prefs.getString(PINNED, null)?.split('\n')?.filter { it.isNotEmpty() }?.map(::savedKey)?.distinct() ?: emptyList())
         private set
 
     /** Pins the app with usage [key], or unpins it; saves the keys prefixed from then on. */
