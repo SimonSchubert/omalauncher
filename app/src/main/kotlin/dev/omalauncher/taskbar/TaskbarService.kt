@@ -294,7 +294,7 @@ class TaskbarService : AccessibilityService() {
         val settings = runtime.taskbar
         val catalog = runtime.androidApps
         val byKey = catalog.apps.filter { SplitDrag.canDrag(it) }.associateBy { it.key }
-        val apps = taskbarApps(settings.mode, settings.pinned, seen, runtime.usage.recent, byKey.keys).mapNotNull { byKey[it] }
+        val apps = taskbarApps(settings.mode, settings.pinned, seen, launchedAndroid(runtime.usage.recent), byKey.keys).mapNotNull { byKey[it] }
         // The screen width from the configuration: the bar window itself only wraps its content.
         val maxWidth = LocalConfiguration.current.screenWidthDp.dp - 32.dp
         LazyRow(
@@ -363,7 +363,7 @@ class TaskbarService : AccessibilityService() {
         app: AndroidApp,
         half: ZoneBox,
     ) {
-        runtime.usage.record(app.key)
+        runtime.usage.record(usageKey(app.key))
         TaskbarTrampoline.replace(this, app, half)
         tray = false
     }
@@ -377,7 +377,7 @@ class TaskbarService : AccessibilityService() {
         plan: OpenPlan<AndroidApp>,
         app: AndroidApp,
     ) {
-        runtime.usage.record(app.key)
+        runtime.usage.record(usageKey(app.key))
         when (plan) {
             is OpenPlan.Split -> TaskbarTrampoline.start(this, splitSteps(plan))
             is OpenPlan.AsTapped -> startDirect(plan.app, null)

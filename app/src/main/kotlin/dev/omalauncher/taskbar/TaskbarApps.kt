@@ -31,6 +31,15 @@ fun taskbarApps(
     return all.filter { it in installed }.distinct().take(limit)
 }
 
+/** What the launcher's usage keys of Android apps start with; Linux apps' start with "l:". */
+private const val ANDROID_USAGE = "a:"
+
+/** The launcher's usage key for the Android app [appKey]: the taskbar's launches count as the launcher's do. */
+fun usageKey(appKey: String) = ANDROID_USAGE + appKey
+
+/** The Android app keys among the launcher's usage [keys] (see [usageKey]), in order. */
+fun launchedAndroid(keys: List<String>): List<String> = keys.filter { it.startsWith(ANDROID_USAGE) }.map { it.removePrefix(ANDROID_USAGE) }
+
 /** [keys] with [key] first, at most [max] long. */
 fun moveToFront(
     keys: List<String>,
