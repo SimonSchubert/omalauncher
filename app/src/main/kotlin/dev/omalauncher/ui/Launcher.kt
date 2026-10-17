@@ -170,6 +170,7 @@ private fun DesktopScreen(
                 },
                 // Its file goes to .removed/, as a removed widget's does.
                 removeOwl = { spec -> runtime.widgets.removeWidget(spec) },
+                stripPins = runtime.stripPins,
             )
         }
 
