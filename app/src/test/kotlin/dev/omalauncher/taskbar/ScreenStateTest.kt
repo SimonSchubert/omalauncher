@@ -2,11 +2,13 @@ package dev.omalauncher.taskbar
 
 import dev.omalauncher.ui.splitdrag.ZoneBox
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ScreenStateTest {
     private val home = setOf("dev.omalauncher.debug")
-    private fun w(pkg: String, l: Float, t: Float, r: Float, b: Float) = AppWindow(pkg, ZoneBox(l, t, r, b))
+    private fun w(pkg: String, l: Float, t: Float, r: Float, b: Float, title: String? = null) = AppWindow(pkg, ZoneBox(l, t, r, b), title)
 
     @Test fun oneFullScreenAppIsSingle() {
         assertEquals(ScreenState.Single("maps"), screenState(listOf(w("maps", 0f, 0f, 1856f, 2160f)), 1856f, 2160f, home))
@@ -79,5 +81,47 @@ class ScreenStateTest {
     @Test fun anAppsOwnDialogInsideItsHalfKeepsTheSplit() {
         val wins = listOf(w("photos", 300f, 300f, 1600f, 900f), w("photos", 0f, 0f, 2076f, 1068f), w("contacts", 0f, 1084f, 2076f, 2152f))
         assertEquals(ScreenState.Split("photos", "contacts", sideBySide = false), screenState(wins, 2076f, 2152f, home))
+    }
+
+    private val own = "dev.omalauncher.debug"
+    private val terminal = LinuxWindow("s-1", "Terminal")
+    private val btop = LinuxWindow("s-2", "btop")
+
+    @Test fun ourLinuxWindowInFrontIsSingle() {
+        val state = screenState(listOf(w(own, 0f, 0f, 1856f, 2160f)), 1856f, 2160f, home = emptySet(), opaque = setOf(own), own = own, linux = listOf(terminal))
+        assertEquals(ScreenState.Single(terminal.id), state)
+        assertTrue(isLinuxWindow(terminal.id))
+        assertFalse(isLinuxWindow("maps"))
+    }
+
+    @Test fun ourLinuxWindowInASplitIsAHalf() {
+        val wins = listOf(w(own, 935f, 0f, 1856f, 2160f), w("maps", 0f, 0f, 921f, 2160f))
+        val state = screenState(wins, 1856f, 2160f, home = emptySet(), opaque = setOf(own), own = own, linux = listOf(terminal))
+        assertEquals(ScreenState.Split("maps", terminal.id, sideBySide = true), state)
+    }
+
+    @Test fun anotherOfOurWindowsInASplitIsAHalfToo() {
+        // Replacing a half relaunches neither app, so even Files can be one.
+        val wins = listOf(w(own, 935f, 0f, 1856f, 2160f), w("maps", 0f, 0f, 921f, 2160f))
+        assertEquals(ScreenState.Split("maps", own, sideBySide = true), screenState(wins, 1856f, 2160f, home = emptySet(), opaque = setOf(own), own = own))
+    }
+
+    @Test fun anotherLaunchersWindowInASplitStaysUnknown() {
+        val wins = listOf(w("dev.omalauncher", 935f, 0f, 1856f, 2160f), w("maps", 0f, 0f, 921f, 2160f))
+        assertEquals(ScreenState.Unknown, screenState(wins, 1856f, 2160f, home = emptySet(), opaque = setOf(own, "dev.omalauncher"), own = own, linux = listOf(terminal)))
+    }
+
+    @Test fun ourWindowsOtherThanLinuxInFrontStayUnknown() {
+        assertEquals(ScreenState.Unknown, screenState(listOf(w(own, 0f, 0f, 1856f, 2160f)), 1856f, 2160f, home = emptySet(), opaque = setOf(own), own = own))
+    }
+
+    @Test fun twoLinuxWindowsPairByTitleThenInOrder() {
+        val wins = listOf(w(own, 0f, 0f, 10f, 10f, "btop"), w(own, 0f, 0f, 20f, 20f, "Linux"))
+        assertEquals(listOf(btop.id, terminal.id), linuxWindows(wins, own, listOf(terminal, btop)).map { it.packageName })
+    }
+
+    @Test fun moreOfOurWindowsThanLinuxOnesKeepThePackage() {
+        val wins = listOf(w(own, 0f, 0f, 10f, 10f), w(own, 0f, 0f, 20f, 20f), w("maps", 0f, 0f, 30f, 30f))
+        assertEquals(wins, linuxWindows(wins, own, listOf(terminal)))
     }
 }

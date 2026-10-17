@@ -1,6 +1,7 @@
 package dev.omalauncher.taskbar
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -10,9 +11,47 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import dev.omalauncher.AndroidApp
+import dev.omalauncher.LinuxWindowActivity
 import dev.omalauncher.ui.splitdrag.LaunchStep
 import dev.omalauncher.ui.splitdrag.ZoneBox
 import kotlin.math.roundToInt
+
+/**
+ * One thing the trampoline does, [delayMs] after the step before. [A] is an app and [I] an intent, generic so the steps
+ * are testable without Android.
+ */
+sealed interface TrampolineStep<out A, out I> {
+    val delayMs: Long
+
+    /** Opens [app], next to the app in front when [adjacent]. */
+    data class Open<A>(
+        val app: A,
+        val adjacent: Boolean,
+        override val delayMs: Long,
+    ) : TrampolineStep<A, Nothing>
+
+    /** Starts [intent] as it is, next to the app in front when [adjacent]. */
+    data class Start<I>(
+        val intent: I,
+        val adjacent: Boolean,
+        override val delayMs: Long,
+    ) : TrampolineStep<Nothing, I>
+
+    /** Brings this launcher's task [taskId] to the front. */
+    data class Front(
+        val taskId: Int,
+        override val delayMs: Long,
+    ) : TrampolineStep<Nothing, Nothing>
+
+    /** Closes this launcher's task [taskId], and takes it out of Recents. */
+    data class Remove(
+        val taskId: Int,
+        override val delayMs: Long,
+    ) : TrampolineStep<Nothing, Nothing>
+}
+
+/** A split's [LaunchStep] as a trampoline step. */
+fun <A> LaunchStep<A>.asStep(): TrampolineStep<A, Nothing> = TrampolineStep.Open(app, adjacent, delayMs)
 
 /** Whether the middle of a view at [left], [top] sized [width]×[height] (screen pixels) is inside [half]. */
 internal fun landsIn(
@@ -59,6 +98,19 @@ class TaskbarTrampoline : Activity() {
 
     @Suppress("DEPRECATION")
     private fun start(step: Bundle) {
+        when {
+            step.containsKey(FRONT) -> ownTask(step.getInt(FRONT))?.let { runCatching { it.moveToFront() }.onFailure { e -> Log.w(TAG, "couldn't bring a task forward", e) } }
+            step.containsKey(REMOVE) -> remove(step.getInt(REMOVE))
+            step.containsKey(INTENT) -> {
+                val intent = Intent(step.getParcelable<Intent>(INTENT) ?: return).addFlags(if (step.getBoolean(ADJACENT)) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0)
+                runCatching { startActivity(intent) }.onFailure { Log.w(TAG, "couldn't start ${intent.data ?: intent.component}", it) }
+            }
+            else -> open(step)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun open(step: Bundle) {
         val component = step.getParcelable<ComponentName>(COMPONENT) ?: return
         val adjacent = if (step.getBoolean(ADJACENT) || (step.getBoolean(REPLACE) && !inHalf(step.getParcelable<Rect>(TARGET)))) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0
         val intent =
@@ -67,6 +119,15 @@ class TaskbarTrampoline : Activity() {
                 .setComponent(component)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or adjacent)
         runCatching { startActivity(intent) }.onFailure { Log.w(TAG, "couldn't open ${component.flattenToShortString()}", it) }
+    }
+
+    /** This launcher's task [id], if it's still there. */
+    private fun ownTask(id: Int): ActivityManager.AppTask? = getSystemService(ActivityManager::class.java).appTasks.firstOrNull { runCatching { it.taskInfo?.taskId }.getOrNull() == id }
+
+    /** Closes task [id]: a Linux window's leaves without an animation (see [LinuxWindowActivity.leave]); any other the plain way. */
+    private fun remove(id: Int) {
+        if (LinuxWindowActivity.leave(id)) return
+        ownTask(id)?.let { runCatching { it.finishAndRemoveTask() }.onFailure { e -> Log.w(TAG, "couldn't close a task", e) } }
     }
 
     /** Whether this trampoline sits in [half] (screen pixels): its middle is inside it. */
@@ -85,22 +146,35 @@ class TaskbarTrampoline : Activity() {
         private const val DELAY = "delay"
         private const val REPLACE = "replace"
         private const val TARGET = "target"
+        private const val INTENT = "intent"
+        private const val FRONT = "front"
+        private const val REMOVE = "remove"
 
         /** How long a replacing trampoline waits to have settled in its half before looking where it is. */
         private const val SETTLE_MS = 200L
 
         /**
-         * Opens [steps] in order from a new trampoline.
+         * Carries out [steps] in order from a new trampoline.
          */
         fun start(
             context: Context,
-            steps: List<LaunchStep<AndroidApp>>,
+            steps: List<TrampolineStep<AndroidApp, Intent>>,
         ) {
             val bundles =
                 steps.mapTo(ArrayList()) { s ->
                     Bundle().apply {
-                        putParcelable(COMPONENT, s.app.component)
-                        putBoolean(ADJACENT, s.adjacent)
+                        when (s) {
+                            is TrampolineStep.Open -> {
+                                putParcelable(COMPONENT, s.app.component)
+                                putBoolean(ADJACENT, s.adjacent)
+                            }
+                            is TrampolineStep.Start -> {
+                                putParcelable(INTENT, s.intent)
+                                putBoolean(ADJACENT, s.adjacent)
+                            }
+                            is TrampolineStep.Front -> putInt(FRONT, s.taskId)
+                            is TrampolineStep.Remove -> putInt(REMOVE, s.taskId)
+                        }
                         putLong(DELAY, s.delayMs)
                     }
                 }
