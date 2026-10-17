@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toOffset
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /**
@@ -412,83 +413,89 @@ internal fun HomeGrid(
                         var aim = -1
                         var aimSince = 0L
                         var outSince = 0L
-                        while (true) {
-                            val waiting = atEdgeSince > 0 || aimSince > 0 || outSince > 0
-                            val event = withTimeoutOrNull(if (waiting) 50L else Long.MAX_VALUE) { awaitPointerEvent(PointerEventPass.Initial) }
-                            if (event != null) {
-                                val c = event.changes.firstOrNull { it.id == downId } ?: break
-                                c.consume()
-                                if (!c.pressed) break
-                                position = c.position
-                            }
-                            if (!moved && (position - start).getDistance() > viewConfiguration.touchSlop) {
-                                moved = true
-                                arrange.carry = Carry(item, from, cell, hold)
-                            }
-                            if (!moved) continue
-                            arrange.finger = position
-                            val now = SystemClock.uptimeMillis()
-                            val fg = sorting
-                            if (fg != null) {
-                                if (fg.panel.has(position)) {
-                                    outSince = 0L
-                                    val apps = (itemsOn(from).firstOrNull { it.key == (item as Shortcut).folder } as? Folder)?.apps.orEmpty()
-                                    val to = apps.indices.minByOrNull { (fg.app(it).center.toOffset() - position).getDistanceSquared() } ?: continue
-                                    when {
-                                        to == apps.indexOfFirst { it.key == item.key } -> aimSince = 0L
-                                        to != aim || aimSince == 0L -> aimSince = now
-                                        // Like Android, the other apps make way once the finger rests over a place a moment.
-                                        now - aimSince > REORDER_MS -> {
-                                            onReorder(item as Shortcut, apps.filter { it.key != item.key }.getOrNull(to)?.key)
-                                            aimSince = 0L
+                        // A fold or unfold mid-drag restarts the handler: nothing stays carried.
+                        try {
+                            while (true) {
+                                val waiting = atEdgeSince > 0 || aimSince > 0 || outSince > 0
+                                val event = withTimeoutOrNull(if (waiting) 50L else Long.MAX_VALUE) { awaitPointerEvent(PointerEventPass.Initial) }
+                                if (event != null) {
+                                    val c = event.changes.firstOrNull { it.id == downId } ?: break
+                                    c.consume()
+                                    if (!c.pressed) break
+                                    position = c.position
+                                }
+                                if (!moved && (position - start).getDistance() > viewConfiguration.touchSlop) {
+                                    moved = true
+                                    arrange.carry = Carry(item, from, cell, hold)
+                                }
+                                if (!moved) continue
+                                arrange.finger = position
+                                val now = SystemClock.uptimeMillis()
+                                val fg = sorting
+                                if (fg != null) {
+                                    if (fg.panel.has(position)) {
+                                        outSince = 0L
+                                        val apps = (itemsOn(from).firstOrNull { it.key == (item as Shortcut).folder } as? Folder)?.apps.orEmpty()
+                                        val to = apps.indices.minByOrNull { (fg.app(it).center.toOffset() - position).getDistanceSquared() } ?: continue
+                                        when {
+                                            to == apps.indexOfFirst { it.key == item.key } -> aimSince = 0L
+                                            to != aim || aimSince == 0L -> aimSince = now
+                                            // Like Android, the other apps make way once the finger rests over a place a moment.
+                                            now - aimSince > REORDER_MS -> {
+                                                onReorder(item as Shortcut, apps.filter { it.key != item.key }.getOrNull(to)?.key)
+                                                aimSince = 0L
+                                            }
                                         }
+                                        aim = to
+                                        continue
                                     }
-                                    aim = to
-                                    continue
+                                    aimSince = 0L
+                                    if (outSince == 0L) outSince = now
+                                    if (now - outSince <= FOLDER_EXIT_MS) continue
+                                    // Like Android, the folder closes once the app rests outside it, and the app goes on to the grid.
+                                    arrange.folder = null
+                                    sorting = null
+                                    outSince = 0L
                                 }
-                                aimSince = 0L
-                                if (outSince == 0L) outSince = now
-                                if (now - outSince <= FOLDER_EXIT_MS) continue
-                                // Like Android, the folder closes once the app rests outside it, and the app goes on to the grid.
-                                arrange.folder = null
-                                sorting = null
-                                outSince = 0L
-                            }
-                            val edgeSide = if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
-                            when {
-                                edgeSide == 0 -> atEdgeSince = 0L
-                                atEdgeSince == 0L -> atEdgeSince = now
-                                now - atEdgeSince > PAGE_TURN_MS && !pager.isScrollInProgress -> {
-                                    val next = pager.currentPage + edgeSide
-                                    if (next in 0 until pager.pageCount) {
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        scope.launch { pager.animateScrollToPage(next) }
+                                val edgeSide = if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
+                                when {
+                                    edgeSide == 0 -> atEdgeSince = 0L
+                                    atEdgeSince == 0L -> atEdgeSince = now
+                                    now - atEdgeSince > PAGE_TURN_MS && !pager.isScrollInProgress -> {
+                                        val next = pager.currentPage + edgeSide
+                                        if (next in 0 until pager.pageCount) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            scope.launch { pager.animateScrollToPage(next) }
+                                        }
+                                        // Turning again takes a longer rest, so the page just reached can be looked at.
+                                        atEdgeSince = now + PAGE_TURN_MS
                                     }
-                                    // Turning again takes a longer rest, so the page just reached can be looked at.
-                                    atEdgeSince = now + PAGE_TURN_MS
                                 }
+                                val (pages, g) = current
+                                // Side by side, the finger picks the page; the drop preview works in its coordinates.
+                                val side = g.side(position)
+                                val at = g.local(position, side)
+                                val page = pages.getOrElse(pager.targetPage * g.per + side) { from }
+                                arrange.page = page
+                                val others = placedOn(page, g).filter { it.first.key != item.key }
+                                val over = others.lastOrNull { (_, r) -> g.rect(r).has(at) }
+                                // Apps group with apps and folders; anything else swaps, except an app from a folder, which has no cell to trade.
+                                val groups = item is Shortcut && (over?.first is Shortcut || over?.first is Folder)
+                                val target = over?.takeIf { groups || !inFolder }
+                                arrange.grouping = groups
+                                arrange.swapWith = target?.first?.key
+                                arrange.preview =
+                                    if (over != null) {
+                                        target?.second
+                                    } else {
+                                        val x = g.colLine(at - hold).coerceIn(0, (g.cols - cell.w).coerceAtLeast(0))
+                                        val y = g.rowLine(at - hold).coerceIn(0, (g.rows - cell.h).coerceAtLeast(0))
+                                        Cell(x, y, cell.w, cell.h).takeIf { n -> others.none { it.second.overlaps(n) } }
+                                    }
                             }
-                            val (pages, g) = current
-                            // Side by side, the finger picks the page; the drop preview works in its coordinates.
-                            val side = g.side(position)
-                            val at = g.local(position, side)
-                            val page = pages.getOrElse(pager.targetPage * g.per + side) { from }
-                            arrange.page = page
-                            val others = placedOn(page, g).filter { it.first.key != item.key }
-                            val over = others.lastOrNull { (_, r) -> g.rect(r).has(at) }
-                            // Apps group with apps and folders; anything else swaps, except an app from a folder, which has no cell to trade.
-                            val groups = item is Shortcut && (over?.first is Shortcut || over?.first is Folder)
-                            val target = over?.takeIf { groups || !inFolder }
-                            arrange.grouping = groups
-                            arrange.swapWith = target?.first?.key
-                            arrange.preview =
-                                if (over != null) {
-                                    target?.second
-                                } else {
-                                    val x = g.colLine(at - hold).coerceIn(0, (g.cols - cell.w).coerceAtLeast(0))
-                                    val y = g.rowLine(at - hold).coerceIn(0, (g.rows - cell.h).coerceAtLeast(0))
-                                    Cell(x, y, cell.w, cell.h).takeIf { n -> others.none { it.second.overlaps(n) } }
-                                }
+                        } catch (e: CancellationException) {
+                            arrange.drop()
+                            throw e
                         }
                         val page = arrange.page
                         val target = arrange.swapWith?.let { key -> itemsOn(page).firstOrNull { it.key == key } }

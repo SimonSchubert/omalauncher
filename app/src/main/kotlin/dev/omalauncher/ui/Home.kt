@@ -130,11 +130,14 @@ fun HomeScreen(
         val switching = profile != shownProfile
         // Wait for the page list of the profile now showing (switchTo has run); the earlier list is the old profile's.
         if (switching && listProfile != profile) return@LaunchedEffect
-        val from = switchFrom ?: state.currentPage.also { switchFrom = it; if (switching) lastPage[shownProfile] = it }
+        // The page last shown before the switch: the page list may have changed already, so not read off the pager now.
+        val from = switchFrom ?: (lastPage[shownProfile] ?: state.currentPage).also { switchFrom = it }
         if (switching) {
             val target = lastPage[profile] ?: if (profile == Profile.Open) openPageOf(from) else foldedPageOf(from)
             state.editing = null
             arrange.folder = null
+            // A drag cut short by the switch drops nothing, and carries nothing on.
+            arrange.drop()
             pager.scrollToPage(pageNumbers.indexOf(target).coerceAtLeast(0) / per)
         } else {
             val i = pageNumbers.indexOf(from)
@@ -143,10 +146,13 @@ fun HomeScreen(
         shown = profile to per
         switchFrom = null
     }
-    // The drawer pins apps to whichever page is showing (the left one of a pair).
-    LaunchedEffect(pager.currentPage, pageNumbers) {
+    // The drawer pins apps to whichever page is showing (the left one of a pair). Not while a switch is pending: the
+    // pager still shows the page from before against the new page list; the switch scrolls, then this reads it.
+    LaunchedEffect(pager.currentPage, pageNumbers, shown, profile, per) {
+        if (shown != (profile to per)) return@LaunchedEffect
         state.currentPage = pageNumbers.getOrElse(pager.currentPage * per) { 1 }
         engine.activePage = state.currentPage
+        lastPage[profile] = state.currentPage
     }
     // The background slides with the pages, like stock launchers. Our live wallpaper gets it through Android.
     val view = LocalView.current
