@@ -40,10 +40,30 @@ class WindowPlans<A, P>(
         return if (i < 0) null else waiting.removeAt(i).plan
     }
 
+    /** Drops every waiting plan: the user went on to something else. */
+    fun clear() {
+        waiting.clear()
+    }
+
     private fun expire(now: Long) {
         waiting.removeAll { now >= it.until }
     }
 }
 
 /** How long a Linux app dropped in a split may take to show its first window before it opens as usual. */
-const val WINDOW_PLAN_MS = 10_000L
+const val WINDOW_PLAN_MS = 6_000L
+
+/**
+ * Whether a split planned on a drop over [dropped] still fits the screen [now], when the dragged app's window shows up:
+ * the partner is still the one app on screen, or the split whose half was to be replaced is still there. Else the
+ * window opens as usual rather than bring back a screen the user has left.
+ */
+fun planStillFits(
+    dropped: ScreenState,
+    now: ScreenState,
+): Boolean =
+    when (dropped) {
+        is ScreenState.Single -> now is ScreenState.Single && now.packageName == dropped.packageName
+        is ScreenState.Split -> now is ScreenState.Split
+        ScreenState.Home, ScreenState.Unknown -> false
+    }

@@ -544,6 +544,9 @@ class Runtime(
         launch(app)
     }
 
+    /** Drops the plans of Linux apps dropped in a split that wait for their first window; see [launch] with a placement. */
+    fun cancelWindowPlans() = windowPlans.clear()
+
     /**
      * The window [app] already has, which [launch] brings back; null if it has none, and always for the apps [launch]
      * opens anew each time (terminal apps) or that aren't Linux windows (Files, the editor). Quickshell apps (App
@@ -557,7 +560,12 @@ class Runtime(
     /** Whether [app] opens a Linux window; Files and the editor are the launcher's own screens. */
     fun opensLinuxWindow(app: LinuxApp) = app.exec != FILES_COMMAND && app.exec != EDIT_COMMAND
 
-    /** Whether the new [window] is [app]'s: as in [windowOf], or a terminal [launch] started under the app's name. */
+    /**
+     * Whether the new [window] is [app]'s: as in [windowOf], or a terminal [launch] started under the app's name. Only
+     * what the window says at its first commit counts: an app whose window has an app_id matching neither its desktop
+     * id, StartupWMClass nor reverse-DNS tail, and no title (yet) equal to its name, isn't recognised, and its window
+     * opens as usual.
+     */
     private fun LinuxApp.ownsNew(window: XdgToplevel) =
         (window.appId.isNotEmpty() && matches(window.appId)) || window.title.equals(name, ignoreCase = true) || launchedNames[window.appId] == name
 

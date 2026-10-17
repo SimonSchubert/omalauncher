@@ -46,6 +46,7 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.App
+import dev.omalauncher.InstantActivity
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
@@ -171,6 +172,8 @@ class TaskbarService : AccessibilityService() {
 
     private fun stop() {
         TaskbarStatus.serviceOn = false
+        // Its plans read the screen from here.
+        runtime.cancelWindowPlans()
         if (views.isEmpty()) return
         runCatching { unregisterReceiver(lockWatch) }
         for (v in views) runCatching { wm.removeView(v) }
@@ -365,6 +368,7 @@ class TaskbarService : AccessibilityService() {
                             runtime.linuxApps.masks[app.id],
                             onClick = { open(app) },
                             actions = { emptyList() },
+                            spoken = "${app.name}, Linux app",
                             dragOut = StripDrag(start = { at -> drag(app, at) }, move = { session.move(it) }, end = { session.end(it) }),
                         )
                     }
@@ -391,6 +395,8 @@ class TaskbarService : AccessibilityService() {
         app: AndroidApp,
         at: Offset,
     ) {
+        // A Linux app dropped earlier mustn't bring its split back over what the user does now.
+        runtime.cancelWindowPlans()
         val state = screen
         val canPopUp = SplitDrag.canPopUp(this)
         val oneUi = SplitDrag.isOneUi()
@@ -451,8 +457,10 @@ class TaskbarService : AccessibilityService() {
         app: LinuxApp,
         at: Offset,
     ) {
+        runtime.cancelWindowPlans()
         val state = screen
-        val canPopUp = SplitDrag.canPopUp(this)
+        // Linux windows open full screen or in a split, never as a pop-up.
+        val canPopUp = false
         val oneUi = SplitDrag.isOneUi()
         // Its window, as the screen names it, can't be split with itself; an app with no window can go next to anything.
         val dragged = runtime.windowOf(app)?.let(runtime.wm::handleOf)?.let { LinuxWindow(it, app.name).id } ?: linuxKey(app.id)
@@ -468,7 +476,6 @@ class TaskbarService : AccessibilityService() {
             },
         ) { zone ->
             when {
-                // Full screen, or a pop-up: Linux windows open full screen.
                 zone.kind !in SPLIT_KINDS -> open(app)
                 state is ScreenState.Split -> replace(app, zone.preview)
                 state is ScreenState.Single -> nextTo(app, zone.kind, state.packageName)
@@ -479,6 +486,7 @@ class TaskbarService : AccessibilityService() {
 
     /** Opens the Linux [app] as the launcher does, a window it has coming back; it counts as opened. */
     private fun open(app: LinuxApp) {
+        runtime.cancelWindowPlans()
         runtime.usage.record(linuxKey(app.id))
         runtime.launch(app)
         tray = false
@@ -511,7 +519,11 @@ class TaskbarService : AccessibilityService() {
         if (window == null) {
             // The service may be gone by the time the window shows up.
             val context = applicationContext
-            runtime.launch(app) { intent -> splitHalves(kind, SplitHalf.Fresh(intent), half)?.let { TaskbarTrampoline.start(context, it) } }
+            val dropped = screen
+            runtime.launch(app) { intent ->
+                val steps = splitHalves(kind, SplitHalf.Fresh(intent), half)
+                if (steps != null && planStillFits(dropped, screen)) TaskbarTrampoline.start(context, steps) else InstantActivity.startInstantly(context, intent)
+            }
             return
         }
         val task = taskOf(window) ?: return runtime.launch(app)
@@ -534,7 +546,10 @@ class TaskbarService : AccessibilityService() {
         val window = runtime.windowOf(app)
         if (window == null) {
             val context = applicationContext
-            runtime.launch(app) { intent -> TaskbarTrampoline.replace(context, intent, half, leaving = null) }
+            val dropped = screen
+            runtime.launch(app) { intent ->
+                if (planStillFits(dropped, screen)) TaskbarTrampoline.replace(context, intent, half, leaving = null) else InstantActivity.startInstantly(context, intent)
+            }
             return
         }
         val task = taskOf(window) ?: return runtime.launch(app)
@@ -553,6 +568,7 @@ class TaskbarService : AccessibilityService() {
         app: AndroidApp,
         half: ZoneBox,
     ) {
+        runtime.cancelWindowPlans()
         runtime.usage.record(usageKey(app.key))
         TaskbarTrampoline.replace(this, app, half)
         tray = false
@@ -567,6 +583,7 @@ class TaskbarService : AccessibilityService() {
         plan: OpenPlan<AndroidApp>,
         app: AndroidApp,
     ) {
+        runtime.cancelWindowPlans()
         runtime.usage.record(usageKey(app.key))
         when (plan) {
             is OpenPlan.Split -> TaskbarTrampoline.start(this, splitSteps(plan).map { it.asStep() })
