@@ -7,6 +7,7 @@ import dev.omalauncher.ui.splitdrag.ZoneKind
 import dev.omalauncher.ui.splitdrag.zoneAt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TaskbarZonesTest {
@@ -31,10 +32,9 @@ class TaskbarZonesTest {
         assertEquals("Replace Maps", left.label)
         assertEquals(ZoneBox(0f, 0f, 928f, 2160f), left.preview)
         assertEquals("Replace Mail", zones.zoneAt(1700f, 1000f)?.label)
-        assertEquals(ZoneKind.FullScreen, zones.zoneAt(900f, 50f)?.kind)
-        // No pop-up over a split: the middle belongs to the halves.
-        assertEquals(null, zones.firstOrNull { it.kind == ZoneKind.PopUp })
-        assertEquals(ZoneKind.SplitLeft, zones.zoneAt(900f, 1080f)?.kind)
+        // Only the halves over a split: no full screen, no pop-up (One UI would put either into a half).
+        assertEquals(setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight), zones.map { it.kind }.toSet())
+        assertEquals(ZoneKind.SplitLeft, zones.zoneAt(900f, 50f)?.kind)
     }
 
     @Test fun foldedSplitReplacesTopAndBottom() {
@@ -48,7 +48,7 @@ class TaskbarZonesTest {
         val zones = taskbarZones(split, "maps", 1856f, 2160f, canPopUp = true, oneUi = true, labelOf = label)
         val splitKinds = setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight, ZoneKind.SplitTop, ZoneKind.SplitBottom)
         assertNull(zones.firstOrNull { it.kind in splitKinds })
-        assertEquals(ZoneKind.FullScreen, zones.zoneAt(100f, 1000f)?.kind)
+        assertTrue(zones.isEmpty())
         val right = DropZone(ZoneKind.SplitRight, "Replace Mail", ZoneBox(928f, 0f, 1856f, 2160f), ZoneBox(928f, 0f, 1856f, 2160f))
         assertNull(planTaskbarOpen(right, split, "maps", "maps") { it })
     }

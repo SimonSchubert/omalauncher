@@ -10,9 +10,9 @@ import dev.omalauncher.ui.splitdrag.splitsSideBySide
 
 /**
  * Where an app dragged off the taskbar can go on a [width]×[height] screen showing [state]. Over one app: home's zones,
- * splitting with that app (not with itself). Over a split: full screen and each half replacing its app (or, if the [dragged] app
- * is already in the split, only full screen). No pop-up over a split: Android lets an app ask for a pop-up only by its size,
- * and One UI puts an app opened during a split into the half under it. Otherwise full screen and pop-up only. [labelOf]
+ * splitting with that app (not with itself). Over a split: each half, replacing its app; nothing else, as One UI keeps a
+ * split and puts any app opened during it into the half under it (no full screen, no pop-up). Nothing at all when the
+ * [dragged] app is already in the split: it can't be in both halves. Otherwise full screen and pop-up only. [labelOf]
  * names an app by package.
  */
 fun taskbarZones(
@@ -27,11 +27,7 @@ fun taskbarZones(
     when (state) {
         is ScreenState.Single -> dropZones(width, height, canSplit = state.packageName != dragged, canPopUp, splitsSideBySide(width, height, oneUi))
         is ScreenState.Split ->
-            if (dragged == state.first || dragged == state.second) {
-                dropZones(width, height, canSplit = false, canPopUp = false, sideBySide = true)
-            } else {
-                replaceZones(state, width, height, canPopUp = false, labelOf)
-            }
+            if (dragged == state.first || dragged == state.second) emptyList() else replaceZones(state, width, height, labelOf)
         ScreenState.Home, ScreenState.Unknown -> dropZones(width, height, canSplit = false, canPopUp, sideBySide = true)
     }
 
@@ -39,14 +35,8 @@ private fun replaceZones(
     state: ScreenState.Split,
     width: Float,
     height: Float,
-    canPopUp: Boolean,
     labelOf: (String) -> String,
 ): List<DropZone> {
-    // The band and the pop-up exactly as home has them. They come first, so they win where the halves overlap them.
-    val base = dropZones(width, height, canSplit = false, canPopUp, sideBySide = true)
-    val band = base.first()
-    val popUp = base.firstOrNull { it.kind == ZoneKind.PopUp }
-    val below = band.trigger.bottom
     val halves =
         if (state.sideBySide) {
             listOf(
@@ -59,13 +49,7 @@ private fun replaceZones(
                 Triple(ZoneKind.SplitBottom, state.second, ZoneBox(0f, height / 2, width, height)),
             )
         }
-    return buildList {
-        add(band)
-        popUp?.let(::add)
-        for ((kind, app, preview) in halves) {
-            add(DropZone(kind, "Replace ${labelOf(app)}", preview.copy(top = maxOf(preview.top, below)), preview))
-        }
-    }
+    return halves.map { (kind, app, half) -> DropZone(kind, "Replace ${labelOf(app)}", half, half) }
 }
 
 /**

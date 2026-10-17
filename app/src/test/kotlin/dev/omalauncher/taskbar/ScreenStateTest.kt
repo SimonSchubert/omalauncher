@@ -32,9 +32,9 @@ class ScreenStateTest {
         assertEquals(ScreenState.Single("maps"), screenState(wins, 1856f, 2160f, home))
     }
 
-    @Test fun aPopUpOverASplitIsUnknown() {
+    @Test fun aPopUpOverASplitKeepsTheSplit() {
         val wins = listOf(w("notes", 400f, 600f, 1200f, 1400f), w("mail", 935f, 0f, 1856f, 2160f), w("maps", 0f, 0f, 921f, 2160f))
-        assertEquals(ScreenState.Unknown, screenState(wins, 1856f, 2160f, home))
+        assertEquals(ScreenState.Split("maps", "mail", sideBySide = true), screenState(wins, 1856f, 2160f, home))
     }
 
     @Test fun noWindowsIsUnknown() {
@@ -55,14 +55,14 @@ class ScreenStateTest {
         assertEquals(ScreenState.Single("maps"), screenState(wins, 1856f, 2160f, home))
     }
 
-    @Test fun aPopUpOverOneHalfIsUnknown() {
+    @Test fun aPopUpOverOneHalfKeepsTheSplit() {
         val wins = listOf(w("notes", 100f, 300f, 800f, 1200f), w("maps", 0f, 0f, 921f, 2160f), w("mail", 935f, 0f, 1856f, 2160f))
-        assertEquals(ScreenState.Unknown, screenState(wins, 1856f, 2160f, home))
+        assertEquals(ScreenState.Split("maps", "mail", sideBySide = true), screenState(wins, 1856f, 2160f, home))
     }
 
-    @Test fun aPopUpAcrossBothHalvesIsUnknown() {
+    @Test fun aPopUpAcrossBothHalvesKeepsTheSplit() {
         val wins = listOf(w("notes", 600f, 300f, 1300f, 1200f), w("maps", 0f, 0f, 921f, 2160f), w("mail", 935f, 0f, 1856f, 2160f))
-        assertEquals(ScreenState.Unknown, screenState(wins, 1856f, 2160f, home))
+        assertEquals(ScreenState.Split("maps", "mail", sideBySide = true), screenState(wins, 1856f, 2160f, home))
     }
 
     @Test fun ownWindowsOtherThanHomeAreUnknown() {

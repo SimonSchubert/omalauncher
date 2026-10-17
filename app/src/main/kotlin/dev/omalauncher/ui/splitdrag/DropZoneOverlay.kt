@@ -70,7 +70,7 @@ fun DropZoneOverlay(session: SplitDragSession) {
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
                         // Below the full-screen band, so its label stays readable.
-                        .padding(top = 12.dp + with(density) { (zones.first().trigger.bottom).toDp() })
+                        .padding(top = 12.dp + with(density) { (zones.firstOrNull { it.kind == ZoneKind.FullScreen }?.trigger?.bottom ?: 0f).toDp() })
                         .frame(LauncherStyle.borderWidth, LauncherStyle.tileBorder, Palette.glass, radius = 12.dp)
                         .padding(horizontal = 14.dp, vertical = 8.dp),
             )
