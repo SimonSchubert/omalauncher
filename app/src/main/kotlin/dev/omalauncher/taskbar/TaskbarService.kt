@@ -1,6 +1,7 @@
 package dev.omalauncher.taskbar
 
 import android.accessibilityservice.AccessibilityService
+import android.app.ActivityManager
 import android.app.ActivityOptions
 import android.content.Intent
 import android.content.res.Configuration
@@ -74,6 +75,9 @@ class TaskbarService : AccessibilityService() {
     private var barView: ComposeView? = null
     private val session = SplitDragSession()
     private var screen by mutableStateOf<ScreenState>(ScreenState.Unknown)
+
+    /** This launcher's Linux windows on screen when [screen] was read, by [LinuxWindow.id]. */
+    private var linuxOnScreen = emptyMap<String, LinuxWindow>()
 
     /** The lock screen is up (or the screen is off): the taskbar shows nothing there, so it opens no apps past it. */
     private var locked by mutableStateOf(false)
@@ -184,13 +188,37 @@ class TaskbarService : AccessibilityService() {
                     .mapNotNull { w ->
                         val pkg = w.root?.packageName?.toString() ?: return@mapNotNull null
                         val r = Rect().also(w::getBoundsInScreen)
-                        AppWindow(pkg, ZoneBox(r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat()))
+                        AppWindow(pkg, ZoneBox(r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat()), w.title?.toString())
                     }
             val size = wm.currentWindowMetrics.bounds
-            // Our own windows other than home (Linux, files) can't be relaunched as a split partner: that would open home.
-            screenState(apps, size.width().toFloat(), size.height().toFloat(), homePackages(), opaque = launchers)
-        }.onSuccess { screen = it }
+            val linux = linuxTasks().map { it.window }
+            // Our own windows other than home and Linux (Files, settings) can't be relaunched as a split partner: that would open home.
+            linux.associateBy { it.id } to
+                screenState(apps, size.width().toFloat(), size.height().toFloat(), homePackages(), opaque = launchers, own = packageName, linux = linux)
+        }.onSuccess { (linux, state) ->
+            linuxOnScreen = linux
+            screen = state
+        }
     }
+
+    /** A Linux window of ours on screen, in its task [taskId], which [intent] opened. */
+    private class LinuxTask(
+        val window: LinuxWindow,
+        val taskId: Int,
+        val intent: Intent,
+    )
+
+    /** This launcher's visible Linux window tasks: those opened with an `omarchy://window/…` intent. */
+    @RequiresApi(35)
+    private fun linuxTasks(): List<LinuxTask> =
+        getSystemService(ActivityManager::class.java).appTasks.mapNotNull { task ->
+            // A task may go while it's being read.
+            val info = runCatching { task.taskInfo }.getOrNull() ?: return@mapNotNull null
+            val intent = info.baseIntent
+            val handle = intent.data?.takeIf { it.scheme == LINUX_SCHEME }?.lastPathSegment ?: return@mapNotNull null
+            if (!info.isVisible) return@mapNotNull null
+            LinuxTask(LinuxWindow(handle, info.taskDescription?.label ?: "Linux"), info.taskId, intent)
+        }
 
     /**
      * Apps with a home screen (this launcher, another Omalauncher, One UI Home…): their windows, say a Linux window of the
@@ -330,6 +358,7 @@ class TaskbarService : AccessibilityService() {
     }
 
     /** Starts dragging [app] from [at] (screen pixels), with zones for what's on screen right now. */
+    @RequiresApi(35)
     private fun drag(
         app: AndroidApp,
         at: Offset,
@@ -346,7 +375,7 @@ class TaskbarService : AccessibilityService() {
             canPopUp = canPopUp,
             oneUi = oneUi,
             layout = { w, h ->
-                taskbarZones(state, dragged, w, h, canPopUp, oneUi, labelOf = { pkg -> personalApp(pkg)?.label ?: pkg }, canPartner = { personalApp(it) != null })
+                taskbarZones(state, dragged, w, h, canPopUp, oneUi, labelOf = ::labelOf, canPartner = { isLinuxWindow(it) || personalApp(it) != null })
             },
         ) { zone ->
             if (state is ScreenState.Split) {
@@ -354,8 +383,37 @@ class TaskbarService : AccessibilityService() {
                 if (zone.kind in SPLIT_KINDS) replace(app, zone.preview)
                 return@begin
             }
+            if (state is ScreenState.Single && isLinuxWindow(state.packageName) && zone.kind in SPLIT_KINDS) {
+                nextToLinux(app, zone.kind, state.packageName)
+                return@begin
+            }
             planTaskbarOpen(zone, state, app, ::personalApp)?.let { open(it, app) }
         }
+    }
+
+    /** What a split half's "Replace …" calls the app (or Linux window) [id] in it. */
+    private fun labelOf(id: String): String =
+        linuxOnScreen[id]?.label
+            ?: personalApp(id)?.label
+            ?: runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(id, 0)).toString() }.getOrDefault(id)
+
+    /**
+     * Opens [app], dropped in a split zone of [kind], next to the Linux window [id]; see [linuxPartnerSteps]. Its task is
+     * looked up again: it may have gone since the drag began, and then nothing opens.
+     */
+    @RequiresApi(35)
+    private fun nextToLinux(
+        app: AndroidApp,
+        kind: ZoneKind,
+        id: String,
+    ) {
+        val task = linuxTasks().firstOrNull { it.window.id == id } ?: return
+        // A new activity for the same window, in a task of its own.
+        val reopen = Intent(task.intent).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+        val steps = linuxPartnerSteps(kind, app, task.taskId, reopen) ?: return
+        runtime.usage.record(usageKey(app.key))
+        TaskbarTrampoline.start(this, steps)
+        tray = false
     }
 
     /** Opens [app] in the split half at [half], replacing what's there; see [TaskbarTrampoline.replace]. */
@@ -379,7 +437,7 @@ class TaskbarService : AccessibilityService() {
     ) {
         runtime.usage.record(usageKey(app.key))
         when (plan) {
-            is OpenPlan.Split -> TaskbarTrampoline.start(this, splitSteps(plan))
+            is OpenPlan.Split -> TaskbarTrampoline.start(this, splitSteps(plan).map { it.asStep() })
             is OpenPlan.AsTapped -> startDirect(plan.app, null)
             is OpenPlan.Windowed -> startDirect(plan.app, plan.bounds)
         }
@@ -408,6 +466,7 @@ class TaskbarService : AccessibilityService() {
     private companion object {
         const val SEEN = "seen"
         const val HIDE_AFTER_MS = 4000L
+        const val LINUX_SCHEME = "omarchy"
         val SPLIT_KINDS = setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight, ZoneKind.SplitTop, ZoneKind.SplitBottom)
     }
 }

@@ -1,6 +1,8 @@
 package dev.omalauncher.taskbar
 
+import dev.omalauncher.ui.splitdrag.LaunchStep
 import dev.omalauncher.ui.splitdrag.ZoneBox
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,5 +23,9 @@ class TrampolineTest {
         assertTrue(landsIn(right, left = 828f, top = 0f, width = 200f, height = 200f))
         // At the right half's right edge: out of it.
         assertFalse(landsIn(right, left = 1756f, top = 0f, width = 200f, height = 200f))
+    }
+
+    @Test fun aSplitsStepsOpenTheirApps() {
+        assertEquals(TrampolineStep.Open("maps", adjacent = true, delayMs = 450), LaunchStep("maps", adjacent = true, delayMs = 450).asStep())
     }
 }

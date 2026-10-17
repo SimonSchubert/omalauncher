@@ -78,4 +78,50 @@ class TaskbarZonesTest {
         val zone = taskbarZones(single, "notes", 1856f, 2160f, true, true, label).first { it.kind == ZoneKind.SplitLeft }
         assertNull(planTaskbarOpen<String>(zone, single, "notes") { null })
     }
+
+    private val linux = ScreenState.Single(LinuxWindow("s-1", "Terminal").id)
+
+    @Test fun overALinuxWindowItSplitsWithIt() {
+        val zones = taskbarZones(linux, "notes", 1856f, 2160f, true, true, label)
+        assertEquals(setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight), zones.map { it.kind }.filter { it in splitKinds }.toSet())
+    }
+
+    @Test fun inASplitWithALinuxWindowItsHalfIsReplacedByItsName() {
+        val terminal = LinuxWindow("s-1", "Terminal")
+        val zones = taskbarZones(ScreenState.Split("maps", terminal.id, sideBySide = true), "notes", 1856f, 2160f, true, true, labelOf = { if (it == terminal.id) terminal.label else label(it) })
+        assertEquals("Replace Terminal", zones.zoneAt(1700f, 1000f)?.label)
+        assertEquals("Replace Maps", zones.zoneAt(100f, 1000f)?.label)
+    }
+
+    @Test fun rightOfALinuxWindowItComesForwardThenTheAppNextToIt() {
+        assertEquals(
+            listOf(TrampolineStep.Front(7, 0), TrampolineStep.Open("notes", adjacent = true, delayMs = 450)),
+            linuxPartnerSteps(ZoneKind.SplitRight, "notes", 7, "window"),
+        )
+        assertEquals(linuxPartnerSteps(ZoneKind.SplitRight, "notes", 7, "window"), linuxPartnerSteps(ZoneKind.SplitBottom, "notes", 7, "window"))
+    }
+
+    @Test fun leftOfALinuxWindowTheAppOpensThenTheWindowMovesNextToIt() {
+        assertEquals(
+            listOf(
+                TrampolineStep.Open("notes", adjacent = false, delayMs = 0),
+                TrampolineStep.Start("window", adjacent = true, delayMs = 450),
+                TrampolineStep.Remove(7, HANDOVER_DELAY_MS),
+            ),
+            linuxPartnerSteps(ZoneKind.SplitLeft, "notes", 7, "window"),
+        )
+        assertEquals(linuxPartnerSteps(ZoneKind.SplitLeft, "notes", 7, "window"), linuxPartnerSteps(ZoneKind.SplitTop, "notes", 7, "window"))
+    }
+
+    @Test fun fullScreenAndPopUpNeedNoLinuxSteps() {
+        assertNull(linuxPartnerSteps(ZoneKind.FullScreen, "notes", 7, "window"))
+        assertNull(linuxPartnerSteps(ZoneKind.PopUp, "notes", 7, "window"))
+    }
+
+    @Test fun overALinuxWindowFullScreenStillOpensAsTapped() {
+        val zone = taskbarZones(linux, "notes", 1856f, 2160f, true, true, label).first { it.kind == ZoneKind.FullScreen }
+        assertEquals(OpenPlan.AsTapped("notes"), planTaskbarOpen(zone, linux, "notes") { null })
+    }
+
+    private val splitKinds = setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight, ZoneKind.SplitTop, ZoneKind.SplitBottom)
 }
