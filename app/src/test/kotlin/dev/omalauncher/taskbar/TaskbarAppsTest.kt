@@ -31,4 +31,10 @@ class TaskbarAppsTest {
         for (m in TaskbarMode.entries) assertEquals(m, TaskbarMode.of(m.id))
         assertEquals(null, TaskbarMode.of("nope"))
     }
+
+    @Test fun launchesAreReadWithTheLaunchersKeys() {
+        assertEquals(listOf("maps", "mail"), launchedAndroid(listOf("a:maps", "l:foot", "a:mail")))
+        assertEquals("a:maps", usageKey("maps"))
+        assertEquals(listOf("maps"), launchedAndroid(listOf(usageKey("maps"))))
+    }
 }
