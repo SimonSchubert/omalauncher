@@ -10,8 +10,10 @@ import dev.omalauncher.ui.splitdrag.splitsSideBySide
 
 /**
  * Where an app dragged off the taskbar can go on a [width]×[height] screen showing [state]. Over one app: home's zones,
- * splitting with that app (not with itself). Over a split: full screen, pop-up, and each half replacing its app (or, if the [dragged] app is
- * already in the split, only full screen and pop-up). Otherwise full screen and pop-up only. [labelOf] names an app by package.
+ * splitting with that app (not with itself). Over a split: full screen and each half replacing its app (or, if the [dragged] app
+ * is already in the split, only full screen). No pop-up over a split: Android lets an app ask for a pop-up only by its size,
+ * and One UI puts an app opened during a split into the half under it. Otherwise full screen and pop-up only. [labelOf]
+ * names an app by package.
  */
 fun taskbarZones(
     state: ScreenState,
@@ -26,9 +28,9 @@ fun taskbarZones(
         is ScreenState.Single -> dropZones(width, height, canSplit = state.packageName != dragged, canPopUp, splitsSideBySide(width, height, oneUi))
         is ScreenState.Split ->
             if (dragged == state.first || dragged == state.second) {
-                dropZones(width, height, canSplit = false, canPopUp, sideBySide = true)
+                dropZones(width, height, canSplit = false, canPopUp = false, sideBySide = true)
             } else {
-                replaceZones(state, width, height, canPopUp, labelOf)
+                replaceZones(state, width, height, canPopUp = false, labelOf)
             }
         ScreenState.Home, ScreenState.Unknown -> dropZones(width, height, canSplit = false, canPopUp, sideBySide = true)
     }
