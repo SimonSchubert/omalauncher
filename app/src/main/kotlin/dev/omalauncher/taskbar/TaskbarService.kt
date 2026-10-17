@@ -311,7 +311,21 @@ class TaskbarService : AccessibilityService() {
             canPopUp = canPopUp,
             oneUi = oneUi,
             layout = { w, h -> taskbarZones(state, dragged, w, h, canPopUp, oneUi) { pkg -> personalApp(pkg)?.label ?: pkg } },
-        ) { zone -> planTaskbarOpen(zone, state, app, dragged, ::personalApp)?.let { open(it, app, replacing = state is ScreenState.Split) } }
+        ) { zone -> planTaskbarOpen(zone, state, app, dragged, ::personalApp)?.let { plan ->
+                // Replacing a half: the trampoline works out from where it lands how to open the app in that half.
+                if (state is ScreenState.Split && plan is OpenPlan.Split) replace(app, zone.preview) else open(plan, app)
+            }
+        }
+    }
+
+    /** Opens [app] in the split half at [half], replacing what's there; see [TaskbarTrampoline.replace]. */
+    private fun replace(
+        app: AndroidApp,
+        half: ZoneBox,
+    ) {
+        runtime.usage.record(app.key)
+        TaskbarTrampoline.replace(this, app, half)
+        tray = false
     }
 
     /**
@@ -323,12 +337,10 @@ class TaskbarService : AccessibilityService() {
     private fun open(
         plan: OpenPlan<AndroidApp>,
         app: AndroidApp,
-        replacing: Boolean = false,
     ) {
         runtime.usage.record(app.key)
         when (plan) {
-            // Replacing a half of a split relays its last start, so the app lands in the half not brought forward.
-            is OpenPlan.Split -> TaskbarTrampoline.start(this, launchSteps(plan), relayLast = replacing)
+            is OpenPlan.Split -> TaskbarTrampoline.start(this, launchSteps(plan))
             is OpenPlan.AsTapped -> startDirect(plan.app, null)
             is OpenPlan.Windowed -> startDirect(plan.app, plan.bounds)
         }
