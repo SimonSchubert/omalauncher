@@ -123,5 +123,68 @@ class TaskbarZonesTest {
         assertEquals(OpenPlan.AsTapped("notes"), planTaskbarOpen(zone, linux, "notes") { null })
     }
 
+    @Test fun aNewLinuxWindowDraggedLeftOpensThenThePartnerNextToIt() {
+        assertEquals(
+            listOf(TrampolineStep.Start("new", adjacent = false, delayMs = 0), TrampolineStep.Open("maps", adjacent = true, delayMs = 450)),
+            splitHalves(ZoneKind.SplitLeft, SplitHalf.Fresh("new"), SplitHalf.App("maps")),
+        )
+    }
+
+    @Test fun aNewLinuxWindowDraggedRightOpensNextToThePartner() {
+        assertEquals(
+            listOf(TrampolineStep.Open("maps", adjacent = false, delayMs = 0), TrampolineStep.Start("new", adjacent = true, delayMs = 450)),
+            splitHalves(ZoneKind.SplitBottom, SplitHalf.Fresh("new"), SplitHalf.App("maps")),
+        )
+    }
+
+    @Test fun aLinuxWindowDraggedLeftComesForwardThenThePartnerNextToIt() {
+        assertEquals(
+            listOf(TrampolineStep.Front(3, 0), TrampolineStep.Open("maps", adjacent = true, delayMs = 450)),
+            splitHalves(ZoneKind.SplitTop, SplitHalf.Task(3, "window"), SplitHalf.App("maps")),
+        )
+    }
+
+    @Test fun aLinuxWindowDraggedRightGetsANewActivityNextToThePartnerAndItsOldTaskGoes() {
+        assertEquals(
+            listOf(
+                TrampolineStep.Open("maps", adjacent = false, delayMs = 0),
+                TrampolineStep.Start("window", adjacent = true, delayMs = 450),
+                TrampolineStep.Remove(3, HANDOVER_DELAY_MS),
+            ),
+            splitHalves(ZoneKind.SplitRight, SplitHalf.Task(3, "window"), SplitHalf.App("maps")),
+        )
+    }
+
+    @Test fun twoLinuxWindowsSplitByBringingOneForwardAndMovingTheOther() {
+        assertEquals(
+            listOf(
+                TrampolineStep.Front(7, 0),
+                TrampolineStep.Start("dragged", adjacent = true, delayMs = 450),
+                TrampolineStep.Remove(3, HANDOVER_DELAY_MS),
+            ),
+            splitHalves<String, String>(ZoneKind.SplitRight, SplitHalf.Task(3, "dragged"), SplitHalf.Task(7, "partner")),
+        )
+        assertEquals(
+            listOf(
+                TrampolineStep.Start("new", adjacent = false, delayMs = 0),
+                TrampolineStep.Start("partner", adjacent = true, delayMs = 450),
+                TrampolineStep.Remove(7, HANDOVER_DELAY_MS),
+            ),
+            splitHalves<String, String>(ZoneKind.SplitLeft, SplitHalf.Fresh("new"), SplitHalf.Task(7, "partner")),
+        )
+    }
+
+    @Test fun fullScreenAndPopUpNeedNoHalves() {
+        assertNull(splitHalves(ZoneKind.FullScreen, SplitHalf.Fresh("new"), SplitHalf.App("maps")))
+        assertNull(splitHalves(ZoneKind.PopUp, SplitHalf.Fresh("new"), SplitHalf.App("maps")))
+    }
+
+    @Test fun aLinuxAppsOwnWindowOnScreenOffersNoSplitWithItself() {
+        val terminal = LinuxWindow("s-1", "Terminal")
+        val zones = taskbarZones(ScreenState.Single(terminal.id), terminal.id, 1856f, 2160f, true, true, label)
+        assertTrue(zones.none { it.kind in splitKinds })
+        assertTrue(taskbarZones(ScreenState.Single(terminal.id), linuxKey("foot"), 1856f, 2160f, true, true, label).any { it.kind in splitKinds })
+    }
+
     private val splitKinds = setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight, ZoneKind.SplitTop, ZoneKind.SplitBottom)
 }

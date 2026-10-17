@@ -78,25 +78,75 @@ fun <A> planTaskbarOpen(
  * [taskId]; null for any other zone. The bottom or right half: the window's task comes back to the front, then the app
  * opens next to it. The top or left half: the app opens full screen, then the window gets a new activity next to it, by
  * [reopen] (the window's own intent, in a new task), and its old task goes; the new activity takes the window over, so
- * that doesn't close it.
+ * that doesn't close it. See [splitHalves].
  */
 fun <A, I> linuxPartnerSteps(
     kind: ZoneKind,
     dragged: A,
     taskId: Int,
     reopen: I,
+): List<TrampolineStep<A, I>>? = splitHalves(kind, SplitHalf.App(dragged), SplitHalf.Task(taskId, reopen))
+
+/** What one half of a split the trampoline puts together holds. [A] is an app and [I] an intent, as in [TrampolineStep]. */
+sealed interface SplitHalf<out A, out I> {
+    /** An Android app, opened (or brought back) by its launcher entry. */
+    data class App<A>(
+        val app: A,
+    ) : SplitHalf<A, Nothing>
+
+    /** A Linux window's activity not open yet, started by [intent]: a window that just showed up. */
+    data class Fresh<I>(
+        val intent: I,
+    ) : SplitHalf<Nothing, I>
+
+    /**
+     * A Linux window already in this launcher's task [taskId]. First in the split, the task comes to the front; second,
+     * the window gets a new activity by [reopen] (its intent, in a new task) and the old task goes once that one is in.
+     */
+    data class Task<I>(
+        val taskId: Int,
+        val reopen: I,
+    ) : SplitHalf<Nothing, I>
+}
+
+/**
+ * The trampoline's steps that put [dragged], dropped in a split zone of [kind], next to [partner]: the dragged one first
+ * for the top or left half, after the partner for the bottom or right one, as [planOpen] does. Null for any other zone.
+ */
+fun <A, I> splitHalves(
+    kind: ZoneKind,
+    dragged: SplitHalf<A, I>,
+    partner: SplitHalf<A, I>,
 ): List<TrampolineStep<A, I>>? =
     when (kind) {
-        ZoneKind.SplitBottom, ZoneKind.SplitRight ->
-            listOf(TrampolineStep.Front(taskId, delayMs = 0), TrampolineStep.Open(dragged, adjacent = true, delayMs = ADJACENT_DELAY_MS))
-        ZoneKind.SplitTop, ZoneKind.SplitLeft ->
-            listOf(
-                TrampolineStep.Open(dragged, adjacent = false, delayMs = 0),
-                TrampolineStep.Start(reopen, adjacent = true, delayMs = ADJACENT_DELAY_MS),
-                TrampolineStep.Remove(taskId, delayMs = HANDOVER_DELAY_MS),
-            )
+        ZoneKind.SplitTop, ZoneKind.SplitLeft -> halfSteps(dragged, partner)
+        ZoneKind.SplitBottom, ZoneKind.SplitRight -> halfSteps(partner, dragged)
         ZoneKind.FullScreen, ZoneKind.PopUp -> null
     }
+
+/** [first] in front, then [adjacent] next to it; see [SplitHalf]. */
+private fun <A, I> halfSteps(
+    first: SplitHalf<A, I>,
+    adjacent: SplitHalf<A, I>,
+): List<TrampolineStep<A, I>> {
+    val front =
+        when (first) {
+            is SplitHalf.App -> TrampolineStep.Open(first.app, adjacent = false, delayMs = 0)
+            is SplitHalf.Fresh -> TrampolineStep.Start(first.intent, adjacent = false, delayMs = 0)
+            is SplitHalf.Task -> TrampolineStep.Front(first.taskId, delayMs = 0)
+        }
+    val next =
+        when (adjacent) {
+            is SplitHalf.App -> listOf(TrampolineStep.Open(adjacent.app, adjacent = true, delayMs = ADJACENT_DELAY_MS))
+            is SplitHalf.Fresh -> listOf(TrampolineStep.Start(adjacent.intent, adjacent = true, delayMs = ADJACENT_DELAY_MS))
+            is SplitHalf.Task ->
+                listOf(
+                    TrampolineStep.Start(adjacent.reopen, adjacent = true, delayMs = ADJACENT_DELAY_MS),
+                    TrampolineStep.Remove(adjacent.taskId, delayMs = HANDOVER_DELAY_MS),
+                )
+        }
+    return listOf(front) + next
+}
 
 /** How long a Linux window's old task stays after its new activity starts, so that one is in its half first. */
 const val HANDOVER_DELAY_MS = 600L

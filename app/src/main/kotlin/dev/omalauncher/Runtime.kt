@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import androidx.compose.runtime.getValue
@@ -36,6 +37,8 @@ import dev.omalauncher.linux.matches
 import dev.omalauncher.linux.run
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.taskbar.TaskbarSettings
+import dev.omalauncher.taskbar.WINDOW_PLAN_MS
+import dev.omalauncher.taskbar.WindowPlans
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.theme.ThemeStore
@@ -93,6 +96,9 @@ class Runtime(
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
+
+    /** Linux apps dropped in a split off the taskbar, waiting for their first window; see [launch] with a placement. */
+    private val windowPlans = WindowPlans<LinuxApp, (Intent) -> Unit>()
 
     /** An app being dragged out of home towards split screen; see SplitDrag. */
     val splitDrag = SplitDragSession()
@@ -182,13 +188,14 @@ class Runtime(
                     "btop" -> "BtopWindow"
                     else -> agentOf(window?.appId.orEmpty(), name)?.windowAlias ?: "LinuxWindowActivity"
                 }
-            InstantActivity.startInstantly(
-                context,
+            val intent =
                 Intent()
                     .setClassName(context, "dev.omalauncher.$activity")
                     .setData(Uri.parse("omarchy://window/$handle"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
-            )
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            // The first window of an app dropped in a split off the taskbar goes where it was dropped.
+            val place = window?.let { w -> windowPlans.take(SystemClock.elapsedRealtime()) { app -> app.ownsNew(w) } }
+            if (place != null) place(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) else InstantActivity.startInstantly(context, intent)
         }
     }
 
@@ -519,13 +526,40 @@ class Runtime(
         if (app.exec == EDIT_COMMAND) return edit()
         if (app.terminal) return terminal(app.exec, app.name)
         // Like an Android icon: an app that already has a window comes back to it. Single-instance
-        // apps would otherwise just exit on a second launch, showing nothing. Quickshell apps (App Finder)
-        // all share the app_id org.quickshell, so their window title, which is their name, decides.
-        wm.appWindows
-            .firstOrNull { (it.appId.isNotEmpty() && app.matches(it.appId)) || it.title.equals(app.name, ignoreCase = true) }
-            ?.let { if (bringToFront(it)) return }
+        // apps would otherwise just exit on a second launch, showing nothing.
+        windowOf(app)?.let { if (bringToFront(it)) return }
         launch(app.exec)
     }
+
+    /**
+     * Starts [app] as [launch] does, and opens its first window by [place], given the window's intent (in a new task),
+     * if it shows up within [WINDOW_PLAN_MS]; a window that comes later opens as usual. Meant for an app with no window
+     * yet (see [windowOf]): one with a window just comes back to it, and the plan would wait for nothing.
+     */
+    fun launch(
+        app: LinuxApp,
+        place: (Intent) -> Unit,
+    ) {
+        windowPlans.add(app, place, SystemClock.elapsedRealtime())
+        launch(app)
+    }
+
+    /**
+     * The window [app] already has, which [launch] brings back; null if it has none, and always for the apps [launch]
+     * opens anew each time (terminal apps) or that aren't Linux windows (Files, the editor). Quickshell apps (App
+     * Finder) all share the app_id org.quickshell, so their window title, which is their name, decides.
+     */
+    fun windowOf(app: LinuxApp): XdgToplevel? {
+        if (!opensLinuxWindow(app) || app.terminal) return null
+        return wm.appWindows.firstOrNull { (it.appId.isNotEmpty() && app.matches(it.appId)) || it.title.equals(app.name, ignoreCase = true) }
+    }
+
+    /** Whether [app] opens a Linux window; Files and the editor are the launcher's own screens. */
+    fun opensLinuxWindow(app: LinuxApp) = app.exec != FILES_COMMAND && app.exec != EDIT_COMMAND
+
+    /** Whether the new [window] is [app]'s: as in [windowOf], or a terminal [launch] started under the app's name. */
+    private fun LinuxApp.ownsNew(window: XdgToplevel) =
+        (window.appId.isNotEmpty() && matches(window.appId)) || window.title.equals(name, ignoreCase = true) || launchedNames[window.appId] == name
 
     /** Moves [window]'s Android task to the front; false if it has none (yet). */
     private fun bringToFront(window: XdgToplevel): Boolean {

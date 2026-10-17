@@ -46,6 +46,7 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.App
+import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.StripCell
@@ -58,6 +59,7 @@ import dev.omalauncher.ui.splitdrag.ZoneKind
 import dev.omalauncher.ui.splitdrag.ZoneBox
 import dev.omalauncher.ui.splitdrag.splitSteps
 import dev.omalauncher.ui.tile
+import dev.omalauncher.wayland.XdgToplevel
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -209,15 +211,15 @@ class TaskbarService : AccessibilityService() {
         val intent: Intent,
     )
 
-    /** This launcher's visible Linux window tasks: those opened with an `omarchy://window/…` intent. */
+    /** This launcher's Linux window tasks, those opened with an `omarchy://window/…` intent: the [visible] ones, or all. */
     @RequiresApi(35)
-    private fun linuxTasks(): List<LinuxTask> =
+    private fun linuxTasks(visible: Boolean = true): List<LinuxTask> =
         getSystemService(ActivityManager::class.java).appTasks.mapNotNull { task ->
             // A task may go while it's being read.
             val info = runCatching { task.taskInfo }.getOrNull() ?: return@mapNotNull null
             val intent = info.baseIntent
             val handle = intent.data?.takeIf { it.scheme == LINUX_SCHEME }?.lastPathSegment ?: return@mapNotNull null
-            if (!info.isVisible) return@mapNotNull null
+            if (visible && !info.isVisible) return@mapNotNull null
             LinuxTask(LinuxWindow(handle, info.taskDescription?.label ?: "Linux"), info.taskId, intent)
         }
 
@@ -320,10 +322,7 @@ class TaskbarService : AccessibilityService() {
     @RequiresApi(35)
     @Composable
     private fun Tray() {
-        val settings = runtime.taskbar
-        val catalog = runtime.androidApps
-        val byKey = catalog.apps.filter { SplitDrag.canDrag(it) }.associateBy { it.key }
-        val apps = taskbarApps(settings.mode, settings.pinned, seen, launchedAndroid(runtime.usage.recent), byKey.keys).mapNotNull { byKey[it] }
+        val apps = trayApps()
         // The screen width from the configuration: the bar window itself only wraps its content.
         val maxWidth = LocalConfiguration.current.screenWidthDp.dp - 32.dp
         LazyRow(
@@ -344,18 +343,46 @@ class TaskbarService : AccessibilityService() {
             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            items(apps, key = { it.key }) { app ->
-                StripCell(
-                    app.label,
-                    catalog.icons[app.key],
-                    catalog.masks[app.key],
-                    onClick = { open(OpenPlan.AsTapped(app), app) },
-                    actions = { emptyList() },
-                    spoken = app.spoken,
-                    dragOut = StripDrag(start = { at -> drag(app, at) }, move = { session.move(it) }, end = { session.end(it) }),
-                )
+            items(apps, key = { it.key }) { entry ->
+                when (entry) {
+                    is TrayApp.Android -> {
+                        val app = entry.app
+                        StripCell(
+                            app.label,
+                            runtime.androidApps.icons[app.key],
+                            runtime.androidApps.masks[app.key],
+                            onClick = { open(OpenPlan.AsTapped(app), app) },
+                            actions = { emptyList() },
+                            spoken = app.spoken,
+                            dragOut = StripDrag(start = { at -> drag(app, at) }, move = { session.move(it) }, end = { session.end(it) }),
+                        )
+                    }
+                    is TrayApp.Linux -> {
+                        val app = entry.app
+                        StripCell(
+                            app.name,
+                            runtime.linuxApps.icons[app.id],
+                            runtime.linuxApps.masks[app.id],
+                            onClick = { open(app) },
+                            actions = { emptyList() },
+                            dragOut = StripDrag(start = { at -> drag(app, at) }, move = { session.move(it) }, end = { session.end(it) }),
+                        )
+                    }
+                }
             }
         }
+    }
+
+    /**
+     * What the tray lists (see [taskbarApps]): Android apps that can be split, and Linux apps while Linux is installed
+     * and has them.
+     */
+    private fun trayApps(): List<TrayApp> {
+        val settings = runtime.taskbar
+        val byKey = HashMap<String, TrayApp>()
+        for (app in runtime.androidApps.apps) if (SplitDrag.canDrag(app)) byKey[usageKey(app.key)] = TrayApp.Android(app)
+        if (runtime.bootstrap.isInstalled) for (app in runtime.linuxApps.apps) byKey[linuxKey(app.id)] = TrayApp.Linux(app)
+        return taskbarApps(settings.mode, settings.pinned, seen, runtime.usage.recent, byKey.keys).mapNotNull { byKey[it] }
     }
 
     /** Starts dragging [app] from [at] (screen pixels), with zones for what's on screen right now. */
@@ -409,12 +436,116 @@ class TaskbarService : AccessibilityService() {
         id: String,
     ) {
         val task = linuxTasks().firstOrNull { it.window.id == id } ?: return open(OpenPlan.AsTapped(app), app)
-        // A new activity for the same window, in a task of its own.
-        val reopen = Intent(task.intent).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
-        val steps = linuxPartnerSteps(kind, app, task.taskId, reopen) ?: return
+        val steps = linuxPartnerSteps(kind, app, task.taskId, reopen(task.intent)) ?: return
         runtime.usage.record(usageKey(app.key))
         TaskbarTrampoline.start(this, steps)
         tray = false
+    }
+
+    /** A new activity for the Linux window [intent] opened, in a task of its own. */
+    private fun reopen(intent: Intent) = Intent(intent).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+
+    /** Starts dragging the Linux [app] from [at] (screen pixels), with the zones an Android app gets. */
+    @RequiresApi(35)
+    private fun drag(
+        app: LinuxApp,
+        at: Offset,
+    ) {
+        val state = screen
+        val canPopUp = SplitDrag.canPopUp(this)
+        val oneUi = SplitDrag.isOneUi()
+        // Its window, as the screen names it, can't be split with itself; an app with no window can go next to anything.
+        val dragged = runtime.windowOf(app)?.let(runtime.wm::handleOf)?.let { LinuxWindow(it, app.name).id } ?: linuxKey(app.id)
+        session.begin(
+            label = app.name,
+            icon = runtime.linuxApps.icons[app.id],
+            at = at,
+            canSplit = true,
+            canPopUp = canPopUp,
+            oneUi = oneUi,
+            layout = { w, h ->
+                taskbarZones(state, dragged, w, h, canPopUp, oneUi, labelOf = ::labelOf, canPartner = { isLinuxWindow(it) || personalApp(it) != null })
+            },
+        ) { zone ->
+            when {
+                // Full screen, or a pop-up: Linux windows open full screen.
+                zone.kind !in SPLIT_KINDS -> open(app)
+                state is ScreenState.Split -> replace(app, zone.preview)
+                state is ScreenState.Single -> nextTo(app, zone.kind, state.packageName)
+                else -> open(app)
+            }
+        }
+    }
+
+    /** Opens the Linux [app] as the launcher does, a window it has coming back; it counts as opened. */
+    private fun open(app: LinuxApp) {
+        runtime.usage.record(linuxKey(app.id))
+        runtime.launch(app)
+        tray = false
+    }
+
+    /**
+     * Opens the Linux [app], dropped in a split zone of [kind], next to the app or Linux window [partner] on screen; see
+     * [splitHalves]. A window the app has goes there, its task brought forward or a new activity for it; an app without
+     * one starts, and its first window goes there once it shows up (see [dev.omalauncher.Runtime.launch]). The app just
+     * opens if the partner has gone since the drag began, or the app opens no Linux window (Files, the editor).
+     */
+    @RequiresApi(35)
+    private fun nextTo(
+        app: LinuxApp,
+        kind: ZoneKind,
+        partner: String,
+    ) {
+        val half: SplitHalf<AndroidApp, Intent> =
+            (
+                if (isLinuxWindow(partner)) {
+                    linuxTasks().firstOrNull { it.window.id == partner }?.let { SplitHalf.Task(it.taskId, reopen(it.intent)) }
+                } else {
+                    personalApp(partner)?.let { SplitHalf.App(it) }
+                }
+            ) ?: return open(app)
+        if (!runtime.opensLinuxWindow(app)) return open(app)
+        runtime.usage.record(linuxKey(app.id))
+        tray = false
+        val window = runtime.windowOf(app)
+        if (window == null) {
+            // The service may be gone by the time the window shows up.
+            val context = applicationContext
+            runtime.launch(app) { intent -> splitHalves(kind, SplitHalf.Fresh(intent), half)?.let { TaskbarTrampoline.start(context, it) } }
+            return
+        }
+        val task = taskOf(window) ?: return runtime.launch(app)
+        splitHalves(kind, SplitHalf.Task(task.taskId, reopen(task.intent)), half)?.let { TaskbarTrampoline.start(this, it) }
+    }
+
+    /**
+     * Opens the Linux [app] in the split half at [half], replacing what's there; see [TaskbarTrampoline.replace]. A window
+     * it has gets a new activity there, and its old task goes; an app without one starts, and its first window goes
+     * there once it shows up.
+     */
+    @RequiresApi(35)
+    private fun replace(
+        app: LinuxApp,
+        half: ZoneBox,
+    ) {
+        if (!runtime.opensLinuxWindow(app)) return open(app)
+        runtime.usage.record(linuxKey(app.id))
+        tray = false
+        val window = runtime.windowOf(app)
+        if (window == null) {
+            val context = applicationContext
+            runtime.launch(app) { intent -> TaskbarTrampoline.replace(context, intent, half, leaving = null) }
+            return
+        }
+        val task = taskOf(window) ?: return runtime.launch(app)
+        TaskbarTrampoline.replace(this, reopen(task.intent), half, leaving = task.taskId)
+    }
+
+    /** The task of the Linux [window], on screen or not; null if it has none (yet). */
+    @RequiresApi(35)
+    private fun taskOf(window: XdgToplevel): LinuxTask? {
+        val handle = runtime.wm.handleOf(window) ?: return null
+        return linuxTasks(visible = false).firstOrNull { it.window.handle == handle }
     }
 
     /** Opens [app] in the split half at [half], replacing what's there; see [TaskbarTrampoline.replace]. */
@@ -469,5 +600,22 @@ class TaskbarService : AccessibilityService() {
         const val HIDE_AFTER_MS = 4000L
         const val LINUX_SCHEME = "omarchy"
         val SPLIT_KINDS = setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight, ZoneKind.SplitTop, ZoneKind.SplitBottom)
+    }
+}
+
+/** An app in the tray: an Android app, or a Linux one. [key] is its usage key, as [taskbarApps] lists it. */
+private sealed interface TrayApp {
+    val key: String
+
+    data class Android(
+        val app: AndroidApp,
+    ) : TrayApp {
+        override val key get() = usageKey(app.key)
+    }
+
+    data class Linux(
+        val app: LinuxApp,
+    ) : TrayApp {
+        override val key get() = linuxKey(app.id)
     }
 }

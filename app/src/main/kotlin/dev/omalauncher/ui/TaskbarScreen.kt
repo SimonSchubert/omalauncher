@@ -27,11 +27,13 @@ import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
 import dev.omalauncher.taskbar.TaskbarMode
 import dev.omalauncher.taskbar.TaskbarStatus
+import dev.omalauncher.taskbar.linuxKey
+import dev.omalauncher.taskbar.usageKey
 import dev.omalauncher.ui.splitdrag.SplitDrag
 
 /**
  * Taskbar settings: on or off, a warning while its accessibility service is off (Android lets only the user turn it
- * on), what it lists, and which apps are pinned to it.
+ * on), what it lists, and which apps are pinned to it: Android apps, and Linux ones while Linux is installed.
  */
 @Composable
 fun TaskbarScreen(
@@ -65,7 +67,9 @@ fun TaskbarScreen(
                 }
             }
             if (taskbar.mode == TaskbarMode.PinnedAndRecent) {
-                val all = runtime.androidApps.apps.filter { SplitDrag.canDrag(it) }
+                // Linux apps only while Linux is installed; pins of apps that are gone stay, unlisted.
+                val linux = if (runtime.bootstrap.isInstalled) runtime.linuxApps.apps.map { PinChoice(linuxKey(it.id), it.name, linux = true) } else emptyList()
+                val all = runtime.androidApps.apps.filter { SplitDrag.canDrag(it) }.map { PinChoice(usageKey(it.key), it.label, linux = false) } + linux
                 val apps =
                     if (query.isBlank()) {
                         val alphabetical = all.sortedBy { it.label.lowercase() }
@@ -77,7 +81,8 @@ fun TaskbarScreen(
                 item(key = "search") { SearchField(query, { query = it }, onGo = {}, placeholder = "search apps") }
                 items(apps, key = { it.key }) { app ->
                     val pinned = app.key in taskbar.pinned
-                    SettingRow(app.label, if (pinned) "pinned #${taskbar.pinned.indexOf(app.key) + 1}" else "not pinned", if (pinned) "●" else "○") {
+                    val state = if (pinned) "pinned #${taskbar.pinned.indexOf(app.key) + 1}" else "not pinned"
+                    SettingRow(app.label, if (app.linux) "linux · $state" else state, if (pinned) "●" else "○") {
                         taskbar.togglePin(app.key)
                     }
                 }
@@ -85,6 +90,13 @@ fun TaskbarScreen(
         }
     }
 }
+
+/** An app the taskbar can pin: its usage [key] (see [usageKey], [linuxKey]) and name; [linux] for a Linux app. */
+private data class PinChoice(
+    val key: String,
+    val label: String,
+    val linux: Boolean,
+)
 
 /** A settings row: [title] and [subtitle] on the left, [value] in the accent on the right; tapping runs [onClick]. */
 @Composable
