@@ -134,11 +134,15 @@ class TaskbarTrampoline : Activity() {
     /**
      * Closes task [id]: a Linux window's leaves without an animation (see [LinuxWindowActivity.leave]), and is closed
      * the plain way if it's still there a little later; any other the plain way. A Linux window's task whose activity
-     * still owns the window stays.
+     * still owns the window stays, unless it hands the window over within [KEPT_TRIES] looks [LEAVE_MS] apart.
      */
-    private fun remove(id: Int) {
+    private fun remove(
+        id: Int,
+        tries: Int = KEPT_TRIES,
+    ) {
         when (LinuxWindowActivity.leave(id)) {
-            LinuxWindowActivity.Leaving.Kept -> return
+            // The new activity may not have taken the window over yet: looked at again a little later.
+            LinuxWindowActivity.Leaving.Kept -> if (tries > 0) handler.postDelayed({ remove(id, tries - 1) }, LEAVE_MS)
             LinuxWindowActivity.Leaving.Left -> handler.postDelayed({ if (!LinuxWindowActivity.keeps(id)) finishTask(id) }, LEAVE_MS)
             LinuxWindowActivity.Leaving.NotOurs -> finishTask(id)
         }
@@ -170,6 +174,9 @@ class TaskbarTrampoline : Activity() {
 
         /** How long a Linux window's old task gets to leave on its own before it's closed. */
         private const val LEAVE_MS = 300L
+
+        /** How many more times a Linux window's old task that still owns its window is looked at, within the trampoline's last second. */
+        private const val KEPT_TRIES = 2
 
         /** How long a replacing trampoline waits to have settled in its half before looking where it is. */
         private const val SETTLE_MS = 200L
