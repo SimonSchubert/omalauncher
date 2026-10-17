@@ -273,4 +273,43 @@ class HomeProfilesTest {
         p.open.regrid(8, listOf(listOf(widget("a.owl", 6, 2))))
         assertEquals(Cell(4, 0, 4, 2), p.open.cell("a.owl"))
     }
+
+    @Test fun hidingTwiceWhileThereIsOneHomeMarksItOnce() {
+        val p = profiles()
+        enabled = false
+        p.hide("a.owl", Profile.Open)
+        p.hide("a.owl", Profile.Open)
+        enabled = true
+        assertEquals(listOf("a.owl"), p.hiddenKeys(Profile.Open))
+    }
+
+    @Test fun unhidingDropsAStaleCellSoItsPagePlacesItAfresh() {
+        val p = profiles()
+        p.hide("a.owl", Profile.Open)
+        // Turned off meanwhile, something gave it a cell there again, under what moved in.
+        p.open.set("a.owl", Cell(0, 0, 4, 2))
+        p.folded.set("a.owl", Cell(1, 1, 2, 2))
+        p.unhide("a.owl", Profile.Open)
+        assertFalse(p.isHidden("a.owl", Profile.Open))
+        assertNull(p.open.cell("a.owl"))
+        assertEquals(Cell(1, 1, 2, 2), p.folded.cell("a.owl"))
+    }
+
+    @Test fun unhidingWhatIsntHiddenKeepsItsCell() {
+        val p = profiles()
+        p.open.set("a.owl", Cell(0, 0, 4, 2))
+        p.unhide("a.owl", Profile.Open)
+        assertEquals(Cell(0, 0, 4, 2), p.open.cell("a.owl"))
+    }
+
+    @Test fun inheritingKeepsACellTheHeirHas() {
+        val p = profiles()
+        p.folded.set("folder:f", Cell(0, 0, 1, 1))
+        p.folded.set("app:a", Cell(3, 3, 1, 1))
+        p.open.set("folder:f", Cell(8, 0, 1, 1))
+        p.inherit(from = "folder:f", to = "app:a")
+        assertEquals(Cell(3, 3, 1, 1), p.folded.cell("app:a"))
+        assertEquals(Cell(8, 0, 1, 1), p.open.cell("app:a"))
+        assertNull(p.folded.cell("folder:f"))
+    }
 }

@@ -133,16 +133,19 @@ class HomeProfiles(
         key: String,
         profile: Profile = active,
     ) {
-        if (!isHidden(key, profile)) hidden.getValue(profile) += key
+        if (key !in hidden.getValue(profile)) hidden.getValue(profile) += key
         layoutOf(profile).clearCell(key)
         save()
     }
 
+    /** Brings [key] back to [profile]'s home. Any cell it kept there (from while the setting was off) goes, so its page places it afresh rather than over what moved in. */
     fun unhide(
         key: String,
         profile: Profile = active,
     ) {
-        if (hidden.getValue(profile).remove(key)) save()
+        if (!hidden.getValue(profile).remove(key)) return
+        layoutOf(profile).clearCell(key)
+        save()
     }
 
     /** [key] is gone for good: no cell, page or hidden mark in either profile, so something new by that name starts fresh. */
@@ -154,12 +157,16 @@ class HomeProfiles(
         if (changed) save()
     }
 
-    /** [to] takes [from]'s cell, open page and hidden marks in both profiles, and [from] is forgotten: a folder made from an app, or the app left when one dissolves. */
+    /**
+     * [to] takes [from]'s cell, open page and hidden marks in both profiles, and [from] is forgotten: a folder made from
+     * an app, or the app left when one dissolves. In a layout where [to] has a cell of its own, it keeps that and its page.
+     */
     fun inherit(
         from: String,
         to: String,
     ) {
         for (l in layouts) {
+            if (l.cell(to) != null) continue
             l.cell(from)?.let { l.set(to, it) }
             l.page(from)?.let { l.setPage(to, it, persist = false) }
         }

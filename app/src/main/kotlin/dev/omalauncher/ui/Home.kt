@@ -158,7 +158,7 @@ fun HomeScreen(
             is WidgetItem -> engine.removeWidget(item.spec)
             is Shortcut, is Folder -> engine.shortcuts.remove(item.key)
         }
-        engine.layout.remove(item.key)
+        engine.profiles.forget(item.key)
     }
 
     /** Opens the default agent on the widget's file; with no agent installed, the agents screen instead. */

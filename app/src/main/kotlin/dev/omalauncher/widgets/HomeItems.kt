@@ -1,7 +1,7 @@
 package dev.omalauncher.widgets
 
 import android.content.ComponentName
-import android.content.Context
+import android.content.SharedPreferences
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.AndroidShortcut
 import dev.omalauncher.ShortcutRef
@@ -76,15 +76,15 @@ private data class FolderEntry(
 )
 
 /**
- * Pinned apps and their folders, saved launcher-side next to the grid layout.
+ * Pinned apps and their folders, saved launcher-side next to the grid layouts; cells and open pages live in
+ * [profiles], which a folder made, dissolved or removed updates in both.
  * Folders are saved apart from the apps, so a launcher that predates them
  * still reads its apps (each back on the grid on its own).
  */
 class Shortcuts(
-    context: Context,
-    private val layout: WidgetLayout,
+    private val prefs: SharedPreferences,
+    private val profiles: HomeProfiles,
 ) {
-    private val prefs = context.getSharedPreferences("shortcuts", Context.MODE_PRIVATE)
     val items = mutableStateListOf<Shortcut>()
     private val folderEntries = mutableStateListOf<FolderEntry>()
 
@@ -120,8 +120,7 @@ class Shortcuts(
                 is Shortcut -> {
                     val key = "folder:" + System.currentTimeMillis().toString(36)
                     folderEntries += FolderEntry(key, target.page)
-                    layout.cell(target.key)?.let { layout.set(key, it) }
-                    layout.remove(target.key)
+                    profiles.inherit(from = target.key, to = key)
                     setFolder(target.key, key, target.page)
                     key
                 }
@@ -129,7 +128,7 @@ class Shortcuts(
             }
         if (folder == app.folder) return folder
         val page = folderEntries.first { it.key == folder }.page
-        layout.remove(app.key)
+        profiles.forget(app.key)
         setFolder(app.key, folder, page)
         tidy()
         save()
@@ -178,19 +177,20 @@ class Shortcuts(
 
     /**
      * A folder of fewer than two apps goes away, like on stock Android: the app
-     * left takes its cell, unless it already has one of its own.
+     * left takes its cell (and open page and hidden marks; see [HomeProfiles.inherit]), unless it already has one of its own.
      */
     private fun tidy() {
         for (f in folderEntries.toList()) {
             val apps = items.filter { it.folder == f.key }
             if (apps.size >= 2) continue
-            layout.save()
-            apps.firstOrNull()?.let { app ->
-                if (layout.cell(app.key) == null) layout.cell(f.key)?.let { layout.set(app.key, it) }
+            val app = apps.firstOrNull()
+            if (app != null) {
+                profiles.inherit(from = f.key, to = app.key)
                 setFolder(app.key, null, f.page)
+            } else {
+                profiles.forget(f.key)
             }
             folderEntries.remove(f)
-            layout.remove(f.key)
         }
     }
 
@@ -222,42 +222,37 @@ class Shortcuts(
     fun addAndroid(
         app: AndroidApp,
         page: Int,
-    ) = add(Shortcut("app:" + app.key, page, app.label, component = app.component, profile = app.profile))
+    ) = add(Shortcut(androidKey(app), page, app.label, component = app.component, profile = app.profile))
 
     fun addLinux(
         app: LinuxApp,
         page: Int,
-    ) = add(Shortcut("linux:" + app.id, page, app.name, linux = app))
+    ) = add(Shortcut(linuxKey(app), page, app.name, linux = app))
 
     fun addAndroidShortcut(
         shortcut: AndroidShortcut,
         page: Int,
-    ) = add(Shortcut(keyOf(shortcut), page, shortcut.label, profile = shortcut.profile, androidShortcut = shortcut.ref))
+    ) = add(Shortcut(shortcutKey(shortcut), page, shortcut.label, profile = shortcut.profile, androidShortcut = shortcut.ref))
 
     fun addOwl(
         spec: WidgetSpec,
         page: Int,
-    ) = add(Shortcut(keyOf(spec), page, spec.name, owl = spec.file.name))
+    ) = add(Shortcut(owlKey(spec), page, spec.name, owl = spec.file.name))
 
-    /** Takes an owl app off the home screen, cell and all, once its file is deleted. */
+    /** Takes an owl app off the home screen, its cells in both layouts and all, once its file is deleted. */
     fun removeOwl(spec: WidgetSpec) {
-        val key = keyOf(spec)
-        if (items.none { it.key == key }) return
-        layout.remove(key)
-        remove(key)
+        val key = owlKey(spec)
+        if (has(key)) remove(key)
     }
 
-    private fun keyOf(spec: WidgetSpec) = "owl:" + spec.file.name
-
-    /** Takes [shortcut] off the home screen, cell and all, once it's removed from the phone. */
+    /** Takes [shortcut] off the home screen, its cells in both layouts and all, once it's removed from the phone. */
     fun removeAndroidShortcut(shortcut: AndroidShortcut) {
-        val key = keyOf(shortcut)
-        if (items.none { it.key == key }) return
-        layout.remove(key)
-        remove(key)
+        val key = shortcutKey(shortcut)
+        if (has(key)) remove(key)
     }
 
-    private fun keyOf(shortcut: AndroidShortcut) = "shortcut:" + shortcut.key
+    /** [key] is pinned, on the grid or in a folder. */
+    fun has(key: String) = items.any { it.key == key }
 
     /** Pinning an app that's already on the home screen moves it to [Shortcut.page], out of its folder. */
     private fun add(shortcut: Shortcut) {
@@ -285,13 +280,26 @@ class Shortcuts(
         save()
     }
 
-    /** Takes an app, or a folder with all its apps, off the home screen. */
+    /**
+     * Puts an app or folder on [page] of the open layout. An app in a folder leaves it first, in both profiles
+     * (folders are shared), keeping its folded page; a folder left with one app dissolves into it.
+     */
+    fun moveOpen(
+        key: String,
+        page: Int,
+    ) {
+        items.firstOrNull { it.key == key && it.folder != null }?.let { move(key, it.page) }
+        profiles.setOpenPage(key, page)
+    }
+
+    /** Takes an app, or a folder with all its apps, off the home screen, and out of both layouts. */
     fun remove(key: String) {
         if (folderEntries.removeAll { it.key == key }) {
-            items.filter { it.folder == key }.forEach { layout.remove(it.key) }
+            items.filter { it.folder == key }.forEach { profiles.forget(it.key) }
             items.removeAll { it.folder == key }
         }
         items.removeAll { it.key == key }
+        profiles.forget(key)
         tidy()
         save()
     }
@@ -333,9 +341,17 @@ class Shortcuts(
             .apply()
     }
 
-    private companion object {
-        const val ITEMS = "items"
-        const val FOLDERS = "folders"
-        const val VERSION = 1
+    companion object {
+        fun androidKey(app: AndroidApp) = "app:" + app.key
+
+        fun linuxKey(app: LinuxApp) = "linux:" + app.id
+
+        fun shortcutKey(shortcut: AndroidShortcut) = "shortcut:" + shortcut.key
+
+        fun owlKey(spec: WidgetSpec) = "owl:" + spec.file.name
+
+        private const val ITEMS = "items"
+        private const val FOLDERS = "folders"
+        private const val VERSION = 1
     }
 }
