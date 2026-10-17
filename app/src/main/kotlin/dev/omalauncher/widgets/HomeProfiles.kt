@@ -152,8 +152,9 @@ class HomeProfiles(
     fun forget(key: String) {
         var changed = false
         for (list in hidden.values) changed = list.remove(key) || changed
-        for (l in layouts) l.remove(key)
-        openPages++
+        var placed = false
+        for (l in layouts) placed = l.remove(key) || placed
+        if (changed || placed) openPages++
         if (changed) save()
     }
 

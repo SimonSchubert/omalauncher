@@ -239,10 +239,12 @@ class WidgetLayout(
         if (cells.remove(name) != null && persist) save()
     }
 
-    /** Forgets everything about [name]: its cell and page. Saves only if there was either. */
-    fun remove(name: String) {
+    /** Forgets everything about [name]: its cell and page. Saves only if there was either, and returns whether there was. */
+    fun remove(name: String): Boolean {
         val hadCell = cells.remove(name) != null
-        if (pages.remove(name) != null || hadCell) save()
+        val had = pages.remove(name) != null || hadCell
+        if (had) save()
+        return had
     }
 
     /** The home grid's cell width and height on screen and the gap between tiles, in pixels, as last laid out. */

@@ -100,7 +100,7 @@ fun HomeMenu(
             state.show(SettingsPage.Store)
         }
         // Only with the unfolded layout on: what the home showing hides.
-        val hidden = engine.hiddenItems()
+        val hidden = if (engine.profiles.enabled()) engine.hiddenItems() else emptyList()
         if (hidden.isNotEmpty()) {
             MenuItem("hidden (${hidden.size})") {
                 state.homeMenuOpen = false

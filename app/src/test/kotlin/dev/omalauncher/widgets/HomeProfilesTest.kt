@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets
 
+import androidx.compose.runtime.snapshots.Snapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -41,6 +42,21 @@ class HomeProfilesTest {
         assertNull(p.folded.cell("a.owl"))
         assertNull(p.open.cell("a.owl"))
         assertFalse(p.isHidden("a.owl", Profile.Folded))
+    }
+
+    @Test fun forgettingWhatWasNeverPlacedRecomposesNothing() {
+        val p = profiles()
+        p.folded.set("a.owl", Cell(0, 0, 2, 2))
+        val written = HashSet<Any>()
+        val snapshot = Snapshot.takeMutableSnapshot(writeObserver = { written += it })
+        try {
+            snapshot.enter { p.forget("gone.owl") }
+            assertTrue(written.isEmpty())
+            snapshot.enter { p.forget("a.owl") }
+            assertFalse(written.isEmpty())
+        } finally {
+            snapshot.dispose()
+        }
     }
 
     @Test fun openPageDefaultsToThePairedFoldedPage() {

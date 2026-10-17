@@ -219,22 +219,26 @@ class Shortcuts(
         )
     }
 
-    fun addAndroid(
+    /** Pins it to [page] of the phone's home; home screen callers go through WidgetEngine.pin*, which know which home shows. */
+    internal fun addAndroid(
         app: AndroidApp,
         page: Int,
     ) = add(Shortcut(androidKey(app), page, app.label, component = app.component, profile = app.profile))
 
-    fun addLinux(
+    /** Pins it to [page] of the phone's home; home screen callers go through WidgetEngine.pin*, which know which home shows. */
+    internal fun addLinux(
         app: LinuxApp,
         page: Int,
     ) = add(Shortcut(linuxKey(app), page, app.name, linux = app))
 
-    fun addAndroidShortcut(
+    /** Pins it to [page] of the phone's home; home screen callers go through WidgetEngine.pin*, which know which home shows. */
+    internal fun addAndroidShortcut(
         shortcut: AndroidShortcut,
         page: Int,
     ) = add(Shortcut(shortcutKey(shortcut), page, shortcut.label, profile = shortcut.profile, androidShortcut = shortcut.ref))
 
-    fun addOwl(
+    /** Pins it to [page] of the phone's home; home screen callers go through WidgetEngine.pin*, which know which home shows. */
+    internal fun addOwl(
         spec: WidgetSpec,
         page: Int,
     ) = add(Shortcut(owlKey(spec), page, spec.name, owl = spec.file.name))

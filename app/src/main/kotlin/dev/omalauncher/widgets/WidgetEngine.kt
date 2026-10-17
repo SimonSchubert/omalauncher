@@ -432,14 +432,17 @@ class WidgetEngine(
 
     /**
      * Adds a widget from a share link, once the user has read what it runs: on [page], its packages installed
-     * right after, as a store install. One shared before under the same name is replaced and keeps its page.
+     * right after, as a store install. One shared before under the same name is replaced and keeps its page, or,
+     * if the home showing hides it, comes back on [page].
      */
     suspend fun addSharedWidget(
         shared: Shared,
         page: Int,
     ) = withContext(Dispatchers.IO) {
         val name = shared.fileName
-        arrive(name, File(dir, name).exists(), page)
+        val existed = File(dir, name).exists()
+        // An app goes in the drawer, on no page of either home.
+        if (OwlKind.of(shared.text) == OwlKind.Widget) arrive(name, existed, page) else if (!existed) setPage(name, page)
         installDependenciesWhenLoaded(name)
         File(dir, name).writeText(shared.text)
     }
