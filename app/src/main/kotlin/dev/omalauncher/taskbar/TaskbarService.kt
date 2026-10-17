@@ -195,7 +195,7 @@ class TaskbarService : AccessibilityService() {
                     .mapNotNull { w ->
                         val pkg = w.root?.packageName?.toString() ?: return@mapNotNull null
                         val r = Rect().also(w::getBoundsInScreen)
-                        AppWindow(pkg, ZoneBox(r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat()), w.title?.toString())
+                        AppWindow(pkg, ZoneBox(r.left.toFloat(), r.top.toFloat(), r.right.toFloat(), r.bottom.toFloat()), w.title?.toString()?.takeIf { pkg == packageName })
                     }
             val size = wm.currentWindowMetrics.bounds
             // Only ours can be Linux windows; reading the tasks otherwise is wasted.
@@ -229,13 +229,14 @@ class TaskbarService : AccessibilityService() {
         }
 
     /**
-     * The Linux app whose window of ours just came to the front ([className] is its activity's, as the system names it),
-     * so the tray lists it as recent as an Android app seen there; null for our other screens, or a window of no app.
+     * The Linux app whose window of ours just came to the front ([className] is the system's name for the activity that
+     * did; see [frontTask]), so the tray lists it as recent as an Android app seen there; null for our other screens, or a
+     * window of no app.
      */
     @RequiresApi(35)
     private fun linuxAppInFront(className: String?): LinuxApp? {
         if (!runtime.bootstrap.isInstalled) return null
-        val task = frontTask(linuxTasks(), className, LinuxWindowActivity::class.java.name) { it.intent.component?.className } ?: return null
+        val task = frontTask(linuxTasks(), className, LinuxWindowActivity::class.java.name) ?: return null
         val window = runtime.wm.windowByHandle(task.window.handle) ?: return null
         val names = listOf(runtime.displayName(window.appId, window.title), window.title)
         return appOfWindow(runtime.linuxApps.apps, window.appId, names, LinuxApp::matches) { it.name }
@@ -447,7 +448,7 @@ class TaskbarService : AccessibilityService() {
             ?: runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(id, 0)).toString() }.getOrDefault(id)
 
     /**
-     * Opens [app], dropped in a split zone of [kind], next to the Linux window [id]; see [linuxPartnerSteps]. Its task is
+     * Opens [app], dropped in a split zone of [kind], next to the Linux window [id]; see [splitHalves]. Its task is
      * looked up again: it may have gone since the drag began, and then the app opens full screen.
      */
     @RequiresApi(35)
@@ -457,7 +458,7 @@ class TaskbarService : AccessibilityService() {
         id: String,
     ) {
         val task = linuxTasks().firstOrNull { it.window.id == id } ?: return open(OpenPlan.AsTapped(app), app)
-        val steps = linuxPartnerSteps(kind, app, task.taskId, reopen(task.intent)) ?: return
+        val steps = splitHalves(kind, SplitHalf.App(app), SplitHalf.Task(task.taskId, reopen(task.intent))) ?: return
         runtime.usage.record(usageKey(app.key))
         TaskbarTrampoline.start(this, steps)
         tray = false
@@ -541,7 +542,8 @@ class TaskbarService : AccessibilityService() {
             }
             return
         }
-        val task = taskOf(window) ?: return runtime.launch(app)
+        // A window with no task yet is having its activity opened: it comes up on its own, and the app mustn't run again.
+        val task = taskOf(window) ?: return
         splitHalves(kind, SplitHalf.Task(task.taskId, reopen(task.intent)), half)?.let { TaskbarTrampoline.start(this, it) }
     }
 
@@ -567,7 +569,8 @@ class TaskbarService : AccessibilityService() {
             }
             return
         }
-        val task = taskOf(window) ?: return runtime.launch(app)
+        // As in nextTo: its activity is on its way.
+        val task = taskOf(window) ?: return
         TaskbarTrampoline.replace(this, reopen(task.intent), half, leaving = task.taskId)
     }
 

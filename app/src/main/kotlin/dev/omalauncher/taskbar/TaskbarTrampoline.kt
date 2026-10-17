@@ -72,7 +72,8 @@ internal fun landsIn(
 /**
  * An invisible activity the taskbar opens apps through. LAUNCH_ADJACENT needs an activity to start from, and the
  * taskbar's window isn't one; this one starts each step in turn, then leaves. It's started once per drop and must not
- * repeat on being recreated (it may land in a split half): see the manifest's configChanges and the check below.
+ * repeat on being recreated (it may land in a split half): see the manifest's configChanges and the check below. A
+ * recreated one drops the steps still to come; a Linux window's old task may then stay behind, harmlessly.
  */
 class TaskbarTrampoline : Activity() {
     private val handler = Handler(Looper.getMainLooper())
@@ -146,7 +147,7 @@ class TaskbarTrampoline : Activity() {
     ) {
         if (LinuxWindowActivity.keeps(id)) {
             // The new activity may not have taken the window over yet: looked at again a little later.
-            if (tries > 0) handler.postDelayed({ remove(id, tries - 1) }, KEPT_MS)
+            if (tries > 0) handler.postDelayed({ remove(id, tries - 1) }, KEPT_MS) else Log.w(TAG, "a Linux window's old task kept its window; left open")
             return
         }
         ownTask(id)?.let { runCatching { it.finishAndRemoveTask() }.onFailure { e -> Log.w(TAG, "couldn't close a task", e) } }
