@@ -47,7 +47,9 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.App
 import dev.omalauncher.InstantActivity
+import dev.omalauncher.LinuxWindowActivity
 import dev.omalauncher.linux.LinuxApp
+import dev.omalauncher.linux.matches
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.StripCell
@@ -109,7 +111,7 @@ class TaskbarService : AccessibilityService() {
         wm = getSystemService(WindowManager::class.java)
         // The launcher's runtime, for the themes and app icons; just that, not Linux or the widgets.
         runtime.startForOverlay()
-        seen = prefs.getString(SEEN, null)?.split('\n')?.filter { it.isNotEmpty() } ?: emptyList()
+        seen = prefs.getString(SEEN, null)?.split('\n')?.filter { it.isNotEmpty() }?.map(::savedKey)?.distinct() ?: emptyList()
         defaultHome = defaultHome()
         launchers = launchers()
         owner.start()
@@ -141,11 +143,11 @@ class TaskbarService : AccessibilityService() {
             // The default home can change in settings; resolving it is cheap.
             defaultHome = defaultHome()
             launchers = launchers()
-            event.packageName?.toString()?.let(::personalApp)?.let { app ->
-                if (seen.firstOrNull() != app.key) {
-                    seen = moveToFront(seen, app.key)
-                    prefs.edit().putString(SEEN, seen.joinToString("\n")).apply()
-                }
+            val pkg = event.packageName?.toString()
+            val key = if (pkg == packageName) linuxAppInFront(event.className?.toString())?.let { linuxKey(it.id) } else pkg?.let(::personalApp)?.let { usageKey(it.key) }
+            if (key != null && seen.firstOrNull() != key) {
+                seen = moveToFront(seen, key)
+                prefs.edit().putString(SEEN, seen.joinToString("\n")).apply()
             }
         }
         refresh()
@@ -225,6 +227,19 @@ class TaskbarService : AccessibilityService() {
             if (visible && !info.isVisible) return@mapNotNull null
             LinuxTask(LinuxWindow(handle, info.taskDescription?.label ?: "Linux"), info.taskId, intent)
         }
+
+    /**
+     * The Linux app whose window of ours just came to the front ([className] is its activity's, as the system names it),
+     * so the tray lists it as recent as an Android app seen there; null for our other screens, or a window of no app.
+     */
+    @RequiresApi(35)
+    private fun linuxAppInFront(className: String?): LinuxApp? {
+        if (!runtime.bootstrap.isInstalled) return null
+        val task = frontTask(linuxTasks(), className, LinuxWindowActivity::class.java.name) { it.intent.component?.className } ?: return null
+        val window = runtime.wm.windowByHandle(task.window.handle) ?: return null
+        val names = listOf(runtime.displayName(window.appId, window.title), window.title)
+        return appOfWindow(runtime.linuxApps.apps, window.appId, names, LinuxApp::matches) { it.name }
+    }
 
     /**
      * Apps with a home screen (this launcher, another Omalauncher, One UI Home…): their windows, say a Linux window of the

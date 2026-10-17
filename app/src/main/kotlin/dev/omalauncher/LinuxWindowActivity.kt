@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
-import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.SurfaceHolder
@@ -123,36 +122,14 @@ class LinuxWindowActivity : InstantActivity() {
         private val live = mutableListOf<LinuxWindowActivity>()
 
         /**
-         * Closes the activity in task [taskId] without an animation, as a window handed to a newer activity leaves its
-         * old task. Only once handed over: an activity that still owns its window (the new one didn't start, or hasn't
-         * yet) stays, window and all. See [Leaving].
+         * Whether the activity in task [taskId] still owns its window, so the task must stay: a window not yet handed to
+         * a newer activity (that one didn't start, or hasn't yet) would close with it.
          */
-        fun leave(taskId: Int): Leaving {
-            val activity = live.firstOrNull { it.taskId == taskId } ?: return Leaving.NotOurs
-            if (!activity.handedOver()) return Leaving.Kept
-            if (Build.VERSION.SDK_INT >= 34) activity.overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
-            activity.closeInstantly()
-            return Leaving.Left
-        }
-
-        /** Whether the activity in task [taskId] still owns its window, so the task must stay. */
         fun keeps(taskId: Int): Boolean = live.firstOrNull { it.taskId == taskId }?.handedOver() == false
     }
 
     /** Whether this activity's window has gone to a newer activity. */
     private fun handedOver(): Boolean = window?.let { owners.handedOver(it, this) } ?: true
-
-    /** What [leave] did with a task. */
-    enum class Leaving {
-        /** Its activity is on its way out. */
-        Left,
-
-        /** Its activity still owns its window: nothing closes. */
-        Kept,
-
-        /** No activity of ours is in it, as when it's left over in Recents. */
-        NotOurs,
-    }
 
     // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
     @SuppressLint("RestrictedApi")
