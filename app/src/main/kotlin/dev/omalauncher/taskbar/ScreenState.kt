@@ -37,12 +37,11 @@ sealed interface ScreenState {
 
 /**
  * What's on a [width]×[height] screen, from its app [windows], topmost first. Windows under 5% of the screen are
- * ignored. A window lying inside one below it is floating: another app's pop-up, or the app's own dialog, which counts
- * as part of that app. The rest are the base: one base window covering half the screen or more is the app in front
- * (home or single), whatever floats over it; two that don't overlap, each 20% or more and together 85% or more, are
- * split screen. Another app floating over a split, or anything else, is
- * [ScreenState.Unknown]: which half is which isn't sure any more. Apps in [opaque] are on screen but can't be a split
- * partner (this launcher's own windows other than home): one in front, or in either half of a split, is Unknown too.
+ * ignored. Two windows that don't overlap, each 20% or more and together 85% or more, are split screen, whatever floats
+ * over them (pop-ups, dialogs): a pop-up opened before the split stays over it on One UI. Otherwise the largest window,
+ * if it covers half the screen or more, is the app in front (home or single), again whatever floats over it. Anything
+ * else is [ScreenState.Unknown]. Apps in [opaque] are on screen but can't be a split partner (other launchers, this
+ * launcher's own windows other than home): one in front, or in either half of a split, is Unknown too.
  */
 fun screenState(
     windows: List<AppWindow>,
@@ -55,33 +54,26 @@ fun screenState(
     if (screen <= 0f) return ScreenState.Unknown
     fun share(w: AppWindow) = w.bounds.area() / screen
     val seen = windows.filter { share(it) >= 0.05f }
-    // Each floating window with the window it lies in: the first one below it that contains it.
-    val containers = seen.mapIndexedNotNull { i, w -> seen.drop(i + 1).firstOrNull { w.bounds.isInside(it.bounds) }?.let { w to it } }
-    val base = seen.filter { w -> containers.none { it.first == w } }
-    // An app's own dialog inside its window is part of that app; only another app's window floats over it.
-    val floating = containers.filter { (w, container) -> w.packageName != container.packageName }.map { it.first }
-    when (base.size) {
-        1 -> {
-            val only = base.first()
-            if (share(only) < 0.5f) return ScreenState.Unknown
-            return when (only.packageName) {
-                in home -> ScreenState.Home
-                in opaque -> ScreenState.Unknown
-                else -> ScreenState.Single(only.packageName)
-            }
-        }
-        2 -> {
-            val (a, b) = base
-            if (floating.isNotEmpty() || a.bounds.overlaps(b.bounds)) return ScreenState.Unknown
-            if (share(a) < 0.2f || share(b) < 0.2f || share(a) + share(b) < 0.85f) return ScreenState.Unknown
-            if (a.packageName in home || b.packageName in home) return ScreenState.Unknown
-            if (a.packageName in opaque || b.packageName in opaque) return ScreenState.Unknown
-            val sideBySide = abs(a.bounds.left - b.bounds.left) > abs(a.bounds.top - b.bounds.top)
-            val aFirst = if (sideBySide) a.bounds.left <= b.bounds.left else a.bounds.top <= b.bounds.top
-            val (first, second) = if (aFirst) a to b else b to a
-            return ScreenState.Split(first.packageName, second.packageName, sideBySide)
-        }
-        else -> return ScreenState.Unknown
+    val big = seen.filter { share(it) >= 0.2f }
+    val pair =
+        big.indices.asSequence()
+            .flatMap { i -> (i + 1 until big.size).asSequence().map { j -> big[i] to big[j] } }
+            .firstOrNull { (a, b) -> !a.bounds.overlaps(b.bounds) && share(a) + share(b) >= 0.85f }
+    if (pair != null) {
+        val (a, b) = pair
+        if (a.packageName in home || b.packageName in home) return ScreenState.Unknown
+        if (a.packageName in opaque || b.packageName in opaque) return ScreenState.Unknown
+        val sideBySide = abs(a.bounds.left - b.bounds.left) > abs(a.bounds.top - b.bounds.top)
+        val aFirst = if (sideBySide) a.bounds.left <= b.bounds.left else a.bounds.top <= b.bounds.top
+        val (first, second) = if (aFirst) a to b else b to a
+        return ScreenState.Split(first.packageName, second.packageName, sideBySide)
+    }
+    val largest = seen.maxByOrNull { share(it) } ?: return ScreenState.Unknown
+    if (share(largest) < 0.5f) return ScreenState.Unknown
+    return when (largest.packageName) {
+        in home -> ScreenState.Home
+        in opaque -> ScreenState.Unknown
+        else -> ScreenState.Single(largest.packageName)
     }
 }
 
@@ -89,4 +81,3 @@ private fun ZoneBox.area() = (right - left).coerceAtLeast(0f) * (bottom - top).c
 
 private fun ZoneBox.overlaps(o: ZoneBox) = left < o.right && o.left < right && top < o.bottom && o.top < bottom
 
-private fun ZoneBox.isInside(o: ZoneBox) = left >= o.left - 1f && top >= o.top - 1f && right <= o.right + 1f && bottom <= o.bottom + 1f
