@@ -3,6 +3,10 @@ package dev.omalauncher
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.role.RoleManager
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -49,6 +53,20 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             snapshotFlow { runtime.launcherReady }.first { it }
             withResumed { requestHomeRole() }
+            withResumed { requestStorageAccess() }
+        }
+    }
+
+    /**
+     * All-files access for the guest's /sdcard (see [Proot]'s dataBinds). On Android 11+
+     * the manifest permission alone grants nothing: the system needs the user to confirm
+     * the "all files" toggle, so this opens that page once.
+     */
+    private fun requestStorageAccess() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+            intent.data = Uri.parse("package:$packageName")
+            startActivity(intent)
         }
     }
 
