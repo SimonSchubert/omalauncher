@@ -114,13 +114,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Pressing Home while already home closes the menu, like other launchers. */
+    /** Pressing Home closes the menu and goes back to the first page, like other launchers. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         state.close()
         state.closeScreens()
         runtime.widgets.openScreen = null
         state.editing = null
+        state.requestedPage = 0
         handleDebugExec(intent)
         handleSharedWidget(intent)
     }
