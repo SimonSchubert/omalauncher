@@ -311,7 +311,7 @@ class TaskbarService : AccessibilityService() {
             canPopUp = canPopUp,
             oneUi = oneUi,
             layout = { w, h -> taskbarZones(state, dragged, w, h, canPopUp, oneUi) { pkg -> personalApp(pkg)?.label ?: pkg } },
-        ) { zone -> planTaskbarOpen(zone, state, app, dragged, ::personalApp)?.let { open(it, app) } }
+        ) { zone -> planTaskbarOpen(zone, state, app, dragged, ::personalApp)?.let { open(it, app, replacing = state is ScreenState.Split) } }
     }
 
     /**
@@ -323,10 +323,12 @@ class TaskbarService : AccessibilityService() {
     private fun open(
         plan: OpenPlan<AndroidApp>,
         app: AndroidApp,
+        replacing: Boolean = false,
     ) {
         runtime.usage.record(app.key)
         when (plan) {
-            is OpenPlan.Split -> TaskbarTrampoline.start(this, launchSteps(plan))
+            // Replacing a half of a split relays its last start, so the app lands in the half not brought forward.
+            is OpenPlan.Split -> TaskbarTrampoline.start(this, launchSteps(plan), relayLast = replacing)
             is OpenPlan.AsTapped -> startDirect(plan.app, null)
             is OpenPlan.Windowed -> startDirect(plan.app, plan.bounds)
         }

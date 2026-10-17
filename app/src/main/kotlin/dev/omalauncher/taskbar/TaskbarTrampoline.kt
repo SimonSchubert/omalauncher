@@ -46,6 +46,14 @@ class TaskbarTrampoline : Activity() {
 
     @Suppress("DEPRECATION")
     private fun start(step: Bundle) {
+        // Relayed: started from a fresh trampoline, which lands in the half in front now. LAUNCH_ADJACENT puts an app in
+        // the half other than its source's, so this makes the app replace the half that wasn't just brought forward.
+        if (step.getBoolean(RELAY)) {
+            step.remove(RELAY)
+            step.putLong(DELAY, RELAY_DELAY_MS)
+            launch(this, arrayListOf(step))
+            return
+        }
         val component = step.getParcelable<ComponentName>(COMPONENT) ?: return
         val adjacent = if (step.getBoolean(ADJACENT)) Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT else 0
         val intent =
@@ -70,11 +78,20 @@ class TaskbarTrampoline : Activity() {
         private const val BOUNDS = "bounds"
         private const val DELAY = "delay"
         private const val STARTED = "started"
+        private const val RELAY = "relay"
 
-        /** Opens [steps] in order from a new trampoline. */
+        /** How long a relayed trampoline waits before its start, to have settled in its half. */
+        private const val RELAY_DELAY_MS = 250L
+
+        /**
+         * Opens [steps] in order from a new trampoline. With [relayLast] the last step is started from a second trampoline,
+         * opened once the steps before it are done: replacing a half of a split, where the first step brings the half to
+         * keep forward and the second trampoline lands in it.
+         */
         fun start(
             context: Context,
             steps: List<LaunchStep<AndroidApp>>,
+            relayLast: Boolean = false,
         ) {
             val bundles =
                 steps.mapTo(ArrayList()) { s ->
@@ -85,6 +102,14 @@ class TaskbarTrampoline : Activity() {
                         putLong(DELAY, s.delayMs)
                     }
                 }
+            if (relayLast) bundles.lastOrNull()?.putBoolean(RELAY, true)
+            launch(context, bundles)
+        }
+
+        private fun launch(
+            context: Context,
+            bundles: ArrayList<Bundle>,
+        ) {
             val intent =
                 Intent(context, TaskbarTrampoline::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
