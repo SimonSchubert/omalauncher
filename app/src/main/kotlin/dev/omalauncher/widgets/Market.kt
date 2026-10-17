@@ -12,6 +12,7 @@ import dev.omalauncher.ui.decodeImageIcon
 import dev.omalauncher.ui.decodeSvgIcon
 import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapEntries
+import dev.omalauncher.upgrade.strings
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.market.Catalog
@@ -194,8 +195,6 @@ class Market(
             },
         )
     }
-
-    private fun JSONArray.strings() = (0 until length()).map { getString(it) }
 
     private fun save() {
         val data = JSONObject()

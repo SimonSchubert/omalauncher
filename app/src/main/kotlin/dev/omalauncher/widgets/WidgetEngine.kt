@@ -97,7 +97,7 @@ class WidgetEngine(
     private val stateDir = File(context.filesDir, "widget-state")
     val specs = mutableStateListOf<WidgetSpec>()
     private val instances = HashMap<String, WidgetInstance>()
-    val layout = WidgetLayout(context)
+    val layout = WidgetLayout.phone(context)
     val shortcuts = Shortcuts(context, layout)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val services = WidgetServices(context, proot, runtime, scope)

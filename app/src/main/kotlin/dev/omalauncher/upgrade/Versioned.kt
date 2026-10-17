@@ -46,6 +46,9 @@ object Versioned {
 fun <T : Any> JSONArray.mapObjects(parse: (JSONObject) -> T?): List<T> =
     (0 until length()).mapNotNull { i -> runCatching { optJSONObject(i)?.let(parse) }.getOrNull() }
 
+/** The strings of [array], skipping empty ones. */
+fun JSONArray.strings(): List<String> = (0 until length()).mapNotNull { optString(it).ifEmpty { null } }
+
 /** Each entry of [obj] by key, skipping entries that don't parse. */
 fun <T : Any> JSONObject.mapEntries(parse: (String, JSONObject) -> T?): Map<String, T> =
     keys().asSequence().mapNotNull { k -> runCatching { optJSONObject(k)?.let { parse(k, it) } }.getOrNull()?.let { k to it } }.toMap()
