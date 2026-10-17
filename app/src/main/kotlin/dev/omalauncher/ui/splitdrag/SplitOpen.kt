@@ -50,25 +50,19 @@ fun <A> planOpen(
         ZoneKind.SplitBottom, ZoneKind.SplitRight -> partner?.let { OpenPlan.Split(it, dragged) }
     }
 
-/** One start of an [OpenPlan]: [app], next to the app in front when [adjacent], at [bounds] if any, [delayMs] after the one before. */
+/** One start of a split: [app], next to the app in front when [adjacent], [delayMs] after the one before. */
 data class LaunchStep<A>(
     val app: A,
     val adjacent: Boolean,
-    val bounds: ZoneBox?,
     val delayMs: Long,
 )
 
-/** The starts that carry out [plan], for an activity that runs them in order (see the taskbar's trampoline). */
-fun <A> launchSteps(plan: OpenPlan<A>): List<LaunchStep<A>> =
-    when (plan) {
-        is OpenPlan.AsTapped -> listOf(LaunchStep(plan.app, adjacent = false, bounds = null, delayMs = 0))
-        is OpenPlan.Windowed -> listOf(LaunchStep(plan.app, adjacent = false, bounds = plan.bounds, delayMs = 0))
-        is OpenPlan.Split ->
-            listOf(
-                LaunchStep(plan.first, adjacent = false, bounds = null, delayMs = 0),
-                LaunchStep(plan.adjacent, adjacent = true, bounds = null, delayMs = ADJACENT_DELAY_MS),
-            )
-    }
+/** The starts that carry out a split, for an activity that runs them in order (see the taskbar's trampoline). */
+fun <A> splitSteps(plan: OpenPlan.Split<A>): List<LaunchStep<A>> =
+    listOf(
+        LaunchStep(plan.first, adjacent = false, delayMs = 0),
+        LaunchStep(plan.adjacent, adjacent = true, delayMs = ADJACENT_DELAY_MS),
+    )
 
 /** How long the second app of a split waits, so the first is in front to be put next to. */
 const val ADJACENT_DELAY_MS = 450L

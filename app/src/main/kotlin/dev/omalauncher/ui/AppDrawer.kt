@@ -441,9 +441,9 @@ internal fun StripCell(
                                 if ((c.position - down.position).getDistance() > viewConfiguration.touchSlop * 2) {
                                     menuOpen = false
                                     val drag = currentDragOut ?: return@awaitEachGesture
-                                    // Where the cell is on screen, so the drag reports the finger in screen pixels: the launcher's window fills the screen, the taskbar's doesn't.
-                                    fun inWindow(p: Offset) = coords?.localToScreen(p) ?: p
-                                    drag.start(inWindow(c.position))
+                                    // Screen pixels: the launcher's window fills the screen, the taskbar's doesn't.
+                                    fun onScreen(p: Offset) = coords?.localToScreen(p) ?: p
+                                    drag.start(onScreen(c.position))
                                     // From here the launcher drags the app itself, until the finger lifts.
                                     var ended = false
                                     try {
@@ -461,10 +461,10 @@ internal fun StripCell(
                                                 val action = event.motionEvent?.actionMasked
                                                 val lifted = action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP
                                                 ended = true
-                                                drag.end(if (lifted) inWindow(m.position) else null)
+                                                drag.end(if (lifted) onScreen(m.position) else null)
                                                 return@awaitEachGesture
                                             }
-                                            drag.move(inWindow(m.position))
+                                            drag.move(onScreen(m.position))
                                         }
                                     } finally {
                                         // The cell left composition or the strip went away mid-drag: don't leave the overlay up.

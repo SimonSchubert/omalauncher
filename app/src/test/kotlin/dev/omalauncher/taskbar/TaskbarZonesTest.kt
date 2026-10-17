@@ -49,8 +49,6 @@ class TaskbarZonesTest {
         val splitKinds = setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight, ZoneKind.SplitTop, ZoneKind.SplitBottom)
         assertNull(zones.firstOrNull { it.kind in splitKinds })
         assertTrue(zones.isEmpty())
-        val right = DropZone(ZoneKind.SplitRight, "Replace Mail", ZoneBox(928f, 0f, 1856f, 2160f), ZoneBox(928f, 0f, 1856f, 2160f))
-        assertNull(planTaskbarOpen(right, split, "maps", "maps") { it })
     }
 
     @Test fun unknownOffersFullScreenAndPopUpOnly() {
@@ -58,25 +56,26 @@ class TaskbarZonesTest {
         assertEquals(setOf(ZoneKind.FullScreen, ZoneKind.PopUp), zones.map { it.kind }.toSet())
     }
 
-    @Test fun replacingTheLeftBringsTheRightForwardFirst() {
+    @Test fun overASplitNothingIsPlanned() {
         val zone = taskbarZones(split, "notes", 1856f, 2160f, true, true, label).first { it.kind == ZoneKind.SplitLeft }
-        assertEquals(OpenPlan.Split("mail", "notes"), planTaskbarOpen(zone, split, "notes", "notes") { it })
+        assertNull(planTaskbarOpen(zone, split, "notes") { it })
     }
 
-    @Test fun replacingTheRightBringsTheLeftForwardFirst() {
-        val zone = taskbarZones(split, "notes", 1856f, 2160f, true, true, label).first { it.kind == ZoneKind.SplitRight }
-        assertEquals(OpenPlan.Split("maps", "notes"), planTaskbarOpen(zone, split, "notes", "notes") { it })
+    @Test fun aPartnerThatCantBeRelaunchedOffersNoSplit() {
+        val zones = taskbarZones(ScreenState.Single("maps"), "notes", 1856f, 2160f, true, true, label, canPartner = { false })
+        assertEquals(setOf(ZoneKind.FullScreen, ZoneKind.PopUp), zones.map { it.kind }.toSet())
     }
 
     @Test fun overOneAppTheSidesFollowTheHomeRule() {
         val single = ScreenState.Single("maps")
         val zones = taskbarZones(single, "notes", 1856f, 2160f, true, true, label)
-        assertEquals(OpenPlan.Split("notes", "maps"), planTaskbarOpen(zones.first { it.kind == ZoneKind.SplitLeft }, single, "notes", "notes") { it })
-        assertEquals(OpenPlan.Split("maps", "notes"), planTaskbarOpen(zones.first { it.kind == ZoneKind.SplitRight }, single, "notes", "notes") { it })
+        assertEquals(OpenPlan.Split("notes", "maps"), planTaskbarOpen(zones.first { it.kind == ZoneKind.SplitLeft }, single, "notes") { it })
+        assertEquals(OpenPlan.Split("maps", "notes"), planTaskbarOpen(zones.first { it.kind == ZoneKind.SplitRight }, single, "notes") { it })
     }
 
     @Test fun anAppThatCantBeFoundOpensNothing() {
-        val zone = taskbarZones(split, "notes", 1856f, 2160f, true, true, label).first { it.kind == ZoneKind.SplitLeft }
-        assertNull(planTaskbarOpen<String>(zone, split, "notes", "notes") { null })
+        val single = ScreenState.Single("maps")
+        val zone = taskbarZones(single, "notes", 1856f, 2160f, true, true, label).first { it.kind == ZoneKind.SplitLeft }
+        assertNull(planTaskbarOpen<String>(zone, single, "notes") { null })
     }
 }

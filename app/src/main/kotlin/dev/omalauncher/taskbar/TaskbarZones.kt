@@ -13,7 +13,7 @@ import dev.omalauncher.ui.splitdrag.splitsSideBySide
  * splitting with that app (not with itself). Over a split: each half, replacing its app; nothing else, as One UI keeps a
  * split and puts any app opened during it into the half under it (no full screen, no pop-up). Nothing at all when the
  * [dragged] app is already in the split: it can't be in both halves. Otherwise full screen and pop-up only. [labelOf]
- * names an app by package.
+ * names an app by package; [canPartner] says whether an app can be relaunched as a split partner (else no split over it).
  */
 fun taskbarZones(
     state: ScreenState,
@@ -23,9 +23,10 @@ fun taskbarZones(
     canPopUp: Boolean,
     oneUi: Boolean,
     labelOf: (String) -> String,
+    canPartner: (String) -> Boolean = { true },
 ): List<DropZone> =
     when (state) {
-        is ScreenState.Single -> dropZones(width, height, canSplit = state.packageName != dragged, canPopUp, splitsSideBySide(width, height, oneUi))
+        is ScreenState.Single -> dropZones(width, height, canSplit = state.packageName != dragged && canPartner(state.packageName), canPopUp, splitsSideBySide(width, height, oneUi))
         is ScreenState.Split ->
             if (dragged == state.first || dragged == state.second) emptyList() else replaceZones(state, width, height, labelOf)
         ScreenState.Home, ScreenState.Unknown -> dropZones(width, height, canSplit = false, canPopUp, sideBySide = true)
@@ -53,27 +54,18 @@ private fun replaceZones(
 }
 
 /**
- * What dropping [dragged] in [zone] opens over [state]. Over one app, as home does with that app as the partner. Over a
- * split, the half's app is replaced: the other half's app is brought forward first, so the dragged one opens next to
- * it, in the half dropped on. [appOf] finds the app for a package; null when it can't, and then nothing opens.
+ * What dropping [dragged] in [zone] opens over [state]: full screen, a pop-up, or over one app a split with it, as home
+ * does with that app as the partner. [appOf] finds the app for a package; null when it can't, and then nothing opens. Over
+ * a split nothing is planned: a half is replaced by the trampoline (see [TaskbarTrampoline.replace]).
  */
 fun <A> planTaskbarOpen(
     zone: DropZone,
     state: ScreenState,
     dragged: A,
-    draggedPackage: String,
     appOf: (String) -> A?,
 ): OpenPlan<A>? =
     when (zone.kind) {
         ZoneKind.FullScreen -> OpenPlan.AsTapped(dragged)
         ZoneKind.PopUp -> OpenPlan.Windowed(dragged, zone.preview)
-        else ->
-            when (state) {
-                is ScreenState.Single -> appOf(state.packageName)?.let { planOpen(zone, dragged, it) }
-                is ScreenState.Split -> {
-                    val keep = if (zone.kind == ZoneKind.SplitTop || zone.kind == ZoneKind.SplitLeft) state.second else state.first
-                    if (keep == draggedPackage) null else appOf(keep)?.let { OpenPlan.Split(it, dragged) }
-                }
-                ScreenState.Home, ScreenState.Unknown -> null
-            }
+        else -> (state as? ScreenState.Single)?.let { s -> appOf(s.packageName)?.let { planOpen(zone, dragged, it) } }
     }

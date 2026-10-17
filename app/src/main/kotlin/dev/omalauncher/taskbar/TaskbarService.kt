@@ -39,6 +39,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -52,8 +53,9 @@ import dev.omalauncher.ui.splitdrag.DropZoneOverlay
 import dev.omalauncher.ui.splitdrag.OpenPlan
 import dev.omalauncher.ui.splitdrag.SplitDrag
 import dev.omalauncher.ui.splitdrag.SplitDragSession
+import dev.omalauncher.ui.splitdrag.ZoneKind
 import dev.omalauncher.ui.splitdrag.ZoneBox
-import dev.omalauncher.ui.splitdrag.launchSteps
+import dev.omalauncher.ui.splitdrag.splitSteps
 import dev.omalauncher.ui.tile
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
@@ -77,6 +79,8 @@ class TaskbarService : AccessibilityService() {
     private var seen by mutableStateOf(emptyList<String>())
     /** The default home app, unless it's this launcher: ours counts as home only while its home screen is started. */
     private var defaultHome: String? = null
+    /** Apps with a home screen, see [launchers]. */
+    private var launchers = emptySet<String>()
     private val prefs by lazy { getSharedPreferences("taskbar", MODE_PRIVATE) }
 
     override fun onServiceConnected() {
@@ -84,10 +88,11 @@ class TaskbarService : AccessibilityService() {
         if (Build.VERSION.SDK_INT < 35) return
         TaskbarStatus.serviceOn = true
         wm = getSystemService(WindowManager::class.java)
-        // The launcher's runtime: themes and app icons; started at most once.
-        runtime.start()
+        // The launcher's runtime, for the themes and app icons; just that, not Linux or the widgets.
+        runtime.startForOverlay()
         seen = prefs.getString(SEEN, null)?.split('\n')?.filter { it.isNotEmpty() } ?: emptyList()
         defaultHome = defaultHome()
+        launchers = launchers()
         owner.start()
         // The drop zones under everything, never touchable; the handle and tray over them.
         add(fullScreen()) { DropZoneOverlay(session) }
@@ -100,6 +105,7 @@ class TaskbarService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             // The default home can change in settings; resolving it is cheap.
             defaultHome = defaultHome()
+            launchers = launchers()
             event.packageName?.toString()?.let(::personalApp)?.let { app ->
                 if (seen.firstOrNull() != app.key) {
                     seen = moveToFront(seen, app.key)
@@ -161,9 +167,8 @@ class TaskbarService : AccessibilityService() {
      * Apps with a home screen (this launcher, another Omalauncher, One UI Home…): their windows, say a Linux window of the
      * release Omalauncher, can't be a split partner, as relaunching the app would open its home screen instead.
      */
-    private val launchers by lazy {
+    private fun launchers(): Set<String> =
         packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0).map { it.activityInfo.packageName }.toSet() + packageName
-    }
 
     /** The home apps: the default one unless it's this launcher, and this launcher only while its home screen is started. */
     private fun homePackages(): Set<String> = setOfNotNull(defaultHome, packageName.takeIf { HomeVisibility.shown })
@@ -261,7 +266,7 @@ class TaskbarService : AccessibilityService() {
         val catalog = runtime.androidApps
         val byKey = catalog.apps.filter { SplitDrag.canDrag(it) }.associateBy { it.key }
         val apps = taskbarApps(settings.mode, settings.pinned, seen, runtime.usage.recent, byKey.keys).mapNotNull { byKey[it] }
-        val maxWidth = with(LocalDensity.current) { (wm.currentWindowMetrics.bounds.width().toDp() - 32.dp) }
+        val maxWidth = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.width.toDp() - 32.dp }
         LazyRow(
             Modifier
                 .widthIn(max = maxWidth)
@@ -310,11 +315,16 @@ class TaskbarService : AccessibilityService() {
             canSplit = true,
             canPopUp = canPopUp,
             oneUi = oneUi,
-            layout = { w, h -> taskbarZones(state, dragged, w, h, canPopUp, oneUi) { pkg -> personalApp(pkg)?.label ?: pkg } },
-        ) { zone -> planTaskbarOpen(zone, state, app, dragged, ::personalApp)?.let { plan ->
+            layout = { w, h ->
+                taskbarZones(state, dragged, w, h, canPopUp, oneUi, labelOf = { pkg -> personalApp(pkg)?.label ?: pkg }, canPartner = { personalApp(it) != null })
+            },
+        ) { zone ->
+            if (state is ScreenState.Split) {
                 // Replacing a half: the trampoline works out from where it lands how to open the app in that half.
-                if (state is ScreenState.Split && plan is OpenPlan.Split) replace(app, zone.preview) else open(plan, app)
+                if (zone.kind in SPLIT_KINDS) replace(app, zone.preview)
+                return@begin
             }
+            planTaskbarOpen(zone, state, app, ::personalApp)?.let { open(it, app) }
         }
     }
 
@@ -330,9 +340,8 @@ class TaskbarService : AccessibilityService() {
 
     /**
      * Opens [plan]; [app] is the one tapped or dragged, which counts as opened whatever else the plan brings forward.
-     * Only a split goes through the invisible trampoline, as it needs a source activity for LAUNCH_ADJACENT. Full screen
-     * and pop-up start straight from the service: the trampoline lands in the focused split half, and an app it starts
-     * inherits that half, so a pop-up dropped during a split would replace one half instead.
+     * Full screen and pop-up start straight from the service; only a split needs the trampoline, as LAUNCH_ADJACENT needs
+     * a source activity.
      */
     private fun open(
         plan: OpenPlan<AndroidApp>,
@@ -340,7 +349,7 @@ class TaskbarService : AccessibilityService() {
     ) {
         runtime.usage.record(app.key)
         when (plan) {
-            is OpenPlan.Split -> TaskbarTrampoline.start(this, launchSteps(plan))
+            is OpenPlan.Split -> TaskbarTrampoline.start(this, splitSteps(plan))
             is OpenPlan.AsTapped -> startDirect(plan.app, null)
             is OpenPlan.Windowed -> startDirect(plan.app, plan.bounds)
         }
@@ -369,5 +378,6 @@ class TaskbarService : AccessibilityService() {
     private companion object {
         const val SEEN = "seen"
         const val HIDE_AFTER_MS = 4000L
+        val SPLIT_KINDS = setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight, ZoneKind.SplitTop, ZoneKind.SplitBottom)
     }
 }

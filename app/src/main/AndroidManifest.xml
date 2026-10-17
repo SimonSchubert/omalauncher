@@ -288,14 +288,13 @@
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode|fontScale|locale|layoutDirection"
             android:excludeFromRecents="true"
             android:exported="false"
-            android:noHistory="false"
             android:taskAffinity="${applicationId}.taskbar"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <!-- The floating taskbar; turned on by the user in the phone's accessibility settings, shown only while on in Omalauncher's settings. -->
         <service
             android:name=".taskbar.TaskbarService"
             android:exported="true"
-            android:label="Omalauncher taskbar"
+            android:label="@string/taskbar_service_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
