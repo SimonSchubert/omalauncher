@@ -2,14 +2,15 @@ package dev.omalauncher.widgets
 
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.agentInvocation
+import dev.omalauncher.widgets.lang.OwlKind
 
 /** What agents are told about dependencies when they write or change a widget. */
 private const val DEPENDENCIES =
-    "Declare every package the widget's commands need in requires { pacman: [...] } and install them with pacman -S --needed."
+    "Declare every package the file's commands need in requires { pacman: [...] } and install them with pacman -S --needed."
 
 /** How agents see their work: they can't see the phone. */
 private const val CHECK =
-    "After saving, run owl-check <file>: it prints the errors and the path of a PNG of the tile with live data (and of its screen, if it has one); look at it to check the layout."
+    "After saving, run owl-check <file>: it prints the errors and the path of a PNG with live data (a widget's tile and its screen, if it has one; an app's view); look at it to check the layout."
 
 /** Starts [agentBin] in the widgets dir with a first prompt. */
 private fun agentCommand(
@@ -18,8 +19,25 @@ private fun agentCommand(
     readOnly: Boolean = false,
 ) = "cd ~/${WidgetEngine.GUEST_DIR} && ${agentInvocation(agentBin, prompt, readOnly)}; exec bash"
 
-/** A new-widget session in the widgets dir. */
-fun newWidgetCommand(agentBin: String) = agentCommand(agentBin, "Read README.md, then ask me what widget to create. $DEPENDENCIES $CHECK")
+/** What each kind of owl file is, for the agent: where it shows up on the phone. */
+private fun OwlKind.what() =
+    when (this) {
+        OwlKind.Widget -> "a home-screen widget (widget \"name\" { }, a tile on my home screen)"
+        OwlKind.Page -> "a home page (page \"name\" { }: it fills a page of my home screen, the whole screen, as README.md's Pages section says)"
+        OwlKind.App -> "an app (app \"name\" { }: it shows up in my app drawer and opens full screen; give it an icon: as README.md's Apps section says)"
+    }
+
+/** A session in the widgets dir that creates an owl file of [kind]; a page for the empty [page] left of page 1, if given. */
+fun newOwlCommand(
+    agentBin: String,
+    kind: OwlKind,
+    page: Int? = null,
+) = agentCommand(
+    agentBin,
+    "Read README.md, then ask me what to create: ${kind.what()}. " +
+        (page?.let { "It's for the empty page left of my home pages, which is waiting for it: give it page: $it. " } ?: "") +
+        "$DEPENDENCIES $CHECK",
+)
 
 /** An agent session about one widget: its file, the language docs and its error log. */
 fun editWidgetCommand(
@@ -28,12 +46,18 @@ fun editWidgetCommand(
     problem: String? = null,
 ): String {
     val file = spec.file.name
+    val what =
+        when (spec.kind) {
+            OwlKind.Widget -> "home-screen widget"
+            OwlKind.Page -> "home page"
+            OwlKind.App -> "app"
+        }
     val prompt =
         if (problem != null) {
-            "The home-screen widget \"${spec.name}\" in $file has a problem: $problem Read README.md for the widget language " +
+            "The $what \"${spec.name}\" in $file has a problem: $problem Read README.md for the widget language " +
                 "and $file, find out what's wrong, and fix it; ask me before changing the system beyond installing packages. $CHECK"
         } else {
-            "I want to change the home-screen widget \"${spec.name}\" in $file. Read README.md for the widget language " +
+            "I want to change the $what \"${spec.name}\" in $file. Read README.md for the widget language " +
                 "and $file, and run owl-check $file to see it and its problems. $DEPENDENCIES $CHECK Saved changes show up on my " +
                 "phone within seconds. Ask me what to change."
         }
@@ -46,14 +70,22 @@ fun publishWidgetCommand(
     spec: WidgetSpec,
 ): String {
     val file = spec.file.name
+    val (what, place) =
+        when (spec.kind) {
+            OwlKind.Widget -> "home-screen widget" to "the widget as widgets/<my GitHub username in lowercase>/<a short name>/widget.owl, with the preview.png owl-check points to next to it"
+            OwlKind.Page -> "home page" to "the page as pages/<my GitHub username in lowercase>/<a short name>/page.owl, with the preview.png owl-check points to next to it"
+            OwlKind.App ->
+                "app" to "the app as apps/<my GitHub username in lowercase>/<a short name>/app.owl (not a name a widget there has), " +
+                    "with the screen picture owl-check points to next to it as preview.png. It needs an icon: (see README.md's Apps section)"
+        }
     val prompt =
-        "Publish my home-screen widget $file to the widget store at https://github.com/${Market.REPO}. " +
+        "Publish my $what $file to the store at https://github.com/${Market.REPO}. " +
             "Use the GitHub CLI: install github-cli with pacman and run gh auth login if needed. Read the repo's README for the rules, " +
-            "then fork it and add the widget as widgets/<my GitHub username in lowercase>/<a short name>/widget.owl, with the " +
-            "preview.png owl-check points to next to it. Its meta needs a description, a version and a license (ask me which license; " +
+            "then fork it and add $place. Its meta needs a description, a version and a license (ask me which license; " +
             "suggest MIT), and it should declare its packages in requires. Leave out anything personal: tokens, paths to my files, my " +
-            "location. Show me the final file before pushing, then open the pull request and give me its link. If I'd rather not fork, " +
-            "or the pull request can't be opened, open an issue there instead with the widget's file in a code block and give me its link."
+            "location. Show me the final file before pushing, then open the pull request, titled \"Add ${spec.kind.word}: ${spec.name}\", and give me " +
+            "its link. If I'd rather not fork, or the pull request can't be opened, open an issue there instead with the same title and the " +
+            "$what's file in a code block, and give me its link."
     return agentCommand(agentBin, prompt)
 }
 
@@ -117,6 +149,6 @@ fun agentWidget(agent: Agent) =
       meta { owl: 2; description: "${agent.name} in a terminal on the home screen" }
 
       // Tap to type; tap outside or press Back to let go. When ${agent.name} exits, the shell stays.
-      Terminal { command: 'cd ~ && ${agent.bin}; exec bash' }
+      Terminal { command: 'cd ~ && ${agent.command}; exec bash' }
     }
     """.trimIndent() + "\n"

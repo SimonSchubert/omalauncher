@@ -46,7 +46,10 @@ import dev.omalauncher.wayland.XdgToplevel
  *
  * A tile is inert until tapped, so swipes still turn pages and open the
  * drawer; tapping it gives it the keyboard and its touches, until a tap
- * outside, Back, or leaving the page. Main thread only.
+ * outside, Back, or leaving the page. A widget's own text field (an Input)
+ * that takes the keyboard is treated the same way: its tile lifts above the
+ * keyboard and lets go on the same tap outside, Back or page turn. Main
+ * thread only.
  */
 class TerminalTiles(
     private val runtime: Runtime,
@@ -72,8 +75,15 @@ class TerminalTiles(
     /** The soft keyboard is closing on its own (Back) and the active tile lets go once it's gone; home shows its bar meanwhile. */
     var keyboardLeaving by mutableStateOf(false)
 
-    /** The active terminal's whole tile, before the [cut], in window pixels as if the home screen weren't lifted. */
+    /** The typing tile's whole tile, before the [cut], in window pixels as if the home screen weren't lifted. */
     var tile: Rect? = null
+
+    /** The widget text field that has the keyboard, if any; Compose raises the keyboard for it, not [keyboard]. */
+    var field by mutableStateOf<TileField?>(null)
+        private set
+
+    /** A tile has the keyboard: its terminal ([active]) or one of its widget's text fields ([field]). */
+    val typing get() = active != null || field != null
 
     init {
         wm.claim = { window -> sessions.firstOrNull { it.appId == window.appId }?.attach(window) != null }
@@ -110,17 +120,32 @@ class TerminalTiles(
         if (active != null) wm.focus(null)
         tile = null
         keyboard?.hide()
+        field?.release()
+        field = null
     }
 
-    /** A press at window point [p]: outside the active tile, it gives the home screen its touches back. */
+    /** [f] took focus, and with it the keyboard. */
+    fun focused(f: TileField) {
+        if (active != null) wm.focus(null)
+        keyboard?.hide()
+        tile = null
+        field = f
+    }
+
+    /** [f] lost focus. */
+    fun unfocused(f: TileField) {
+        if (field === f) field = null
+    }
+
+    /** A press at window point [p]: outside the typing tile, it gives the home screen its touches back. */
     fun pressAt(p: Offset) {
-        val term = active ?: return
+        val bounds = active?.bounds ?: tile.takeIf { field != null } ?: return
         if (extraKeys?.contains(p) == true) return
-        if (!term.bounds.translate(0f, -lift).contains(p)) deactivate()
+        if (!bounds.translate(0f, -lift).contains(p)) deactivate()
     }
 
     /**
-     * The lift that keeps the active tile's bottom above a soft keyboard of
+     * The lift that keeps the typing tile's bottom above a soft keyboard of
      * [imeHeight] in a window [windowHeight] tall, but its top below [top] (the
      * status bar); read while drawing, so it follows the keyboard's animation
      * without recomposing. A tile too tall for both gives up the rest at its
@@ -135,18 +160,10 @@ class TerminalTiles(
         top: Float,
         minHeight: Float,
     ): Float {
-        val term = active
-        if (term == null) {
-            lift = 0f
-            cut = 0f
-            return lift
-        }
-        // Its whole tile, so its frame clears the keys too; measured before the cut, which would otherwise feed back into it.
-        val bounds = tile ?: term.bounds
-        fun overlap(ime: Int) = if (ime == 0) 0f else (bounds.bottom + margin - (windowHeight - ime)).coerceAtLeast(0f)
-        val room = (bounds.top - top).coerceAtLeast(0f)
-        lift = minOf(overlap(imeHeight), room)
-        cut = (overlap(imeTarget) - room).coerceIn(0f, (bounds.height - minHeight).coerceAtLeast(0f))
+        val bounds = typingBounds(field != null, tile, active?.bounds)
+        val (l, c) = bounds?.let { liftAndCut(it, imeHeight, imeTarget, windowHeight, margin, top, minHeight) } ?: (0f to 0f)
+        lift = l
+        cut = c
         return lift
     }
 
@@ -167,8 +184,41 @@ class TerminalTiles(
     companion object {
         /** Tiles' foot app_ids, numbered on. */
         const val APP_ID_PREFIX = "omarchy.tile-"
+
+        /**
+         * What the lift keeps clear: the typing tile's whole tile, so its frame clears the keys too, measured before the
+         * cut, which would otherwise feed back into it. A focused field's tile counts once it's measured, never a
+         * terminal's bounds in its place; a terminal falls back to its own until its tile is.
+         */
+        internal fun typingBounds(
+            fieldFocused: Boolean,
+            tile: Rect?,
+            terminal: Rect?,
+        ): Rect? = if (fieldFocused) tile else terminal?.let { tile ?: it }
+
+        /** The lift and cut for [bounds], see [liftFor]. */
+        internal fun liftAndCut(
+            bounds: Rect,
+            imeHeight: Int,
+            imeTarget: Int,
+            windowHeight: Int,
+            margin: Float,
+            top: Float,
+            minHeight: Float,
+        ): Pair<Float, Float> {
+            fun overlap(ime: Int) = if (ime == 0) 0f else (bounds.bottom + margin - (windowHeight - ime)).coerceAtLeast(0f)
+            val room = (bounds.top - top).coerceAtLeast(0f)
+            return minOf(overlap(imeHeight), room) to (overlap(imeTarget) - room).coerceIn(0f, (bounds.height - minHeight).coerceAtLeast(0f))
+        }
     }
 }
+
+/** A text field on a home tile's widget, which has the keyboard while it's [TerminalTiles.field]; [release] takes its focus away. */
+class TileField(
+    /** Its widget's instance, to tell which tile lifts. */
+    val widget: Any,
+    val release: () -> Unit,
+)
 
 /** One tile's terminal. Its foot starts when the tile first shows and runs until the widget goes away. */
 class EmbeddedTerminal internal constructor(

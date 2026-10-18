@@ -8,7 +8,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +45,7 @@ import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import dev.omalauncher.BuildConfig
+import dev.omalauncher.openUrl
 import dev.omalauncher.widgets.Market
 import dev.omalauncher.widgets.WidgetSpec
 import dev.omalauncher.widgets.market.Catalog
@@ -105,11 +105,7 @@ fun ShareWidgetScreen(
                     if (showSource) BracketAction("check for secrets with agent", Palette.accent, onCheck)
                 }
                 if (showSource) {
-                    BasicText(
-                        text,
-                        Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).padding(6.dp),
-                        style = Mono.copy(fontSize = TextSize.Small),
-                    )
+                    CodeBlock(text)
                 }
             }
             when {
@@ -196,7 +192,7 @@ fun ShareWidgetScreen(
 
             if (onPublish != null) {
                 Spacer(Modifier.height(16.dp))
-                BasicText("in the widget store", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
+                BasicText("in the store", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
                 BasicText(
                     "An issue on github.com/${Market.REPO}; once reviewed, anyone can install it.",
                     style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
@@ -257,8 +253,8 @@ private fun StoreIssue(
         scope.launch {
             runCatching { withContext(Dispatchers.IO) { Paste.upload(text, userAgent(), Paste.STORE_DAYS) } }
                 .onSuccess { id ->
-                    val url = Submit.issueUrl(Market.REPO, spec.name, Catalog.metaText(spec.program?.meta?.get("description")).orEmpty(), id)
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    val url = Submit.issueUrl(Market.REPO, spec.name, Catalog.metaText(spec.program?.meta?.get("description")).orEmpty(), id, spec.kind)
+                    if (!context.openUrl(url)) error = "no browser to open $url"
                 }.onFailure { error = (it as? ShareError)?.message ?: "something went wrong" }
             uploading = false
         }
@@ -289,7 +285,7 @@ private fun qrImage(
     val file = File(dir, "$slug-qr.png")
     file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     bitmap.recycle()
-    return FileProvider.getUriForFile(context, "dev.omalauncher.files", file)
+    return FileProvider.getUriForFile(context, context.packageName + ".files", file)
 }
 
 /** [link] as a QR code at error correction L, the setting [Share.MAX_LINK] is measured for, with a 2-module margin. */

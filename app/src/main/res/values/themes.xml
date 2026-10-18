@@ -9,4 +9,10 @@
     <style name="Theme.Omalauncher.Window" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">#FF1A1B26</item>
     </style>
+
+    <!-- Only a dialog shows, over the app that opened it. -->
+    <style name="Theme.Omalauncher.Dialog" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+    </style>
 </resources>

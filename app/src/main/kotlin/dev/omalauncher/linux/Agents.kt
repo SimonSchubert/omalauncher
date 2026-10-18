@@ -20,6 +20,10 @@ data class Agent(
     val description: String,
     /** mise package spec. */
     val pkg: String,
+    /** What starts it without a prompt, when that's more than [bin]. */
+    val command: String = bin,
+    /** Whether mise needs node to install it: npm packages run their postinstall scripts with it. */
+    val node: Boolean = pkg.startsWith("npm:"),
 ) {
     /** Its activity alias in the manifest (cursor-agent -> CursorAgentWindow), so Recents names its window after it. */
     val windowAlias get() = bin.split('-').joinToString("") { it.replaceFirstChar(Char::uppercase) } + "Window"
@@ -29,7 +33,8 @@ data class Agent(
 val AGENTS =
     listOf(
         Agent("claude", "Claude Code", "Anthropic's coding agent", "claude"),
-        Agent("opencode", "OpenCode", "Open source agent, any model provider", "opencode"),
+        // mise installs OpenCode 2 from npm (@opencode/cli).
+        Agent("opencode", "OpenCode", "Open source agent, any model provider", "opencode", node = true),
         Agent("codex", "Codex", "OpenAI's coding agent", "codex"),
         Agent("grok", "Grok", "xAI's coding agent", "npm:@xai-official/grok"),
         Agent("copilot", "GitHub Copilot", "GitHub's coding agent", "copilot"),
@@ -37,13 +42,39 @@ val AGENTS =
         Agent("cursor-agent", "Cursor CLI", "Cursor's agent for the terminal", "cursor-agent"),
         Agent("agy", "Antigravity", "Google's Gemini coding agent", "antigravity-cli"),
         Agent("pi", "Pi", "Minimal, extensible coding agent", "pi"),
+        Agent("omp", "Oh My Pi", "Pi with tools and plugins built in", "github:can1357/oh-my-pi"),
+        Agent("ori", "Ori", "OpenRouter's coding agent", "github:OpenRouterLabs/ori-releases", command = "ori code"),
+        Agent(
+            "muse",
+            "Muse Code",
+            "Meta's coding agent",
+            // Meta's launcher fetches and updates the native binary for this platform.
+            "http:muse[url=https://api.meta.ai/muse-launcher.sh,bin=muse,version_list_url=https://api.meta.ai/muse-code/channels/muse-stable,version_json_path=.version]",
+        ),
+        Agent("kimi", "Kimi", "Moonshot AI's coding agent", "npm:@moonshot-ai/kimi-code"),
     )
 
 /**
- * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, the others as an argument.
- * [readOnly], for reading something untrusted: Claude Code starts in plan mode, where it can read but not
- * run commands or change files whatever the user's settings say. The others have no flag for that we can
- * rely on inside proot, and only have the prompt.
+ * Brings mise itself up to date. Which backend a tool installs from is built into mise, and an old mise
+ * breaks when a tool moves: OpenCode 2 left GitHub releases for npm, and mise 2026.10.8 still looked for
+ * it on GitHub (404). Best effort, since the old mise may still manage.
+ */
+const val MISE_SELF_UPDATE = "{ mise self-update -y || true; }"
+
+/** Adds node to the global config when an installed agent needs it but was installed before it did (OpenCode 1). */
+val MISE_NODE_FOR_AGENTS =
+    AGENTS.filter { it.node }.joinToString(" ", prefix = "if [ -z \"\$(mise ls -g node)\" ] && [ -n \"\$(mise ls -g ", postfix = ")\" ]; then mise use -g node@lts; fi") {
+        shellQuote(it.pkg)
+    }
+
+/**
+ * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, Antigravity and Copilot as -i (they
+ * refuse a bare argument), the others as an argument.
+ * Ori's agent is `ori code`, which stays open only with --interactive. Kimi takes a prompt only in
+ * print mode, so the session it ran in is continued after the answer.
+ * [readOnly], for reading something untrusted: Claude Code and Antigravity start in plan mode, where they
+ * can read but not run commands or change files whatever the user's settings say. The others have no flag
+ * for that we can rely on inside proot, and only have the prompt.
  */
 fun agentInvocation(
     agentBin: String,
@@ -53,19 +84,14 @@ fun agentInvocation(
     val quoted = shellQuote(prompt)
     return when {
         agentBin == "opencode" -> "$agentBin --prompt $quoted"
+        agentBin == "copilot" -> "$agentBin -i $quoted"
         agentBin == "claude" && readOnly -> "$agentBin --permission-mode plan $quoted"
+        agentBin == "ori" -> "ori code --interactive --prompt $quoted"
+        agentBin == "kimi" -> "kimi --prompt $quoted && kimi --continue"
+        agentBin == "agy" && readOnly -> "$agentBin --mode plan -i $quoted"
+        agentBin == "agy" -> "$agentBin -i $quoted"
         else -> "$agentBin $quoted"
     }
-}
-
-/** A new-app session in ~/apps: the agent asks what to build, then adds it to the app drawer. */
-fun newAppCommand(agentBin: String): String {
-    val prompt =
-        "Ask me what app to build, then build it in its own directory here. It runs on Arch Linux ARM (aarch64) inside proot " +
-            "on an Android phone, under a Wayland compositor: no systemd, no X11, OpenGL usually in software, a small touch screen. " +
-            "Install what it needs with pacman. When it works, add a desktop entry at ~/.local/share/applications/<name>.desktop " +
-            "(Terminal=true for terminal apps) so it shows up in my app drawer."
-    return "mkdir -p ~/apps && cd ~/apps && ${agentInvocation(agentBin, prompt)}; exec bash"
 }
 
 class AgentStore(
@@ -116,8 +142,8 @@ class AgentStore(
     /** Installs [agent] with mise, bootstrapping mise itself if needed. */
     fun installScript(agent: Agent) =
         buildString {
-            if (!mise.exists()) append("curl -fsSL https://mise.run | sh && ")
-            if (agent.pkg.startsWith("npm:")) append("mise use -g node@lts && ")
+            append(if (mise.exists()) "$MISE_SELF_UPDATE && " else "curl -fsSL https://mise.run | sh && ")
+            if (agent.node) append("mise use -g node@lts && ")
             append("mise use -g ${shellQuote(agent.pkg)}")
             // Downloads are only needed during install; storage on phones is tight.
             append(" && mise cache clear && rm -rf ~/.local/share/mise/downloads")
@@ -140,7 +166,7 @@ class AgentStore(
     fun managed(): List<Managed> =
         installed.map { agent ->
             Managed.text(File(proot.applications, "agent-${agent.bin}.desktop"), Policy.Owned) {
-                "[Desktop Entry]\nType=Application\nName=${agent.name}\nTerminal=true\nExec=${agent.bin}\nIcon=${bundledIcon("agent-${agent.bin}")}\n"
+                "[Desktop Entry]\nType=Application\nName=${agent.name}\nTerminal=true\nExec=${agent.command}\nIcon=${bundledIcon("agent-${agent.bin}")}\n"
             }
         } + codexConfig()
 
@@ -165,12 +191,9 @@ class AgentStore(
         agent: Agent,
         action: String,
         script: () -> String,
-    ): Boolean =
-        withContext(Dispatchers.IO) {
-            states[agent.bin] = JobState.Working(action, emptyList())
-            val (ok, tail) = proot.runJob(script()) { states[agent.bin] = JobState.Working(action, it) }
-            Log.i("agents", "$action ${agent.bin}: ${if (ok) "ok" else "failed"}")
-            states[agent.bin] = if (ok) JobState.Idle else JobState.Failed(tail.toList())
-            ok
-        }
+    ): Boolean {
+        val (ok, _) = proot.trackedJob(action, withContext(Dispatchers.IO) { script() }) { states[agent.bin] = it }
+        Log.i("agents", "$action ${agent.bin}: ${if (ok) "ok" else "failed"}")
+        return ok
+    }
 }

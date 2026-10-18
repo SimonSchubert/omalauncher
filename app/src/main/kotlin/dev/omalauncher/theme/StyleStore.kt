@@ -250,8 +250,8 @@ class StyleStore(
          * for a downgrade.
          */
         fun importPrefs(context: Context): Style {
-            val themes = context.getSharedPreferences("themes", Context.MODE_PRIVATE)
-            val launcher = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
+            val themes = ThemeStore.prefs(context)
+            val launcher = LauncherData.prefs(context)
             var s = Style()
             themes.getString("theme", null)?.let { s = s.with(Style.THEME, it) }
             themes.getString("background", null)?.let { s = s.with(Style.BACKGROUND, it) }

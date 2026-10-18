@@ -199,7 +199,7 @@ class ThemeStore(
 
     private suspend fun restoreSaved() {
         themes = withContext(Dispatchers.IO) { scan() }
-        val theme = themes.firstOrNull { it.name == style.style[Style.THEME] } ?: return
+        val theme = themes.firstOrNull { it.name == picked } ?: return
         current = theme
         Palette.apply(theme.colors)
         // Templates and how we render them may have changed with an app update.
@@ -349,6 +349,13 @@ class ThemeStore(
                     checkNotNull(ThemeDirs.colorsOf(staging)) { "it has no colors.toml or alacritty.toml" }
                     File(staging, ThemeDirs.SOURCE_MARKER).writeText(repo.url + "\n")
                     val target = File(dirs.user, name)
+                    // The catalog's screenshot, for themes without a preview of their own; an update keeps the one it had.
+                    val screenshot =
+                        catalog.entryFor(repo)?.let { catalog.image(it) }
+                            ?: File(target, ThemeDirs.CATALOG_PREVIEW).takeIf { it.isFile }
+                    // Best effort: a theme without its screenshot still installs.
+                    runCatching { screenshot?.copyTo(File(staging, ThemeDirs.CATALOG_PREVIEW), overwrite = true) }
+                        .onFailure { Log.w(TAG, "no catalog preview for $name", it) }
                     dirs.user.mkdirs()
                     LauncherData.deleteTree(target)
                     check(staging.renameTo(target)) { "can't move the theme into place" }
@@ -497,15 +504,26 @@ class ThemeStore(
     }
 
     /**
+     * Deletes one of the user's extra backgrounds, from the phone and Linux.
+     * If it was showing, the theme's first takes its place, as on Omarchy
+     * when the picked background is gone.
+     */
+    suspend fun removeBackground(file: File) {
+        val theme = current ?: return
+        if (!theme.isExtraBackground(file)) return
+        withContext(Dispatchers.IO) { file.delete() }
+        if (file != background) return
+        style.update { it.with(Style.BACKGROUND, null) }
+        showBackground(theme.backgrounds().firstOrNull())
+    }
+
+    /**
      * Guest configs for Omarchy's apps, in the current theme's colors. Before
      * [load] ran, the saved theme's: leaving them out would count as removing them.
      */
     fun managed() = guest.managed(current ?: savedTheme())
 
-    private fun savedTheme(): OmarchyTheme? {
-        val name = style.style[Style.THEME] ?: return null
-        return runCatching { dirs.load(name) }.getOrNull()
-    }
+    private fun savedTheme(): OmarchyTheme? = runCatching { dirs.load(picked) }.getOrNull()
 
     companion object {
         /** The Omarchy commit themes and configs come from. Changing it updates them on every install. */
@@ -517,7 +535,7 @@ class ThemeStore(
         /** Called on the main thread after the theme or background changes (the live wallpaper listens). */
         val changeListeners = CopyOnWriteArraySet<() -> Unit>()
 
-        private fun prefs(context: Context) = context.getSharedPreferences("themes", Context.MODE_PRIVATE)
+        fun prefs(context: Context) = context.getSharedPreferences("themes", Context.MODE_PRIVATE)
 
         private fun themeDirs(context: Context) =
             ThemeDirs(
@@ -532,7 +550,8 @@ class ThemeStore(
          */
         fun savedSelection(context: Context): Pair<Map<String, String>, File?>? {
             val saved = StyleStore.read(context)
-            val name = saved[Style.THEME] ?: return null
+            // Unset is the default theme: first run leaves the one it showed unsaved.
+            val name = saved[Style.THEME] ?: DEFAULT_THEME
             val theme = runCatching { themeDirs(context).load(name) }.getOrNull() ?: return null
             // Unset, or not one of the theme's: its first, as the launcher shows.
             val bg = theme.backgrounds().let { list -> list.firstOrNull { it.name == saved[Style.BACKGROUND] } ?: list.firstOrNull() }

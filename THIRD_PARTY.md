@@ -22,6 +22,10 @@ agent in the launcher, which is not affiliated with or endorsed by any of them.
 | `agent-opencode` | opencode | opencode | @lobehub/icons (MIT) |
 | `agent-pi` | Pi | pi.dev | drawn for Omalauncher, a π in the colors of Pi's mark |
 | `agent-crush` | Crush | Charm | redrawn from Charm's logo |
+| `agent-omp` | Oh My Pi | can1357 | [oh-my-pi](https://github.com/can1357/oh-my-pi)'s icon (MIT) |
+| `agent-ori` | OpenRouter | OpenRouter | @lobehub/icons (MIT) |
+| `agent-muse` | Meta | Meta | @lobehub/icons (MIT) |
+| `agent-kimi` | Kimi | Moonshot AI | @lobehub/icons (MIT) |
 
 ## Fonts
 
@@ -34,6 +38,14 @@ agent in the launcher, which is not affiliated with or endorsed by any of them.
 `app/src/main/assets/themes/*.toml` and `app/src/main/assets/theme-backgrounds.txt`
 come from [Omarchy](https://github.com/omacom/omarchy), MIT, Copyright (c) David Heinemeier Hansson.
 Omalauncher is not affiliated with Omarchy.
+
+## Mesa
+
+`app/src/main/assets/mesa-zink/mesa-zink.tar.xz`: [Mesa](https://mesa3d.org) 26.2.4 with
+`scripts/mesa/0001-egl-wayland-keep-zink-on-shm.patch`, built by `scripts/mesa/build-aarch64.sh`.
+Mesa is mostly MIT, with other files under the permissive licenses in its `licenses/` directory.
+The archive also carries [wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols) (MIT).
+It is installed into the Linux guest when GPU acceleration is turned on for an Adreno GPU.
 
 ## Bundled at build time
 

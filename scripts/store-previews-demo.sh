@@ -3,10 +3,12 @@
 # otherwise only say how to set them up. `gh` answers like a signed-in account, Home
 # Assistant's states are files that curl reads, `curl` answers Cursor's dashboard, and
 # the Tesla tile reads its own fixture, go-limit reads an OpenCode database, `python3` answers
-# google-calendar's feed script, and two sleeping `claude` processes stand in for claude-top's
+# google-calendar's feed script and lastfm's helper, and two sleeping `claude` processes stand in for claude-top's
 # Claude Code instances. `python` answers
 # codex-quota's and photoprism-random's scripts, widget-maker finds its script set up and a
-# draft waiting, and `ssh` streams a Flipper menu to flipper-zero. With "off", puts everything back.
+# draft waiting, and `ssh` streams a Flipper menu to flipper-zero. `agy` answers agy-limits, agenda
+# reads two calendars from local .ics files, 9g420's codex-quota reads a Codex session, and the
+# voice widgets find themselves set up with a reply read and a sentence dictated. With "off", puts everything back.
 set -u
 demo=/tmp/store-previews-demo
 ha=~/.config/omarchy-proot/home-assistant
@@ -18,6 +20,16 @@ photoprism=~/.config/photoprism-random/session.json
 owlmaker=~/.local/share/owlmaker/VERSION
 owlstatus=~/.cache/owlmaker/status.json
 flipper=~/.config/owl-flipper/host
+agy=~/.gemini/antigravity-cli/antigravity-oauth-token
+agenda=~/.config/gcal-agenda/urls
+voice=~/.local/share/oma-voice/store-version
+voicestate=~/.cache/oma-voice/state.json
+dictated=~/.cache/oma-speak/latest.txt
+codex=~/.codex/sessions/demo/rollout-demo.jsonl
+codexcache=~/.cache/codex-quota-community/account.json
+apkver=~/.local/share/apk-maker/VERSION
+apkbin=~/.local/bin/apk-maker
+apkcache=~/.cache/apk-maker
 
 # Moves a real file aside before the demo writes its own; "off" puts it back.
 aside() { [ -f "$1" ] && [ ! -f "$1.before-demo" ] && mv "$1" "$1.before-demo"; mkdir -p "${1%/*}"; }
@@ -25,10 +37,13 @@ aside() { [ -f "$1" ] && [ ! -f "$1.before-demo" ] && mv "$1" "$1.before-demo"; 
 if [ "${1:-}" = off ]; then
   for p in $(cat "$demo/claude.pids" 2>/dev/null); do kill "$p" 2>/dev/null; rm -f ~/.claude/sessions/"$p".json; done
   pid=$(cat ~/.cache/owl-flipper/feed.pid 2>/dev/null) && kill -- "-$pid" 2>/dev/null
+  [ -f "$demo/agenda-cache-new" ] && rm -rf ~/.cache/gcal-agenda
   rm -f ~/.cache/owl-flipper/frame.json ~/.cache/photoprism-random/demo.jpg ~/.cache/owlmaker/pending/made-demo-moon.owl
   rm -rf "$demo" /usr/local/bin/gh /usr/local/bin/curl /usr/local/bin/python3 /usr/local/bin/pgrep \
-    /usr/local/bin/python /usr/local/bin/claude /usr/local/bin/ssh
-  for f in "$ha" "$cursor" "$tesla" "$opencode" "$history" "$photoprism" "$owlmaker" "$owlstatus" "$flipper"; do
+    /usr/local/bin/python /usr/local/bin/claude /usr/local/bin/ssh /usr/local/bin/agy
+  for f in "$ha" "$cursor" "$tesla" "$opencode" "$history" "$photoprism" "$owlmaker" "$owlstatus" "$flipper" \
+    "$agy" "$agenda" "$voice" "$voicestate" "$dictated" "$codex" "$codexcache" "$apkver" "$apkbin" \
+    "$apkcache/setup.json" "$apkcache/apps.json" "$apkcache/job.json" "$apkcache/log.txt"; do
     [ -f "$f.before-demo" ] && mv "$f.before-demo" "$f" || rm -f "$f"
   done
   exit 0
@@ -120,10 +135,24 @@ events.append({"t": "Mia's birthday", "l": "", "c": 0, "d": (day + timedelta(day
 events.sort(key=lambda x: (x["d"], x["s"]))
 print(json.dumps({"events": events, "errors": {}, "names": {"0": "Personal", "1": "Work"}}, ensure_ascii=False))
 PY
+# A Last.fm listener for abinanthankv's lastfm: one track playing, the rest scrobbled earlier.
+cat > "$demo/lastfm.py" <<'PY'
+import json, time
+now = int(time.time())
+played = [("Radiohead", "Weird Fishes/Arpeggi", 0), ("Bonobo", "Kerala", 4), ("Khruangbin", "Maria También", 9),
+          ("Phoebe Bridgers", "Motion Sickness", 13), ("Tame Impala", "Let It Happen", 21), ("Fleetwood Mac", "Dreams", 29),
+          ("Daft Punk", "Digital Love", 34), ("Massive Attack", "Teardrop", 40), ("Beach House", "Space Song", 46),
+          ("Nick Drake", "Pink Moon", 52)]
+tracks = [{"artist": a, "title": t, "url": "https://www.last.fm/music/" + a.replace(" ", "+"),
+           "at": now - m * 60, "nowplaying": m == 0, "art": ""} for a, t, m in played]
+print(json.dumps({"tracks": tracks, "stats": {"scrobbles": 48213, "artists": 2147, "albums": 4380, "tracks": 11952,
+                  "url": "https://www.last.fm/user/demo"}}, ensure_ascii=False))
+PY
 cat > /usr/local/bin/python3 <<'EOF'
 #!/bin/sh
 case "$*" in
   *owl-gcal*) exec /usr/bin/python3 /tmp/store-previews-demo/gcal.py ;;
+  *lastfm.py\ fetch*) exec /usr/bin/python3 /tmp/store-previews-demo/lastfm.py ;;
   *) exec /usr/bin/python3 "$@" ;;
 esac
 EOF
@@ -168,7 +197,7 @@ exec /usr/bin/pgrep "$@"
 EOF
 chmod +x /usr/local/bin/pgrep
 
-# codex-quota and photoprism-random hand their script to `python -`: a Plus account part way
+# rcrohmana's codex-quota and photoprism-random hand their script to `python -`: a Plus account part way
 # through both limits, and a photo of Moraine Lake (public domain, Wikimedia Commons).
 aside "$photoprism"
 echo '{"url": "https://photos.example.com", "username": "demo", "token": "demo", "preview": "public", "scope": "all", "album": ""}' > "$photoprism"
@@ -223,3 +252,93 @@ case "$*" in
 esac
 EOF
 chmod +x /usr/local/bin/ssh
+
+# agy-limits: `agy` answers /usage like a signed-in account part way through its limits.
+aside "$agy"
+echo demo > "$agy"
+cat > /usr/local/bin/agy <<'EOF'
+#!/bin/sh
+at() { date -u -d "@$(( $(date +%s) + $1 ))" +%Y-%m-%dT%H:%M:%SZ; }
+cat <<JSON
+{"command":{"data":{"groups":[
+ {"name":"Gemini Models","buckets":[{"window":"5h","remaining_fraction":0.58,"reset_time":"$(at 8400)"},{"window":"weekly","remaining_fraction":0.81,"reset_time":"$(at 302400)"}]},
+ {"name":"Claude and GPT Models","buckets":[{"window":"5h","remaining_fraction":0.27,"reset_time":"$(at 5100)"},{"window":"weekly","remaining_fraction":0.64,"reset_time":"$(at 302400)"}]}]}}}
+JSON
+EOF
+chmod +x /usr/local/bin/agy
+
+# agenda: two made-up calendars over the next days as .ics files, read through file:// URLs,
+# with a weekly event so the recurrence goes through the real parser too.
+[ -d ~/.cache/gcal-agenda ] || touch "$demo/agenda-cache-new"
+/usr/bin/python3 - "$demo" <<'PY'
+import sys
+from datetime import datetime, timedelta
+demo = sys.argv[1]
+day = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+def stamp(days, h, m=0): return (day + timedelta(days=days, hours=h, minutes=m)).strftime("%Y%m%dT%H%M%S")
+def date(days): return (day + timedelta(days=days)).strftime("%Y%m%d")
+def cal(events):
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//store previews//EN"]
+    for i, e in enumerate(events):
+        lines += ["BEGIN:VEVENT", "UID:demo-%d@previews" % i, "DTSTAMP:20260101T000000Z"] + e + ["END:VEVENT"]
+    return "\r\n".join(lines + ["END:VCALENDAR"]) + "\r\n"
+personal = [
+    ["SUMMARY:Call with Mom", "DTSTART:" + stamp(0, 19), "DTEND:" + stamp(0, 19, 30)],
+    ["SUMMARY:Mia's birthday", "DTSTART;VALUE=DATE:" + date(1), "DTEND;VALUE=DATE:" + date(2)],
+    ["SUMMARY:Dentist", "LOCATION:Dr. Weber", "DTSTART:" + stamp(2, 8, 30), "DTEND:" + stamp(2, 9, 15)],
+    ["SUMMARY:Climbing", "LOCATION:Boulderhalle", "DTSTART:" + stamp(3, 19), "DTEND:" + stamp(3, 21)],
+    ["SUMMARY:Farmers market", "DTSTART:" + stamp(5, 10), "DTEND:" + stamp(5, 12)],
+]
+work = [
+    ["SUMMARY:Standup", "DTSTART:" + stamp(1, 9, 30), "DTEND:" + stamp(1, 9, 45), "RRULE:FREQ=WEEKLY;COUNT=4"],
+    ["SUMMARY:Design review", "DTSTART:" + stamp(1, 14), "DTEND:" + stamp(1, 15)],
+    ["SUMMARY:Sprint planning", "DTSTART:" + stamp(4, 10), "DTEND:" + stamp(4, 11, 30)],
+]
+open(demo + "/personal.ics", "w").write(cal(personal))
+open(demo + "/work.ics", "w").write(cal(work))
+PY
+aside "$agenda"
+printf 'Personal = file://%s/personal.ics\nWork = file://%s/work.ics\n' "$demo" "$demo" > "$agenda"
+
+# terminal-voice and dictation: set up (the version their widget file checks for), the last
+# Codex reply read aloud, and a sentence dictated. The voice service itself isn't installed, so
+# nothing overwrites these while the previews are drawn.
+aside "$voice"
+printf '%s' '3.4-1acdf3a4' > "$voice"
+aside "$voicestate"
+printf '{"source":"codex","status":"播放完成","status_ui":"Playback complete","awaiting":false,"reply_at":%s,"summary":"Fixed the form validation on the login page and added two tests for an empty password; all tests pass."}\n' "$(( $(date +%s) - 240 ))" > "$voicestate"
+aside "$dictated"
+printf '%s' 'Make the title on the home page bold, then run the tests again.' > "$dictated"
+
+# 9g420's codex-quota reads the rate limits Codex writes into its session files: a Plus account
+# part way through both limits. Its saved snapshot goes aside so it reads this one.
+aside "$codexcache"
+aside "$codex"
+now=$(date +%s)
+printf '{"timestamp":"%s","type":"event_msg","payload":{"type":"token_count","rate_limits":{"limit_id":"codex","primary":{"used_percent":38,"window_minutes":300,"resets_at":%s},"secondary":{"used_percent":61,"window_minutes":10080,"resets_at":%s}}}}\n' \
+  "$(date -u +%Y-%m-%dT%H:%M:%SZ)" $((now + 7920)) $((now + 273600)) > "$codex"
+
+# apk-maker: its backend set up (a version above any it would reinstall), every agent installed, nothing
+# missing, and three apps built, the last one just installed. Without this the tile shows its installer.
+aside "$apkver"
+echo 999 > "$apkver"
+aside "$apkbin"
+cat > "$apkbin" <<'EOF'
+#!/bin/sh
+case "${1:-}" in
+  agents) echo "claude codex opencode" ;;
+  adb) echo offline ;;
+esac
+exit 0
+EOF
+chmod +x "$apkbin"
+for f in setup.json apps.json job.json log.txt; do aside "$apkcache/$f"; done
+now=$(date +%s)
+printf '{"state":"done","step":5,"steps":5,"msg":"ready","updated":%s,"pid":0,"version":14}\n' $((now - 86400)) > "$apkcache/setup.json"
+app() { printf '{"slug":"%s","label":"%s","pkg":"dev.apkmaker.%s","agent":"%s","status":"installed","apk":"%s.apk","created":%s,"updated":%s,"history":[{"t":%s,"agent":"%s","prompt":"%s"}]}' "$1" "$2" "$1" "$3" "$1" "$4" "$4" "$4" "$3" "$5"; }
+printf '[%s,%s,%s]\n' \
+  "$(app tipsplit TipSplit claude $((now - 600)) "a tip calculator that splits the bill between friends")" \
+  "$(app habits Habits codex $((now - 90000)) "a habit tracker with a streak per habit")" \
+  "$(app game2048 2048 opencode $((now - 260000)) "the 2048 puzzle game with swipe controls")" > "$apkcache/apps.json"
+printf '{"kind":"app","slug":"tipsplit","agent":"claude","prompt":"a tip calculator that splits the bill between friends","phase":"done","msg":"installed on this phone","started":%s,"updated":%s,"at":"installing","pid":0}\n' $((now - 840)) $((now - 600)) > "$apkcache/job.json"
+printf '%s\n' "== [agent] claude is writing the app" "→ MainActivity.kt" "→ BillScreen.kt" "== [building] gradle assembleDebug" "BUILD SUCCESSFUL in 1m 52s" "== [installing] installing on this phone" "== [done] installed on this phone" > "$apkcache/log.txt"

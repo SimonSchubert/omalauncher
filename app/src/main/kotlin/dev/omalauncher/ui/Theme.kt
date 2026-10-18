@@ -101,6 +101,9 @@ object Palette {
 object LauncherStyle {
     var style by mutableStateOf(Style())
 
+    /** What [Mono] draws in: Android's monospace, or a Linux font LauncherFont loaded for [Style.FONT]. */
+    var font by mutableStateOf<FontFamily>(FontFamily.Monospace)
+
     /** App icons as silhouettes in the accent color (Omarchy) rather than their own colors. */
     val monochromeIcons get() = style[Style.MONOCHROME_ICONS]
 
@@ -109,6 +112,9 @@ object LauncherStyle {
 
     /** The strip of recently used apps above the bar on home. */
     val recentApps get() = style[Style.RECENT_APPS]
+
+    /** Forces one home page even on a screen [SideRail]'s auto-detect would otherwise split in two. */
+    val forceSinglePage get() = style[Style.FORCE_SINGLE_PAGE]
 
     /** The outline of tiles, the prompt bar and the rails. */
     val tileBorder: Color get() = color(style[Style.TILE_BORDER], Palette.border)
@@ -214,8 +220,17 @@ fun Modifier.tile(focused: Boolean = false): Modifier =
         Palette.glass,
     )
 
-/** The launcher's text style in the theme's foreground color. */
-val Mono get() = Palette.current.mono
+/** The launcher's text style in the theme's foreground color and the user's font. */
+val Mono: TextStyle
+    get() {
+        val palette = Palette.current
+        val font = LauncherStyle.font
+        monoCache?.let { if (it.first === palette && it.second === font) return it.third }
+        return palette.mono.copy(fontFamily = font).also { monoCache = Triple(palette, font, it) }
+    }
+
+/** [Mono] for the last palette and font, as it's read for every piece of text. */
+private var monoCache: Triple<ThemePalette, FontFamily, TextStyle>? = null
 
 /**
  * The launcher's text sizes. Nothing is smaller than [Small], which is still
@@ -276,4 +291,19 @@ fun applySystemBars(
             androidx.activity.SystemBarStyle.dark(transparent)
         }
     activity.enableEdgeToEdge(style, style)
+}
+
+/** Home's status bar, or none: a swipe down from the top edge still brings it back for a moment, and the shade. */
+fun showStatusBar(
+    activity: android.app.Activity,
+    shown: Boolean,
+) {
+    val bars = androidx.core.view.WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+    val status = androidx.core.view.WindowInsetsCompat.Type.statusBars()
+    if (shown) {
+        bars.show(status)
+    } else {
+        bars.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        bars.hide(status)
+    }
 }

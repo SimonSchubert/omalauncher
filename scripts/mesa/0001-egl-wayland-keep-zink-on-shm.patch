@@ -1,0 +1,33 @@
+From 26.2.4. A shm-only compositor has no dmabuf feedback and no wl_drm,
+so the Wayland DRM path fails. eglInitialize then clears Zink and retries
+with swrast. A process that still has the zink driver selected draws
+frames that never land in those wl_shm buffers.
+
+Stay on the swrast loader while Zink remains set, so kopper presents
+through Vulkan WSI. There is no DRM fd on this path, so the EGL device
+is the software node; the GPU is reached through Vulkan.
+
+diff --git a/src/egl/drivers/dri2/platform_wayland.c b/src/egl/drivers/dri2/platform_wayland.c
+--- a/src/egl/drivers/dri2/platform_wayland.c
++++ b/src/egl/drivers/dri2/platform_wayland.c
+@@ -3262,7 +3262,9 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
+    if (!dri2_create_screen(disp))
+       goto cleanup;
+ 
+-   if (!dri2_setup_device(disp, disp->Options.ForceSoftware)) {
++   /* No DRM fd on the Zink shm path. The software node is the EGL device. */
++   if (!dri2_setup_device(disp,
++                          disp->Options.ForceSoftware || disp->Options.Zink)) {
+       _eglError(EGL_NOT_INITIALIZED, "DRI2: failed to setup EGLDevice");
+       goto cleanup;
+    }
+@@ -3297,7 +3299,8 @@ dri2_initialize_wayland_swrast(_EGLDisplay *disp)
+ EGLBoolean
+ dri2_initialize_wayland(_EGLDisplay *disp)
+ {
+-   if (disp->Options.ForceSoftware)
++   /* DRM init cannot succeed here. Do not let the retry clear Zink. */
++   if (disp->Options.ForceSoftware || disp->Options.Zink)
+       return dri2_initialize_wayland_swrast(disp);
+    else
+       return dri2_initialize_wayland_drm(disp);

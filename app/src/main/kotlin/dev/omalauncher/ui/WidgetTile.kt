@@ -11,11 +11,22 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.linux.LinuxState
@@ -42,10 +53,17 @@ internal fun WidgetTile(
     waitsForLinux: LinuxState? = null,
     onInstallLinux: () -> Unit = {},
 ) {
+    // A full-screen page draws straight on the wallpaper, without a tile's frame; selected, it still shows the focus border.
+    val bare = spec.fullPage && waitsForLinux == null && instance != null && needs.isEmpty()
     Box(
         modifier
-            .tile(focused)
-            .pointerInput(spec) { detectTapGestures(onTap = { onTap() }) },
+            .then(
+                when {
+                    !bare -> Modifier.tile(focused)
+                    focused -> Modifier.frame(LauncherStyle.focusWidth, LauncherStyle.focusBorder)
+                    else -> Modifier
+                },
+            ).pointerInput(spec) { detectTapGestures(onTap = { onTap() }) },
     ) {
         if (waitsForLinux != null) {
             // While an installed Linux starts up the tile stays empty; it only offers an install when there's none.
@@ -73,6 +91,13 @@ internal fun WidgetTile(
                 BasicText(spec.file.name, style = Mono.copy(color = Palette.red))
                 BasicText(spec.error.orEmpty(), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
+        } else if (bare) {
+            // The whole screen: under the status bar and the navigation bar. The nodes keep clear of the camera cutout and
+            // of the status bar where it stays (statusBar: true); the navigation bar is the page's to mind, through
+            // screenInset, as an edge app's is.
+            val top = if (instance.program.statusBar) WindowInsets.statusBars.union(WindowInsets.displayCutout) else WindowInsets.displayCutout
+            WidgetContent(instance, Modifier.fillMaxSize(), cells, top.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            ScreenInset(instance)
         } else {
             WidgetContent(instance, Modifier.fillMaxSize(), cells)
         }
@@ -114,6 +139,39 @@ private fun TileButton(
             .padding(horizontal = 10.dp, vertical = 6.dp),
         style = Mono.copy(color = color),
     )
+}
+
+/** An owl app's window: its title, with a back chevron while its `back` holds, over its view. */
+@Composable
+internal fun OwlAppWindow(
+    spec: WidgetSpec,
+    instance: WidgetInstance,
+) {
+    val title = instance.program.screenTitle?.let { instance.eval(it, instance.root, "title").text() } ?: spec.name
+    val up: (() -> Unit)? = if (instance.canGoUp()) { { instance.goUp() } } else null
+    // Full screen like any Android app: no window border or side gap, and no ✕ (Back leaves the app and
+    // Recents closes it; close() still does). The view runs to the screen's edges.
+    // With `edge` it runs on under the navigation bar too: only the keyboard pushes its bottom up.
+    val insets =
+        if (instance.program.edge) {
+            WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).union(WindowInsets.ime)
+        } else {
+            WindowInsets.safeDrawing
+        }
+    Column(Modifier.fillMaxSize().background(Palette.background).windowInsetsPadding(insets)) {
+        Box(Modifier.padding(horizontal = PanelPadding, vertical = 8.dp)) { BackTitle(title, up) }
+        WidgetScreen(instance, Modifier.weight(1f).fillMaxWidth())
+    }
+    if (instance.program.edge) ScreenInset(instance)
+}
+
+/** Tells an `edge` app's `screenInset` how much of its bottom the navigation bar covers; none while the keyboard is up. */
+@Composable
+private fun ScreenInset(instance: WidgetInstance) {
+    val density = LocalDensity.current
+    val covered = (WindowInsets.safeDrawing.getBottom(density) - WindowInsets.ime.getBottom(density)).coerceAtLeast(0)
+    val dp = with(density) { covered.toDp().value.toDouble() }
+    SideEffect { instance.setScreenInset(dp) }
 }
 
 /** A widget's screen { }, full screen over home in an Omarchy window titled by its `title` or the widget's name. */

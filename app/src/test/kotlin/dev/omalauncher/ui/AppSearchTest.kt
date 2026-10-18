@@ -70,4 +70,14 @@ class AppSearchTest {
         assertTrue(rankMatches(apps, "zzz", { it }).isEmpty())
         assertTrue(rankMatches(apps, "  ", { it }).isEmpty())
     }
+
+    @Test fun accentsMatchWithoutThem() {
+        assertEquals("cafe", fold("Café"))
+        val named = listOf("Café", "Calendar")
+        assertEquals("Café", rankMatches(named, "cafe", { it }).first().first)
+        assertEquals("Café", rankMatches(named, "Café", { it }).first().first)
+        assertEquals("Café Deluxe", rankMatches(listOf("Café Deluxe"), "cafe", { it }).first().first)
+        // "cal" is still Calendar: folding does not invent letters.
+        assertEquals("Calendar", rankMatches(named, "cal", { it }).first().first)
+    }
 }

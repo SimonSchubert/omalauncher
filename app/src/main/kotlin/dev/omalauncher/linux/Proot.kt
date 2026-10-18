@@ -34,7 +34,7 @@ class Proot(
     val procShim = ProcShim(File(filesDir, "proc"))
 
     /** How guest apps render OpenGL and Vulkan: in software, or on the GPU once [Gpu] turns it on. */
-    @Volatile var graphicsEnv: List<String> = Gpu.SOFTWARE_ENV
+    @Volatile var graphicsEnv: List<String> = SOFTWARE_ENV
 
     /** Replaces /usr/bin/bwrap in the guest, see assets/bwrap-shim.sh. */
     private val bwrapShim = File(filesDir, "bwrap-shim")
@@ -150,8 +150,9 @@ class Proot(
                 "OPENCODE_DISABLE_AUTOUPDATE=1",
                 "GROK_DISABLE_AUTOUPDATER=1",
                 "BROWSER=xdg-open",
-                // micro takes taps and scrolling; yazi and git open files with it.
-                "EDITOR=micro",
+                // The launcher's editor; yazi and git open files with it. Its shim falls back to micro.
+                "EDITOR=$EDIT_COMMAND",
+                "VISUAL=$EDIT_COMMAND",
                 "XDG_RUNTIME_DIR=$GUEST_RUNTIME_DIR",
                 "WAYLAND_DISPLAY=${waylandSocket.name}",
                 "XDG_SESSION_TYPE=wayland",

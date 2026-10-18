@@ -15,23 +15,17 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
+import dev.omalauncher.Runtime
 
 /** App panel position (above the bar): 0 = closed, 1 = open. Follows the finger while dragging. */
 class LauncherState {
     val drawer = Animatable(0f)
-    var styleOpen by mutableStateOf(false)
 
-    /** The community themes, from the home menu's theme strip or over the style screen. */
-    var themeBrowserOpen by mutableStateOf(false)
-    var agentsOpen by mutableStateOf(false)
-    var storeOpen by mutableStateOf(false)
-    var settingsOpen by mutableStateOf(false)
-    var packagesOpen by mutableStateOf(false)
-    var licensesOpen by mutableStateOf(false)
-    var gesturesOpen by mutableStateOf(false)
+    /** Opens a screen of the settings activity, set by the launcher activity; see [show]. */
+    var onSettings: (SettingsPage, Int) -> Unit = { _, _ -> }
 
-    /** The Linux sheet: install, progress, remove. Opened by anything that needs Linux. */
-    var linuxOpen by mutableStateOf(false)
+    /** Opens settings, or one of its screens on its own; the store puts widgets on the page showing now. */
+    fun show(page: SettingsPage = SettingsPage.Settings) = onSettings(page, currentPage)
 
     /** The widget whose share panel is open: a QR code and link, or the store. */
     var sharing by mutableStateOf<dev.omalauncher.widgets.WidgetSpec?>(null)
@@ -44,19 +38,10 @@ class LauncherState {
 
     /** The open drawer or a full-screen panel hides the home screen; animated widgets stop ticking under it. */
     val homeCovered: Boolean
-        get() = drawer.value > 0.99f || settingsOpen || styleOpen || themeBrowserOpen || agentsOpen || storeOpen || packagesOpen || linuxOpen || licensesOpen || gesturesOpen || shared != null || sharing != null
+        get() = drawer.value > 0.99f || shared != null || sharing != null
 
-    /** Closes every overlay screen (settings and what it opens). */
+    /** Closes every overlay screen (the home menu, widget sharing). */
     fun closeScreens() {
-        styleOpen = false
-        themeBrowserOpen = false
-        agentsOpen = false
-        storeOpen = false
-        packagesOpen = false
-        linuxOpen = false
-        licensesOpen = false
-        gesturesOpen = false
-        settingsOpen = false
         homeMenuOpen = false
         shared = null
         sharing = null
@@ -73,6 +58,25 @@ class LauncherState {
      * system font makes it taller than [PromptBarHeight]; home ends its grid above what it really takes.
      */
     var barHeight by mutableIntStateOf(0)
+
+    /**
+     * Only full-screen pages (`page "…" { }`), or the empty one waiting left of page 1, show on home: they run under the
+     * system bars, so the bands behind those make way. The strip and the bar slide away by [barShift].
+     */
+    var pageShowing by mutableStateOf(false)
+
+    /**
+     * Where the strip and the bar stand across, in screen widths ([barShift]): they belong to the tile pages and
+     * slide with them, out past a full-screen page. Read while drawing, so a swipe moves them without recomposing.
+     */
+    var barShift by mutableStateOf<() -> Float>({ 0f })
+
+    /** Only pages show, and all of them say `statusBar: false`. */
+    var statusBarAway by mutableStateOf(false)
+
+    /** [statusBarAway], and nothing over it: no drawer, menu or panel. Then the status bar hides. */
+    val fullScreen: Boolean
+        get() = statusBarAway && drawer.value < 0.01f && !homeMenuOpen && shared == null && sharing == null
 
     /** Home page currently showing (1-based); the drawer pins apps there. */
     var currentPage by mutableStateOf(1)
@@ -146,4 +150,14 @@ class LauncherState {
             else -> close()
         }
     }
+}
+
+/** Opens the default agent in a terminal named [title] on [command] for its binary; with no agent installed, the agents screen. */
+fun LauncherState.withAgent(
+    runtime: Runtime,
+    title: String,
+    command: (bin: String) -> String,
+) {
+    val agent = runtime.agents.default ?: return show(SettingsPage.Agents)
+    runtime.terminal(command(agent.bin), title, agent)
 }

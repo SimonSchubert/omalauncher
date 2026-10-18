@@ -4,7 +4,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -23,6 +25,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
@@ -36,6 +39,8 @@ import dev.omalauncher.widgets.Shortcut
 @Composable
 fun ShortcutTile(
     shortcut: Shortcut,
+    /** Its name now, as the drawer shows it (Runtime.shortcutLabel). */
+    label: String,
     /** From the app catalogs, as the drawer shows it: a silhouette when [LauncherStyle.monochromeIcons]; null for initials. */
     icon: ImageBitmap?,
     focused: Boolean,
@@ -48,7 +53,7 @@ fun ShortcutTile(
 ) {
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
-    val spoken = spokenLabel(shortcut.label, shortcut.profile, clone)
+    val spoken = spokenLabel(label, shortcut.profile, clone)
     BoxWithConstraints(
         modifier
             .alpha(if (paused) PausedAlpha else 1f)
@@ -56,10 +61,8 @@ fun ShortcutTile(
             .pointerInput(shortcut.key) { detectTapGestures(onTap = { onTap() }) }
             .padding(4.dp),
     ) {
-        // Label only when the tile is tall enough to fit it under the icon.
-        val showLabel = maxHeight > 64.dp
-        // Bare icons have no frame to fill, so they take nearly the whole cell.
-        val iconSize = min(maxWidth, maxHeight - if (showLabel) 18.dp else 0.dp) * if (bare) 0.95f else 0.85f
+        val showLabel = showsLabel()
+        val iconSize = tileIconSize(showLabel)
         Column(
             Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -69,14 +72,11 @@ fun ShortcutTile(
             when {
                 // Bare silhouettes and initials sit on a badge, as in the drawer, so they read on any wallpaper.
                 bare && (mono || bmp == null) ->
-                    Box(
-                        Modifier.size(iconSize).clip(LauncherStyle.shape(iconSize / 2)).background(Palette.surface),
-                        contentAlignment = Alignment.Center,
-                    ) {
+                    IconBadge(iconSize) {
                         if (bmp != null) {
                             Image(bmp, spoken, Modifier.size(iconSize * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
                         } else {
-                            BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.35f).sp))
+                            BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.35f).sp))
                         }
                     }
                 bmp != null ->
@@ -84,13 +84,25 @@ fun ShortcutTile(
                 else ->
                     // Apps without an icon get their initials.
                     Box(Modifier.size(iconSize), contentAlignment = Alignment.Center) {
-                        BasicText(initials(shortcut.label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.45f).sp))
+                        BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.45f).sp))
                     }
             }
-            if (showLabel) TileLabel(shortcut.label)
+            if (showLabel) TileLabel(label)
         }
     }
 }
+
+/** Whether a tile is tall enough to fit its label under the icon. */
+internal fun BoxWithConstraintsScope.showsLabel() = maxHeight > 64.dp
+
+/**
+ * An app tile's icon edge, leaving room for the label when [label]. Bare icons have no frame to fill, so they
+ * take nearly the whole cell, as does a folder's grid of small icons with [full].
+ */
+internal fun BoxWithConstraintsScope.tileIconSize(
+    label: Boolean,
+    full: Boolean = LauncherStyle.bareAppIcons,
+) = min(maxWidth, maxHeight - if (label) 18.dp else 0.dp) * if (full) 0.95f else 0.85f
 
 /** How opaque an app from a paused work profile is drawn. */
 internal const val PausedAlpha = 0.4f
@@ -120,6 +132,14 @@ internal fun TileLabel(text: String) {
         overflow = TextOverflow.Ellipsis,
     )
 }
+
+/** An app's badge: a circle when rounded, a square with Omarchy's sharp edges, [fill]ed, with [content] centered. */
+@Composable
+internal fun IconBadge(
+    size: Dp,
+    fill: Color = Palette.surface,
+    content: @Composable BoxScope.() -> Unit,
+) = Box(Modifier.size(size).clip(LauncherStyle.shape(size / 2)).background(fill), contentAlignment = Alignment.Center, content = content)
 
 internal fun initials(name: String): String {
     val words = name.split(Regex("[^A-Za-z0-9]+")).filter { it.isNotEmpty() }

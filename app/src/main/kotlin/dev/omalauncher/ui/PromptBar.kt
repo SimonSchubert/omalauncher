@@ -67,15 +67,11 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.agentInvocation
@@ -127,7 +123,7 @@ internal fun PromptBar(
         focusManager.clearFocus()
         keyboard?.hide()
         state.closeNow()
-        state.linuxOpen = true
+        state.show(SettingsPage.Linux)
     }
 
     fun send(prompt: String) {
@@ -138,7 +134,7 @@ internal fun PromptBar(
         val target = runtime.agents.default
         if (target == null) {
             state.query = p
-            state.agentsOpen = true
+            state.show(SettingsPage.Agents)
             return
         }
         runtime.terminal("${agentInvocation(target.bin, p)}; exec bash", target.name, target)
@@ -262,7 +258,7 @@ internal fun PromptBar(
                     .padding(start = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AgentPicker(runtime, onManage = { if (linux) state.agentsOpen = true else offerLinux() })
+                DefaultAgentMenu(runtime, onManage = { if (linux) state.show(SettingsPage.Agents) else offerLinux() })
                 val shown = if (listening) speech.text else text
                 BasicTextField(
                     value = shown,
@@ -452,7 +448,7 @@ internal fun MicIcon(color: Color) {
 
 /** The agent's name at the start of the bar; tapping it lists the installed agents to send prompts to. */
 @Composable
-private fun AgentPicker(
+private fun DefaultAgentMenu(
     runtime: Runtime,
     onManage: () -> Unit,
 ) {
@@ -470,46 +466,25 @@ private fun AgentPicker(
             Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 4.dp))
         }
         if (open) {
-            Popup(
-                popupPositionProvider = AboveAnchor,
-                onDismissRequest = { open = false },
-                properties = PopupProperties(focusable = true),
+            ChoicePopup(
+                store.installed,
+                store.installed.firstOrNull { it.bin == agent?.bin },
+                AboveAnchor,
+                onDismiss = { open = false },
+                onPick = store::choose,
+                label = { it.name },
+                minWidth = 200.dp,
+                sublabel = { it.bin },
             ) {
-                Column(
+                Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(1.dp).background(Palette.border))
+                Box(
                     Modifier
-                        .width(IntrinsicSize.Max)
-                        .widthIn(min = 200.dp)
-                        .frame(2.dp, Palette.accent, Palette.background)
-                        .padding(4.dp),
-                ) {
-                    for (a in store.installed) {
-                        val current = a.bin == agent?.bin
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    store.choose(a)
-                                    open = false
-                                }.padding(horizontal = 10.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
-                            Column(Modifier.weight(1f)) {
-                                BasicText(a.name, style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
-                                BasicText(a.bin, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
-                            }
-                        }
-                    }
-                    Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(1.dp).background(Palette.border))
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                open = false
-                                onManage()
-                            }.padding(horizontal = 10.dp, vertical = 10.dp),
-                    ) { BasicText("  manage agents…", style = Mono.copy(color = Palette.muted)) }
-                }
+                        .fillMaxWidth()
+                        .clickable {
+                            open = false
+                            onManage()
+                        }.padding(horizontal = 10.dp, vertical = 10.dp),
+                ) { BasicText("  manage agents…", style = Mono.copy(color = Palette.muted)) }
             }
         }
     }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.ui.TileField
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Str
@@ -162,6 +164,10 @@ internal fun InputNode(
 
     var field by remember(p.el, p.env) { mutableStateOf(TextFieldValue(given.orEmpty())) }
     var focused by remember { mutableStateOf(false) }
+    // On a home tile: home lifts the tile above the keyboard while this has it, and takes the focus back on a tap outside.
+    val tiles = LocalHomeTiles.current
+    val tile = remember(tiles, p.inst) { tiles?.let { TileField(p.inst) { focus.clearFocus() } } }
+    DisposableEffect(tile) { onDispose { tile?.let { tiles?.unfocused(it) } } }
     LaunchedEffect(given) { if (given != null && given != field.text) field = TextFieldValue(given, TextRange(given.length)) }
 
     fun edit(v: TextFieldValue) {
@@ -176,7 +182,10 @@ internal fun InputNode(
         modifier =
             (if (sized) mod else mod.fillMaxWidth())
                 .focusRequester(requester)
-                .onFocusChanged { focused = it.isFocused }
+                .onFocusChanged {
+                    focused = it.isFocused
+                    tile?.let { t -> if (focused) tiles?.focused(t) else tiles?.unfocused(t) }
+                }
                 .drawBehind {
                     val w = 1.dp.toPx()
                     drawRect(if (focused) Palette.accent else Palette.border, Offset(0f, size.height - w), Size(size.width, w))
