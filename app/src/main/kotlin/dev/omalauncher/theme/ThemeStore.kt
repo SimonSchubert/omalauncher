@@ -16,8 +16,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import dev.omalauncher.LauncherData
 import dev.omalauncher.linux.Proot
-import dev.omalauncher.ui.Corners
-import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.decodeForScreen
 import dev.omalauncher.upgrade.appStamp
@@ -80,6 +78,8 @@ sealed interface ThemeDownload {
 class ThemeStore(
     private val context: Context,
     proot: Proot,
+    /** Where the picked theme and background are saved. */
+    private val style: StyleStore,
     /** Whether Linux is installed; without it, nothing is written into the guest. */
     private val isLinux: () -> Boolean,
     /** Called when the guest configs depending on the theme changed; see [managed]. */
@@ -119,56 +119,50 @@ class ThemeStore(
             own.values.filter { t -> bundled.none { it.name == t.name } }.map { BundledTheme(it.name, it.colors) }
     }
 
+    /*
+     * style.toml is the one record of the theme and background. What the user
+     * does here ([pick], [apply], [setBackground]) changes the style, then shows
+     * it; showing ([applyPicked], [show], [showBackground]) never writes it, so
+     * following an edit of the file can't write over that edit.
+     */
+
     /** The theme picked, applied or not; its full version is applied once downloaded. */
-    var picked by mutableStateOf(prefs.getString(THEME, null) ?: DEFAULT_THEME)
-        private set
+    val picked get() = style.style[Style.THEME] ?: DEFAULT_THEME
 
-    /** Recolors the launcher right away and remembers the choice until the theme itself is installed. */
+    /** Recolors the launcher right away and remembers the choice, with its first background, until the theme itself is installed. */
     fun pick(theme: BundledTheme) {
-        picked = theme.name
         Palette.apply(theme.colors)
-        prefs.edit().putString(THEME, theme.name).remove(BACKGROUND).apply()
-    }
-
-    /** Applies the picked theme once the themes are on disk: wallpaper, launcher colors and guest configs. */
-    suspend fun applyPicked() {
-        themes.firstOrNull { it.name == picked }?.let { apply(it) }
+        style.update { it.with(Style.THEME, theme.name).with(Style.BACKGROUND, null) }
     }
 
     /**
-     * The launcher's style, and the picked theme's bundled colors until the
-     * themes are loaded (or downloaded, on a fresh install). Reads one small
-     * asset, so it's fine before the first frame.
+     * Shows the theme and background the style names, once the theme is on
+     * disk: wallpaper, launcher colors and guest configs. Returns whether it was.
      */
-    fun loadStyle() {
+    suspend fun applyPicked(): Boolean {
+        val theme = themes.firstOrNull { it.name == picked } ?: return false
+        val backgrounds = theme.backgrounds()
+        val bgName = style.style[Style.BACKGROUND]
+        val bg = bgName?.let { n -> backgrounds.firstOrNull { it.name == n } }
+        if (bgName != null && bg == null) style.report("background: \"$bgName\" isn't one of ${theme.name}'s backgrounds; showing its first")
+        val target = bg ?: backgrounds.firstOrNull()
+        when {
+            theme.name != current?.name || theme.colors != current?.colors -> show(theme, target)
+            target != background -> showBackground(target)
+        }
+        return true
+    }
+
+    /**
+     * The picked theme's bundled colors until the themes are loaded (or
+     * downloaded, on a fresh install). Reads one small asset, so it's fine
+     * before the first frame.
+     */
+    fun loadPalette() {
         // A user's own theme has no bundled colors.
         runCatching { ThemeColors.resolve(ThemeColors.parse(context.assets.open("themes/$picked.toml").bufferedReader().use { it.readText() })) }
             .recoverCatching { checkNotNull(dirs.load(picked)).colors }
             .onSuccess { Palette.apply(it) }
-        LauncherStyle.monochromeIcons = prefs.getBoolean(MONO_ICONS, false)
-        LauncherStyle.bareAppIcons = prefs.getBoolean(BARE_APP_ICONS, false)
-        LauncherStyle.recentApps = prefs.getBoolean(RECENT_APPS, true)
-        LauncherStyle.corners = Corners.of(prefs.getString(CORNERS, null))
-    }
-
-    fun setMonochromeIcons(on: Boolean) {
-        LauncherStyle.monochromeIcons = on
-        prefs.edit().putBoolean(MONO_ICONS, on).apply()
-    }
-
-    fun setBareAppIcons(on: Boolean) {
-        LauncherStyle.bareAppIcons = on
-        prefs.edit().putBoolean(BARE_APP_ICONS, on).apply()
-    }
-
-    fun setRecentApps(on: Boolean) {
-        LauncherStyle.recentApps = on
-        prefs.edit().putBoolean(RECENT_APPS, on).apply()
-    }
-
-    fun setCorners(corners: Corners) {
-        LauncherStyle.corners = corners
-        prefs.edit().putString(CORNERS, corners.id).apply()
     }
 
     /** Whether our live wallpaper is the Android wallpaper; the launcher then shows it instead of drawing its own. */
@@ -205,7 +199,7 @@ class ThemeStore(
 
     private suspend fun restoreSaved() {
         themes = withContext(Dispatchers.IO) { scan() }
-        val theme = themes.firstOrNull { it.name == prefs.getString(THEME, null) } ?: return
+        val theme = themes.firstOrNull { it.name == picked } ?: return
         current = theme
         Palette.apply(theme.colors)
         // Templates and how we render them may have changed with an app update.
@@ -213,7 +207,7 @@ class ThemeStore(
             withContext(Dispatchers.IO) { guest.render(theme) }
             prefs.edit().putString(RENDERED_BY, appStamp(context)).apply()
         }
-        val bg = theme.backgrounds().let { list -> list.firstOrNull { it.name == prefs.getString(BACKGROUND, null) } ?: list.firstOrNull() }
+        val bg = theme.backgrounds().let { list -> list.firstOrNull { it.name == style.style[Style.BACKGROUND] } ?: list.firstOrNull() }
         // On reload a different background may replace one already showing; it stays up until the new one is decoded.
         val stale = wallpaper != null && bg != background
         background = bg
@@ -355,6 +349,13 @@ class ThemeStore(
                     checkNotNull(ThemeDirs.colorsOf(staging)) { "it has no colors.toml or alacritty.toml" }
                     File(staging, ThemeDirs.SOURCE_MARKER).writeText(repo.url + "\n")
                     val target = File(dirs.user, name)
+                    // The catalog's screenshot, for themes without a preview of their own; an update keeps the one it had.
+                    val screenshot =
+                        catalog.entryFor(repo)?.let { catalog.image(it) }
+                            ?: File(target, ThemeDirs.CATALOG_PREVIEW).takeIf { it.isFile }
+                    // Best effort: a theme without its screenshot still installs.
+                    runCatching { screenshot?.copyTo(File(staging, ThemeDirs.CATALOG_PREVIEW), overwrite = true) }
+                        .onFailure { Log.w(TAG, "no catalog preview for $name", it) }
                     dirs.user.mkdirs()
                     LauncherData.deleteTree(target)
                     check(staging.renameTo(target)) { "can't move the theme into place" }
@@ -397,15 +398,20 @@ class ThemeStore(
         }
     }
 
-    suspend fun apply(
+    /** Picks [theme] with its first background, and shows it. */
+    suspend fun apply(theme: OmarchyTheme) {
+        style.update { it.with(Style.THEME, theme.name).with(Style.BACKGROUND, null) }
+        show(theme, theme.backgrounds().firstOrNull())
+    }
+
+    /** The launcher's colors and wallpaper first, then the guest's configs, which take a while. */
+    private suspend fun show(
         theme: OmarchyTheme,
-        bg: File? = theme.backgrounds().firstOrNull(),
+        bg: File?,
     ) {
         current = theme
-        picked = theme.name
         Palette.apply(theme.colors)
-        prefs.edit().putString(THEME, theme.name).apply()
-        setBackground(bg)
+        showBackground(bg)
         if (!isLinux()) return
         withContext(Dispatchers.IO) {
             // Called from screen scopes, where a failed write (storage full) would crash the launcher.
@@ -432,12 +438,35 @@ class ThemeStore(
     }
 
     suspend fun setBackground(file: File?) {
+        style.update { it.with(Style.BACKGROUND, file?.name) }
+        showBackground(file)
+    }
+
+    private suspend fun showBackground(file: File?) {
         background = file
-        prefs.edit().putString(BACKGROUND, file?.name).apply()
         // With the live wallpaper active, the launcher is transparent and needs no copy of its own.
         wallpaper = if (liveWallpaperActive) null else decodeWallpaper(file)
         if (file != null && isLinux()) withContext(Dispatchers.IO) { guest.linkBackground(file) }
         changeListeners.forEach { it() }
+    }
+
+    /**
+     * The theme or background in style.toml changed under us (an agent, the
+     * user in Linux): shows them, as picking them in the Style menu would,
+     * without writing the file. A theme not downloaded yet is fetched, as on
+     * first run; with the key gone, the default theme is back.
+     */
+    suspend fun followStyle() {
+        rescan()
+        if (applyPicked()) return
+        val name = picked
+        val bundledTheme = bundled.firstOrNull { it.name == name }
+        if (bundledTheme == null || complete) {
+            style.report("theme: no theme named \"$name\" in ~/.local/share/omarchy/themes or ~/.config/omarchy/themes")
+            return
+        }
+        Palette.apply(bundledTheme.colors)
+        fetchPicked()?.let { style.report("theme: \"$name\" couldn't be downloaded: $it") }
     }
 
     /**
@@ -475,33 +504,38 @@ class ThemeStore(
     }
 
     /**
+     * Deletes one of the user's extra backgrounds, from the phone and Linux.
+     * If it was showing, the theme's first takes its place, as on Omarchy
+     * when the picked background is gone.
+     */
+    suspend fun removeBackground(file: File) {
+        val theme = current ?: return
+        if (!theme.isExtraBackground(file)) return
+        withContext(Dispatchers.IO) { file.delete() }
+        if (file != background) return
+        style.update { it.with(Style.BACKGROUND, null) }
+        showBackground(theme.backgrounds().firstOrNull())
+    }
+
+    /**
      * Guest configs for Omarchy's apps, in the current theme's colors. Before
      * [load] ran, the saved theme's: leaving them out would count as removing them.
      */
     fun managed() = guest.managed(current ?: savedTheme())
 
-    private fun savedTheme(): OmarchyTheme? {
-        val name = prefs.getString(THEME, null) ?: return null
-        return runCatching { dirs.load(name) }.getOrNull()
-    }
+    private fun savedTheme(): OmarchyTheme? = runCatching { dirs.load(picked) }.getOrNull()
 
     companion object {
         /** The Omarchy commit themes and configs come from. Changing it updates them on every install. */
         const val OMARCHY_REF = "8b4eae66da2938ba9559f103b18dbf85cdf28a70"
 
-        private const val THEME = "theme"
-        private const val BACKGROUND = "background"
-        private const val MONO_ICONS = "mono_icons"
-        private const val BARE_APP_ICONS = "bare_app_icons"
-        private const val RECENT_APPS = "recent_apps"
-        private const val CORNERS = "corners"
         private const val RENDERED_BY = "rendered_by"
         private const val DEFAULT_THEME = "tokyo-night"
 
         /** Called on the main thread after the theme or background changes (the live wallpaper listens). */
         val changeListeners = CopyOnWriteArraySet<() -> Unit>()
 
-        private fun prefs(context: Context) = context.getSharedPreferences("themes", Context.MODE_PRIVATE)
+        fun prefs(context: Context) = context.getSharedPreferences("themes", Context.MODE_PRIVATE)
 
         private fun themeDirs(context: Context) =
             ThemeDirs(
@@ -515,10 +549,12 @@ class ThemeStore(
          * service can run without the launcher (e.g. after a reboot), so this needs no store.
          */
         fun savedSelection(context: Context): Pair<Map<String, String>, File?>? {
-            val prefs = prefs(context)
-            val name = prefs.getString(THEME, null) ?: return null
+            val saved = StyleStore.read(context)
+            // Unset is the default theme: first run leaves the one it showed unsaved.
+            val name = saved[Style.THEME] ?: DEFAULT_THEME
             val theme = runCatching { themeDirs(context).load(name) }.getOrNull() ?: return null
-            val bg = prefs.getString(BACKGROUND, null)?.let { saved -> theme.backgrounds().firstOrNull { it.name == saved } }
+            // Unset, or not one of the theme's: its first, as the launcher shows.
+            val bg = theme.backgrounds().let { list -> list.firstOrNull { it.name == saved[Style.BACKGROUND] } ?: list.firstOrNull() }
             return theme.colors to bg
         }
     }

@@ -1,6 +1,6 @@
 Privacy Policy
 
-Effective Date: 10.10.2026
+Effective Date: 15.10.2026
 
 Omalauncher ("the App") is an Android home screen launcher developed by Simon Schubert ("we," "us," or "our"). This Privacy Policy explains how the App handles information.
 
@@ -23,6 +23,7 @@ Your home screen layout, widgets, theme settings and, if you install it, the Lin
 - Notification access (optional): lets media widgets show and control what is currently playing, and lets widgets you add show your notifications (app name, title and text) and open or dismiss them. Notifications are read on your device, only when a widget on your home screen asks for them, and are not stored or sent to us. A widget you add could send what it shows to a service it contacts; each widget's page in the widget store shows what it runs and which addresses it contacts.
 - Uninstalling apps: used only when you choose to uninstall an app from the app drawer. Android asks you to confirm every uninstall.
 - Internet: used to download the content listed in section 4.
+- Local network (optional, Android 17 and newer): lets widgets you add and the Linux environment reach devices on your own network, such as a printer, a home server or Home Assistant. The App asks for it only when you turn it on in its settings. The App itself does not scan your network or contact devices on it.
 
 4. Third-Party Services
 
@@ -41,6 +42,7 @@ wttr.in (weather widget)
 
 Widgets
 - Widgets you add from the widget store may contact other services to show their content (for example prices, news feeds or radio streams). Each widget's page in the store shows what it runs and which addresses it contacts.
+- Widgets you add can see which apps are installed on your phone (their names, package names and icons) and how often you open them from the App. This list is read on your device, only when a widget on your home screen asks for it, and is not stored or sent to us. A widget could send what it reads to a service it contacts; each widget's page in the store says if it reads your apps.
 
 Optional Linux environment
 - Only if you choose to install Linux, the App downloads Arch Linux ARM from archlinuxarm.org and its mirrors. Packages you install come from Arch Linux ARM mirrors and, if you choose, the Arch User Repository (aur.archlinux.org).
@@ -58,13 +60,13 @@ The App is not intended for children under 13 years of age. We do not knowingly 
 
 As the developer is based in Berlin, Germany, we comply with the General Data Protection Regulation (GDPR) where applicable:
 - Local storage: all data the App stores stays on your device and is under your control.
-- Permissions: microphone and notification access are optional and require your explicit consent.
+- Permissions: microphone, notification and local network access are optional and require your explicit consent.
 - Third-party requests: requests to the services in section 4 are made only to provide the features you use.
 
 7. Your Rights
 
 You can:
-- Revoke microphone and notification access at any time in your device settings.
+- Revoke microphone, notification and local network access at any time in your device settings.
 - Remove Linux and its files in the App's settings.
 - Remove widgets from your home screen.
 - Choose not to share widgets through dpaste.com; pastes expire on their own after 7 days or one year.

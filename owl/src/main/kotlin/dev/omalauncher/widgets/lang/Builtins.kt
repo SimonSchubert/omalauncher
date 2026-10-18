@@ -1,16 +1,26 @@
 package dev.omalauncher.widgets.lang
 
+import java.net.URLEncoder
+import java.text.DecimalFormatSymbols
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeFormatterBuilder
+import java.time.temporal.ChronoField
+import java.time.temporal.TemporalQueries
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.roundToLong
+import kotlin.random.Random
 
 class Args(
     val args: List<Value>,
-    val named: Map<String, Value>,
     val host: Host?,
 ) {
     val size get() = args.size
@@ -70,9 +80,22 @@ object Builtins {
     val constants = mapOf("pi" to Num(PI), "transparent" to Col(null, 0))
 
     /** Handler-only calls; they reach [Host.act]. */
-    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..1, "notification" to 2..2, "screen" to 0..0, "close" to 0..0)
+    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..1, "notification" to 2..2, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2)
 
-    private fun lst(items: List<Value>) = Lst(if (items.size > MAX_LIST) items.subList(0, MAX_LIST) else items)
+    private fun lst(items: List<Value>) = Lst(capped(items))
+
+    /** subList, not take(): that would copy every list, every frame. */
+    private fun capped(items: List<Value>) = if (items.size > MAX_LIST) items.subList(0, MAX_LIST) else items
+
+    private fun entriesOf(o: Obj): List<Value> = o.fields.map { (k, v) -> Obj(mapOf("key" to Str(k), "value" to v)) }
+
+    /** What `for` and list properties walk: a list's items, a map's {key, value} entries, at most [MAX_LIST]; nothing for anything else. */
+    fun iterable(v: Value): List<Value> =
+        when (v) {
+            is Lst -> capped(v.items)
+            is Obj -> capped(entriesOf(v))
+            else -> emptyList()
+        }
 
     private fun n(d: Double) = Num(d)
 
@@ -160,14 +183,225 @@ object Builtins {
 
     private fun regex(p: String) = synchronized(regexCache) { regexCache.getOrPut(p) { Regex(p) } }
 
+    /** By pattern, and by language tag after a NUL when a widget names one. */
     private val timeFormats = HashMap<String, DateTimeFormatter>()
+
+    /** The language [timeFormats] name days and months in: the phone's can change while widgets run. */
+    private var timeFormatsLocale: Locale? = null
+
+    private fun timeFormat(
+        pattern: String,
+        language: String,
+    ): DateTimeFormatter {
+        val default = Locale.getDefault()
+        return synchronized(timeFormats) {
+            if (default != timeFormatsLocale) {
+                timeFormats.clear()
+                timeFormatsLocale = default
+            }
+            timeFormats.getOrPut(if (language == "") pattern else "$pattern\u0000$language") {
+                val locale = if (language == "") default else Locale.forLanguageTag(language)
+                DateTimeFormatterBuilder().parseCaseInsensitive().appendPattern(pattern).toFormatter(locale)
+            }
+        }
+    }
+
+    /** A time zone by name ("Europe/Berlin", "UTC") or offset ("+02:00"); null or "" is the phone's. */
+    private fun zone(v: Value): ZoneId =
+        if (v == Null || v.toString() == "") {
+            ZoneId.systemDefault()
+        } else {
+            runCatching { ZoneId.of(v.toString()) }.getOrElse { throw WidgetError("unknown time zone '$v'; use a name like \"Europe/Berlin\" or an offset like \"+02:00\"") }
+        }
 
     private fun fmtTime(
         seconds: Double,
         pattern: String,
+        zone: ZoneId,
+        language: String,
     ): String {
-        val f = synchronized(timeFormats) { timeFormats.getOrPut(pattern) { DateTimeFormatter.ofPattern(pattern, Locale.getDefault()) } }
-        return f.format(Instant.ofEpochMilli((seconds * 1000).toLong()).atZone(ZoneId.systemDefault()))
+        val at = Instant.ofEpochMilli((seconds * 1000).toLong()).atZone(zone)
+        return runCatching { timeFormat(pattern, language).format(at) }.getOrElse { throw WidgetError("bad time pattern '$pattern'") }
+    }
+
+    /** 2026-10-17, 2026-10-17T10:04, …:05.123, with Z, +02, +0200 or +02:00, or a space instead of the T. */
+    private val isoTime = Regex("(\\d{4})-(\\d{2})-(\\d{2})(?:[T ](\\d{2}):(\\d{2})(?::(\\d{2})(?:[.,](\\d{1,9}))?)?)? ?(Z|[+-]\\d{2}(?::?\\d{2})?)?", RegexOption.IGNORE_CASE)
+
+    /** iCalendar's basic form: 20261017, 20261017T1004, 20261017T100405Z. */
+    private val basicTime = Regex("(\\d{4})(\\d{2})(\\d{2})(?:T(\\d{2})(\\d{2})(\\d{2})?)?(Z)?", RegexOption.IGNORE_CASE)
+
+    /** The zone names RFC 822 dates (RSS feeds) use; RFC_1123_DATE_TIME only reads GMT and offsets. */
+    private val rfc822Zones = mapOf("UT" to "+0000", "UTC" to "+0000", "Z" to "+0000", "EST" to "-0500", "EDT" to "-0400", "CST" to "-0600", "CDT" to "-0500", "MST" to "-0700", "MDT" to "-0600", "PST" to "-0800", "PDT" to "-0700")
+
+    /**
+     * Unix seconds for a date in text: ISO 8601, iCalendar's basic form or RFC 1123 (`Sat, 17 Oct 2026
+     * 10:04:00 GMT`), or what a java.time [pattern] describes, in English. A date without a zone is a time in [zone];
+     * a pattern without a date is today there, and one without a time is midnight. Null when it isn't one.
+     */
+    private fun parseTime(
+        text: String,
+        pattern: String,
+        zone: ZoneId,
+    ): Value {
+        val s = text.trim()
+        if (pattern != "") {
+            // Dates come from APIs and feeds, which name months and days in English whatever the phone's language.
+            val f = runCatching { timeFormat(pattern, "en") }.getOrElse { throw WidgetError("bad time pattern '$pattern'") }
+            val t = runCatching { f.parse(s) }.getOrNull() ?: return Null
+            val today = LocalDate.now(zone)
+            val date =
+                t.query(TemporalQueries.localDate())
+                    ?: if (t.isSupported(ChronoField.MONTH_OF_YEAR) && t.isSupported(ChronoField.DAY_OF_MONTH)) {
+                        runCatching { today.withMonth(t.get(ChronoField.MONTH_OF_YEAR)).withDayOfMonth(t.get(ChronoField.DAY_OF_MONTH)) }.getOrNull() ?: return Null
+                    } else {
+                        today
+                    }
+            val time = t.query(TemporalQueries.localTime()) ?: LocalTime.MIDNIGHT
+            return epoch(ZonedDateTime.of(date, time, t.query(TemporalQueries.zone()) ?: zone))
+        }
+        val iso = isoTime.matchEntire(s)
+        val m = iso ?: basicTime.matchEntire(s)
+        if (m != null) {
+            val g = m.groupValues
+            fun part(i: Int) = g[i].toIntOrNull() ?: 0
+            val nanos = if (iso != null && g[7] != "") g[7].padEnd(9, '0').toInt() else 0
+            val offset = g.last().uppercase()
+            val at = runCatching { LocalDateTime.of(part(1), part(2), part(3), part(4), part(5), part(6), nanos) }.getOrNull() ?: return Null
+            // ZoneOffset reads Z, +02, +0200 and +02:00.
+            return epoch(at.atZone(if (offset == "") zone else ZoneOffset.of(offset)))
+        }
+        val named = s.substringAfterLast(' ')
+        val rfc = rfc822Zones[named.uppercase()]?.let { s.dropLast(named.length) + it } ?: s
+        return runCatching { epoch(ZonedDateTime.parse(rfc, DateTimeFormatter.RFC_1123_DATE_TIME)) }.getOrDefault(Null)
+    }
+
+    private fun epoch(t: ZonedDateTime) = n(t.toEpochSecond() + t.nano / 1e9)
+
+    /** How long ago [seconds] were, short: now, 5m, 3h, 2d, 6w, 1y; a time still to come is "in 5m". */
+    private fun fmtAgo(seconds: Double): String {
+        val s = kotlin.math.abs(seconds)
+        val short =
+            when {
+                s < 60 -> return "now"
+                s < 3600 -> "${(s / 60).toLong()}m"
+                s < 86400 -> "${(s / 3600).toLong()}h"
+                s < 7 * 86400 -> "${(s / 86400).toLong()}d"
+                s < 365 * 86400 -> "${(s / (7 * 86400)).toLong()}w"
+                else -> "${(s / (365 * 86400)).toLong()}y"
+            }
+        return if (seconds < 0) "in $short" else short
+    }
+
+    private val compactUnits = listOf("", "k", "M", "B", "T")
+
+    /**
+     * [x] in the phone's language, its thousands grouped, with [digits] after the point. Compact
+     * divides by thousands into k, M, B and T, with one digit under 10 and none above unless [digits]
+     * says otherwise (a trailing .0 then goes); [sign] puts + before a number above zero.
+     */
+    private fun fmtNum(
+        x: Double,
+        digits: Int?,
+        compact: Boolean,
+        sign: Boolean,
+    ): String {
+        if (x.isNaN() || x.isInfinite()) return Num(x).toString()
+        val locale = Locale.getDefault()
+        fun digitsFor(v: Double) = digits?.coerceIn(0, 10) ?: if (compact && kotlin.math.abs(v) < 10) 1 else 0
+
+        fun shown(
+            v: Double,
+            d: Int,
+        ) = Math.round(kotlin.math.abs(v) * Math.pow(10.0, d.toDouble())) / Math.pow(10.0, d.toDouble())
+        var v = x
+        var unit = 0
+        var d = digitsFor(v)
+        // 999.97 shows as 1000 at one digit: that's 1k.
+        while (compact && unit < compactUnits.size - 1 && shown(v, d) >= 1000) {
+            v /= 1000
+            unit++
+            d = digitsFor(v)
+        }
+        // No "-0" for a number that rounds to zero.
+        if (kotlin.math.abs(v) < 0.5 / Math.pow(10.0, d.toDouble())) v = 0.0
+        var s = String.format(locale, if (compact) "%.${d}f" else "%,.${d}f", v)
+        if (compact && digits == null && d > 0) {
+            // The locale's zero: Arabic writes ١٫٠.
+            val symbols = DecimalFormatSymbols.getInstance(locale)
+            s = s.trimEnd(symbols.zeroDigit).trimEnd(symbols.decimalSeparator)
+        }
+        return (if (sign && v > 0) "+" else "") + s + compactUnits[unit]
+    }
+
+    /** FNV-1a over the text of [values], mixed to spread nearby inputs apart (murmur3's finish), in [0, 1). */
+    private fun hash(values: List<Value>): Double {
+        var h = 0x811c9dc5.toInt()
+        values.forEachIndexed { i, v ->
+            // A NUL between values: hash("ab", "c") isn't hash("a", "bc").
+            if (i > 0) h *= 0x01000193
+            for (c in v.toString()) h = (h xor c.code) * 0x01000193
+        }
+        h = h xor (h ushr 16)
+        h *= 0x85ebca6b.toInt()
+        h = h xor (h ushr 13)
+        h *= 0xc2b2ae35.toInt()
+        h = h xor (h ushr 16)
+        return (h.toLong() and 0xffffffffL) / 4294967296.0
+    }
+
+    private fun flatten(
+        items: List<Value>,
+        depth: Int,
+    ): List<Value> = if (depth <= 0) items else items.flatMap { if (it is Lst) flatten(it.items, depth - 1) else listOf(it) }
+
+    /**
+     * [v] with [key] set to [to] (or removed, for null): a list by index, from the end when it's
+     * negative, or a map by name. A list index that isn't in it changes nothing; null is an empty map.
+     */
+    private fun edited(
+        v: Value,
+        key: Value,
+        to: Value?,
+    ): Value =
+        when (v) {
+            is Lst -> {
+                val i = key.num()?.toInt()?.let { if (it < 0) v.items.size + it else it }
+                if (i == null || i !in v.items.indices) {
+                    v
+                } else if (to == null) {
+                    Lst(v.items.filterIndexed { j, _ -> j != i })
+                } else {
+                    Lst(v.items.toMutableList().also { it[i] = to })
+                }
+            }
+            is Obj -> Obj(LinkedHashMap(v.fields).also { if (to == null) it.remove(key.toString()) else it[key.toString()] = to })
+            Null -> if (to == null) Null else Obj(mapOf(key.toString() to to))
+            else -> v
+        }
+
+    /** Fisher–Yates; [next] gives numbers in [0, 1). */
+    private fun shuffle(
+        items: List<Value>,
+        next: () -> Double,
+    ): List<Value> {
+        val out = items.toMutableList()
+        for (i in out.size - 1 downTo 1) {
+            val j = (next() * (i + 1)).toInt()
+            out[i] = out[j].also { out[j] = out[i] }
+        }
+        return out
+    }
+
+    /** mulberry32, seeded from [seed]'s [hash]: the same seed shuffles the same way, here and in the Quickshell runtime. */
+    private fun seeded(seed: Value): () -> Double {
+        var state = (hash(listOf(seed)) * 4294967296.0).toLong().toInt()
+        return {
+            state += 0x6d2b79f5
+            var t = state
+            t = (t xor (t ushr 15)) * (t or 1)
+            t = t xor (t + (t xor (t ushr 7)) * (t or 61))
+            ((t xor (t ushr 14)).toLong() and 0xffffffffL) / 4294967296.0
+        }
     }
 
     /**
@@ -195,6 +429,18 @@ object Builtins {
         x: Double,
         digits: Int,
     ) = String.format(Locale.ROOT, "%.${digits.coerceIn(0, 10)}f", x)
+
+    // From 2^52 up a double has no fraction left to round, and roundToLong would
+    // stop at Long.MAX_VALUE: round(999998000001, 8) gave 92233720368.54776.
+    // NaN, also from 0 scaled by an infinite 10^digits, stays NaN.
+    private fun roundTo(
+        x: Double,
+        digits: Int,
+    ): Double {
+        val p = Math.pow(10.0, digits.toDouble())
+        val v = x * p
+        return if (v.isNaN()) Double.NaN else if (Math.abs(v) >= 4503599627370496.0) x else v.roundToLong() / p
+    }
 
     fun interface Num1 {
         fun of(x: Double): Double
@@ -233,8 +479,10 @@ object Builtins {
             "rad" to Num1 { Math.toRadians(it) },
             "deg" to Num1 { Math.toDegrees(it) },
             "sign" to Num1 { Math.signum(it) },
+            "asin" to Num1 { Math.asin(it) },
+            "acos" to Num1 { Math.acos(it) },
             // NaN can't round: the general path reports it.
-            "round" to Num1 { if (it.isNaN()) Double.NaN else it.roundToLong().toDouble() },
+            "round" to Num1 { roundTo(it, 0) },
         )
 
     val numeric2: Map<String, Num2> =
@@ -243,11 +491,7 @@ object Builtins {
             "pow" to Num2 { x, y -> if (x.isNaN() || y.isNaN()) Double.NaN else Math.pow(x, y) },
             "atan2" to Num2 { x, y -> Math.atan2(x, y) },
             "round" to
-                Num2 { x, d ->
-                    val p = Math.pow(10.0, d.toInt().toDouble())
-                    val v = x * p
-                    if (v.isNaN() || d.isNaN()) Double.NaN else v.roundToLong() / p
-                },
+                Num2 { x, d -> if (x.isNaN() || d.isNaN()) Double.NaN else roundTo(x, d.toInt()) },
         )
 
     val numeric3: Map<String, Num3> =
@@ -264,11 +508,7 @@ object Builtins {
             "clamp" to Builtin(3, 3) { a -> n(a.num(0).coerceIn(a.num(1), a.num(2).coerceAtLeast(a.num(1)))) },
             "lerp" to Builtin(3, 3) { a -> n(a.num(0) + (a.num(1) - a.num(0)) * a.num(2)) },
             "round" to
-                Builtin(1, 2) { a ->
-                    val d = a.int(1, 0)
-                    val p = Math.pow(10.0, d.toDouble())
-                    n((a.num(0) * p).roundToLong() / p)
-                }.strict(),
+                Builtin(1, 2) { a -> n(roundTo(a.num(0), a.int(1, 0)).also { require(!it.isNaN()) { "Cannot round NaN value." } }) }.strict(),
             "floor" to math(::floor),
             "ceil" to math(Math::ceil),
             "abs" to math(Math::abs),
@@ -279,6 +519,9 @@ object Builtins {
             "rad" to math(Math::toRadians),
             "deg" to math(Math::toDegrees),
             "sign" to math(Math::signum),
+            // owl 9
+            "asin" to math(Math::asin),
+            "acos" to math(Math::acos),
             "pow" to Builtin(2, 2) { a -> n(Math.pow(a.num(0), a.num(1))) }.strict(),
             "atan2" to Builtin(2, 2) { a -> n(Math.atan2(a.num(0), a.num(1))) },
             "num" to Builtin(1, 2) { a -> a[0].num()?.let(::n) ?: if (a.size > 1) a[1] else Null },
@@ -298,12 +541,18 @@ object Builtins {
                 },
             "trim" to Builtin(1, 1) { a -> Str(a.str(0).trim()) },
             "upper" to Builtin(1, 1) { a -> Str(a.str(0).uppercase()) },
+            // owl 9: the first letter in capitals, the rest as it is.
+            "capitalize" to Builtin(1, 1) { a -> Str(a.str(0).replaceFirstChar { it.titlecase() }) }.strict(),
             "lower" to Builtin(1, 1) { a -> Str(a.str(0).lowercase()) },
             "lines" to Builtin(1, 1) { a -> lst(a.str(0).lines().filter { it.isNotBlank() }.map(::Str)) },
             "words" to Builtin(1, 1) { a -> lst(a.str(0).trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.map(::Str)) },
             "split" to Builtin(2, 2) { a -> lst(a.str(0).split(a.str(1)).map(::Str)) },
             "join" to Builtin(1, 2) { a -> Str(a.list(0).joinToString(if (a.size > 1) a.str(1) else "") { if (it is Str) it.v else it.toString() }) },
             "replace" to Builtin(3, 3) { a -> Str(a.str(0).replace(a.str(1), a.str(2))) },
+            // owl 6: a value as one shell word, for commands put together while the widget runs.
+            "sh" to Builtin(1, 1) { a -> Str(shQuote(a[0].let { if (it == Null) "" else it.text() })) },
+            // owl 8: a value as one URL component, for http(...) URLs put together while the widget runs.
+            "enc" to Builtin(1, 1) { a -> Str(URLEncoder.encode(a[0].let { if (it == Null) "" else it.text() }, "UTF-8").replace("+", "%20")) },
             "startsWith" to Builtin(2, 2) { a -> bool(a.str(0).startsWith(a.str(1))) },
             "endsWith" to Builtin(2, 2) { a -> bool(a.str(0).endsWith(a.str(1))) },
             "contains" to
@@ -358,8 +607,22 @@ object Builtins {
                         },
                     )
                 }.strict(),
-            // fmtTime(epochSeconds, "HH:mm"): java.time patterns in the phone's time zone.
-            "fmtTime" to Builtin(2, 2) { a -> Str(runCatching { fmtTime(a.num(0), a.str(1)) }.getOrElse { throw WidgetError("bad time pattern '${a.str(1)}'") }) }.strict(),
+            // fmtTime(epochSeconds, "HH:mm"): java.time patterns in the phone's time zone; owl 9 takes a zone and a language too.
+            "fmtTime" to Builtin(2, 4) { a -> Str(fmtTime(a.num(0), a.str(1), zone(a[2]), a.str(3))) }.strict(),
+            // owl 9: parseTime("2026-10-17T10:04:00Z") is Unix seconds, null if the text isn't a date.
+            // Not folded: a time without a date is today's, and one without a zone the phone's.
+            "parseTime" to Builtin(1, 3, pure = false) { a -> parseTime(a.str(0), a.str(1), zone(a[2])) }.strict(),
+            // owl 9: fmtAgo(t, now) is "5m", "3h", "2d"; now comes from a clock source, so it stays current.
+            "fmtAgo" to Builtin(2, 2) { a -> if (a[1] == Null) Null else Str(fmtAgo(a.num(1) - a.num(0))) }.strict(),
+            // owl 9: fmtNum(x, digits) or fmtNum(x, {digits, compact, sign}). Not folded: it's in the phone's language.
+            "fmtNum" to
+                Builtin(1, 2, pure = false) { a ->
+                    when (val o = a[1]) {
+                        is Obj -> Str(fmtNum(a.num(0), o.fields["digits"]?.num()?.toInt(), o.fields["compact"]?.truthy == true, o.fields["sign"]?.truthy == true))
+                        Null -> Str(fmtNum(a.num(0), null, false, false))
+                        else -> Str(fmtNum(a.num(0), o.num()?.toInt() ?: throw WidgetError("fmtNum takes a number of digits or a map like {compact: true}"), false, false))
+                    }
+                }.strict(),
             // weatherIcon(wttrCode, night?): omarchy's weather glyph; show it with font: icon.
             "weatherIcon" to Builtin(1, 2) { a -> Str(weatherIcon(a.int(0, 0), a[1].truthy)) },
             // match(s, regex): the groups of the first match (or the whole match), null if none.
@@ -422,11 +685,80 @@ object Builtins {
             "last" to Builtin(1, 1) { a -> a.list(0).lastOrNull() ?: Null },
             "indexOf" to Builtin(2, 2) { a -> n(a.list(0).indexOf(a[1]).toDouble()) },
             "unique" to Builtin(1, 1) { a -> lst(a.list(0).distinct()) },
-            "flatten" to Builtin(1, 1) { a -> lst(a.list(0).flatMap { if (it is Lst) it.items else listOf(it) }) },
+            // flatten(list): one level of lists in lists; owl 9 takes how many levels.
+            "flatten" to
+                Builtin(1, 2) { a ->
+                    val l = a.list(0)
+                    a.tick(l.size)
+                    lst(flatten(l, a.int(1, 1).coerceAtMost(64)))
+                },
+            // owl 9: shuffle(list, seed) shuffles the same way for the same seed; shuffle(list) differently each time, so only in handlers.
+            "shuffle" to
+                Builtin(1, 2, pure = false) { a ->
+                    val l = a.list(0)
+                    a.tick(l.size)
+                    lst(shuffle(l, if (a.size > 1) seeded(a[1]) else Random.Default::nextDouble))
+                },
+            // random() in [0, 1), random(n) a whole number from 0 to n - 1, random(a, b) one from a to b. Only in handlers and a state's first value.
+            "random" to
+                Builtin(0, 2, pure = false) { a ->
+                    val r = Random.Default.nextDouble()
+                    when (a.size) {
+                        0 -> n(r)
+                        1 -> n(floor(r * floor(a.num(0)).coerceAtLeast(0.0)))
+                        else -> {
+                            val lo = Math.ceil(minOf(a.num(0), a.num(1)))
+                            val hi = floor(maxOf(a.num(0), a.num(1)))
+                            n(if (hi < lo) lo else lo + floor(r * (hi - lo + 1)))
+                        }
+                    }
+                },
+            // hash(values...): a number in [0, 1) that's always the same for the same values, for noise in lets and canvases.
+            "hash" to Builtin(1, 16) { a -> n(hash(a.args)) },
             "keys" to Builtin(1, 1) { a -> (a[0] as? Obj)?.let { o -> lst(o.fields.keys.map(::Str)) } ?: Lst(emptyList()) },
             "values" to Builtin(1, 1) { a -> (a[0] as? Obj)?.let { o -> lst(o.fields.values.toList()) } ?: Lst(emptyList()) },
-            "entries" to Builtin(1, 1) { a -> (a[0] as? Obj)?.let { o -> lst(o.fields.map { (k, v) -> Obj(mapOf("key" to Str(k), "value" to v)) }) } ?: Lst(emptyList()) },
+            "entries" to Builtin(1, 1) { a -> (a[0] as? Obj)?.let { lst(entriesOf(it)) } ?: Lst(emptyList()) },
             "get" to Builtin(2, 3) { a -> member(a[0], a.str(1)).takeIf { it != Null } ?: a[2] },
+            // owl 9: set(list, i, v) and set(map, key, v) are copies with that one changed; remove(...) without it.
+            "set" to Builtin(3, 3) { a -> edited(a[0], a[1], a[2]) },
+            "remove" to Builtin(2, 2) { a -> edited(a[0], a[1], null) },
+            // owl 9: merge(a, b, ...) is the maps' fields together, a later map's winning.
+            "merge" to
+                Builtin(1, 16) { a ->
+                    val out = LinkedHashMap<String, Value>()
+                    a.args.forEach { (it as? Obj)?.let { o -> out.putAll(o.fields) } }
+                    Obj(out)
+                },
+            // owl 9: reduce(list, (total, x, i) => ..., start) folds a list into one value; scan gives every step of it.
+            "reduce" to
+                Builtin(3, 3) { a ->
+                    val f = a.fn(1)
+                    val l = a.list(0)
+                    a.tick(l.size)
+                    var acc = a[2]
+                    l.forEachIndexed { i, v -> acc = f.call(listOf(acc, v, n(i.toDouble()))) }
+                    acc
+                },
+            "scan" to
+                Builtin(3, 3) { a ->
+                    val f = a.fn(1)
+                    val l = a.list(0)
+                    a.tick(l.size)
+                    var acc = a[2]
+                    lst(l.mapIndexed { i, v -> f.call(listOf(acc, v, n(i.toDouble()))).also { acc = it } })
+                },
+            // owl 9: groupBy(list, x => x.day) is a map from each key to the items with it, in the order they came.
+            "groupBy" to
+                Builtin(2, 2) { a ->
+                    val f = a.fn(1)
+                    val l = a.list(0)
+                    a.tick(l.size)
+                    val out = LinkedHashMap<String, ArrayList<Value>>()
+                    l.forEach { v -> out.getOrPut(f.call(listOf(v)).toString()) { ArrayList() } += v }
+                    Obj(out.mapValues { Lst(it.value) })
+                },
+            // owl 9: JSON text, for a post body built by hand, a file or a command.
+            "toJson" to Builtin(1, 1) { a -> Str(Json.write(a[0]) ?: throw WidgetError("toJson takes numbers, text, lists and maps, not colors or functions")) },
             // colors
             "rgb" to Builtin(3, 4) { a -> rgb(a.num(0), a.num(1), a.num(2), a.num(3, 1.0)) },
             "hsl" to Builtin(3, 4) { a -> hsl(a.num(0), a.num(1), a.num(2), a.num(3, 1.0)) },
@@ -490,7 +822,8 @@ object Builtins {
                 when {
                     a is Num && b is Num -> Num(a.v + b.v)
                     a is Lst && b is Lst -> lst(a.items + b.items)
-                    a is Str || b is Str -> Str(a.text() + b.text())
+                    // Strings join as written ("- " + x keeps its space); only other values are formatted.
+                    a is Str || b is Str -> Str((if (a is Str) a.v else a.text()) + (if (b is Str) b.v else b.text()))
                     else -> {
                         val x = a.num()
                         val y = b.num()
@@ -541,3 +874,6 @@ object Builtins {
         return false
     }
 }
+
+/** [s] in single quotes, each `'` in it closed, escaped and reopened: bash reads it back as one word, exactly [s]. */
+fun shQuote(s: String) = "'" + s.replace("'", "'\\''") + "'"

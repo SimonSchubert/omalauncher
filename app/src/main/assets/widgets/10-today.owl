@@ -3,11 +3,14 @@ widget "today" {
   order: 1
   size: 3x3
   minSize: 3x2
-  meta { description: "The date and the weather where you are, located by IP via wttr.in. Tap it for the next 24 hours, three days, wind, UV, sun and moon"; version: "1.0"; license: "MIT"; category: "world"; owl: 5 }
+  meta { description: "The date and the weather where you are, by IP or a city you type. Tap it for the next 24 hours, three days, wind, UV, sun and moon"; version: "1.1"; license: "MIT"; category: "world"; owl: 5 }
 
   source now = clock every 1m
-  // One request, located by IP. Icons and °F countries match omarchy's weather panel.
-  source wx = http("https://wttr.in/?format=j1") every 30m timeout 10s json
+  state city = "" persist
+  // The city, percent-encoded so "/", "?", "&" or "#" in it can't break the URL. Empty means located by IP.
+  let q = city.replace("%", "%25").replace("+", "%2B").replace("/", "%2F").replace("?", "%3F").replace("#", "%23").replace("&", "%26").replace("'", "%27").replace(" ", "+")
+  // One request. Icons and °F countries match omarchy's weather panel.
+  source wx = http("https://wttr.in/${q}?format=j1") every 30m timeout 10s json
   let cur = wx.current_condition[0]
   let day = wx.weather[0]
   let area = wx.nearest_area[0]
@@ -132,6 +135,11 @@ widget "today" {
 
   screen {
     title: "weather"
+    Input {
+      text: city
+      placeholder: "city · empty = auto"
+      onSubmit: { city = trim(value); refresh() }
+    }
     if cur == null {
       Text { text: wx == null ? "weather…" : "weather offline"; style: body; color: muted }
     } else {

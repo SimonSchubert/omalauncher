@@ -53,7 +53,7 @@ class Speech(
 
     /**
      * Starts listening; [onDone] gets the full text (maybe empty) once recognition ends.
-     * With [hold], it keeps listening across pauses until [stop] or [letGo].
+     * With [hold], it keeps listening across pauses until [stop].
      */
     fun start(
         hold: Boolean,
@@ -77,11 +77,6 @@ class Speech(
     fun stop() {
         held = false
         recognizer?.stopListening() ?: finish()
-    }
-
-    /** Keeps listening, but ends at the next pause instead of at [stop]. */
-    fun letGo() {
-        held = false
     }
 
     /** Ends recognition without calling onDone. */

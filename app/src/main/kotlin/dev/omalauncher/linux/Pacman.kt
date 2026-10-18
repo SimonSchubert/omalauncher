@@ -10,7 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -177,17 +176,10 @@ class Pacman(
         action: String,
         script: String,
     ): Boolean {
-        states[name] = JobState.Working("waiting", emptyList())
-        return lock.withLock {
-            withContext(Dispatchers.IO) {
-                states[name] = JobState.Working(action, emptyList())
-                val (ok, tail) = proot.runJob(script) { states[name] = JobState.Working(action, it) }
-                Log.i(TAG, "$action $name: ${if (ok) "ok" else "failed"}")
-                if (ok) states.remove(name) else states[name] = JobState.Failed(tail.toList())
-                revision.intValue++
-                ok
-            }
-        }
+        val (ok, _) = proot.trackedJob(action, script, lock) { if (it == JobState.Idle) states.remove(name) else states[name] = it }
+        Log.i(TAG, "$action $name: ${if (ok) "ok" else "failed"}")
+        revision.intValue++
+        return ok
     }
 
     companion object {

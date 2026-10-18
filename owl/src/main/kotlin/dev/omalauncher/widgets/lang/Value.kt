@@ -1,5 +1,7 @@
 package dev.omalauncher.widgets.lang
 
+import java.math.BigDecimal
+
 /**
  * Runtime values of the widget language. Plain data with structural equality,
  * so a command that prints the same output twice invalidates nothing.
@@ -20,7 +22,20 @@ value class Num(
 ) : Value {
     override val truthy get() = v != 0.0 && !v.isNaN()
 
-    override fun toString() = if (v == Math.rint(v) && kotlin.math.abs(v) < 1e15) v.toLong().toString() else v.toString()
+    override fun toString(): String {
+        val a = kotlin.math.abs(v)
+        if (v == Math.rint(v) && a < 1e15) return v.toLong().toString()
+        // Double.toString writes these without an exponent already.
+        if (a >= 1e-3 && a < 1e7 || !v.isFinite()) return v.toString()
+        // As JavaScript writes numbers: plain from 1e-6 to 1e21, so a time with a fraction in a URL
+        // reads 1792231445.5 and not 1.7922314455E9; 1.5e-7 and 1e+21 past them.
+        val d = BigDecimal(v.toString()).stripTrailingZeros()
+        if (a >= 1e-6 && a < 1e21) return d.toPlainString()
+        val digits = d.unscaledValue().abs().toString()
+        val exp = digits.length - 1 - d.scale()
+        val mantissa = if (digits.length == 1) digits else digits[0] + "." + digits.substring(1)
+        return (if (v < 0) "-" else "") + mantissa + "e" + (if (exp >= 0) "+" else "") + exp
+    }
 }
 
 @JvmInline

@@ -5,9 +5,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import java.io.ByteArrayOutputStream
+import dev.omalauncher.readUpTo
 import java.io.IOException
-import java.io.InputStream
 import kotlin.concurrent.thread
 
 private const val TAG = "wl.clipboard"
@@ -116,7 +115,7 @@ class Selection(
         thread(name = "wl-clip-read", isDaemon = true) {
             val bytes =
                 try {
-                    ParcelFileDescriptor.AutoCloseInputStream(read).use { readUpTo(it, MAX_MIRROR_BYTES + 1) }
+                    ParcelFileDescriptor.AutoCloseInputStream(read).use { it.readUpTo(MAX_MIRROR_BYTES + 1) }
                 } catch (e: IOException) {
                     Log.w(TAG, "reading the selection failed", e)
                     return@thread
@@ -141,21 +140,6 @@ class Selection(
             }
         }
     }
-}
-
-/** Reads [input] to its end, or [limit] bytes (InputStream.readNBytes needs API 33). */
-private fun readUpTo(
-    input: InputStream,
-    limit: Int,
-): ByteArray {
-    val out = ByteArrayOutputStream()
-    val chunk = ByteArray(8192)
-    while (out.size() < limit) {
-        val n = input.read(chunk, 0, minOf(chunk.size, limit - out.size()))
-        if (n < 0) break
-        out.write(chunk, 0, n)
-    }
-    return out.toByteArray()
 }
 
 class DataDeviceManager(

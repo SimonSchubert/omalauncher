@@ -21,6 +21,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # Unit tests only: a full build needs Termux's proot (scripts/fetch-proot.sh).
+      # The NDK app/build.gradle.kts pins; installed up front so AGP doesn't download it mid-build.
+      - name: Install the NDK
+        run: |
+          ndk=$(sed -n 's/^NDK_VERSION=//p' scripts/fetch-proot.sh)
+          [ -d "$ANDROID_HOME/ndk/$ndk" ] || yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" >/dev/null
+
       - name: Test
         run: ./gradlew :owl:test :app:testDebugUnitTest :owl:owlJar
+
+      # Builds without proot (scripts/fetch-proot.sh), which is enough to compile wlbridge and run lint.
+      - name: Build and lint
+        run: ./gradlew :app:assembleDebug :app:lintDebug

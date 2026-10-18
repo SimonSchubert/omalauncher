@@ -61,6 +61,10 @@ class WindowRenderer(
             requestFrame()
         }
 
+    /** How much of the view, from its top, the window shows in (the rest is under the keyboard); 0 for all of it. */
+    @Volatile
+    var visibleHeight = 0
+
     private var drawn: List<Layer> = emptyList()
 
     @Volatile
@@ -194,10 +198,12 @@ class WindowRenderer(
         inPopup: Boolean,
     ) {
         for (sub in surface.children) if (sub.below) addTree(layers, sub.surface, x + sub.x * scale, y + sub.y * scale, scale, inPopup)
-        // Buffer pixels to window pixels: 1:1 when the client renders at our scale.
-        val w = surface.bufferWidth * scale / surface.bufferScale
-        val h = surface.bufferHeight * scale / surface.bufferScale
-        layers += Layer(surface, surface.store, x, y, w, h, scale, inPopup)
+        // Buffer pixels to window pixels: 1:1 when the client renders at our scale. The size of the pixels drawn: a
+        // commit of a new size (a window resizing) has them only once they're copied, and till then the old ones would stretch.
+        val store = surface.store
+        val w = (store?.width ?: surface.bufferWidth) * scale / surface.bufferScale
+        val h = (store?.height ?: surface.bufferHeight) * scale / surface.bufferScale
+        layers += Layer(surface, store, x, y, w, h, scale, inPopup)
         for (sub in surface.children) if (!sub.below) addTree(layers, sub.surface, x + sub.x * scale, y + sub.y * scale, scale, inPopup)
     }
 
@@ -214,7 +220,8 @@ class WindowRenderer(
         val parent = geometryOrigin(popup.parent ?: return null, scale, depth + 1) ?: return null
         val p = popup.position
         val x = (parent.first + p.x * scale).coerceIn(0, (width - p.width * scale).coerceAtLeast(0))
-        val y = (parent.second + p.y * scale).coerceIn(0, (height - p.height * scale).coerceAtLeast(0))
+        val bottom = visibleHeight.takeIf { it in 1..height } ?: height
+        val y = (parent.second + p.y * scale).coerceIn(0, (bottom - p.height * scale).coerceAtLeast(0))
         return x to y
     }
 
@@ -226,7 +233,10 @@ class WindowRenderer(
         val layers = scene
         for (l in layers.asReversed()) {
             if (l.store == null || l.surface.destroyed || x < l.x || y < l.y || x >= l.x + l.width || y >= l.y + l.height) continue
-            return SurfaceHit(l.surface, (x - l.x) / l.scale, (y - l.y) / l.scale, l.inPopup)
+            val lx = (x - l.x) / l.scale
+            val ly = (y - l.y) / l.scale
+            if (!l.surface.takesInput(lx, ly)) continue
+            return SurfaceHit(l.surface, lx, ly, l.inPopup)
         }
         val base = layers.firstOrNull { it.surface === window.surface } ?: return null
         return SurfaceHit(base.surface, (x - base.x) / base.scale, (y - base.y) / base.scale)

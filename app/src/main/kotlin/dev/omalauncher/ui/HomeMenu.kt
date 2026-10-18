@@ -7,20 +7,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
-import dev.omalauncher.linux.newAppCommand
-import dev.omalauncher.widgets.newWidgetCommand
+import dev.omalauncher.linux.LinuxState
+import dev.omalauncher.widgets.lang.OwlKind
+import dev.omalauncher.widgets.newOwlCommand
 import kotlinx.coroutines.launch
 
 @Composable
@@ -59,7 +60,7 @@ fun HomeMenu(
     val agent = runtime.agents.default
     val agentName = agent?.name?.lowercase() ?: "an agent"
     // These need Linux; without it they open its install sheet.
-    val linux = runtime.bootstrap.isInstalled
+    val linux = runtime.bootstrap.state.collectAsState().value == LinuxState.Installed
     val scope = rememberCoroutineScope()
 
     /** Recolors right away, then applies the full theme: its first background, like omarchy-theme-set, and the guest's configs. */
@@ -69,39 +70,47 @@ fun HomeMenu(
         scope.launch { if (runtime.themes.complete) runtime.themes.applyPicked() else runtime.themes.fetchPicked() }
     }
     Menu(onDismiss = { state.homeMenuOpen = false }) {
-        MenuItem("new widget with $agentName") {
-            state.homeMenuOpen = false
-            when {
-                !linux -> state.linuxOpen = true
-                agent == null -> state.agentsOpen = true
-                else -> runtime.terminal(newWidgetCommand(agent.bin), "New widget", agent)
+        // What to create sits on the row itself: one tap starts the agent, each kind with its own prompt.
+        // Settings at the top right, as in the drawer.
+        Row(Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f).padding(start = 12.dp, end = 4.dp, top = 10.dp)) {
+                BasicText("create with $agentName", style = Mono.copy(fontSize = TextSize.Item))
+                // Pulled left by the buttons' own padding, so the first bracket lines up with the label.
+                Row(Modifier.offset(x = (-8).dp)) {
+                    val kinds: List<Pair<String, (String) -> String>> =
+                        listOf(
+                            "widget" to { newOwlCommand(it, OwlKind.Widget) },
+                            // Pages are made from the empty page left of them, which says where the new one goes.
+                            "app" to { newOwlCommand(it, OwlKind.App) },
+                        )
+                    for ((label, command) in kinds) {
+                        BracketAction(label, Palette.accent) {
+                            state.homeMenuOpen = false
+                            if (linux) state.withAgent(runtime, "New $label", command) else state.show(SettingsPage.Linux)
+                        }
+                    }
+                }
+            }
+            SettingsButton(runtime) {
+                state.homeMenuOpen = false
+                state.show()
             }
         }
-        MenuItem("new app with $agentName") {
+        MenuItem("browse store") {
             state.homeMenuOpen = false
-            when {
-                !linux -> state.linuxOpen = true
-                agent == null -> state.agentsOpen = true
-                else -> runtime.terminal(newAppCommand(agent.bin), "New app", agent)
-            }
+            state.show(SettingsPage.Store)
         }
-        MenuItem("widget store") {
-            state.homeMenuOpen = false
-            state.storeOpen = true
-        }
-        MenuItem("AUR app store") {
-            state.homeMenuOpen = false
-            if (linux) state.packagesOpen = true else state.linuxOpen = true
-        }
-        Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) { ThemeStrip(
+        Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            ThemeStrip(
                 runtime.themes,
                 gutter = 20.dp,
                 onPick = ::pickTheme,
                 onBrowse = {
                     state.homeMenuOpen = false
-                    state.themeBrowserOpen = true
+                    state.show(SettingsPage.Themes)
                 },
-            ) }
+            )
+        }
     }
 }
 

@@ -1,11 +1,12 @@
 package dev.omalauncher.linux
 
-import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.theme.Style
+import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.wayland.XdgToplevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,16 +26,14 @@ import kotlin.math.roundToInt
  * ([catchUp]), but keeps its family. Main thread.
  */
 class TerminalFont(
-    context: Context,
     private val proot: Proot,
+    /** Where [family] and [em] are saved; Runtime calls [write] when they change. */
+    private val style: StyleStore,
 ) {
-    private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
+    val family get() = style.style[Style.TERMINAL_FONT]
 
-    var text by mutableStateOf(TerminalText.of(prefs.getString(TEXT, null)))
-        private set
-
-    var family by mutableStateOf(prefs.getString(FAMILY, null) ?: DEFAULT_FAMILY)
-        private set
+    /** The text size: an em in dp, before Android's font size; [TerminalText] has the Style menu's. */
+    val em get() = style.style[Style.TERMINAL_TEXT].toFloat()
 
     /** The guest's monospace families, [family] among them; just it until [refreshFamilies]. */
     var families by mutableStateOf(listOf(family))
@@ -76,18 +75,6 @@ class TerminalFont(
         this.fontScale = fontScale
         this.scale = scale
         this.widthPx = widthPx
-        write()
-    }
-
-    fun select(text: TerminalText) {
-        this.text = text
-        prefs.edit().putString(TEXT, text.id).apply()
-        write()
-    }
-
-    fun select(family: String) {
-        this.family = family
-        prefs.edit().putString(FAMILY, family).apply()
         write()
     }
 
@@ -144,13 +131,19 @@ class TerminalFont(
     /** The columns a terminal [widthPx] wide gets at [size]. */
     fun columns(widthPx: Int) = columns(widthPx, scale, size)
 
+    /** The pixels an em takes in new terminals: [size] at foot's scale. */
+    val emPx get() = (size * PX_PER_PT * scale).toFloat()
+
+    /** foot.ini's pad in pixels, on each side. */
+    val padPx get() = PAD * scale
+
     /**
      * Writes foot-font.ini if it changed or is gone: Linux removed and
      * installed again in the same process starts without it.
      */
     fun write() {
         if (density == 0f) return
-        size = pointSize(density, fontScale, scale, text.em)
+        size = pointSize(density, fontScale, scale, em)
         val content = "[main]\nfont=$family:size=${format(size)}\n"
         val file = File(proot.home, PATH.removePrefix("~/"))
         if (content == written && file.isFile) return
@@ -167,9 +160,6 @@ class TerminalFont(
     companion object {
         /** foot.ini's include; the launcher owns this file and rewrites it. */
         const val PATH = "~/.local/state/omalauncher/foot-font.ini"
-
-        /** The family foot.ini's font always was. */
-        private const val DEFAULT_FAMILY = "JetBrains Mono"
 
         /** omarchy-font-list's: one family per monospace font file. */
         private const val LIST_FAMILIES = "fc-list :spacing=100 -f '%{family[0]}\\n'"
@@ -192,8 +182,6 @@ class TerminalFont(
         private const val DEFAULT_SIZE = 8.0
         private const val MIN_SIZE = 4.0
         private const val MAX_SIZE = 40.0
-        private const val TEXT = "terminal_text"
-        private const val FAMILY = "terminal_font"
         private const val TAG = "terminal-font"
 
         /**
@@ -241,9 +229,9 @@ class TerminalFont(
     }
 }
 
-/** Terminal text sizes, as an em in dp at Android's default font size. */
+/** The Style menu's terminal text sizes, as an em in dp at Android's default font size. */
 enum class TerminalText(
-    /** Saved in preferences: never rename. */
+    /** What launchers before style.toml saved. */
     val id: String,
     val label: String,
     val em: Float,
@@ -256,6 +244,7 @@ enum class TerminalText(
     ;
 
     companion object {
+        /** From what launchers before style.toml saved. */
         fun of(id: String?) = entries.firstOrNull { it.id == id } ?: Default
     }
 }
