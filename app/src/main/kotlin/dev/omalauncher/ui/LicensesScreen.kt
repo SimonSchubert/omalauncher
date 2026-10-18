@@ -41,7 +41,7 @@ private class Component(
 
 private const val APACHE = "apache-2.0"
 
-// proot is built from Termux's source with our patches (patches/proot), talloc and libandroid-shmem
+// proot is built from Termux's source with our patches, if any (patches/proot), talloc and libandroid-shmem
 // are Termux's builds (scripts/fetch-proot.sh); libproot.so and libtalloc.so are patched to need
 // libtalloc.so instead of libtalloc.so.2, so the notice says so. The source links name the versions
 // that script pins; change them together.
@@ -51,9 +51,9 @@ private val COMPONENTS =
             "PRoot",
             "runs the optional Linux system",
             "gpl-2.0",
-            "Copyright (C) 2015 STMicroelectronics. Built from Termux's 5.1.107.96 with omalauncher's patches; the binary's libtalloc.so.2 dependency is renamed to libtalloc.so.",
+            "Copyright (C) 2015 STMicroelectronics. Built from Termux's 5.1.107.97; the binary's libtalloc.so.2 dependency is renamed to libtalloc.so.",
             "https://proot-me.github.io",
-            source = "https://github.com/SimonSchubert/omalauncher/tree/main/patches/proot",
+            source = "https://github.com/termux/proot/tree/v5.1.107.97",
         ),
         Component(
             "talloc",
