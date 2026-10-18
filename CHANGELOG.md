@@ -4,6 +4,11 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- Tapping a now-playing widget brings up the player's own screen, like a web app's
+  window when one installed from a browser plays, rather than a new browser tab.
+
 ## 0.12.2 (versionCode 23) – 2026-10-25
 
 - A store update no longer throws away changes made to a widget, app or face:
