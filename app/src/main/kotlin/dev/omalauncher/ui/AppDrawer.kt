@@ -42,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.shape.CircleShape
@@ -73,6 +74,17 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import android.view.MotionEvent
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import dev.omalauncher.ui.splitdrag.SplitDrag
+import dev.omalauncher.ui.splitdrag.SplitOpen
+import dev.omalauncher.ui.splitdrag.planOpen
+import kotlinx.coroutines.withTimeoutOrNull
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.AndroidShortcut
 import androidx.compose.runtime.collectAsState
@@ -348,7 +360,31 @@ internal fun RecentStrip(
         val cells: LazyListScope.() -> Unit = {
             items(apps, key = { it.key }) { hit ->
                 val (icon, mask) = hit.icons(runtime)
-                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, spoken = hit.spoken, paused = hit.paused(runtime))
+                // An Android app can be dragged out to split the screen with another, or to a pop-up; see SplitDrag.
+                val context = LocalContext.current
+                val app = (hit as? AppHit.Android)?.app
+                val dragOut =
+                    if (app != null && SplitDrag.canDrag(app)) {
+                        // The other half: the latest other app in the strip.
+                        val partner = apps.firstNotNullOfOrNull { (it as? AppHit.Android)?.app?.takeIf { o -> o.key != app.key && SplitDrag.canDrag(o) } }
+                        StripDrag(
+                            start = { at ->
+                                runtime.splitDrag.begin(
+                                    label = app.label,
+                                    icon = icon,
+                                    at = at,
+                                    canSplit = partner != null && SplitDrag.canSplit(context),
+                                    canPopUp = SplitDrag.canPopUp(context),
+                                    oneUi = SplitDrag.isOneUi(),
+                                ) { zone -> planOpen(zone, app, partner)?.let { SplitOpen.run(context, it) { handlers.launch(hit) } } }
+                            },
+                            move = { runtime.splitDrag.move(it) },
+                            end = { runtime.splitDrag.end(it) },
+                        )
+                    } else {
+                        null
+                    }
+                StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, spoken = hit.spoken, paused = hit.paused(runtime), dragOut = dragOut)
             }
         }
         if (vertical) {
@@ -358,6 +394,13 @@ internal fun RecentStrip(
         }
     }
 }
+
+/** The launcher's own drag of a strip app, in window pixels; [end] gets null when it's cancelled. */
+class StripDrag(
+    val start: (Offset) -> Unit,
+    val move: (Offset) -> Unit,
+    val end: (Offset?) -> Unit,
+)
 
 /** An app in the recent strip, drawn like a pinned app's tile: the icon alone, or on a badge when bare. */
 @Composable
@@ -374,8 +417,14 @@ private fun StripCell(
     spoken: String = label,
     /** As in [AppHit.paused]: drawn dimmed, like stock launchers. */
     paused: Boolean = false,
+    /** Starts dragging the app out, once a long-press is followed by a move; null where it can't be dragged. */
+    dragOut: StripDrag? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    // Read when the drag starts: a new lambda each recomposition mustn't restart the gesture under the finger.
+    val currentDragOut by rememberUpdatedState(dragOut)
+    // Where the cell is in the window, so the drag reports the finger in window pixels like the overlay draws in.
+    var coords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val haptics = LocalHapticFeedback.current
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
@@ -385,11 +434,74 @@ private fun StripCell(
             .size(48.dp)
             .alpha(if (paused) PausedAlpha else 1f)
             .clip(LauncherStyle.shape(12.dp))
+            .onGloballyPositioned { coords = it }
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     menuOpen = true
+                },
+            )
+            // After the long-press that opens the menu, moving on drags the app out: the menu closes and the launcher
+            // drags the app itself, as on stock launchers. Without the long-press a move is the strip scrolling.
+            .then(
+                if (dragOut == null) {
+                    Modifier
+                } else {
+                    // Keyed on nothing: this branch is there only while dragOut != null, and the callback itself is
+                    // read through currentDragOut.
+                    Modifier.pointerInput(Unit) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            val held =
+                                withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                    while (true) {
+                                        val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: return@withTimeoutOrNull
+                                        if (!c.pressed || (c.position - down.position).getDistance() > viewConfiguration.touchSlop) return@withTimeoutOrNull
+                                    }
+                                } == null
+                            if (!held) return@awaitEachGesture
+                            while (true) {
+                                val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                                if (!c.pressed) return@awaitEachGesture
+                                // Held: the strip doesn't scroll under the finger any more.
+                                c.consume()
+                                // Twice the slop: a finger settling after the long-press doesn't drag the app out yet.
+                                if ((c.position - down.position).getDistance() > viewConfiguration.touchSlop * 2) {
+                                    menuOpen = false
+                                    val drag = currentDragOut ?: return@awaitEachGesture
+                                    fun inWindow(p: Offset) = coords?.localToWindow(p) ?: p
+                                    drag.start(inWindow(c.position))
+                                    // From here the launcher drags the app itself, until the finger lifts.
+                                    var ended = false
+                                    try {
+                                        while (true) {
+                                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                                            val m = event.changes.firstOrNull { it.id == down.id }
+                                            if (m == null) {
+                                                ended = true
+                                                drag.end(null)
+                                                return@awaitEachGesture
+                                            }
+                                            m.consume()
+                                            if (!m.pressed) {
+                                                // A system cancel arrives as a synthetic event with no MotionEvent: it opens nothing.
+                                                val action = event.motionEvent?.actionMasked
+                                                val lifted = action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP
+                                                ended = true
+                                                drag.end(if (lifted) inWindow(m.position) else null)
+                                                return@awaitEachGesture
+                                            }
+                                            drag.move(inWindow(m.position))
+                                        }
+                                    } finally {
+                                        // The cell left composition or the strip went away mid-drag: don't leave the overlay up.
+                                        if (!ended) drag.end(null)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 },
             ),
         contentAlignment = Alignment.Center,
