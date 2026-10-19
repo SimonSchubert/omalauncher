@@ -302,8 +302,19 @@ class AndroidAppCatalog(
     ) {
         if (resume(user)) return
         // Uninstalled or disabled since the list was loaded.
-        runCatching { launcherApps.startMainActivity(component, user, null, null) }
-            .onFailure { Log.w(TAG, "cannot open $component in $user", it) }
+        runCatching {
+            if (user == Process.myUserHandle()) {
+                // As Launcher3 does for its own profile; only an intent can ask for no open-an-app animation.
+                context.startActivity(
+                    Intent(Intent.ACTION_MAIN)
+                        .addCategory(Intent.CATEGORY_LAUNCHER)
+                        .setComponent(component)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or Intent.FLAG_ACTIVITY_NO_ANIMATION),
+                )
+            } else {
+                launcherApps.startMainActivity(component, user, null, null)
+            }
+        }.onFailure { Log.w(TAG, "cannot open $component in $user", it) }
     }
 
     /** Opens [shortcut] through the app that made it; in a paused work profile, as [open] does for apps. */

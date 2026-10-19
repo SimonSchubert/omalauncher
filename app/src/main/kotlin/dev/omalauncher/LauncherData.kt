@@ -1,12 +1,9 @@
 package dev.omalauncher
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.system.Os
 import android.system.OsConstants
-import android.util.Log
-import dev.omalauncher.upgrade.Versioned
-import dev.omalauncher.upgrade.writeAtomically
-import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.nio.file.FileVisitResult
@@ -37,54 +34,12 @@ object LauncherData {
     /** style.toml and its defaults; see [dev.omalauncher.theme.StyleStore]. The guest sees ~/.config/omalauncher/style. */
     fun styleDir(context: Context) = File(context.filesDir, "style")
 
+    /** Settings that belong to no one store: setup, gestures, the GPU, the home role. Keys carry their owner's prefix. */
+    fun prefs(context: Context): SharedPreferences = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
+
     /** Manifest of the launcher-side [dev.omalauncher.upgrade.Provisioner]; the guest's is managed.json. */
     const val LAUNCHER_MANIFEST = "launcher-managed.json"
     const val GUEST_MANIFEST = "managed.json"
-
-    private const val OLD_OMARCHY = "arch/root/.local/share/omarchy"
-    private const val OLD_WIDGETS = "arch/root/.config/omalauncher/widgets"
-
-    /**
-     * Launchers before Linux was optional kept this data inside the rootfs.
-     * Moves it out once, and its records in the guest manifest along with it,
-     * so seeded widgets stay ours and keep getting updates. Idempotent.
-     */
-    fun migrate(context: Context) {
-        val files = context.filesDir
-        move(File(files, OLD_OMARCHY), omarchyDir(context))
-        if (move(File(files, OLD_WIDGETS), widgetsDir(context))) moveManifestEntries(files)
-    }
-
-    /** Renames [from] to [to] if [from] is a real directory and [to] doesn't exist yet. */
-    private fun move(
-        from: File,
-        to: File,
-    ): Boolean {
-        if (to.exists() || !from.isDirectory || Files.isSymbolicLink(from.toPath())) return false
-        val ok = from.renameTo(to)
-        Log.i(TAG, "moved $from -> $to: $ok")
-        return ok
-    }
-
-    private fun moveManifestEntries(files: File) {
-        val guest = File(files, GUEST_MANIFEST)
-        val launcher = File(files, LAUNCHER_MANIFEST)
-        runCatching {
-            val all = Versioned.read(guest.takeIf { it.exists() }?.readText(), MANIFEST_VERSION) as? JSONObject ?: return
-            val moved = JSONObject()
-            for (key in all.keys().asSequence().toList()) {
-                if (!key.startsWith("$OLD_WIDGETS/")) continue
-                moved.put("widgets/" + key.removePrefix("$OLD_WIDGETS/"), all.getString(key))
-                all.remove(key)
-            }
-            if (moved.length() == 0) return
-            writeAtomically(launcher, Versioned.write(MANIFEST_VERSION, moved).toByteArray())
-            writeAtomically(guest, Versioned.write(MANIFEST_VERSION, all).toByteArray())
-        }.onFailure { Log.w(TAG, "can't move the widget records", it) }
-    }
-
-    /** [dev.omalauncher.upgrade.ManagedFiles]' manifest version. */
-    private const val MANIFEST_VERSION = 1
 
     /**
      * Deletes [dir] and everything in it without following symlinks: the
@@ -137,6 +92,4 @@ object LauncherData {
             },
         )
     }
-
-    private const val TAG = "launcher-data"
 }

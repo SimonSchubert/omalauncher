@@ -21,6 +21,9 @@ sealed interface HomeItem {
 
     /** App shortcuts are fixed 1x1 icons; only widgets resize. */
     val resizable: Boolean get() = true
+
+    /** A page (`face "…" { }`): it has no cell, and fills a home page of its own; see [WidgetLayout.owner]. */
+    val isFace: Boolean get() = false
 }
 
 /** Equal while its spec is the same object, so pages that didn't change skip recomposition. */
@@ -31,11 +34,13 @@ data class WidgetItem(
     override val page get() = spec.page
     override val size get() = spec.size
     override val minSize get() = spec.minSize
+    override val resizable get() = !spec.isFace
+    override val isFace get() = spec.isFace
 }
 
 /**
- * An app pinned from the drawer: an Android activity, a Linux .desktop entry, or a shortcut an Android app made
- * (see [AndroidShortcut]). In [folder], it has no cell of its own.
+ * An app pinned from the drawer: an Android activity, a Linux .desktop entry, an owl app, or a shortcut an Android
+ * app made (see [AndroidShortcut]). In [folder], it has no cell of its own.
  */
 data class Shortcut(
     override val key: String,
@@ -46,6 +51,8 @@ data class Shortcut(
     val profile: Long? = null,
     val linux: LinuxApp? = null,
     val androidShortcut: ShortcutRef? = null,
+    /** An owl app's file name. */
+    val owl: String? = null,
     val folder: String? = null,
 ) : HomeItem {
     override val size get() = 1 to 1
@@ -58,6 +65,8 @@ data class Folder(
     override val key: String,
     override val page: Int,
     val apps: List<Shortcut>,
+    /** Shown under its tile and atop its panel; null for none, as folders start. */
+    val name: String? = null,
 ) : HomeItem {
     override val size get() = 1 to 1
     override val minSize get() = 1 to 1
@@ -68,6 +77,7 @@ data class Folder(
 private data class FolderEntry(
     val key: String,
     val page: Int,
+    val name: String? = null,
 )
 
 /**
@@ -85,12 +95,11 @@ class Shortcuts(
     private val folderEntries = mutableStateListOf<FolderEntry>()
 
     init {
-        // Version 0 (before versioning) is the same array, unwrapped.
-        (Versioned.read(prefs.getString(ITEMS, null), VERSION) { _, data -> data } as? JSONArray)?.let { array ->
+        (Versioned.read(prefs.getString(ITEMS, null), VERSION) as? JSONArray)?.let { array ->
             items += array.mapObjects(::parse)
         }
         (Versioned.read(prefs.getString(FOLDERS, null), VERSION) as? JSONArray)?.let { array ->
-            folderEntries += array.mapObjects { FolderEntry(it.getString("key"), it.optInt("page", 1)) }
+            folderEntries += array.mapObjects { FolderEntry(it.getString("key"), it.optInt("page", 1), it.optString("name").ifEmpty { null }) }
         }
         // An app whose folder is gone goes back on the grid.
         val known = folderEntries.map { it.key }.toSet()
@@ -100,7 +109,7 @@ class Shortcuts(
     /** Apps and folders on the grid; apps in a folder show inside it instead. */
     fun onGrid(): List<HomeItem> =
         items.filter { it.folder == null } +
-            folderEntries.map { f -> Folder(f.key, f.page, items.filter { it.folder == f.key }) }
+            folderEntries.map { f -> Folder(f.key, f.page, items.filter { it.folder == f.key }, f.name) }
 
     internal fun seedFrom(source: Shortcuts) {
         items.clear()
@@ -139,6 +148,17 @@ class Shortcuts(
         tidy()
         save()
         return folder
+    }
+
+    /** Names folder [key]; a blank [name] leaves it unnamed. */
+    fun rename(
+        key: String,
+        name: String,
+    ) {
+        val i = folderEntries.indexOfFirst { it.key == key }
+        if (i < 0) return
+        folderEntries[i] = folderEntries[i].copy(name = name.trim().ifEmpty { null })
+        save()
     }
 
     /**
@@ -208,6 +228,7 @@ class Shortcuts(
             profile = if (o.has("profile")) o.getLong("profile") else null,
             linux = linux,
             androidShortcut = o.optJSONObject("shortcut")?.let { ShortcutRef(it.getString("package"), it.getString("id")) },
+            owl = o.optString("owl").ifEmpty { null },
             folder = o.optString("folder").ifEmpty { null },
         )
     }
@@ -226,6 +247,21 @@ class Shortcuts(
         shortcut: AndroidShortcut,
         page: Int,
     ) = add(Shortcut(keyOf(shortcut), page, shortcut.label, profile = shortcut.profile, androidShortcut = shortcut.ref))
+
+    fun addOwl(
+        spec: WidgetSpec,
+        page: Int,
+    ) = add(Shortcut(keyOf(spec), page, spec.name, owl = spec.file.name))
+
+    /** Takes an owl app off the home screen, cell and all, once its file is deleted. */
+    fun removeOwl(spec: WidgetSpec) {
+        val key = keyOf(spec)
+        if (items.none { it.key == key }) return
+        layout.remove(key)
+        remove(key)
+    }
+
+    private fun keyOf(spec: WidgetSpec) = "owl:" + spec.file.name
 
     /** Takes [shortcut] off the home screen, cell and all, once it's removed from the phone. */
     fun removeAndroidShortcut(shortcut: AndroidShortcut) {
@@ -283,6 +319,7 @@ class Shortcuts(
                     .put("page", s.page)
                     .put("label", s.label)
                     .putOpt("folder", s.folder)
+                    .putOpt("owl", s.owl)
             s.component?.let { o.put("component", it.flattenToString()) }
             s.profile?.let { o.put("profile", it) }
             s.androidShortcut?.let { o.put("shortcut", JSONObject().put("package", it.packageName).put("id", it.id)) }
@@ -302,7 +339,7 @@ class Shortcuts(
             array.put(o)
         }
         val folders = JSONArray()
-        for (f in folderEntries) folders.put(JSONObject().put("key", f.key).put("page", f.page))
+        for (f in folderEntries) folders.put(JSONObject().put("key", f.key).put("page", f.page).putOpt("name", f.name))
         prefs
             .edit()
             .putString(ITEMS, Versioned.write(VERSION, array))

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.Runtime
 import dev.omalauncher.ui.FolderTile
+import dev.omalauncher.ui.GridPad
 import dev.omalauncher.ui.HomeGrid
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Mono
@@ -47,23 +48,46 @@ import dev.omalauncher.ui.rankMatches
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.WidgetItem
+import dev.omalauncher.widgets.isFacePage
 
 internal fun matchingApps(runtime: Runtime, query: String): List<AndroidApp> = if (query.isBlank()) runtime.androidApps.apps.toList() else
     rankMatches(runtime.androidApps.apps.toList(), query, { it.label }, alias = { if (it.profile != null) "${it.label} work" else null }).map { it.first }
+
+/** Tile pages can share a desktop row; a face always owns the whole window. */
+internal fun desktopSlots(pages: List<Int>, per: Int, full: (Int) -> Boolean): List<List<Int>> {
+    if (per == 1) return pages.map { listOf(it) }
+    return buildList {
+        val pending = ArrayList<Int>()
+        for (page in pages) {
+            if (full(page)) {
+                if (pending.isNotEmpty()) { add(pending.toList()); pending.clear() }
+                add(listOf(page))
+            } else {
+                pending += page
+                if (pending.size == per) { add(pending.toList()); pending.clear() }
+            }
+        }
+        if (pending.isNotEmpty()) add(pending.toList())
+    }
+}
 
 /** The phone's home is never bound here; only the session's layout, focus and widget screens change. */
 @Composable
 internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
     val widgets = session.widgets
     val pages = widgets.pages
-    val per = if (session.pagesSideBySide) pages.size.coerceAtLeast(1) else 1
-    val pager = rememberPagerState(pageCount = { (pages.size + per - 1) / per })
+    val per = if (session.pagesSideBySide) pages.count { it > 0 }.coerceAtLeast(1) else 1
+    fun full(page: Int) = isFacePage(page) || widgets.layout.owner(widgets.itemsOn(page)) != null
+    val slots = desktopSlots(pages, per, ::full)
+    val pager = rememberPagerState(pageCount = { slots.size })
     val arrange = session.arrange
     var selected by remember { mutableStateOf<String?>(null) }
     Box(Modifier.fillMaxSize().background(Palette.background)) {
         runtime.themes.wallpaper?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = androidx.compose.ui.layout.ContentScale.Crop) }
         Column(Modifier.fillMaxSize()) {
-            HomeGrid(pager, pages, widgets::itemsOn, widgets.layout, arrange, selected, { selected = it },
+            HomeGrid(pager = pager, keepClear = GridPad(0, 0, 0, 0), slots = slots, full = ::full,
+                itemsOn = widgets::itemsOn, layout = widgets.layout, arrange = arrange,
+                selected = selected, onSelect = { selected = it },
                 render = { item, tile, focused ->
                     when (item) {
                         is WidgetItem -> if (item.spec.program?.terminal == true) {
@@ -84,12 +108,13 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                     }
                 },
                 actions = { item -> BasicText("remove from desktop", Modifier.clickable { widgets.remove(item); selected = null }.padding(8.dp), style = Mono.copy(color = Palette.red)) },
-                onLongPressEmpty = { session.picker = true }, onNoRoom = widgets::noRoom, onMove = widgets::move,
-                onGroup = widgets::group, onReorder = widgets::reorder, per = per, modifier = Modifier.weight(1f).fillMaxWidth())
+                onLongPressEmpty = { session.picker = true }, feed = {}, onNoRoom = widgets::noRoom, onMove = widgets::move,
+                onGroup = widgets::group, onReorder = widgets::reorder, onRenameFolder = widgets::renameFolder,
+                per = per, modifier = Modifier.weight(1f).fillMaxWidth())
             Row(Modifier.fillMaxWidth().background(Palette.background).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 BasicText("apps", Modifier.clickable { session.uiAction("drawer") }, style = Mono)
                 BasicText("widgets", Modifier.clickable { session.uiAction("widgets") }, style = Mono)
-                BasicText(if (session.pagesSideBySide) "${pages.size} home pages" else "page ${pager.currentPage + 1}/${pages.size}", style = Mono.copy(color = Palette.muted))
+                BasicText(if (session.pagesSideBySide) "${pages.size} home pages" else "page ${pager.currentPage + 1}/${slots.size}", style = Mono.copy(color = Palette.muted))
             }
             session.message?.let { text -> BasicText(text, Modifier.fillMaxWidth().background(Palette.background).clickable { session.message = null }.padding(8.dp), style = Mono.copy(color = Palette.muted)) }
         }
@@ -108,7 +133,7 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                                 runtime.androidApps.icons[app.key]?.let { Image(it, app.spoken, Modifier.size(40.dp)) }
                                 BasicText(app.spoken, style = Mono)
                             }
-                            BasicText("[pin]", Modifier.clickable { widgets.pin(app, pages.getOrElse(pager.currentPage) { 1 }); session.dismiss() }.padding(8.dp), style = Mono.copy(color = Palette.accent))
+                            BasicText("[pin]", Modifier.clickable { widgets.pin(app, slots.getOrNull(pager.currentPage)?.firstOrNull { it > 0 } ?: 1); session.dismiss() }.padding(8.dp), style = Mono.copy(color = Palette.accent))
                         }
                     }
                 }

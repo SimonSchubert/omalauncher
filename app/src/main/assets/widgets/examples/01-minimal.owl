@@ -1,0 +1,115 @@
+face "minimal" {
+  // A quiet page: a thin clock, the day as a hairline, one line about the phone and your apps as words.
+
+  meta { owl: 10; description: "A quiet page: a thin clock, the day as a hairline, one line about the phone and your most used apps as plain words"; version: "1.0"; license: "MIT"; category: "productivity" }
+
+  statusBar: false
+
+  source now = clock every 1m
+  source bat = android.battery
+  source alarm = android.alarm
+  source n = android.notifications
+  source apps = android.apps
+
+  let inter = "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz,wght%5D.ttf"
+  let minute = num(fmtTime(now, "H")) * 60 + num(fmtTime(now, "m"))
+  // The phone and messages apps: the usual ones, whichever is installed. Without one, a tel: or sms: link
+  // opens whatever handles it. Their notifications count as missed calls and unread messages.
+  let phone = (apps ?? []).find(a => a.profile == null && contains(["com.google.android.dialer", "com.samsung.android.dialer", "com.android.dialer", "org.fossify.phone"], a.package))
+  let msgs = (apps ?? []).find(a => a.profile == null && contains(["com.google.android.apps.messaging", "com.samsung.android.messaging", "com.android.mms", "com.android.messaging", "org.fossify.messages"], a.package))
+  let missed = n.available && phone != null ? len(n.items.filter(i => i.package == phone.package)) : 0
+  let unread = n.available && msgs != null ? len(n.items.filter(i => i.package == msgs.package)) : 0
+  // A work profile or a clone has the same name: the list shows each name once. Under phone and messages,
+  // portrait has room for six more names, landscape for three.
+  let wide = (tileWidth ?? 0) > (tileHeight ?? 1)
+  let top = values(groupBy((apps ?? []).filter(a => (!a.system || a.score > 0) && a.package != phone.package && a.package != msgs.package).sortBy(a => -a.score), a => a.name)).map(g => g[0]).take(wide ? 3 : 6)
+  // Only what there is to say: no alarm, no notifications, no words for them.
+  let status = [
+    bat == null ? null : bat.charging ? "charging ${bat.level}%" : "${bat.level}%",
+    alarm.set ? "alarm ${fmtTime(alarm.time, "HH:mm")}" : null,
+    n.available && n.count > 0 ? (n.count == 1 ? "1 notification" : "${n.count} notifications") : null
+  ].filter(s => s != null)
+
+  background: linear(0, 0, 0, 1, [alpha(background, 0.8), alpha(background, 0.35), alpha(background, 0.45), alpha(background, 0.85)])
+  padding: 0
+
+  // The time and the day.
+  component Day() {
+    Column {
+      gap: 0
+      fill: width
+      Text { spans: [fmtTime(now, "HH"), {text: ":", color: muted}, fmtTime(now, "mm")]; font: inter; fontSize: 108; fontWeight: 100; letterSpacing: -5; maxLines: 1 }
+      Text { text: lower(fmtTime(now, "EEEE, d MMMM")); font: inter; fontSize: 13; fontWeight: 400; letterSpacing: 3; color: muted; maxLines: 1; padding: [4, 0] }
+
+      Spacer { height: 32 }
+      // The day so far, midnight to midnight.
+      Canvas {
+        height: 9
+        fill: width
+        let x = 4 + minute / 1440 * (width - 8)
+        line(4, height / 2, width - 4, height / 2, stroke: alpha(muted, 0.3), width: 1)
+        line(4, height / 2, x, height / 2, stroke: alpha(foreground, 0.8), width: 1)
+        circle(x, height / 2, 3, fill: accent)
+      }
+      Spacer { height: 14 }
+      Text { text: join(status, "   ·   "); font: inter; fontSize: 12; fontWeight: 300; letterSpacing: 1; color: muted; maxLines: 1; padding: [4, 0] }
+    }
+  }
+
+  // The apps as words, phone and messages always first, with their missed calls and unread messages.
+  component Apps() {
+    Column {
+      gap: 0
+      fill: width
+      Text {
+        spans: ["phone", missed > 0 ? {text: "  ${missed}", color: accent, fontSize: 15, fontWeight: 400} : ""]
+        font: inter
+        fontSize: 26
+        fontWeight: 300
+        letterSpacing: -0.5
+        maxLines: 1
+        fill: width
+        padding: [4, 9]
+        onTap: { if phone != null { androidApp(phone.key) } else { url("tel:") } }
+      }
+      Text {
+        spans: ["messages", unread > 0 ? {text: "  ${unread}", color: accent, fontSize: 15, fontWeight: 400} : ""]
+        font: inter
+        fontSize: 26
+        fontWeight: 300
+        letterSpacing: -0.5
+        maxLines: 1
+        fill: width
+        padding: [4, 9]
+        onTap: { if msgs != null { androidApp(msgs.key) } else { url("sms:") } }
+      }
+      for a in top key a.key {
+        Text { text: lower(a.name); font: inter; fontSize: 26; fontWeight: 300; letterSpacing: -0.5; maxLines: 1; fill: width; padding: [4, 9]; onTap: androidApp(a.key) }
+      }
+      Spacer { height: 18 }
+      Text { text: "search"; font: inter; fontSize: 13; fontWeight: 400; letterSpacing: 3; color: muted; fill: width; padding: [4, 10]; onTap: launcher("drawer") }
+    }
+  }
+
+  // Portrait stacks them, the apps at the bottom where the thumb reaches; landscape sets them side by side.
+  if wide {
+    Row {
+      fill: true
+      gap: 56
+      padding: [40, 20]
+      Column { weight: 1; gap: 0; Spacer { weight: 1 }  Day { }  Spacer { weight: 1 } }
+      Column { weight: 1; gap: 0; Spacer { weight: 1 }  Apps { }  Spacer { height: screenInset } }
+    }
+  } else {
+    Column {
+      fill: true
+      gap: 0
+      padding: [32, 24]
+      Spacer { height: 40 }
+      Day { }
+      Spacer { weight: 1 }
+      Apps { }
+      Spacer { height: screenInset }
+    }
+  }
+}

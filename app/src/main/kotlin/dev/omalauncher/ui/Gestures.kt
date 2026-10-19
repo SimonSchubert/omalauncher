@@ -1,19 +1,13 @@
 package dev.omalauncher.ui
 
 import android.content.Context
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -23,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -31,9 +24,8 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
+import dev.omalauncher.LauncherData
 import dev.omalauncher.Runtime
 
 /** What a gesture on home does. */
@@ -55,7 +47,7 @@ enum class GestureAction(
 class Gestures(
     context: Context,
 ) {
-    private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
+    private val prefs = LauncherData.prefs(context)
 
     private var up by mutableStateOf(GestureAction.of(prefs.getString(SWIPE_UP, null)) ?: GestureAction.Drawer)
 
@@ -134,12 +126,7 @@ private fun GestureRow(
 ) {
     var open by remember { mutableStateOf(false) }
     Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(LauncherStyle.shape(12.dp))
-            .background(Palette.surface)
-            .clickable { open = !open }
-            .padding(14.dp),
+        Modifier.card(onClick = { open = !open }),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         BasicText(label, Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item))
@@ -149,34 +136,7 @@ private fun GestureRow(
                 Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 4.dp))
             }
             if (open) {
-                Popup(
-                    popupPositionProvider = BelowAnchorEnd,
-                    onDismissRequest = { open = false },
-                    properties = PopupProperties(focusable = true),
-                ) {
-                    Column(
-                        Modifier
-                            .width(IntrinsicSize.Max)
-                            .widthIn(min = 180.dp)
-                            .frame(2.dp, Palette.accent, Palette.background)
-                            .padding(4.dp),
-                    ) {
-                        for (option in GestureAction.entries) {
-                            val current = option == action
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        onPick(option)
-                                        open = false
-                                    }.padding(horizontal = 10.dp, vertical = 10.dp),
-                            ) {
-                                BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
-                                BasicText(option.label, style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
-                            }
-                        }
-                    }
-                }
+                ChoicePopup(GestureAction.entries, action, BelowAnchorEnd, onDismiss = { open = false }, onPick = onPick, label = { it.label })
             }
         }
     }

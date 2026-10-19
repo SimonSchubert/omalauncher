@@ -1,0 +1,383 @@
+face "pixel" {
+  // An 8-bit landscape that follows the day, with your phone as a game's HUD below it.
+
+  meta { owl: 10; description: "An 8-bit landscape that follows the day and the weather, with the battery as hearts, notifications as coins and your apps as an inventory"; version: "1.1"; license: "MIT"; category: "fun" }
+
+  statusBar: false
+
+  source now = clock every 1s
+  source bat = android.battery
+  source n = android.notifications
+  source apps = android.apps
+  source wx = http("https://wttr.in/?format=j1") every 30m timeout 10s json
+
+  let press = "https://raw.githubusercontent.com/google/fonts/main/ofl/pressstart2p/PressStart2P-Regular.ttf"
+  let h = num(fmtTime(now, "H")) + num(fmtTime(now, "m")) / 60
+  // 1 by day, 0 by night, with an hour and a half of dawn and dusk between; glow is the sunrise and sunset.
+  let day = clamp(min(h - 5, 20 - h) / 1.5, 0, 1)
+  let glow = clamp(1 - abs(h - 6) / 1.2, 0, 1) + clamp(1 - abs(h - 19.5) / 1.2, 0, 1)
+  let code = wx.current_condition[0].weatherCode ?? "113"
+  let rain = contains(["176", "263", "266", "281", "284", "293", "296", "299", "302", "305", "308", "311", "314", "353", "356", "359", "386", "389"], code)
+  let snow = contains(["179", "182", "185", "227", "230", "317", "320", "323", "326", "329", "332", "335", "338", "350", "362", "365", "368", "371", "374", "377", "392", "395"], code)
+  let cloudy = code != "113"
+  // The phone and messages apps: the usual ones, whichever is installed. Without one, a tel: or sms: link
+  // opens whatever handles it. Their notifications count as missed calls and unread messages.
+  let phone = (apps ?? []).find(a => a.profile == null && contains(["com.google.android.dialer", "com.samsung.android.dialer", "com.android.dialer", "org.fossify.phone"], a.package))
+  let msgs = (apps ?? []).find(a => a.profile == null && contains(["com.google.android.apps.messaging", "com.samsung.android.messaging", "com.android.mms", "com.android.messaging", "org.fossify.messages"], a.package))
+  let missed = n.available && phone != null ? len(n.items.filter(i => i.package == phone.package)) : 0
+  let unread = n.available && msgs != null ? len(n.items.filter(i => i.package == msgs.package)) : 0
+  // In landscape and unfolded the scene runs across the whole screen, and the HUD floats over its right half as a
+  // game's menu window would; a phone on its side has room for one row of apps there.
+  let wide = (tileWidth ?? 0) > (tileHeight ?? 1)
+  let top = (apps ?? []).filter(a => (!a.system || a.score > 0) && a.package != phone.package && a.package != msgs.package).sortBy(a => -a.score).take(wide && (tileHeight ?? 900) < 600 ? 4 : 8)
+  let coins = n.available ? n.count : 0
+  let low = bat != null && bat.level < 20 && !bat.charging
+
+  // The scene, in art pixels of 4 dp.
+  let px = 4
+  let sceneW = tileWidth ?? 412
+  let W = floor(sceneW / px) + 1
+  let H = wide ? floor((tileHeight ?? 412) / px) + 1 : floor((tileHeight ?? 900) * 0.6 / px)
+  let horizon = floor(H * 0.64)
+  let sky = range(7).map(i => mix(mix(mix(color0, blue, 0.04 + i * 0.05), mix(mix(blue, cyan, i / 8), foreground, 0.08 + i * 0.05), day), mix(magenta, orange, i / 6), min(glow, 1) * (0.1 + i * 0.12)))
+  let band = ceil(horizon / 7)
+  let far = range(W).map(x => floor(horizon - 3 - (sin(x * 0.08) * 0.5 + 0.5) * H * 0.2 - (sin(x * 0.23 + 1.3) * 0.5 + 0.5) * H * 0.07))
+  let near = range(W).map(x => floor(H * 0.8 - (sin(x * 0.045 + 2) * 0.5 + 0.5) * H * 0.1 - (sin(x * 0.15) * 0.5 + 0.5) * 3))
+  let farPts = flatten([flatten(far.map((y, x) => [[x * px, y * px], [(x + 1) * px, y * px]])), [[W * px, H * px], [0, H * px]]])
+  let nearPts = flatten([flatten(near.map((y, x) => [[x * px, y * px], [(x + 1) * px, y * px]])), [[W * px, H * px], [0, H * px]]])
+  let farColor = mix(mix(mix(color0, blue, 0.3), sky[6], 0.45), color0, (1 - day) * 0.4)
+  let hill = mix(green, color0, 0.3 + (1 - day) * 0.45)
+  let ground = mix(green, color0, 0.55 + (1 - day) * 0.3)
+  // Wide, the house and most trees stand on the left half, clear of the HUD's window.
+  let hx = floor(W * (wide ? 0.27 : 0.66))
+  let hy = min(near[hx], near[hx + 11]) - 10
+  let trees = (wide ? [0.05, 0.13, 0.4, 0.47, 0.62, 0.9] : [0.14, 0.3, 0.88]).map(t => floor(W * t))
+  let sunT = (h - 6) / 14
+  let moonT = ((h + 4) % 24) / 10
+
+  let heart = [".ll.rr.", "lwlrrrr", "lllrrrr", ".llrrr.", "..lrr..", "...r..."]
+  let cloud = [".....wwww.......", "...wwwwwwwwwww..", "..wwwwwwwwwwwww.", ".wwwwwwwwwwwwwww", "ssssssssssssssss", ".ssssssssssssss."]
+  let cloudW = mix(mix(foreground, color0, rain ? 0.5 : 0.25), color0, (1 - day) * 0.55)
+
+  // Shows only where the nodes keep clear: under the status bar in portrait, which is the top of the sky, and beside
+  // the camera cutout in landscape, where it runs from the sky down to the ground as the scene does.
+  background: wide ? linear(0, 0, 0, 1, [sky[0], sky[3], sky[6], farColor, hill, ground]) : sky[0]
+  padding: 0
+
+  component Label(label, size = 8, tint = foreground) {
+    Text { text: label; font: press; fontSize: size; color: tint; maxLines: 1 }
+  }
+
+  // The landscape: in portrait whatever height the HUD leaves, wide the whole screen. The art keeps its size and
+  // stands on the bottom edge, so a shorter scene shows less sky rather than pushing the HUD under the navigation bar.
+  component Scene() {
+    Box {
+      width: sceneW
+      fill: height
+      clip: true
+      align: bottom
+
+      // What moves only with the hour: the sky, the sun or moon, the hills and the houses.
+      Canvas {
+        width: sceneW
+        height: H * px
+        for b in range(7) {
+          rect(0, b * band * px, W * px, band * px + px, fill: sky[b])
+          // A checkered row where two bands meet, as old games shaded a sky.
+          if b > 0 {
+            sprite([join(range(W).map(i => i % 2 == 0 ? "a" : "."), ""), join(range(W).map(i => i % 4 == 1 ? "a" : "."), "")], 0, b * band * px - 2 * px, px, palette: {a: sky[b]})
+          }
+        }
+        if sunT >= 0 && sunT <= 1 {
+          let sx = floor(sunT * (W - 10)) * px
+          let sy = floor(horizon - 2 - sin(sunT * 3.14159) * (horizon - 8)) * px
+          layer(0.25) { sprite(["...hhhh...", ".hhhhhhhh.", ".hhhhhhhh.", "hhhhhhhhhh", "hhhhhhhhhh", "hhhhhhhhhh", "hhhhhhhhhh", ".hhhhhhhh.", ".hhhhhhhh.", "...hhhh..."], sx - px, sy - px, px, palette: {h: yellow}) }
+          sprite(["..yyyy..", ".yYYyyy.", "yYYyyyyy", "yYyyyyyy", "yyyyyyyo", "yyyyyyoo", ".yyyyoo.", "..oooo.."], sx, sy, px, palette: {y: yellow, Y: mix(yellow, foreground, 0.6), o: orange})
+        }
+        if moonT >= 0 && moonT <= 1 {
+          let mx = floor(moonT * (W - 8)) * px
+          let my = floor(horizon - 2 - sin(moonT * 3.14159) * (horizon - 8)) * px
+          sprite(["..mmm..", ".mmmMm.", "mmMmmmm", "mmmmmMm", "mMmmmmm", ".mmmMm.", "..mmm.."], mx, my, px, palette: {m: mix(foreground, yellow, 0.15), M: mix(foreground, color0, 0.35)})
+        }
+        path(farPts, closed: true, fill: farColor)
+        path(nearPts, closed: true, fill: hill)
+        rect(0, floor(H * 0.9) * px, W * px, H * px, fill: ground)
+        sprite([join(range(W).map(i => hash(i, 9) > 0.6 ? "g" : "."), "")], 0, floor(H * 0.9) * px - px, px, palette: {g: hill})
+        for t in trees {
+          sprite(["..gg..", ".gggg.", "gGgggg", ".gggg.", "gGgggg", "gggggg", "..tt..", "..tt.."], t * px, (near[t] - 7) * px, px, palette: {g: mix(green, color0, 0.15 + (1 - day) * 0.45), G: mix(green, foreground, 0.25 * day), t: mix(orange, color0, 0.55)})
+        }
+        rect(hx * px, (hy + 10) * px, 12 * px, (max(near[hx], near[hx + 11]) - hy - 9) * px, fill: mix(orange, color0, 0.6))
+        sprite([
+          "........cc..",
+          ".....rr.cc..",
+          "....rrrrcc..",
+          "...rrrrrrr..",
+          "..rrrrrrrrr.",
+          ".rrrrrrrrrrr",
+          ".wwwwwwwwww.",
+          ".wkkwwwwddw.",
+          ".wkkwwwwddw.",
+          ".wwwwwwwddw."
+        ], hx * px, hy * px, px, palette: {
+          r: mix(red, color0, 0.2 + (1 - day) * 0.35), c: mix(muted, color0, 0.3),
+          w: mix(mix(foreground, orange, 0.2), color0, 0.15 + (1 - day) * 0.5),
+          k: day < 0.5 ? yellow : mix(blue, color0, 0.4), d: mix(orange, color0, 0.5)
+        })
+      }
+
+      // What moves all the time: stars, clouds, birds, smoke, fireflies, rain and snow.
+      Canvas {
+        width: sceneW
+        height: H * px
+        if day < 1 {
+          for i in range(36) {
+            let a = (0.35 + 0.65 * abs(sin(time * (0.4 + hash(i, 3) * 1.6) + i))) * (1 - day)
+            rect(floor(hash(i, 1) * W) * px, floor(hash(i, 2) * horizon * 0.55) * px, px, px, fill: alpha(foreground, a))
+          }
+        }
+        for i in range(cloudy ? 5 : 3) {
+          let span = W * px + 18 * px
+          let cx = floor(((time * (3 + hash(i, 5) * 4) + hash(i, 6) * span) % span - 16 * px) / px) * px
+          sprite(cloud, cx, floor(4 + hash(i, 7) * horizon * 0.4) * px, px, palette: {w: cloudW, s: mix(cloudW, sky[3], 0.4)})
+        }
+        if day > 0.5 && !rain && !snow {
+          for i in range(2) {
+            let bx = floor(((time * 9 + i * 160) % (W * px + 40) - 20) / px) * px
+            let by = floor(horizon * 0.3 + i * 5 + sin(time * 1.5 + i) * 2) * px
+            sprite(floor(time * 3 + i) % 2 == 0 ? ["b...b", ".b.b.", "..b.."] : [".....", "bb.bb", "..b.."], bx, by, px, palette: {b: mix(color0, blue, 0.2)})
+          }
+        }
+        // Smoke from the chimney, puffs rising and fading.
+        for i in range(4) {
+          let p = (time * 0.35 + i / 4) % 1
+          rect(floor(hx + 8.5 + sin(p * 6.28 + i) * 1.2 + p * 3) * px, floor(hy - p * 9) * px, px, px, fill: alpha(mix(muted, foreground, 0.4), (1 - p) * 0.7))
+        }
+        if day < 0.5 {
+          for i in range(7) {
+            let a = max(0, sin(time * (1 + hash(i, 8)) + i * 0.9))
+            rect(floor(hash(i, 4) * W + sin(time * 0.35 + i * 1.2) * 4) * px, floor(H * 0.86 + sin(time * 0.6 + i * 1.6) * 2) * px, px, px, fill: alpha(yellow, a))
+          }
+        }
+        if rain {
+          for i in range(60) {
+            let y = (hash(i, 11) * H + time * (22 + hash(i, 12) * 10)) % H
+            rect(floor(hash(i, 10) * W) * px, floor(y) * px, px / 2, 2 * px, fill: alpha(mix(cyan, foreground, 0.3), 0.6))
+          }
+        }
+        if snow {
+          for i in range(50) {
+            let y = (hash(i, 11) * H + time * (3 + hash(i, 12) * 3)) % H
+            rect(floor(hash(i, 10) * W + sin(time * 0.7 + i) * 1.5) * px, floor(y) * px, px, px, fill: alpha(foreground, 0.85))
+          }
+        }
+      }
+
+      // The time, with a hard shadow as on a title screen; wide, over the left half, beside the HUD.
+      Row {
+        fill: true
+        gap: 0
+      Column {
+        weight: 1
+        fill: height
+        gap: 10
+        align: center
+        padding: [0, 48]
+        Box {
+          fill: width
+          align: center
+          Text { text: fmtTime(now, "HH:mm"); font: press; fontSize: 44; color: alpha(color0, 0.7); offset: [4, 4]; align: center }
+          Text { text: fmtTime(now, "HH:mm"); font: press; fontSize: 44; color: mix(foreground, yellow, 0.15); align: center }
+        }
+        Box {
+          fill: width
+          align: center
+          Text { text: upper(fmtTime(now, "EEE d MMM")); font: press; fontSize: 10; color: alpha(color0, 0.7); offset: [2, 2]; align: center }
+          Text { text: upper(fmtTime(now, "EEE d MMM")); font: press; fontSize: 10; color: foreground; align: center }
+        }
+      }
+        if wide {
+          Spacer { weight: 1 }
+        }
+      }
+    }
+  }
+
+  // Below ground, or wide a framed window over the scene: the HUD and the inventory.
+  component Panel() {
+    Column {
+      fill: width
+      gap: wide ? 10 : 14
+      padding: [16, 16]
+      background: wide ? alpha(mix(ground, color0, 0.55), 0.9) : mix(ground, color0, 0.55)
+      border: wide ? 4 : 0
+      borderColor: foreground
+      radius: 0
+
+      Row {
+        gap: 10
+        align: center
+        // The battery as five hearts, half a heart for each 10%; they blink when it's low.
+        // The blink is in the colour, not the Canvas's opacity: with opacity the hearts weren't drawn on a Pixel.
+        Canvas {
+          width: 5 * 27
+          height: 18
+          let full = low && now % 2 == 0 ? alpha(red, 0.35) : red
+          let shine = low && now % 2 == 0 ? alpha(red, 0.35) : mix(red, foreground, 0.6)
+          let empty = mix(color0, muted, 0.35)
+          for k in range(5) {
+            let v = clamp((bat.level ?? 0) / 20 - k, 0, 1)
+            sprite(heart, k * 27, 0, 3, palette: {l: v >= 0.25 ? full : empty, r: v >= 0.75 ? full : empty, w: v >= 0.25 ? shine : empty})
+          }
+        }
+        if bat.charging {
+          Label { label: "+"; size: 10; tint: green }
+        }
+        Spacer { weight: 1 }
+        // A coin for each notification, spinning.
+        Canvas {
+          width: 18
+          height: 21
+          let f = floor(time * 6) % 4
+          sprite(f == 0 ? [".cccc.", "cCcccc", "cCccdc", "cCccdc", "cCccdc", "cccddc", ".cccc."] : f == 2 ? ["..cc..", "..cc..", "..Cc..", "..Cc..", "..Cc..", "..cc..", "..cc.."] : ["..ccc.", ".cCcdc", ".cCcdc", ".cCcdc", ".cCcdc", ".ccddc", "..ccc."], 0, 0, 3, palette: {c: yellow, C: mix(yellow, foreground, 0.6), d: orange})
+        }
+        Label { label: "x${pad(coins, 2, "0")}"; size: 10; tint: yellow }
+      }
+
+      // The day as experience points: the bar fills to midnight, and the level is the day of the year.
+      Row {
+        gap: 12
+        align: center
+        Label { label: "LV${fmtTime(now, "D")}"; size: 9; tint: cyan }
+        Canvas {
+          weight: 1
+          height: 12
+          let segs = 24
+          let w = (width - (segs - 1) * 2) / segs
+          for i in range(segs) {
+            rect(i * (w + 2), 0, w, height, fill: i < floor(h) ? mix(cyan, foreground, 0.2) : i < h ? alpha(cyan, 0.5) : mix(color0, muted, 0.3))
+          }
+        }
+      }
+
+      // The inventory, a dialog box of the most used apps.
+      Column {
+        fill: width
+        padding: 12
+        background: mix(background, color0, 0.4)
+        border: 4
+        borderColor: foreground
+        radius: 0
+        Grid {
+          columns: 4
+          gap: 12
+          for a in top key a.key {
+            Column {
+              gap: 6
+              align: center
+              onTap: androidApp(a.key)
+              Box {
+                size: 56
+                align: center
+                background: mix(surface, color0, 0.3)
+                border: 3
+                borderColor: mix(foreground, background, 0.55)
+                radius: 0
+                Image { src: a.icon; size: 36 }
+              }
+              Text { text: upper(a.name); font: press; fontSize: 6; maxLines: 1; align: center }
+            }
+          }
+        }
+      }
+
+      // Calls and messages on either side of the menu, with a badge for what's missed.
+      Row {
+        gap: 12
+        align: center
+        Box {
+          size: 60
+          align: topEnd
+          onTap: { if phone != null { androidApp(phone.key) } else { url("tel:") } }
+          Box {
+            size: 56
+            align: center
+            offset: [-4, 4]
+            background: mix(surface, color0, 0.3)
+            border: 3
+            borderColor: mix(foreground, background, 0.55)
+            radius: 0
+            Canvas {
+              width: 30
+              height: 27
+              sprite(["..hhhhhh..", ".hhhhhhhh.", "hhh....hhh", "hh.bbbb.hh", "..bbbbbb..", ".bbbddbbb.", ".bbdbbdbb.", ".bbbddbbb.", "bbbbbbbbbb"], 0, 0, 3, palette: {h: red, b: mix(red, color0, 0.3), d: mix(foreground, red, 0.3)})
+            }
+          }
+          if missed > 0 {
+            Text { text: "${missed}"; font: press; fontSize: 7; color: foreground; background: red; width: 8 + len("${missed}") * 7; padding: [0, 4]; align: center }
+          }
+        }
+        Row {
+          weight: 1
+          gap: 10
+          align: center
+          justify: center
+          padding: [4, 8]
+          onTap: launcher("drawer")
+          Canvas {
+            width: 12
+            height: 15
+            opacity: now % 2 == 0 ? 1 : 0.2
+            sprite(["x...", "xx..", "xxx.", "xxxx", "xxx.", "xx..", "x..."], 0, 0, 2, palette: {x: yellow})
+          }
+          Label { label: "SEARCH"; size: 11 }
+        }
+        Box {
+          size: 60
+          align: topEnd
+          onTap: { if msgs != null { androidApp(msgs.key) } else { url("sms:") } }
+          Box {
+            size: 56
+            align: center
+            offset: [-4, 4]
+            background: mix(surface, color0, 0.3)
+            border: 3
+            borderColor: mix(foreground, background, 0.55)
+            radius: 0
+            Canvas {
+              width: 33
+              height: 24
+              sprite(["eeeeeeeeeee", "deeeeeeeeed", "edeeeeeeede", "eedeeeeedee", "eeeddeddeee", "eeeeedeeeee", "eeeeeeeeeee", "eeeeeeeeeee"], 0, 0, 3, palette: {e: mix(foreground, yellow, 0.1), d: mix(muted, color0, 0.2)})
+            }
+          }
+          if unread > 0 {
+            Text { text: "${unread}"; font: press; fontSize: 7; color: foreground; background: red; width: 8 + len("${unread}") * 7; padding: [0, 4]; align: center }
+          }
+        }
+      }
+      if !wide {
+        Spacer { height: screenInset }
+      }
+    }
+  }
+
+  if wide {
+    Box {
+      fill: true
+      Scene { }
+      Row {
+        fill: true
+        gap: 0
+        Spacer { weight: 1 }
+        Column {
+          weight: 1
+          fill: height
+          justify: center
+          padding: [32, 24, 32, 24 + screenInset]
+          Panel { }
+        }
+      }
+    }
+  } else {
+    Column { fill: true; gap: 0; Scene { weight: 1 }  Panel { } }
+  }
+}

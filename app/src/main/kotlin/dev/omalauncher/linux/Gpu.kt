@@ -6,29 +6,42 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import dev.omalauncher.LauncherData
+import kotlinx.coroutines.sync.Mutex
 import java.io.File
+import java.io.FileNotFoundException
 
 /**
- * Opt-in GPU acceleration for Linux apps. On Mali GPUs (v10+: Pixel 7 and
- * newer, recent MediaTek) PanVK-kbase, a Mesa Vulkan driver that talks to
- * Android's own /dev/mali0, gives the guest Vulkan; Arch's stock Mesa runs
- * OpenGL on top of it with zink. Frames still reach us as wl_shm buffers
- * (MESA_VK_WSI_DEBUG=sw), so the compositor doesn't change.
+ * Opt-in GPU acceleration for Linux apps. The device node picks the driver:
+ * PanVK-kbase on /dev/mali0 (Mali v10+: Pixel 7 and newer, recent MediaTek),
+ * or Turnip on /dev/kgsl-3d0 when that node is an Adreno 6xx or newer.
+ * OpenGL is zink on top of that Vulkan driver, through a patched libEGL that
+ * keeps zink when the compositor only offers wl_shm. Frames still reach
+ * us as wl_shm buffers (MESA_VK_WSI_DEBUG=sw), so the compositor doesn't change.
  *
- * The driver is a prerelease and talks to a kernel interface that Android
- * updates can change, so it's only used after a check passes, and checked
+ * Each driver is a prerelease and talks to a kernel interface that Android
+ * updates can change, so it is only used after a check passes, and checked
  * again after every system update; until then apps render in software.
  */
 class Gpu(
-    context: Context,
+    private val context: Context,
     private val proot: Proot,
+    private val pacman: Pacman,
 ) {
-    private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
+    private val prefs = LauncherData.prefs(context)
+
+    /** The pinned driver for this phone, or null when we have none. */
+    private val spec: GpuDriver? = gpuKind(
+        File("/dev/mali0").exists(),
+        File("/dev/kgsl-3d0").exists(),
+        runCatching { File("/sys/class/kgsl/kgsl-3d0/gpu_model").readText() }.getOrNull(),
+    )?.let(GpuDrivers::of)
 
     /** The phone has a GPU we have a driver for. */
-    val supported = File("/dev/mali0").exists()
+    val supported = spec != null
+
+    /** "Mali" or "Adreno", for the settings row. Empty when [supported] is false. */
+    val driverLabel: String get() = spec?.label ?: ""
 
     /** The user turned it on; it may still be inactive until [recheck] passes. */
     var wanted by mutableStateOf(prefs.getBoolean(WANTED, false))
@@ -45,8 +58,6 @@ class Gpu(
     var state by mutableStateOf<JobState>(JobState.Idle)
         private set
 
-    private val driver get() = File(proot.rootfs, DRIVER_PATH.removePrefix("/"))
-
     /** What changes under the driver: the kernel and Android's own GPU driver come with system updates. */
     private val build get() = Build.FINGERPRINT + " " + System.getProperty("os.version")
 
@@ -56,81 +67,123 @@ class Gpu(
      * software meanwhile) and stays off if the check fails.
      */
     suspend fun recheck() {
-        if (!supported || !wanted || active || state is JobState.Working) return
-        if (!driver.isFile) return turnOff()
-        if (prefs.getString(CHECKED_BUILD, null) == build) return activate()
-        Log.i(TAG, "system changed since the last GPU check, checking again")
-        if (run("checking", probeScript())) activate()
+        val driver = spec ?: return
+        if (!wanted || active || state is JobState.Working) return
+        if (!proot.hostFile(driver.driverPath).isFile) return turnOff()
+        // The APK carries a different Mesa than the guest has, or none was installed
+        // yet (Mali before it used the patched Mesa). The env names that Mesa.
+        val mesaCurrent = runCatching { proot.hostFile(GpuDrivers.MESA_ZINK_STAMP).readText().trim() }
+            .getOrNull() == GpuDrivers.MESA_ZINK_TAR_SHA256
+        if (mesaCurrent && prefs.getString(CHECKED_BUILD, null) == build) {
+            // An older install wrote Mali's manifest on pacman's path. The env now
+            // names the /usr/local file, so that file has to exist before we activate.
+            if (!proot.hostFile(driver.icdPath).isFile) {
+                retireLegacyManifest(driver)
+                if (!run("installing", GpuDrivers.manifestScript(driver))) {
+                    proot.graphicsEnv = SOFTWARE_ENV
+                    conceal(driver)
+                    return
+                }
+            }
+            return activate(driver)
+        }
+        // Install and check in one run: run() records the build as checked on success.
+        val ok = if (mesaCurrent) {
+            Log.i(TAG, "system changed since the last GPU check, checking again")
+            run("checking", GpuDrivers.probeScript(driver))
+        } else {
+            Log.i(TAG, "the patched Mesa changed, installing it and checking again")
+            stageMesaBundle()
+            run("installing", GpuDrivers.mesaZinkScript() + " && " + GpuDrivers.probeScript(driver))
+        }
+        if (ok) {
+            activate(driver)
+        } else {
+            proot.graphicsEnv = SOFTWARE_ENV
+            conceal(driver)
+        }
     }
 
     /** Installs the driver and Mesa, then checks them; turns on only if the check passes. */
     suspend fun turnOn() {
-        if (!supported || state is JobState.Working) return
+        val driver = spec ?: return
+        if (state is JobState.Working) return
         prefs.edit().putBoolean(WANTED, true).apply()
         wanted = true
-        if (run("installing", installScript() + " && " + probeScript())) {
-            activate()
+        stageMesaBundle()
+        retireLegacyManifest(driver)
+        val script = GpuDrivers.installScript(driver) + " && " + GpuDrivers.probeScript(driver)
+        // The install script runs pacman.
+        if (run("installing", script, pacman.lock)) {
+            activate(driver)
         } else {
             // Nothing to come back to on the next start; the failure stays on screen.
             prefs.edit().putBoolean(WANTED, false).apply()
             wanted = false
+            active = false
+            proot.graphicsEnv = SOFTWARE_ENV
+            conceal(driver)
         }
     }
 
-    /** Back to software rendering for apps started from now on. The driver stays, so turning on again is quick. */
+    /**
+     * Back to software rendering for apps started from now on. The library
+     * stays, so turning on again is quick. The ICD manifest does not: while
+     * it exists the Vulkan loader finds it with no env var set.
+     */
     fun turnOff() {
         prefs.edit().putBoolean(WANTED, false).remove(CHECKED_BUILD).apply()
         wanted = false
         active = false
         state = JobState.Idle
         proot.graphicsEnv = SOFTWARE_ENV
+        spec?.let(::conceal)
     }
 
-    private fun activate() {
+    private fun activate(driver: GpuDriver) {
         active = true
-        proot.graphicsEnv = GPU_ENV
+        proot.graphicsEnv = driver.env
+    }
+
+    /** Drops the manifest so a later app cannot load the driver by the default search path. */
+    private fun conceal(driver: GpuDriver) {
+        proot.hostFile(driver.icdPath).delete()
+        retireLegacyManifest(driver)
+    }
+
+    /** Before writing the /usr/local manifest, and on the way out. */
+    private fun retireLegacyManifest(driver: GpuDriver) = GpuDrivers.retireLegacyManifest(driver, proot.hostFile(GpuDrivers.LEGACY_MALI_ICD))
+
+    /**
+     * The patched Mesa tar (scripts/mesa/build-aarch64.sh) is in the APK's assets.
+     * A build without that asset leaves the install script to fail closed on the missing file.
+     */
+    private fun stageMesaBundle() {
+        val dest = proot.hostFile(GpuDrivers.MESA_ZINK_BUNDLE)
+        val input = try {
+            context.assets.open("mesa-zink/mesa-zink.tar.xz")
+        } catch (_: FileNotFoundException) {
+            return
+        }
+        dest.parentFile?.mkdirs()
+        input.use { src -> dest.outputStream().use { src.copyTo(it) } }
     }
 
     /** Runs [script]; on success remembers the build it passed on and the GPU's name from vulkaninfo. */
     private suspend fun run(
         action: String,
         script: String,
-    ): Boolean =
-        withContext(Dispatchers.IO) {
-            state = JobState.Working(action, emptyList())
-            val (ok, tail) = proot.runJob(script) { state = JobState.Working(action, it) }
-            val name = tail.toList().firstNotNullOfOrNull { DEVICE_NAME.find(it)?.groupValues?.get(1) }
-            Log.i(TAG, "$action: ${if (ok) "ok, $name" else "failed"}")
-            if (ok) {
-                device = name
-                prefs.edit().putString(CHECKED_BUILD, build).putString(DEVICE, name).apply()
-                state = JobState.Idle
-            } else {
-                state = JobState.Failed(tail.toList())
-            }
-            ok
+        lock: Mutex? = null,
+    ): Boolean {
+        val (ok, tail) = proot.trackedJob(action, script, lock) { state = it }
+        val name = tail.toList().firstNotNullOfOrNull { DEVICE_NAME.find(it)?.groupValues?.get(1) }
+        Log.i(TAG, "$action: ${if (ok) "ok, $name" else "failed"}")
+        if (ok) {
+            device = name
+            prefs.edit().putString(CHECKED_BUILD, build).putString(DEVICE, name).apply()
         }
-
-    /** Mesa (zink), the Vulkan loader and the probe tools from pacman; the pinned driver from its release, verified, unless it's already there. */
-    private fun installScript() =
-        pacmanInstall(listOf("mesa", "vulkan-icd-loader", "vulkan-tools", "mesa-utils")) + " && " +
-            """
-            { echo '$DRIVER_SHA256  $DRIVER_PATH' | sha256sum -c - 2>/dev/null || {
-            curl -fL --retry 3 -o /tmp/panvk.so $DRIVER_URL &&
-            echo '$DRIVER_SHA256  /tmp/panvk.so' | sha256sum -c - &&
-            install -Dm755 /tmp/panvk.so $DRIVER_PATH && rm -f /tmp/panvk.so; }; } &&
-            mkdir -p ${ICD_PATH.substringBeforeLast('/')} &&
-            printf '%s\n' '{"file_format_version":"1.0.1","ICD":{"library_path":"$DRIVER_PATH","api_version":"1.4.363"}}' > $ICD_PATH
-            """.trimIndent().replace("\n", " ")
-
-    /** Vulkan finds the GPU through the driver, and OpenGL runs on it through zink: offscreen, no window needed. */
-    private fun probeScript() =
-        // Checks run while apps still render in software; that setting would win over zink.
-        // One group, so a failed install before it skips it.
-        "{ unset LIBGL_ALWAYS_SOFTWARE; " + GPU_ENV.joinToString(" ") { "export $it;" } +
-            " vk=$(timeout 60 vulkaninfo --summary 2>/dev/null); echo \"\$vk\" | grep -E 'deviceName|driverID';" +
-            " { echo \"\$vk\" | grep -q DRIVER_ID_MESA_PANVK || { echo 'Vulkan: the Mali driver did not load'; false; }; } &&" +
-            " { timeout 60 eglinfo -B -p surfaceless 2>/dev/null | grep 'renderer: zink' || { echo 'OpenGL: zink did not start on the GPU'; false; }; }; }"
+        return ok
+    }
 
     companion object {
         private const val TAG = "gpu"
@@ -138,24 +191,6 @@ class Gpu(
         private const val CHECKED_BUILD = "gpu_checked_build"
         private const val DEVICE = "gpu_device"
 
-        /** PanVK-kbase 0.1.0 rc2, the glibc build; tested on a Pixel 9a (Mali-G715). Pinned: newer releases get tested first. */
-        private const val DRIVER_URL =
-            "https://github.com/zenithblue-oss/panvk-kbase-android/releases/download/panvk-kbase-v0.1.0-rc2/libvulkan_panfrost-glibc-aarch64.so"
-        private const val DRIVER_SHA256 = "0b8eaf709cd3559acec72b6fcf3acc24bcdb016bdc998adfedca6ff8eb60c820"
-
-        /** Outside pacman's files, so system updates never touch it. */
-        private const val DRIVER_PATH = "/usr/local/lib64/libvulkan_panfrost.so"
-        private const val ICD_PATH = "/usr/share/vulkan/icd.d/panfrost_icd.aarch64.json"
-
         private val DEVICE_NAME = Regex("""deviceName\s*=\s*(.+)""")
-
-        /** Today's default: Mesa renders on the CPU (llvmpipe). */
-        val SOFTWARE_ENV = listOf("LIBGL_ALWAYS_SOFTWARE=1")
-
-        /**
-         * Vulkan only sees the PanVK driver, and presents through wl_shm; OpenGL is zink on it.
-         * One app can still opt out with `GALLIUM_DRIVER=llvmpipe app`.
-         */
-        val GPU_ENV = listOf("VK_ICD_FILENAMES=$ICD_PATH", "MESA_VK_WSI_DEBUG=sw", "GALLIUM_DRIVER=zink")
     }
 }

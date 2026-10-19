@@ -1,5 +1,7 @@
 package dev.omalauncher.ui
 
+import java.text.Normalizer
+
 /*
  * Ranking for the bar: what's typed is either an app to open or a prompt for an agent.
  * Tiers are 100 apart so a usage boost (under 100) reorders within a tier, never across.
@@ -14,16 +16,22 @@ private const val SUBSEQUENCE = 100
 
 private val WORD_BREAK = Regex("[^\\p{L}\\p{N}]+")
 
-private fun words(s: String) = s.lowercase().split(WORD_BREAK).filter { it.isNotEmpty() }
+/** Combining marks left behind by NFD, so "Café" and "cafe" compare equal. */
+private val MARKS = Regex("\\p{M}+")
+
+/** Lowercase with accents stripped. */
+internal fun fold(s: String) = MARKS.replace(Normalizer.normalize(s, Normalizer.Form.NFD), "").lowercase()
+
+private fun words(s: String) = fold(s).split(WORD_BREAK).filter { it.isNotEmpty() }
 
 /** How well app [name] matches [query]: 0 for no match, higher is better. */
 internal fun matchScore(
     name: String,
     query: String,
 ): Int {
-    val q = query.trim().lowercase()
+    val q = fold(query.trim())
     if (q.isEmpty()) return 0
-    val n = name.lowercase()
+    val n = fold(name)
     val nameWords = words(n)
     val queryWords = words(q)
     return when {
@@ -72,5 +80,5 @@ internal fun <T> rankMatches(
         .sortedWith(
             compareByDescending<Pair<T, Int>> { it.second + boost(it.first).coerceIn(0, 99) }
                 .thenBy { name(it.first).length }
-                .thenBy { name(it.first).lowercase() },
+                .thenBy { fold(name(it.first)) },
         )

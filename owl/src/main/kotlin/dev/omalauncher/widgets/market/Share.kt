@@ -289,5 +289,9 @@ class Shared(
 
     /** The file it is saved as: `shared-<name>.owl`, the name as the store would spell it. */
     val fileName: String
-        get() = "shared-${Submit.slug(name)}.owl"
+        get() = "$FILE_PREFIX${Submit.slug(name)}.owl"
+
+    companion object {
+        const val FILE_PREFIX = "shared-"
+    }
 }

@@ -14,15 +14,13 @@ class Parser private constructor(
     companion object {
         fun parse(src: String): WidgetAst = Parser(src, Lexer(src).run()).widget()
 
-        fun parseExpr(src: String): Expr = Parser(src, Lexer(src).run()).run { expr().also { expect(T.Eof) } }
-
         /** Declarations written as a block: `meta { ... }`, `requires { ... }`. */
         private val BLOCK_DECLS = setOf("meta", "requires")
 
         private val DECLS = setOf("source", "state", "let", "asset", "component", "meta", "requires")
 
         /** Statements that run on a timer or a change, not a touch: `when cond { ... }`. */
-        val TRIGGERS = setOf("every", "at", "when", "on")
+        val TRIGGERS = TriggerKind.entries.mapTo(HashSet()) { it.word }
     }
 
     private val t get() = tokens[p]
@@ -56,14 +54,14 @@ class Parser private constructor(
     }
 
     private fun widget(): WidgetAst {
-        if (!t.isId("widget")) fail("a widget file starts with: widget \"name\" {")
+        val kind = OwlKind.entries.firstOrNull { t.isId(it.word) } ?: fail("an owl file starts with: widget \"name\" {, face \"name\" { or app \"name\" {")
         next()
         val name = if (t.type == T.Str) literalString(next()) else null
         punct("{")
         val body = body(top = true)
         punct("}")
         expect(T.Eof)
-        return WidgetAst(name, body)
+        return WidgetAst(name, body, kind)
     }
 
     private fun literalString(tok: Token): String =
@@ -87,8 +85,11 @@ class Parser private constructor(
                     if (!top) fail("'$word' is only allowed at the top of the widget")
                     next()
                     val e = expr()
+                    // `on x first { }`: for x's first value too.
+                    val first = word == "on" && t.type == T.Ident && t.text == "first"
+                    if (first) next()
                     if (!t.isP("{")) fail("expected '{' with the statements to run: $word ... { ... }")
-                    decls += Decl.Trigger(word, e, handler(), start.pos)
+                    decls += Decl.Trigger(word, e, handler(), start.pos, first)
                 }
                 word == "if" -> items += ifItem()
                 word == "for" -> items += forItem()
@@ -266,9 +267,10 @@ class Parser private constructor(
         }
     }
 
-    private fun handler(): List<Stmt> {
-        if (!t.isP("{")) return listOf(stmt())
-        next()
+    private fun handler(): List<Stmt> = if (t.isP("{")) block() else listOf(stmt())
+
+    private fun block(): List<Stmt> {
+        punct("{")
         val out = ArrayList<Stmt>()
         while (!t.isP("}")) {
             if (accept(";")) continue
@@ -284,6 +286,27 @@ class Parser private constructor(
             next()
             next()
             return Stmt.Assign(start.text, expr(), start.pos)
+        }
+        // A state named if or let still assigns, above.
+        if (start.isId("if")) {
+            next()
+            val cond = expr()
+            if (!t.isP("{")) fail("expected '{' with the statements to run: if ... { ... }")
+            val then = block()
+            val orElse =
+                if (t.isId("else")) {
+                    next()
+                    if (t.isId("if")) listOf(stmt()) else block()
+                } else {
+                    emptyList()
+                }
+            return Stmt.If(cond, then, orElse, start.pos)
+        }
+        if (start.isId("let") && peek().type == T.Ident && peek(2).isP("=")) {
+            next()
+            val name = next().text
+            next()
+            return Stmt.Let(name, expr(), start.pos)
         }
         val e = expr()
         if (e !is Expr.Call) fail("expected an assignment (x = ...) or an action like run(\"...\")", start)

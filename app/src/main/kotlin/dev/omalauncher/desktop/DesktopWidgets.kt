@@ -12,7 +12,6 @@ import dev.omalauncher.AndroidApp
 import dev.omalauncher.Runtime
 import dev.omalauncher.ui.EmbeddedTerminal
 import dev.omalauncher.widgets.HomeItem
-import dev.omalauncher.widgets.GRID_COLUMNS
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.Shortcuts
 import dev.omalauncher.widgets.Folder
@@ -113,7 +112,7 @@ internal class DesktopWidgets(
                         val items = itemsOn(page)
                         val used = items.maxOfOrNull { layout.cell(it.key)?.bottom ?: 0 } ?: 0
                         val extra = items.filter { layout.cell(it.key) == null }.sumOf { it.size?.second ?: 3 }
-                        layout.place(items, GRID_COLUMNS, (used + extra).coerceAtLeast(1))
+                        layout.place(items, layout.columns, (used + extra).coerceAtLeast(1))
                     }
                 }
                 for (spec in available) {
@@ -159,6 +158,7 @@ internal class DesktopWidgets(
 
     fun group(app: Shortcut, target: HomeItem) { shortcuts.group(app, target) }
     fun reorder(app: Shortcut, before: String?) { shortcuts.moveBefore(app.key, before) }
+    fun renameFolder(folder: Folder, name: String) { shortcuts.rename(folder.key, name) }
 
     fun show(spec: WidgetSpec) {
         hidden = hidden - spec.file.name

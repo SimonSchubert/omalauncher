@@ -4,6 +4,9 @@ import android.app.ActivityManager
 import android.app.role.RoleManager
 import android.content.Intent
 import android.os.Bundle
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -15,7 +18,10 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.theme.Style
+import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.applySystemBars
+import dev.omalauncher.ui.showStatusBar
 import dev.omalauncher.ui.LauncherRoot
 import dev.omalauncher.ui.LauncherState
 import dev.omalauncher.ui.PromptRequest
@@ -39,9 +45,14 @@ class MainActivity : ComponentActivity() {
         }
         applySystemBars(this, Palette.isLight)
         runtime.start()
+        state.onSettings = { page, homePage -> runtime.openSettings(page, homePage) }
         setContent {
             LauncherRoot(runtime, state)
             LaunchedEffect(Palette.isLight) { applySystemBars(this@MainActivity, Palette.isLight) }
+            // A face whose statusBar is false takes the status bar's room too.
+            val fullScreen by remember { derivedStateOf { state.fullScreen && runtime.widgets.openScreen == null } }
+            val statusBar = LauncherStyle.style[Style.STATUS_BAR_SHOWN] && !fullScreen
+            LaunchedEffect(statusBar) { showStatusBar(this@MainActivity, statusBar) }
         }
         handleDebugExec(intent)
         handleSharedWidget(intent)
@@ -58,7 +69,7 @@ class MainActivity : ComponentActivity() {
     private fun requestHomeRole() {
         val roles = getSystemService(RoleManager::class.java)
         if (!roles.isRoleAvailable(RoleManager.ROLE_HOME) || roles.isRoleHeld(RoleManager.ROLE_HOME)) return
-        val prefs = getSharedPreferences("launcher", MODE_PRIVATE)
+        val prefs = LauncherData.prefs(this)
         if (prefs.getBoolean("home_role_asked", false)) return
         prefs.edit().putBoolean("home_role_asked", true).apply()
         @Suppress("DEPRECATION")
@@ -148,7 +159,7 @@ class MainActivity : ComponentActivity() {
             KeyEvent.KEYCODE_ENTER -> runtime.terminal(null, "Terminal")
             KeyEvent.KEYCODE_SPACE -> state.toggle()
             KeyEvent.KEYCODE_A -> state.promptRequest = PromptRequest.Type
-            in KeyEvent.KEYCODE_1..KeyEvent.KEYCODE_9 -> state.requestedPage = keyCode - KeyEvent.KEYCODE_1
+            in KeyEvent.KEYCODE_1..KeyEvent.KEYCODE_9 -> state.requestedPage = keyCode - KeyEvent.KEYCODE_0
             else -> return false
         }
         return true

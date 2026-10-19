@@ -23,11 +23,11 @@ window opens as its own Android task, with its own card in Recents.
 - **Widgets** written in OWL, a small declarative language you can edit on the
   phone, plus a [widget store](https://github.com/SimonSchubert/omarchy-widgets)
 - **Linux, optional**: pacman and the AUR, Linux apps in their own windows,
-  terminal widgets, a file manager, and opt-in GPU acceleration on Mali GPUs
+  terminal widgets, a file manager, and opt-in GPU acceleration on Mali and Adreno 6xx+ GPUs
 - **Coding agents**: the bar at the bottom sends a prompt to Claude Code, Codex,
   Copilot, opencode and others, which open in a terminal
 - No account, no ads, no tracking
-- **Desktop integration (proposed API)**: Android's secondary home and approved alternative desktop shells use independent homes with existing widgets; see [native Android support, the bridge contract and sample](docs/EXTERNAL_DESKTOP.md)
+- **Desktop integration (proposed API)**: Android's secondary home and approved alternative desktop shells use independent homes with existing widgets; see [native Android support and the bridge contract](docs/EXTERNAL_DESKTOP.md)
 
 Needs an arm64 phone with Android 10 or newer. Without Linux, the launcher still
 has the themes, wallpapers, Android apps and the widgets that don't run commands.

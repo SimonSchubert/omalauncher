@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Files: a plain folder -->
+  <rect width="256" height="256" rx="56" fill="#1A1B26"/>
+  <path d="M48 82a12 12 0 0 1 12-12h40l18 18h78a12 12 0 0 1 12 12v74a12 12 0 0 1-12 12H60a12 12 0 0 1-12-12z" fill="#7AA2F7"/>
+</svg>

@@ -1,9 +1,11 @@
 package dev.omalauncher.theme
 
+import dev.omalauncher.CountingInputStream
+import dev.omalauncher.openHttp
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.io.File
-import java.io.FilterInputStream
-import java.net.URL
+import java.io.IOException
+import java.io.InputStream
 import java.util.zip.GZIPInputStream
 
 /**
@@ -19,30 +21,31 @@ internal fun unpackTarball(
     maxMegabytes: Int = Int.MAX_VALUE,
     keep: (String) -> Boolean,
 ) {
-    val conn = URL(url).openConnection()
-    conn.connectTimeout = 15_000
-    conn.readTimeout = 30_000
-    var read = 0L
-    val counting =
-        object : FilterInputStream(conn.getInputStream()) {
-            override fun read(
-                b: ByteArray,
-                off: Int,
-                len: Int,
-            ): Int =
-                super.read(b, off, len).also {
-                    if (it > 0) {
-                        val before = read shr 20
-                        read += it
-                        if (read shr 20 != before) {
-                            check(read shr 20 <= maxMegabytes) { "bigger than $maxMegabytes MB" }
-                            onProgress((read shr 20).toInt())
-                        }
-                    }
+    val conn = openHttp(url)
+    try {
+        if (conn.responseCode != 200) throw IOException("HTTP ${conn.responseCode} for $url")
+        var megabytes = 0L
+        val counting =
+            CountingInputStream(conn.inputStream) { read ->
+                if (read shr 20 != megabytes) {
+                    megabytes = read shr 20
+                    check(megabytes <= maxMegabytes) { "bigger than $maxMegabytes MB" }
+                    onProgress(megabytes.toInt())
                 }
-        }
+            }
+        unpack(counting, into, keep)
+    } finally {
+        conn.disconnect()
+    }
+}
+
+private fun unpack(
+    input: InputStream,
+    into: File,
+    keep: (String) -> Boolean,
+) {
     val root = into.canonicalFile
-    TarArchiveInputStream(GZIPInputStream(counting.buffered(1 shl 16))).use { tar ->
+    TarArchiveInputStream(GZIPInputStream(input.buffered(1 shl 16))).use { tar ->
         while (true) {
             val entry = tar.nextEntry ?: break
             // Entries look like <repo>-<ref>/path...
