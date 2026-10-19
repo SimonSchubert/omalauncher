@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- A Linux window: Android 12+ shows a splash for a new task whatever windowDisablePreview says, so it's made one
+         with the window's own background and no icon, which looks like the window before its first frame. -->
+    <style name="Theme.Omalauncher.LinuxWindow" parent="Theme.Omalauncher.Window">
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowSplashScreenBackground">#FF1A1B26</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">#FF1A1B26</item>
+    </style>
+</resources>

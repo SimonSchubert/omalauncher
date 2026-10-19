@@ -81,7 +81,7 @@
         <activity
             android:name=".LinuxWindowActivity"
             android:label="Linux"
-            android:theme="@style/Theme.Omalauncher.Window"
+            android:theme="@style/Theme.Omalauncher.LinuxWindow"
             android:autoRemoveFromRecents="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:documentLaunchMode="always"
@@ -281,6 +281,27 @@
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Runs a user-started Linux environment and its display server" />
+        </service>
+        <!-- The floating taskbar opens apps through this invisible activity: LAUNCH_ADJACENT needs one to start from. -->
+        <activity
+            android:name=".taskbar.TaskbarTrampoline"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|keyboard|keyboardHidden|navigation|uiMode|fontScale|locale|layoutDirection"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity="${applicationId}.taskbar"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <!-- The floating taskbar; turned on by the user in the phone's accessibility settings, shown only while on in Omalauncher's settings. -->
+        <service
+            android:name=".taskbar.TaskbarService"
+            android:exported="true"
+            android:label="@string/taskbar_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/taskbar_service" />
         </service>
     </application>
 </manifest>

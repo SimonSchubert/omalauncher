@@ -54,7 +54,9 @@ import kotlinx.coroutines.flow.first
 
 /**
  * Shows a single Linux window as its own Android task, so it gets its own
- * Recents card and behaves like a separate app.
+ * Recents card and behaves like a separate app. A window can be handed to a
+ * new activity (the taskbar does, to put it in a split half): the newest one
+ * showing it owns it, and only the owner closes it on finishing.
  */
 class LinuxWindowActivity : InstantActivity() {
     private val runtime get() = (application as App).runtime
@@ -69,6 +71,8 @@ class LinuxWindowActivity : InstantActivity() {
             return
         }
         this.window = window
+        owners.take(window, this)
+        live += this
         applySystemBars(this, Palette.isLight)
         setInstantContent {
             LaunchedEffect(Palette.isLight) { applySystemBars(this@LinuxWindowActivity, Palette.isLight) }
@@ -100,18 +104,72 @@ class LinuxWindowActivity : InstantActivity() {
         runtime.screenStopped()
     }
 
-    /** Swiping the card away in Recents closes the Linux window, like closing an app. */
+    /**
+     * Swiping the card away in Recents closes the Linux window, like closing an app; not when this activity has handed
+     * the window to a newer one.
+     */
     override fun onDestroy() {
         super.onDestroy()
+        live -= this
         val w = window ?: return
-        if (isFinishing && w in runtime.wm.appWindows) runtime.wm.close(w)
+        if (owners.release(w, this) && isFinishing && w in runtime.wm.appWindows) runtime.wm.close(w)
     }
+
+    companion object {
+        private val owners = WindowOwners<XdgToplevel, LinuxWindowActivity>()
+
+        /** The activities showing a window now, owners or not; on the main thread, like their lifecycle. */
+        private val live = mutableListOf<LinuxWindowActivity>()
+
+        /**
+         * Whether the activity in task [taskId] still owns its window, so the task must stay: a window not yet handed to
+         * a newer activity (that one didn't start, or hasn't yet) would close with it.
+         */
+        fun keeps(taskId: Int): Boolean = live.firstOrNull { it.taskId == taskId }?.handedOver() == false
+    }
+
+    /** Whether this activity's window has gone to a newer activity. */
+    private fun handedOver(): Boolean = window?.let { owners.handedOver(it, this) } ?: true
 
     // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (runtime.keyboard.handle(event)) return true
         return super.dispatchKeyEvent(event)
+    }
+}
+
+/**
+ * Which of several [A]s showing a [W] owns it: the latest to [take] it. Releasing tells whether the one leaving was the
+ * owner, the only one that may close the [W] behind it.
+ */
+internal class WindowOwners<W : Any, A : Any> {
+    private val owners = HashMap<W, A>()
+
+    fun take(
+        window: W,
+        owner: A,
+    ) {
+        owners[window] = owner
+    }
+
+    /** Who owns [window] now, if anyone. */
+    fun ownerOf(window: W): A? = owners[window]
+
+    /** Whether [from] has handed [window] over: it no longer owns it, so it may leave without closing it. */
+    fun handedOver(
+        window: W,
+        from: A,
+    ): Boolean = ownerOf(window) !== from
+
+    /** Lets go of [window] if [owner] owns it; whether it did. */
+    fun release(
+        window: W,
+        owner: A,
+    ): Boolean {
+        if (owners[window] !== owner) return false
+        owners.remove(window)
+        return true
     }
 }
 
