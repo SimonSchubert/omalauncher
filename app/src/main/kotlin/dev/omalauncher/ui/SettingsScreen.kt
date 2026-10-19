@@ -48,6 +48,7 @@ fun SettingsScreen(
     onLinux: () -> Unit,
     onLicenses: () -> Unit,
     onGestures: () -> Unit,
+    onTaskbar: () -> Unit,
 ) {
     val context = LocalContext.current
     val linux by runtime.bootstrap.state.collectAsState()
@@ -78,6 +79,7 @@ fun SettingsScreen(
                 Triple("style", runtime.themes.current?.title ?: "theme, background, home screen", onStyle),
                 Triple("pages", runtime.widgets.pages.size.let { if (it == 1) "1 page" else "$it pages" } + " · arrange, edit, remove", onPages),
                 Triple("gestures", "swipe up: ${runtime.gestures.swipeUp.label}", onGestures),
+                Triple("taskbar", if (runtime.taskbar.enabled) "on · ${runtime.taskbar.mode.label}" else "off · switch and split apps from over other apps", onTaskbar),
                 Triple("linux", linuxStatus, onLinux),
                 if (installed) {
                     Triple("coding agents", runtime.agents.default?.let { "default: ${it.name}" } ?: "install Claude Code, OpenCode, …", onAgents)
