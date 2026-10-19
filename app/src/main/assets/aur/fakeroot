@@ -3,5 +3,7 @@
 # its faked daemon over SysV IPC, which Android kernels don't have. Nothing is
 # lost: proot already reports every file as root's, and pacman -U runs as root.
 # makepkg only re-enters itself with -F when FAKEROOTKEY is set.
+# makepkg notes `fakeroot -v` in .PKGINFO.
+[ "$1" = -v ] && exec echo "fakeroot (proot shim)"
 [ "$1" = -- ] && shift
 FAKEROOTKEY=proot exec "$@"

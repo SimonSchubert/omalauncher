@@ -4,6 +4,127 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 0.9.0 (versionCode 17) – 2026-10-18
+
+- Faces: an owl file can be a whole home screen (`face "name" { }`, owl 10), left of
+  page 1 like a stock launcher's feed, as many as you like, with an empty one
+  inviting the next. The store has a faces tab (minimal, pixel, terminal); settings ›
+  pages lists faces and tile pages to drag into order, edit or remove. A face can
+  hide the status bar, runs under the navigation bar with `screenInset`, and takes
+  both halves of an unfolded foldable.
+- Owl 10: text `spans`, `fontWeight`, `letterSpacing`, linear and radial gradient
+  backgrounds, `frost` (frosted glass over the wallpaper), fonts of a widget's own
+  (asset, URL or Linux file), styled Canvas text, `Popup`, Input `underline: false`,
+  `onLongPress`, `android.agents`, `android.recent`, `open(key)`, `ask(text)` and
+  Image `icon:<key>`. A Text in a Row or Flow is as wide as its text. `android.apps`
+  updates as apps change instead of being polled.
+- Example widgets: the start page is redesigned; the ai bar rebuilds the prompt bar
+  and recent strip in owl.
+- Fixes: sharing a face or an app to the store; dragging pages in settings; a NaN
+  font size, a damaged font file or `cmd("/")` no longer crash the launcher;
+  `round()` of very large numbers.
+
+## 0.8.1 (versionCode 16) – 2026-10-17
+
+- Home's grid has 4 to 9 columns (6 by default); changing it moves every tile onto
+  the new grid. A pages row keeps one page where a foldable would show two (#141).
+- Style settings preview home and widgets as they change, and the terminal preview
+  is drawn in place instead of starting a foot. The terminal font is a dropdown.
+- A font for the launcher's text and widgets: Android's monospace, or one of Linux's
+  monospace fonts.
+- Local network: on Android 17+ a settings row asks for ACCESS_LOCAL_NETWORK, so
+  widgets and Linux can reach devices like a printer or Home Assistant.
+- Store updates for widgets and apps show in settings' system updates box, with
+  pending packages and agents listed one per line.
+- The home menu has the settings gear at its top right, like the drawer.
+- Owl 9: `parseTime`, `fmtAgo`, `fmtNum`, `fmtTime` with a time zone and language,
+  `random`, `shuffle` and `hash`; `set`, `remove`, `merge`, `reduce`, `scan`,
+  `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten` to a depth and
+  `on x first`; handlers have `if`/`else` and `let`. Numbers print as JavaScript
+  writes them (1792231445.5, not 1.7922314455E9).
+- Fixes: a widget's text field lifts its tile above the keyboard like a terminal;
+  home no longer stays sideways in portrait after a landscape app (before Android 14);
+  a widget filling its page shows its edit bar inside it; Linux setup no longer
+  hangs at "Installing cliamp" on phones with a small app heap.
+
+## 0.8.0 (versionCode 15) – 2026-10-17
+
+- Apps: an owl file can be a full-screen app (`app "name" { }`, owl 8) that opens
+  from the app drawer, with its own Recents card. Back goes back a level inside it.
+  The store lists apps like Braincup's brain games, Yoga and Linux commands; an app's
+  page swipes through its screens, drawn in your theme.
+- Widgets and apps can show images from the web (SVG drawn as vectors), play sounds,
+  send HTTP POSTs and read the installed apps (`android.apps`). Values in URLs go
+  through `enc()`, and the store's reviewer sees each URL a widget can reach.
+- GPU acceleration for Linux apps on Adreno 6xx and newer (Turnip). The patched Mesa
+  now ships in the app for Adreno and Mali, so OpenGL apps run on the GPU through
+  zink, and windows with MSAA (PrusaSlicer's G-code viewer) no longer crash.
+- Folders can have a name, set in place in their header.
+- Home can hide the status bar.
+- App search matches names with their accents stripped.
+- The store marks widgets added in the last three days with a "new" badge and tab,
+  and has more categories (sport, finance, media, games, pets). Its pages and
+  settings pages opened from another have a back chevron.
+- Themes installed from the catalog show its screenshot in the theme list.
+- OpenCode 2 installs and updates again: agent installs and system updates update
+  mise first and add node for OpenCode.
+- Prompts start Antigravity and GitHub Copilot in interactive mode, and Antigravity
+  in plan mode for untrusted prompts.
+- Fixes: submitting to the store no longer crashes without a browser, links from
+  Linux keep opening after an error, and turning the GPU on waits for package installs.
+
+## 0.7.2 (versionCode 14) – 2026-10-14
+
+- Text files open in the launcher's own touch-first editor, in the Omarchy theme,
+  which is also Linux's `$EDITOR`: Android's selection and keyboard, line numbers,
+  find, word wrap and a key row above the keyboard. Each file gets its own Recents
+  card, and `git commit` waits until you close the message.
+- Files is an Omarchy-style panel with its own icon, and can create a new file.
+- Settings open in their own window with a Recents card, and come back as you left
+  them after going home or to a terminal mid-install. The launcher's own screens
+  open and close without animations.
+- Terminals no longer flicker when the soft keyboard opens or closes.
+- New coding agents from Omarchy's list: Oh My Pi, Ori, Muse Code and Kimi.
+- Linux no longer installs lazygit, and fastfetch stays out of the drawer.
+- Checking for system updates in settings records the check time again.
+- The widget store's refresh button spins while it reloads.
+
+## 0.7.1 (versionCode 13) – 2026-10-13
+
+- Websites installed from a browser (Install app, or Add to home screen) show up
+  on the home screen and in the app drawer, like other apps' shortcuts to home.
+  Browsers didn't offer to install them before.
+- Long-pressing an Android app in the drawer, the recent apps or on home lists its
+  shortcuts, such as Maps' "Navigate home", a chat or Chrome's incognito tab. Tap one
+  to open it, or its [+] to put it on the home screen.
+- Apps that change their own icon, like Duolingo or X, no longer leave a blank
+  tile on the home screen that won't open; it shows the new icon and opens the app.
+- The now playing widget's play button works again when it seemed dead: after a
+  long pause (Spotify) it opens the app so playback resumes, and for a player that
+  can't play in the background (YouTube without Premium) it opens the app. Tapping
+  the tile opens the app again on Android 14 and later.
+- After you change the phone's language, app names, home tiles and widget dates
+  follow it.
+- Widgets that only animate some of the time, like a backdrop drawn while music
+  plays, stop redrawing while they're still.
+- The koi in the koi pond widget turn in arcs instead of flipping round.
+- Keeping the theme setup suggests (Tokyo Night) no longer loses it, and its wallpaper,
+  the next time the launcher starts.
+
+## 0.7.0 (versionCode 12) – 2026-10-13
+
+- The style lives in `~/.config/omalauncher/style/style.toml`, which you or an agent can edit
+  from Linux; changes show within a second, and settings it can't read show in a banner.
+  `defaults.toml` next to it lists every setting. Your earlier style carries over.
+- New style settings, like Hyprland's: gaps between widgets and to the edges, border widths
+  and colors, the focused border, and screen panels' gaps and borders.
+- The status bar and the gesture bar can sit on the same glass as the widgets
+  (style → system bars); they're bare by default.
+- Widgets can show the next alarm and the phone's modes (Do Not Disturb, battery saver,
+  ringer, torch), turn the torch on, share text, buzz, and draw app icons (owl 7).
+- yay in a terminal no longer asks for root's password, and AUR builds no longer print
+  "exec: -v: invalid option".
+
 ## 0.6.0 (versionCode 11) – 2026-10-12
 
 - Apps from a work profile show up next to your own, marked with a briefcase,

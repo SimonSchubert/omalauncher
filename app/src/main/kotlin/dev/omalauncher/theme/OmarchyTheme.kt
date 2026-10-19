@@ -40,13 +40,15 @@ class OmarchyTheme(
     /**
      * Like omarchy-theme-switcher: a preview image of any case and type, the
      * user's over Omarchy's, else the first background. Many themes made by
-     * others ship no preview.
+     * others ship no preview; for one installed from the catalog, its
+     * screenshot there stands in.
      */
     val preview: File by lazy {
         dirs.asReversed().firstNotNullOfOrNull { dir ->
             dir
                 .listFiles { f -> f.nameWithoutExtension.equals("preview", ignoreCase = true) && f.extension.lowercase() in IMAGE_EXTENSIONS && f.isFile && !f.isLink() }
                 ?.minByOrNull { IMAGE_EXTENSIONS.indexOf(it.extension.lowercase()) }
+                ?: File(dir, ThemeDirs.CATALOG_PREVIEW).takeIf { dir == own && it.isFile && !it.isLink() }
         } ?: backgrounds().firstOrNull() ?: File(dirs.last(), "preview.png")
     }
 
@@ -56,6 +58,9 @@ class OmarchyTheme(
         for (dir in dirs) images(File(dir, "backgrounds")).forEach { merged[it.name] = it }
         return images(extraBackgrounds) + merged.values.sortedBy { it.name }
     }
+
+    /** Whether [file] is one of the user's extra backgrounds, which they may remove; the theme's own stay. */
+    fun isExtraBackground(file: File) = extraBackgrounds != null && file.parentFile == extraBackgrounds
 
     /**
      * The files Linux gets in ~/.local/state/omarchy/current/theme, by name:
@@ -145,6 +150,9 @@ class ThemeDirs(
 
         /** Written by the launcher into a theme it installed, with the URL it came from. */
         const val SOURCE_MARKER = ".omalauncher-source"
+
+        /** Written by the launcher into a theme it installed from the catalog: the theme's screenshot on omarchy.org. */
+        const val CATALOG_PREVIEW = ".omalauncher-preview"
 
         /**
          * Whether a user's theme came from someone else's repo: cloned with

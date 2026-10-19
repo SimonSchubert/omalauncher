@@ -1,0 +1,105 @@
+widget "ai bar" {
+  page: 1
+  order: 30
+  size: 6x2
+  minSize: 4x2
+  meta { description: "The launcher's prompt bar and recent apps, written in owl: type to find an app, Enter opens it or asks your agent, tap the agent's name to pick another"; version: "1.0"; license: "MIT"; category: "productivity"; owl: 10 }
+  padding: 0
+  background: transparent
+
+  source ag = android.agents
+  source r = android.recent
+  source apps = android.apps
+  state q = ""
+  // The agent picked from the menu on its name; "" follows the launcher's default.
+  state pick = "" persist
+  state menu = false
+
+  let agent = find(ag.installed, a => a.bin == pick) ?? ag.default
+  let query = lower(trim(q))
+  // What the strip shows while typing: the recent apps and every Android app, most used first.
+  let android = map(filter(apps, a => !any(r, x => x.key == "a:" + a.key)), a => {key: "a:" + a.key, name: a.name, icon: a.icon, score: a.score})
+  let matches = query == "" ? [] : take(sortBy(filter(flatten([r, android]), x => contains(lower(x.name), query)), x => -x.score), 8)
+  // Enter opens the first match when the name starts with what's typed, like the bar; anything else goes to the agent.
+  let opens = len(matches) > 0 && startsWith(lower(matches[0].name), query)
+  let strip = query == "" ? take(r, 8) : matches
+
+  Column {
+    gap: 6
+    Row {
+      gap: 2
+      height: 52
+      for x, i in strip key x.key {
+        Box {
+          size: 50
+          padding: 3
+          radius: 12
+          border: opens && i == 0 ? 1 : 0
+          borderColor: accent
+          Image { src: x.icon; size: 44; onTap: { open(x.key); q = "" } }
+        }
+      }
+    }
+    Row {
+      align: center
+      gap: 10
+      padding: [14, 12]
+      border: 1
+      borderColor: border
+      background: alpha(background, 0.9)
+      Text {
+        spans: [agent == null ? "agent" : agent.bin, {text: menu ? " ⌃" : " ⌄", color: muted}]
+        color: agent == null ? muted : accent
+        onTap: {
+          if agent == null {
+            launcher("agents")
+          } else {
+            menu = true
+          }
+        }
+      }
+      Input {
+        weight: 1
+        text: q
+        clear: true
+        // The bar's frame is the field's, as in the launcher's own.
+        underline: false
+        placeholder: agent == null ? "open an app…" : "open an app or ask ${agent.bin}…"
+        onChange: q = value
+        onSubmit: {
+          if opens {
+            open(matches[0].key)
+          } else {
+            ask(value, agent.bin)
+          }
+          q = ""
+        }
+      }
+      // The installed agents above the bar, as its own menu lists them; it takes no room in the row.
+      Popup {
+        visible: menu
+        position: above
+        onDismiss: menu = false
+        width: 220
+        gap: 0
+        for a in ag.installed key a.bin {
+          Row {
+            fill: width
+            gap: 8
+            padding: [10, 8]
+            onTap: { pick = a.bin; menu = false }
+            Text { text: a.bin == agent.bin ? "●" : ""; color: accent; width: 10 }
+            Image { src: a.icon; size: 24 }
+            Column {
+              gap: 0
+              Text { text: a.name; color: a.bin == agent.bin ? accent : foreground }
+              Text { text: a.bin; style: small; color: muted }
+            }
+          }
+        }
+        Spacer { height: 1; fill: width; background: border }
+        Text { text: "manage agents…"; color: muted; padding: [10, 10]; fill: width; onTap: { menu = false; launcher("agents") } }
+      }
+    }
+  }
+}

@@ -211,7 +211,7 @@ class ShareTest {
             assertEquals(f.name, tokens(text), tokens(small))
             assertEquals(f.name, tokens(text), tokens(back))
             val p = Compiler.compile(back)
-            assertEquals(f.name, 1, p.page)
+            assertEquals(f.name, if (p.isFace) 0 else 1, p.page)
             assertEquals(f.name, 0, p.order)
             assertTrue(f.name, small.length < text.length)
             assertEquals(f.name, back, Share.format(back))

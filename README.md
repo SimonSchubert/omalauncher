@@ -23,7 +23,7 @@ window opens as its own Android task, with its own card in Recents.
 - **Widgets** written in OWL, a small declarative language you can edit on the
   phone, plus a [widget store](https://github.com/SimonSchubert/omarchy-widgets)
 - **Linux, optional**: pacman and the AUR, Linux apps in their own windows,
-  terminal widgets, a file manager, and opt-in GPU acceleration on Mali GPUs
+  terminal widgets, a file manager, and opt-in GPU acceleration on Mali and Adreno 6xx+ GPUs
 - **Coding agents**: the bar at the bottom sends a prompt to Claude Code, Codex,
   Copilot, opencode and others, which open in a terminal
 - No account, no ads, no tracking

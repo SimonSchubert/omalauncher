@@ -7,6 +7,42 @@ package dev.omalauncher.widgets.lang
  * defines, and looks at the first word of each command.
  */
 object ShellWords {
+    /**
+     * Whether bash reads every [Compiler.VALUE] in [shape] as the quoted word sh(...) made it: not inside quotes,
+     * where its own quotes would close them or `$(...)` still runs; not in a comment, which a line break
+     * in it would end; and not in a heredoc, whose body expands whatever it holds.
+     */
+    fun quotable(shape: String): Boolean {
+        if (Compiler.VALUE !in shape) return true
+        if ("<<" in shape) return false
+        var quote: Char? = null
+        var comment = false
+        var i = 0
+        while (i < shape.length) {
+            if (shape.startsWith(Compiler.VALUE, i)) {
+                if (quote != null || comment) return false
+                i += Compiler.VALUE.length
+                continue
+            }
+            val c = shape[i]
+            when {
+                comment -> if (c == '\n') comment = false
+                quote == '\'' -> if (c == '\'') quote = null
+                // " and `, and $'...', where a backslash escapes the next character.
+                quote != null -> if (c == '\\') i++ else if (c == quote || quote == '$' && c == '\'') quote = null
+                c == '\\' -> i++
+                c == '$' && shape.getOrNull(i + 1) == '\'' -> {
+                    quote = '$'
+                    i++
+                }
+                c == '\'' || c == '"' || c == '`' -> quote = c
+                c == '#' && (i == 0 || shape[i - 1].isWhitespace() || shape[i - 1] in ";&|(") -> comment = true
+            }
+            i++
+        }
+        return true
+    }
+
     private val KEYWORDS =
         setOf(
             "if", "then", "else", "elif", "fi", "for", "while", "until", "do", "done", "case", "esac", "in",
@@ -133,6 +169,7 @@ object ShellWords {
         while (i < words.size) {
             val w = words[i].let { if (it.startsWith("/")) it.substringAfterLast('/') else it }
             when {
+                w.isEmpty() -> return null // a bare /
                 w == "_" -> return null // quoted text in command position: can't tell
                 w.contains('=') && !w.startsWith("=") -> {} // FOO=bar prefix
                 w.startsWith(">") || w.startsWith("<") || w.first().isDigit() && (w.contains('>') || w.contains('<')) -> {}

@@ -2,6 +2,7 @@ package dev.omalauncher.linux
 
 import java.io.File
 import java.io.IOException
+import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.StandardCopyOption
@@ -121,6 +122,20 @@ class GuestFs(
         checkName(name)
         val path = child(dir, name)
         if (!host(path, followLast = false).mkdir()) throw IOException("cannot create $name")
+        return path
+    }
+
+    fun createFile(
+        dir: String,
+        name: String,
+    ): String {
+        checkName(name)
+        val path = child(dir, name)
+        try {
+            Files.createFile(host(path, followLast = false).toPath())
+        } catch (e: FileAlreadyExistsException) {
+            throw IOException("$name already exists")
+        }
         return path
     }
 

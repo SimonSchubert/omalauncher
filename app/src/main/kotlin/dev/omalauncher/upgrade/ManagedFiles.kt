@@ -1,9 +1,9 @@
 package dev.omalauncher.upgrade
 
 import android.util.Log
+import dev.omalauncher.sha256Hex
 import org.json.JSONObject
 import java.io.File
-import java.security.MessageDigest
 
 /** How a launcher-written file treats the copy on disk. */
 enum class Policy {
@@ -58,9 +58,8 @@ class ManagedFiles(
             val write =
                 when (m.policy) {
                     Policy.Owned -> true
-                    // Missing but recorded: the user deleted it. Unrecorded but carrying the marker
-                    // launchers before the manifest wrote: ours, unless the user removed the marker.
-                    Policy.Seeded -> if (current == null) before == null else current == before || (before == null && isLegacyOurs(m.file))
+                    // Missing but recorded: the user deleted it.
+                    Policy.Seeded -> if (current == null) before == null else current == before
                 }
             if (!write) {
                 // Edited or deleted defaults keep what we last wrote on record, so they stay the user's, removal included.
@@ -69,7 +68,7 @@ class ManagedFiles(
             }
             try {
                 val bytes = m.content()
-                val sha = sha256(bytes)
+                val sha = sha256Hex(bytes)
                 if (current != sha) writeAtomically(m.file, bytes, m.executable)
                 next[key] = sha
             } catch (e: Exception) {
@@ -89,8 +88,6 @@ class ManagedFiles(
 
     fun forgetAll() = manifest.delete()
 
-    private fun isLegacyOurs(file: File) = file.length() < 1 shl 20 && LEGACY_MARKER in file.readText()
-
     private fun load(): Map<String, String> {
         val json = Versioned.read(manifest.takeIf { it.exists() }?.readText(), VERSION) as? JSONObject ?: return emptyMap()
         return json.keys().asSequence().associateWith { json.getString(it) }
@@ -102,12 +99,7 @@ class ManagedFiles(
     private companion object {
         const val VERSION = 1
 
-        /** What launchers before the manifest put in files they owned. */
-        const val LEGACY_MARKER = "omalauncher managed"
-
-        fun hash(file: File): String? = if (file.isFile) sha256(file.readBytes()) else null
-
-        fun sha256(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        fun hash(file: File): String? = if (file.isFile) sha256Hex(file.readBytes()) else null
     }
 }
 

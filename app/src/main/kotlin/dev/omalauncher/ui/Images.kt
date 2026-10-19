@@ -5,7 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.ImageDecoder
+import android.graphics.Paint
 import android.graphics.Rect
+import com.caverock.androidsvg.RenderOptions
 import com.caverock.androidsvg.SVG
 import java.io.File
 import kotlin.math.roundToInt
@@ -28,22 +30,68 @@ fun decodeSampled(
     return BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
 }
 
+/** [decodeSampled] for an image already in memory, like a download. */
+fun decodeSampled(
+    bytes: ByteArray,
+    minWidth: Int,
+    minHeight: Int = minWidth,
+): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sample = 1
+    while (bounds.outWidth / (sample * 2) >= minWidth && bounds.outHeight / (sample * 2) >= minHeight) sample *= 2
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+}
+
 /** Decodes an app icon at about [size] px square: a PNG via [decodeSampled], an SVG rendered at exactly [size]. */
 fun decodeIcon(
     file: File,
     size: Int,
 ): Bitmap? {
     if (file.extension != "svg") return decodeSampled(file, size)
-    return runCatching {
-        val svg = file.inputStream().use { SVG.getFromInputStream(it) }
-        // Scale to the bitmap through the viewBox, made from width/height when the icon has none.
-        if (svg.documentViewBox == null && svg.documentWidth > 0 && svg.documentHeight > 0) {
-            svg.setDocumentViewBox(0f, 0f, svg.documentWidth, svg.documentHeight)
-        }
-        svg.setDocumentWidth("100%")
-        svg.setDocumentHeight("100%")
-        Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { svg.renderToCanvas(Canvas(it)) }
-    }.getOrNull()
+    return runCatching { renderSvg(file.inputStream().use { SVG.getFromInputStream(it) }, size, null) }.getOrNull()
+}
+
+/** An owl app's `icon:` SVG at [size] px square, with `currentColor` in [color] (the theme's accent). */
+fun decodeSvgIcon(
+    svg: String,
+    size: Int,
+    color: Int,
+): Bitmap? = runCatching { renderSvg(SVG.getFromString(svg), size, RenderOptions().css("svg { color: #%06x }".format(color and 0xffffff))) }.getOrNull()
+
+/** An owl app's `icon:` image (a PNG asset) at [size] px square: scaled to fit, centered, never stretched. */
+fun decodeImageIcon(
+    bytes: ByteArray,
+    size: Int,
+): Bitmap? {
+    // A small PNG can hold a huge flat image: halve while the longer side stays at least [size].
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    var sample = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= size) sample *= 2
+    val src = runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample }) }.getOrNull() ?: return null
+    val scale = size.toFloat() / maxOf(src.width, src.height)
+    val w = (src.width * scale).roundToInt().coerceAtLeast(1)
+    val h = (src.height * scale).roundToInt().coerceAtLeast(1)
+    return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { out ->
+        Canvas(out).drawBitmap(src, null, Rect((size - w) / 2, (size - h) / 2, (size + w) / 2, (size + h) / 2), Paint(Paint.FILTER_BITMAP_FLAG))
+    }
+}
+
+private fun renderSvg(
+    svg: SVG,
+    size: Int,
+    options: RenderOptions?,
+): Bitmap {
+    // Scale to the bitmap through the viewBox, made from width/height when the icon has none.
+    if (svg.documentViewBox == null && svg.documentWidth > 0 && svg.documentHeight > 0) {
+        svg.setDocumentViewBox(0f, 0f, svg.documentWidth, svg.documentHeight)
+    }
+    svg.setDocumentWidth("100%")
+    svg.setDocumentHeight("100%")
+    return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { svg.renderToCanvas(Canvas(it), options) }
 }
 
 /**

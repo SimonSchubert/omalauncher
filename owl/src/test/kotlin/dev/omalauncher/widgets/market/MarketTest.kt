@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 
 class MarketTest {
     private val good =
@@ -68,6 +69,35 @@ class MarketTest {
         assertTrue(risks("read -r a b < <(curl -s https://x.io/a.json | jq -r '.a, .b')").isEmpty())
         assertTrue(risks("curl -s https://x.io/a.json | jq '.[] | . as \$g | . + {t: \$g.t}'").isEmpty())
         assertTrue(risks("ssh host uptime; curl -s https://x.io").isEmpty())
+    }
+
+    @Test fun appsGoUnderApps() {
+        val app = "app \"notes\" {\n  meta { owl: 8; description: \"notes on the phone\"; version: \"1.0\"; license: \"MIT\"; category: \"productivity\" }\n  Text { text: \"x\" }\n}"
+        val r = Review("apps/simon/notes/app.owl", app)
+        assertTrue(r.errors.isEmpty() && r.warnings.isEmpty())
+        assertEquals("simon/notes", r.id)
+        assertTrue(Review("widgets/simon/notes/widget.owl", app).errors.single().contains("it goes at apps/<author>/<name>/app.owl"))
+        assertTrue(Review("apps/simon/disk/app.owl", good).errors.single().contains("it goes at widgets/"))
+        val json = Catalog.write(listOf(r.entry(null)), "now", "apps")
+        assertEquals("simon/notes", Catalog.parse(json, "apps").single().id)
+        assertTrue(Catalog.parse(json).isEmpty())
+    }
+
+    @Test fun webFilesFromAnyServerAreFlagged() {
+        fun risks(cmd: String) = Review.risks(listOf(cmd))
+        assertTrue(risks("image GET https://…").single().contains("server put together while the widget runs"))
+        assertTrue(risks("image GET https://x.test…").single().contains("server put together"))
+        assertTrue(risks("sound GET https://…").single().contains("server put together"))
+        assertTrue(risks("sound GET https://x.test/a/…").isEmpty())
+        assertTrue(risks("image GET https://x.test/art/…").isEmpty())
+        assertTrue(risks("image GET https://x.test").isEmpty())
+    }
+
+    @Test fun urlsWithAFixedHostAreNotFlagged() {
+        assertTrue(Review.risks(listOf("http GET https://a.b/c/${Compiler.VALUE}?d=${Compiler.NUMBER}")).isEmpty())
+        assertTrue(Review.risks(listOf("http GET (a URL built from widget values)")).single().contains("send its data anywhere"))
+        assertTrue(Review.risks(listOf("http POST (a URL built from widget values)")).single().contains("send its data anywhere"))
+        assertTrue(Review.risks(listOf("http POST https://a.b/c/${Compiler.VALUE}")).isEmpty())
     }
 
     @Test fun theStoreTakesValuesInCommandsOnlyQuoted() {
@@ -139,6 +169,53 @@ class MarketTest {
         assertFalse(parsed.supported)
         // A catalog from before the field existed means level 1.
         assertEquals(1, Catalog.parse(index.replace(",\n      \"owl\": ${Compiler.LEVEL + 1}", "")).single().owl)
+    }
+
+    @Test fun appsJsonListsItsEntriesUnderApps() {
+        val e = Review("widgets/simon/disk/widget.owl", good).entry(null)
+        val apps = Catalog.write(listOf(e), "2026-10-15T00:00:00Z").replace("\"widgets\": [", "\"apps\": [")
+        assertEquals(e.id, Catalog.parse(apps, "apps").single().id)
+        assertTrue(Catalog.parse(apps).isEmpty())
+    }
+
+    @Test fun newLastsThreeUtcDaysFromTheDayAdded() {
+        val today = LocalDate.parse("2026-10-21")
+        assertTrue(Catalog.isNew("2026-10-21", today))
+        assertTrue(Catalog.isNew("2026-10-19", today))
+        assertFalse(Catalog.isNew("2026-10-19", today.plusDays(1)))
+        assertFalse(Catalog.isNew("2026-10-22", today))
+        assertFalse(Catalog.isNew(null, today))
+        assertFalse(Catalog.isNew("last week", today))
+    }
+
+    @Test fun addedAndNewRoundTripAndOlderCatalogsHaveNeither() {
+        val e = Review("widgets/simon/disk/widget.owl", good).entry(null).copy(added = "2026-10-15", new = true)
+        val index = Catalog.write(listOf(e), "2026-10-15T00:00:00Z")
+        assertEquals(e, Catalog.parse(index).single())
+        val old = Catalog.parse(index.replace(",\n      \"added\": \"2026-10-15\",\n      \"new\": true", "")).single()
+        assertEquals(null, old.added)
+        assertFalse(old.new)
+    }
+
+    @Test fun appIconsRoundTripAndWidgetsHaveNone() {
+        val svg = "<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"currentColor\"/></svg>"
+        val app = "app \"notes\" {\n  meta { owl: 8; description: \"notes\"; version: \"1.0\"; license: \"MIT\" }\n  icon: \"\"\"$svg\"\"\"\n  Text { text: \"x\" }\n}"
+        val e = Review("apps/simon/notes/app.owl", app).entry(null)
+        assertEquals(svg, e.icon)
+        val parsed = Catalog.parse(Catalog.write(listOf(e.copy(iconFile = "apps/simon/notes/store-icon.png")), "now", "apps"), "apps").single()
+        assertEquals(svg, parsed.icon)
+        assertEquals("apps/simon/notes/store-icon.png", parsed.iconFile)
+        assertEquals(null, Review("widgets/simon/disk/widget.owl", good).entry(null).icon)
+    }
+
+    @Test fun screensRoundTripAndFallBackToTheDefaultTheme() {
+        val screens = mapOf("nord" to listOf("apps/a/b/screens/2/nord.webp", "apps/a/b/screens/3/nord.webp"), Catalog.DEFAULT_THEME to listOf("apps/a/b/screens/2/${Catalog.DEFAULT_THEME}.webp"))
+        val e = Review("widgets/simon/disk/widget.owl", good).entry(null).copy(screens = screens)
+        val parsed = Catalog.parse(Catalog.write(listOf(e), "now")).single()
+        assertEquals(screens, parsed.screens)
+        assertEquals(screens["nord"], parsed.screensFor("nord"))
+        assertEquals(screens[Catalog.DEFAULT_THEME], parsed.screensFor("my-own-theme"))
+        assertTrue(Review("widgets/simon/disk/widget.owl", good).entry(null).screensFor("nord").isEmpty())
     }
 
     @Test fun aNewerCatalogFormatAsksForAnUpdate() {
