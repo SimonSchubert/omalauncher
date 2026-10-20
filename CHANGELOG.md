@@ -4,6 +4,16 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- Linux touch input forwards simultaneous contacts with distinct IDs, batched
+  frames and cancellation when Android cancels a gesture or its surface closes.
+  Final movement is delivered before a contact lifts, rather than losing its
+  last position.
+- Tern terminal touch input supports tap-to-click, drag scrolling, hold-and-drag
+  selection, pinch font sizing and inner-edge tab swipes; other touch clients
+  retain their native multi-contact input.
+
 ## 0.10.0 (versionCode 18) – 2026-10-20
 
 - The app drawer is an owl file: drawer.owl, which you or an agent can edit, with
