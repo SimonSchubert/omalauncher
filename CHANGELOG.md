@@ -4,6 +4,13 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- Linux keyboard input uses a normal text editor for dictation, supplies an
+  empty IME snapshot, and commits replacement text without duplicating composition.
+  Physical-device dictation validation remains pending.
+- Linux keyboard focus recovery respects launcher, widget and dialog editors.
+
 ## 0.10.0 (versionCode 18) – 2026-10-20
 
 - The app drawer is an owl file: drawer.owl, which you or an agent can edit, with
