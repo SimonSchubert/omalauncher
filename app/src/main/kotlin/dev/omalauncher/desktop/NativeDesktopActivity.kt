@@ -87,7 +87,7 @@ class NativeDesktopActivity : ComponentActivity() {
         desktopSession?.close()
         sessionDisplayId = displayId
         desktopSession = DesktopHomeSession(this, runtime, "native_display_$displayId", true, true,
-            ::launch, { !isFinishing && !isDestroyed }).also { it.start() }
+            false, 0, 0, 1f, ::launch, { !isFinishing && !isDestroyed }).also { it.start() }
     }
 
     private fun launch(app: AndroidApp) {

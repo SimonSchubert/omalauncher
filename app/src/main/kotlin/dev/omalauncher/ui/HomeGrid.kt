@@ -336,6 +336,7 @@ internal fun HomeGrid(
     /** Where the strip and the bar stand beside the grid; null for below it. */
     side: HomeSide? = null,
     per: Int = 1,
+    allowPageSwipe: Boolean = true,
 ) {
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -484,7 +485,7 @@ internal fun HomeGrid(
                                 sorting = null
                                 outSince = 0L
                             }
-                            val edgeSide = if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
+                            val edgeSide = if (!allowPageSwipe) 0 else if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
                             when {
                                 edgeSide == 0 -> atEdgeSince = 0L
                                 atEdgeSince == 0L -> atEdgeSince = now
@@ -703,7 +704,8 @@ internal fun HomeGrid(
         ) {
             // A face's nodes say here when they take a long press, so the menu doesn't open for it too.
             CompositionLocalProvider(LocalLongPressClaim provides claims) {
-                HorizontalPager(pager, Modifier.fillMaxSize(), key = { slots.getOrNull(it)?.first() ?: -it }) { slot ->
+                HorizontalPager(pager, Modifier.fillMaxSize(), key = { slots.getOrNull(it)?.first() ?: -it },
+                    userScrollEnabled = allowPageSwipe) { slot ->
                     val shown = pagesAt(slot, slots)
                     val g = gridFor(shown, grid to wide)
                     Row(Modifier.fillMaxSize()) {

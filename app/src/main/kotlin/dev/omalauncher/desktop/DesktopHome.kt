@@ -49,6 +49,7 @@ import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.WidgetItem
 import dev.omalauncher.widgets.isFacePage
+import dev.omalauncher.widgets.lang.OwlKind
 
 internal fun matchingApps(runtime: Runtime, query: String): List<AndroidApp> = if (query.isBlank()) runtime.androidApps.apps.toList() else
     rankMatches(runtime.androidApps.apps.toList(), query, { it.label }, alias = { if (it.profile != null) "${it.label} work" else null }).map { it.first }
@@ -80,6 +81,10 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
     fun full(page: Int) = isFacePage(page) || widgets.layout.owner(widgets.itemsOn(page)) != null
     val slots = desktopSlots(pages, per, ::full)
     val pager = rememberPagerState(pageCount = { slots.size })
+    LaunchedEffect(session.workspace, slots) {
+        if (session.workspacePages) slots.indexOfFirst { session.workspace in it }
+            .takeIf { it >= 0 }?.let { pager.scrollToPage(it) }
+    }
     val arrange = session.arrange
     var selected by remember { mutableStateOf<String?>(null) }
     Box(Modifier.fillMaxSize().background(Palette.background)) {
@@ -110,7 +115,8 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                 actions = { item -> BasicText("remove from desktop", Modifier.clickable { widgets.remove(item); selected = null }.padding(8.dp), style = Mono.copy(color = Palette.red)) },
                 onLongPressEmpty = { session.picker = true }, feed = {}, onNoRoom = widgets::noRoom, onMove = widgets::move,
                 onGroup = widgets::group, onReorder = widgets::reorder, onRenameFolder = widgets::renameFolder,
-                per = per, modifier = Modifier.weight(1f).fillMaxWidth())
+                per = per, allowPageSwipe = !session.workspacePages,
+                modifier = Modifier.weight(1f).fillMaxWidth())
             Row(Modifier.fillMaxWidth().background(Palette.background).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                 BasicText("apps", Modifier.clickable { session.uiAction("drawer") }, style = Mono)
                 BasicText("widgets", Modifier.clickable { session.uiAction("widgets") }, style = Mono)
@@ -139,10 +145,16 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                 }
             }
         }
-        if (session.picker) OverlayPanel("widgets", session::dismiss) {
+        if (session.picker) OverlayPanel(if (session.workspacePages) "desktop widgets" else "widgets", session::dismiss) {
+            val choices = if (session.workspacePages) widgets.specs.filter {
+                it.kind == OwlKind.Widget && !it.isFace && !widgets.isShown(it)
+            } else widgets.specs
             LazyColumn(Modifier.weight(1f)) {
-                items(widgets.specs, key = { it.file.name }) { spec ->
-                    BasicText(spec.name, Modifier.fillMaxWidth().clickable { widgets.show(spec); session.dismiss() }.padding(12.dp), style = Mono)
+                items(choices, key = { it.file.name }) { spec ->
+                    BasicText(spec.name, Modifier.fillMaxWidth().clickable {
+                        if (session.workspacePages) widgets.show(spec, session.workspace) else widgets.show(spec)
+                        session.dismiss()
+                    }.padding(12.dp), style = Mono)
                 }
             }
         }

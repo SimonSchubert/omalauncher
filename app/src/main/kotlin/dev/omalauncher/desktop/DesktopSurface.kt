@@ -51,6 +51,7 @@ internal class DesktopSurface @RequiresApi(30) constructor(
     private val callback: IDesktopHost,
     val pagesSideBySide: Boolean,
     inheritPhoneLayout: Boolean,
+    workspacePages: Boolean,
     initialUiScale: Float,
     private val systemLaunch: Boolean,
     private val remove: (String, String) -> Unit,
@@ -70,7 +71,9 @@ internal class DesktopSurface @RequiresApi(30) constructor(
     private var visible = false
     private val home = DesktopHomeSession(windowContext, runtime,
         "external_" + DesktopAccess.digest((identity.packageName + identity.certificate + profile).toByteArray()),
-        pagesSideBySide, inheritPhoneLayout, ::launch, ::authorized, { view.requestFocus() },
+        pagesSideBySide, inheritPhoneLayout, workspacePages,
+        display.mode.physicalWidth, display.mode.physicalHeight, uiScale,
+        ::launch, ::authorized, { view.requestFocus() },
         { text -> runCatching { callback.onStatus(id, "unsupported_action", text) } })
 
     fun attach(width: Int, height: Int) {

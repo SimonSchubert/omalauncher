@@ -19,19 +19,25 @@ internal class DesktopHomeSession(
     profile: String,
     pagesSideBySide: Boolean,
     inheritPhoneLayout: Boolean,
+    val workspacePages: Boolean,
+    screenWidthPx: Int,
+    screenHeightPx: Int,
+    uiScale: Float,
     private val launchApp: (AndroidApp) -> Unit,
     private val authorized: () -> Boolean,
     private val focus: () -> Unit = {},
     private val report: (String) -> Unit = {},
 ) {
-    var pagesSideBySide by mutableStateOf(pagesSideBySide)
+    var pagesSideBySide by mutableStateOf(pagesSideBySide && !workspacePages)
+    var workspace by mutableStateOf(1)
     var query by mutableStateOf("")
     var drawer by mutableStateOf(false)
     var picker by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
     val drawerScroll = LazyListState()
     val arrange = Arrange()
-    val widgets = DesktopWidgets(context, runtime, profile, ::launch, ::uiAction, ::unavailable, authorized, inheritPhoneLayout)
+    val widgets = DesktopWidgets(context, runtime, profile, ::launch, ::uiAction, ::unavailable, authorized,
+        inheritPhoneLayout, workspacePages, screenWidthPx, screenHeightPx, uiScale)
 
     fun start() = widgets.start()
     fun close() = widgets.close()
@@ -51,6 +57,10 @@ internal class DesktopHomeSession(
 
     fun uiAction(action: String) {
         if (!authorized()) return
+        if (workspacePages && action.startsWith("workspace:")) {
+            action.substringAfter(':').toIntOrNull()?.takeIf { it in 1..10 }?.let { workspace = it }
+            return
+        }
         when (action) {
             "drawer", "search" -> { drawer = true; focus() }
             "widgets" -> picker = true
@@ -70,6 +80,8 @@ internal class DesktopHomeSession(
     fun describe() = Bundle().apply {
         putIntArray("pages", widgets.pages.toIntArray())
         putBoolean("pagesSideBySide", pagesSideBySide)
+        putBoolean("workspacePages", workspacePages)
+        if (workspacePages) putInt("workspace", workspace)
         putBoolean("overlay", drawer || picker || widgets.openScreen != null || arrange.folder != null)
         putString("query", query)
         putString("message", message)
