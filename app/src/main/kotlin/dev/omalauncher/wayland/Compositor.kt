@@ -15,9 +15,45 @@ class CompositorResource(
     ) {
         when (opcode) {
             0 -> client.register(Surface(client, args.newId(), version))
-            1 -> client.register(StubResource(client, args.newId(), version, "wl_region"))
+            1 -> client.register(Region(client, args.newId(), version))
         }
     }
+}
+
+/** wl_region: rectangles added and subtracted in order, in surface-local logical pixels. */
+class Region(
+    client: Client,
+    id: Int,
+    version: Int,
+) : Resource(client, id, version) {
+    override val iface = "wl_region"
+
+    /** Each is add (1) or subtract (0), then x, y, width, height. Replaced, never changed, so a surface can keep it. */
+    var ops: List<IntArray> = emptyList()
+        private set
+
+    override fun request(
+        opcode: Int,
+        args: Args,
+    ) {
+        when (opcode) {
+            0 -> destroy()
+            1, 2 -> ops = ops + intArrayOf(if (opcode == 1) 1 else 0, args.int(), args.int(), args.int(), args.int())
+        }
+    }
+}
+
+/** Whether a region made of [ops] (see [Region.ops]) holds the point; later rectangles win. */
+internal fun regionContains(
+    ops: List<IntArray>,
+    x: Float,
+    y: Float,
+): Boolean {
+    var inside = false
+    for (op in ops) {
+        if (x >= op[1] && y >= op[2] && x < op[1] + op[3] && y < op[2] + op[4]) inside = op[0] == 1
+    }
+    return inside
 }
 
 /** Something that gives a wl_surface meaning: xdg_surface or wl_subsurface. */
@@ -76,6 +112,12 @@ class Surface(
     private var pendingBuffer: ShmBuffer? = null
     private var pendingAttach = false
     private var pendingScale = 1
+    private var pendingInput: List<IntArray>? = null
+    private var pendingInputSet = false
+
+    /** Where the surface takes input, as [Region.ops]; null for all of it. */
+    @Volatile
+    private var inputRegion: List<IntArray>? = null
 
     /** Damage since the last commit: surface-coordinate rects, then buffer-coordinate rects. */
     private val pendingDamage = ArrayList<IntArray>()
@@ -103,6 +145,16 @@ class Surface(
 
     val hasContent get() = bufferWidth > 0
 
+    /**
+     * Whether a point in surface-local logical pixels is in the input region. GL toolkits
+     * (wxWidgets: PrusaSlicer's 3D view) draw into a subsurface with an empty one, so input
+     * goes to the widget beneath it.
+     */
+    fun takesInput(
+        x: Float,
+        y: Float,
+    ) = inputRegion?.let { regionContains(it, x, y) } ?: true
+
     var role: SurfaceRole? = null
 
     /** Set once the client destroyed it; input and drawing skip it from then on. */
@@ -127,7 +179,11 @@ class Surface(
             }
             2 -> pendingDamage += intArrayOf(args.int(), args.int(), args.int(), args.int())
             3 -> pendingFrames += args.newId()
-            4, 5 -> Unit // opaque / input region: we track opacity by format, and take input anywhere
+            4 -> Unit // opaque region: we track opacity by format
+            5 -> { // set_input_region; the region as it is now, not as it changes later
+                pendingInput = args.obj().takeIf { it != 0 }?.let { client.get<Region>(it)?.ops ?: emptyList() }
+                pendingInputSet = true
+            }
             6 -> commit()
             7 -> Unit // buffer transform
             8 -> pendingScale = args.int().coerceIn(1, 4)
@@ -138,6 +194,10 @@ class Surface(
     private fun commit() {
         val scaleChanged = pendingScale != bufferScale
         bufferScale = pendingScale
+        if (pendingInputSet) {
+            pendingInputSet = false
+            inputRegion = pendingInput
+        }
         if (pendingAttach) {
             pendingAttach = false
             // A buffer destroyed since the attach counts as none (as in libwayland): its pool may be

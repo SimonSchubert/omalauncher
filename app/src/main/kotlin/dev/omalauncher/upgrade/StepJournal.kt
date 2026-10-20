@@ -30,10 +30,6 @@ class StepJournal(
         if (done.add(id)) save()
     }
 
-    fun forget(id: String) {
-        if (done.remove(id)) save()
-    }
-
     fun completeSetup() {
         setupComplete = true
         save()

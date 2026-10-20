@@ -63,8 +63,8 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
-      - name: Build
-        run: ./gradlew :app:assembleRelease
+      - name: Test and build
+        run: ./gradlew :owl:test :app:testDebugUnitTest :app:assembleRelease
 
       # Checksum and provenance, so a sideloaded APK can be checked against what CI built:
       # sha256sum -c SHA256SUMS, or gh attestation verify <apk> -R SimonSchubert/omalauncher.
@@ -75,6 +75,8 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk "$apk"
           sha256sum "$apk" > SHA256SUMS
           echo "file=$apk" >> "$GITHUB_OUTPUT"
+          # The same R8 run as the Play AAB's, so it retraces Play crashes too: match `r8-map-id` to `# pg_map_id`.
+          cp app/build/outputs/mapping/release/mapping.txt "mapping-${{ steps.version.outputs.name }}.txt"
 
       - uses: actions/attest-build-provenance@v2
         with:
@@ -86,5 +88,8 @@ jobs:
         run: |
           apk="${{ steps.apk.outputs.file }}"
           notes=fastlane/metadata/android/en-US/changelogs/${{ steps.version.outputs.code }}.txt
-          [ -f "$notes" ] || notes=/dev/null
-          gh release create "$GITHUB_REF_NAME" "$apk" SHA256SUMS --title "$GITHUB_REF_NAME" --notes-file "$notes" --verify-tag
+          if [ ! -f "$notes" ]; then
+            echo "$notes is missing" >&2
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" "$apk" SHA256SUMS "mapping-${{ steps.version.outputs.name }}.txt" --title "$GITHUB_REF_NAME" --notes-file "$notes" --verify-tag

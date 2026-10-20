@@ -34,7 +34,7 @@ class Proot(
     val procShim = ProcShim(File(filesDir, "proc"))
 
     /** How guest apps render OpenGL and Vulkan: in software, or on the GPU once [Gpu] turns it on. */
-    @Volatile var graphicsEnv: List<String> = Gpu.SOFTWARE_ENV
+    @Volatile var graphicsEnv: List<String> = SOFTWARE_ENV
 
     /** Replaces /usr/bin/bwrap in the guest, see assets/bwrap-shim.sh. */
     private val bwrapShim = File(filesDir, "bwrap-shim")
@@ -45,6 +45,7 @@ class Proot(
             "$GUEST_HOME/.local/share/omarchy" to LauncherData.omarchyDir(context),
             "$GUEST_HOME/.config/omalauncher/widgets" to LauncherData.widgetsDir(context),
             "$GUEST_HOME/.config/omalauncher/style" to LauncherData.styleDir(context),
+            "$GUEST_HOME/.config/omalauncher/home" to LauncherData.homeDir(context),
             "$GUEST_HOME/.config/omarchy/themes" to LauncherData.userThemesDir(context),
             "$GUEST_HOME/.config/omarchy/backgrounds" to LauncherData.userBackgroundsDir(context),
         )

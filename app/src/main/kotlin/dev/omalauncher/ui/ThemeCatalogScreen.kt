@@ -1,7 +1,5 @@
 package dev.omalauncher.ui
 
-import android.content.Intent
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,6 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.omalauncher.openUrl
 import dev.omalauncher.theme.CatalogTheme
 import dev.omalauncher.theme.ThemeCatalog
 import dev.omalauncher.theme.ThemeDirs
@@ -92,7 +91,7 @@ fun ThemeCatalogScreen(
                 Column {
                     BasicText(
                         "made by the community, listed on omarchy.org/themes · installed from GitHub",
-                        Modifier.clickable { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ThemeCatalog.PAGE))) } },
+                        Modifier.clickable { context.openUrl(ThemeCatalog.PAGE) },
                         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                     )
                     InstallStatus(store)
