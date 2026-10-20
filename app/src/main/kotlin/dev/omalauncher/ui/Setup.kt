@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,7 +50,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.Stage
+import dev.omalauncher.theme.AutoTheme
 import dev.omalauncher.theme.BundledTheme
+import dev.omalauncher.theme.Style
+import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.theme.ThemeStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -90,7 +94,7 @@ internal fun SetupScreen(runtime: Runtime) {
                 if (started) {
                     ThemeDownloadProgress(themes.choices.firstOrNull { it.name == themes.picked }?.title?.lowercase() ?: themes.picked, error, onRetry = ::fetchTheme, onSkip = runtime::finishWelcome)
                 } else {
-                    Welcome(themes, linux, { linux = !linux }, picked) { bin -> picked = if (bin in picked) picked - bin else picked + bin }
+                    Welcome(themes, runtime.style, linux, { linux = !linux }, picked) { bin -> picked = if (bin in picked) picked - bin else picked + bin }
                 }
             }
         }
@@ -124,6 +128,7 @@ private fun Wordmark() {
 @Composable
 private fun Welcome(
     themes: ThemeStore,
+    style: StyleStore,
     linux: Boolean,
     onToggleLinux: () -> Unit,
     picked: List<String>,
@@ -144,12 +149,7 @@ private fun Welcome(
     Spacer(Modifier.height(32.dp))
     // Each theme starts downloading as it's selected, the default one right away.
     LaunchedEffect(Unit) { themes.prefetch(themes.picked) }
-    Appear(1) {
-        ThemeStrip(themes, onPick = {
-            themes.pick(it)
-            themes.prefetch(it.name)
-        })
-    }
+    Appear(1) { WelcomeThemes(themes, style) }
     Spacer(Modifier.height(32.dp))
     Appear(2) {
         Column {
@@ -160,6 +160,58 @@ private fun Welcome(
                 Spacer(Modifier.height(24.dp))
                 AgentPicker(picked, onToggle)
             }
+        }
+    }
+}
+
+/**
+ * A theme for each of Android's modes ([Style.AUTO_THEME]), or one for both. On here, for new
+ * installs; one updated from before it never sees this screen, and keeps its one theme.
+ * The one for the mode Android is in now shows and downloads right away; the other is drawn
+ * in its own colors, and downloads with the rest once the home screen is up.
+ */
+@Composable
+private fun WelcomeThemes(
+    themes: ThemeStore,
+    style: StyleStore,
+) {
+    var follow by rememberSaveable { mutableStateOf(true) }
+    val dark = isSystemInDarkTheme()
+    val scope = rememberCoroutineScope()
+
+    fun show(theme: BundledTheme) {
+        themes.pick(theme)
+        themes.prefetch(theme.name)
+    }
+    LaunchedEffect(follow) {
+        // Unchecked, nothing of it stays in style.toml: like an install from before it.
+        themes.setAutoTheme(follow, forget = true)
+        // Until one is picked, the default theme (a dark one) gives way to its partner in light mode.
+        if (follow && style.style[Style.THEME] == null) {
+            val modes = themes.choices.associate { it.name to (it.colors["mode"] == "light") }
+            val partner = AutoTheme.partner(themes.picked, light = !dark, modes)
+            if (partner != themes.picked) themes.choices.firstOrNull { it.name == partner }?.let(::show)
+        }
+    }
+    Column {
+        // Asked first: it decides whether one row of themes follows or two.
+        Choice("follow android's dark mode", "a light and a dark theme, switched with the system", follow) { follow = !follow }
+        Spacer(Modifier.height(20.dp))
+        if (follow) {
+            // The mode Android is in first.
+            for (modeDark in listOf(dark, !dark)) {
+                val now = modeDark == dark
+                ThemeStrip(
+                    themes,
+                    label = (if (modeDark) "dark mode" else "light mode") + if (now) " · now" else "",
+                    selected = if (now) themes.picked else style.style[AutoTheme.of(modeDark).theme].orEmpty(),
+                    filter = { (it.colors["mode"] == "light") != modeDark },
+                    onPick = { theme -> if (now) show(theme) else scope.launch { themes.setModeTheme(modeDark, theme.name) } },
+                )
+                if (now) Spacer(Modifier.height(20.dp))
+            }
+        } else {
+            ThemeStrip(themes, onPick = ::show)
         }
     }
 }
@@ -444,23 +496,28 @@ private fun LogTail(
 internal fun ThemeStrip(
     themes: ThemeStore,
     gutter: Dp = Gutter,
+    label: String = "theme",
+    /** The theme marked as picked. */
+    selected: String = themes.picked,
+    /** Which themes it offers: the welcome screen's light and dark strips each take their mode's. */
+    filter: (BundledTheme) -> Boolean = { true },
     onPick: (BundledTheme) -> Unit = themes::pick,
     onBrowse: (() -> Unit)? = null,
 ) {
     RescanThemes(themes)
-    val list = themes.choices
+    val list = themes.choices.filter(filter)
     if (list.isEmpty()) return
     Column {
         Row {
-            Label("theme")
+            Label(label)
             Spacer(Modifier.weight(1f))
             BasicText(
-                list.firstOrNull { it.name == themes.picked }?.title?.lowercase().orEmpty(),
+                list.firstOrNull { it.name == selected }?.title?.lowercase().orEmpty(),
                 style = Mono.copy(color = Subtle, fontSize = TextSize.Small),
             )
         }
         Spacer(Modifier.height(12.dp))
-        val start = list.indexOfFirst { it.name == themes.picked }.coerceAtLeast(0)
+        val start = list.indexOfFirst { it.name == selected }.coerceAtLeast(0)
         LazyRow(
             // Scrolls under the gutters to the screen edges, starting aligned with the text above.
             Modifier.bleed(gutter),
@@ -468,7 +525,7 @@ internal fun ThemeStrip(
             contentPadding = PaddingValues(horizontal = gutter),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(list, key = { it.name }) { theme -> ThemeSwatch(theme, theme.name == themes.picked) { onPick(theme) } }
+            items(list, key = { it.name }) { theme -> ThemeSwatch(theme, theme.name == selected) { onPick(theme) } }
             if (onBrowse != null) item(key = "browse") { BrowseSwatch(onBrowse) }
         }
     }
