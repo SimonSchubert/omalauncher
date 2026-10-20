@@ -1,0 +1,228 @@
+panel "app drawer" {
+  // The app drawer: swiping up on home opens it, above the prompt bar. It's a panel like any other, so it's yours to
+  // change: ask your agent to edit it, or pick another panel in settings › gestures. .stock-drawer.owl next to it is
+  // this file as the launcher ships it, kept up to date: compare the two to see what changed in a newer launcher.
+  meta { description: "The launcher's app drawer, written in owl: your apps by kind, search as you type in the prompt bar, and each app's long-press menu"; version: "1.0"; license: "MIT"; category: "system"; owl: 11 }
+  // The launcher's gear, as its settings buttons draw it; currentColor takes the accent.
+  asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
+  source d = android.drawer
+  source ag = android.agents
+  // The app whose long-press menu is open, by key, and the shortcuts it offers: null while they load, and the menu
+  // waits for them, so it opens whole rather than growing.
+  state menu = ""
+  state menuShortcuts = null
+  state tab = "personal"
+  // The result picked with the arrow or Tab keys, -1 for the ask row; null follows the ranking.
+  state pick = null
+
+  // As the launcher's drawer fits them: a column for every 76 dp.
+  let cols = max(1, floor(((screenWidth ?? 400) - 24) / 76))
+  let typed = trim(query)
+  let searching = typed != ""
+  let mine = d.apps.filter(a => (tab == "work") == (a.profile == "work"))
+  let sections = tab == "work" ? [
+      {title: "shortcuts", apps: mine.filter(a => a.kind == "shortcut")},
+      {title: d.work.paused ? "work apps paused" : "work apps", apps: mine.filter(a => a.kind == "android"), work: true}
+    ] : [
+      {title: "apps", apps: mine.filter(a => a.kind == "owl")},
+      {title: "linux", apps: mine.filter(a => a.kind == "linux"), linux: true},
+      {title: "shortcuts", apps: mine.filter(a => a.kind == "shortcut")},
+      {title: "android", apps: mine.filter(a => a.kind == "android")}
+    ]
+  // A title, then rows of cols apps. Without Linux, its section is an offer to install it.
+  let rows = flatten(sections.filter(s => len(s.apps) > 0 || s.work || (s.linux && !linux)).map(s => flatten([
+      [{key: "h:" + s.title, title: s.linux && !linux ? "linux apps" : s.title, work: s.work, offer: s.linux && !linux}],
+      chunk(s.apps, cols).map((cells, r) => {key: s.title + ":" + r, cells: cells})
+    ])))
+  // Every profile's apps match while typing, best first; the list runs up from the bar, so the best sits right above it.
+  let hits = searching ? rank(d.apps, typed) : []
+  let hitRows = chunk(hits, cols).map((cells, r) => {key: "q:" + r, start: r * cols, cells: cells})
+  // Enter opens the best match when it names an app well, as the bar does; anything else, a prompt of more lines among it, goes to the agent.
+  let opens = len(hits) > 0 && strongMatch(hits[0], typed)
+  // What Enter acts on: a result by its place in hits, or -1 for the ask row.
+  let chosen = pick ?? (opens ? 0 : -1)
+  let agent = ag.default
+  // With a keyboard: Up and Tab move the pick away from the bar, Down and Shift+Tab back; the ask row sits lowest.
+  onKey: {
+    if searching {
+      pick = clamp(chosen + (value == "up" || value == "tab" ? 1 : -1), -1, len(hits) - 1)
+    }
+  }
+  let labels = {pin: "add to home", info: "app info", uninstall: "uninstall", remove: "remove", edit: "edit", share: "share"}
+
+  // Typing starts the pick over, at the best match.
+  on typed { pick = null }
+
+  enter: searching ? (chosen >= 0 ? "▸ open" : "⏎ ask") : ""
+  // An empty bar's Enter does nothing, as on home.
+  onSubmit: {
+    if searching {
+      if chosen >= 0 {
+        open(hits[chosen].key)
+      } else if !linux {
+        launcher("linux")
+      } else {
+        ask(value)
+      }
+    }
+  }
+
+  // An app's icon as the drawer draws it: its own, its silhouette on a badge with monochrome icons, or its initials.
+  component AppIcon(a) {
+    Box {
+      size: 52
+      align: center
+      radius: 26 * corners
+      background: a.hasIcon && !d.monochrome ? transparent : surface
+      if a.hasIcon {
+        Image { src: a.icon; size: d.monochrome ? 36 : 52; tint: d.monochrome ? accent : null; label: a.label }
+      } else {
+        Text { text: a.initials; fontSize: 18; color: accent }
+      }
+    }
+  }
+
+  component Cell(a, picked) {
+    Column {
+      weight: 1
+      align: center
+      gap: 6
+      padding: [4, 10]
+      radius: 16 * corners
+      border: picked ? 2 : 0
+      borderColor: accent
+      // Paused work apps show dimmed; opening one turns work apps back on.
+      opacity: a.paused ? 0.4 : 1
+      onTap: open(a.key)
+      onLongPress: {
+        haptic()
+        menuShortcuts = null
+        menu = a.key
+        menuShortcuts = shortcuts(a.key)
+      }
+      AppIcon { a: a }
+      // Always two lines tall, so a row keeps its height whichever apps fill it.
+      Text { text: a.name; fontSize: 12; align: center; maxLines: 2; minLines: 2; fill: width }
+      Popup {
+        visible: menu == a.key && menuShortcuts != null
+        position: above
+        onDismiss: menu = ""
+        width: 200
+        gap: 0
+        // The app's shortcuts first, as stock launchers list them: tap to open, + to put one on home.
+        for s in menuShortcuts key s.key {
+          Row {
+            fill: width
+            align: center
+            gap: 10
+            padding: [12, 6]
+            onTap: { menu = ""; open(s.key) }
+            Image { src: s.icon; size: 24; tint: d.monochrome ? accent : null; label: s.name }
+            Text { text: s.name; weight: 1; maxLines: 1 }
+            Text { text: "[+]"; color: accent; onTap: { menu = ""; appAction("pin", s.key) } }
+          }
+        }
+        Spacer { visible: len(menuShortcuts) > 0; height: 1; fill: width; background: border }
+        for w in a.actions {
+          Text { text: get(labels, w, w); fontSize: 15; fill: width; padding: [12, 12]; onTap: { menu = ""; appAction(w, a.key) } }
+        }
+      }
+    }
+  }
+
+  Column {
+    gap: 0
+    padding: [12, 0]
+    Row {
+      align: center
+      padding: [0, 12, 0, 8]
+      gap: 0
+      // Typing searches every profile, so the tabs step aside.
+      for t in d.work != null && !searching ? ["personal", "work"] : [] {
+        Text { text: t; color: tab == t ? accent : muted; background: tab == t ? surface : transparent; radius: 18 * corners; padding: [14, 10]; onTap: tab = t }
+      }
+      Spacer { weight: 1 }
+      Box {
+        size: 44
+        radius: 22 * corners
+        background: surface
+        align: center
+        onTap: launcher("settings")
+        Image { src: gear; size: 22; tint: accent; label: "settings" }
+        // System updates are waiting: settings › system updates lists them.
+        Box { visible: d.updates > 0; align: topEnd; size: 44; padding: 8; Box { size: 8; radius: 4; background: red } }
+      }
+    }
+    Column {
+      visible: !searching
+      lazy: true
+      weight: 1
+      fill: width
+      gap: 0
+      for row in rows key row.key {
+        if row.title != null {
+          // A section's title, with the work switch or the offer to install Linux at its end.
+          Row {
+            fill: width
+            gap: 0
+            align: center
+            padding: [8, 12, 0, 4]
+            Text { text: row.title; color: muted; weight: 1 }
+            Text { text: d.work.paused ? "[turn on]" : "[pause]"; visible: row.work == true; color: accent; onTap: workApps("toggle") }
+            Text { text: d.linux == "installing" ? "[installing…]" : "[install linux]"; visible: row.offer == true; color: accent; onTap: launcher("linux") }
+          }
+        } else {
+          Row {
+            fill: width
+            gap: 0
+            for a in row.cells { Cell { a: a; picked: false } }
+            // A short last row keeps its cells the width of the others'.
+            for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
+          }
+        }
+      }
+    }
+    Column {
+      visible: searching
+      lazy: true
+      reverse: true
+      weight: 1
+      fill: width
+      gap: 0
+      for row in hitRows key row.key {
+        Row {
+          fill: width
+          gap: 0
+          for a, i in row.cells { Cell { a: a; picked: row.start + i == chosen } }
+          for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
+        }
+      }
+    }
+    // The one line above the bar that sends what's typed to the agent; outlined when that's what Enter does.
+    Row {
+      visible: searching
+      fill: width
+      gap: 4
+      padding: [12, 10]
+      border: chosen == -1 ? 2 : 0
+      borderColor: accent
+      radius: 16 * corners
+      onTap: {
+        if !linux {
+          launcher("linux")
+        } else if agent == null {
+          launcher("agents")
+        } else {
+          ask(typed)
+        }
+      }
+      Text { text: "⏎"; color: chosen == -1 ? accent : muted }
+      Text {
+        text: !linux ? "ask an agent · install linux" : agent == null ? "ask an agent · install one" : "ask " + agent.bin + ": " + typed
+        color: chosen == -1 ? foreground : muted
+        maxLines: 1
+        weight: 1
+      }
+    }
+  }
+}

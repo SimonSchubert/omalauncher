@@ -35,6 +35,18 @@ class AgentsTest {
         assertEquals(output, 0, process.waitFor())
     }
 
+    /** A prompt from a widget can't pass the agent an option: claude --settings=... would run its hooks. */
+    @Test fun aPromptStartingWithADashIsNoOption() {
+        val script = """
+            set -- ${agentInvocation("claude", "--settings={}")}
+            test "${'$'}#" -eq 2 &&
+            test "${'$'}2" = " --settings={}"
+        """.trimIndent()
+        val process = ProcessBuilder("sh", "-c", script).redirectErrorStream(true).start()
+        val output = process.inputStream.bufferedReader().use { it.readText() }
+        assertEquals(output, 0, process.waitFor())
+    }
+
     /** OpenCode installs from before 2 have no node, and mise needs it for OpenCode 2's postinstall. */
     @Test fun updatesAddNodeForOpencode() {
         assertEquals(

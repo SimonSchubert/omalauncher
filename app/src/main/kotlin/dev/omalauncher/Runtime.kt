@@ -28,6 +28,7 @@ import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.SystemUpdates
+import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.bundledIcons
 import dev.omalauncher.linux.defaultApps
@@ -80,7 +81,8 @@ class Runtime(
     val terminals = TerminalTiles(this)
     val style = StyleStore(context)
     val terminalFont = TerminalFont(proot, style)
-    val gestures = Gestures(context)
+    val launcherFont = LauncherFont(proot, style).also { it.restore() }
+    val gestures = Gestures(context, style)
     val linuxApps = LinuxAppCatalog(context, proot)
     val androidApps = AndroidAppCatalog(context)
     val usage = AppUsage(context)
@@ -146,6 +148,9 @@ class Runtime(
         // foot.ini follows the terminal settings, from the Style menu or the file alike.
         scope.launch {
             snapshotFlow { style.style[Style.TERMINAL_FONT] to style.style[Style.TERMINAL_TEXT] }.drop(1).collect { terminalFont.write() }
+        }
+        scope.launch {
+            snapshotFlow { style.style[Style.FONT] }.drop(1).collect { launcherFont.apply() }
         }
         androidApps.start()
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
@@ -219,6 +224,7 @@ class Runtime(
         linuxJob =
             scope.launch {
                 linux = false
+                launcherFont.forget()
                 widgets.linuxChanged(false)
                 audio.stop()
                 withContext(Dispatchers.IO) { proot.killAll() }
@@ -272,6 +278,8 @@ class Runtime(
             terminalFont.write()
         }
         linux = true
+        // A font picked from Linux that wasn't remembered at start (or was installed since) loads now.
+        scope.launch { launcherFont.apply() }
         // The recent apps strip on home lists Linux apps before the app list is ever opened.
         scope.launch { refreshApps() }
         // Themes picked without Linux are written into the guest now.

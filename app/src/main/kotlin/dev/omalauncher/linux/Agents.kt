@@ -81,7 +81,8 @@ fun agentInvocation(
     prompt: String,
     readOnly: Boolean = false,
 ): String {
-    val quoted = shellQuote(prompt)
+    // A prompt starting with a dash would be read as an option (claude --settings=... runs hooks); a space in front isn't.
+    val quoted = shellQuote(if (prompt.startsWith("-")) " $prompt" else prompt)
     return when {
         agentBin == "opencode" -> "$agentBin --prompt $quoted"
         agentBin == "copilot" -> "$agentBin -i $quoted"

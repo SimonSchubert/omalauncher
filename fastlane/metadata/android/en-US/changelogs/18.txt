@@ -1,0 +1,1 @@
+The app drawer is now a widget file you or your agent can edit: change its look, search and menus, or swipe down for a panel of your own (settings › gestures). Home's layout is a file too, so an agent can move, resize and reorder your pages. Owl 11 for widget makers: swipe panels, lazy lists, screen reader labels and more. Smoother animated widgets.

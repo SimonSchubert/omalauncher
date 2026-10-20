@@ -25,9 +25,10 @@ import org.json.JSONObject
 
 /**
  * The marketplace for one [kind]: a reviewed catalog published from a GitHub repo to
- * GitHub Pages, widgets in index.json and apps in apps.json. Installs are checked against
- * the catalog's SHA-256, land on the current page (an app in the drawer), and remember
- * which version and commands were approved, so an update that changes them asks again.
+ * GitHub Pages, widgets in index.json, faces in faces.json and apps in apps.json. Installs
+ * are checked against the catalog's SHA-256, land on the current page (a face left of page
+ * 1, an app in the drawer), and remember which version and commands were approved, so an
+ * update that changes them asks again.
  */
 class Market(
     private val engine: WidgetEngine,
@@ -37,10 +38,13 @@ class Market(
         /** The marketplace repo: widgets are submitted there as pull requests. */
         const val REPO = "SimonSchubert/omarchy-widgets"
 
-        /** Where its CI publishes index.json, apps.json and the reviewed files. */
+        /** Where its CI publishes index.json, faces.json, apps.json and the reviewed files. */
         const val BASE = "https://simonschubert.github.io/omarchy-widgets/"
 
         private const val VERSION = 1
+
+        /** Settings checks for updates with a catalog at most this old; the store always reloads it. */
+        private const val STALE_MS = 60 * 60 * 1000L
     }
 
     /** What the user installed and approved, per catalog id. */
@@ -58,34 +62,54 @@ class Market(
         private set
     var error by mutableStateOf<String?>(null)
         private set
+
+    /** When the catalog last loaded; settings reloads it only when it's older than [STALE_MS]. */
+    var refreshedAt = 0L
+        private set
     val busy = mutableStateMapOf<String, String>()
     val installed = mutableStateMapOf<String, Installed>()
     private val previews = HashMap<String, ImageBitmap?>()
     private val icons = HashMap<Pair<String, Int>, ImageBitmap?>()
-    private val catalog = if (kind == OwlKind.App) "apps.json" else "index.json"
+    private val catalog = if (kind == OwlKind.Widget) "index.json" else "${kind.word}s.json"
 
     /** Each kind keeps its own records: an app and a widget may share an id. */
-    private val record get() = File(engine.dir, if (kind == OwlKind.App) ".market-apps.json" else ".market.json")
+    private val record get() = File(engine.dir, if (kind == OwlKind.Widget) ".market.json" else ".market-${kind.word}s.json")
 
     suspend fun refresh() {
         if (loading) return
         loading = true
         error = null
         try {
-            entries = withContext(Dispatchers.IO) { Catalog.parse(String(httpGet(BASE + catalog)), if (kind == OwlKind.App) "apps" else "widgets") }
+            entries = withContext(Dispatchers.IO) { Catalog.parse(String(httpGet(BASE + catalog)), "${kind.word}s") }
+            refreshedAt = System.currentTimeMillis()
         } catch (e: Exception) {
+            // A catalog the store doesn't publish yet (faces.json, before the first face) is an empty one.
+            if (e.message?.startsWith("HTTP 404") == true) {
+                entries = emptyList()
+                refreshedAt = System.currentTimeMillis()
+                return
+            }
             error = "couldn't load the store: ${e.message ?: e}"
         } finally {
             loading = false
         }
     }
 
-    fun fileFor(e: CatalogEntry) = (if (kind == OwlKind.App) "market-app-" else "market-") + "${e.author}-${e.id.substringAfter('/')}.owl"
+    /** Reloads the catalog unless it loaded recently; a failed load is tried again next time. */
+    suspend fun refreshIfStale() {
+        if (System.currentTimeMillis() - refreshedAt >= STALE_MS) refresh()
+    }
+
+    fun fileFor(e: CatalogEntry) = (if (kind == OwlKind.Widget) "market-" else "market-${kind.word}-") + "${e.author}-${e.id.substringAfter('/')}.owl"
 
     /** Installed, and its file is still there (removing the tile moves the file away). */
     fun installedVersion(e: CatalogEntry): Installed? = installed[e.id]?.takeIf { File(engine.dir, it.file).exists() }
 
-    fun hasUpdate(e: CatalogEntry) = installedVersion(e)?.let { Catalog.compareVersions(e.version, it.version) > 0 } == true
+    /** A newer version this launcher can run. */
+    fun hasUpdate(e: CatalogEntry) = e.supported && installedVersion(e)?.let { Catalog.compareVersions(e.version, it.version) > 0 } == true
+
+    /** Installed ones with an update, from the last loaded catalog. */
+    val updates get() = entries.filter { hasUpdate(it) }
 
     /** An update runs different commands or needs other packages than what the user approved. */
     fun changedSinceApproval(e: CatalogEntry) = installedVersion(e)?.let { it.commands != e.commands || it.requires != e.requires } == true
@@ -101,8 +125,12 @@ class Market(
             if (Review.sha256(bytes) != e.sha256) return "the download doesn't match the reviewed version; try again later"
             val name = installedVersion(e)?.file ?: fileFor(e)
             withContext(Dispatchers.IO) {
-                // An update keeps its page; a new install goes where the user is. Apps go in the drawer, on no page.
-                if (kind == OwlKind.Widget && installedVersion(e) == null) engine.setPage(name, page)
+                // An update keeps its page; a new install goes where the user is. Apps go in the drawer, on no page, and a face
+                // left of page 1, to the empty one waiting there.
+                if (installedVersion(e) == null) {
+                    if (kind == OwlKind.Widget) engine.setPage(name, page)
+                    if (kind == OwlKind.Face) engine.setPage(name, engine.newFacePage())
+                }
                 engine.installDependenciesWhenLoaded(name)
                 File(engine.dir, name).writeBytes(bytes)
             }
@@ -154,8 +182,16 @@ class Market(
         return img
     }
 
-    /** Reads the install records; call off the main thread before the store opens. */
+    private var loaded = false
+
+    /**
+     * Reads the install records once; call off the main thread before the store opens. Settings
+     * calls it too: opened on its own, after the process died, the engine hasn't started.
+     */
+    @Synchronized
     fun load() {
+        if (loaded) return
+        loaded = true
         val data = Versioned.read(record.takeIf { it.exists() }?.readText(), VERSION) as? JSONObject ?: return
         installed.putAll(
             data.mapEntries { id, f ->

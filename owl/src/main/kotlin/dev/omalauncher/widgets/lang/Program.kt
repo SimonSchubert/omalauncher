@@ -22,7 +22,8 @@ interface Host {
     /**
      * The tile's size: cols and rows in grid cells, tileWidth and tileHeight in dp; null until it's laid out.
      * Also screenWidth and screenHeight (its screen's size), screenInset (how much of its bottom the
-     * navigation bar covers, for an app with `edge`), linux: whether Linux is installed and running,
+     * navigation bar covers, for an app with `edge` and a face, or the keyboard while a face's field has it), screenTop (how
+     * much of an app's top a camera cutout covers, with `statusBar: false`), linux: whether Linux is installed and running,
      * and corners: the launcher's corner style as a radius scale, 0 (edge), 0.5 (soft) or 1 (round).
      */
     fun tile(name: String): Value = Null
@@ -35,6 +36,12 @@ interface Host {
     /** `x = run("...")` in a handler: runs [command] and writes its output to [slot] when it finishes. */
     fun runInto(
         command: String,
+        slot: Int,
+    ) {}
+
+    /** `s = shortcuts(key)` in a handler: the app's shortcuts, as its long-press menu offers them, go into [slot] when they've loaded. */
+    fun shortcutsInto(
+        key: String,
         slot: Int,
     ) {}
 
@@ -293,6 +300,8 @@ class Trigger(
     val expr: Ev,
     val action: Action,
     val pos: Int,
+    /** `on x first`: also for x's first value, with `old` null. */
+    val first: Boolean = false,
 )
 
 class Program(
@@ -303,6 +312,10 @@ class Program(
     /** The tile's: an app has none of these. */
     val size: Pair<Int, Int>? = null,
     val minSize: Pair<Int, Int> = 1 to 1,
+    /** A face (`face "…" { }`): it is its home page, the whole screen with no frame, and nothing else goes on it. */
+    val isFace: Boolean = false,
+    /** A face's or an app's `statusBar`: while false, the status bar hides as it shows; null keeps it. */
+    val statusBar: Ev? = null,
     val page: Int = 1,
     val order: Int = 0,
     /** Tile padding in dp, and an optional tile background. */
@@ -318,6 +331,12 @@ class Program(
     val onBack: Action? = null,
     /** An app's `edge`: its view runs on under the navigation bar, which `screenInset` measures. */
     val edge: Boolean = false,
+    /** A panel's `onSubmit`: Enter in the prompt bar while it's open, with what's typed as `value`. */
+    val onSubmit: Action? = null,
+    /** A panel's `onKey`: up, down, tab or shift-tab pressed in the prompt bar while it's open, as `value`. */
+    val onKey: Action? = null,
+    /** A panel's `enter`: what the prompt bar says Enter does while it's open, like "▸ open". */
+    val enter: Ev? = null,
     val onTap: Action? = null,
     val triggers: List<Trigger>,
     /** Shell commands this widget can run, known without running it; for reviewing shared widgets. */

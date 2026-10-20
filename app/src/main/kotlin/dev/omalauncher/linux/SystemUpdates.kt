@@ -30,6 +30,7 @@ data class ToolUpdate(
 
 /** What the last check found. [error] is set when it couldn't reach the mirrors. */
 data class PendingUpdates(
+    /** Each as "name old → new"; a result saved before versions were kept has just names. */
     val packages: List<String>,
     val tools: List<ToolUpdate>,
     val checkedAt: Long,
@@ -116,7 +117,7 @@ class SystemUpdates(
                 .map { it.trim() }
                 // "name old -> new"
                 .filter { it.contains(" -> ") }
-                .map { it.substringBefore(' ') }
+                .map { it.replace(" -> ", " → ") }
         return PendingUpdates(packages, parseMise(text.substringAfter("#mise\n", "")), now)
     }
 

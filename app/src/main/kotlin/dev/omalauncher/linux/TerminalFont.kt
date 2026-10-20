@@ -131,6 +131,12 @@ class TerminalFont(
     /** The columns a terminal [widthPx] wide gets at [size]. */
     fun columns(widthPx: Int) = columns(widthPx, scale, size)
 
+    /** The pixels an em takes in new terminals: [size] at foot's scale. */
+    val emPx get() = (size * PX_PER_PT * scale).toFloat()
+
+    /** foot.ini's pad in pixels, on each side. */
+    val padPx get() = PAD * scale
+
     /**
      * Writes foot-font.ini if it changed or is gone: Linux removed and
      * installed again in the same process starts without it.

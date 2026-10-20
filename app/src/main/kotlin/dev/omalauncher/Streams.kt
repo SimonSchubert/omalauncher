@@ -18,7 +18,10 @@ fun InputStream.readUpTo(limit: Int): ByteArray {
 }
 
 /** Lowercase hex, as sha256sum prints it. */
-fun sha256Hex(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+fun sha256Hex(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).hex()
+
+/** Lowercase hex of what [MessageDigest.digest] returned. */
+fun ByteArray.hex(): String = joinToString("") { "%02x".format(it) }
 
 /** Counts the bytes read through it; [onRead] gets the running total after each read. */
 class CountingInputStream(

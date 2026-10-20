@@ -10,8 +10,13 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -31,7 +36,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,11 +52,26 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupPositionProvider
 import dev.omalauncher.Runtime
+import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.TerminalText
@@ -106,12 +125,16 @@ fun StyleScreen(
             Flag("icons", "monochrome", "colored", style, Style.MONOCHROME_ICONS)
             Flag("home apps", "boxed", "icon only", style, Style.APP_TILES)
             Flag("recent apps", "shown", "hidden", style, Style.RECENT_APPS)
+            CountOption("columns", Style.COLUMNS, style)
+            Flag("pages", "one", "auto", style, Style.FORCE_SINGLE_PAGE)
             NumberOption("corners", Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
+            HomePreview(runtime)
             // Like Hyprland's gaps_in, gaps_out and border_size; the colors are in style.toml.
             Heading("widgets")
             Stepper("gaps in", style, Style.GAPS_IN)
             Stepper("gaps out", style, Style.GAPS_OUT)
             Stepper("border width", style, Style.TILE_BORDER_WIDTH)
+            WidgetPreview()
             Heading("screens")
             Stepper("gaps out", style, Style.SCREEN_GAPS_OUT)
             Stepper("border width", style, Style.SCREEN_BORDER_WIDTH)
@@ -121,7 +144,13 @@ fun StyleScreen(
             Flag("background", "shown", "hidden", style, Style.STATUS_BAR.framed, Style.NAVIGATION_BAR.framed)
             Stepper("border width", style, Style.STATUS_BAR.borderWidth, Style.NAVIGATION_BAR.borderWidth)
             if (linux == LinuxState.Installed) {
-                TerminalSection(runtime.terminalFont, runtime.terminals, style)
+                // Linux's fonts, which the terminal section lists.
+                Heading("launcher & widgets")
+                val fonts = listOf(Style.SYSTEM_FONT) + runtime.terminalFont.families
+                FontOption(fonts, style.style[Style.FONT], label = { if (it == Style.SYSTEM_FONT) "system default" else it }) { family ->
+                    style.update { it.with(Style.FONT, family) }
+                }
+                TerminalSection(runtime.terminalFont, runtime.launcherFont, style)
                 BasicText(
                     "more settings, like border and bar colors: ~/${StyleStore.GUEST_DIR}/defaults.toml",
                     Modifier.padding(top = 20.dp),
@@ -284,7 +313,7 @@ private fun BackgroundSection(
 @Composable
 private fun TerminalSection(
     font: TerminalFont,
-    tiles: TerminalTiles,
+    launcherFont: LauncherFont,
     style: StyleStore,
 ) {
     LaunchedEffect(Unit) { font.refreshFamilies() }
@@ -296,39 +325,221 @@ private fun TerminalSection(
     val metrics = LocalContext.current.resources.displayMetrics
     val columns = font.columns(minOf(metrics.widthPixels, metrics.heightPixels))
     OptionHint("${TerminalFont.format(font.size).removeSuffix(".0")} pt · $columns columns in portrait", Modifier.padding(top = 2.dp))
-    TerminalPreview(font, tiles)
+    TerminalPreview(font, launcherFont)
 }
 
 /**
- * A real foot in the chosen [TerminalFont], as terminals will draw it. foot
- * keeps the family it started with, so a change starts another.
+ * Terminal output in the chosen [TerminalFont] and the theme's terminal colors,
+ * drawn here as foot will draw it: at its pixel size and pad, wrapped at its
+ * columns, without ligatures. The family loads from Linux's files; until it
+ * has, the one before it (or Android's monospace) stands in.
  */
 @Composable
 private fun TerminalPreview(
     font: TerminalFont,
-    tiles: TerminalTiles,
+    launcherFont: LauncherFont,
 ) {
-    val term = remember(font.family, font.size) { tiles.create(PREVIEW, font.size) }
-    DisposableEffect(term) { onDispose { term.close() } }
-    TerminalView(
-        term,
+    val family by produceState<FontFamily?>(null, font.family) { value = launcherFont.family(font.family) }
+    val density = LocalDensity.current
+    val style =
+        TextStyle(
+            fontFamily = family ?: FontFamily.Monospace,
+            fontSize = with(density) { font.emPx.toSp() },
+            color = Palette.foreground,
+            fontFeatureSettings = "liga 0, calt 0",
+        )
+    val measurer = rememberTextMeasurer()
+    PreviewLabel()
+    BoxWithConstraints(
         Modifier
-            .padding(top = 12.dp)
             .fillMaxWidth()
-            .height(160.dp)
-            // Inset within the frame so its corners don't cut into foot's pixels.
             .frame(2.dp, Palette.border, Palette.background, radius = 12.dp)
-            .padding(4.dp),
-        interactive = false,
-    )
+            .padding(with(density) { font.padPx.toDp() }),
+    ) {
+        val cell = remember(style) { measurer.measure("0".repeat(100), style).size.width / 100f }
+        val columns = (constraints.maxWidth / cell).toInt().coerceAtLeast(1)
+        val palette = Palette.current
+        BasicText(remember(columns, palette) { previewText(columns) }, style = style, softWrap = false)
+    }
 }
 
-/** What the preview prints, without a cursor, then waits for it to be closed. */
+/**
+ * A sketch of home's bottom: a row of pinned apps, the recent strip and the prompt bar,
+ * drawn with home's own frames, so the options above show as they change.
+ */
+@Composable
+private fun HomePreview(runtime: Runtime) {
+    val columns = runtime.style.style[Style.COLUMNS]
+    val apps = familiarApps(runtime, columns + 4)
+    val mono = LauncherStyle.monochromeIcons
+    val bare = LauncherStyle.bareAppIcons
+    PreviewScreen {
+        // A row of home's grid: square cells, as most pinned apps are.
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(HomeGap)) {
+            for (i in 0 until columns) {
+                val app = apps.getOrNull(i)
+                PreviewApp(app?.label ?: "app", app?.icons(runtime)?.let { if (mono) it.second else it.first }, Modifier.weight(1f).aspectRatio(1f))
+            }
+        }
+        if (LauncherStyle.recentApps) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .then(if (bare) Modifier else Modifier.tile())
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                for (app in apps.drop(columns)) {
+                    Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+                        PreviewIcon(app.label, app.icons(runtime).let { if (mono) it.second else it.first }, 30.dp, strip = true)
+                    }
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(32.dp).tile())
+    }
+}
+
+/** A pinned app as ShortcutTile draws it, without what makes it one. */
+@Composable
+private fun PreviewApp(
+    label: String,
+    icon: ImageBitmap?,
+    modifier: Modifier,
+) {
+    BoxWithConstraints(modifier.tileFrame(focused = false).padding(4.dp)) {
+        val showLabel = showsLabel()
+        val iconSize = tileIconSize(showLabel)
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+        ) {
+            PreviewIcon(label, icon, iconSize)
+            if (showLabel) TileLabel(label)
+        }
+    }
+}
+
+/** An app's icon as home draws it: a silhouette in the accent color when monochrome, on a badge when bare; [strip] icons fill their cell. */
+@Composable
+private fun PreviewIcon(
+    label: String,
+    icon: ImageBitmap?,
+    size: Dp,
+    strip: Boolean = false,
+) {
+    val mono = LauncherStyle.monochromeIcons
+    when {
+        LauncherStyle.bareAppIcons && (mono || icon == null) ->
+            IconBadge(size) {
+                if (icon != null) {
+                    Image(icon, null, Modifier.size(size * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
+                } else {
+                    BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Body))
+                }
+            }
+        icon != null -> Image(icon, null, Modifier.size(size * if (mono && strip) 0.85f else 1f), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
+        else -> BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Large))
+    }
+}
+
+/**
+ * Widgets on home as empty tiles: a wide one over two small ones, the last in use and so
+ * outlined as focused, with the gaps between them and to the screen's edges.
+ */
+@Composable
+private fun WidgetPreview() {
+    PreviewScreen {
+        Box(Modifier.fillMaxWidth().height(40.dp).tile())
+        Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(HomeGap)) {
+            Box(Modifier.weight(1f).fillMaxHeight().tile())
+            Box(Modifier.weight(1f).fillMaxHeight().tile(focused = true))
+        }
+    }
+}
+
+/**
+ * A patch of home for the previews, in the controls' column so it reads as a sketch rather than one of them:
+ * home's gaps out to its edges, and [content] stacked home's gaps in apart.
+ */
+@Composable
+private fun PreviewScreen(content: @Composable ColumnScope.() -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)) {
+        OptionLabel("preview")
+        Column(
+            Modifier
+                .weight(1f)
+                .clip(LauncherStyle.shape(12.dp))
+                .background(Palette.surface)
+                .padding(EdgeGap),
+            verticalArrangement = Arrangement.spacedBy(HomeGap),
+            content = content,
+        )
+    }
+}
+
+/** Over a preview, so it isn't mistaken for controls. */
+@Composable
+private fun PreviewLabel() = BasicText("preview", Modifier.padding(top = 12.dp, bottom = 4.dp), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+
+/** A stretch of [PREVIEW] in theme colors (foreground and none without them), maybe bold or italic. */
+private class Run(
+    val text: String,
+    val color: String? = null,
+    val bold: Boolean = false,
+    val italic: Boolean = false,
+    val background: String? = null,
+)
+
+/** A prompt, as the preview's shell shows it. */
+private val PROMPT = listOf(Run("~", "green"), Run(" "), Run("❯", "blue"), Run(" "))
+
+/**
+ * What the preview shows: ls, some code with the characters fonts tell apart and
+ * an italic docstring, git's colors, and a prompt with the theme's block cursor.
+ */
 private val PREVIEW =
-    """
-    printf '\033[?25l\033[32m~\033[0m \033[34m❯\033[0m ls\n\033[1;34mDocuments\033[0m  \033[1;34mProjects\033[0m  notes.md  \033[32mrun.sh\033[0m\n\033[32m~\033[0m \033[34m❯\033[0m cat greet.py\n\033[35mdef\033[0m \033[34mgreet\033[0m(name):  \033[90m# 0O 1lI {} [] <=\033[0m\n    \033[35mreturn\033[0m \033[32mf"hi {name}"\033[0m\n'
-    exec sleep infinity
-    """.trimIndent()
+    listOf(
+        PROMPT + Run("ls"),
+        listOf(Run("Documents", "blue", bold = true), Run("  "), Run("Projects", "blue", bold = true), Run("  notes.md  "), Run("run.sh", "green")),
+        PROMPT + Run("cat greet.py"),
+        listOf(Run("def", "magenta"), Run(" "), Run("greet", "blue"), Run("(name):  "), Run("# 0O 1lI {} [] <=", "color8")),
+        listOf(Run("    "), Run("\"\"\"Say hi, nicely.\"\"\"", "green", italic = true)),
+        listOf(Run("    "), Run("return", "magenta"), Run(" "), Run("f\"hi {name}\"", "green")),
+        PROMPT + Run("git status -s"),
+        listOf(Run(" M", "red"), Run(" "), Run("greet.py", "cyan"), Run("  "), Run("??", "yellow"), Run(" "), Run("todo.txt", "cyan")),
+        PROMPT + Run(" ", "background", background = "cursor"),
+    )
+
+/** [PREVIEW] wrapped as foot wraps, at [columns] characters rather than between words. */
+private fun previewText(columns: Int) =
+    buildAnnotatedString {
+        PREVIEW.forEachIndexed { i, line ->
+            if (i > 0) append('\n')
+            var column = 0
+            for (run in line) {
+                val style =
+                    SpanStyle(
+                        color = run.color?.let(Palette::named) ?: Color.Unspecified,
+                        fontWeight = if (run.bold) FontWeight.Bold else null,
+                        fontStyle = if (run.italic) FontStyle.Italic else null,
+                        background = run.background?.let(Palette::named) ?: Color.Unspecified,
+                    )
+                withStyle(style) {
+                    for (c in run.text) {
+                        if (column == columns) {
+                            append('\n')
+                            column = 0
+                        }
+                        append(c)
+                        column++
+                    }
+                }
+            }
+        }
+    }
 
 /** A section's title, set apart from the muted labels of the options under it by the accent color, as the weather screen sets its sections apart; [actions] go at the far end. */
 @Composable
@@ -342,30 +553,46 @@ private fun Heading(
     }
 }
 
-/** Font names run long: each is a chip of its own, and they wrap rather than scroll out of sight. */
+/** Font names run long and pacman can add many: the picked one shows, and tapping it lists the others under it. */
 @Composable
 private fun FontOption(
     families: List<String>,
     selected: String,
+    label: (String) -> String = { it },
     onSelect: (String) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        OptionLabel("font", Modifier.padding(top = 8.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (family in families) {
-                val active = family == selected
-                BasicText(
-                    family,
-                    Modifier
-                        .frame(1.dp, Palette.border, if (active) Palette.accent else Color.Transparent, radius = 12.dp)
-                        .clickable { onSelect(family) }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    style = Mono.copy(color = if (active) Palette.background else Palette.foreground),
-                    softWrap = false,
-                )
+    var open by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        OptionLabel("font")
+        Box(Modifier.weight(1f, fill = false)) {
+            Row(
+                Modifier
+                    .frame(1.dp, Palette.border, radius = 12.dp)
+                    .clickable { open = !open }
+                    .padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(label(selected), Modifier.weight(1f, fill = false), style = Mono.copy(color = Palette.foreground), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 6.dp))
+            }
+            if (open) {
+                ChoicePopup(families, selected, BelowAnchorStart, onDismiss = { open = false }, onPick = onSelect, label = label)
             }
         }
     }
+}
+
+/** Just under the anchor, lined up with its start, and kept on screen. */
+private object BelowAnchorStart : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ) = IntOffset(
+        anchorBounds.left.coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+        (anchorBounds.bottom + 8).coerceAtMost((windowSize.height - popupContentSize.height).coerceAtLeast(0)),
+    )
 }
 
 /** The column option names take, so the controls beside them line up. */
@@ -453,6 +680,16 @@ private fun NumberOption(
     StyleOption(label, presets.map { it.first }, presets.indexOfFirst { it.second == value }, Toml.format(value) + unit) { i ->
         style.update { it.with(setting, presets[i].second) }
     }
+}
+
+@Composable
+private fun CountOption(
+    label: String,
+    setting: Setting.Count,
+    style: StyleStore,
+) {
+    val counts = setting.range.toList()
+    StyleOption(label, counts.map(Int::toString), counts.indexOf(style.style[setting])) { i -> style.update { it.with(setting, counts[i]) } }
 }
 
 /**

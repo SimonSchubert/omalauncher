@@ -5,6 +5,9 @@ import android.app.ActivityManager
 import android.app.role.RoleManager
 import android.content.Intent
 import android.os.Bundle
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.derivedStateOf
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
@@ -38,7 +41,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             LauncherRoot(runtime, state)
             LaunchedEffect(Palette.isLight) { applySystemBars(this@MainActivity, Palette.isLight) }
-            val statusBar = LauncherStyle.style[Style.STATUS_BAR_SHOWN]
+            // A face whose statusBar is false takes the status bar's room too.
+            val fullScreen by remember { derivedStateOf { state.fullScreen && runtime.widgets.openScreen == null } }
+            val statusBar = LauncherStyle.style[Style.STATUS_BAR_SHOWN] && !fullScreen
             LaunchedEffect(statusBar) { showStatusBar(this@MainActivity, statusBar) }
         }
         handleDebugExec(intent)
@@ -155,7 +160,7 @@ class MainActivity : ComponentActivity() {
             KeyEvent.KEYCODE_ENTER -> runtime.terminal(null, "Terminal")
             KeyEvent.KEYCODE_SPACE -> state.toggle()
             KeyEvent.KEYCODE_A -> state.promptRequest = PromptRequest.Type
-            in KeyEvent.KEYCODE_1..KeyEvent.KEYCODE_9 -> state.requestedPage = keyCode - KeyEvent.KEYCODE_1
+            in KeyEvent.KEYCODE_1..KeyEvent.KEYCODE_9 -> state.requestedPage = keyCode - KeyEvent.KEYCODE_0
             else -> return false
         }
         return true

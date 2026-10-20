@@ -5,9 +5,8 @@ import android.system.Os
 import android.util.Log
 import dev.omalauncher.CountingInputStream
 import dev.omalauncher.LauncherData
-import dev.omalauncher.httpGet
+import dev.omalauncher.hex
 import dev.omalauncher.openHttp
-import dev.omalauncher.sha256Hex
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.upgrade.StepJournal
 import dev.omalauncher.upgrade.writeAtomically
@@ -19,7 +18,10 @@ import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.io.BufferedInputStream
 import java.io.File
+import java.io.IOException
 import java.net.HttpURLConnection
+import java.security.DigestInputStream
+import java.security.MessageDigest
 import java.util.zip.GZIPInputStream
 
 private const val TAG = "bootstrap"
@@ -213,7 +215,8 @@ class Bootstrap(
                     else -> setup()
                 }
                 _state.value = LinuxState.Installed
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
+                // Errors too (out of memory): otherwise the screen shows the step running forever.
                 Log.e(TAG, "setup failed", e)
                 _state.value = LinuxState.Failed(stage, e.message ?: e.toString(), log.toList())
             }
@@ -311,7 +314,7 @@ class Bootstrap(
                     // Package steps run pacman; nothing else may hold its lock meanwhile.
                     pacman.lock.withLock { step.attempt() }
                     journal.mark(step.id)
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     Log.w(TAG, "update step ${step.id} failed", e)
                     _updates.value = JobState.Failed(log.toList().takeLast(12) + (e.message ?: e.toString()))
                     return@withContext
@@ -507,11 +510,39 @@ class Bootstrap(
         writeAtomically(proot.keymap, proot.hostFile("/tmp/keymap.xkb").readBytes() + 0)
     }
 
+    /**
+     * Streamed to disk and hashed on the way: the binary is ~36 MB, and holding it while a buffer
+     * doubles needs more heap than small phones give an app (48 MB on a 2 GB Android 10 device).
+     */
     private fun installCliamp() {
+        val target = File(proot.rootfs, "usr/local/bin/cliamp")
+        val tmp = File(target.parentFile, ".cliamp.download")
+        val digest = MessageDigest.getInstance("SHA-256")
         // Runs under pacman's lock, so a stalled download must time out rather than hold it.
-        val bytes = httpGet(CLIAMP_URL)
-        check(sha256Hex(bytes) == CLIAMP_SHA256) { "cliamp download doesn't match $CLIAMP_VERSION" }
-        writeAtomically(File(proot.rootfs, "usr/local/bin/cliamp"), bytes, executable = true)
+        val conn = openHttp(CLIAMP_URL, connectTimeout = 10_000, readTimeout = 20_000)
+        try {
+            conn.useCaches = false
+            if (conn.responseCode != 200) throw IOException("HTTP ${conn.responseCode} for $CLIAMP_URL")
+            target.parentFile?.mkdirs()
+            DigestInputStream(conn.inputStream, digest).use { input ->
+                tmp.outputStream().use { out ->
+                    input.copyTo(out, 1 shl 16)
+                    out.fd.sync()
+                }
+            }
+        } finally {
+            conn.disconnect()
+        }
+        if (digest.digest().hex() != CLIAMP_SHA256) {
+            tmp.delete()
+            error("cliamp download doesn't match $CLIAMP_VERSION")
+        }
+        tmp.setExecutable(true, false)
+        // One rename, so a running cliamp is never replaced by half a file.
+        if (!tmp.renameTo(target)) {
+            tmp.delete()
+            error("can't replace $target")
+        }
     }
 
     private fun guest(script: String) {

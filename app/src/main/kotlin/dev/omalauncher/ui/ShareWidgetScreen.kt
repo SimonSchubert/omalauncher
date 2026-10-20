@@ -236,9 +236,11 @@ private fun StoreIssue(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // The folder is the maintainer's to pick; only the rest of the review applies.
+    // The folder is the maintainer's to pick; only the rest of the review applies. Under the kind's own folder, or a face
+    // or an app is turned down for being one.
     val review by produceState<Review?>(null, text) {
-        value = withContext(Dispatchers.Default) { Review("widgets/you/${Submit.slug(spec.name)}/widget.owl", text) }
+        val kind = spec.kind.word
+        value = withContext(Dispatchers.Default) { Review("${kind}s/you/${Submit.slug(spec.name)}/$kind.owl", text) }
     }
     var uploading by remember(text) { mutableStateOf(false) }
     var error by remember(text) { mutableStateOf<String?>(null) }

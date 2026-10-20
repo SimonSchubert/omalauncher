@@ -34,6 +34,9 @@ object LauncherData {
     /** style.toml and its defaults; see [dev.omalauncher.theme.StyleStore]. The guest sees ~/.config/omalauncher/style. */
     fun styleDir(context: Context) = File(context.filesDir, "style")
 
+    /** layout.toml, where home's tiles and pages are; see [dev.omalauncher.widgets.HomeStore]. The guest sees ~/.config/omalauncher/home. */
+    fun homeDir(context: Context) = File(context.filesDir, "home")
+
     /** Settings that belong to no one store: setup, gestures, the GPU, the home role. Keys carry their owner's prefix. */
     fun prefs(context: Context): SharedPreferences = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
 

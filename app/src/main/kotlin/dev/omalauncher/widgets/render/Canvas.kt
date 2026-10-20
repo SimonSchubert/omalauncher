@@ -31,17 +31,21 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.widgets.lang.Builtins
+import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.Env
 import dev.omalauncher.widgets.lang.Gradient
 import dev.omalauncher.widgets.lang.Lst
@@ -76,7 +80,8 @@ internal fun CanvasNode(
     p: Props,
     modifier: Modifier,
 ) {
-    val measurer = rememberTextMeasurer(32)
+    // Room for every glyph of an animated text effect (a matrix rain cycles through ~60): a smaller cache misses each frame.
+    val measurer = rememberTextMeasurer(256)
     val inst = p.inst
     val solids = remember { HashMap<Int, SolidColor>() }
     // Its own layer: the drawing is replayed when something around it redraws, and only re-run when what it reads changes.
@@ -247,14 +252,18 @@ private class Painter(
             }
             "text" -> {
                 val color = Builtins.argb(named["color"] ?: named["fill"] ?: Num(0.0), inst)?.let { androidx.compose.ui.graphics.Color(it) } ?: Palette.foreground
+                // Since owl 10 styled like a Text: its font, weight, slant and spacing, and a list is spans.
+                val styled = inst.program.level >= 10
                 val layout =
                     measurer.measure(
-                        first.text(),
+                        if (styled && first is Lst) spans(first, inst) else AnnotatedString(first.text()),
                         TextStyle(
                             color = color,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = if (styled) fontFamily(named["font"], inst) else LauncherStyle.font,
                             fontSize = (named["size"]?.num() ?: 13.0).sp,
-                            fontWeight = if (named["bold"]?.truthy == true) FontWeight.Bold else null,
+                            fontWeight = (if (styled) weight(named["fontWeight"]) else null) ?: if (named["bold"]?.truthy == true) FontWeight.Bold else null,
+                            fontStyle = if (styled && named["italic"]?.truthy == true) FontStyle.Italic else null,
+                            letterSpacing = (if (styled) textUnit(named["letterSpacing"]) else null) ?: TextUnit.Unspecified,
                         ),
                     )
                 val w = layout.size.width / density
@@ -369,11 +378,13 @@ internal fun ShaderNode(
         return
     }
     val brush = remember(shader) { ShaderBrush(shader) }
+    // Reading time keeps the widget's frame clock running, so a shader that never uses it isn't redrawn every frame.
+    val readsTime = remember(code) { Compiler.shaderReadsTime(code) }
     Spacer(
         modifier.drawBehind {
             val started = System.nanoTime()
             shader.setFloatUniform("size", size.width, size.height)
-            shader.setFloatUniform("time", inst.time().toFloat())
+            if (readsTime) shader.setFloatUniform("time", inst.time().toFloat())
             (p.now("uniforms") as? Obj)?.fields?.forEach { (name, v) ->
                 try {
                     when {

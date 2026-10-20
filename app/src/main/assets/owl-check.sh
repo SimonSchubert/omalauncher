@@ -11,8 +11,8 @@ usage: owl-check <file.owl>...
 
 Waits for the launcher to load each file as saved, then prints its errors
 and the path of a PNG of it, drawn with live data: a widget's tile at its
-size on the home screen (and its screen { }, if it has one), an app's view
-at the phone's size. Exits 1 if a file doesn't compile or reports problems.
+size on the home screen (and its screen { }, if it has one), an app's or a
+panel's view at the phone's size. Exits 1 if a file doesn't compile or reports problems.
 EOF
   exit 2
 fi

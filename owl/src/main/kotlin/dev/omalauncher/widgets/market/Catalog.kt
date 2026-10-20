@@ -58,9 +58,15 @@ data class CatalogEntry(
 
     val supported get() = owl <= Compiler.LEVEL
 
-    /** Runs commands in the guest or installs packages, like [dev.omalauncher.widgets.lang.Program.needsLinux]; http requests, web images and sounds don't count. */
-    val needsLinux get() = requires.isNotEmpty() || commands.any { !it.startsWith("http GET ") && !it.startsWith("http POST ") && !it.startsWith("image GET ") && !it.startsWith("sound GET ") && !it.startsWith(Compiler.IF_LINUX) }
+    /**
+     * Runs commands in the guest or installs packages, like [dev.omalauncher.widgets.lang.Program.needsLinux]; http
+     * requests, web images, sounds, fonts and what Android tells it (notifications, apps, recent apps) don't count.
+     */
+    val needsLinux get() = requires.isNotEmpty() || commands.any { c -> NO_LINUX.none { c.startsWith(it) } && !c.startsWith(Compiler.IF_LINUX) }
 }
+
+/** What a store item's listed commands start with when they don't run in Linux; see [CatalogEntry.needsLinux]. */
+private val NO_LINUX = listOf("http GET ", "http POST ", "image GET ", "sound GET ", "font GET ", "read Android ", "read installed Android apps", "read the recently opened apps")
 
 object Catalog {
     /**

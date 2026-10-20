@@ -61,11 +61,11 @@ import dev.omalauncher.widgets.market.CatalogEntry
 import kotlinx.coroutines.launch
 
 /**
- * The store, with a toggle between widgets and apps. Widgets: built-in terminal tiles (a plain shell,
+ * The store, with a toggle between widgets, faces and apps. Widgets: built-in terminal tiles (a plain shell,
  * and one per installed coding agent), then reviewed widgets from the marketplace repo as a grid of
- * previews, with search and category tabs (and one for the newest widgets). Apps: the reviewed apps, the same way. Tapping one opens
- * its page, which shows what it installs and runs; from there a widget goes on the current page and
- * an app in the drawer (or either updates).
+ * previews, with search and category tabs (and one for the newest). Faces and apps: the reviewed ones, the same way.
+ * Tapping one opens its page, which shows what it installs and runs; from there a widget goes on the current page,
+ * a face left of page 1 and an app in the drawer (or any of them updates).
  */
 @Composable
 fun StoreScreen(
@@ -75,9 +75,11 @@ fun StoreScreen(
     /** The Omarchy theme in use, so previews show widgets in its colors. */
     theme: String?,
     onDismiss: () -> Unit,
+    /** The kind it opens on. */
+    initialKind: OwlKind = OwlKind.Widget,
 ) {
-    var kind by remember { mutableStateOf(OwlKind.Widget) }
-    val market = if (kind == OwlKind.App) engine.appMarket else engine.market
+    var kind by remember { mutableStateOf(initialKind) }
+    val market = engine.market(kind)
     val scope = rememberCoroutineScope()
     var open by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -128,7 +130,7 @@ fun StoreScreen(
                         onInstall = {
                             scope.launch {
                                 message = market.install(e, page)
-                                // A widget closes the store to show it on its page; an app stays, its page saying it's in the drawer.
+                                // A widget closes the store to show it on its page; an app or a face stays, its page saying where it went.
                                 if (message == null && market.kind == OwlKind.Widget) onDismiss()
                             }
                         },
@@ -148,7 +150,7 @@ fun StoreScreen(
                                 showDetail(detail, pane)
                             } else {
                                 Box(pane, contentAlignment = Alignment.Center) {
-                                    BasicText("pick ${if (kind == OwlKind.App) "an app" else "a widget"} to see what it installs and runs", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                                    BasicText("pick ${if (kind == OwlKind.App) "an app" else "a ${kind.word}"} to see what it installs and runs", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                                 }
                             }
                         }
@@ -163,14 +165,15 @@ fun StoreScreen(
     }
 }
 
-/** Widgets or apps: two segments in the store's header, the shown one filled. */
+/** Widgets, faces or apps: segments in the store's header, the shown one filled. */
 @Composable
 private fun KindToggle(
     kind: OwlKind,
     onPick: (OwlKind) -> Unit,
 ) {
     Row(Modifier.padding(end = 4.dp).frame(1.dp, Palette.border, radius = 14.dp).clip(RoundedCornerShape(14.dp))) {
-        for ((k, label) in listOf(OwlKind.Widget to "widgets", OwlKind.App to "apps")) {
+        for (k in OwlKind.entries) {
+            val label = "${k.word}s"
             val on = k == kind
             BasicText(
                 label,
@@ -206,7 +209,8 @@ private fun StoreList(
     onDismiss: () -> Unit,
 ) {
     val apps = market.kind == OwlKind.App
-    val noun = if (apps) "apps" else "widgets"
+    // Faces get a "new" tab like widgets; apps have never had one.
+    val noun = "${market.kind.word}s"
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     Column(modifier) {
@@ -259,7 +263,7 @@ private fun StoreList(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (!apps && filter.tab == ALL && q.isEmpty()) {
+            if (market.kind == OwlKind.Widget && filter.tab == ALL && q.isEmpty()) {
                 item(key = "builtin", span = { GridItemSpan(maxLineSpan) }) { Caption("built in") }
                 item(key = "terminal") {
                     BuiltInEntry("terminal", "6x4 · a shell", added = false, page = page) {
@@ -407,8 +411,8 @@ private fun Card(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Box(Modifier.fillMaxWidth().height(104.dp), contentAlignment = Alignment.Center) {
-            if (preview != null && market.kind == OwlKind.App) {
-                // A whole phone screen would be a sliver this high: its top, as wide as the card, reads as the app.
+            if (preview != null && market.kind != OwlKind.Widget) {
+                // A whole phone screen would be a sliver this high: its top, as wide as the card, reads as the app or face.
                 Image(preview, null, Modifier.fillMaxSize(), alignment = Alignment.TopCenter, contentScale = ContentScale.FillWidth)
             } else if (preview != null) {
                 Image(preview, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
@@ -524,8 +528,17 @@ private fun Detail(
             busy != null -> BasicText(busy, style = Mono.copy(color = Palette.accent))
             !e.supported -> BasicText("needs a newer launcher (owl ${e.owl}); update the launcher to install it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
             update -> BracketAction("update ${installed?.version} → ${e.version}", Palette.accent, onInstall)
-            installed != null -> AddedMark(market.kind == OwlKind.App)
-            else -> BracketAction(if (market.kind == OwlKind.App) "install" else "add to page $page", Palette.accent, onInstall)
+            installed != null -> AddedMark(market.kind)
+            else ->
+                BracketAction(
+                    when (market.kind) {
+                        OwlKind.Widget -> "add to page $page"
+                        OwlKind.Face -> "add as a face"
+                        OwlKind.App, OwlKind.Panel -> "install"
+                    },
+                    Palette.accent,
+                    onInstall,
+                )
         }
         message?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
         if (!linux && e.needsLinux) NeedsLinuxNote(market.kind == OwlKind.App)
@@ -539,9 +552,18 @@ private fun Detail(
     }
 }
 
-/** Where an added widget or app went. */
+/** Where an added widget, face, app or panel went. */
 @Composable
-internal fun AddedMark(app: Boolean) = BasicText(if (app) "✓ in your app drawer" else "✓ on your home screen", style = Mono.copy(color = Palette.green))
+internal fun AddedMark(kind: OwlKind) =
+    BasicText(
+        when (kind) {
+            OwlKind.Widget -> "✓ on your home screen"
+            OwlKind.Face -> "✓ left of your first page"
+            OwlKind.App -> "✓ in your app drawer"
+            OwlKind.Panel -> "✓ in gesture settings"
+        },
+        style = Mono.copy(color = Palette.green),
+    )
 
 /** Why one that runs commands in Arch doesn't work yet, and where it waits meanwhile. */
 @Composable

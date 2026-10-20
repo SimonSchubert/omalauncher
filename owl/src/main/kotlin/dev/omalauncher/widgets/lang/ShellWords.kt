@@ -169,6 +169,7 @@ object ShellWords {
         while (i < words.size) {
             val w = words[i].let { if (it.startsWith("/")) it.substringAfterLast('/') else it }
             when {
+                w.isEmpty() -> return null // a bare /
                 w == "_" -> return null // quoted text in command position: can't tell
                 w.contains('=') && !w.startsWith("=") -> {} // FOO=bar prefix
                 w.startsWith(">") || w.startsWith("<") || w.first().isDigit() && (w.contains('>') || w.contains('<')) -> {}

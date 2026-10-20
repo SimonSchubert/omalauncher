@@ -2,6 +2,7 @@ package dev.omalauncher.widgets
 
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.agentInvocation
+import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.widgets.lang.OwlKind
 
 /** What agents are told about dependencies when they write or change a widget. */
@@ -23,14 +24,25 @@ private fun agentCommand(
 private fun OwlKind.what() =
     when (this) {
         OwlKind.Widget -> "a home-screen widget (widget \"name\" { }, a tile on my home screen)"
+        OwlKind.Face -> "a face (face \"name\" { }: a whole page of my home screen, the whole screen, as README.md's Faces section says)"
         OwlKind.App -> "an app (app \"name\" { }: it shows up in my app drawer and opens full screen; give it an icon: as README.md's Apps section says)"
+        OwlKind.Panel ->
+            "a panel (panel \"name\" { }: swiping up on my home screen opens it as my app drawer, or swiping down opens it from the top, " +
+                "as README.md's Panels section says). Ask me which swipe it's for, and once it works, pick it for that swipe by setting " +
+                "gestures.swipe-up or gestures.swipe-down to its file name in ~/${StyleStore.GUEST_DIR}/style.toml"
     }
 
-/** A session in the widgets dir that creates an owl file of [kind]. */
+/** A session in the widgets dir that creates an owl file of [kind]; a face for the empty [page] left of page 1, if given. */
 fun newOwlCommand(
     agentBin: String,
     kind: OwlKind,
-) = agentCommand(agentBin, "Read README.md, then ask me what to create: ${kind.what()}. $DEPENDENCIES $CHECK")
+    page: Int? = null,
+) = agentCommand(
+    agentBin,
+    "Read README.md, then ask me what to create: ${kind.what()}. " +
+        (page?.let { "It's for the empty page left of my home pages, which is waiting for it: give it page: $it. " } ?: "") +
+        "$DEPENDENCIES $CHECK",
+)
 
 /** An agent session about one widget: its file, the language docs and its error log. */
 fun editWidgetCommand(
@@ -42,7 +54,9 @@ fun editWidgetCommand(
     val what =
         when (spec.kind) {
             OwlKind.Widget -> "home-screen widget"
+            OwlKind.Face -> "face"
             OwlKind.App -> "app"
+            OwlKind.Panel -> "panel"
         }
     val prompt =
         if (problem != null) {
@@ -65,9 +79,11 @@ fun publishWidgetCommand(
     val (what, place) =
         when (spec.kind) {
             OwlKind.Widget -> "home-screen widget" to "the widget as widgets/<my GitHub username in lowercase>/<a short name>/widget.owl, with the preview.png owl-check points to next to it"
+            OwlKind.Face -> "face" to "the face as faces/<my GitHub username in lowercase>/<a short name>/face.owl, with the preview.png owl-check points to next to it"
             OwlKind.App ->
                 "app" to "the app as apps/<my GitHub username in lowercase>/<a short name>/app.owl (not a name a widget there has), " +
                     "with the screen picture owl-check points to next to it as preview.png. It needs an icon: (see README.md's Apps section)"
+            OwlKind.Panel -> "panel" to "the panel as panels/<my GitHub username in lowercase>/<a short name>/panel.owl, with the screen picture owl-check points to next to it as preview.png"
         }
     val prompt =
         "Publish my $what $file to the store at https://github.com/${Market.REPO}. " +

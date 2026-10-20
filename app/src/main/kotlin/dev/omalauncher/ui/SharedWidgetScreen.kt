@@ -55,9 +55,10 @@ fun SharedWidgetScreen(
             }
     }
     var showSource by remember(link) { mutableStateOf(false) }
-    // An app goes in the drawer rather than on a page; known from its first word, even before it compiles.
-    val app = result?.getOrNull()?.let { OwlKind.of(it.text) } == OwlKind.App
-    OverlayPanel(if (app) "shared app" else "shared widget", onDismiss, contentWidth = ReadingWidth) {
+    // An app goes in the drawer rather than on a page, and a face left of page 1; known from its first word, even before it compiles.
+    val kind = result?.getOrNull()?.let { OwlKind.of(it.text) } ?: OwlKind.Widget
+    val app = kind == OwlKind.App
+    OverlayPanel("shared ${kind.word}", onDismiss, contentWidth = ReadingWidth) {
         val result = result
         if (result == null) {
             if (Share.pasteId(link) != null) BasicText("fetching it from ${Paste.HOST}…", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Body))
@@ -92,7 +93,7 @@ fun SharedWidgetScreen(
                 else -> {
                     val same = engine.sharedWidgetIsSame(shared)
                     when (same) {
-                        true -> AddedMark(app)
+                        true -> AddedMark(kind)
                         false ->
                             BracketAction("replace the ${shared.name} shared before", Palette.accent) {
                                 scope.launch {
@@ -101,7 +102,15 @@ fun SharedWidgetScreen(
                                 }
                             }
                         null ->
-                            BracketAction(if (app) "add to app drawer" else "add to page $page", Palette.accent) {
+                            BracketAction(
+                                when (kind) {
+                                    OwlKind.App -> "add to app drawer"
+                                    OwlKind.Face -> "add as a face"
+                                    OwlKind.Widget -> "add to page $page"
+                                    OwlKind.Panel -> "add to gesture panels"
+                                },
+                                Palette.accent,
+                            ) {
                                 scope.launch {
                                     engine.addSharedWidget(shared, page)
                                     onDismiss()

@@ -97,10 +97,21 @@ internal fun homeSide(): HomeSide? {
 }
 
 /**
- * Whether home shows two pages side by side: when each half of the window is phone-shaped, as on a
- * foldable's inner screen in either orientation. Phones, tablets and phone landscape show one.
+ * Whether home shows two pages side by side: when each half of the window is phone-shaped and wide
+ * enough to be worth a page of its own, as on a foldable's inner screen in either orientation. Phones,
+ * tablets, phone landscape, and a square screen too narrow to split usefully show one; so does
+ * [LauncherStyle.forceSinglePage]. A screen's shape alone can't tell a real foldable from a phone
+ * that's merely square, which [TWO_PAGES_MIN_WIDTH] rules out by width.
  */
-internal fun showsTwoPages(window: IntSize) = window.width / 2f / window.height in 0.4f..0.65f
+@Composable
+internal fun showsTwoPages(window: IntSize): Boolean {
+    if (LauncherStyle.forceSinglePage) return false
+    if (window.width / 2f / window.height !in 0.4f..0.65f) return false
+    return with(LocalDensity.current) { (window.width / 2).toDp() } >= TWO_PAGES_MIN_WIDTH
+}
+
+/** Narrower than this, a "page" isn't worth having its own: smaller than the shortest common phone width. */
+private val TWO_PAGES_MIN_WIDTH = 320.dp
 
 /**
  * Room the side takes beside the grid: the strip and the gap between tiles after it, then the rail and the edge's gap

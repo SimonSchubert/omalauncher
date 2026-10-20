@@ -71,6 +71,22 @@ class MarketTest {
         assertTrue(risks("ssh host uptime; curl -s https://x.io").isEmpty())
     }
 
+    @Test fun costlyPatternsAreFlagged() {
+        fun costs(decls: String) =
+            Review(
+                "widgets/simon/w/widget.owl",
+                "widget \"w\" {\n  meta { description: \"a test widget\"; version: \"1\"; license: \"MIT\"; category: \"system\" }\n" +
+                    "  size: 3x2\n$decls\n  Text { text: \"x\" }\n}",
+            ).warnings
+        assertTrue(costs("  source a = cmd(\"free\") every 3s").any { it.contains("runs a command every 3s") })
+        assertTrue(costs("  source a = http(\"https://example.com/a\") every 5s").any { it.contains("fetches every 5s") })
+        assertTrue(costs("  source a = cmd(\"cat /proc/stat; sleep 1; cat /proc/stat\") every 10s").any { it.contains("prev()") })
+        assertTrue(costs("  source a = cmd(\"for d in 1 2 3; do curl -s https://example.com/\$d; done\") every 5m").any { it.contains("curl once per item") })
+        assertTrue(costs("  source a = cmd(\"for d in 1 2 3; do curl -s https://example.com/\$d &\ndone; wait\") every 5m").none { it.contains("curl once per item") })
+        // Slow enough, no sleep, and curl outside a loop: nothing to say.
+        assertEquals(emptyList<String>(), costs("  source a = cmd(\"sleep 1; date\") every 5m\n  source b = cmd(\"for f in *; do echo; done; curl -s https://example.com\") every 1h"))
+    }
+
     @Test fun appsGoUnderApps() {
         val app = "app \"notes\" {\n  meta { owl: 8; description: \"notes on the phone\"; version: \"1.0\"; license: \"MIT\"; category: \"productivity\" }\n  Text { text: \"x\" }\n}"
         val r = Review("apps/simon/notes/app.owl", app)

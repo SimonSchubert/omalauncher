@@ -14,6 +14,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.union
@@ -50,11 +53,20 @@ internal fun WidgetTile(
     /** Where Linux stands, if the widget needs it and it isn't running: a placeholder keeps its cells. */
     waitsForLinux: LinuxState? = null,
     onInstallLinux: () -> Unit = {},
+    /** How much of a face the soft keyboard covers while one of its fields has it, in pixels: its `screenInset` then. */
+    keyboard: Float = 0f,
 ) {
+    // A face draws straight on the wallpaper, without a tile's frame; selected, it still shows the focus border.
+    val bare = spec.isFace && waitsForLinux == null && instance != null && needs.isEmpty()
     Box(
         modifier
-            .tile(focused)
-            .pointerInput(spec) { detectTapGestures(onTap = { onTap() }) },
+            .then(
+                when {
+                    !bare -> Modifier.tile(focused)
+                    focused -> Modifier.frame(LauncherStyle.focusWidth, LauncherStyle.focusBorder)
+                    else -> Modifier
+                },
+            ).pointerInput(spec) { detectTapGestures(onTap = { onTap() }) },
     ) {
         if (waitsForLinux != null) {
             // While an installed Linux starts up the tile stays empty; it only offers an install when there's none.
@@ -82,6 +94,13 @@ internal fun WidgetTile(
                 BasicText(spec.file.name, style = Mono.copy(color = Palette.red))
                 BasicText(spec.error.orEmpty(), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
+        } else if (bare) {
+            // The whole screen: under the status bar and the navigation bar. The nodes keep clear of the camera cutout and
+            // of the status bar while it stays (statusBar true); the navigation bar is the face's to mind, through
+            // screenInset, as an edge app's is, and so is the keyboard while one of its fields has it.
+            val top = if (instance.showsStatusBar()) WindowInsets.statusBars.union(WindowInsets.displayCutout) else WindowInsets.displayCutout
+            WidgetContent(instance, Modifier.fillMaxSize(), cells, top.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            ScreenInset(instance, face = true, keyboard = keyboard)
         } else {
             WidgetContent(instance, Modifier.fillMaxSize(), cells)
         }
@@ -125,7 +144,10 @@ private fun TileButton(
     )
 }
 
-/** An owl app's window: its title, with a back chevron while its `back` holds, over its view. */
+/**
+ * An owl app's window: its title, with a back chevron while its `back` holds, over its view. `title: ""` leaves the
+ * title row out, for an app that draws its own; Back still goes up a level while `back` holds.
+ */
 @Composable
 internal fun OwlAppWindow(
     spec: WidgetSpec,
@@ -136,24 +158,50 @@ internal fun OwlAppWindow(
     // Full screen like any Android app: no window border or side gap, and no ✕ (Back leaves the app and
     // Recents closes it; close() still does). The view runs to the screen's edges.
     // With `edge` it runs on under the navigation bar too: only the keyboard pushes its bottom up.
-    val insets =
-        if (instance.program.edge) {
-            WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).union(WindowInsets.ime)
-        } else {
-            WindowInsets.safeDrawing
-        }
+    // With `statusBar: false` it runs up to the top edge, around a camera cutout, which `screenTop` measures.
+    val statusBar = instance.showsStatusBar()
+    var sides = WindowInsetsSides.Horizontal
+    if (!instance.program.edge) sides += WindowInsetsSides.Bottom
+    if (statusBar) sides += WindowInsetsSides.Top
+    val insets = WindowInsets.safeDrawing.only(sides).union(WindowInsets.ime)
     Column(Modifier.fillMaxSize().background(Palette.background).windowInsetsPadding(insets)) {
-        Box(Modifier.padding(horizontal = PanelPadding, vertical = 8.dp)) { BackTitle(title, up) }
+        if (title.isNotEmpty()) Box(Modifier.padding(horizontal = PanelPadding, vertical = 8.dp)) { BackTitle(title, up) }
         WidgetScreen(instance, Modifier.weight(1f).fillMaxWidth())
     }
     if (instance.program.edge) ScreenInset(instance)
+    ScreenTop(instance, statusBar)
 }
 
-/** Tells an `edge` app's `screenInset` how much of its bottom the navigation bar covers; none while the keyboard is up. */
+/** Tells an app's `screenTop` how much of its top a camera cutout covers: none while the status bar shows, which the view starts below. */
 @Composable
-private fun ScreenInset(instance: WidgetInstance) {
+private fun ScreenTop(
+    instance: WidgetInstance,
+    statusBar: Boolean,
+) {
     val density = LocalDensity.current
-    val covered = (WindowInsets.safeDrawing.getBottom(density) - WindowInsets.ime.getBottom(density)).coerceAtLeast(0)
+    val covered = if (statusBar) 0 else WindowInsets.displayCutout.getTop(density)
+    val dp = with(density) { covered.toDp().value.toDouble() }
+    SideEffect { instance.setScreenTop(dp) }
+}
+
+/**
+ * Tells an `edge` app's or a [face]'s `screenInset` how much of its bottom the navigation bar covers; for an app none while
+ * the keyboard is up, and for a face the [keyboard] (in pixels) while one of its fields has it. A face goes straight back
+ * to the navigation bar as the keyboard starts closing, rather than to none until it has.
+ */
+@Composable
+private fun ScreenInset(
+    instance: WidgetInstance,
+    face: Boolean = false,
+    keyboard: Float = 0f,
+) {
+    val density = LocalDensity.current
+    val covered =
+        if (face) {
+            maxOf(WindowInsets.navigationBars.getBottom(density).toFloat(), keyboard)
+        } else {
+            (WindowInsets.safeDrawing.getBottom(density) - WindowInsets.ime.getBottom(density)).coerceAtLeast(0).toFloat()
+        }
     val dp = with(density) { covered.toDp().value.toDouble() }
     SideEffect { instance.setScreenInset(dp) }
 }

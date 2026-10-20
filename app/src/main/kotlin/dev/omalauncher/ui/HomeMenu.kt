@@ -76,16 +76,30 @@ fun HomeMenu(
     }
     Menu(onDismiss = { state.homeMenuOpen = false }) {
         // What to create sits on the row itself: one tap starts the agent, each kind with its own prompt.
-        Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp, top = 10.dp)) {
-            BasicText("create with $agentName", style = Mono.copy(fontSize = TextSize.Item))
-            // Pulled left by the buttons' own padding, so the first bracket lines up with the label.
-            Row(Modifier.offset(x = (-8).dp)) {
-                for ((kind, label) in listOf(OwlKind.Widget to "widget", OwlKind.App to "app")) {
-                    BracketAction(label, Palette.accent) {
-                        state.homeMenuOpen = false
-                        if (linux) state.withAgent(runtime, "New ${kind.word}") { newOwlCommand(it, kind) } else state.show(SettingsPage.Linux)
+        // Settings at the top right, as in the drawer.
+        Row(Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f).padding(start = 12.dp, end = 4.dp, top = 10.dp)) {
+                BasicText("create with $agentName", style = Mono.copy(fontSize = TextSize.Item))
+                // Pulled left by the buttons' own padding, so the first bracket lines up with the label.
+                Row(Modifier.offset(x = (-8).dp)) {
+                    val kinds: List<Pair<String, (String) -> String>> =
+                        listOf(
+                            "widget" to { newOwlCommand(it, OwlKind.Widget) },
+                            // Faces are made from the empty page left of them, which says where the new one goes.
+                            "app" to { newOwlCommand(it, OwlKind.App) },
+                            "panel" to { newOwlCommand(it, OwlKind.Panel) },
+                        )
+                    for ((label, command) in kinds) {
+                        BracketAction(label, Palette.accent) {
+                            state.homeMenuOpen = false
+                            if (linux) state.withAgent(runtime, "New $label", command) else state.show(SettingsPage.Linux)
+                        }
                     }
                 }
+            }
+            SettingsButton(runtime) {
+                state.homeMenuOpen = false
+                state.show()
             }
         }
         MenuItem("browse store") {

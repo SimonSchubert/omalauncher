@@ -20,8 +20,8 @@ private const val USAGE = """owl: the widget language checker
                                        apps/<author>/<name>/app.owl, Markdown on stdout; --base holds
                                        the main-branch copies
   owl programs <file.owl>...           programs and packages, one "<kind> <name>" per line
-  owl index <repo> [--apps]            write index.json for every reviewed widget in <repo>/widgets,
-                                       or with --apps apps.json for <repo>/apps
+  owl index <repo> [--faces|--apps]    write index.json for every reviewed widget in <repo>/widgets,
+                                       or with --faces faces.json for <repo>/faces, with --apps apps.json for <repo>/apps
 """
 
 fun main(args: Array<String>) {
@@ -96,13 +96,18 @@ private fun programs(files: List<String>): Int {
 }
 
 /**
- * Every widget that passes review goes into index.json, or with --apps every app into apps.json, a catalog of
- * their own that launchers from before apps never read; broken ones are left out and reported on stderr.
+ * Every widget that passes review goes into index.json, or with --faces every face into faces.json and with --apps
+ * every app into apps.json, catalogs of their own that launchers from before faces or apps never read; broken ones are left out and reported on stderr.
  * Each is dated by the commit that added it (needs the full history) and marked new for its first [Catalog.NEW_DAYS] days.
  */
 private fun index(args: List<String>): Int {
-    val kind = if ("--apps" in args) OwlKind.App else OwlKind.Widget
-    val repo = File(args.firstOrNull { it != "--apps" } ?: usage())
+    val kind =
+        when {
+            "--apps" in args -> OwlKind.App
+            "--faces" in args -> OwlKind.Face
+            else -> OwlKind.Widget
+        }
+    val repo = File(args.firstOrNull { !it.startsWith("--") } ?: usage())
     val today = LocalDate.now(ZoneOffset.UTC)
     // Both install as market-<author>-<name>.owl, so an app can't take a widget's id: widgets were there first.
     val widgetIds =
@@ -139,7 +144,7 @@ private fun index(args: List<String>): Int {
             r.entry(preview, themes, iconFile).copy(screens = screens).copy(added = added, new = Catalog.isNew(added, today))
         }.toList()
     val order = File(repo, "order.txt").takeIf { it.exists() }?.readText().orEmpty()
-    val out = if (kind == OwlKind.App) "apps.json" else "index.json"
+    val out = if (kind == OwlKind.Widget) "index.json" else "${kind.word}s.json"
     File(repo, out).writeText(Catalog.write(Catalog.ordered(entries, order), Instant.now().toString(), "${kind.word}s"))
     System.err.println("$out: ${entries.size} ${kind.word}s")
     return 0
