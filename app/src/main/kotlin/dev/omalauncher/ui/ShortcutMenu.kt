@@ -19,7 +19,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
@@ -127,7 +126,7 @@ private fun ShortcutIcon(s: OfferedShortcut) {
     when {
         bmp != null -> Image(bmp, null, Modifier.size(size), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
         else ->
-            Box(Modifier.size(size).clip(LauncherStyle.shape(size / 2)).background(Palette.background), contentAlignment = Alignment.Center) {
+            IconBadge(size, Palette.background) {
                 BasicText(initials(s.label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small))
             }
     }

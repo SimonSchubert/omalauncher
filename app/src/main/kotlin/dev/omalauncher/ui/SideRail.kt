@@ -1,5 +1,6 @@
 package dev.omalauncher.ui
 
+import android.content.res.Configuration
 import android.hardware.display.DisplayManager
 import android.os.Handler
 import android.os.Looper
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -41,10 +43,22 @@ import dev.omalauncher.linux.LinuxState
 /** Where landscape home keeps the recent apps strip and the bar: the side portrait's bottom turned to. */
 enum class HomeSide { Left, Right }
 
+/**
+ * The window's size, turned to match the configuration's orientation. Before Android 14, Compose hears of a
+ * configuration change through the application, before the activity's own bounds follow: coming back from an
+ * app that forced landscape, it measured the window as still landscape and kept that until the next change.
+ */
+@Composable
+internal fun windowSize(): IntSize {
+    val size = LocalWindowInfo.current.containerSize
+    val portrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    return if (portrait == size.width > size.height) IntSize(size.height, size.width) else size
+}
+
 /** Whether home turns portrait's grid on its side: landscape, unless the window shows two pages. */
 @Composable
 internal fun homeTurned(): Boolean {
-    val window = LocalWindowInfo.current.containerSize
+    val window = windowSize()
     return window.width > window.height && !showsTwoPages(window)
 }
 
@@ -73,7 +87,7 @@ internal fun homeSide(): HomeSide? {
         displays.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
         onDispose { displays.unregisterDisplayListener(listener) }
     }
-    val window = LocalWindowInfo.current.containerSize
+    val window = windowSize()
     val tablet = with(LocalDensity.current) { minOf(window.width, window.height).toDp() } >= 600.dp
     return when {
         !homeTurned() || tablet -> null
@@ -83,10 +97,21 @@ internal fun homeSide(): HomeSide? {
 }
 
 /**
- * Whether home shows two pages side by side: when each half of the window is phone-shaped, as on a
- * foldable's inner screen in either orientation. Phones, tablets and phone landscape show one.
+ * Whether home shows two pages side by side: when each half of the window is phone-shaped and wide
+ * enough to be worth a page of its own, as on a foldable's inner screen in either orientation. Phones,
+ * tablets, phone landscape, and a square screen too narrow to split usefully show one; so does
+ * [LauncherStyle.forceSinglePage]. A screen's shape alone can't tell a real foldable from a phone
+ * that's merely square, which [TWO_PAGES_MIN_WIDTH] rules out by width.
  */
-internal fun showsTwoPages(window: IntSize) = window.width / 2f / window.height in 0.4f..0.65f
+@Composable
+internal fun showsTwoPages(window: IntSize): Boolean {
+    if (LauncherStyle.forceSinglePage) return false
+    if (window.width / 2f / window.height !in 0.4f..0.65f) return false
+    return with(LocalDensity.current) { (window.width / 2).toDp() } >= TWO_PAGES_MIN_WIDTH
+}
+
+/** Narrower than this, a "page" isn't worth having its own: smaller than the shortest common phone width. */
+private val TWO_PAGES_MIN_WIDTH = 320.dp
 
 /**
  * Room the side takes beside the grid: the strip and the gap between tiles after it, then the rail and the edge's gap

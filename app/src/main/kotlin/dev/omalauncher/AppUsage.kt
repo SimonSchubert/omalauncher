@@ -61,6 +61,9 @@ class AppUsage(
         return score * 0.5.pow((now - at).coerceAtLeast(0) / HALF_LIFE)
     }
 
+    /** When [key] was last opened, in millis; null if it never was. */
+    fun last(key: String): Long? = scores[key]?.second
+
     private companion object {
         const val HALF_LIFE = 14 * 24 * 60 * 60 * 1000.0
     }

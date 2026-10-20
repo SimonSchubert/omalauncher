@@ -535,7 +535,7 @@ class ThemeStore(
         /** Called on the main thread after the theme or background changes (the live wallpaper listens). */
         val changeListeners = CopyOnWriteArraySet<() -> Unit>()
 
-        private fun prefs(context: Context) = context.getSharedPreferences("themes", Context.MODE_PRIVATE)
+        fun prefs(context: Context) = context.getSharedPreferences("themes", Context.MODE_PRIVATE)
 
         private fun themeDirs(context: Context) =
             ThemeDirs(

@@ -67,15 +67,11 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.agentInvocation
@@ -86,7 +82,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
  * How the prompt bar was summoned from outside it; Send asks the agent with what's typed (the panel's ask row),
  * Listen dictates into it (the landscape rail's mic).
  */
-enum class PromptRequest { Type, Send, Listen }
+enum class PromptRequest { Type, Send, Listen, Release }
 
 /** Height of the collapsed bar; the home grid leaves this much room for it. */
 val PromptBarHeight = 48.dp
@@ -102,10 +98,6 @@ val PromptBarHeight = 48.dp
 internal fun PromptBar(
     runtime: Runtime,
     state: LauncherState,
-    search: BarSearch,
-    /** What Enter acts on: an index into the search hits, or -1 for the agent. */
-    highlighted: Int,
-    onLaunch: (AppHit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -148,17 +140,21 @@ internal fun PromptBar(
         state.closeNow()
     }
 
-    /** Enter: the highlighted app, or the agent. */
+    /** The drawer's panel, while it shows: what's typed, Enter and the arrow keys are its. */
+    fun drawer() = if (panelShown) runtime.upPanel()?.let { runtime.widgets.panelInstance(it)?.second } else null
+
+    /** Enter: what the drawer does with it (open the app it picked), or, from a drawer without onSubmit, the agent. */
     fun submit() {
-        val hit = search.hits.getOrNull(highlighted)
-        if (hit != null) onLaunch(hit) else send(text)
+        if (drawer()?.submit(text) == true) state.query = "" else send(text)
     }
 
-    /** Moves the highlight up the panel (away from the bar) or back down; the ask row sits lowest. */
-    fun pick(step: Int) {
-        if (text.isBlank()) return
-        state.picked = (highlighted + step).coerceIn(-1, search.hits.lastIndex)
-    }
+    /** The drawer gets [key] with its `onKey`, and moves its own highlight; false without one, and the key goes on. */
+    fun drawerKey(key: String) = drawer()?.key(key) == true
+
+    /** The agent picker over the bar, opened from the agent's name at its start. */
+    var agentsOpen by remember { mutableStateOf(false) }
+
+    fun manageAgents() = if (linux) state.show(SettingsPage.Agents) else offerLinux()
 
     /** Whether a finished recognition sends (hold-to-talk) or lands in the field for editing. */
     var sendWhenDone by remember { mutableStateOf(false) }
@@ -198,6 +194,11 @@ internal fun PromptBar(
             }
             PromptRequest.Send -> send(text)
             PromptRequest.Listen -> talk(hold = false)
+            // A menu opened over the panel: the keyboard stays down from here on, rather than coming back as it closes.
+            PromptRequest.Release -> {
+                focusManager.clearFocus()
+                keyboard?.hide()
+            }
             null -> {}
         }
         state.promptRequest = null
@@ -262,7 +263,7 @@ internal fun PromptBar(
                     .padding(start = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AgentPicker(runtime, onManage = { if (linux) state.show(SettingsPage.Agents) else offerLinux() })
+                AgentName(runtime, agentsOpen, onToggle = { agentsOpen = !agentsOpen }, onManage = ::manageAgents)
                 val shown = if (listening) speech.text else text
                 BasicTextField(
                     value = shown,
@@ -285,15 +286,15 @@ internal fun PromptBar(
                                 // Tapped (or Super+A): the panel opens. Mid-swipe it's already showing.
                                 if (it.isFocused && !panelShown) state.open()
                             }
-                            // A hardware Enter submits; Shift+Enter starts a new line. Tab and the arrows move the highlight.
+                            // A hardware Enter submits; Shift+Enter starts a new line. Tab and the arrows go to the drawer, to move its highlight.
                             .onPreviewKeyEvent { e ->
                                 if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                 val oneLine = '\n' !in text
                                 when {
                                     e.key == Key.Enter && !e.isShiftPressed -> submit()
-                                    e.key == Key.Tab -> pick(if (e.isShiftPressed) -1 else 1)
-                                    e.key == Key.DirectionUp && oneLine -> pick(1)
-                                    e.key == Key.DirectionDown && oneLine -> pick(-1)
+                                    e.key == Key.Tab -> return@onPreviewKeyEvent drawerKey(if (e.isShiftPressed) "shift-tab" else "tab")
+                                    e.key == Key.DirectionUp && oneLine -> return@onPreviewKeyEvent drawerKey("up")
+                                    e.key == Key.DirectionDown && oneLine -> return@onPreviewKeyEvent drawerKey("down")
                                     else -> return@onPreviewKeyEvent false
                                 }
                                 true
@@ -314,11 +315,13 @@ internal fun PromptBar(
                         }
                     },
                 )
-                if (text.isNotBlank() && !listening) {
+                // The drawer says what its Enter does, with its `enter`.
+                val enter = drawer()?.enterHint() ?: "⏎ ask"
+                if (text.isNotBlank() && !listening && enter.isNotEmpty()) {
                     // Says what Enter does, so opening an app instead of asking is never a surprise.
                     Box(
                         Modifier.clickable(onClick = ::submit).padding(horizontal = 10.dp, vertical = 12.dp),
-                    ) { BasicText(if (highlighted >= 0) "▸ open" else "⏎ ask", style = Mono.copy(color = Palette.accent)) }
+                    ) { BasicText(enter, style = Mono.copy(color = Palette.accent)) }
                 }
                 MicButton(
                     listening = listening,
@@ -332,6 +335,8 @@ internal fun PromptBar(
                     },
                 )
             }
+            // Beside the bar's frame, not in it: the menu lines up with the frame, not with the agent's name inside.
+            if (agentsOpen) AgentsMenu(runtime, onDismiss = { agentsOpen = false }, onManage = ::manageAgents)
             // Input level along the bottom edge while listening.
             if (listening) {
                 val accent = Palette.accent
@@ -450,73 +455,62 @@ internal fun MicIcon(color: Color) {
     }
 }
 
-/** The agent's name at the start of the bar; tapping it lists the installed agents to send prompts to. */
+/** The agent's name at the start of the bar; tapping it lists the installed agents to send prompts to ([AgentsMenu]). */
 @Composable
-private fun AgentPicker(
+private fun AgentName(
     runtime: Runtime,
+    open: Boolean,
+    onToggle: () -> Unit,
     onManage: () -> Unit,
 ) {
-    val store = runtime.agents
-    val agent = store.default
-    var open by remember { mutableStateOf(false) }
-    Box {
-        Row(
-            Modifier
-                .clickable { if (agent == null) onManage() else open = !open }
-                .padding(start = 10.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            BasicText(agent?.bin ?: "agent", style = Mono.copy(color = if (agent == null) Palette.muted else Palette.accent))
-            Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 4.dp))
-        }
-        if (open) {
-            Popup(
-                popupPositionProvider = AboveAnchor,
-                onDismissRequest = { open = false },
-                properties = PopupProperties(focusable = true),
-            ) {
-                Column(
-                    Modifier
-                        .width(IntrinsicSize.Max)
-                        .widthIn(min = 200.dp)
-                        .frame(2.dp, Palette.accent, Palette.background)
-                        .padding(4.dp),
-                ) {
-                    for (a in store.installed) {
-                        val current = a.bin == agent?.bin
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    store.choose(a)
-                                    open = false
-                                }.padding(horizontal = 10.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
-                            Column(Modifier.weight(1f)) {
-                                BasicText(a.name, style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
-                                BasicText(a.bin, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
-                            }
-                        }
-                    }
-                    Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(1.dp).background(Palette.border))
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                open = false
-                                onManage()
-                            }.padding(horizontal = 10.dp, vertical = 10.dp),
-                    ) { BasicText("  manage agents…", style = Mono.copy(color = Palette.muted)) }
-                }
-            }
-        }
+    val agent = runtime.agents.default
+    Row(
+        Modifier
+            .clickable { if (agent == null) onManage() else onToggle() }
+            .padding(start = 10.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicText(agent?.bin ?: "agent", style = Mono.copy(color = if (agent == null) Palette.muted else Palette.accent))
+        Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 4.dp))
     }
 }
 
-/** Opens a popup just above its anchor, kept on screen: the bar sits at the bottom. */
-private object AboveAnchor : PopupPositionProvider {
+/** The installed agents, to pick the one prompts go to, above the bar it's held next to and lined up with its start. */
+@Composable
+private fun AgentsMenu(
+    runtime: Runtime,
+    onDismiss: () -> Unit,
+    onManage: () -> Unit,
+) {
+    val store = runtime.agents
+    // As far above the bar as the drawer's menus are above an app.
+    val gap = with(LocalDensity.current) { 8.dp.roundToPx() }
+    ChoicePopup(
+        store.installed,
+        store.installed.firstOrNull { it.bin == store.default?.bin },
+        remember(gap) { AboveAnchor(gap) },
+        onDismiss = onDismiss,
+        onPick = store::choose,
+        label = { it.name },
+        minWidth = 200.dp,
+        sublabel = { it.bin },
+    ) {
+        Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(1.dp).background(Palette.border))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .clickable {
+                    onDismiss()
+                    onManage()
+                }.padding(horizontal = 10.dp, vertical = 10.dp),
+        ) { BasicText("  manage agents…", style = Mono.copy(color = Palette.muted)) }
+    }
+}
+
+/** Opens a popup [gap] pixels above its anchor, lined up with its start and kept on screen: the bar sits at the bottom. */
+private class AboveAnchor(
+    private val gap: Int,
+) : PopupPositionProvider {
     override fun calculatePosition(
         anchorBounds: IntRect,
         windowSize: IntSize,
@@ -524,6 +518,6 @@ private object AboveAnchor : PopupPositionProvider {
         popupContentSize: IntSize,
     ) = IntOffset(
         anchorBounds.left.coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
-        (anchorBounds.top - popupContentSize.height).coerceAtLeast(0),
+        (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0),
     )
 }

@@ -1,5 +1,5 @@
 #!/bin/bash
-# omalauncher: checks home-screen widgets the way the launcher sees them (see
+# omalauncher: checks widgets and apps the way the launcher sees them (see
 # WidgetEngine.kt). Waits until the launcher has loaded each file as it is on
 # disk, then prints its errors and where the picture of its tile is.
 set -u
@@ -7,11 +7,12 @@ dir="$HOME/.config/omalauncher/widgets"
 
 if [ $# -eq 0 ] || [ "$1" = -h ] || [ "$1" = --help ]; then
   cat >&2 <<EOF
-usage: owl-check <widget.owl>...
+usage: owl-check <file.owl>...
 
-Waits for the launcher to load each widget as saved, then prints its errors
-and the path of a PNG of its tile, drawn with live data at its size on the
-home screen. Exits 1 if a widget doesn't compile or reports problems.
+Waits for the launcher to load each file as saved, then prints its errors
+and the path of a PNG of it, drawn with live data: a widget's tile at its
+size on the home screen (and its screen { }, if it has one), an app's or a
+panel's view at the phone's size. Exits 1 if a file doesn't compile or reports problems.
 EOF
   exit 2
 fi
@@ -67,12 +68,13 @@ for arg in "$@"; do
     if line=$(grep -E "^preview $hash " "$check"); then
       read -r _ _ cells px <<<"$line"
       echo "  preview: $dir/.preview/$name.png ($cells cells, $px px, with live data); look at it to check the layout"
-      if line=$(grep -E "^screen $hash " "$check"); then
-        read -r _ _ px <<<"$line"
-        echo "  screen: $dir/.preview/$name.screen.png ($px px, opened full screen); look at it too"
-      fi
     else
       echo "  no preview: $(grep -E "^preview-skipped $hash " "$check" | cut -d' ' -f3-)"
+    fi
+    # A widget's screen { }, or an app's whole view.
+    if line=$(grep -E "^screen $hash " "$check"); then
+      read -r _ _ px <<<"$line"
+      echo "  screen: $dir/.preview/$name.screen.png ($px px, opened full screen, with live data); look at it to check the layout"
     fi
   else
     echo "  no preview yet (the launcher may be busy); run owl-check again for it"

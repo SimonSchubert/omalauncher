@@ -1,0 +1,43 @@
+From 26.2.4, still on main. In begin_rendering(), resolves that the
+threaded context inlined into the render pass call
+zink_batch_resource_usage_set() on the resolve target before
+zink_kopper_acquire(). For a swapchain image that submits the acquire of an
+image that isn't acquired: dt_idx is UINT32_MAX, which trips an assert in
+zink_kopper_acquire_submit() or reads past the swapchain's images in a
+release build. Multisampled GL apps that resolve into the window crash
+within seconds (PrusaSlicer's G-code viewer: 6 of 6 on Adreno 619/650, and
+on Mali-G715). Only drivers with renderpass tracking take this path.
+
+Acquire first, as prep_fb_attachment() does for color attachments.
+
+diff --git a/src/gallium/drivers/zink/zink_context.c b/src/gallium/drivers/zink/zink_context.c
+--- a/src/gallium/drivers/zink/zink_context.c
++++ b/src/gallium/drivers/zink/zink_context.c
+@@ -3473,6 +3473,14 @@
+             zink_resource_reference(&ctx->fb_resolve[i], NULL);
+             continue;
+          }
++         /* A swapchain resolve target must be acquired before the batch uses
++          * it: zink_batch_resource_usage_set() submits the acquire. */
++         if (zink_is_swapchain(res)) {
++            if (!zink_kopper_acquire(ctx, res, UINT64_MAX)) {
++               zink_resource_reference(&ctx->fb_resolve[i], NULL);
++               return 0;
++            }
++         }
+          zink_batch_resource_usage_set(ctx->bs, res, true, false);
+          bool is_depth = util_format_is_depth_or_stencil(res->base.b.format);
+          enum pipe_format format = res->base.b.format;
+@@ -3487,12 +3495,6 @@
+             .first_layer = ctx->dynamic_fb.tc_info.resolve_geometry.z,
+             .last_layer = ctx->dynamic_fb.tc_info.resolve_geometry.depth - 1,
+          };
+-         if (zink_is_swapchain(res)) {
+-            if (!zink_kopper_acquire(ctx, res, UINT64_MAX)) {
+-               zink_resource_reference(&ctx->fb_resolve[i], NULL);
+-               return 0;
+-            }
+-         }
+          VkImageViewCreateInfo ivci = create_ivci(screen, res, &tmpl, ctx->dynamic_fb.info.layerCount > 1 ? PIPE_TEXTURE_2D_ARRAY : PIPE_TEXTURE_2D);
+          struct zink_surface *surf = zink_get_surface(ctx, &tmpl, &ivci);
+          VkImageLayout layout = is_depth ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;

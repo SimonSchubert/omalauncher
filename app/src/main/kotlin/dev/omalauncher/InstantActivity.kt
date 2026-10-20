@@ -1,11 +1,14 @@
 package dev.omalauncher
 
+import android.app.ActivityManager
 import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.window.SplashScreen
 import androidx.activity.ComponentActivity
@@ -14,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.toArgb
+import dev.omalauncher.ui.Palette
 
 /**
  * The launcher's own screens with their own task (settings, Files, the editor, Linux
@@ -53,6 +58,28 @@ abstract class InstantActivity : ComponentActivity() {
             window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             window.decorView.postOnAnimation(then)
         }, SEE_THROUGH_MS)
+    }
+
+    /** Names the Recents card [label], with [appIcon], else its initials in the theme colors. */
+    protected fun describeTask(
+        label: String,
+        appIcon: Bitmap?,
+    ) {
+        val icon = appIcon ?: taskIcon(label, Palette.background.toArgb(), Palette.accent.toArgb())
+        val description =
+            if (Build.VERSION.SDK_INT >= 37) {
+                ActivityManager.TaskDescription
+                    .Builder()
+                    .setLabel(label)
+                    .setIcon(Icon.createWithBitmap(icon))
+                    .setPrimaryColor(Palette.background.toArgb())
+                    .build()
+            } else {
+                // Builder.setIcon(Icon) is API 37+; the bitmap constructor still works before that.
+                @Suppress("DEPRECATION")
+                ActivityManager.TaskDescription(label, icon, Palette.background.toArgb())
+            }
+        setTaskDescription(description)
     }
 
     /** Back from Recents after [backInstantly]: solid again, so what's behind it can stop drawing. */

@@ -11,6 +11,95 @@ Dates are when the build was uploaded to Play.
   Physical-device dictation validation remains pending.
 - Linux keyboard focus recovery respects launcher, widget and dialog editors.
 
+## 0.10.0 (versionCode 18) – 2026-10-20
+
+- The app drawer is an owl file: drawer.owl, which you or an agent can edit, with
+  .stock-drawer.owl as the fallback when it's removed or doesn't compile. Owl 11
+  adds `panel "…" { }` files that a swipe on home opens (up: the drawer, down: from
+  the top), picked in settings › gestures or style.toml, with the prompt bar's
+  `query`, `enter`, `onSubmit` and `onKey`; `android.drawer`, `appAction`,
+  `workApps`, `shortcuts()`, `rank` and `strongMatch` for the drawer's apps, search
+  and menus. The Kotlin drawer is gone.
+- Home's layout is a file: ~/.config/omalauncher/home/layout.toml lists home's
+  pages in order and where every widget, app and folder sits. Moving things on the
+  phone rewrites it, and an agent (or you) can edit it to move, resize, pin or
+  reorder; problems show on home and in errors.txt next to it. A widget's `page:`,
+  `order:` and `size:` only place it the first time.
+- Owl 11 also: Column and Grid `lazy: true` and `reverse`, Image `label` for screen
+  readers, Text `minLines`, `chunk(list, n)`, apps without a status bar or title
+  row, and a Column in a Row or Flow is as wide as its content.
+- owl review warns about widgets that poll more often than they need to.
+- Faster: a Shader animates only when it reads time; Canvas text layouts are cached.
+
+## 0.9.0 (versionCode 17) – 2026-10-18
+
+- Faces: an owl file can be a whole home screen (`face "name" { }`, owl 10), left of
+  page 1 like a stock launcher's feed, as many as you like, with an empty one
+  inviting the next. The store has a faces tab (minimal, pixel, terminal); settings ›
+  pages lists faces and tile pages to drag into order, edit or remove. A face can
+  hide the status bar, runs under the navigation bar with `screenInset`, and takes
+  both halves of an unfolded foldable.
+- Owl 10: text `spans`, `fontWeight`, `letterSpacing`, linear and radial gradient
+  backgrounds, `frost` (frosted glass over the wallpaper), fonts of a widget's own
+  (asset, URL or Linux file), styled Canvas text, `Popup`, Input `underline: false`,
+  `onLongPress`, `android.agents`, `android.recent`, `open(key)`, `ask(text)` and
+  Image `icon:<key>`. A Text in a Row or Flow is as wide as its text. `android.apps`
+  updates as apps change instead of being polled.
+- Example widgets: the start page is redesigned; the ai bar rebuilds the prompt bar
+  and recent strip in owl.
+- Fixes: sharing a face or an app to the store; dragging pages in settings; a NaN
+  font size, a damaged font file or `cmd("/")` no longer crash the launcher;
+  `round()` of very large numbers.
+
+## 0.8.1 (versionCode 16) – 2026-10-17
+
+- Home's grid has 4 to 9 columns (6 by default); changing it moves every tile onto
+  the new grid. A pages row keeps one page where a foldable would show two (#141).
+- Style settings preview home and widgets as they change, and the terminal preview
+  is drawn in place instead of starting a foot. The terminal font is a dropdown.
+- A font for the launcher's text and widgets: Android's monospace, or one of Linux's
+  monospace fonts.
+- Local network: on Android 17+ a settings row asks for ACCESS_LOCAL_NETWORK, so
+  widgets and Linux can reach devices like a printer or Home Assistant.
+- Store updates for widgets and apps show in settings' system updates box, with
+  pending packages and agents listed one per line.
+- The home menu has the settings gear at its top right, like the drawer.
+- Owl 9: `parseTime`, `fmtAgo`, `fmtNum`, `fmtTime` with a time zone and language,
+  `random`, `shuffle` and `hash`; `set`, `remove`, `merge`, `reduce`, `scan`,
+  `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten` to a depth and
+  `on x first`; handlers have `if`/`else` and `let`. Numbers print as JavaScript
+  writes them (1792231445.5, not 1.7922314455E9).
+- Fixes: a widget's text field lifts its tile above the keyboard like a terminal;
+  home no longer stays sideways in portrait after a landscape app (before Android 14);
+  a widget filling its page shows its edit bar inside it; Linux setup no longer
+  hangs at "Installing cliamp" on phones with a small app heap.
+
+## 0.8.0 (versionCode 15) – 2026-10-17
+
+- Apps: an owl file can be a full-screen app (`app "name" { }`, owl 8) that opens
+  from the app drawer, with its own Recents card. Back goes back a level inside it.
+  The store lists apps like Braincup's brain games, Yoga and Linux commands; an app's
+  page swipes through its screens, drawn in your theme.
+- Widgets and apps can show images from the web (SVG drawn as vectors), play sounds,
+  send HTTP POSTs and read the installed apps (`android.apps`). Values in URLs go
+  through `enc()`, and the store's reviewer sees each URL a widget can reach.
+- GPU acceleration for Linux apps on Adreno 6xx and newer (Turnip). The patched Mesa
+  now ships in the app for Adreno and Mali, so OpenGL apps run on the GPU through
+  zink, and windows with MSAA (PrusaSlicer's G-code viewer) no longer crash.
+- Folders can have a name, set in place in their header.
+- Home can hide the status bar.
+- App search matches names with their accents stripped.
+- The store marks widgets added in the last three days with a "new" badge and tab,
+  and has more categories (sport, finance, media, games, pets). Its pages and
+  settings pages opened from another have a back chevron.
+- Themes installed from the catalog show its screenshot in the theme list.
+- OpenCode 2 installs and updates again: agent installs and system updates update
+  mise first and add node for OpenCode.
+- Prompts start Antigravity and GitHub Copilot in interactive mode, and Antigravity
+  in plan mode for untrusted prompts.
+- Fixes: submitting to the store no longer crashes without a browser, links from
+  Linux keep opening after an error, and turning the GPU on waits for package installs.
+
 ## 0.7.2 (versionCode 14) – 2026-10-14
 
 - Text files open in the launcher's own touch-first editor, in the Omarchy theme,
