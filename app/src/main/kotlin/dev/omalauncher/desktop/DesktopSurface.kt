@@ -22,6 +22,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -49,6 +51,7 @@ internal class DesktopSurface @RequiresApi(30) constructor(
     private val callback: IDesktopHost,
     val pagesSideBySide: Boolean,
     inheritPhoneLayout: Boolean,
+    initialUiScale: Float,
     private val systemLaunch: Boolean,
     private val remove: (String, String) -> Unit,
 ) {
@@ -61,6 +64,7 @@ internal class DesktopSurface @RequiresApi(30) constructor(
     private val view = ComposeView(windowContext)
     private val host = SurfaceControlViewHost(windowContext, display, hostToken)
     private var configuration by mutableStateOf(Configuration(windowContext.resources.configuration))
+    private val uiScale = initialUiScale
     private val death = IBinder.DeathRecipient { handler.post { remove(id, "disconnected") } }
     private var linked = false
     private var visible = false
@@ -75,7 +79,10 @@ internal class DesktopSurface @RequiresApi(30) constructor(
         view.setViewTreeViewModelStoreOwner(owner)
         view.isFocusableInTouchMode = true
         view.setContent {
-            CompositionLocalProvider(LocalConfiguration provides configuration, LocalOnBackPressedDispatcherOwner provides owner) {
+            val base = windowContext.resources.displayMetrics.density
+            val density = Density(base * uiScale, windowContext.resources.configuration.fontScale)
+            CompositionLocalProvider(LocalConfiguration provides configuration, LocalDensity provides density,
+                LocalOnBackPressedDispatcherOwner provides owner) {
                 DesktopHome(runtime, home)
             }
         }
@@ -92,6 +99,7 @@ internal class DesktopSurface @RequiresApi(30) constructor(
 
     private fun updateConfiguration(width: Int, height: Int) {
         configuration = Configuration(windowContext.resources.configuration).apply {
+            densityDpi = (densityDpi * uiScale).toInt().coerceAtLeast(1)
             screenWidthDp = (width * 160f / densityDpi).toInt().coerceAtLeast(1)
             screenHeightDp = (height * 160f / densityDpi).toInt().coerceAtLeast(1)
             orientation = if (width > height) Configuration.ORIENTATION_LANDSCAPE else Configuration.ORIENTATION_PORTRAIT
@@ -181,6 +189,7 @@ internal class DesktopSurface @RequiresApi(30) constructor(
                 putString("sessionId", id)
                 putInt("displayId", displayId)
                 putString("launchMode", if (systemLaunch) "system" else "host")
+                putFloat("uiScale", uiScale)
             }
         }
     }

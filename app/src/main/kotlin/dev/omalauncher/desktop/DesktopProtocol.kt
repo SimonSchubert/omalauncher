@@ -18,6 +18,11 @@ internal object DesktopRules {
         require(value.matches(Regex("[a-zA-Z0-9_-]{1,40}"))) { "invalid layout profile" }
         return value
     }
+
+    fun uiScale(value: Float): Float {
+        require(value.isFinite() && value in .85f..5f) { "invalid desktop UI scale" }
+        return value
+    }
 }
 
 /** A leaked session Binder is useless to a different caller, and cannot be revived after closing. */

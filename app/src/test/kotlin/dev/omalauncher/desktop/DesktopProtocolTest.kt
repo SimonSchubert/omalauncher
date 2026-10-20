@@ -42,4 +42,12 @@ class DesktopProtocolTest {
         assertEquals("system", DesktopRules.launchMode("system"))
         assertThrows(IllegalArgumentException::class.java) { DesktopRules.launchMode("omalateral") }
     }
+
+    @Test fun desktopScaleRejectsInvalidInput() {
+        assertEquals(.85f, DesktopRules.uiScale(.85f))
+        assertEquals(5f, DesktopRules.uiScale(5f))
+        listOf(0f, .84f, 5.01f, Float.NaN, Float.POSITIVE_INFINITY).forEach {
+            assertThrows(IllegalArgumentException::class.java) { DesktopRules.uiScale(it) }
+        }
+    }
 }

@@ -92,7 +92,8 @@ class ExternalDesktopService : Service() {
             try {
                 val runtime = (application as App).runtime
                 val session = DesktopSurface(this@ExternalDesktopService, runtime, access, identity, display, profile, hostToken, host,
-                    metrics.getBoolean("pagesSideBySide"), metrics.getBoolean("inheritPhoneLayout"), launchMode == "system") { id, reason ->
+                    metrics.getBoolean("pagesSideBySide"), metrics.getBoolean("inheritPhoneLayout"),
+                    DesktopRules.uiScale(metrics.getFloat("uiScale", 1f)), launchMode == "system") { id, reason ->
                     sessions.remove(id)?.dispose(reason)
                 }
                 sessions[session.id] = session
