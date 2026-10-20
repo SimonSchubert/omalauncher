@@ -24,7 +24,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 12
+        const val LEVEL = 13
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -792,6 +792,15 @@ class Compiler private constructor(
                 commands += "a terminal running the login shell"
             } else {
                 listCommand(body.props.first { it.name == "command" }.value, command, scope, "Terminal command")
+            }
+            guest = true
+        }
+        if (n.type == "LinuxApp") {
+            val command = props["command"] ?: fail("LinuxApp needs command: a foreground Wayland program", n.pos)
+            if (command.const?.toString()?.isBlank() == true) fail("LinuxApp command must not be blank", n.pos)
+            listCommand(body.props.first { it.name == "command" }.value, command, scope, "LinuxApp command")
+            props["appId"]?.const?.toString()?.let {
+                if (!it.matches(Regex("[A-Za-z0-9_][A-Za-z0-9_.-]{0,254}"))) fail("LinuxApp appId must be a non-empty Wayland app ID", n.pos)
             }
             guest = true
         }

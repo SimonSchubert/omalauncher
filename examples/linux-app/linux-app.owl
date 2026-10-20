@@ -1,0 +1,105 @@
+face "linux app demo" {
+  meta {
+    owl: 13
+    description: "A generic embedded Wayland window with software rendering and pointer/keyboard input"
+    version: "0.1"
+    license: "MIT"
+    category: "tools"
+  }
+  page: -1
+  statusBar: false
+  padding: 0
+  requires { pacman: ["python", "sdl2"] }
+  let demo = """# Software-rendered SDL2 window: no emulator, ROM, OpenGL or Python packages.
+import ctypes as c
+import struct
+import time
+
+sdl = c.CDLL("libSDL2-2.0.so.0")
+
+def bind(name, result, *args):
+    fn = getattr(sdl, name)
+    fn.restype = result
+    fn.argtypes = args
+    return fn
+
+ptr, integer = c.c_void_p, c.c_int
+init = bind("SDL_Init", integer, c.c_uint32)
+error = bind("SDL_GetError", c.c_char_p)
+create_window = bind("SDL_CreateWindow", ptr, c.c_char_p, integer, integer, integer, integer, c.c_uint32)
+create_renderer = bind("SDL_CreateRenderer", ptr, ptr, integer, c.c_uint32)
+size = bind("SDL_GetRendererOutputSize", integer, ptr, c.POINTER(integer), c.POINTER(integer))
+color = bind("SDL_SetRenderDrawColor", integer, ptr, c.c_uint8, c.c_uint8, c.c_uint8, c.c_uint8)
+clear = bind("SDL_RenderClear", integer, ptr)
+fill = bind("SDL_RenderFillRect", integer, ptr, ptr)
+present = bind("SDL_RenderPresent", None, ptr)
+poll = bind("SDL_PollEvent", integer, ptr)
+set_title = bind("SDL_SetWindowTitle", None, ptr, c.c_char_p)
+destroy_renderer = bind("SDL_DestroyRenderer", None, ptr)
+destroy_window = bind("SDL_DestroyWindow", None, ptr)
+quit_sdl = bind("SDL_Quit", None)
+
+if init(0x20) != 0:  # SDL_INIT_VIDEO
+    raise RuntimeError(error().decode())
+window = create_window(b"LinuxApp demo", 0x1FFF0000, 0x1FFF0000, 480, 360, 0x20)
+if not window:
+    quit_sdl()
+    raise RuntimeError(error().decode())
+renderer = create_renderer(window, -1, 1)  # SDL_RENDERER_SOFTWARE: wl_shm, no GL
+if not renderer:
+    destroy_window(window)
+    quit_sdl()
+    raise RuntimeError(error().decode())
+
+# SDL_Event is 56 bytes on aarch64/x86_64, aligned to eight bytes.
+event = (c.c_uint64 * 7)()
+w, h = integer(), integer()
+clicks = 0
+running = True
+try:
+    while running:
+        while poll(c.byref(event)):
+            raw = bytes(event)
+            kind = struct.unpack_from("I", raw)[0]
+            if kind == 0x100:  # SDL_QUIT (xdg_toplevel.close)
+                running = False
+            elif kind == 0x300:  # SDL_KEYDOWN; Escape closes, other keys change the picture
+                key = struct.unpack_from("i", raw, 20)[0]
+                if key == 27:
+                    running = False
+                else:
+                    clicks += 1
+            elif kind == 0x401:  # SDL_MOUSEBUTTONDOWN, including touch-to-mouse
+                clicks += 1
+                set_title(window, f"LinuxApp demo - input {clicks}".encode())
+        size(renderer, c.byref(w), c.byref(h))
+        color(renderer, 22, 28, 43, 255)
+        clear(renderer)
+        palette = [(80, 190, 170), (240, 165, 80), (160, 130, 235)]
+        for i in range(3):
+            color(renderer, *palette[(i + clicks) % 3], 255)
+            rectangle = (integer * 4)(w.value // 10, h.value * (i + 1) // 5,
+                                      max(1, w.value * (i + 2) // 5), max(1, h.value // 9))
+            fill(renderer, c.byref(rectangle))
+        present(renderer)
+        time.sleep(1 / 20)
+finally:
+    destroy_renderer(renderer)
+    destroy_window(window)
+    quit_sdl()
+"""
+  Column {
+    fill: true
+    padding: 12
+    gap: 12
+    Text { text: "LINUX APP · DEMO"; style: title }
+    Text { text: "Tap the window to start the program, then tap again to interact." }
+    LinuxApp {
+      command: "python -c ${sh(demo)}"
+      weight: 1
+      fill: width
+    }
+    Text { text: "Touch or a key changes the colours. ⌨ opens the keyboard; × stops the program. Swipe outside the window to change pages."; style: small }
+    Spacer { height: screenInset }
+  }
+}

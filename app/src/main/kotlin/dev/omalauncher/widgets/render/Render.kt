@@ -112,6 +112,8 @@ import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WNode
 import dev.omalauncher.widgets.lang.num
 import dev.omalauncher.widgets.lang.text
+import dev.omalauncher.widgets.runtime.NodePath
+import dev.omalauncher.widgets.runtime.loopItemKeys
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import kotlinx.coroutines.flow.first
 import kotlin.math.max
@@ -132,6 +134,9 @@ val LocalMenuOpened = staticCompositionLocalOf<() -> Unit> { {} }
 
 /** On home's tiles: an Input there that takes the keyboard tells these, so its tile lifts above it like a terminal's. */
 val LocalHomeTiles = staticCompositionLocalOf<TerminalTiles?> { null }
+
+/** Includes component call sites and loop keys; an AST element alone is shared by all iterations. */
+private val LocalNodePath = staticCompositionLocalOf { NodePath.Root }
 
 /** The widget's content inside its tile: padding, optional background, and the node tree. */
 @Composable
@@ -166,7 +171,7 @@ fun WidgetContent(
             .then(if (insets != null) Modifier.windowInsetsPadding(insets) else Modifier)
             .padding(inset(program.padding)),
     ) {
-        CompositionLocalProvider(LocalLongPress provides program.isFace) {
+        CompositionLocalProvider(LocalLongPress provides program.isFace, LocalNodePath provides NodePath.Root.child("content")) {
             Nodes(program.root, inst.root, inst, this)
         }
     }
@@ -221,7 +226,7 @@ fun WidgetScreen(
         // Set before the nodes compose, so the first frame already has the size instead of null.
         inst.setScreen(maxWidth.value.toDouble(), maxHeight.value.toDouble())
         Column(Modifier.fillMaxSize()) {
-            CompositionLocalProvider(LocalLongPress provides true) {
+            CompositionLocalProvider(LocalLongPress provides true, LocalNodePath provides NodePath.Root.child("screen")) {
                 Nodes(nodes, inst.root, inst, this)
             }
         }
@@ -276,53 +281,61 @@ private fun Node(
     inst: WidgetInstance,
     parent: Any?,
 ) {
-    when (node) {
-        is WNode.Element -> Element(node, env, inst, parent)
-        is WNode.If -> {
-            val cond by remember(node, env) { derivedStateOf { inst.eval(node.cond, env, "if").truthy } }
-            Nodes(if (cond) node.then else node.orElse, env, inst, parent)
-        }
-        is WNode.For -> {
-            val list by remember(node, env) { derivedStateOf(structuralEqualityPolicy()) { inst.eval(node.list, env, "for") } }
-            val items = Builtins.iterable(list)
-            items.forEachIndexed { i, v ->
-                val k: Any = node.key?.let { inst.eval(it, env.child(v, Num(i.toDouble())), "for key") } ?: i
-                key(k) {
-                    // The row's frame stays the same as its item changes or it moves: only what
-                    // reads the changed parts recomposes, instead of the row being built anew.
-                    val item = rememberUpdatedState(v)
-                    val index = rememberUpdatedState(i)
-                    val child = remember(env) { env.childLazy(arrayOf<() -> Value>({ item.value }, { Num(index.value.toDouble()) })) }
-                    Nodes(node.body, child, inst, parent)
+    val path = LocalNodePath.current.child(node)
+    CompositionLocalProvider(LocalNodePath provides path) {
+        when (node) {
+            is WNode.Element -> Element(node, env, inst, parent)
+            is WNode.If -> {
+                val cond by remember(node, env) { derivedStateOf { inst.eval(node.cond, env, "if").truthy } }
+                Nodes(if (cond) node.then else node.orElse, env, inst, parent)
+            }
+            is WNode.For -> {
+                val list by remember(node, env) { derivedStateOf(structuralEqualityPolicy()) { inst.eval(node.list, env, "for") } }
+                val items = Builtins.iterable(list)
+                val keys = loopItemKeys(items.mapIndexed { i, v ->
+                    node.key?.let { inst.eval(it, env.child(v, Num(i.toDouble())), "for key") } ?: i
+                })
+                items.forEachIndexed { i, v ->
+                    val k = keys[i]
+                    key(k) {
+                        CompositionLocalProvider(LocalNodePath provides path.child(k)) {
+                            // The row's frame stays the same as its item changes or it moves: only what
+                            // reads the changed parts recomposes, instead of the row being built anew.
+                            val item = rememberUpdatedState(v)
+                            val index = rememberUpdatedState(i)
+                            val child = remember(env) { env.childLazy(arrayOf<() -> Value>({ item.value }, { Num(index.value.toDouble()) })) }
+                            Nodes(node.body, child, inst, parent)
+                        }
+                    }
                 }
             }
-        }
-        is WNode.Lets -> {
-            val frame =
-                remember(node, env) {
-                    lateinit var f: Env
-                    val states = node.values.map { ev -> derivedStateOf(structuralEqualityPolicy()) { inst.eval(ev, f, "let") } }
-                    f = env.childLazy(Array(states.size) { i -> { states[i].value } })
-                    f
-                }
-            Nodes(node.children, frame, inst, parent)
-        }
-        is WNode.Use -> {
-            // Parameters are evaluated in the caller, lazily, so they stay reactive.
-            val inner =
-                remember(node, env) {
-                    val where = "${node.component} parameter"
-                    Env(inst, inst.root, Array(node.args.size) { i -> { inst.eval(node.args[i], env, where) } })
-                }
-            if (node.wrapper.isEmpty()) {
-                Nodes(node.body, inner, inst, parent)
-            } else {
-                val wrapper = remember(node) { WNode.Element("Box", node.wrapper, emptyMap(), emptyMap(), emptyList(), node.pos) }
-                val p = remember(wrapper, env) { Props(wrapper, env, inst) }
-                Box(common(p, parent)) { Nodes(node.body, inner, inst, this) }
+            is WNode.Lets -> {
+                val frame =
+                    remember(node, env) {
+                        lateinit var f: Env
+                        val states = node.values.map { ev -> derivedStateOf(structuralEqualityPolicy()) { inst.eval(ev, f, "let") } }
+                        f = env.childLazy(Array(states.size) { i -> { states[i].value } })
+                        f
+                    }
+                Nodes(node.children, frame, inst, parent)
             }
+            is WNode.Use -> {
+                // Parameters are evaluated in the caller, lazily, so they stay reactive.
+                val inner =
+                    remember(node, env) {
+                        val where = "${node.component} parameter"
+                        Env(inst, inst.root, Array(node.args.size) { i -> { inst.eval(node.args[i], env, where) } })
+                    }
+                if (node.wrapper.isEmpty()) {
+                    Nodes(node.body, inner, inst, parent)
+                } else {
+                    val wrapper = remember(node) { WNode.Element("Box", node.wrapper, emptyMap(), emptyMap(), emptyList(), node.pos) }
+                    val p = remember(wrapper, env) { Props(wrapper, env, inst) }
+                    Box(common(p, parent)) { Nodes(node.body, inner, inst, this) }
+                }
+            }
+            is WNode.Draw -> {} // only inside Canvas, which draws them itself
         }
-        is WNode.Draw -> {} // only inside Canvas, which draws them itself
     }
 }
 
@@ -344,6 +357,7 @@ private sealed interface Slice {
         val node: WNode.For,
         val items: List<Value>,
         val keys: List<String>,
+        val sessionKeys: List<Any>,
     ) : Slice
 }
 
@@ -381,8 +395,8 @@ private fun forSlice(
     val slice by remember(node, env, at) {
         derivedStateOf {
             val items = Builtins.iterable(list.value)
-            val bases = items.mapIndexed { i, v -> node.key?.let { inst.eval(it, env.child(v, Num(i.toDouble())), "for key").toString() } ?: "$i" }
-            Slice.Many(node, items, lazyKeys(at, bases))
+            val values = items.mapIndexed { i, v -> node.key?.let { inst.eval(it, env.child(v, Num(i.toDouble())), "for key") } ?: i }
+            Slice.Many(node, items, lazyKeys(at, values.map { it.toString() }), loopItemKeys(values))
         }
     }
     return slice
@@ -422,6 +436,7 @@ private fun LazyNodes(
     /** `reverse`: listed from the end, its first item at the bottom, as search results sit above a bar. */
     reverse: Boolean,
 ) {
+    val path = LocalNodePath.current
     val arrangement = justify ?: Arrangement.spacedBy(gap, if (reverse) Alignment.Bottom else Alignment.Top)
     val slices = nodes.mapIndexed { at, n -> if (n is WNode.For) forSlice(n, at, env, inst) else Slice.One(n) }
     val listState = rememberLazyListState()
@@ -445,7 +460,11 @@ private fun LazyNodes(
                     slices.forEachIndexed { at, slice ->
                         when (slice) {
                             is Slice.One -> item(key = "$at") { Node(slice.node, env, inst, null) }
-                            is Slice.Many -> items(slice.items.size, key = { slice.keys[it] }) { i -> ForItem(slice.node, slice.items[i], i, env, inst) }
+                            is Slice.Many -> items(slice.items.size, key = { slice.keys[it] }) { i ->
+                                CompositionLocalProvider(LocalNodePath provides path.child(slice.node).child(slice.sessionKeys[i])) {
+                                    ForItem(slice.node, slice.items[i], i, env, inst)
+                                }
+                            }
                         }
                     }
                 }
@@ -454,7 +473,11 @@ private fun LazyNodes(
                     slices.forEachIndexed { at, slice ->
                         when (slice) {
                             is Slice.One -> item(key = "$at") { Node(slice.node, env, inst, null) }
-                            is Slice.Many -> items(slice.items.size, key = { slice.keys[it] }) { i -> ForItem(slice.node, slice.items[i], i, env, inst) }
+                            is Slice.Many -> items(slice.items.size, key = { slice.keys[it] }) { i ->
+                                CompositionLocalProvider(LocalNodePath provides path.child(slice.node).child(slice.sessionKeys[i])) {
+                                    ForItem(slice.node, slice.items[i], i, env, inst)
+                                }
+                            }
                         }
                     }
                 }
@@ -470,6 +493,7 @@ private fun Element(
     inst: WidgetInstance,
     parent: Any?,
 ) {
+    val sessionKey = LocalNodePath.current
     val p = remember(el, env) { Props(el, env, inst) }
     if (p.has("visible") && p.observe("visible")?.truthy == false) return
     // A Popup's size and weight are its menu's, in a window of its own: the layout it's in doesn't hold it.
@@ -657,12 +681,21 @@ private fun Element(
         "Spacer" -> Spacer(mod)
         "Slider" -> SliderNode(p, mod, sized)
         "Input" -> InputNode(p, mod, sized)
+        "LinuxApp" -> {
+            val command = p.observe("command")
+            val appId = p.observe("appId")
+            // A command depending on a source waits for that source, like Terminal.
+            if (command != null && command != Null && appId != Null) {
+                val term = remember(inst, sessionKey, command, appId) { inst.linuxApp(sessionKey, command.toString(), appId?.toString()) }
+                TerminalView(term, mod.then(if (sized) Modifier else Modifier.fillMaxSize()))
+            }
+        }
         "Terminal" -> {
             val command = p.observe("command")
             val fontSize = p.observe("fontSize")?.num()
             // A command built from a value still loading waits for it, rather than starting a shell and restarting.
             if (command != Null) {
-                val term = remember(el, command, fontSize) { inst.terminal(el, command?.toString(), fontSize) }
+                val term = remember(inst, sessionKey, command, fontSize) { inst.terminal(sessionKey, command?.toString(), fontSize) }
                 TerminalView(term, mod.then(if (sized) Modifier else Modifier.fillMaxSize()))
             }
         }

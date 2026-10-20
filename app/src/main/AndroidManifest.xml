@@ -33,7 +33,7 @@
         android:name=".App"
         android:extractNativeLibs="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="Omalauncher"
+        android:label="${launcherLabel}"
         android:theme="@style/Theme.Omalauncher"
         android:usesCleartextTraffic="true">
 
@@ -213,7 +213,7 @@
             android:label="Files"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:taskAffinity="dev.omalauncher.files"
+            android:taskAffinity="${applicationId}.files"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
 
@@ -224,7 +224,7 @@
             android:label="Settings"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:taskAffinity="dev.omalauncher.settings"
+            android:taskAffinity="${applicationId}.settings"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
 

@@ -1,0 +1,18 @@
+// Copy this file from examples/ to the widgets directory to use it as a face.
+// LinuxApp embeds one foreground Wayland window; the shell stays inside foot.
+face "linux app" {
+  meta {
+    owl: 13
+    description: "A Linux terminal window embedded in a face with LinuxApp"
+    version: "1.0"
+    license: "MIT"
+    category: "tools"
+  }
+  requires { pacman: ["foot", "bash"] }
+  page: -1
+  padding: 0
+  LinuxApp {
+    command: 'foot --app-id="$OMALAUNCHER_APP_ID" -e bash'
+    fill: true
+  }
+}

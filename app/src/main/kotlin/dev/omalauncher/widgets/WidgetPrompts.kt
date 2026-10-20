@@ -11,7 +11,8 @@ private const val DEPENDENCIES =
 
 /** How agents see their work: they can't see the phone. */
 private const val CHECK =
-    "After saving, run owl-check <file>: it prints the errors and the path of a PNG with live data (a widget's tile and its screen, if it has one; an app's view); look at it to check the layout."
+    "After saving, run owl-check <file>: it prints the errors and the path of a PNG with live data (a widget's tile and its screen, if it has one; an app's view); look at it to check the layout. " +
+        "A LinuxApp preview does not validate the live client: ask me to check its rendering, input and stop/restart on the phone."
 
 /** Starts [agentBin] in the widgets dir with a first prompt. */
 private fun agentCommand(
@@ -41,6 +42,9 @@ fun newOwlCommand(
     agentBin,
     "Read README.md, then ask me what to create: ${kind.what()}. " +
         (page?.let { "It's for the empty page left of my home pages, which is waiting for it: give it page: $it. " } ?: "") +
+        (if (kind == OwlKind.Face || kind == OwlKind.Widget) {
+            "A compatible Linux Wayland program can run inside a LinuxApp node (owl 13); read README.md's LinuxApp section and examples/46-linux-app.owl when that fits the request. "
+        } else "") +
         "$DEPENDENCIES $CHECK",
 )
 

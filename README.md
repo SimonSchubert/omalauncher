@@ -2,8 +2,9 @@
 
 An Android home screen with the look of [Omarchy](https://omarchy.org), and an
 optional Arch Linux ARM system next to your phone apps. Omalauncher runs the
-system under proot, without root, and is its Wayland compositor: every Linux
-window opens as its own Android task, with its own card in Recents.
+system under proot, without root, and is its Wayland compositor: Linux windows
+open as Android tasks with their own cards in Recents, or inside an OWL face
+with `LinuxApp`.
 
 <a href="https://play.google.com/store/apps/details?id=dev.omalauncher"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"></a>
 
@@ -89,3 +90,12 @@ settings › licenses.
 
 Omalauncher is an independent project and is not affiliated with or endorsed
 by Omarchy, Arch Linux, or the makers of the coding agents it installs.
+
+## Embedded Linux windows
+
+OWL 13's `LinuxApp` embeds a foreground Wayland program directly inside a face
+or widget. The [OWL authoring guide](app/src/main/assets/widgets/README.md#linuxapp)
+explains the API and client requirements. A ready-to-copy foot example is in
+[widgets/examples/46-linux-app.owl](app/src/main/assets/widgets/examples/46-linux-app.owl).
+The [SDL demo](examples/linux-app/README.md) and
+[device test guide](docs/LINUXAPP-TESTING.md) cover the isolated test APK.

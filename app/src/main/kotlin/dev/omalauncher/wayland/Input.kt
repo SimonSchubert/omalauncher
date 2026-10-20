@@ -31,6 +31,7 @@ class Input(
         private set
 
     private val pressedKeys = linkedSetOf<Int>()
+    private val pressedButtons = linkedSetOf<Int>()
     private var depressedMods = 0
     private var lockedMods = 0
 
@@ -186,6 +187,8 @@ class Input(
         pressed: Boolean,
     ) {
         val s = pointerFocus ?: return
+        if (pressed && !pressedButtons.add(button)) return
+        if (!pressed && !pressedButtons.remove(button)) return
         val serial = server.nextSerial()
         val time = now()
         pointersOf(s.client).forEach {
@@ -219,6 +222,7 @@ class Input(
         val time = now()
         pointersOf(s.client).filter { it.version >= 5 }.forEach { p ->
             p.send(p.event(7).uint(time).uint(0))
+            p.send(p.event(7).uint(time).uint(1))
             p.frame()
         }
     }
@@ -270,8 +274,24 @@ class Input(
         }
     }
 
+    /** Ends only this owner's seat state, even if another window has since acquired focus. */
+    fun cancelInput(owns: (Surface) -> Boolean) {
+        // wl_touch.cancel ends the whole sequence for a client, including points on its popups.
+        val clients = touchFocus.values.filter(owns).map { it.client }.toSet()
+        clients.forEach { client -> touchesOf(client).forEach { it.send(it.event(4)) } }
+        touchFocus.values.removeAll { it.client in clients }
+        if (pointerFocus?.let(owns) == true) {
+            pressedButtons.toList().forEach { pointerButton(it, false) }
+            pointerAxisStop()
+            pointerMotion(null, 0f, 0f)
+        }
+    }
+
     fun surfaceDestroyed(surface: Surface) {
-        if (pointerFocus === surface) pointerFocus = null
+        if (pointerFocus === surface) {
+            pointerFocus = null
+            pressedButtons.clear()
+        }
         if (keyboardFocus === surface) keyboardFocus = null
         touchFocus.values.removeAll { it === surface }
     }

@@ -89,7 +89,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, or a font for `font: logo` (owl 10, see Fonts), so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see Sharing) |
-| `meta { owl: 11 }` | the language version the widget needs (this launcher has 12; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, `enc`, `post`, images from the web, `sound` and `screenInset` 8, and `parseTime`, `fmtAgo`, `fmtNum`, `random`, `shuffle`, `hash`, `fmtTime`'s zone and language, `set`, `remove`, `merge`, `reduce`, `scan`, `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten`'s depth, `on … first`, and `if` and `let` in handlers 9, and `face "…" { }` files, `onLongPress`, Text's `spans`, `fontWeight` and `letterSpacing`, gradient backgrounds, `frost`, fonts of a widget's own and Canvas `text`'s `font`, `fontWeight`, `italic` and `letterSpacing`, `android.agents`, `android.recent`, `open`, `ask`, `Popup` and Input's `underline` 10, and `android.drawer`, `appAction`, `workApps`, `rank`, `strongMatch`, `chunk`, Column's and Grid's `lazy`, `panel "…" { }` files with `query`, `enter`, `onSubmit` and `onKey`, `shortcuts`, Column's and Grid's `reverse`, Image's `label`, Text's `minLines`, an app's `statusBar` and a Column in a Row as wide as its content 11, and `screenTop` 12; using them without declaring it is an error |
+| `meta { owl: 11 }` | the language version the widget needs (this launcher has 13; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, `enc`, `post`, images from the web, `sound` and `screenInset` 8, and `parseTime`, `fmtAgo`, `fmtNum`, `random`, `shuffle`, `hash`, `fmtTime`'s zone and language, `set`, `remove`, `merge`, `reduce`, `scan`, `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten`'s depth, `on … first`, and `if` and `let` in handlers 9, and `face "…" { }` files, `onLongPress`, Text's `spans`, `fontWeight` and `letterSpacing`, gradient backgrounds, `frost`, fonts of a widget's own and Canvas `text`'s `font`, `fontWeight`, `italic` and `letterSpacing`, `android.agents`, `android.recent`, `open`, `ask`, `Popup` and Input's `underline` 10, and `android.drawer`, `appAction`, `workApps`, `rank`, `strongMatch`, `chunk`, Column's and Grid's `lazy`, `panel "…" { }` files with `query`, `enter`, `onSubmit` and `onKey`, `shortcuts`, Column's and Grid's `reverse`, Image's `label`, Text's `minLines`, an app's `statusBar` and a Column in a Row as wide as its content 11, and `screenTop` 12, and `LinuxApp` 13; using them without declaring it is an error |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see Screens (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -114,7 +114,7 @@ value changes (at most once a second), without waiting for its interval or a `re
 
 ## Values in commands
 
-Put a value into a command (`cmd`, `stream`, `run`, `terminal`, `Terminal`) with `sh(value)`,
+Put a value into a command (`cmd`, `stream`, `run`, `terminal`, `Terminal`, `LinuxApp`) with `sh(value)`,
 on its own and outside any quotes. `sh()` single-quotes the value, so it stays one word and
 can't run as code, whatever text it holds (owl 6):
 
@@ -308,6 +308,7 @@ when lists reorder), and `let x = ...` inside any node.
 | `Slider` | a horizontal slider: `value`, `min` (0), `max` (100), `step`, `color`, `track`, `live`. `onChange` gets the chosen `value` when the finger lifts, or at every step while dragging with `live: true`. Full width and 28 dp tall unless sized (owl 4) |
 | `Input` | a one-line text field: `text` (what it shows; replaces what's typed when it changes), `placeholder`, `color`, `fontSize`, `clear: true` (empty it after submitting), `underline: false` (no line under it, for a field inside a frame of its own, owl 10), `focus: true` (focus it and raise the keyboard when the screen opens, or when `focus` turns true; only in a `screen { }`, owl 6). `onChange` gets the text as `value` as it's typed, `onSubmit` when the keyboard's send key is pressed (owl 4) |
 | `Popup` | a menu over everything, the tile, the bar and other tiles, at the start of the node that holds it: `position: below` (the default) or `above`, kept on screen and on the other side when there's no room, `gap`, `align`. Show it with `visible`; a tap outside it or Back runs `onDismiss`, which it must have, so it can close: `Box { Text { text: "menu"; onTap: open = true }  Popup { visible: open; onDismiss: open = false; … } }`. Framed like the launcher's menus unless it has a `background` or `border`. It takes no room where it's written (owl 10) |
+| `LinuxApp` | a foreground Wayland program embedded in the face/tile (owl 13): `command` (required), `appId` (optional exact Wayland ID). Starts on tap. See below |
 | `Terminal` | a live terminal (foot) in the tile: `command` (default: the login shell), `fontSize` (points; foot.ini has 8). Fills the space unless sized. See below |
 
 Every node also takes:
@@ -925,6 +926,95 @@ widget "shell" {
   is removed or its file changes. When `command` exits, the tile offers a restart;
   use `"btop; exec bash"` to fall back to a shell.
 - `padding: 0` lets the terminal fill the tile's frame.
+
+## LinuxApp
+
+Use `LinuxApp` to display one foreground Linux Wayland window inside a face
+or widget (owl 13). Keep the surrounding controls and layout in OWL. Use
+`Terminal` when you want its automatic foot startup and keyboard behaviour.
+
+This complete example uses foot, available in the launcher's Linux installation:
+
+```owl
+face "linux window" {
+  meta { owl: 13 }
+  requires { pacman: ["foot", "bash"] }
+  page: -1
+  padding: 0
+  LinuxApp {
+    command: 'foot --app-id="$OMALAUNCHER_APP_ID" -e bash'
+    fill: true
+  }
+}
+```
+
+`examples/46-linux-app.owl` is a ready-to-copy version. Examples are inactive
+until copied from `examples/` into the widgets directory. Declare every package
+your command needs in `requires { pacman: [...] }`; declare the Linux client and
+its runtime dependencies, not just the shell used to launch it.
+
+The command runs in `bash -c`; quote values with `sh(value)`. Each instance gets
+an automatic Wayland ID exported in `OMALAUNCHER_APP_ID`,
+`SDL_VIDEO_WAYLAND_WMCLASS` (SDL2) and `SDL_APP_ID` (SDL3). Other clients must use
+that ID (for example `foot --app-id="$OMALAUNCHER_APP_ID"`) or declare `appId`
+with the exact ID the client publishes. Run in the foreground and disable
+single-instance/daemon behaviour. A mismatched ID opens a normal Linux task;
+the node displays the ID it is waiting for. Fixed IDs must be unique.
+
+Tap to start, then tap the window to activate input. The soft keyboard opens
+only through the ⌨ button. Outside tap, Back, page changes and Android focus
+loss release input. The × button stops the program, including during startup;
+tap the node to restart. Exit errors show recent command output. Removing the
+widget or changing its command/ID closes its window and cancels its process.
+Leaving its page keeps it running, without any application-specific pause.
+A hidden conditional node or an item removed from a list also retains its session
+until the widget is removed/reloaded or its command/ID changes when rendered again;
+use × before hiding a program you want to stop. In a `for`, give each item a stable
+`key` so reordering keeps the correct session. Repeated component uses have
+independent sessions, including when their commands are identical.
+
+Stopping keeps the session reserved until its process actually exits. If it takes
+more than three seconds, the node reports that stopping is incomplete; it does not
+start a second copy. The launcher avoids forcibly killing just proot, which can
+leave guest processes behind. Error output is bounded even for programs that write
+long lines without line breaks.
+
+Only one toplevel per node is embedded, using the existing Wayland renderer;
+additional windows open normally. This is not Android app embedding or X11
+support. Start with a software-rendered Wayland/SDL client. Terminal nodes retain
+their automatic startup and keyboard behaviour.
+
+### Writing a face around a Linux application
+
+Choose a client with a Wayland backend that works with this compositor. Start
+with software rendering, and use a foreground, separate instance. Pass the
+automatic ID through the client's supported option or SDL hint; use a fixed
+`appId` only when the program cannot take a generated one. Quote file names and
+other values inserted into `command` with `sh(value)`.
+
+The node receives a new window size when its layout changes. Opening the soft
+keyboard lifts the face and reduces the available height when needed; hiding it
+restores the space. Design the face to resize, and preserve the aspect ratio of
+game or video content in the client when that matters.
+
+An existing emulator with a compatible Wayland/SDL backend can be the Linux
+client, with the user's ROM path passed using `sh(value)` and the emulator's
+packages declared in `requires`. Touch/pointer and keyboard input inside the
+active LinuxApp window already reach that client. Verify its app ID, rendering
+backend and controls on the phone, as with any other embedded application.
+
+A separate extension is needed if a face draws its controller as OWL controls
+outside the emulator window: for example, holding an OWL directional button and
+an OWL A button at once. There is currently no OWL action that targets key-down
+and key-up events at a LinuxApp, so such a controller needs an input API and
+multi-touch handling. This is additional to the existing input inside the
+client window, and is not required for an emulator controlled through that window.
+
+After saving, run `owl-check <file>` to validate the OWL and inspect the layout.
+The preview does not launch the graphical client, so it cannot establish live
+rendering, keyboard/touch input, application compatibility or process cleanup.
+Ask the user to check those on the phone, including stop/restart, focus loss,
+orientation and keyboard resizing, before describing the face as working.
 
 ## Home's layout
 

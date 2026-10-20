@@ -19,6 +19,7 @@ android {
 
     defaultConfig {
         applicationId = "dev.omalauncher"
+        manifestPlaceholders["launcherLabel"] = "Omalauncher"
         minSdk = 29
         targetSdk = 37
         versionCode = 18
@@ -55,6 +56,14 @@ android {
     }
 
     buildTypes {
+        // A separate app/data directory for testing without replacing the user's launcher.
+        create("embedded") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".embedded"
+            versionNameSuffix = "-embedded-prototype"
+            manifestPlaceholders["launcherLabel"] = "Linux Face Prototype"
+            matchingFallbacks += "debug"
+        }
         release {
             // Shrinks the APK and drops what the app doesn't use, like the owl module's unused parts.
             isMinifyEnabled = true
@@ -62,7 +71,16 @@ android {
             signingConfig = signingConfigs.getByName(if (uploadKey != null) "release" else "debug")
         }
     }
+
+    sourceSets.getByName("embedded").assets.srcDir(layout.buildDirectory.dir("generated/embedded-assets").get().asFile)
 }
+
+// Only the test APK seeds the demo; normal builds expose the generic node without adding a face.
+val embeddedFaceAssets = tasks.register<Copy>("generateEmbeddedFaceAssets") {
+    from(rootProject.file("examples/linux-app/linux-app.owl"))
+    into(layout.buildDirectory.dir("generated/embedded-assets/widgets"))
+}
+tasks.matching { it.name == "mergeEmbeddedAssets" }.configureEach { dependsOn(embeddedFaceAssets) }
 
 // ExamplesTest reads the widget examples and the README from here, so editing them reruns it.
 tasks.withType<Test>().configureEach { inputs.dir("src/main/assets/widgets") }

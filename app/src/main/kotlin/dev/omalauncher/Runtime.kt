@@ -20,6 +20,7 @@ import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.AgentStore
 import dev.omalauncher.linux.AudioBridge
 import dev.omalauncher.linux.Bootstrap
+import dev.omalauncher.linux.EmbeddedAppProcess
 import dev.omalauncher.linux.EDIT_COMMAND
 import dev.omalauncher.linux.FILES_COMMAND
 import dev.omalauncher.linux.Gpu
@@ -561,6 +562,16 @@ class Runtime(
         done: String? = null,
     ) {
         InstantActivity.startInstantly(context, EditorActivity.intent(context, path, done))
+    }
+
+    /** A cancellable foreground client owned by an embedded window, with the same Linux-ready gate as launch. */
+    fun launchEmbedded(command: String, onStopTimeout: () -> Unit, onExit: (Int, String) -> Unit): EmbeddedAppProcess? {
+        if (!linux) {
+            openSettings(SettingsPage.Linux)
+            onExit(-1, "Install Linux in settings first")
+            return null
+        }
+        return EmbeddedAppProcess({ proot.process("exec $command") }, onStopTimeout = onStopTimeout, onExit = onExit).also { it.start() }
     }
 
     /** Starts a command inside the guest; its output goes to logcat. Returns at once; [onExit] runs on the launch thread. */
