@@ -13,6 +13,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import dev.omalauncher.widgets.FACE_PAGE
 import dev.omalauncher.widgets.isFacePage
 import dev.omalauncher.widgets.lang.OwlKind
+import dev.omalauncher.widgets.AndroidWidget
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.HomeItem
 import dev.omalauncher.widgets.Shortcut
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.layout.padding
@@ -227,6 +229,7 @@ fun HomeScreen(
         when (item) {
             is WidgetItem -> engine.removeWidget(item.spec)
             is Shortcut, is Folder -> engine.shortcuts.remove(item.key)
+            is AndroidWidget -> engine.androidWidgets.remove(item.key)
         }
         engine.layout.remove(item.key)
     }
@@ -390,6 +393,24 @@ fun HomeScreen(
                     }
                     EditBar {
                         if (item is WidgetItem) EditAction("edit") { edit(item) }
+                        // A pinned app's own widgets, as its menu in the drawer offers them.
+                        if (app != null && runtime.appWidgets.offers(app)) {
+                            EditAction("widgets") {
+                                state.editing = null
+                                state.pickingWidget = WidgetPick(app.component.packageName)
+                            }
+                        }
+                        // An Android widget whose app lets its settings be changed after it's on home.
+                        if (item is AndroidWidget) {
+                            val activity = LocalContext.current as? android.app.Activity
+                            val info = remember(item.id) { runtime.appWidgets.info(item.id) }
+                            if (activity != null && info != null && runtime.appWidgets.reconfigurable(info)) {
+                                EditAction("settings") {
+                                    state.editing = null
+                                    runtime.appWidgets.configure(activity, item.id, requestCode = 0)
+                                }
+                            }
+                        }
                         // As a QR code or link, or (your own) to the store. An agent's tile is a terminal, not a widget to pass on.
                         if (item is WidgetItem && !engine.isAgentWidget(item.spec)) {
                             EditAction("share") {
@@ -411,6 +432,8 @@ fun HomeScreen(
                             runtime.open(item)
                         }
                         is Folder -> { -> arrange.folder = item.key }
+                        // The widget's app takes its touches itself; there's nothing for the tile to open.
+                        is AndroidWidget -> { -> }
                     }
                 // Keys reach a tile as a finger does: Enter opens it, and Menu or holding Enter selects it, as a long press.
                 // What takes taps in a widget is inside it, Right away; Enter goes there too on one with no tap of its own.
@@ -465,6 +488,7 @@ fun HomeScreen(
                             paused = runtime.androidApps.paused(item.profile),
                             clone = runtime.androidApps.cloned(item.profile),
                         )
+                    is AndroidWidget -> AppWidgetTile(item, runtime.appWidgets, highlighted, tile)
                     is Folder ->
                         FolderTile(
                             folder = item,

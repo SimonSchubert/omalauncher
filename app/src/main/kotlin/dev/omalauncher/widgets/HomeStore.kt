@@ -22,6 +22,7 @@ class HomeStore(
     private val dir = LauncherData.homeDir(context)
     private val layout get() = engine.layout
     private val shortcuts get() = engine.shortcuts
+    private val androidWidgets get() = engine.androidWidgets
 
     /** The file's keys; the ones this launcher doesn't know are written back as they were. */
     private var table: Map<String, Any> = emptyMap()
@@ -127,6 +128,7 @@ class HomeStore(
                             is WidgetItem -> WidgetTile(item.key, cell)
                             is Shortcut -> AppTile(fileKey(item.key), cell)
                             is Folder -> FolderTile(item.name, item.apps.map { fileKey(it.key) }, cell)
+                            is AndroidWidget -> AndroidTile(item.provider.flattenToShortString(), item.id, cell)
                         }
                     }
             if (tiles.isNotEmpty()) pages += TilePage(tiles)
@@ -135,8 +137,8 @@ class HomeStore(
     }
 
     /**
-     * Puts home as [file] says, noting what it couldn't in [problems]. Widgets the file leaves out stay where they are;
-     * apps it leaves out come off home. Returns whether it named widgets that aren't there.
+     * Puts home as [file] says, noting what it couldn't in [problems]. Widgets and Android widgets the file leaves out
+     * stay where they are; apps it leaves out come off home. Returns whether it named widgets that aren't there.
      */
     private fun apply(
         file: HomeLayout,
@@ -148,6 +150,8 @@ class HomeStore(
         var gone = false
         val placed = HashSet<String>()
         val widgets = ArrayList<Pair<WidgetSpec, Int>>()
+        val androids = ArrayList<Pair<AndroidWidget, Int>>()
+        val bound = androidWidgets.items.associateBy { it.id }
         val apps = ArrayList<Shortcut>()
         val folders = ArrayList<FolderEntry>()
         val cells = HashMap<String, Cell?>()
@@ -212,6 +216,20 @@ class HomeStore(
                                 key = app(tile.app, page, null, at)?.key ?: return@forEachIndexed
                                 size = 1 to 1
                             }
+                            is AndroidTile -> {
+                                val widget = bound[tile.id]
+                                if (widget == null) {
+                                    problems += "$at: no Android widget ${tile.id} on home; add one from home's menu on the phone"
+                                    return@forEachIndexed
+                                }
+                                if (!placed.add(widget.key)) {
+                                    problems += "$at: Android widget ${tile.id} is on home already; left out here"
+                                    return@forEachIndexed
+                                }
+                                androids += widget to page
+                                key = widget.key
+                                size = layout.cell(key)?.let { it.w to it.h } ?: widget.size
+                            }
                             is FolderTile -> {
                                 // Same folder as before when it holds the same first app, so it keeps its key.
                                 val first = tile.apps.firstNotNullOfOrNull(::shortcutKey)
@@ -224,7 +242,7 @@ class HomeStore(
                             }
                         }
                         if (key in cells) return@forEachIndexed
-                        val c = tile.cell?.let { c -> rescaled(c, size, file.columns, cols, tile is WidgetTile) }
+                        val c = tile.cell?.let { c -> rescaled(c, size, file.columns, cols, tile is WidgetTile || tile is AndroidTile) }
                         cells[key] =
                             when {
                                 c == null -> null
@@ -240,6 +258,7 @@ class HomeStore(
         applying = true
         try {
             for ((spec, page) in widgets) if (spec.page != page || layout.page(spec.file.name) != page) engine.moveToPage(WidgetItem(spec), page)
+            for ((widget, page) in androids) if (widget.page != page) androidWidgets.move(widget.key, page)
             shortcuts.replace(apps, folders)
             for ((key, cell) in cells) if (cell == null) layout.clearCell(key) else layout.set(key, cell)
             layout.save()

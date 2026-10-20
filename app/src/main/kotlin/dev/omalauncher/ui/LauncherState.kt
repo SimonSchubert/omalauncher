@@ -37,15 +37,19 @@ class LauncherState {
     /** The menu from long-pressing empty home space. */
     var homeMenuOpen by mutableStateOf(false)
 
+    /** The list of the phone's apps' widgets, while it's open: every app's, or one app's. */
+    var pickingWidget by mutableStateOf<WidgetPick?>(null)
+
     /** The open drawer or a full-screen panel hides the home screen; animated widgets stop ticking under it. */
     val homeCovered: Boolean
-        get() = drawer.value > 0.99f || shared != null || sharing != null
+        get() = drawer.value > 0.99f || shared != null || sharing != null || pickingWidget != null
 
-    /** Closes every overlay screen (the home menu, widget sharing). */
+    /** Closes every overlay screen (the home menu, widget sharing, the widget list). */
     fun closeScreens() {
         homeMenuOpen = false
         shared = null
         sharing = null
+        pickingWidget = null
     }
 
     /** Key of the home tile in edit mode (handles and action bar shown), if any. */
@@ -86,7 +90,7 @@ class LauncherState {
 
     /** [statusBarAway], and nothing over it: no drawer, menu or panel. Then the status bar hides. */
     val fullScreen: Boolean
-        get() = statusBarAway && drawer.value < 0.01f && !homeMenuOpen && shared == null && sharing == null
+        get() = statusBarAway && drawer.value < 0.01f && !homeMenuOpen && shared == null && sharing == null && pickingWidget == null
 
     /** Home page currently showing (1-based); the drawer pins apps there. */
     var currentPage by mutableStateOf(1)

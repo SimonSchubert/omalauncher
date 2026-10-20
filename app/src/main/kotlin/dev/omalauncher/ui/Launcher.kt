@@ -94,6 +94,7 @@ private fun DesktopScreen(
         when {
             state.shared != null -> state.shared = null
             state.sharing != null -> state.sharing = null
+            state.pickingWidget != null -> state.pickingWidget = null
             runtime.widgets.openScreen != null -> runtime.widgets.openScreen = null
             state.pulled != null -> state.closePull()
             else -> state.close()
@@ -174,6 +175,11 @@ private fun DesktopScreen(
                 },
                 // Its file goes to .removed/, as a removed widget's does.
                 removeOwl = { spec -> runtime.widgets.removeWidget(spec) },
+                // Over home, to put one on the page showing.
+                widgets = { app ->
+                    state.closeNow()
+                    state.pickingWidget = WidgetPick(app.component.packageName)
+                },
             )
         }
 
@@ -311,6 +317,7 @@ private fun ThemesOverlay(
             onDismiss = { state.shared = null },
         )
     }
+    state.pickingWidget?.let { pick -> WidgetPicker(runtime, pick, state.currentPage, onDismiss = { state.pickingWidget = null }) }
     state.sharing?.let { spec ->
         ShareWidgetScreen(
             spec,

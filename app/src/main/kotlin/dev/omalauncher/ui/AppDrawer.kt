@@ -90,6 +90,8 @@ internal sealed interface AppHit {
 
     data class Android(
         val app: AndroidApp,
+        /** It offers widgets to put on home (only apps in the launcher's own profile): its menu says "widgets". */
+        val widgets: Boolean = false,
     ) : AppHit {
         override val key get() = "a:" + app.key
         override val label get() = app.label
@@ -121,7 +123,7 @@ internal sealed interface AppHit {
 }
 
 internal fun allApps(runtime: Runtime): List<AppHit> =
-    runtime.widgets.apps().map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } + runtime.androidApps.apps.map { AppHit.Android(it) } +
+    runtime.widgets.apps().map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } + runtime.androidApps.apps.map { AppHit.Android(it, runtime.appWidgets.offers(it)) } +
         runtime.androidApps.shortcuts.map { AppHit.Shortcut(it) }
 
 /** What the app cells do: open, pin to home, the Android app's info and uninstall, removing a shortcut, and an owl app's edit, share and remove. */
@@ -139,6 +141,8 @@ internal class AppHandlers(
     val share: (WidgetSpec) -> Unit,
     /** Removes an owl app's file, and its icon from home. */
     val removeOwl: (WidgetSpec) -> Unit,
+    /** Lists an Android app's widgets, to put one on home. */
+    val widgets: (AndroidApp) -> Unit,
 )
 
 /** The shortcuts an Android app offers above its menu's actions; null for anything else. */
@@ -165,13 +169,13 @@ internal val AppHit.profileKind: String?
 
 /**
  * The long-press menu's entries, as the words `appAction(word, key)` takes: pin to home, for owl apps editing,
- * sharing and removing, for Android apps their info and uninstall, and for shortcuts removing them.
+ * sharing and removing, for Android apps their widgets, info and uninstall, and for shortcuts removing them.
  */
 internal fun AppHit.actionWords(): List<String> =
     when (this) {
         is AppHit.Linux -> listOf("pin")
         is AppHit.Owl -> listOf("pin", "edit", "share", "remove")
-        is AppHit.Android -> listOfNotNull("pin", "info", if (app.system) null else "uninstall")
+        is AppHit.Android -> listOfNotNull("pin", if (widgets) "widgets" else null, "info", if (app.system) null else "uninstall")
         is AppHit.Shortcut -> listOf("pin", "remove")
     }
 
@@ -186,6 +190,7 @@ internal fun AppHit.act(
     when (word) {
         "pin" -> handlers.pin(this)
         "info" -> (this as? AppHit.Android)?.let { handlers.info(it.app) }
+        "widgets" -> (this as? AppHit.Android)?.let { handlers.widgets(it.app) }
         "uninstall" -> (this as? AppHit.Android)?.let { handlers.uninstall(it.app) }
         "remove" ->
             when (this) {

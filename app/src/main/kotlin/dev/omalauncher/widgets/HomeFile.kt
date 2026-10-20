@@ -25,6 +25,16 @@ data class FolderTile(
     override val cell: Cell? = null,
 ) : Tile
 
+/**
+ * A widget from one of the phone's apps, by the id Android bound it to; [provider] says whose, for reading. Only the
+ * phone adds one (Android asks the user first), so the file can move, resize and reorder them, not make new ones.
+ */
+data class AndroidTile(
+    val provider: String,
+    val id: Int,
+    override val cell: Cell? = null,
+) : Tile
+
 /** A home page in layout.toml: a face, filling it, or tiles. */
 sealed interface PageEntry
 
@@ -60,9 +70,10 @@ object HomeFile {
         """
         |# Home's pages, left to right: a face, or tiles on a grid of `columns` columns (home.columns in
         |# ../style/style.toml sets the grid). Moving things on the phone rewrites this file, and home
-        |# follows edits to it. A tile is { widget = "file.owl" }, { app = "…" } or { folder = "name", apps = [...] },
+        |# follows edits to it. A tile is { widget = "file.owl" }, { app = "…" }, { folder = "name", apps = [...] }
+        |# or { android = "pkg/provider", id = n }, an Android app's widget, added from home's menu on the phone;
         |# at x, y (cells from the top left) and w, h wide and tall; without x and y it takes the first free spot.
-        |# A widget file left out stays where it is, and a new one goes by its own page:, order: and size:;
+        |# A widget file or Android widget left out stays where it is, and a new file goes by its own page:, order: and size:;
         |# an app left out comes off home. An app is a package, "pkg/activity" (with "@profile" for a work
         |# profile's), "linux:<desktop id>" or "owl:<file>".
         |# What couldn't be read is in errors.txt next to this file.
@@ -107,12 +118,16 @@ object HomeFile {
             is WidgetTile -> out["widget"] = tile.file
             is AppTile -> out["app"] = tile.app
             is FolderTile -> out["folder"] = tile.name.orEmpty()
+            is AndroidTile -> {
+                out["android"] = tile.provider
+                out["id"] = tile.id.toDouble()
+            }
         }
         tile.cell?.let { c ->
             out["x"] = c.x.toDouble()
             out["y"] = c.y.toDouble()
             // Apps and folders are always one cell.
-            if (tile is WidgetTile) {
+            if (tile is WidgetTile || tile is AndroidTile) {
                 out["w"] = c.w.toDouble()
                 out["h"] = c.h.toDouble()
             }
@@ -171,26 +186,36 @@ object HomeFile {
         problems: MutableList<String>,
     ): Tile? {
         if (t !is Map<*, *>) {
-            problems += "$where: write a tile as { widget = \"…\" }, { app = \"…\" } or { folder = \"…\", apps = [...] }"
+            problems += "$where: write a tile as { widget = \"…\" }, { app = \"…\" }, { folder = \"…\", apps = [...] } or { android = \"…\", id = n }"
             return null
         }
-        val kinds = listOf("widget", "app", "folder").filter { it in t }
+        val kinds = listOf("widget", "app", "folder", "android").filter { it in t }
         if (kinds.size != 1) {
-            problems += "$where: a tile is one of widget, app or folder"
+            problems += "$where: a tile is one of widget, app, folder or android"
             return null
         }
         val kind = kinds[0]
-        val known = setOf(kind, "x", "y", "w", "h") + if (kind == "folder") setOf("apps") else emptySet()
+        val known =
+            setOf(kind, "x", "y", "w", "h") +
+                when (kind) {
+                    "folder" -> setOf("apps")
+                    "android" -> setOf("id")
+                    else -> emptySet()
+                }
         for (k in t.keys) if (k !in known) problems += "$where: $k isn't a $kind tile's"
         val name = t[kind] as? String
         if (name == null || (kind != "folder" && name.isBlank())) {
             problems += "$where: $kind takes a name in quotes"
             return null
         }
-        val cell = cell(t, kind == "widget", where, problems)
+        val cell = cell(t, kind == "widget" || kind == "android", where, problems)
         return when (kind) {
             "widget" -> WidgetTile(name, cell)
             "app" -> AppTile(name, cell)
+            "android" -> {
+                val id = t["id"]?.let(::whole)
+                if (id == null) null.also { problems += "$where: id takes the whole number Android gave the widget" } else AndroidTile(name, id, cell)
+            }
             else -> {
                 val apps = (t["apps"] as? List<*>)?.filterIsInstance<String>()?.filter { it.isNotBlank() }.orEmpty()
                 if (t["apps"] !is List<*> || apps.size != (t["apps"] as List<*>).size) problems += "$where: apps takes a list of apps in quotes"

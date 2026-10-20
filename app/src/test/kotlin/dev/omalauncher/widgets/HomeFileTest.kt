@@ -17,6 +17,7 @@ class HomeFileTest {
                         AppTile("org.mozilla.firefox", Cell(3, 0, 1, 1)),
                         FolderTile("Work", listOf("com.slack", "linux:foot"), Cell(4, 0, 1, 1)),
                         FolderTile(null, listOf("a", "b"), Cell(5, 0, 1, 1)),
+                        AndroidTile("com.example/.ClockWidget", 12, Cell(0, 4, 4, 2)),
                     ),
                 ),
                 TilePage(listOf(WidgetTile("60-owl.owl", Cell(0, 0, 6, 3)))),
@@ -33,7 +34,7 @@ class HomeFileTest {
     /** Apps and folders are one cell, so the file doesn't say their size. */
     private fun unsized(t: Tile) =
         when (t) {
-            is WidgetTile -> t
+            is WidgetTile, is AndroidTile -> t
             is AppTile -> t.copy(cell = t.cell?.copy(w = 0, h = 0))
             is FolderTile -> t.copy(cell = t.cell?.copy(w = 0, h = 0))
         }
@@ -53,6 +54,12 @@ class HomeFileTest {
         val decoded = HomeFile.decode(Toml.parse("[[page]]\ntiles = [ { widget = \"a.owl\" }, { app = \"b\", x = 2, y = 1 } ]\n"), 6)
         assertEquals(emptyList<String>(), decoded.problems)
         assertEquals(TilePage(listOf(WidgetTile("a.owl", null), AppTile("b", Cell(2, 1, 0, 0)))), decoded.layout.pages.single())
+    }
+
+    @Test fun androidWidgetsNeedTheirId() {
+        val decoded = HomeFile.decode(Toml.parse("[[page]]\ntiles = [ { android = \"a/.B\", id = 3 }, { android = \"a/.C\" }, { android = \"a/.D\", id = 1.5 } ]\n"), 6)
+        assertEquals(TilePage(listOf(AndroidTile("a/.B", 3, null))), decoded.layout.pages.single())
+        assertEquals(2, decoded.problems.count { "id takes" in it })
     }
 
     @Test fun saysWhatItCouldntRead() {

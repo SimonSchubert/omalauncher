@@ -84,6 +84,7 @@ class Runtime(
     val gestures = Gestures(context, style)
     val linuxApps = LinuxAppCatalog(context, proot)
     val androidApps = AndroidAppCatalog(context)
+    val appWidgets = AppWidgetCatalog(context)
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
@@ -152,6 +153,9 @@ class Runtime(
             snapshotFlow { style.style[Style.FONT] }.drop(1).collect { launcherFont.apply() }
         }
         androidApps.start()
+        appWidgets.start()
+        // Ids bound for widgets that never made it on home (the app stopped while one was being added).
+        appWidgets.forgetAllBut(widgets.androidWidgets.ids)
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
         keyboard.onShortcut = { code ->
             when (code) {
