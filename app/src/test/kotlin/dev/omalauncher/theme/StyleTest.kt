@@ -33,7 +33,7 @@ class StyleTest {
     }
 
     @Test fun reportsTheLineItCantRead() {
-        for ((text, line) in listOf("a = 1\nb = nord" to 2, "[home\n" to 1, "a = [1, 2]" to 1, "a = 1\na = 2" to 2, "a = \"open" to 1, "\"my key\" = 1" to 1, "[\"a.b\"]" to 1)) {
+        for ((text, line) in listOf("a = 1\nb = nord" to 2, "[home\n" to 1, "a = [1, 2" to 1, "a = { b = 1" to 1, "a = 1\na = 2" to 2, "a = \"open" to 1, "\"my key\" = 1" to 1, "[\"a.b\"]" to 1)) {
             try {
                 Toml.parse(text)
                 fail("parsed: $text")
@@ -109,6 +109,18 @@ class StyleTest {
         assertEquals(emptyList<String>(), decoded.problems)
         // No borders is a width of 0, not a color.
         assertEquals(2, StyleFile.decode(mapOf("widgets.border" to "none", "widgets.border-focused" to "none")).problems.size)
+    }
+
+    @Test fun columnsAreAWholeNumberFromFourToNine() {
+        assertEquals(6, Style()[Style.COLUMNS])
+        val five = Toml.parse("[home]\ncolumns = 5\n")
+        assertEquals(5, StyleFile.decode(five).style[Style.COLUMNS])
+        assertEquals("version = 1\n\n[home]\ncolumns = 5\n", Toml.write(StyleFile.encode(five, Style().with(Style.COLUMNS, 5)), ""))
+        for (bad in listOf(5.5, 3.0, 10.0)) {
+            val decoded = StyleFile.decode(mapOf("home.columns" to bad), Style().with(Style.COLUMNS, 5))
+            assertEquals(5, decoded.style[Style.COLUMNS])
+            assertEquals(listOf("home.columns: takes a whole number from 4 to 9; keeping 5"), decoded.problems)
+        }
     }
 
     @Test fun absentKeysAreDefaultsNotThePreviousValues() {

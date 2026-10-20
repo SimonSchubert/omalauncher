@@ -2,7 +2,6 @@ package dev.omalauncher.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.widgets.WidgetEngine
 import dev.omalauncher.widgets.lang.Compiler
+import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.market.Paste
 import dev.omalauncher.widgets.market.Share
 import dev.omalauncher.widgets.market.ShareError
@@ -35,7 +35,8 @@ import kotlinx.coroutines.withContext
 /**
  * A widget someone shared as a link or QR code (widgets/market/Share.kt). Nobody reviewed it, so this is
  * the store's widget page with that said first: what it is, what it installs, every command it runs and
- * what in them looks risky, the whole file a tap away, and an agent to read it for you. Only "add to page" puts it on the home screen.
+ * what in them looks risky, the whole file a tap away, and an agent to read it for you. Only "add to page" puts it on the home screen
+ * (for an app, "add to app drawer" puts it in the drawer).
  */
 @Composable
 fun SharedWidgetScreen(
@@ -54,7 +55,10 @@ fun SharedWidgetScreen(
             }
     }
     var showSource by remember(link) { mutableStateOf(false) }
-    OverlayPanel("shared widget", onDismiss, contentWidth = ReadingWidth) {
+    // An app goes in the drawer rather than on a page, and a face left of page 1; known from its first word, even before it compiles.
+    val kind = result?.getOrNull()?.let { OwlKind.of(it.text) } ?: OwlKind.Widget
+    val app = kind == OwlKind.App
+    OverlayPanel("shared ${kind.word}", onDismiss, contentWidth = ReadingWidth) {
         val result = result
         if (result == null) {
             if (Share.pasteId(link) != null) BasicText("fetching it from ${Paste.HOST}…", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Body))
@@ -68,7 +72,7 @@ fun SharedWidgetScreen(
         }
         val p = shared.program
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            BasicText(shared.name.ifEmpty { "a widget" }, style = Mono.copy(fontSize = TextSize.Title))
+            BasicText(shared.name.ifEmpty { if (app) "an app" else "a widget" }, style = Mono.copy(fontSize = TextSize.Title))
             if (p != null) {
                 val size = p.size?.let { " · ${it.first}x${it.second}" } ?: ""
                 val version = shared.version.takeIf { it.isNotEmpty() }?.let { " · v$it" } ?: ""
@@ -89,7 +93,7 @@ fun SharedWidgetScreen(
                 else -> {
                     val same = engine.sharedWidgetIsSame(shared)
                     when (same) {
-                        true -> BasicText("✓ on your home screen", style = Mono.copy(color = Palette.green))
+                        true -> AddedMark(kind)
                         false ->
                             BracketAction("replace the ${shared.name} shared before", Palette.accent) {
                                 scope.launch {
@@ -98,35 +102,29 @@ fun SharedWidgetScreen(
                                 }
                             }
                         null ->
-                            BracketAction("add to page $page", Palette.accent) {
+                            BracketAction(
+                                when (kind) {
+                                    OwlKind.App -> "add to app drawer"
+                                    OwlKind.Face -> "add as a face"
+                                    OwlKind.Widget -> "add to page $page"
+                                    OwlKind.Panel -> "add to gesture panels"
+                                },
+                                Palette.accent,
+                            ) {
                                 scope.launch {
                                     engine.addSharedWidget(shared, page)
                                     onDismiss()
                                 }
                             }
                     }
-                    if (!engine.linux && p?.needsLinux == true) {
-                        BasicText(
-                            "needs Linux: it runs commands in Arch, so it waits as a placeholder until you install Linux in settings",
-                            style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
-                        )
-                    }
+                    if (!engine.linux && p?.needsLinux == true) NeedsLinuxNote(app)
                 }
             }
 
             if (p != null) {
                 Spacer(Modifier.height(4.dp))
                 for (risk in shared.risks) BasicText("⚠ $risk", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
-                val packages = shared.requires.entries.joinToString("; ") { (m, l) -> "$m: ${l.joinToString(", ")}" }.ifEmpty { "none" }
-                BasicText("installs packages: $packages", style = Mono.copy(fontSize = TextSize.Small))
-                BasicText(if (shared.commands.isEmpty()) "runs no commands" else "runs these commands in Arch:", style = Mono.copy(fontSize = TextSize.Small))
-                for (c in shared.commands) {
-                    BasicText(
-                        c.trimEnd(),
-                        Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).padding(6.dp),
-                        style = Mono.copy(fontSize = TextSize.Small),
-                    )
-                }
+                InstallDisclosure(shared.requires, shared.commands)
             }
 
             Spacer(Modifier.height(4.dp))
@@ -136,11 +134,7 @@ fun SharedWidgetScreen(
                 style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
             )
             if (showSource) {
-                BasicText(
-                    shared.text,
-                    Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).padding(6.dp),
-                    style = Mono.copy(fontSize = TextSize.Small),
-                )
+                CodeBlock(shared.text)
             }
             BasicText(
                 "review with agent",

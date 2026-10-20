@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets.market
 
+import dev.omalauncher.widgets.lang.OwlKind
 import java.net.URLEncoder
 
 /**
@@ -18,16 +19,17 @@ object Submit {
             .trimEnd('-')
             .ifEmpty { "widget" }
 
-    /** The new-issue page on [repo] asking to add the widget [name], which is on [Paste] under [pasteId]. */
+    /** The new-issue page on [repo] asking to add the widget or app [name], which is on [Paste] under [pasteId]. */
     fun issueUrl(
         repo: String,
         name: String,
         description: String,
         pasteId: String,
+        kind: OwlKind = OwlKind.Widget,
     ): String {
         val body =
             buildString {
-                appendLine("Please add my widget **$name** to the store.")
+                appendLine("Please add my ${kind.word} **$name** to the store.")
                 if (description.isNotBlank()) appendLine().appendLine("> $description")
                 appendLine()
                 appendLine("- file: https://${Paste.HOST}/$pasteId.txt (gone after ${Paste.STORE_DAYS} days)")
@@ -35,7 +37,7 @@ object Submit {
                 appendLine()
                 append("Sent from Omalauncher.")
             }
-        return "https://github.com/$repo/issues/new?title=${encode("Add widget: $name")}&body=${encode(body)}"
+        return "https://github.com/$repo/issues/new?title=${encode("Add ${kind.word}: $name")}&body=${encode(body)}"
     }
 
     // URLEncoder writes form encoding; %20 is a space wherever it's read, a + isn't.

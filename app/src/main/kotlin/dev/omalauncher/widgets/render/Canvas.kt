@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.drawscope.DrawStyle
@@ -30,17 +31,21 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
+import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.widgets.lang.Builtins
+import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.Env
 import dev.omalauncher.widgets.lang.Gradient
 import dev.omalauncher.widgets.lang.Lst
@@ -52,7 +57,10 @@ import dev.omalauncher.widgets.lang.WNode
 import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.num
 import dev.omalauncher.widgets.lang.text
+import dev.omalauncher.widgets.runtime.WidgetImage
 import dev.omalauncher.widgets.runtime.WidgetInstance
+import dev.omalauncher.widgets.runtime.drawPicture
+import androidx.compose.ui.graphics.nativeCanvas
 
 /** Drawing calls per frame; beyond this a Canvas stops and reports. */
 private const val MAX_OPS = 2000
@@ -72,10 +80,12 @@ internal fun CanvasNode(
     p: Props,
     modifier: Modifier,
 ) {
-    val measurer = rememberTextMeasurer(32)
+    // Room for every glyph of an animated text effect (a matrix rain cycles through ~60): a smaller cache misses each frame.
+    val measurer = rememberTextMeasurer(256)
     val inst = p.inst
     val solids = remember { HashMap<Int, SolidColor>() }
-    Canvas(modifier) {
+    // Its own layer: the drawing is replayed when something around it redraws, and only re-run when what it reads changes.
+    Canvas(modifier.graphicsLayer()) {
         val d = density
         val env = p.env.child(Num((size.width / d).toDouble()), Num((size.height / d).toDouble()))
         val painter = Painter(inst, measurer, this, d, solids)
@@ -119,7 +129,7 @@ private class Painter(
                 is WNode.Draw -> draw(n, env)
                 is WNode.If -> paint(if (eval(n.cond, env).truthy) n.then else n.orElse, env)
                 is WNode.For -> {
-                    val list = items(eval(n.list, env))
+                    val list = Builtins.iterable(eval(n.list, env))
                     for (i in list.indices) paint(n.body, env.child(list[i], Num(i.toDouble())))
                 }
                 // Each let is computed once per draw, on first use.
@@ -229,7 +239,7 @@ private class Painter(
             }
             "line" -> drawLine(stroke ?: fill!!, Offset(v[0], v[1]), Offset(v[2], v[3]), width, cap)
             "path" -> {
-                val points = items(first).mapNotNull(::point)
+                val points = Builtins.iterable(first).mapNotNull(::point)
                 if (points.size < 2) return
                 val path = Path()
                 points.forEachIndexed { i, o -> if (i == 0) path.moveTo(o.x, o.y) else path.lineTo(o.x, o.y) }
@@ -242,14 +252,18 @@ private class Painter(
             }
             "text" -> {
                 val color = Builtins.argb(named["color"] ?: named["fill"] ?: Num(0.0), inst)?.let { androidx.compose.ui.graphics.Color(it) } ?: Palette.foreground
+                // Since owl 10 styled like a Text: its font, weight, slant and spacing, and a list is spans.
+                val styled = inst.program.level >= 10
                 val layout =
                     measurer.measure(
-                        first.text(),
+                        if (styled && first is Lst) spans(first, inst) else AnnotatedString(first.text()),
                         TextStyle(
                             color = color,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = if (styled) fontFamily(named["font"], inst) else LauncherStyle.font,
                             fontSize = (named["size"]?.num() ?: 13.0).sp,
-                            fontWeight = if (named["bold"]?.truthy == true) FontWeight.Bold else null,
+                            fontWeight = (if (styled) weight(named["fontWeight"]) else null) ?: if (named["bold"]?.truthy == true) FontWeight.Bold else null,
+                            fontStyle = if (styled && named["italic"]?.truthy == true) FontStyle.Italic else null,
+                            letterSpacing = (if (styled) textUnit(named["letterSpacing"]) else null) ?: TextUnit.Unspecified,
                         ),
                     )
                 val w = layout.size.width / density
@@ -265,19 +279,30 @@ private class Painter(
                 scale(1 / density, 1 / density, pivot = Offset.Zero) { drawText(layout, topLeft = Offset(x * density, y * density)) }
             }
             "image" -> {
-                val bitmap = inst.image(first.toString()) ?: return
-                drawImage(
-                    bitmap,
-                    dstOffset = IntOffset(v[1].toInt(), v[2].toInt()),
-                    dstSize = IntSize(v[3].toInt(), v[4].toInt()),
-                    // An alpha-only image (an app icon's silhouette, with monochrome icons) is a shape: color it like one.
-                    colorFilter =
-                        if (bitmap.config == ImageBitmapConfig.Alpha8) {
-                            ColorFilter.tint(androidx.compose.ui.graphics.Color(named["color"]?.let { Builtins.argb(it, inst) } ?: Palette.foreground.toArgb()))
-                        } else {
-                            null
-                        },
-                )
+                val color = named["color"]?.let { Builtins.argb(it, inst) }
+                when (val image = inst.image(first.toString()) ?: return) {
+                    is WidgetImage.Raster -> {
+                        val bitmap = image.bitmap
+                        drawImage(
+                            bitmap,
+                            dstOffset = IntOffset(v[1].toInt(), v[2].toInt()),
+                            dstSize = IntSize(v[3].toInt(), v[4].toInt()),
+                            // An alpha-only image (an app icon's silhouette, with monochrome icons) is a shape: color it like one.
+                            colorFilter =
+                                if (bitmap.config == ImageBitmapConfig.Alpha8) {
+                                    ColorFilter.tint(androidx.compose.ui.graphics.Color(color ?: Palette.foreground.toArgb()))
+                                } else {
+                                    null
+                                },
+                        )
+                    }
+                    // Drawn as vectors, so it stays sharp under the canvas's density scale.
+                    is WidgetImage.Vector ->
+                        drawIntoCanvas {
+                            val tint = color?.let { c -> android.graphics.PorterDuffColorFilter(c, android.graphics.PorterDuff.Mode.SRC_IN) }
+                            drawPicture(it.nativeCanvas, image.picture, v[1].toFloat(), v[2].toFloat(), v[3].toFloat(), v[4].toFloat(), tint)
+                        }
+                }
             }
             "sprite" -> {
                 val sprite = inst.sprite(first)
@@ -353,11 +378,13 @@ internal fun ShaderNode(
         return
     }
     val brush = remember(shader) { ShaderBrush(shader) }
+    // Reading time keeps the widget's frame clock running, so a shader that never uses it isn't redrawn every frame.
+    val readsTime = remember(code) { Compiler.shaderReadsTime(code) }
     Spacer(
         modifier.drawBehind {
             val started = System.nanoTime()
             shader.setFloatUniform("size", size.width, size.height)
-            shader.setFloatUniform("time", inst.time().toFloat())
+            if (readsTime) shader.setFloatUniform("time", inst.time().toFloat())
             (p.now("uniforms") as? Obj)?.fields?.forEach { (name, v) ->
                 try {
                     when {

@@ -4,11 +4,13 @@ import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.Json
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Num
+import dev.omalauncher.widgets.lang.Bool
 import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.num
+import java.time.LocalDate
 
 /**
  * One widget in the marketplace catalog (index.json). Built by CI from the
@@ -37,15 +39,34 @@ data class CatalogEntry(
     val category: String? = null,
     /** Previews drawn in each Omarchy theme, by theme name (paths relative to the catalog); [preview] is the fallback. */
     val themePreviews: Map<String, String> = emptyMap(),
+    /** The UTC day of the commit that added it to the store repo, as `YYYY-MM-DD`; null when git couldn't tell. */
+    val added: String? = null,
+    /** Added in the last [Catalog.NEW_DAYS] days, as of the catalog's [Catalog.write]; the store publishes often enough to keep it current. */
+    val new: Boolean = false,
+    /** An app's `icon:` SVG, shown beside its name in the store; null for widgets and apps without one, or with an image icon. */
+    val icon: String? = null,
+    /** Path of an app's image icon (its `icon:` asset) relative to the catalog, written out by the store's CI. */
+    val iconFile: String? = null,
+    /** An app's other screens after its preview, drawn in each Omarchy theme, by theme name (paths relative to the catalog). */
+    val screens: Map<String, List<String>> = emptyMap(),
 ) {
     /** The preview drawn in [theme], or the default one. */
     fun previewFor(theme: String?) = themePreviews[theme] ?: preview
 
+    /** The other screens drawn in [theme], or in the default theme, like [preview], for a theme the store has none in. */
+    fun screensFor(theme: String?) = screens[theme] ?: screens[Catalog.DEFAULT_THEME].orEmpty()
+
     val supported get() = owl <= Compiler.LEVEL
 
-    /** Runs commands in the guest or installs packages, like [dev.omalauncher.widgets.lang.Program.needsLinux]; http requests don't count. */
-    val needsLinux get() = requires.isNotEmpty() || commands.any { !it.startsWith("http GET ") && !it.startsWith(Compiler.IF_LINUX) }
+    /**
+     * Runs commands in the guest or installs packages, like [dev.omalauncher.widgets.lang.Program.needsLinux]; http
+     * requests, web images, sounds, fonts and what Android tells it (notifications, apps, recent apps) don't count.
+     */
+    val needsLinux get() = requires.isNotEmpty() || commands.any { c -> NO_LINUX.none { c.startsWith(it) } && !c.startsWith(Compiler.IF_LINUX) }
 }
+
+/** What a store item's listed commands start with when they don't run in Linux; see [CatalogEntry.needsLinux]. */
+private val NO_LINUX = listOf("http GET ", "http POST ", "image GET ", "sound GET ", "font GET ", "read Android ", "read installed Android apps", "read the recently opened apps")
 
 object Catalog {
     /**
@@ -54,16 +75,35 @@ object Catalog {
      */
     const val FORMAT = 1
 
+    /** The Omarchy theme a widget's preview.png is drawn in, and its screens are shown in for themes the store has none in. */
+    const val DEFAULT_THEME = "tokyo-night"
+
     /** What `meta { category: ... }` may say, in the order the store shows them. */
-    val CATEGORIES = listOf("news", "dev", "productivity", "time", "world", "fun", "home", "system")
+    val CATEGORIES = listOf("news", "dev", "productivity", "time", "world", "sport", "finance", "media", "games", "pets", "fun", "home", "system")
+
+    /** A widget is new on the day it was added and the [NEW_DAYS] - 1 days after, in UTC. */
+    const val NEW_DAYS = 3L
+
+    /** Whether a widget [added] on that day is new on [today]; a missing, malformed or future date never is. */
+    fun isNew(
+        added: String?,
+        today: LocalDate,
+    ): Boolean {
+        val day = added?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return false
+        return day <= today && day > today.minusDays(NEW_DAYS)
+    }
 
     private val ID = Regex("""[a-z0-9][a-z0-9-]{0,38}/[a-z0-9][a-z0-9-]{0,38}""")
 
-    fun parse(text: String): List<CatalogEntry> {
-        val root = Json.parse(text) as? Obj ?: throw WidgetError("index.json isn't an object")
-        val format = root.fields["format"]?.num()?.toInt() ?: throw WidgetError("index.json has no format")
-        if (format > FORMAT) throw WidgetError("the store needs a newer launcher; update it to browse widgets again")
-        return (root.fields["widgets"] as? Lst)?.items.orEmpty().mapNotNull { (it as? Obj)?.let(::entry) }
+    /** Reads a catalog: index.json lists its entries under `widgets`, apps.json under `apps`. */
+    fun parse(
+        text: String,
+        list: String = "widgets",
+    ): List<CatalogEntry> {
+        val root = Json.parse(text) as? Obj ?: throw WidgetError("the catalog isn't an object")
+        val format = root.fields["format"]?.num()?.toInt() ?: throw WidgetError("the catalog has no format")
+        if (format > FORMAT) throw WidgetError("the store needs a newer launcher; update it to browse $list again")
+        return (root.fields[list] as? Lst)?.items.orEmpty().mapNotNull { (it as? Obj)?.let(::entry) }
     }
 
     private fun entry(o: Obj): CatalogEntry? {
@@ -91,6 +131,13 @@ object Catalog {
             owl = f["owl"]?.num()?.toInt() ?: 1,
             category = s("category"),
             themePreviews = (f["themes"] as? Obj)?.fields.orEmpty().mapNotNull { (k, v) -> (v as? Str)?.v?.let { k to it } }.toMap(),
+            added = s("added"),
+            new = (f["new"] as? Bool)?.v == true,
+            icon = s("icon"),
+            iconFile = s("iconFile"),
+            screens =
+                (f["screens"] as? Obj)?.fields.orEmpty().mapValues { (_, v) -> (v as? Lst)?.items.orEmpty().mapNotNull { (it as? Str)?.v } }
+                    .filterValues { it.isNotEmpty() },
         )
     }
 
@@ -117,12 +164,14 @@ object Catalog {
         return entries.sortedWith(compareBy(rank, { it.name }))
     }
 
+    /** A catalog of [entries]: index.json lists widgets under `widgets`, apps.json apps under `apps`. */
     fun write(
         entries: List<CatalogEntry>,
         generated: String,
+        list: String = "widgets",
     ): String {
         val sb = StringBuilder()
-        sb.append("{\n  \"format\": $FORMAT,\n  \"generated\": ${q(generated)},\n  \"widgets\": [")
+        sb.append("{\n  \"format\": $FORMAT,\n  \"generated\": ${q(generated)},\n  ${q(list)}: [")
         entries.forEachIndexed { i, e ->
             if (i > 0) sb.append(",")
             sb.append("\n    {")
@@ -138,6 +187,15 @@ object Catalog {
             if (e.themePreviews.isNotEmpty()) {
                 sb.append(",\n      \"themes\": {")
                 sb.append(e.themePreviews.entries.joinToString(",") { (t, p) -> "\n        ${q(t)}: ${q(p)}" })
+                sb.append("\n      }")
+            }
+            e.added?.let { sb.append(",\n      \"added\": ${q(it)}") }
+            if (e.new) sb.append(",\n      \"new\": true")
+            e.icon?.let { sb.append(",\n      \"icon\": ${q(it)}") }
+            e.iconFile?.let { sb.append(",\n      \"iconFile\": ${q(it)}") }
+            if (e.screens.isNotEmpty()) {
+                sb.append(",\n      \"screens\": {")
+                sb.append(e.screens.entries.joinToString(",") { (t, l) -> "\n        ${q(t)}: [${l.joinToString(", ") { q(it) }}]" })
                 sb.append("\n      }")
             }
             sb.append("\n    }")

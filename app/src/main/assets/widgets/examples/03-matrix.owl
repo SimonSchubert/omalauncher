@@ -1,0 +1,357 @@
+face "matrix" {
+  // Digital rain in two depths, with the time carved out of it, transmissions, your programs and the two pills.
+
+  meta { owl: 10; description: "Digital rain in two depths with the time carved out of it, notifications as incoming transmissions, your apps as programs, and a red pill and a blue pill"; version: "2.0"; license: "MIT"; category: "fun" }
+
+  statusBar: true
+
+  source now = clock every 1s
+  source bat = android.battery
+  source n = android.notifications
+  source apps = android.apps
+  source ag = android.agents
+  source wx = http("https://wttr.in/?format=j1") every 30m timeout 10s json
+
+  let mono = "https://raw.githubusercontent.com/google/fonts/main/ofl/jetbrainsmono/JetBrainsMono%5Bwght%5D.ttf"
+  let cur = wx.current_condition[0]
+  let place = lower(wx.nearest_area[0].areaName[0].value ?? "")
+  let level = bat.level ?? 0
+  let bars = round(level / 10)
+  state q = ""
+  // A work profile or a clone has the same name: each name shows once.
+  let all = values(groupBy((apps ?? []).sortBy(a => -a.score), a => a.name)).map(g => g[0])
+  let top = all.filter(a => !a.system || a.score > 0).take(8)
+  // What's typed below greps the apps: names that start with it first, then names that hold it.
+  let needle = lower(trim(q))
+  // While the field has the keyboard, screenInset is what the keyboard covers: only the clock, the programs and the field stay.
+  let typing = screenInset > 120
+  let found = needle == "" ? top : flatten([
+    all.filter(a => startsWith(lower(a.name), needle)),
+    all.filter(a => !startsWith(lower(a.name), needle) && contains(lower(a.name), needle))
+  ]).take(8)
+
+  let glyphs = "ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ012345789Z:.=*+-<>¦|"
+  let ink = mix(green, foreground, 0.15)
+  let hot = mix(foreground, green, 0.2)
+  let W = tileWidth ?? 412
+  let H = tileHeight ?? 900
+
+  // Two depths of rain: far columns small, dim and slow, near ones large, bright and fast. What a drop is
+  // doesn't change with time, so it's worked out once, not every frame.
+  let nearRows = floor(H / 18) + 1
+  let near = range(floor(W / 20) + 1).filter(c => hash(c, 5) < 0.8).map(c => {
+    x: c * 20 + 10,
+    c: c,
+    speed: 6 + hash(c, 1) * 10,
+    tail: 7 + floor(hash(c, 2) * 12),
+    period: nearRows + 20 + floor(hash(c, 3) * nearRows * 0.6),
+    start: hash(c, 4) * nearRows * 2,
+    flicker: 1 + hash(c, 6) * 3
+  })
+  let farRows = floor(H / 11) + 1
+  let far = range(floor(W / 12) + 1).filter(c => hash(c, 15) < 0.45).map(c => {
+    x: c * 12 + 6,
+    c: c + 100,
+    speed: 3 + hash(c, 11) * 5,
+    tail: 6 + floor(hash(c, 12) * 10),
+    period: farRows + 10 + floor(hash(c, 13) * farRows * 0.5),
+    start: hash(c, 14) * farRows * 2
+  })
+
+  // The time as a 5×7 dot font, each dot a cell of code: HH, a colon and mm, 25 cells across.
+  let font = [
+    [".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."],
+    ["..#..", ".##..", "..#..", "..#..", "..#..", "..#..", ".###."],
+    [".###.", "#...#", "....#", "...#.", "..#..", ".#...", "#####"],
+    ["#####", "...#.", "..#..", "...#.", "....#", "#...#", ".###."],
+    ["...#.", "..##.", ".#.#.", "#..#.", "#####", "...#.", "...#."],
+    ["#####", "#....", "####.", "....#", "....#", "#...#", ".###."],
+    ["..##.", ".#...", "#....", "####.", "#...#", "#...#", ".###."],
+    ["#####", "....#", "...#.", "..#..", ".#...", ".#...", ".#..."],
+    [".###.", "#...#", "#...#", ".###.", "#...#", "#...#", ".###."],
+    [".###.", "#...#", "#...#", ".####", "....#", "...#.", ".##.."]
+  ]
+  let colon = [".", ".", "#", ".", "#", ".", "."]
+  let hm = fmtTime(now, "HHmm")
+  let digits = range(4).map(i => font[num(sub(hm, i, i + 1))])
+  let dots = range(7).map(r => join([digits[0][r], ".", digits[1][r], ".", colon[r], ".", digits[2][r], ".", digits[3][r]], ""))
+  let cells = flatten(dots.map((s, r) => range(25).filter(c => sub(s, c, c + 1) == "#").map(c => {r: r, c: c})))
+  let cw = floor(min(16, (W - 32) / 25))
+  let ch = floor(cw * 1.2)
+  let clockX = (W - 25 * cw) / 2
+  let clockY = 40
+  let clockH = 7 * ch
+
+  let date = upper(fmtTime(now, "EEE dd MMM yyyy"))
+  let line = flatten([
+    ["BAT ", sub("■■■■■■■■■■", 0, bars), sub("□□□□□□□□□□", 0, 10 - bars), " ${level}%", bat.charging ? " +" : ""],
+    cur ? ["  ·  ${cur.temp_C}°C ", upper(trim(cur.weatherDesc[0].value))] : []
+  ])
+  let quotes = ["wake up, neo…", "the matrix has you…", "follow the white rabbit.", "knock, knock, neo.", "there is no spoon.", "free your mind."]
+
+  let glass = linear(0, 0, 0, 1, [alpha(mix(background, #000000, 0.85), 0.86), alpha(mix(background, #000000, 0.9), 0.72)])
+
+  background: alpha(mix(background, #000000, 0.8), 0.97)
+  padding: 0
+
+  component Header(label, count = "") {
+    Row {
+      gap: 8
+      align: center
+      Canvas { width: 3; height: 12; rect(0, 0, 3, 12, fill: green) }
+      Text { text: label; font: mono; fontSize: 10; fontWeight: 700; letterSpacing: 2.5; color: alpha(green, 0.85); maxLines: 1 }
+      Spacer { weight: 1 }
+      Text { text: count; font: mono; fontSize: 10; letterSpacing: 1.5; color: alpha(green, 0.5); maxLines: 1 }
+    }
+  }
+
+  // A capsule as Morpheus holds it out: tilted, glossy, with a shadow and a slow glow.
+  component Pill(tint, tilt, beat) {
+    Canvas {
+      width: 48
+      height: 48
+      circle(24, 24, 22, fill: radial(24, 24, 22, [alpha(tint, 0.18 + 0.1 * sin(time * 2 + beat)), alpha(tint, 0)]))
+      rotate(90 + tilt, 24, 24) {
+        rect(10, 20, 30, 13, radius: 6.5, fill: alpha(#000000, 0.45))
+        rect(9, 17.5, 30, 13, radius: 6.5, fill: linear(0, 17.5, 0, 30.5, [mix(tint, foreground, 0.45), tint, mix(tint, #000000, 0.55)]))
+        rect(13, 19.5, 19, 3, radius: 1.5, fill: alpha(foreground, 0.55))
+        rect(31, 26.5, 4, 1.5, radius: 0.75, fill: alpha(foreground, 0.2))
+      }
+    }
+  }
+
+  Box {
+    fill: true
+
+    Canvas {
+      fill: true
+      // Mirrored, as the glyphs are in the films; the columns are symmetric, and the clock is drawn where its mirror lands.
+      scale(-1, 1, width / 2, 0) {
+        for d in far {
+          let head = floor((time * d.speed + d.start) % d.period)
+          for k in range(d.tail) {
+            let r = head - k
+            if r >= 0 && r < farRows {
+              let g = floor(hash(d.c, r) * 997 + time * 1.5) % len(glyphs)
+              text(sub(glyphs, g, g + 1), d.x, r * 11 + 5, size: 9, align: center, font: mono, color: k == 0 ? alpha(hot, 0.4) : alpha(green, 0.4 - k / d.tail * 0.4))
+            }
+          }
+        }
+        for d in near {
+          let head = floor((time * d.speed + d.start) % d.period)
+          for k in range(d.tail) {
+            let r = head - k
+            if r >= 0 && r < nearRows {
+              let y = r * 18 + 9
+              // Under the clock the rain thins, so the time reads.
+              let dim = y > clockY - 6 && y < clockY + clockH + 6 ? 0.22 : 1
+              let g = floor(hash(d.c, r) * 997 + time * d.flicker) % len(glyphs)
+              if k == 0 {
+                text(sub(glyphs, g, g + 1), d.x, y, size: 20, align: center, font: mono, color: alpha(green, 0.25 * dim))
+              }
+              text(sub(glyphs, g, g + 1), d.x, y, size: 14, align: center, font: mono, color: k == 0 ? alpha(hot, dim) : alpha(green, (1 - k / d.tail) * 0.85 * dim))
+            }
+          }
+        }
+        // The clock: each dot a lit cell holding a glyph that keeps changing, a wave of light running down each column, the colon breathing.
+        for e in cells {
+          let x = W - (clockX + e.c * cw + cw / 2)
+          let y = clockY + e.r * ch + ch / 2
+          let g = floor(hash(e.c, e.r, 3) * 997 + time * (0.6 + hash(e.c, e.r) * 2.5)) % len(glyphs)
+          let wave = abs((time * 7 + hash(e.c, 8) * 50) % 36 - e.r)
+          let lit = e.c == 12 ? 0.55 + 0.45 * sin(time * 3) : wave < 1.2 ? 1 : 0.7
+          rect(x - cw / 2 + 0.5, y - ch / 2 + 0.5, cw - 1, ch - 1, radius: 2 * corners, fill: wave < 1.2 ? alpha(mix(green, foreground, 0.4), 0.85) : alpha(green, 0.42 * lit))
+          text(sub(glyphs, g, g + 1), x, y, size: cw, align: center, font: mono, bold: true, color: wave < 1.2 ? mix(green, #000000, 0.7) : alpha(mix(green, foreground, 0.55), lit))
+        }
+      }
+      // A vignette: the rain sinks into the dark at the edges.
+      rect(0, 0, width, height, fill: radial(width / 2, height * 0.42, max(width, height) * 0.75, [alpha(#000000, 0), alpha(#000000, 0), alpha(#000000, 0.7)]))
+    }
+
+    Column {
+      fill: true
+      gap: 10
+      padding: [14, 12]
+
+      Spacer { height: clockY + clockH - 4 }
+
+      // The date and the phone's state, glitching: now and then a letter slips back into code, and every
+      // twelve seconds the line decodes again from the left.
+      Canvas {
+        fill: width
+        height: 44
+        let adv = 9
+        let x0 = width / 2 - len(date) * adv / 2 + adv / 2
+        let phase = time % 12
+        for i in range(len(date)) {
+          let ch1 = sub(date, i, i + 1)
+          let code = phase < 1 && i / len(date) > phase || ch1 != " " && hash(i, floor(time * 6)) < 0.025
+          let g = floor(hash(i, floor(time * 14)) * 997) % len(glyphs)
+          text(code ? sub(glyphs, g, g + 1) : ch1, x0 + i * adv, 12, size: 14, align: center, font: mono, bold: true, color: code ? hot : ink)
+        }
+        text(line, width / 2, 34, size: 11, align: center, font: mono, letterSpacing: 1, color: alpha(ink, 0.7))
+      }
+
+      Spacer { weight: 1 }
+
+      if !typing {
+        Column {
+          fill: width
+          gap: 8
+          padding: [12, 12]
+          background: glass
+          border: 1
+          borderColor: alpha(green, 0.3)
+          radius: 4 * corners
+          Header { label: "INCOMING TRANSMISSION"; count: n.available && n.count > 0 ? pad(n.count, 2, "0") : "" }
+          if !n.available {
+            Text { text: "> no carrier. tap to open the line"; font: mono; fontSize: 12; color: red; maxLines: 1; onTap: notification("open", "") }
+          } else if n.count == 0 {
+            Text { text: "> the line is quiet"; font: mono; fontSize: 12; color: alpha(ink, 0.55); maxLines: 1 }
+          } else {
+            for item in n.items.take(3) key item.key {
+              Text {
+                spans: [{text: "${fmtTime(item.time, "HH:mm")} ", color: alpha(green, 0.5)}, {text: "${upper(item.app ?? "")} ", color: hot, bold: true}, item.title]
+                font: mono
+                fontSize: 12
+                color: ink
+                maxLines: 1
+                onTap: notification("open", item.key)
+                onLongPress: { haptic(); notification("dismiss", item.key) }
+              }
+            }
+          }
+        }
+      }
+
+      Column {
+        fill: width
+        gap: 8
+        padding: [12, 12]
+        background: glass
+        border: 1
+        borderColor: alpha(green, 0.3)
+        radius: 4 * corners
+        Header { label: needle == "" ? "PROGRAMS" : "TRACE \"${upper(needle)}\""; count: needle == "" ? "" : "${len(found)} FOUND" }
+        // While tracing, the first match is what Enter opens.
+        Grid {
+          columns: 4
+          gap: 10
+          for a, i in found key a.key {
+            Column {
+              gap: 5
+              align: center
+              onTap: { q = ""; androidApp(a.key) }
+              Box {
+                size: 52
+                align: center
+                background: needle != "" && i == 0 ? alpha(green, 0.22) : alpha(green, 0.06)
+                border: 1
+                borderColor: needle != "" && i == 0 ? green : alpha(green, 0.25)
+                radius: 4 * corners
+                Image { src: a.icon; size: 34 }
+              }
+              Text { text: lower(replace(trim(a.name), " ", "_")); font: mono; fontSize: 9; color: needle != "" && i == 0 ? hot : alpha(ink, 0.75); align: center; maxLines: 1 }
+            }
+          }
+        }
+        if needle != "" && len(found) == 0 {
+          Text { text: "> not in the matrix. enter asks the oracle"; font: mono; fontSize: 12; color: alpha(ink, 0.55); maxLines: 1 }
+        }
+        Row {
+          gap: 6
+          align: center
+          padding: [0, 4]
+          Text { text: ">"; font: mono; fontSize: 13; fontWeight: 700; color: green }
+          Input {
+            weight: 1
+            text: q
+            placeholder: "trace a program or ask the oracle"
+            color: foreground
+            fontSize: 13
+            underline: false
+            clear: true
+            onChange: q = value
+            onSubmit: {
+              if len(found) > 0 && needle != "" {
+                androidApp(found[0].key)
+              } else if trim(value) != "" {
+                ask(value)
+              }
+              q = ""
+            }
+          }
+        }
+      }
+
+      if !typing {
+        // Morpheus types, over and over.
+        Canvas {
+          fill: width
+          height: 20
+          let qi = floor(time / 6) % len(quotes)
+          let say = quotes[qi]
+          let shown = min(len(say), floor((time % 6) * 14))
+          let adv = 7.2
+          let x0 = width / 2 - len(say) * adv / 2
+          text(sub(say, 0, shown), x0, 10, size: 12, font: mono, color: alpha(green, 0.6))
+          if floor(time * 2.5) % 2 == 0 {
+            rect(x0 + shown * adv + 1, 3, 7, 14, fill: alpha(green, 0.6))
+          }
+        }
+
+        // The choice: the blue pill goes back to the drawer, the red one asks the agent what's typed, or wakes it.
+        Row {
+          fill: width
+          gap: 0
+          align: center
+          padding: [6, 4]
+          background: glass
+          border: 1
+          borderColor: alpha(green, 0.3)
+          radius: 4 * corners
+          Row {
+            weight: 1
+            gap: 10
+            align: center
+            justify: center
+            onTap: { q = ""; launcher("drawer") }
+            Pill { tint: blue; tilt: -35; beat: 0 }
+            Column {
+              width: 92
+              gap: 1
+              Text { text: "BLUE PILL"; font: mono; fontSize: 8; letterSpacing: 2; color: alpha(blue, 0.6) }
+              Text { text: "search"; font: mono; fontSize: 13; fontWeight: 700; color: mix(blue, foreground, 0.25) }
+            }
+          }
+          Canvas { width: 1; height: 36; rect(0, 0, 1, 36, fill: alpha(green, 0.25)) }
+          Row {
+            weight: 1
+            gap: 10
+            align: center
+            justify: center
+            onTap: {
+              if trim(q) != "" {
+                ask(q)
+              } else if ag.default != null {
+                open(ag.default.key)
+              } else {
+                launcher("agents")
+              }
+              q = ""
+            }
+            Column {
+              width: 92
+              gap: 1
+              align: end
+              Text { text: "RED PILL"; font: mono; fontSize: 8; letterSpacing: 2; color: alpha(red, 0.6); align: end }
+              Text { text: trim(q) != "" ? "ask" : "wake up"; font: mono; fontSize: 13; fontWeight: 700; color: mix(red, foreground, 0.25); align: end }
+            }
+            Pill { tint: red; tilt: 35; beat: 3.14 }
+          }
+        }
+      }
+      Spacer { height: screenInset }
+    }
+  }
+}

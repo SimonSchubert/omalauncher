@@ -1,0 +1,333 @@
+face "start" {
+  // Left of page 1, where a stock launcher has its news feed (page: 0, the default).
+
+  meta { owl: 10; description: "A start page: the time, the weather and the sun's path today, what's playing, the latest notifications and your most used apps"; version: "1.1"; license: "MIT"; category: "productivity" }
+
+  source now = clock every 1m
+  source wx = http("https://wttr.in/?format=j1") every 30m timeout 10s json
+  source bat = android.battery
+  source alarm = android.alarm
+  source n = android.notifications
+  source m = android.media
+  source modes = android.modes
+  // Ranked as the drawer's search ranks them: opened often and lately first.
+  source apps = android.apps
+
+  let hour = num(fmtTime(now, "H"))
+  let minute = hour * 60 + num(fmtTime(now, "m"))
+  let greeting = hour < 5 ? "good night" : hour < 12 ? "good morning" : hour < 18 ? "good afternoon" : "good evening"
+  let cur = wx.current_condition[0]
+  let day = wx.weather[0]
+  let place = wx.nearest_area[0].areaName[0].value
+  // wttr gives "07:16 AM"; as minutes since midnight.
+  let sun = [day.astronomy[0].sunrise, day.astronomy[0].sunset]
+    .map(s => match(s ?? "", "(\\d+):(\\d+) (AM|PM)"))
+    .map(t => t == null ? null : (num(t[0]) % 12 + (t[2] == "PM" ? 12 : 0)) * 60 + num(t[1]))
+  let night = sun[0] != null && (minute < sun[0] || minute >= sun[1])
+  let sky = contains(["113", "116"], cur.weatherCode) ? (night ? blue : yellow) : foreground
+  // The next hours in wttr's 3-hour steps, from today's and tomorrow's forecasts.
+  let steps = flatten(range(2).map(i => (wx.weather[i].hourly ?? []).map(h => {
+    hr: i * 24 + num(h.time) / 100,
+    t: num(h.tempC),
+    rain: num(h.chanceofrain),
+    code: h.weatherCode
+  }))).filter(s => s.hr > hour - 3).take(6)
+  let playing = m != null && m.available != false && m.title != null
+  let top = (apps ?? []).filter(a => !a.system || a.score > 0).sortBy(a => -a.score).take(8)
+  let glass = linear(0, 0, 1, 1, [alpha(background, 0.6), alpha(background, 0.4)])
+  // Unfolded or on its side: two columns over the one veil, the time and the weather beside what's happening.
+  let wide = (tileWidth ?? 0) > (tileHeight ?? 1)
+  // A phone on its side: little height, so a smaller clock and the phone's state beside the apps.
+  let short = (tileHeight ?? 900) < 600
+
+  // The page draws on the wallpaper: a veil, darker at the top and bottom where the text is, and glass cards.
+  background: linear(0, 0, 0, 1, [alpha(background, 0.85), alpha(background, 0.35), alpha(background, 0.4), alpha(background, 0.9)])
+  padding: 0
+
+  component Heading(label, note = "") {
+    Row {
+      align: center
+      Text { text: label; style: label; color: accent; weight: 1 }
+      Text { text: note; style: label; color: muted; maxLines: 1 }
+    }
+  }
+
+  component Pill(label, tint = foreground) {
+    Text { text: label; style: small; color: tint; maxLines: 1; padding: [12, 7]; frost: 24; background: alpha(surface, 0.45); radius: 14 * corners }
+  }
+
+  // The time, big, with the colon in the theme's accent.
+  component Time() {
+    Column {
+      gap: 0
+      Text { text: greeting; style: label; color: accent }
+      Text { spans: [fmtTime(now, "HH"), {text: ":", color: accent}, fmtTime(now, "mm")]; fontSize: short ? 64 : 96; fontWeight: 200; letterSpacing: -3 }
+      Row {
+        gap: 8
+        align: center
+        Text { text: lower(fmtTime(now, "EEEE d MMMM")); style: body; weight: 1; maxLines: 1 }
+        if alarm.set {
+          Text { text: "alarm ${fmtTime(alarm.time, "HH:mm")}"; style: small; color: accent; maxLines: 1; onTap: androidApp(alarm.app) }
+        }
+      }
+    }
+  }
+
+  // The weather now, the next hours and the sun's path through the day.
+  component Weather() {
+    if cur {
+      Column {
+        gap: 12
+        padding: 16
+        frost: 24
+        background: glass
+        radius: 18 * corners
+        onTap: url("https://www.yr.no/en/forecast/daily-table/${wx.nearest_area[0].latitude},${wx.nearest_area[0].longitude}")
+        Row {
+          gap: 12
+          align: center
+          Text { text: weatherIcon(cur.weatherCode, night); font: icon; fontSize: 40; color: sky; width: 48; align: center }
+          Text { text: "${cur.temp_C}°"; fontSize: 40; width: 92; maxLines: 1 }
+          Column {
+            gap: 0
+            weight: 1
+            Text { text: lower(trim(cur.weatherDesc[0].value)); align: end; maxLines: 1 }
+            Text { text: "${lower(place ?? "")} · ↑${day.maxtempC}° ↓${day.mintempC}°"; style: small; color: muted; align: end; maxLines: 1 }
+          }
+        }
+        Row {
+          gap: 0
+          for s in steps key s.hr {
+            Column {
+              gap: 2
+              weight: 1
+              align: center
+              Text { text: s.hr <= hour ? "now" : pad(s.hr % 24, 2, "0"); style: label; color: muted; align: center }
+              Text { text: weatherIcon(s.code, sun[0] != null && (s.hr % 24 * 60 < sun[0] || s.hr % 24 * 60 >= sun[1])); font: icon; fontSize: 20; align: center }
+              Text { text: "${s.t}°"; style: small; align: center }
+              Progress { value: s.rain; color: blue; track: alpha(foreground, 0.15); width: 24; height: 3 }
+            }
+          }
+        }
+        if sun[0] != null {
+          Canvas {
+            height: 58
+            fill: width
+            let base = height - 14
+            let t = clamp((minute - sun[0]) / (sun[1] - sun[0]), 0, 1)
+            let pts = range(41).map(i => [12 + i / 40 * (width - 24), base - sin(i / 40 * 3.14159) * (base - 8)])
+            let done = pts.filter((p, i) => i / 40 <= t)
+            line(0, base, width, base, stroke: alpha(muted, 0.3), width: 1)
+            path(pts, stroke: alpha(muted, 0.4), width: 1.5)
+            if len(done) > 1 {
+              path(flatten([done, [[done[len(done) - 1][0], base], [12, base]]]), closed: true, fill: linear(0, 8, 0, base, [alpha(yellow, 0.35), alpha(orange, 0.05)]))
+              path(done, stroke: yellow, width: 2.5, cap: round)
+            }
+            let sx = 12 + t * (width - 24)
+            let sy = base - sin(t * 3.14159) * (base - 8)
+            circle(sx, sy, night ? 4 : 6, fill: night ? muted : yellow)
+            text("${pad(floor(sun[0] / 60), 2, "0")}:${pad(sun[0] % 60, 2, "0")}", 12, height - 5, size: 10, align: start, color: muted)
+            text("${pad(floor(sun[1] / 60), 2, "0")}:${pad(sun[1] % 60, 2, "0")}", width - 12, height - 5, size: 10, align: end, color: muted)
+          }
+        }
+      }
+    }
+  }
+
+  // What's playing, while something is.
+  component Playing() {
+    if playing {
+      Row {
+        gap: 12
+        align: center
+        padding: 12
+        frost: 24
+        background: glass
+        radius: 18 * corners
+        onTap: media("open")
+        Box {
+          size: 52
+          radius: 10 * corners
+          clip: true
+          if m.art != null {
+            Image { src: m.art; fit: cover; fill: true }
+          } else {
+            Canvas { rect(0, 0, width, height, fill: linear(0, 0, width, height, [alpha(accent, 0.6), alpha(magenta, 0.35)])) }
+          }
+        }
+        Column {
+          gap: 0
+          weight: 1
+          Text { text: m.title; bold: true; maxLines: 1 }
+          Text { text: m.artist ?? lower(m.app ?? ""); style: small; color: muted; maxLines: 1 }
+        }
+        Box {
+          size: 40
+          onTap: media("toggle")
+          Canvas {
+            let cx = width / 2
+            let cy = height / 2
+            circle(cx, cy, 20, fill: foreground)
+            if m.playing == true {
+              rect(cx - 6, cy - 7, 4, 14, radius: 1, fill: background)
+              rect(cx + 2, cy - 7, 4, 14, radius: 1, fill: background)
+            } else {
+              path([[cx - 5, cy - 8], [cx + 8, cy], [cx - 5, cy + 8]], closed: true, fill: background)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // The latest notifications: tap to open, hold to dismiss.
+  component Latest() {
+    Column {
+      gap: 10
+      Heading { label: "latest"; note: n.available && n.count > 3 ? "${n.count} in all" : "" }
+      if !n.available {
+        Row {
+          gap: 12
+          align: center
+          Text { text: "allow notification access to see them here"; style: small; color: muted; weight: 1 }
+          Button { text: "allow"; onTap: notification("open", "") }
+        }
+      } else if n.count == 0 {
+        Row {
+          gap: 8
+          align: center
+          Text { text: "󰄬"; font: icon; fontSize: 18; color: accent; width: 22 }
+          Text { text: "all clear"; style: small; color: alpha(foreground, 0.75); weight: 1 }
+        }
+      } else {
+        for item in n.items.take(3) key item.key {
+          Row {
+            gap: 12
+            align: center
+            padding: [12, 10]
+            frost: 24
+            background: glass
+            radius: 14 * corners
+            onTap: notification("open", item.key)
+            onLongPress: { haptic(); notification("dismiss", item.key) }
+            Image { src: item.icon; size: 28 }
+            Column {
+              gap: 0
+              weight: 1
+              Text { text: item.title; bold: true; maxLines: 1 }
+              if item.text != "" {
+                Text { text: item.text; style: small; color: muted; maxLines: 1 }
+              }
+            }
+            Text { text: fmtAgo(item.time, now); style: label; color: muted; width: 36; align: end; maxLines: 1 }
+          }
+        }
+      }
+    }
+  }
+
+  // The phone's state at a glance.
+  component Status() {
+    Flow {
+      gap: 8
+      Pill { label: bat.charging ? "⚡ ${bat.level}%" : "${bat.level}%"; tint: bat.level < 20 && !bat.charging ? red : bat.charging ? green : foreground }
+      if modes.dnd {
+        Pill { label: "do not disturb"; tint: accent }
+      }
+      if modes.ringer != null && modes.ringer != "normal" {
+        Pill { label: modes.ringer; tint: muted }
+      }
+      if modes.saver {
+        Pill { label: "saver"; tint: yellow }
+      }
+    }
+  }
+
+  // Most used apps and the search, where the thumb reaches.
+  component Apps() {
+    Column {
+      gap: 12
+      padding: [12, 14]
+      frost: 24
+      background: glass
+      radius: 22 * corners
+      Grid {
+        columns: 4
+        gap: 14
+        for a in top key a.key {
+          Column {
+            gap: 6
+            align: center
+            onTap: androidApp(a.key)
+            Image { src: a.icon; size: 52 }
+            Text { text: lower(a.name); style: small; align: center; maxLines: 1 }
+          }
+        }
+      }
+      Text {
+        text: "search apps"
+        style: small
+        color: muted
+        align: center
+        fill: width
+        padding: [0, 10]
+        border: 1
+        borderColor: alpha(muted, 0.3)
+        radius: 20 * corners
+        onTap: launcher("drawer")
+      }
+    }
+  }
+
+  Box {
+    fill: true
+
+    if wide {
+      Row {
+        gap: 24
+        fill: true
+        padding: [24, 12]
+        Column {
+          gap: 16
+          weight: 1
+          fill: height
+          Time { }
+          Weather { }
+          Spacer { weight: 1 }
+          if !short {
+            Status { }
+          }
+          Spacer { height: screenInset }
+        }
+        Column {
+          gap: 16
+          weight: 1
+          fill: height
+          Playing { }
+          Latest { }
+          Spacer { weight: 1 }
+          if short {
+            Status { }
+          }
+          Apps { }
+          Spacer { height: screenInset }
+        }
+      }
+    } else {
+      Column {
+        gap: 16
+        fill: true
+        padding: [20, 12]
+        Time { }
+        Weather { }
+        Playing { }
+        Latest { }
+        Spacer { weight: 1 }
+        Status { }
+        Apps { }
+        // The page runs under the navigation bar; the apps stay above it.
+        Spacer { height: screenInset }
+      }
+    }
+  }
+}

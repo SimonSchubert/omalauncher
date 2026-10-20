@@ -1,7 +1,13 @@
 package dev.omalauncher.linux
 
-/** [s] as one single-quoted shell word. */
-fun shellQuote(s: String) = "'" + s.replace("'", "'\\''") + "'"
+import dev.omalauncher.widgets.lang.shQuote
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
+
+/** [s] as one single-quoted shell word; the owl language's `sh()` quotes the same way. */
+fun shellQuote(s: String) = shQuote(s)
 
 /**
  * Installs [packages] with a full sync, never a partial upgrade, then drops
@@ -80,4 +86,27 @@ fun Proot.runJob(
                 false
             }
     return ok to tail
+}
+
+/**
+ * Runs [script] as a job the UI shows: [publish] gets Working with the output
+ * tail as it comes, then Idle or Failed. With [lock], it waits for it first
+ * and shows "waiting" meanwhile. Returns success and the tail.
+ */
+suspend fun Proot.trackedJob(
+    action: String,
+    script: String,
+    lock: Mutex? = null,
+    publish: (JobState) -> Unit,
+): Pair<Boolean, OutputTail> {
+    if (lock != null) publish(JobState.Working("waiting", emptyList()))
+    val job: suspend () -> Pair<Boolean, OutputTail> = {
+        withContext(Dispatchers.IO) {
+            publish(JobState.Working(action, emptyList()))
+            runJob(script) { publish(JobState.Working(action, it)) }.also { (ok, tail) ->
+                publish(if (ok) JobState.Idle else JobState.Failed(tail.toList()))
+            }
+        }
+    }
+    return if (lock != null) lock.withLock { job() } else job()
 }

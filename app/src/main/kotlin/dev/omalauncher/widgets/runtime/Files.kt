@@ -1,6 +1,7 @@
 package dev.omalauncher.widgets.runtime
 
 import android.os.FileObserver
+import dev.omalauncher.readUpTo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
@@ -74,15 +75,5 @@ fun watchFile(file: File): Flow<String> =
 private fun read(file: File): String =
     runCatching {
         if (!file.isFile) return ""
-        file.inputStream().use { input ->
-            // Not readNBytes: that's API 33, and before it the call fails and every file reads as "".
-            val out = java.io.ByteArrayOutputStream()
-            val buffer = ByteArray(8192)
-            while (out.size() < MAX_FILE_BYTES) {
-                val read = input.read(buffer, 0, minOf(buffer.size, MAX_FILE_BYTES - out.size()))
-                if (read < 0) break
-                out.write(buffer, 0, read)
-            }
-            String(out.toByteArray(), Charsets.UTF_8).trimEnd()
-        }
+        String(file.inputStream().use { it.readUpTo(MAX_FILE_BYTES) }, Charsets.UTF_8).trimEnd()
     }.getOrDefault("")

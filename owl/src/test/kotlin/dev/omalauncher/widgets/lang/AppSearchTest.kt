@@ -1,4 +1,4 @@
-package dev.omalauncher.ui
+package dev.omalauncher.widgets.lang
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -69,5 +69,22 @@ class AppSearchTest {
     @Test fun noMatchIsEmpty() {
         assertTrue(rankMatches(apps, "zzz", { it }).isEmpty())
         assertTrue(rankMatches(apps, "  ", { it }).isEmpty())
+    }
+
+    @Test fun accentsMatchWithoutThem() {
+        assertEquals("cafe", foldAccents("Café"))
+        val named = listOf("Café", "Calendar")
+        assertEquals("Café", rankMatches(named, "cafe", { it }).first().first)
+        assertEquals("Café", rankMatches(named, "Café", { it }).first().first)
+        assertEquals("Café Deluxe", rankMatches(listOf("Café Deluxe"), "cafe", { it }).first().first)
+        // "cal" is still Calendar: folding does not invent letters.
+        assertEquals("Calendar", rankMatches(named, "cal", { it }).first().first)
+    }
+
+    @Test fun foldingTwiceChangesNothing() {
+        // Lowercasing İ adds a dot above, which folding strips too.
+        assertEquals("istanbul", foldAccents("İstanbul"))
+        assertEquals(foldAccents("Café Deluxe"), foldAccents(foldAccents("Café Deluxe")))
+        assertEquals("İstanbul", rankMatches(listOf("Istria", "İstanbul"), "istanbul", { it }).first().first)
     }
 }

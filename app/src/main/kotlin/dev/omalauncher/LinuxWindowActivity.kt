@@ -1,13 +1,11 @@
 package dev.omalauncher
 
-import android.app.ActivityManager
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
-import android.graphics.drawable.Icon
-import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.SurfaceHolder
@@ -83,23 +81,7 @@ class LinuxWindowActivity : InstantActivity() {
             // Terminals retitle constantly; only a new label changes the Recents card.
             val label = runtime.displayName(window.appId, window.title)
             val appIcon = runtime.iconNamed(runtime.agentOf(window.appId, label)?.name ?: label)
-            LaunchedEffect(label, appIcon, Palette.accent) {
-                val icon = appIcon?.asAndroidBitmap() ?: taskIcon(label, Palette.background.toArgb(), Palette.accent.toArgb())
-                val description =
-                    if (Build.VERSION.SDK_INT >= 37) {
-                        ActivityManager.TaskDescription
-                            .Builder()
-                            .setLabel(label)
-                            .setIcon(Icon.createWithBitmap(icon))
-                            .setPrimaryColor(Palette.background.toArgb())
-                            .build()
-                    } else {
-                        // Builder.setIcon(Icon) is API 37+; the bitmap constructor still works before that.
-                        @Suppress("DEPRECATION")
-                        ActivityManager.TaskDescription(label, icon, Palette.background.toArgb())
-                    }
-                setTaskDescription(description)
-            }
+            LaunchedEffect(label, appIcon, Palette.accent) { describeTask(label, appIcon?.asAndroidBitmap()) }
         }
     }
 
@@ -125,6 +107,8 @@ class LinuxWindowActivity : InstantActivity() {
         if (isFinishing && w in runtime.wm.appWindows) runtime.wm.close(w)
     }
 
+    // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
+    @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (runtime.keyboard.handle(event)) return true
         return super.dispatchKeyEvent(event)
@@ -135,7 +119,7 @@ class LinuxWindowActivity : InstantActivity() {
  * Recents shows the manifest label ("Linux", or an alias's), but it does use the
  * task icon: the app's drawer icon, else its initials in the theme colors.
  */
-private fun taskIcon(
+internal fun taskIcon(
     name: String,
     background: Int,
     accent: Int,

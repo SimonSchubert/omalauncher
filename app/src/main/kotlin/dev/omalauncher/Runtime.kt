@@ -9,13 +9,12 @@ import android.net.Uri
 import android.util.Log
 import android.view.KeyEvent
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.linux.AGENTS
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.AgentStore
@@ -28,14 +27,12 @@ import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
-import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.SystemUpdates
+import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.bundledIcons
 import dev.omalauncher.linux.defaultApps
-import dev.omalauncher.linux.loadLinuxApps
 import dev.omalauncher.linux.matches
-import dev.omalauncher.linux.resolveLinuxIcon
 import dev.omalauncher.linux.run
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.theme.Style
@@ -47,7 +44,9 @@ import dev.omalauncher.ui.SettingsPage
 import dev.omalauncher.ui.TerminalTiles
 import dev.omalauncher.ui.WindowManager
 import dev.omalauncher.ui.bitmapMask
-import dev.omalauncher.ui.decodeIcon
+import dev.omalauncher.ui.Palette
+import dev.omalauncher.ui.decodeImageIcon
+import dev.omalauncher.ui.decodeSvgIcon
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.wayland.AndroidClipboard
 import dev.omalauncher.wayland.OutputInfo
@@ -55,6 +54,7 @@ import dev.omalauncher.wayland.WaylandServer
 import dev.omalauncher.wayland.XdgToplevel
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.WidgetEngine
+import dev.omalauncher.widgets.WidgetSpec
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -80,17 +80,9 @@ class Runtime(
     val terminals = TerminalTiles(this)
     val style = StyleStore(context)
     val terminalFont = TerminalFont(proot, style)
-    val gestures = Gestures(context)
-    val linuxApps = mutableStateListOf<LinuxApp>()
-
-    /** Icons of [linuxApps] by desktop id; apps without a PNG icon have no entry. */
-    val linuxIcons = mutableStateMapOf<String, ImageBitmap>()
-
-    /** Silhouettes of [linuxIcons] for the monochrome icon style. */
-    val linuxMasks = mutableStateMapOf<String, ImageBitmap>()
-
-    /** The Icon= each of [linuxIcons] was loaded from, to notice an entry changing it. */
-    private val linuxIconNames = HashMap<String, String>()
+    val launcherFont = LauncherFont(proot, style).also { it.restore() }
+    val gestures = Gestures(context, style)
+    val linuxApps = LinuxAppCatalog(context, proot)
     val androidApps = AndroidAppCatalog(context)
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
@@ -100,7 +92,7 @@ class Runtime(
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
     val updates = SystemUpdates(proot, pacman, agents)
-    val gpu = Gpu(context, proot)
+    val gpu = Gpu(context, proot, pacman)
 
     /** The launcher's own provided files (default widgets, their docs); see [Provisioner]. */
     private val launcherFiles = Provisioner(proot.filesDir, LauncherData.LAUNCHER_MANIFEST, listOf(widgets::managed, style::managed))
@@ -128,7 +120,7 @@ class Runtime(
     private var started = false
     private var prepared = false
 
-    private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
+    private val prefs = LauncherData.prefs(context)
 
     /**
      * The first-run screen is done: from then on the home screen shows, with
@@ -155,6 +147,9 @@ class Runtime(
         // foot.ini follows the terminal settings, from the Style menu or the file alike.
         scope.launch {
             snapshotFlow { style.style[Style.TERMINAL_FONT] to style.style[Style.TERMINAL_TEXT] }.drop(1).collect { terminalFont.write() }
+        }
+        scope.launch {
+            snapshotFlow { style.style[Style.FONT] }.drop(1).collect { launcherFont.apply() }
         }
         androidApps.start()
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
@@ -194,7 +189,6 @@ class Runtime(
         started = true
         scope.launch {
             withContext(Dispatchers.IO) {
-                LauncherData.migrate(context)
                 launcherFiles.sync()
                 agents.load()
             }
@@ -246,6 +240,7 @@ class Runtime(
         linuxJob =
             scope.launch {
                 linux = false
+                launcherFont.forget()
                 widgets.linuxChanged(false)
                 audio.stop()
                 withContext(Dispatchers.IO) { proot.killAll() }
@@ -256,9 +251,6 @@ class Runtime(
                 }
                 gpu.turnOff()
                 linuxApps.clear()
-                linuxIcons.clear()
-                linuxMasks.clear()
-                linuxIconNames.clear()
                 setService(false)
             }
     }
@@ -302,6 +294,8 @@ class Runtime(
             terminalFont.write()
         }
         linux = true
+        // A font picked from Linux that wasn't remembered at start (or was installed since) loads now.
+        scope.launch { launcherFont.apply() }
         // The recent apps strip on home lists Linux apps before the app list is ever opened.
         scope.launch { refreshApps() }
         // Themes picked without Linux are written into the guest now.
@@ -392,42 +386,9 @@ class Runtime(
         if (screens == 0) proot.procShim.setActive(false)
     }
 
-    /** Rescans .desktop entries; the list only changes (and recomposes) when entries do. */
+    /** Rescans .desktop entries; see [LinuxAppCatalog.refresh]. */
     suspend fun refreshApps() {
-        if (!linux) return
-        val apps = withContext(Dispatchers.IO) { loadLinuxApps(proot) }
-        if (apps != linuxApps.toList()) {
-            linuxApps.clear()
-            linuxApps += apps
-        }
-        val ids = apps.mapTo(HashSet()) { it.id }
-        // An entry can change its Icon= under the same id: on a fresh install, pacman's micro.desktop
-        // shows up before the launcher's Editor entry replaces it.
-        for (app in apps) {
-            if (linuxIconNames[app.id].let { it != null && it != app.icon }) {
-                linuxIcons -= app.id
-                linuxMasks -= app.id
-                linuxIconNames -= app.id
-            }
-        }
-        linuxIcons.keys.retainAll(ids)
-        linuxMasks.keys.retainAll(ids)
-        linuxIconNames.keys.retainAll(ids)
-        val missing = apps.filter { it.icon != null && it.id !in linuxIcons }
-        if (missing.isEmpty()) return
-        val size = (52 * context.resources.displayMetrics.density).toInt()
-        val loaded =
-            withContext(Dispatchers.IO) {
-                missing.mapNotNull { app ->
-                    val file = resolveLinuxIcon(proot.rootfs, app.icon!!) ?: return@mapNotNull null
-                    decodeIcon(file, size)?.let { Triple(app, it.asImageBitmap(), bitmapMask(it).asImageBitmap()) }
-                }
-            }
-        for ((app, icon, mask) in loaded) {
-            linuxIcons[app.id] = icon
-            linuxMasks[app.id] = mask
-            linuxIconNames[app.id] = app.icon!!
-        }
+        if (linux) linuxApps.refresh()
     }
 
     /** A pinned app's icon as the drawer shows it, or its silhouette; null until loaded, or if it has none. */
@@ -436,15 +397,44 @@ class Runtime(
         mono: Boolean,
     ): ImageBitmap? {
         androidKeyOf(shortcut)?.let { return if (mono) androidApps.masks[it] else androidApps.icons[it] }
+        shortcut.owl?.let { file -> return widgets.specs.firstOrNull { it.file.name == file }?.let { owlIcon(it, mono) } }
         val id = shortcut.linux?.id ?: return null
-        return if (mono) linuxMasks[id] else linuxIcons[id]
+        return if (mono) linuxApps.masks[id] else linuxApps.icons[id]
+    }
+
+    /** Owl apps' icons and silhouettes, by their SVG (or image) and the accent they were drawn in: a theme change draws them anew. */
+    private val owlIcons = HashMap<Pair<String, Int>, Pair<ImageBitmap, ImageBitmap>?>()
+
+    /**
+     * An owl app's icon, or its silhouette; null if it has none. An SVG is drawn with `currentColor` in the theme's
+     * accent, an asset's image (a PNG) as it is.
+     */
+    fun owlIcon(
+        spec: WidgetSpec,
+        mono: Boolean,
+    ): ImageBitmap? {
+        val program = spec.program ?: return null
+        val image = program.iconImage
+        val svg = program.icon
+        if (image == null && svg == null) return null
+        val accent = Palette.accent.toArgb()
+        val size = (52 * context.resources.displayMetrics.density).toInt()
+        val drawn =
+            owlIcons.getOrPut((svg ?: "image:" + image.contentHashCode()) to accent) {
+                val bmp = if (image != null) decodeImageIcon(image, size) else decodeSvgIcon(svg!!, size, accent)
+                bmp?.let { it.asImageBitmap() to bitmapMask(it).asImageBitmap() }
+            }
+        return if (mono) drawn?.second else drawn?.first
     }
 
     /**
      * A pinned app's name as the drawer shows it, so it follows the phone's language and the app's updates; the name
-     * it was pinned with while its app is gone or not listed yet, and for Linux apps.
+     * it was pinned with while its app is gone or not listed yet, and for Linux apps. An owl app's follows its file's name.
      */
-    fun shortcutLabel(shortcut: Shortcut) = androidKeyOf(shortcut)?.let { androidApps.labels[it] } ?: shortcut.label
+    fun shortcutLabel(shortcut: Shortcut) =
+        androidKeyOf(shortcut)?.let { androidApps.labels[it] }
+            ?: shortcut.owl?.let { file -> widgets.specs.firstOrNull { it.file.name == file }?.name }
+            ?: shortcut.label
 
     /** A pinned Android app's or shortcut's key in [androidApps]; null for a Linux app. */
     private fun androidKeyOf(shortcut: Shortcut) =
@@ -491,9 +481,10 @@ class Runtime(
 
     /** Opens a pinned app from the home screen. A Linux one runs its current desktop entry, which an update may have changed. */
     fun open(shortcut: Shortcut) {
-        shortcut.linux?.let { pinned -> launch(linuxApps.firstOrNull { it.id == pinned.id } ?: pinned) }
+        shortcut.linux?.let { pinned -> launch(linuxApps.apps.firstOrNull { it.id == pinned.id } ?: pinned) }
         shortcut.component?.let { c -> androidApps.pinned(c, shortcut.profile)?.let(androidApps::open) ?: androidApps.open(c, shortcut.profile) }
         shortcut.androidShortcut?.let { androidApps.open(it, shortcut.profile) }
+        shortcut.owl?.let(::openOwlApp)
     }
 
     fun launch(app: LinuxApp) {
@@ -527,7 +518,7 @@ class Runtime(
         title: String,
     ): String {
         launchedNames[appId]?.let { return it }
-        linuxApps.firstOrNull { it.matches(appId) }?.let { return it.name }
+        linuxApps.apps.firstOrNull { it.matches(appId) }?.let { return it.name }
         return title.ifEmpty { appId.ifEmpty { "Linux" } }
     }
 
@@ -538,7 +529,7 @@ class Runtime(
     ): Agent? = launchedAgents[appId] ?: AGENTS.firstOrNull { it.name == name }
 
     /** The drawer icon of the app called [name] (an agent's logo, say); null until loaded, or if it has none. */
-    fun iconNamed(name: String): ImageBitmap? = linuxApps.firstOrNull { it.name == name }?.let { linuxIcons[it.id] }
+    fun iconNamed(name: String): ImageBitmap? = linuxApps.apps.firstOrNull { it.name == name }?.let { linuxApps.icons[it.id] }
 
     /**
      * Opens the settings activity at [page]: settings itself comes back to where it was left, another screen
@@ -549,6 +540,11 @@ class Runtime(
         homePage: Int? = null,
     ) {
         InstantActivity.startInstantly(context, SettingsActivity.intent(context, page, homePage))
+    }
+
+    /** Opens the owl app in file [name] in its own task; nothing if it isn't running (removed, or broken). */
+    fun openOwlApp(name: String) {
+        if (widgets.isApp(name)) InstantActivity.startInstantly(context, OwlAppActivity.intent(context, name))
     }
 
     /** Opens the Files app, at [path] (a guest path) if given. */
