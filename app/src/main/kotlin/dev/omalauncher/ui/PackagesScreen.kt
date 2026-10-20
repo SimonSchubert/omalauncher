@@ -1,11 +1,9 @@
 package dev.omalauncher.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,7 +17,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.JobState
@@ -93,11 +90,7 @@ private fun PackageRow(
     // Removal takes a second tap: it also removes dependencies nothing else uses.
     var confirming by remember(pkg.name, pkg.installed) { mutableStateOf(false) }
     Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(LauncherStyle.shape(12.dp))
-            .background(Palette.surface)
-            .padding(10.dp),
+        Modifier.card(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {

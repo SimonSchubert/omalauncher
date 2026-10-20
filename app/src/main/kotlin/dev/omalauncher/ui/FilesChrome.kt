@@ -2,7 +2,6 @@ package dev.omalauncher.ui
 
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -197,12 +196,7 @@ internal fun PasteBar(
 @Composable
 private fun BottomBar(content: @Composable RowScope.() -> Unit) {
     Row(
-        Modifier
-            .padding(top = 8.dp)
-            .fillMaxWidth()
-            .clip(LauncherStyle.shape(12.dp))
-            .background(Palette.surface)
-            .padding(6.dp),
+        Modifier.padding(top = 8.dp).card(6.dp),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )

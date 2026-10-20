@@ -1,61 +1,46 @@
 <!doctype html>
-<!-- Play Store screenshots. Rendered one slide at a time by scripts/render-screenshots.sh (frame.html?s=N). -->
+<!-- Play Store screenshots. Rendered one slide at a time by scripts/render-screenshots.sh (frame.html?s=N).
+     Each is a capture from scripts/store-captures.sh (1080x1670) under a caption band. -->
 <html>
 <head>
 <meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=block" rel="stylesheet">
 <style>
   * { margin: 0; box-sizing: border-box; }
-  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #16161e; }
+  html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
   .slide { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: 'JetBrains Mono', monospace; }
-  /* The shot itself, blurred, is the backdrop: every slide takes its theme's colors. */
-  .backdrop { position: absolute; inset: -120px; background-size: cover; background-position: center; filter: blur(70px) saturate(1.3) brightness(0.42); transform: scale(1.1); }
-  .shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,10,16,0.82) 0%, rgba(10,10,16,0.35) 32%, rgba(10,10,16,0.15) 100%); }
-  /* The icon's colors, glowing behind the phone. */
-  .glow { position: absolute; inset: 0; background:
-      radial-gradient(ellipse 620px 760px at 30% 72%, rgba(51,204,255,0.20), transparent 70%),
-      radial-gradient(ellipse 620px 760px at 72% 60%, rgba(187,154,247,0.22), transparent 70%); }
-  .caption { position: absolute; top: 112px; left: 80px; right: 80px; color: #c0caf5; }
-  .caption h1 { font-size: 76px; font-weight: 800; line-height: 1.08; letter-spacing: -2px; color: #fff; }
-  .caption h1 em { font-style: normal; background: linear-gradient(90deg, #33ccff, #00ff99); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .caption p { margin-top: 26px; font-size: 34px; line-height: 1.4; color: rgba(220, 228, 255, 0.78); }
-  .prompt { font-size: 30px; color: #33ccff; margin-bottom: 22px; letter-spacing: 1px; }
-  .phone { position: absolute; left: 50%; border-radius: 64px; padding: 14px; background: #0c0c12;
-           box-shadow: 0 0 0 2px rgba(255,255,255,0.10), 0 50px 120px rgba(0,0,0,0.65); }
-  .phone img { display: block; width: 100%; border-radius: 50px; }
-  .single .phone { top: 440px; width: 610px; transform: translateX(-50%); }
-  .trio .phone { top: 620px; width: 500px; }
-  .trio .p1 { transform: translateX(-118%) rotate(-7deg); top: 690px; }
-  .trio .p3 { transform: translateX(18%) rotate(7deg); top: 690px; }
-  .trio .p2 { transform: translateX(-50%); z-index: 2; }
+  /* The band is the shot's own top row drawn tall, so its colors run straight on into the screen below. */
+  .band { position: absolute; top: 0; left: 0; width: 1080px; height: 250px; background-repeat: no-repeat;
+          background-position: top left; background-size: 1080px 417500px; }
+  .band::after { content: ''; position: absolute; inset: 0; background: var(--veil); }
+  .caption { position: absolute; z-index: 1; left: 64px; right: 64px; bottom: 34px; color: var(--ink);
+             font-size: 66px; font-weight: 800; line-height: 1.1; letter-spacing: -2px; }
+  .caption em { font-style: normal; color: var(--accent); }
+  .shot { position: absolute; top: 250px; left: 0; display: block; width: 1080px; height: 1670px; }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script>
+// ink and accent come from each theme's colors (app/src/main/assets/themes/<theme>.toml); veil evens out the
+// band under the caption where the top of the wallpaper is busy.
 const SLIDES = [
-  { shot: 'home_tokyo', title: 'Omarchy on <em>your phone</em>', text: 'Widgets, themes and real Linux apps, right on your home screen.' },
-  { trio: ['home_latte', 'home_tokyo_lazygit', 'home_kanagawa'], bg: 'home_kanagawa', title: '22 themes, <em>one tap</em>', text: 'Colors and wallpaper change across the launcher, widgets and Linux apps.' },
-  { shot: 'store', title: 'A <em>widget store</em>', text: 'Clocks, calendars, markets and feeds. Or write your own.' },
-  { shot: 'lazygit', title: 'Real <em>Linux apps</em>', text: 'Each opens in its own window, with the keys a terminal needs.' },
-  { shot: 'agents', title: 'Coding <em>agents</em>', text: 'Claude Code, Codex, OpenCode and more, one prompt away.' },
-  { shot: 'packages', title: 'Arch Linux, <em>optional</em>', text: 'pacman and the AUR without root. Or skip Linux entirely.' },
-  { shot: 'themes', title: 'Make it <em>yours</em>', text: 'Pick a theme, a background, icon style and corners.' },
-  { shot: 'drawer', title: 'All your <em>apps</em>', text: 'Android and Linux apps side by side, with themed icons.' },
+  { shot: '1-home', ink: '#ffffff', accent: '#7aa2f7', veil: 'rgba(26,27,38,0.30)', title: 'Arch Linux on <em>your phone</em>' },
+  { shot: '2-face', ink: '#dcd7ba', accent: '#98bb6c', veil: 'transparent', title: 'Home is a <em>terminal</em>' },
+  { shot: '3-light', ink: '#4c4f69', accent: '#1e66f5', veil: 'rgba(239,241,245,0.25)', title: '22 themes, <em>one tap</em>' },
+  { shot: '4-live', ink: '#C1C497', accent: '#509475', veil: 'rgba(17,28,24,0.30)', title: 'Widgets that <em>move</em>' },
+  { shot: '5-store', ink: '#d4be98', accent: '#7daea3', veil: 'transparent', title: 'A <em>widget store</em>' },
+  { shot: '6-app', ink: '#d3c6aa', accent: '#7fbbb3', veil: 'transparent', title: '<em>Apps</em> from the store' },
+  { shot: '7-linux', ink: '#bebebe', accent: '#e68e0d', veil: 'transparent', title: 'A real <em>terminal</em>' },
+  { shot: '8-style', ink: '#e6d9db', accent: '#f38d70', veil: 'transparent', title: 'Make it <em>yours</em>' },
 ];
 const n = +(new URLSearchParams(location.search).get('s') || 1);
 const s = SLIDES[n - 1];
-const img = name => `raw/${name}.png`;
-const phones = s.trio
-  ? s.trio.map((t, i) => `<div class="phone p${i + 1}"><img src="${img(t)}"></div>`).join('')
-  : `<div class="phone"><img src="${img(s.shot)}"></div>`;
+const img = `raw/${s.shot}.png`;
 document.getElementById('root').innerHTML = `
-  <div class="slide ${s.trio ? 'trio' : 'single'}">
-    <div class="backdrop" style="background-image:url(${img(s.bg || s.shot)})"></div>
-    <div class="shade"></div>
-    <div class="glow"></div>
-    <div class="caption"><div class="prompt">~ ›</div><h1>${s.title}</h1><p>${s.text}</p></div>
-    ${phones}
+  <div class="slide" style="--ink:${s.ink};--accent:${s.accent};--veil:${s.veil}">
+    <div class="band" style="background-image:url(${img})"><div class="caption">${s.title}</div></div>
+    <img class="shot" src="${img}">
   </div>`;
 document.title = String(SLIDES.length);
 </script>

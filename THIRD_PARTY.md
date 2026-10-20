@@ -39,6 +39,14 @@ agent in the launcher, which is not affiliated with or endorsed by any of them.
 come from [Omarchy](https://github.com/omacom/omarchy), MIT, Copyright (c) David Heinemeier Hansson.
 Omalauncher is not affiliated with Omarchy.
 
+## Mesa
+
+`app/src/main/assets/mesa-zink/mesa-zink.tar.xz`: [Mesa](https://mesa3d.org) 26.2.4 with
+`scripts/mesa/0001-egl-wayland-keep-zink-on-shm.patch`, built by `scripts/mesa/build-aarch64.sh`.
+Mesa is mostly MIT, with other files under the permissive licenses in its `licenses/` directory.
+The archive also carries [wayland-protocols](https://gitlab.freedesktop.org/wayland/wayland-protocols) (MIT).
+It is installed into the Linux guest when GPU acceleration is turned on for an Adreno GPU.
+
 ## Bundled at build time
 
 `scripts/fetch-proot.sh` downloads pinned versions of Termux's builds of PRoot (GPL-2.0),
