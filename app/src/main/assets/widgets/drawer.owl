@@ -2,7 +2,7 @@ panel "app drawer" {
   // The app drawer: swiping up on home opens it, above the prompt bar. It's a panel like any other, so it's yours to
   // change: ask your agent to edit it, or pick another panel in settings › gestures. .stock-drawer.owl next to it is
   // this file as the launcher ships it, kept up to date: compare the two to see what changed in a newer launcher.
-  meta { description: "The launcher's app drawer, written in owl: your apps by kind, search as you type in the prompt bar, and each app's long-press menu"; version: "1.0"; license: "MIT"; category: "system"; owl: 11 }
+  meta { description: "The launcher's app drawer, written in owl: your apps by kind, search as you type in the prompt bar, a web-search mode with engines and browsers, and each app's long-press menu"; version: "1.1"; license: "MIT"; category: "system"; owl: 11 }
   // The launcher's gear, as its settings buttons draw it; currentColor takes the accent.
   asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
   source d = android.drawer
@@ -14,6 +14,14 @@ panel "app drawer" {
   state tab = "personal"
   // The result picked with the arrow or Tab keys, -1 for the ask row; null follows the ranking.
   state pick = null
+  // The web: what the bottom row and Enter do besides asking an agent. `engine` picks the search
+  // engine; `direct` opens it straight in the default browser, otherwise the search goes through
+  // Android's share sheet, to pick Edge, Firefox Focus, Brave or any other browser that takes URLs.
+  state web = false persist
+  state engine = "duckduckgo" persist
+  state direct = false persist
+  // The engines-and-browsers menu, open over the bottom row.
+  state webMenu = false
 
   // As the launcher's drawer fits them: a column for every 76 dp.
   let cols = max(1, floor(((screenWidth ?? 400) - 24) / 76))
@@ -42,6 +50,16 @@ panel "app drawer" {
   // What Enter acts on: a result by its place in hits, or -1 for the ask row.
   let chosen = pick ?? (opens ? 0 : -1)
   let agent = ag.default
+  // Web search: the engines, the installed ones of the browsers worth listing, and the URL Enter or the row opens.
+  let engines = [
+      {name: "duckduckgo", prefix: "https://duckduckgo.com/?q="},
+      {name: "google", prefix: "https://google.com/search?q="},
+      {name: "brave search", prefix: "https://search.brave.com/search?q="},
+      {name: "bing", prefix: "https://www.bing.com/search?q="},
+      {name: "startpage", prefix: "https://startpage.com/sp/search?query="}
+    ]
+  let engineOf = engines.find(e => e.name == engine) ?? engines[0]
+  let searchUrl = engineOf.prefix + enc(typed)
   // With a keyboard: Up and Tab move the pick away from the bar, Down and Shift+Tab back; the ask row sits lowest.
   onKey: {
     if searching {
@@ -53,12 +71,15 @@ panel "app drawer" {
   // Typing starts the pick over, at the best match.
   on typed { pick = null }
 
-  enter: searching ? (chosen >= 0 ? "▸ open" : "⏎ ask") : ""
+  enter: searching ? (chosen >= 0 ? "▸ open" : web ? "⏎ web" : "⏎ ask") : ""
   // An empty bar's Enter does nothing, as on home.
   onSubmit: {
     if searching {
       if chosen >= 0 {
         open(hits[chosen].key)
+      } else if web {
+        // A URL goes to the default browser; anything else is shared, and the browser is picked there.
+        if direct { url(searchUrl) } else { share(searchUrl) }
       } else if !linux {
         launcher("linux")
       } else {
@@ -198,7 +219,8 @@ panel "app drawer" {
         }
       }
     }
-    // The one line above the bar that sends what's typed to the agent; outlined when that's what Enter does.
+    // The one line above the bar that sends what's typed to the agent or the web; outlined when that's what Enter does.
+    // The chips at its end switch what Enter does and, in web mode, open the engines-and-browsers menu.
     Row {
       visible: searching
       fill: width
@@ -208,7 +230,9 @@ panel "app drawer" {
       borderColor: accent
       radius: 16 * corners
       onTap: {
-        if !linux {
+        if web {
+          if direct { url(searchUrl) } else { share(searchUrl) }
+        } else if !linux {
           launcher("linux")
         } else if agent == null {
           launcher("agents")
@@ -218,10 +242,89 @@ panel "app drawer" {
       }
       Text { text: "⏎"; color: chosen == -1 ? accent : muted }
       Text {
-        text: !linux ? "ask an agent · install linux" : agent == null ? "ask an agent · install one" : "ask " + agent.bin + ": " + typed
+        text: web
+          ? engineOf.name + (direct ? "" : " · pick a browser") + ": " + typed
+          : !linux ? "ask an agent · install linux" : agent == null ? "ask an agent · install one" : "ask " + agent.bin + ": " + typed
         color: chosen == -1 ? foreground : muted
         maxLines: 1
         weight: 1
+      }
+      // The two modes, always side by side: the one you're in is filled and plain, the one you can switch to glows.
+      Text {
+        text: "[agent]"
+        color: web ? muted : foreground
+        padding: [10, 8]
+        radius: 14 * corners
+        background: web ? transparent : surface
+        onTap: { haptic(); web = false; webMenu = false }
+      }
+      Text {
+        text: "[web]"
+        color: web ? foreground : accent
+        padding: [10, 8]
+        radius: 14 * corners
+        background: web ? surface : transparent
+        onTap: { haptic(); web = true }
+      }
+      Text {
+        text: "≡"
+        color: muted
+        padding: [10, 8]
+        onTap: { haptic(); webMenu = true }
+        visible: web
+      }
+      // The web search's settings, over the row: the engine, and where the search opens.
+      Popup {
+        visible: webMenu
+        position: above
+        onDismiss: webMenu = false
+        width: 260
+        gap: 0
+        Text { text: "search with"; color: muted; padding: [12, 12, 12, 4] }
+        for e in engines {
+          Row {
+            fill: width
+            align: center
+            gap: 10
+            padding: [12, 8]
+            radius: 12 * corners
+            background: engine == e.name ? surface : transparent
+            onTap: { engine = e.name }
+            Text { text: e.name; weight: 1; color: engine == e.name ? foreground : muted }
+            Text { text: engine == e.name ? "•" : ""; color: accent }
+          }
+        }
+        Spacer { height: 1; fill: width; background: border }
+        Text { text: "open with"; color: muted; padding: [12, 12, 12, 4] }
+        Row {
+          fill: width
+          align: center
+          gap: 10
+          padding: [12, 8]
+          radius: 12 * corners
+          background: direct ? surface : transparent
+          onTap: { direct = true }
+          Text { text: "default browser"; weight: 1; color: direct ? foreground : muted }
+          Text { text: direct ? "•" : ""; color: accent }
+        }
+        Row {
+          fill: width
+          align: center
+          gap: 10
+          padding: [12, 8]
+          radius: 12 * corners
+          background: !direct ? surface : transparent
+          onTap: { direct = false }
+          Text { text: "pick a browser"; weight: 1; color: !direct ? foreground : muted }
+          Text { text: !direct ? "•" : ""; color: accent }
+        }
+        Text {
+          text: "the share sheet lists your browsers: edge, firefox focus, brave and any other that takes links"
+          color: muted
+          fontSize: 12
+          maxLines: 2
+          padding: [12, 4, 12, 12]
+        }
       }
     }
   }
