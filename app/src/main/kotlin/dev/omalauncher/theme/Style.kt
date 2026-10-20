@@ -151,6 +151,10 @@ class Style(
         val THEME = Setting.Name("theme", "The Omarchy theme, by its directory name in ~/.local/share/omarchy/themes or ~/.config/omarchy/themes (yours win).")
         val BACKGROUND = Setting.Name("background", "A file name from the theme's backgrounds/ or ~/.config/omarchy/backgrounds/<theme>/. Unset: the theme's first.")
 
+        val AUTO_THEME = Setting.Flag("auto-theme.enabled", false, "Follow Android's dark mode: its turning on or off shows the theme and background below for that mode.")
+        val LIGHT = ModeTheme("light")
+        val DARK = ModeTheme("dark")
+
         val APP_TILES = Setting.Flag("home.app-tiles", true, "Apps on home in a tile like a widget; false draws bare icons on the wallpaper.")
         val RECENT_APPS = Setting.Flag("home.recent-apps", true, "The strip of recently used apps above the prompt bar.")
         val COLUMNS = Setting.Count("home.columns", 6, 4..9, "Columns of home's grid. Fewer make bigger cells, and apps show their names under their icons once a cell is tall enough.")
@@ -199,6 +203,15 @@ class Style(
             )
     }
 
+    /** The theme and background [AUTO_THEME] shows while Android is in [mode] ("light" or "dark"). */
+    @Immutable
+    class ModeTheme(
+        mode: String,
+    ) {
+        val theme = Setting.Name("auto-theme.$mode", "The theme for $mode mode. Unset: whatever shows when Android turns $mode. Picking a theme in $mode mode sets it.")
+        val background = Setting.Name("auto-theme.$mode-background", "The background for $mode mode, as background takes it. Unset: the theme's first.")
+    }
+
     /** A system bar's band on home; [name] is its section in the file. */
     @Immutable
     class Bar(
@@ -235,7 +248,7 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, FONT, AUTO_THEME, LIGHT.theme, LIGHT.background, DARK.theme, DARK.background, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
                 listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, SWIPE_UP, SWIPE_DOWN)
         }

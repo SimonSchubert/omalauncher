@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -75,6 +76,7 @@ import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.TerminalText
+import dev.omalauncher.theme.AutoTheme
 import dev.omalauncher.theme.OmarchyTheme
 import dev.omalauncher.theme.Setting
 import dev.omalauncher.theme.Style
@@ -83,6 +85,7 @@ import dev.omalauncher.theme.ThemeDirs
 import dev.omalauncher.theme.ThemeDownload
 import dev.omalauncher.theme.ThemeStore
 import dev.omalauncher.theme.Toml
+import dev.omalauncher.theme.titleOf
 import java.io.File
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -118,6 +121,7 @@ fun StyleScreen(
                 },
                 onRemove = { removing = it },
             )
+            AutoThemeSection(store, runtime.style)
             store.current?.let { BackgroundSection(store, it) }
             // Style choices don't depend on a theme, so they're offered before themes are downloaded too.
             Heading("home screen")
@@ -232,6 +236,30 @@ private fun ThemeSection(
             BracketAction("remove", Palette.red) { onRemove(current) }
         }
     }
+}
+
+/** Following Android's dark mode, with a theme for each; picking one above, or a background, changes the mode Android is in. */
+@Composable
+private fun AutoThemeSection(
+    store: ThemeStore,
+    style: StyleStore,
+) {
+    val scope = rememberCoroutineScope()
+    val on = style.style[Style.AUTO_THEME]
+    StyleOption("dark mode", listOf("follow android", "off"), if (on) 0 else 1) { i -> scope.launch { store.setAutoTheme(i == 0) } }
+    if (!on) return
+    val dark = isSystemInDarkTheme()
+    for (modeDark in listOf(false, true)) {
+        val mode = AutoTheme.of(modeDark)
+        // The mode's own themes first.
+        val names = store.choices.sortedBy { (it.colors["mode"] == "light") == modeDark }.map { it.name }
+        val selected = style.style[mode.theme] ?: style.style[Style.THEME] ?: ThemeStore.DEFAULT_THEME
+        FontOption(names, selected, title = if (modeDark) "dark" else "light", label = { titleOf(it).lowercase() }) { name ->
+            scope.launch { store.setModeTheme(modeDark, name) }
+        }
+    }
+    val now = if (dark) "dark" else "light"
+    OptionHint("android is in $now mode now: a theme or background picked above becomes $now's", Modifier.padding(bottom = 4.dp))
 }
 
 /** [theme]'s backgrounds, one of the user's own images, and handing it all to Android. */
@@ -553,17 +581,18 @@ private fun Heading(
     }
 }
 
-/** Font names run long and pacman can add many: the picked one shows, and tapping it lists the others under it. */
+/** Font (or theme) names run long and pacman can add many: the picked one shows, and tapping it lists the others under it. */
 @Composable
 private fun FontOption(
     families: List<String>,
     selected: String,
+    title: String = "font",
     label: (String) -> String = { it },
     onSelect: (String) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        OptionLabel("font")
+        OptionLabel(title)
         Box(Modifier.weight(1f, fill = false)) {
             Row(
                 Modifier

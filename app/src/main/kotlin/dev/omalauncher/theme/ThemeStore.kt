@@ -84,6 +84,8 @@ class ThemeStore(
     private val isLinux: () -> Boolean,
     /** Called when the guest configs depending on the theme changed; see [managed]. */
     private val onConfigChanged: () -> Unit,
+    /** Whether Android is in dark mode now; see [AutoTheme]. */
+    private val isDark: () -> Boolean,
 ) {
     private val release = OmarchyRelease(LauncherData.omarchyDir(context))
     private val dirs = themeDirs(context)
@@ -132,8 +134,11 @@ class ThemeStore(
     /** Recolors the launcher right away and remembers the choice, with its first background, until the theme itself is installed. */
     fun pick(theme: BundledTheme) {
         Palette.apply(theme.colors)
-        style.update { it.with(Style.THEME, theme.name).with(Style.BACKGROUND, null) }
+        choose { it.with(Style.THEME, theme.name).with(Style.BACKGROUND, null) }
     }
+
+    /** Changes the theme or background the user picked, which while following Android's dark mode is also the mode's. */
+    private fun choose(change: (Style) -> Style) = style.update { AutoTheme.remembered(change(it), isDark()) }
 
     /**
      * Shows the theme and background the style names, once the theme is on
@@ -388,6 +393,8 @@ class ThemeStore(
         val own = theme.own ?: return
         withContext(Dispatchers.IO) { LauncherData.deleteTree(own) }
         rescan()
+        // Gone for good (no built-in one of its name): a mode set to it shows what shows instead.
+        if (themes.none { it.name == theme.name }) style.update { AutoTheme.forgotten(it, theme.name) }
         if (current?.name != theme.name) return
         val next = themes.firstOrNull { it.name == theme.name } ?: themes.firstOrNull { it.name == DEFAULT_THEME } ?: themes.firstOrNull()
         if (next != null) {
@@ -400,7 +407,7 @@ class ThemeStore(
 
     /** Picks [theme] with its first background, and shows it. */
     suspend fun apply(theme: OmarchyTheme) {
-        style.update { it.with(Style.THEME, theme.name).with(Style.BACKGROUND, null) }
+        choose { it.with(Style.THEME, theme.name).with(Style.BACKGROUND, null) }
         show(theme, theme.backgrounds().firstOrNull())
     }
 
@@ -438,7 +445,7 @@ class ThemeStore(
     }
 
     suspend fun setBackground(file: File?) {
-        style.update { it.with(Style.BACKGROUND, file?.name) }
+        choose { it.with(Style.BACKGROUND, file?.name) }
         showBackground(file)
     }
 
@@ -513,8 +520,53 @@ class ThemeStore(
         if (!theme.isExtraBackground(file)) return
         withContext(Dispatchers.IO) { file.delete() }
         if (file != background) return
-        style.update { it.with(Style.BACKGROUND, null) }
+        choose { it.with(Style.BACKGROUND, null) }
         showBackground(theme.backgrounds().firstOrNull())
+    }
+
+    /**
+     * Android is in [dark] mode: while following it, the style takes that mode's theme
+     * and background. What the user picks is kept as the mode's (see [choose]), so they
+     * differ only when Android switched, or the mode's own changed in style.toml.
+     * Returns whether the style changed; [followStyle] shows it.
+     */
+    fun switchMode(dark: Boolean): Boolean {
+        val old = style.style
+        if (!old[Style.AUTO_THEME]) return false
+        style.update { AutoTheme.switched(it, dark) }
+        return style.style[Style.THEME] != old[Style.THEME] || style.style[Style.BACKGROUND] != old[Style.BACKGROUND]
+    }
+
+    /** The theme or background changed in style.toml: while following, it's the mode's now, as if picked here. */
+    fun rememberForMode() = choose { it }
+
+    /**
+     * Turns following Android's dark mode on, with a theme for each mode (see [AutoTheme.enabled]),
+     * or off; off with [forget], the modes' themes go too, as if never set.
+     */
+    suspend fun setAutoTheme(
+        on: Boolean,
+        forget: Boolean = false,
+    ) {
+        if (!on) {
+            style.update { AutoTheme.disabled(it, forget) }
+            return
+        }
+        // Read off the main thread, as [bundled] asks; [choices] uses it.
+        withContext(Dispatchers.IO) { bundled }
+        style.update { AutoTheme.enabled(it, isDark(), choices.associate { t -> t.name to (t.colors["mode"] == "light") }) }
+    }
+
+    /** Sets [dark] mode's theme, with its first background; it shows right away if Android is in that mode. */
+    suspend fun setModeTheme(
+        dark: Boolean,
+        name: String,
+    ) {
+        val mode = AutoTheme.of(dark)
+        style.update { it.with(mode.theme, name).with(mode.background, null) }
+        if (dark != isDark()) return
+        style.update { it.with(Style.THEME, name).with(Style.BACKGROUND, null) }
+        followStyle()
     }
 
     /**
@@ -530,7 +582,7 @@ class ThemeStore(
         const val OMARCHY_REF = "8b4eae66da2938ba9559f103b18dbf85cdf28a70"
 
         private const val RENDERED_BY = "rendered_by"
-        private const val DEFAULT_THEME = "tokyo-night"
+        const val DEFAULT_THEME = "tokyo-night"
 
         /** Called on the main thread after the theme or background changes (the live wallpaper listens). */
         val changeListeners = CopyOnWriteArraySet<() -> Unit>()

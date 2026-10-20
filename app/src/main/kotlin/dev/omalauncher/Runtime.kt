@@ -60,8 +60,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
@@ -85,7 +89,9 @@ class Runtime(
     val linuxApps = LinuxAppCatalog(context, proot)
     val androidApps = AndroidAppCatalog(context)
     val usage = AppUsage(context)
-    val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
+    /** Whether Android is in dark mode, which the theme may follow; see [AutoTheme]. */
+    private val dark = MutableStateFlow(isDark(context.resources.configuration))
+    val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest, isDark = { dark.value })
     private val audio = AudioBridge(proot)
     private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit)
     val agents = AgentStore(proot, onChanged = ::syncGuest)
@@ -118,6 +124,9 @@ class Runtime(
     private val scope =
         CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e -> Log.e(TAG, "background job failed", e) })
     private var started = false
+
+    /** Held while the theme changes to follow Android's dark mode or style.toml. */
+    private val switching = Mutex()
     private var prepared = false
 
     private val prefs = LauncherData.prefs(context)
@@ -138,11 +147,43 @@ class Runtime(
     init {
         // Saved, so removing Linux later doesn't bring the first-run screen back.
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
+        // Before the palette, so a switch while the launcher wasn't running shows from the first frame.
+        themes.switchMode(dark.value)
         themes.loadPalette()
         // An agent or the user edited style.toml; the rest of the style is read where it's drawn.
         style.onExternalChange = { old, new ->
             val changed = new.changed(old)
-            if (Style.THEME.key in changed || Style.BACKGROUND.key in changed) scope.launch { themes.followStyle() }
+            val auto = changed.any { it.startsWith(AUTO_THEME_SECTION) }
+            if (auto || Style.THEME.key in changed || Style.BACKGROUND.key in changed) {
+                scope.launch {
+                    switching.withLock {
+                        // A mode's theme set in the file shows now if Android is in it; a theme set there is the mode's.
+                        if (auto) themes.switchMode(dark.value) else themes.rememberForMode()
+                        themes.followStyle()
+                    }
+                }
+            }
+        }
+        context.registerComponentCallbacks(
+            object : ComponentCallbacks {
+                override fun onConfigurationChanged(newConfig: Configuration) {
+                    dark.value = isDark(newConfig)
+                }
+
+                @Deprecated("Deprecated in Java")
+                override fun onLowMemory() = Unit
+            },
+        )
+        // One switch at a time; flips while one is applied collapse into the last.
+        scope.launch {
+            dark.collect { now ->
+                switching.withLock {
+                    if (!themes.switchMode(now)) return@withLock
+                    // Before then, loading shows the new theme itself.
+                    snapshotFlow { themes.loaded }.first { it }
+                    themes.followStyle()
+                }
+            }
         }
         // foot.ini follows the terminal settings, from the Style menu or the file alike.
         scope.launch {
@@ -584,5 +625,10 @@ class Runtime(
     companion object {
         private const val TAG = "runtime"
         private const val SETUP_DONE = "setup_done"
+
+        /** The keys of [Style.AUTO_THEME] and the modes' themes in style.toml. */
+        private val AUTO_THEME_SECTION = Style.AUTO_THEME.key.substringBefore('.') + "."
+
+        private fun isDark(config: Configuration) = config.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
     }
 }
