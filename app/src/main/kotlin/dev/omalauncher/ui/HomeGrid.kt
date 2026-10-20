@@ -568,9 +568,9 @@ internal fun HomeGrid(
                     ) = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                         while (true) {
                             val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == downId } ?: return@withTimeoutOrNull
-                            if (!c.pressed || (c.position - start).getDistance() > viewConfiguration.touchSlop) return@withTimeoutOrNull
+                            if (!c.pressed || claims.holding(downId.value) || (c.position - start).getDistance() > viewConfiguration.touchSlop) return@withTimeoutOrNull
                         }
-                    } == null
+                    } == null && !claims.holding(downId.value)
 
                     /** Takes [downId]'s moves until it lifts, giving [onMove] each position while pressed; where it lifted, or null if it went away. */
                     suspend fun AwaitPointerEventScope.trackUntilUp(

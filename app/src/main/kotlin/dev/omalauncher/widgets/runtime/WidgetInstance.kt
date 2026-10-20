@@ -839,6 +839,7 @@ class WidgetInstance(
     )
 
     private val terminals = NodeSessions<EmbeddedTerminal> { it.close() }
+    internal val linuxInputs = LinuxInputTargets<EmbeddedTerminal>()
 
     fun terminal(node: Any, command: String?, fontSize: Double?): EmbeddedTerminal =
         terminals.get(node, SessionConfiguration(command, fontSize)) { services.terminal(command, fontSize) }
@@ -855,6 +856,7 @@ class WidgetInstance(
         services.sound(this, null, null)
         jobs.forEach { it.cancel() }
         jobs.clear()
+        linuxInputs.clear()
         terminals.close()
         // A change made during the write interval would otherwise be lost.
         if (persisted.isNotEmpty()) save(persisted.map { read(it) })

@@ -2,14 +2,18 @@
 
 `linux-app.owl` is a self-contained face that embeds one SDL2 Wayland window.
 It draws coloured bars, changes colours on touch or keyboard input, and resizes
-with its node. It declares the Arch packages `python` and `sdl2`; there are no
+with its node. Eight OWL `LinuxKey` controls send arrows, Z/X (labeled A/B),
+Enter (Start) and right Shift (Select). Eight blocks at the bottom show which
+keys are held, so simultaneous presses and individual releases can be checked.
+It declares the Arch packages `python` and `sdl2`; there are no
 Python package dependencies. `demo.py` is the same embedded script, kept
 separately for inspection and host tests.
 
 For the API, client requirements and advice for coding agents, read the
 [OWL LinuxApp guide](../../app/src/main/assets/widgets/README.md#linuxapp).
 The launcher also ships a smaller
-[foot example](../../app/src/main/assets/widgets/examples/46-linux-app.owl),
+[foot example](../../app/src/main/assets/widgets/examples/46-linux-app.owl) and
+[keyboard controls example](../../app/src/main/assets/widgets/examples/47-linux-keys.owl),
 available to agents in the guest's `widgets/examples/` directory. Examples in
 that directory become active only when copied into the parent widgets directory.
 
@@ -20,6 +24,10 @@ installation. Install its declared dependencies using the launcher's normal
 `requires` mechanism. Tap the node to start; tap the window again to activate
 input. Touch or a key changes the colours, Escape exits, ⌨ opens the keyboard,
 and × stops the program. A stopped node offers a tap to restart.
+After starting, press the OWL controls below the window. Hold Left + A together;
+both corresponding blocks should light up. Release A while keeping Left down:
+only A's block goes dark. Sliding outside a button cancels its hold. Back,
+switching pages/apps and locking the phone must release every held control.
 
 The SDL command uses the automatic Wayland application ID supplied by LinuxApp
 and a software renderer. Other clients must support the same compositor and
@@ -52,6 +60,7 @@ collector and a copy of the demo.
 The host SDL test uses its dummy video driver when SDL2 is installed and reports
 a skip otherwise. It exercises the demo's software renderer, input and exit,
 but does not exercise the Wayland or Android integration. The Gradle tests cover
-OWL, session identity, input cancellation and process lifecycle. Compilation and
+OWL, session identity, controller ownership/chords/multiple fingers, stale queued
+keys after focus changes, input cancellation and process lifecycle. Compilation and
 host tests must be followed by the
 [device acceptance checks](../../docs/LINUXAPP-TESTING.md).

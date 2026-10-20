@@ -69,6 +69,9 @@ class TerminalTiles(
     /** Where the extra-keys row sits, in window coordinates, while it shows; pressing it isn't leaving the tile. */
     var extraKeys: Rect? = null
 
+    /** Controller nodes are part of their client's input area, even outside its window. */
+    internal val controls = HashMap<Any, Pair<EmbeddedTerminal, Rect>>()
+
     /** How far the home screen is lifted so the active tile clears the soft keyboard, in pixels. */
     var lift = 0f
         private set
@@ -162,6 +165,7 @@ class TerminalTiles(
     fun pressAt(p: Offset) {
         val bounds = active?.bounds ?: tile.takeIf { field != null } ?: return
         if (extraKeys?.contains(p) == true) return
+        if (controls.values.any { (term, bounds) -> term === active && bounds.translate(0f, -lift).contains(p) }) return
         if (!bounds.translate(0f, -lift).contains(p)) deactivate()
     }
 
@@ -272,6 +276,14 @@ class EmbeddedTerminal internal constructor(
 
     var launched by mutableStateOf(false)
         private set
+
+    /** Starts no process: the user must first launch the LinuxApp explicitly. */
+    internal fun holdKeys(codes: List<Int>): InputLease? {
+        if (closed || stopping || !running) return null
+        val w = window ?: return null
+        tiles.activate(this)
+        return tiles.windowManager.holdKeys(w, codes)
+    }
 
     /** Where the tile is, in window pixels, as if the home screen weren't lifted. */
     internal var bounds = Rect.Zero

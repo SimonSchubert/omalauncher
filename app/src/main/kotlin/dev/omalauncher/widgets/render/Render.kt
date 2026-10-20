@@ -38,6 +38,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
@@ -103,6 +104,7 @@ import dev.omalauncher.widgets.lang.Builtins
 import dev.omalauncher.widgets.lang.Env
 import dev.omalauncher.widgets.lang.Gradient
 import dev.omalauncher.widgets.lang.Lst
+import dev.omalauncher.widgets.lang.LinuxKeys
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
@@ -200,6 +202,13 @@ internal fun columnHugs(
  * for the same one; see [dev.omalauncher.ui.HomeGrid].
  */
 class LongPressClaim {
+    private val held = HashSet<Long>()
+
+    /** Controls own the whole hold, including the interval before the long-press timeout. */
+    internal fun hold(pointer: Long) { held += pointer }
+    internal fun release(pointer: Long) { held -= pointer }
+    internal fun holding(pointer: Long) = pointer in held
+
     /** When the last long press was taken, in uptime milliseconds. */
     @Volatile var at = 0L
         private set
@@ -681,12 +690,19 @@ private fun Element(
         "Spacer" -> Spacer(mod)
         "Slider" -> SliderNode(p, mod, sized)
         "Input" -> InputNode(p, mod, sized)
+        "LinuxKey" -> LinuxKeyNode(p, mod)
         "LinuxApp" -> {
             val command = p.observe("command")
             val appId = p.observe("appId")
             // A command depending on a source waits for that source, like Terminal.
             if (command != null && command != Null && appId != Null) {
                 val term = remember(inst, sessionKey, command, appId) { inst.linuxApp(sessionKey, command.toString(), appId?.toString()) }
+                val inputId = p.observe("inputId")?.takeIf { LinuxKeys.validTarget(it) }?.toString()
+                DisposableEffect(inst, term, inputId) {
+                    val token = Any()
+                    if (inputId != null) inst.linuxInputs.bind(token, inputId, term)
+                    onDispose { inst.linuxInputs.unbind(token) }
+                }
                 TerminalView(term, mod.then(if (sized) Modifier else Modifier.fillMaxSize()))
             }
         }

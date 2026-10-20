@@ -40,6 +40,10 @@ A PID alone is not evidence of rendering or successful process cleanup.
 | start | Tap the demo and wait for the coloured bars. | The picture appears inside the face, without a separate Android task for the client. |
 | pointer | Activate the window with another tap, then touch the bars. | Colours change; surrounding OWL UI remains accessible. |
 | keyboard | Open ⌨ and press Space; also try a hardware keyboard if available. | Keys reach the active client and change colours. Escape exits. |
+| controls | After starting, hold OWL Left + A together for at least five seconds, then release A, then Left. Repeat with a diagonal + A/B and Start/Select. | Corresponding bottom blocks light simultaneously and go dark individually; no home menu or tile editor opens, and touching outside the client does not deactivate other held controls. |
+| control-cancel | Hold OWL controls and slide out, use Back, change pages, open the drawer, switch apps and lock/unlock. Hide/remove a control or change its keys/target while held. | Every cancelled key is released. Returning does not replay old presses; a fresh press works. |
+| control-ownership | Use two controls bound to Z, two fingers on one control, and a physical Z key if available. Release one source at a time. | Z remains held until its final source releases. Other controls continue working. |
+| control-target | Use two LinuxApp nodes with distinct inputIds; also try duplicate inputIds, a missing/hidden target and invalid dynamic keys. | Controls route only to the named session. Missing/ambiguous/invalid controls are disabled; stale events never reach another client. |
 | focus | While touching or holding a key, use Back, an outside tap, a page change and an app switch. | The gesture ends, no input stays pressed, and the next window receives no stale events. |
 | lock | Hold a touch or mouse button while locking the phone, then unlock. | New input works without a stuck gesture. |
 | resize | Rotate the phone and show/hide the soft keyboard. | The client receives the new size, input coordinates match, and the original space is restored after keyboard dismissal. |

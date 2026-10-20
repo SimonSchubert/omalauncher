@@ -43,7 +43,7 @@ fun newOwlCommand(
     "Read README.md, then ask me what to create: ${kind.what()}. " +
         (page?.let { "It's for the empty page left of my home pages, which is waiting for it: give it page: $it. " } ?: "") +
         (if (kind == OwlKind.Face || kind == OwlKind.Widget) {
-            "A compatible Linux Wayland program can run inside a LinuxApp node (owl 13); read README.md's LinuxApp section and examples/46-linux-app.owl when that fits the request. "
+            "A compatible Linux Wayland program can run inside a LinuxApp node (owl 13); LinuxKey controls target its inputId and hold ordinary keys/chords with multiple fingers. Read README.md's LinuxApp section and examples/46-linux-app.owl and 47-linux-keys.owl when that fits the request. "
         } else "") +
         "$DEPENDENCIES $CHECK",
 )

@@ -89,7 +89,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, or a font for `font: logo` (owl 10, see Fonts), so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see Sharing) |
-| `meta { owl: 11 }` | the language version the widget needs (this launcher has 13; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, `enc`, `post`, images from the web, `sound` and `screenInset` 8, and `parseTime`, `fmtAgo`, `fmtNum`, `random`, `shuffle`, `hash`, `fmtTime`'s zone and language, `set`, `remove`, `merge`, `reduce`, `scan`, `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten`'s depth, `on … first`, and `if` and `let` in handlers 9, and `face "…" { }` files, `onLongPress`, Text's `spans`, `fontWeight` and `letterSpacing`, gradient backgrounds, `frost`, fonts of a widget's own and Canvas `text`'s `font`, `fontWeight`, `italic` and `letterSpacing`, `android.agents`, `android.recent`, `open`, `ask`, `Popup` and Input's `underline` 10, and `android.drawer`, `appAction`, `workApps`, `rank`, `strongMatch`, `chunk`, Column's and Grid's `lazy`, `panel "…" { }` files with `query`, `enter`, `onSubmit` and `onKey`, `shortcuts`, Column's and Grid's `reverse`, Image's `label`, Text's `minLines`, an app's `statusBar` and a Column in a Row as wide as its content 11, and `screenTop` 12, and `LinuxApp` 13; using them without declaring it is an error |
+| `meta { owl: 11 }` | the language version the widget needs (this launcher has 13; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, `enc`, `post`, images from the web, `sound` and `screenInset` 8, and `parseTime`, `fmtAgo`, `fmtNum`, `random`, `shuffle`, `hash`, `fmtTime`'s zone and language, `set`, `remove`, `merge`, `reduce`, `scan`, `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten`'s depth, `on … first`, and `if` and `let` in handlers 9, and `face "…" { }` files, `onLongPress`, Text's `spans`, `fontWeight` and `letterSpacing`, gradient backgrounds, `frost`, fonts of a widget's own and Canvas `text`'s `font`, `fontWeight`, `italic` and `letterSpacing`, `android.agents`, `android.recent`, `open`, `ask`, `Popup` and Input's `underline` 10, and `android.drawer`, `appAction`, `workApps`, `rank`, `strongMatch`, `chunk`, Column's and Grid's `lazy`, `panel "…" { }` files with `query`, `enter`, `onSubmit` and `onKey`, `shortcuts`, Column's and Grid's `reverse`, Image's `label`, Text's `minLines`, an app's `statusBar` and a Column in a Row as wide as its content 11, and `screenTop` 12, and `LinuxApp` and `LinuxKey` 13; using them without declaring it is an error |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see Screens (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -308,7 +308,8 @@ when lists reorder), and `let x = ...` inside any node.
 | `Slider` | a horizontal slider: `value`, `min` (0), `max` (100), `step`, `color`, `track`, `live`. `onChange` gets the chosen `value` when the finger lifts, or at every step while dragging with `live: true`. Full width and 28 dp tall unless sized (owl 4) |
 | `Input` | a one-line text field: `text` (what it shows; replaces what's typed when it changes), `placeholder`, `color`, `fontSize`, `clear: true` (empty it after submitting), `underline: false` (no line under it, for a field inside a frame of its own, owl 10), `focus: true` (focus it and raise the keyboard when the screen opens, or when `focus` turns true; only in a `screen { }`, owl 6). `onChange` gets the text as `value` as it's typed, `onSubmit` when the keyboard's send key is pressed (owl 4) |
 | `Popup` | a menu over everything, the tile, the bar and other tiles, at the start of the node that holds it: `position: below` (the default) or `above`, kept on screen and on the other side when there's no room, `gap`, `align`. Show it with `visible`; a tap outside it or Back runs `onDismiss`, which it must have, so it can close: `Box { Text { text: "menu"; onTap: open = true }  Popup { visible: open; onDismiss: open = false; … } }`. Framed like the launcher's menus unless it has a `background` or `border`. It takes no room where it's written (owl 10) |
-| `LinuxApp` | a foreground Wayland program embedded in the face/tile (owl 13): `command` (required), `appId` (optional exact Wayland ID). Starts on tap. See below |
+| `LinuxApp` | a foreground Wayland program embedded in the face/tile (owl 13): `command` (required), `appId` (optional exact Wayland ID), `inputId` (optional name for OWL controls). Starts on tap. See below |
+| `LinuxKey` | a holdable keyboard control for a named LinuxApp (owl 13): `target`, `keys` (one name or a list), `text`, `color`. Supports simultaneous fingers and automatic release. See below |
 | `Terminal` | a live terminal (foot) in the tile: `command` (default: the login shell), `fontSize` (points; foot.ini has 8). Fills the space unless sized. See below |
 
 Every node also takes:
@@ -948,7 +949,8 @@ face "linux window" {
 }
 ```
 
-`examples/46-linux-app.owl` is a ready-to-copy version. Examples are inactive
+`examples/46-linux-app.owl` is a ready-to-copy version;
+`examples/47-linux-keys.owl` adds OWL keyboard controls. Examples are inactive
 until copied from `examples/` into the widgets directory. Declare every package
 your command needs in `requires { pacman: [...] }`; declare the Linux client and
 its runtime dependencies, not just the shell used to launch it.
@@ -1003,12 +1005,66 @@ packages declared in `requires`. Touch/pointer and keyboard input inside the
 active LinuxApp window already reach that client. Verify its app ID, rendering
 backend and controls on the phone, as with any other embedded application.
 
-A separate extension is needed if a face draws its controller as OWL controls
-outside the emulator window: for example, holding an OWL directional button and
-an OWL A button at once. There is currently no OWL action that targets key-down
-and key-up events at a LinuxApp, so such a controller needs an input API and
-multi-touch handling. This is additional to the existing input inside the
-client window, and is not required for an emulator controlled through that window.
+### Keyboard controls in OWL
+
+Give the window an `inputId`, then use `LinuxKey` nodes to send ordinary physical
+keyboard keys to it. The client needs keyboard bindings, not a special controller
+API. This complete shell example holds Z and Left independently; the Save control
+holds Ctrl+S as a chord:
+
+```owl
+face "linux keyboard controls" {
+  meta { owl: 13 }
+  requires { pacman: ["foot", "bash"] }
+  page: 0
+  Column {
+    fill: true
+    LinuxApp {
+      inputId: "client"
+      command: 'foot --app-id="$OMALAUNCHER_APP_ID" -e bash'
+      weight: 1
+      fill: width
+    }
+    Row {
+      LinuxKey { target: "client"; keys: "left"; text: "←"; size: 56 }
+      LinuxKey { target: "client"; keys: "z"; text: "A"; size: 56 }
+      LinuxKey { target: "client"; keys: ["leftctrl", "s"]; text: "Save" }
+    }
+  }
+}
+```
+
+`inputId` and `target` are names local to one running face/widget. Use 1–64 letters,
+digits, underscores, dots or hyphens, starting with a letter, digit or underscore.
+They are independent of the Wayland `appId`. Names must identify one session;
+duplicate names on different sessions disable their controls. In loops/components,
+pass a unique name per session. Targets must be rendered; hiding/removing the
+LinuxApp disables its controls even though its process remains running.
+
+Start the program by tapping its LinuxApp first. Controls are disabled until its
+window exists. A press activates that client without opening the soft keyboard,
+sends key-down immediately and holds until release; sliding outside the control
+cancels the hold. Several fingers can hold different controls, or the same control.
+Overlapping chords and a real keyboard retain their independent holds. Back, page
+changes, focus loss, stop, node removal and target/key changes release held keys.
+Cancelled queued presses cannot reach a different window or reappear after focus
+returns. Controls do not automatically repeat: games can poll the held key state.
+An accessibility click sends one press/release pair. `LinuxKey` owns its gesture;
+do not attach `onTap`, `onDrag` or `onLongPress` handlers to it.
+
+`keys` accepts one case-insensitive name or a list of 1–16 names for a chord.
+Names are physical US-layout positions: `a`–`z`, `0`–`9`, `left`, `right`, `up`,
+`down`, `enter`, `space`, `escape`, `tab`, `backspace`, `home`, `end`, `pageup`,
+`pagedown`, `insert`, `delete`, `f1`–`f12`, `leftshift`, `rightshift`, `leftctrl`,
+`rightctrl`, `leftalt`, `rightalt`, `leftmeta`, `rightmeta`, `minus`, `equal`,
+`leftbracket`, `rightbracket`, `semicolon`, `apostrophe`, `grave`, `backslash`,
+`comma`, `period`, `slash`. Order chord modifiers before the other keys.
+Invalid dynamic names/keys disable the whole control. Labeling a button A does
+not choose an emulator binding: set `keys: "z"` and configure the emulator's A
+binding to that key. For a Game Boy face, lay out a directional pad, A/B and
+Start/Select with these nodes, and choose a compatible Linux emulator separately.
+The SDL demo under `examples/linux-app/` shows eight controls and visible held-key
+indicators without requiring an emulator or ROM.
 
 After saving, run `owl-check <file>` to validate the OWL and inspect the layout.
 The preview does not launch the graphical client, so it cannot establish live

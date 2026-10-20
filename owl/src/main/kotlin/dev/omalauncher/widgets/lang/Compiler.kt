@@ -804,6 +804,21 @@ class Compiler private constructor(
             }
             guest = true
         }
+        if (n.type == "LinuxApp" || n.type == "LinuxKey") {
+            val name = if (n.type == "LinuxApp") "inputId" else "target"
+            val target = props[name]
+            if (target == null && n.type == "LinuxKey") fail("LinuxKey needs target: a LinuxApp inputId in this widget", n.pos)
+            target?.const?.let {
+                if (!LinuxKeys.validTarget(it)) fail("${n.type} $name must be 1–64 letters, digits, underscores, dots or hyphens", n.pos)
+            }
+        }
+        if (n.type == "LinuxKey") {
+            val keys = props["keys"] ?: fail("LinuxKey needs keys: a key name or list of key names", n.pos)
+            keys.const?.let {
+                if (LinuxKeys.codes(it) == null) fail("LinuxKey keys must be known key names, for example \"z\" or [\"leftctrl\", \"s\"] (1–16 keys)", n.pos)
+            }
+            if (handlers.isNotEmpty()) fail("LinuxKey handles presses and releases itself; put actions on separate buttons", n.pos)
+        }
         if (n.type == "Image") body.props.firstOrNull { it.name == "src" }?.let { webFile(it.value, scope, "image") }
         // A shader animates only if its code reads `time`; code that's worked out at run time might.
         if (n.type == "Shader") {

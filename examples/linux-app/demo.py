@@ -43,6 +43,12 @@ if not renderer:
 event = (c.c_uint64 * 7)()
 w, h = integer(), integer()
 clicks = 0
+held = set()
+key_ups = 0
+max_held = 0
+# SDL key symbols for arrows, Z/X, Enter and right Shift. Bright blocks at the
+# bottom show simultaneous holds; they go dark as soon as each key is released.
+control_keys = [1073741904, 1073741906, 1073741905, 1073741903, 122, 120, 13, 1073742053]
 running = True
 try:
     while running:
@@ -53,10 +59,17 @@ try:
                 running = False
             elif kind == 0x300:  # SDL_KEYDOWN; Escape closes, other keys change the picture
                 key = struct.unpack_from("i", raw, 20)[0]
+                held.add(key)
+                max_held = max(max_held, len(held))
                 if key == 27:
                     running = False
                 else:
                     clicks += 1
+            elif kind == 0x301:  # SDL_KEYUP, including OWL controller releases
+                held.discard(struct.unpack_from("i", raw, 20)[0])
+                key_ups += 1
+            elif kind == 0x200 and raw[12] == 13:  # SDL_WINDOWEVENT_FOCUS_LOST
+                held.clear()
             elif kind == 0x401:  # SDL_MOUSEBUTTONDOWN, including touch-to-mouse
                 clicks += 1
                 set_title(window, f"LinuxApp demo - input {clicks}".encode())
@@ -68,6 +81,11 @@ try:
             color(renderer, *palette[(i + clicks) % 3], 255)
             rectangle = (integer * 4)(w.value // 10, h.value * (i + 1) // 5,
                                       max(1, w.value * (i + 2) // 5), max(1, h.value // 9))
+            fill(renderer, c.byref(rectangle))
+        for i, key in enumerate(control_keys):
+            color(renderer, *( (245, 240, 110) if key in held else (55, 65, 80) ), 255)
+            rectangle = (integer * 4)(i * w.value // 8 + 2, h.value * 9 // 10,
+                                      max(1, w.value // 8 - 4), max(1, h.value // 12))
             fill(renderer, c.byref(rectangle))
         present(renderer)
         time.sleep(1 / 20)

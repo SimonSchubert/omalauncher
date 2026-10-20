@@ -4,6 +4,23 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class InputLeaseTest {
+    @Test fun cancellingAReleasedShortPressStillInvalidatesQueuedInputAndUnregistersOnce() {
+        val queue = ArrayDeque<() -> Unit>()
+        val events = mutableListOf<String>()
+        val lease = InputLease(
+            dispatch = { queue.addLast(it) },
+            onClose = { events += "unregister" },
+            finish = { events += "release" },
+        )
+        lease.post { events += "down" }
+        lease.release()
+        lease.close()
+        lease.close()
+        lease.post { events += "late event" }
+        while (queue.isNotEmpty()) queue.removeFirst()()
+        assertEquals(listOf("unregister", "release"), events)
+    }
+
     @Test fun cancellationDropsPendingMotionAndClosesAnExecutedGestureExactlyOnce() {
         val queue = ArrayDeque<() -> Unit>()
         val delivered = mutableListOf<String>()

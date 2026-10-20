@@ -52,6 +52,28 @@ class WindowManager : WindowManagerHooks {
     /** Toplevels shown inside tiles. */
     private val embedded = HashSet<XdgToplevel>()
     private val inputLeases = HashMap<XdgToplevel, InputLease>()
+    private val keyLeases = HashMap<XdgToplevel, MutableSet<InputLease>>()
+
+    /** One physical press, independent of other controls and the real keyboard. UI thread only. */
+    internal fun holdKeys(window: XdgToplevel, codes: List<Int>): InputLease? {
+        if (window.surface.destroyed || window !== focused || codes.isEmpty()) return null
+        val owner = Any()
+        val epoch = synchronized(server) { server.input.keyboardEpoch }
+        lateinit var lease: InputLease
+        lease = InputLease(
+            dispatch = { event -> server.postInput { event() } },
+            finish = { server.input.releaseKeys(owner) },
+            onClose = {
+                keyLeases[window]?.let { leases ->
+                    leases.remove(lease)
+                    if (leases.isEmpty()) keyLeases.remove(window)
+                }
+            },
+        )
+        keyLeases.getOrPut(window) { linkedSetOf() }.add(lease)
+        lease.post { server.input.holdKeys(window.surface, owner, codes, epoch) }
+        return lease
+    }
 
     internal fun inputLease(window: XdgToplevel): InputLease {
         // A replacement view (including a drag copy) takes over. Its predecessor's late
@@ -65,6 +87,7 @@ class WindowManager : WindowManagerHooks {
 
     private fun releaseInput(window: XdgToplevel) {
         inputLeases.remove(window)?.close()
+        keyLeases.remove(window)?.toList()?.forEach { it.close() }
     }
 
     /**

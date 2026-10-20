@@ -97,5 +97,7 @@ OWL 13's `LinuxApp` embeds a foreground Wayland program directly inside a face
 or widget. The [OWL authoring guide](app/src/main/assets/widgets/README.md#linuxapp)
 explains the API and client requirements. A ready-to-copy foot example is in
 [widgets/examples/46-linux-app.owl](app/src/main/assets/widgets/examples/46-linux-app.owl).
+`LinuxKey` controls hold keys or chords in a named LinuxApp, including multiple
+fingers at once; see the [controller example](app/src/main/assets/widgets/examples/47-linux-keys.owl).
 The [SDL demo](examples/linux-app/README.md) and
 [device test guide](docs/LINUXAPP-TESTING.md) cover the isolated test APK.

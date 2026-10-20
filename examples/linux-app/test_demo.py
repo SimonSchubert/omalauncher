@@ -30,16 +30,19 @@ def send_input():
         if time.monotonic() > deadline:
             return
         time.sleep(0.01)
-    for kind in (0x300, 0x100):
+    for kind, key in ((0x300, 1073741904), (0x300, 122), (0x301, 1073741904), (0x301, 122), (0x100, 0)):
         event = (c.c_uint64 * 7)()
         c.memmove(c.byref(event), struct.pack('I', kind), 4)
-        if kind == 0x300:
-            c.memmove(c.byref(event, 20), struct.pack('i', 32), 4)
+        if kind in (0x300, 0x301):
+            c.memmove(c.byref(event, 20), struct.pack('i', key), 4)
         assert sdl.SDL_PushEvent(c.byref(event)) == 1
 threading.Thread(target=send_input, daemon=True).start()
 result = runpy.run_path(sys.argv[1])
-assert result['clicks'] == 1, result['clicks']
-print('Software SDL rendering, keyboard input and clean exit: PASS')
+assert result['clicks'] == 2, result['clicks']
+assert result['max_held'] == 2, result['max_held']
+assert result['key_ups'] == 2, result['key_ups']
+assert result['held'] == set(), result['held']
+print('Software SDL rendering, simultaneous keys, key-up and clean exit: PASS')
 '''
         result = subprocess.run([sys.executable, '-c', runner, str(root / 'demo.py')],
                                 env={**os.environ, 'SDL_VIDEODRIVER': 'dummy'},

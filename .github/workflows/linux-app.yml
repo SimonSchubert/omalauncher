@@ -27,7 +27,7 @@ jobs:
       - name: Install native build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libarchive-tools
+          sudo apt-get install -y libarchive-tools libsdl2-2.0-0
           ndk=$(sed -n 's/^NDK_VERSION=//p' scripts/fetch-proot.sh)
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" "platforms;android-37.0" "cmake;3.22.1"
       - name: Include Linux runtime
@@ -62,6 +62,7 @@ jobs:
           cp docs/LINUXAPP-TESTING.md dist/linux-app-test/README-TESTING.md
           cp scripts/collect-linuxapp-logs.sh dist/linux-app-test/
           cp examples/linux-app/linux-app.owl examples/linux-app/demo.py dist/linux-app-test/example/
+          cp app/src/main/assets/widgets/examples/47-linux-keys.owl dist/linux-app-test/example/
           printf 'commit=%s\napplicationId=dev.omalauncher.embedded\nlinuxRuntime=verified\n' "$GITHUB_SHA" > dist/linux-app-test/BUILD.txt
           (cd dist/linux-app-test && sha256sum app-embedded.apk > SHA256SUMS)
       - uses: actions/upload-artifact@v4
