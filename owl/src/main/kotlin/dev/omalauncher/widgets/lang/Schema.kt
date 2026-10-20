@@ -120,7 +120,9 @@ internal val SINCE =
         listOf(PANEL_FILE, QUERY, "onKey", "android.drawer", "appAction", "workApps", "shortcuts", APP_STATUS_BAR).associateWith { 11 } +
         listOf("Column.lazy", "Grid.lazy", "Column.reverse", "Grid.reverse", "Image.label", "Text.minLines", "rank", "strongMatch", "chunk").associateWith { 11 } +
         // owl 12: how much of an app's top a camera cutout covers, once it hides the status bar.
-        mapOf("screenTop" to 12)
+        mapOf("screenTop" to 12) +
+        // owl 13: the private space's lock, settings and install button, for the drawer's private tab.
+        mapOf("privateSpace" to 13)
 
 internal const val FACE_FILE = "face \"…\" { }"
 
@@ -195,6 +197,7 @@ internal val ACTION_WORDS =
         "notification" to setOf("open", "dismiss").let { Words(it, "notification takes ${it.joinToString()} and a notification's key") },
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
+        "privateSpace" to setOf("lock", "unlock", "toggle", "settings", "install", "hide", "show").let { Words(it, "privateSpace takes ${it.joinToString()}") },
     )
 
 /** The tile's size, readable anywhere a declaration of the same name doesn't shadow it. */

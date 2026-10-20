@@ -7,7 +7,7 @@ HOME SCREEN AND WIDGETS
 • Pages of widgets and pinned apps on a grid
 • Built-in widgets for the date and weather
 • A widget store with more widgets, written in a small open language you can edit yourself
-• An app drawer with search for all your Android apps
+• An app drawer with search for all your Android apps, with tabs for your work profile and private space
 
 ARCH LINUX (OPTIONAL)
 The launcher works without it. If you want it, Omalauncher downloads Arch Linux ARM and runs it with proot, without root.

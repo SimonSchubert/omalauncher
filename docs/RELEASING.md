@@ -49,4 +49,18 @@ retitle that section with the version when releasing.
 - `store/foreground-service-demo.mp4`: the recording for Play's
   foreground-service declaration.
 
+## New permissions
+
+A permission the last Play release didn't have sends the next one through a
+fresh review, so ship the privacy policy that explains it first.
+`ACCESS_HIDDEN_PROFILES` (the private space, Android 15+) is a normal
+permission: Play has no declaration form for it, but Android asks a launcher
+holding it to keep the private space's apps in a container of their own, let
+the user lock and unlock it and hide it while locked, and show none of its apps
+while it's locked, search included. The drawer's private tab does all of it,
+and private apps stay off home and out of app usage and `android.apps`; keep it
+that way when changing the drawer or what widgets see. To check before an
+upload: set up a private space on an Android 15+ phone or emulator, make
+Omalauncher the home app, and lock, unlock, hide and search it.
+
 Widget store previews are made with `scripts/store-previews.sh`; see its header.

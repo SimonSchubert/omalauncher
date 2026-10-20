@@ -73,13 +73,13 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `source dev = android.device` | the phone: `{model, maker, android, sdk, soc}` (the Linux side can't see these) |
 | `source sys = android.system every 5s` | the phone's state, polled: `{kernel, uptime, memory, storage, cpu, display, build, codename, patch, locale, timezone, launcher, theme, apps}`. `uptime` is in seconds; `memory` is `{total, used, available}` and `storage` `{total, used, free}`, in bytes; `cpu` is `{soc, maker, hardware, cores, abi, maxMhz}`; `display` is `{width, height, hz, dpi}`; `patch` is the security patch date, `launcher` this launcher's version, `theme` the Omarchy theme's name and `apps` how many Android apps are installed. See `20-fetch.owl` (owl 5) |
 | `source m = android.media` | what's playing in any app on the phone: `{available, playing, title, artist, album, app, package, position, duration, art}`, updated as it changes (`position` and `duration` in seconds; `art` goes in `Image { src: m.art }`). `available` is false until the user grants notification access; `media(...)` opens that setting then. See `examples/97-now-playing.owl` |
-| `source n = android.notifications` | the phone's notifications, newest first, updated as they come and go: `{available, count, items}`, each item `{key, app, package, profile, icon, title, text, time, clearable}` (`time` in Unix seconds; `profile` is `work` or `clone` for a notification from a work profile or a cloned app, else null; `icon` is the app's icon for `Image { src: i.icon }`, from that profile, owl 7). Ongoing ones (music, downloads) are left out. Needs the same notification access as media. See `examples/98-notifications.owl` (owl 4) |
+| `source n = android.notifications` | the phone's notifications, newest first, updated as they come and go: `{available, count, items}`, each item `{key, app, package, profile, icon, title, text, time, clearable}` (`time` in Unix seconds; `profile` is `work`, `clone` or `private` for a notification from a work profile, a cloned app or the private space, else null; `icon` is the app's icon for `Image { src: i.icon }`, from that profile, owl 7). Ongoing ones (music, downloads) are left out. Needs the same notification access as media. See `examples/98-notifications.owl` (owl 4) |
 | `source v = android.volume` | the media volume: `{level, muted, steps}` (`level` in percent, `steps` how many the phone has), updated as it changes. Set it with `volume(...)` (owl 4) |
 | `source a = android.alarm` | the next alarm set in any clock app: `{set, time, app}`, updated as it changes. `time` is in Unix seconds (`fmtTime(a.time, "EEE HH:mm")`, or `at a.time`), `app` the clock app's package (`androidApp(a.app)`); both null when no alarm is set (owl 7) |
-| `source a = android.apps` | the phone's launchable apps, updated as they're installed, removed and opened: a list of `{key, name, package, component, profile, system, icon, score, last}`. `key` is unique even with the same app in a work profile or a clone, and `androidApp(a.key)` opens that copy; `profile` is `work` or `clone` for those, else null; `icon` goes in `Image { src: a.icon }`. `score` and `last` (Unix seconds, null if never opened) are what the search ranks by: opens fade by half every two weeks, and `androidApp(...)` counts like opening from the drawer (owl 8) |
+| `source a = android.apps` | the phone's launchable apps, updated as they're installed, removed and opened: a list of `{key, name, package, component, profile, system, icon, score, last}`. `key` is unique even with the same app in a work profile or a clone, and `androidApp(a.key)` opens that copy; `profile` is `work` or `clone` for those, else null; `icon` goes in `Image { src: a.icon }`. `score` and `last` (Unix seconds, null if never opened) are what the search ranks by: opens fade by half every two weeks, and `androidApp(...)` counts like opening from the drawer (owl 8). The private space's apps aren't in it: only `android.drawer` lists them, see Private space |
 | `source ag = android.agents` | the coding agents installed in Linux: `{default, installed}`, each agent `{bin, name, description, command, key, icon}`, updated as they change. `default` is the one the prompt bar asks and `ask(text)` sends to, null with none installed; `open(a.key)` starts one without a prompt, and `icon` is its logo (owl 10) |
 | `source r = android.recent` | the apps in the recent strip above the prompt bar, last opened first: a list of `{key, kind, name, icon, score, last}`, Android and Linux apps, owl apps and shortcuts alike (`kind` is `android`, `linux`, `owl` or `shortcut`). `open(r.key)` opens one, `icon` goes in `Image { src: r.icon }`, and `score` and `last` are as in `android.apps`. Like the strip, it reorders once home is out of sight, not under the finger that tapped (owl 10) |
-| `source d = android.drawer` | the app drawer: `{apps, linux, monochrome, work, updates}`, updated as it changes. `apps` lists every app in the drawer's order, owl apps, Linux apps, shortcuts and Android apps, then the work profile's shortcuts and apps, each `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`: `kind`, `icon`, `score` and `last` as in `android.recent`, `label` what screen readers should say for it, for an Image's `label` ("WhatsApp work"), `profile` as in `android.apps`, `alias` what search matches besides the name (`WhatsApp work`), `paused` for an app in a paused work profile (the drawer dims those), and `actions` the words of its long-press menu for `appAction(word, a.key)`. `hasIcon` is false while `icon` would draw nothing (no icon, or not loaded yet), when the drawer shows `initials` on a badge instead; `monochrome` on `d` says icons are silhouettes, which the drawer puts on a badge too. `d.linux` is `installed`, `installing` or `missing`; `d.work` is `{paused}` while there's a work profile, else null; `d.updates` is how many system updates wait, the dot on the drawer's settings button. `open(a.key)` opens one (owl 11) |
+| `source d = android.drawer` | the app drawer: `{apps, linux, monochrome, work, private, updates}`, updated as it changes. `apps` lists every app in the drawer's order, owl apps, Linux apps, shortcuts and Android apps, then the work profile's shortcuts and apps, then the private space's while it's unlocked, each `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`: `kind`, `icon`, `score` and `last` as in `android.recent`, `label` what screen readers should say for it, for an Image's `label` ("WhatsApp work"), `profile` as in `android.apps` or `private`, `alias` what search matches besides the name (`WhatsApp work`, `WhatsApp private`), `paused` for an app in a paused work profile (the drawer dims those), and `actions` the words of its long-press menu for `appAction(word, a.key)`. `hasIcon` is false while `icon` would draw nothing (no icon, or not loaded yet), when the drawer shows `initials` on a badge instead; `monochrome` on `d` says icons are silhouettes, which the drawer puts on a badge too. `d.linux` is `installed`, `installing` or `missing`; `d.work` is `{paused}` while there's a work profile, else null; `d.private` is `{locked, hidden, settings}` while there's a private space (see Private space), else null; `d.updates` is how many system updates wait, the dot on the drawer's settings button. `open(a.key)` opens one (owl 11) |
 | `source m = android.modes` | the phone's modes: `{dnd, saver, ringer, torch}`, updated as they change. `dnd` is Do Not Disturb in any form, `saver` battery saver, `ringer` is `normal`, `vibrate` or `silent`, and `torch` is null on a phone without a flash. Switch the torch with `torch(...)` (owl 7) |
 | `state x = 0` | a value that handlers can change. Add `persist` to keep it across restarts: `state endsAt = 0 persist` |
 | `let x = expr` | a derived value, recomputed only when what it reads changes. It can use sources, state and earlier lets |
@@ -89,7 +89,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, or a font for `font: logo` (owl 10, see Fonts), so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see Sharing) |
-| `meta { owl: 11 }` | the language version the widget needs (this launcher has 12; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, `enc`, `post`, images from the web, `sound` and `screenInset` 8, and `parseTime`, `fmtAgo`, `fmtNum`, `random`, `shuffle`, `hash`, `fmtTime`'s zone and language, `set`, `remove`, `merge`, `reduce`, `scan`, `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten`'s depth, `on … first`, and `if` and `let` in handlers 9, and `face "…" { }` files, `onLongPress`, Text's `spans`, `fontWeight` and `letterSpacing`, gradient backgrounds, `frost`, fonts of a widget's own and Canvas `text`'s `font`, `fontWeight`, `italic` and `letterSpacing`, `android.agents`, `android.recent`, `open`, `ask`, `Popup` and Input's `underline` 10, and `android.drawer`, `appAction`, `workApps`, `rank`, `strongMatch`, `chunk`, Column's and Grid's `lazy`, `panel "…" { }` files with `query`, `enter`, `onSubmit` and `onKey`, `shortcuts`, Column's and Grid's `reverse`, Image's `label`, Text's `minLines`, an app's `statusBar` and a Column in a Row as wide as its content 11, and `screenTop` 12; using them without declaring it is an error |
+| `meta { owl: 11 }` | the language version the widget needs (this launcher has 13; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, `enc`, `post`, images from the web, `sound` and `screenInset` 8, and `parseTime`, `fmtAgo`, `fmtNum`, `random`, `shuffle`, `hash`, `fmtTime`'s zone and language, `set`, `remove`, `merge`, `reduce`, `scan`, `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten`'s depth, `on … first`, and `if` and `let` in handlers 9, and `face "…" { }` files, `onLongPress`, Text's `spans`, `fontWeight` and `letterSpacing`, gradient backgrounds, `frost`, fonts of a widget's own and Canvas `text`'s `font`, `fontWeight`, `italic` and `letterSpacing`, `android.agents`, `android.recent`, `open`, `ask`, `Popup` and Input's `underline` 10, and `android.drawer`, `appAction`, `workApps`, `rank`, `strongMatch`, `chunk`, Column's and Grid's `lazy`, `panel "…" { }` files with `query`, `enter`, `onSubmit` and `onKey`, `shortcuts`, Column's and Grid's `reverse`, Image's `label`, Text's `minLines`, an app's `statusBar` and a Column in a Row as wide as its content 11, and `screenTop` 12, and `privateSpace` 13; using them without declaring it is an error |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see Screens (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -301,7 +301,7 @@ when lists reorder), and `let x = ...` inside any node.
 | `Progress` | `value`, `max` (100), `color`, `track` |
 | `Ring` | circular progress: `value`, `max` (1), `color`, `track`, `thickness` (6), `start`/`sweep` (degrees; `start: 225; sweep: 270` makes a gauge). 64 dp unless sized |
 | `Sparkline` | `values` (a list, usually a `history`), `min` (0), `max`, `color`, `area: true` or a color, `thickness` |
-| `Image` | `src`: an `asset`, a path in this system (`"~/pics/a.png"`), an `https://` URL (owl 8, see Images from the web) or an Android app's icon (`"app:org.pkg"`, as the drawer shows it, badge included; a silhouette in the foreground color with monochrome icons; `"app:org.pkg@work"` and `"@clone"` ask for the copy in a work profile or the clone, owl 7), or any app's icon by its `android.recent` key (`"icon:l:foot"`, Linux and owl apps and shortcuts too; `android.recent` and `android.agents` give it as `icon`), `fit: contain/cover/fill`, `tint`, `label` (what screen readers say for it, owl 11) |
+| `Image` | `src`: an `asset`, a path in this system (`"~/pics/a.png"`), an `https://` URL (owl 8, see Images from the web) or an Android app's icon (`"app:org.pkg"`, as the drawer shows it, badge included; a silhouette in the foreground color with monochrome icons; `"app:org.pkg@work"` and `"@clone"` ask for the copy in a work profile or the clone, owl 7, and `"@private"` the private space's, while it's unlocked), or any app's icon by its `android.recent` key (`"icon:l:foot"`, Linux and owl apps and shortcuts too; `android.recent` and `android.agents` give it as `icon`), `fit: contain/cover/fill`, `tint`, `label` (what screen readers say for it, owl 11) |
 | `Canvas` | free drawing, below. Fills the space unless sized |
 | `Shader` | an AGSL shader, below. Fills the space unless sized |
 | `Spacer` | empty space: `size`, `width`, `height` or `weight` |
@@ -475,6 +475,7 @@ after it in its block (and blocks inside them), and needs a name not used for a 
 | `appAction("pin", a.key)` | the drawer's long-press menu for an app from `android.drawer`: `pin` (add to home, on the page showing), `info` (Android's app info), `uninstall` (Android asks first), `remove` (a shortcut, or an owl app, whose file goes to `.removed/`), `edit` (the default agent on an owl app's file) and `share` (an owl app's link or QR code). An entry the app's `actions` don't list does nothing. The store's reviewer sees which entries a widget uses (owl 11) |
 | `s = shortcuts(a.key)` | an app's shortcuts, as its long-press menu offers them (New tab, a recent chat), into the state `s` once they've loaded: a list of `{key, name, icon}`, empty for an app with none. `open(s.key)` opens one and `appAction("pin", s.key)` puts it on home (owl 11) |
 | `workApps("toggle")` | pauses the work profile's apps or turns them back on, as the drawer's switch does: `pause`, `resume` or `toggle`. Android may ask for the work PIN, and only lets the default launcher (owl 11) |
+| `privateSpace("toggle")` | the private space's buttons on the drawer's private tab: `lock`, `unlock` or `toggle` it (unlocking asks for its PIN or fingerprint), `install` opens the app store installing into it while it's unlocked, `settings` Android's private space settings (Android 16 on, when `d.private.settings`), and `hide` and `show` whether the drawer hides it while it's locked. See Private space (owl 13) |
 | `ask(text)` | opens a terminal with the default agent answering `text`, as sending it from the prompt bar does; `ask(text, "codex")` asks that installed agent. Without one installed it opens the agents settings. The store's reviewer sees what a widget asks (owl 10) |
 | `copy(text)` | copies text to the Android clipboard |
 | `notify("title", "text")` | posts an Android notification (if the launcher may post them) |
@@ -829,6 +830,51 @@ between its lines. Without `onKey`, the keys stay with the bar and do what they 
 panel as opening an app from the drawer does, and `close()` slides it away. Besides `enter`, a panel has no
 properties, title or icon; like an app's, its nodes are the screen's. Give a long list `lazy: true`.
 
+### Private space
+
+Android 15 and newer can keep apps in a private space, a profile of its own behind its own lock. Android shows
+it only to the default home app, so the drawer lists it once Omalauncher is your home app, the way it lists a work
+profile: on a private tab, after the personal and work tabs, with a lock on each app's icon. Screen readers say
+"Private WhatsApp", and search finds it by "WhatsApp private" too.
+
+While the space is locked, none of its apps are listed: not on the tab, in search, `android.drawer` or anywhere
+else. Its tab then only offers to unlock it (`[unlock]`, which asks for its PIN or fingerprint). Unlocked, the tab
+lists its apps and shortcuts, with `[install]` to install apps into it from the app store, `[settings]` for
+Android's private space settings (Android 16 on), and `[lock]`. Locking it stops its apps, and they leave the list
+at once.
+
+The space can hide while it's locked: then there's no private tab at all, and only typing "private" offers to unlock
+it. Turn that on in Android's private space settings (Android 16 on, "hide when locked"), or, before Android 16,
+with the drawer's own "hide while locked" switch on the unlocked tab (`privateSpace("hide")`).
+
+To keep it private, the private space's apps never go on home (no "add to home" in their menu, and `layout.toml`
+can't place them), opening them isn't counted (they never show among recent apps or in `android.recent`), and
+`android.apps` leaves them out. `d.private` is `{locked, hidden, settings}` while there's a private space: `hidden`
+while it hides as it locks, `settings` while `privateSpace("settings")` can open Android's settings for it. A drawer
+of your own should keep them in a container of their own too, with a way to lock it. Until it declares `owl: 13`,
+`android.drawer` leaves the private space out for it (no private apps, `d.private` null), so a drawer written before
+can't mix them in with the personal ones:
+
+```owl
+panel "private" {
+  meta { owl: 13 }
+  source d = android.drawer
+  Column {
+    visible: d.private != null
+    Row {
+      Text { text: d.private.locked ? "private space locked" : "private space"; weight: 1 }
+      Text { text: d.private.locked ? "[unlock]" : "[lock]"; onTap: privateSpace("toggle") }
+    }
+    Grid {
+      columns: 5
+      for a in d.apps.filter(a => a.profile == "private") key a.key {
+        Column { align: center; onTap: open(a.key); Image { src: a.icon; size: 52; label: a.label }; Text { text: a.name; style: small } }
+      }
+    }
+  }
+}
+```
+
 ## Components
 
 ```owl
@@ -957,7 +1003,8 @@ tiles = [
 - `app` is an Android package (`"org.mozilla.firefox"`), an activity with its
   profile when there's more than one (`"com.android.chrome/.Main@10"`),
   `"linux:<desktop id>"`, or `"owl:<file>"` for an owl app. Adding one pins it;
-  removing it takes it off home (it stays installed).
+  removing it takes it off home (it stays installed). The private space's apps
+  can't go on home, which shows while the space is locked too.
 - A widget file left out of the file stays where it is, and a new file goes by
   its `page:`, `order:` and `size:`. To take a widget off home, move its file to
   `.removed/`.

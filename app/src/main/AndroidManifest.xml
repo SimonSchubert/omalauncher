@@ -14,6 +14,12 @@
     <!-- Uninstall from the app drawer's long-press menu (ACTION_DELETE). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
+    <!-- Android 15+: the private space's apps, on the drawer's private tab while it's unlocked
+         (AndroidApps.kt). A normal permission, granted at install; Android shows the space only to
+         the default home app, which must keep its apps out of sight, search included, while it's
+         locked. -->
+    <uses-permission android:name="android.permission.ACCESS_HIDDEN_PROFILES" />
+
     <uses-feature
         android:name="android.software.live_wallpaper"
         android:required="false" />

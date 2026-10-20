@@ -67,6 +67,7 @@ import dev.omalauncher.ui.act
 import dev.omalauncher.ui.actionWords
 import dev.omalauncher.ui.kind
 import dev.omalauncher.ui.profileKind
+import dev.omalauncher.ui.profileWord
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.SettingsPage
 import dev.omalauncher.ui.allApps
@@ -233,16 +234,18 @@ class WidgetServices(
 
     override fun androidImage(src: String) = media.art(src)
 
-    /** "work" or "clone" for an app in a profile beside the launcher's own, as the drawer marks it; null for its own. */
+    /** "work", "clone" or "private" for an app in a profile beside the launcher's own, as the drawer marks it; null for its own. */
     private fun profileKind(user: UserHandle): String? {
         if (user == Process.myUserHandle()) return null
         val serial = context.getSystemService(UserManager::class.java).getSerialNumberForUser(user)
-        return if (runtime.androidApps.cloned(serial)) "clone" else "work"
+        val apps = runtime.androidApps
+        return profileWord(serial, apps.cloned(serial), apps.isPrivate(serial))
     }
 
     /**
      * An app's icon as the drawer shows it (its silhouette with monochrome icons), badge included. By package, the launcher's
-     * own profile first; `pkg@work` and `pkg@clone` ask for the copy in a work profile or a clone profile, and nothing else.
+     * own profile first; `pkg@work`, `pkg@clone` and `pkg@private` ask for the copy in a work profile, a clone profile or
+     * the private space (only while it's unlocked), and nothing else.
      */
     override fun appIcon(pkg: String): ImageBitmap? {
         val apps = runtime.androidApps
@@ -251,7 +254,8 @@ class WidgetServices(
             when (pkg.substringAfter('@', "")) {
                 "work" -> apps.apps.firstOrNull { it.component.packageName == name && it.work }
                 "clone" -> apps.apps.firstOrNull { it.component.packageName == name && it.clone }
-                "" -> apps.apps.firstOrNull { it.component.packageName == name && it.profile == null } ?: apps.apps.firstOrNull { it.component.packageName == name }
+                "private" -> apps.apps.firstOrNull { it.component.packageName == name && it.privateSpace }
+                "" -> apps.apps.firstOrNull { it.component.packageName == name && it.profile == null } ?: apps.apps.firstOrNull { it.component.packageName == name && !it.privateSpace }
                 else -> null
             } ?: return null
         val key = androidAppKey(app.component, app.profile)
@@ -362,7 +366,7 @@ class WidgetServices(
                 "timezone" to Str(java.util.TimeZone.getDefault().id),
                 "launcher" to Str(BuildConfig.VERSION_NAME),
                 "theme" to (runtime.themes.current?.title?.let(::Str) ?: Null),
-                "apps" to num(runtime.androidApps.apps.size.toLong()),
+                "apps" to num(runtime.androidApps.apps.count { !it.privateSpace }.toLong()),
             ),
         )
     }
@@ -371,11 +375,12 @@ class WidgetServices(
      * Launchable Android apps for `source a = android.apps`, updated as apps come and go and are opened, each `{key, name, package, component, profile, system, icon, score, last}`.
      * `key` is [dev.omalauncher.AndroidApp.key], unique across profiles, for `androidApp(a.key)`; `profile` is `work` or
      * `clone` as on notifications, else null; `icon` is the `app:` src for that copy. `score` and `last` are what the
-     * search ranks by ([dev.omalauncher.AppUsage]), so a widget can rank apps the same way.
+     * search ranks by ([dev.omalauncher.AppUsage]), so a widget can rank apps the same way. The private space's apps
+     * are left out: only the drawer lists them, and only while it's unlocked.
      */
     private fun apps(): Value =
         Lst(
-            runtime.androidApps.apps.take(Builtins.MAX_LIST).map { app ->
+            runtime.androidApps.apps.filter { !it.privateSpace }.take(Builtins.MAX_LIST).map { app ->
                 val kind = profileKind(app.user)
                 val usage = "a:" + app.key
                 Obj(
@@ -441,22 +446,25 @@ class WidgetServices(
         )
 
     /**
-     * The drawer for `source d = android.drawer`: `{apps, linux, monochrome, work, updates}`. `apps` is every app in the drawer's
-     * order (owl apps, Linux apps, shortcuts, Android apps, then the work profile's shortcuts and apps), each
-     * `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`:
-     * - `label` what screen readers say for it ("WhatsApp work"), for an Image's `label`; `profile` as in `android.apps`; `alias` what search matches besides the name ("WhatsApp work");
+     * The drawer for `source d = android.drawer`: `{apps, linux, monochrome, work, private, updates}`. `apps` is every app in the drawer's
+     * order (owl apps, Linux apps, shortcuts, Android apps, then the work profile's shortcuts and apps, then the private
+     * space's while it's unlocked), each `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`:
+     * - `label` what screen readers say for it ("WhatsApp work"), for an Image's `label`; `profile` as in `android.apps`, or `private`; `alias` what search matches besides the name ("WhatsApp work");
      * - `paused` for an app in a paused work profile; `actions` the words its long-press menu offers, for appAction(...);
      * - `hasIcon` whether `icon` draws anything yet; without, the drawer shows `initials` on a badge, as it does a
      *   silhouette when `monochrome`.
      * `linux` is "installed", "installing" or "missing"; `work` is `{paused}` while there's a work profile, else null;
+     * `private` is `{locked, hidden, settings}` while there's a private space this launcher may see, else null;
      * `updates` counts the system updates waiting.
      */
     private fun drawer(): Value {
         val apps = runtime.androidApps
+        val personal = { p: Long? -> p == null || apps.cloned(p) }
         val hits =
             runtime.widgets.apps().map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } +
-                apps.shortcuts.filter { !it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { !it.work }.map { AppHit.Android(it) } +
-                apps.shortcuts.filter { it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.work }.map { AppHit.Android(it) }
+                apps.shortcuts.filter { personal(it.profile) }.map { AppHit.Shortcut(it) } + apps.apps.filter { personal(it.profile) }.map { AppHit.Android(it) } +
+                apps.shortcuts.filter { it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.work }.map { AppHit.Android(it) } +
+                apps.shortcuts.filter { it.privateSpace }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.privateSpace }.map { AppHit.Android(it) }
         val list =
             hits.take(Builtins.MAX_LIST).map { hit ->
                 Obj(
@@ -479,7 +487,17 @@ class WidgetServices(
                 )
             }
         val work = if (apps.workProfiles.isEmpty()) Null else Obj(mapOf("paused" to bool(apps.workProfiles.any { apps.paused(it) })))
-        return Obj(mapOf("apps" to Lst(list), "linux" to Str(linuxWord(runtime.bootstrap.state.value)), "monochrome" to bool(LauncherStyle.monochromeIcons), "work" to work, "updates" to Num((runtime.updates.pending?.count ?: 0).toDouble())))
+        val space = apps.privateSpace?.let { Obj(mapOf("locked" to bool(it.locked), "hidden" to bool(it.hidden), "settings" to bool(apps.privateSettings))) } ?: Null
+        return Obj(
+            mapOf(
+                "apps" to Lst(list),
+                "linux" to Str(linuxWord(runtime.bootstrap.state.value)),
+                "monochrome" to bool(LauncherStyle.monochromeIcons),
+                "work" to work,
+                "private" to space,
+                "updates" to Num((runtime.updates.pending?.count ?: 0).toDouble()),
+            ),
+        )
     }
 
     /** Android hides the battery from the guest (/sys/class/power_supply), so expose it here. */
@@ -555,6 +573,7 @@ class WidgetServices(
             "ask" -> ask(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
             "appAction" -> args.getOrNull(1)?.takeIf { it != Null }?.let { appAction(arg, it.toString()) }
             "workApps" -> workApps(arg)
+            "privateSpace" -> privateSpace(arg)
         }
         // Anything the action changed should show up without waiting for the next interval.
         scope.launch {
@@ -718,7 +737,7 @@ class WidgetServices(
         val apps = runtime.androidApps
         val app = apps.apps.firstOrNull { it.key == arg } ?: apps.apps.firstOrNull { it.component.packageName == arg && it.profile == null }
         if (app != null) {
-            runtime.usage.record("a:" + app.key)
+            if (!app.privateSpace) runtime.usage.record("a:" + app.key)
             apps.open(app)
             return
         }
@@ -774,6 +793,25 @@ class WidgetServices(
                 else -> apps.workProfiles.none { apps.paused(it) }
             },
         )
+    }
+
+    /**
+     * privateSpace("lock"), "unlock" or "toggle": the drawer's lock for the private space (unlocking asks for its PIN);
+     * "settings" Android's private space settings (16 on), "install" the app store installing into it while it's
+     * unlocked, "hide" and "show" whether the drawer hides it while it's locked.
+     */
+    private fun privateSpace(word: String) {
+        val apps = runtime.androidApps
+        val space = apps.privateSpace ?: return
+        when (word) {
+            "lock" -> apps.lockPrivate(true)
+            "unlock" -> apps.lockPrivate(false)
+            "toggle" -> apps.lockPrivate(!space.locked)
+            "settings" -> apps.openPrivateSettings()
+            "install" -> apps.installPrivate()
+            "hide" -> apps.hidePrivate(true)
+            "show" -> apps.hidePrivate(false)
+        }
     }
 
     /**

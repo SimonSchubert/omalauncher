@@ -283,14 +283,14 @@ class HomeStore(
         return shortcuts.items.firstOrNull { it.key.startsWith(APP) && it.profile == null && it.component?.packageName == n }?.key
     }
 
-    /** A shortcut for an app the file pins that home didn't have yet; null when it isn't on the phone. */
+    /** A shortcut for an app the file pins that home didn't have yet; null when it isn't on the phone, or is in the private space, which stays off home. */
     private fun newShortcut(key: String): Shortcut? =
         when {
-            key.startsWith(APP) -> runtime.androidApps.apps.firstOrNull { APP + it.key == key }?.let { Shortcut(key, 1, it.label, component = it.component, profile = it.profile) }
+            key.startsWith(APP) -> runtime.androidApps.apps.firstOrNull { APP + it.key == key && !it.privateSpace }?.let { Shortcut(key, 1, it.label, component = it.component, profile = it.profile) }
             key.startsWith(LINUX) -> runtime.linuxApps.apps.firstOrNull { LINUX + it.id == key }?.let { Shortcut(key, 1, it.name, linux = it) }
             key.startsWith(OWL) -> engine.specs.firstOrNull { OWL + it.file.name == key && it.kind == OwlKind.App }?.let { Shortcut(key, 1, it.name, owl = it.file.name) }
             key.startsWith(SHORTCUT) ->
-                runtime.androidApps.shortcuts.firstOrNull { SHORTCUT + it.key == key }?.let {
+                runtime.androidApps.shortcuts.firstOrNull { SHORTCUT + it.key == key && !it.privateSpace }?.let {
                     Shortcut(key, 1, it.label, profile = it.profile, androidShortcut = it.ref)
                 }
             else -> null

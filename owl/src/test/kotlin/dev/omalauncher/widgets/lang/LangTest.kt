@@ -745,6 +745,16 @@ class LangTest {
         }
     }
 
+    @Test fun privateSpaceLocksFromTheDrawer() {
+        Compiler.compile(
+            "widget {\n meta { owl: 13 }\n source d = android.drawer\n" +
+                " Text { text: d.private.locked ? \"[unlock]\" : \"[lock]\"; onTap: privateSpace(\"toggle\") }\n" +
+                " Text { text: 1; onTap: privateSpace(\"install\") } }",
+        )
+        assertTrue(compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: privateSpace(\"open\") } }").contains("privateSpace takes lock, unlock, toggle"))
+        assertTrue(compileError("widget {\n meta { owl: 12 }\n Text { text: 1; onTap: privateSpace(\"lock\") } }").contains("needs owl 13"))
+    }
+
     @Test fun chunkMakesRows() {
         val owl = "meta { owl: 11 }"
         assertEquals("[[1, 2], [3, 4], [5]]", text("chunk([1, 2, 3, 4, 5], 2)", owl))
