@@ -247,17 +247,18 @@ sealed interface Decl {
 class WidgetAst(
     val name: String?,
     val body: Body,
-    /** What the file is, from its first word: widget, face or app; see [OwlKind]. */
+    /** What the file is, from its first word: widget, face, app or panel; see [OwlKind]. */
     val kind: OwlKind = OwlKind.Widget,
 )
 
-/** What an owl file is: a home-screen tile, a face (a whole home page), or an app in the drawer. */
+/** What an owl file is: a home-screen tile, a face (a whole home page), an app in the drawer, or a panel a swipe on home opens. */
 enum class OwlKind(
     val word: String,
 ) {
     Widget("widget"),
     Face("face"),
     App("app"),
+    Panel("panel"),
     ;
 
     companion object {

@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.widgets.lang.Builtins
+import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.Env
 import dev.omalauncher.widgets.lang.Gradient
 import dev.omalauncher.widgets.lang.Lst
@@ -79,7 +80,8 @@ internal fun CanvasNode(
     p: Props,
     modifier: Modifier,
 ) {
-    val measurer = rememberTextMeasurer(32)
+    // Room for every glyph of an animated text effect (a matrix rain cycles through ~60): a smaller cache misses each frame.
+    val measurer = rememberTextMeasurer(256)
     val inst = p.inst
     val solids = remember { HashMap<Int, SolidColor>() }
     // Its own layer: the drawing is replayed when something around it redraws, and only re-run when what it reads changes.
@@ -376,11 +378,13 @@ internal fun ShaderNode(
         return
     }
     val brush = remember(shader) { ShaderBrush(shader) }
+    // Reading time keeps the widget's frame clock running, so a shader that never uses it isn't redrawn every frame.
+    val readsTime = remember(code) { Compiler.shaderReadsTime(code) }
     Spacer(
         modifier.drawBehind {
             val started = System.nanoTime()
             shader.setFloatUniform("size", size.width, size.height)
-            shader.setFloatUniform("time", inst.time().toFloat())
+            if (readsTime) shader.setFloatUniform("time", inst.time().toFloat())
             (p.now("uniforms") as? Obj)?.fields?.forEach { (name, v) ->
                 try {
                     when {

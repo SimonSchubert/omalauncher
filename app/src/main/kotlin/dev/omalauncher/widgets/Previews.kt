@@ -23,6 +23,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.omalauncher.ui.OwlAppWindow
+import dev.omalauncher.ui.PanelPreview
 import dev.omalauncher.ui.WidgetScreenPanel
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.ui.WidgetTile
@@ -69,7 +70,7 @@ internal class Previews(
             )
         }
 
-    /** Draws [spec]'s screen { } as it opens over home (an app's window, for an app), at [widthPx] x [heightPx], like [render]. */
+    /** Draws [spec]'s screen { } as it opens over home (an app's window, for an app; a panel fully open), at [widthPx] x [heightPx], like [render]. */
     suspend fun renderScreen(
         spec: WidgetSpec,
         instance: dev.omalauncher.widgets.runtime.WidgetInstance,
@@ -79,7 +80,11 @@ internal class Previews(
         ready: suspend () -> Unit,
     ): Boolean =
         draw(spec, widthPx, heightPx, out, ready) {
-            if (instance.program.kind == OwlKind.App) OwlAppWindow(spec, instance) else WidgetScreenPanel(spec, instance, onDismiss = {})
+            when (instance.program.kind) {
+                OwlKind.App -> OwlAppWindow(spec, instance)
+                OwlKind.Panel -> PanelPreview(instance)
+                else -> WidgetScreenPanel(spec, instance, onDismiss = {})
+            }
         }
 
     private suspend fun draw(

@@ -24,7 +24,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 10
+        const val LEVEL = 12
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -54,6 +54,11 @@ class Compiler private constructor(
         const val NUMBER = "‹number›"
 
         private const val MAX_SHAPES = 8
+
+        private val TIME_WORD = Regex("""\btime\b""")
+
+        /** Whether a Shader's code reads its `time` uniform: only then does it need a frame clock. */
+        fun shaderReadsTime(code: String) = TIME_WORD.containsMatchIn(code)
 
         /** A URL whose scheme and host are fixed text, so no value can send it elsewhere. */
         private val FIXED_HOST = Regex("""^https?://[A-Za-z0-9.-]+(:[0-9]+)?/""")
@@ -146,7 +151,10 @@ class Compiler private constructor(
         val level = levelField?.let { constant(it.value, "meta values").num()?.toInt() ?: fail("owl: takes a number, like owl: 1", it.pos) } ?: 1
         if (level > LEVEL) fail("this widget needs owl $level; the launcher supports up to $LEVEL, so update the launcher", levelField!!.pos)
         if (body.animations.isNotEmpty()) fail("animate belongs inside a node", body.animations[0].pos)
-        for (h in body.handlers) if (h.name != "onTap" && !(ast.kind == OwlKind.App && h.name == "onBack")) fail("a widget only takes onTap at the top level", h.pos)
+        // An app and a panel check their own (onBack, onSubmit).
+        if (ast.kind != OwlKind.App && ast.kind != OwlKind.Panel) {
+            for (h in body.handlers) if (h.name != "onTap") fail("a ${ast.kind.word} only takes onTap at the top level", h.pos)
+        }
 
         // Sources, state and assets first: lets and components may use any of them.
         for (d in body.decls) {
@@ -182,6 +190,7 @@ class Compiler private constructor(
         val meta = body.decls.filterIsInstance<Decl.Meta>().flatMap { it.fields }.associate { it.name to constant(it.value, "meta values") }
         val requires = requires(body.decls.filterIsInstance<Decl.Requires>().flatMap { it.fields })
         if (ast.kind == OwlKind.App) return app(body, meta, level, requires, globals.map { it!! }, triggers)
+        if (ast.kind == OwlKind.Panel) return panel(body, meta, level, requires, globals.map { it!! }, triggers)
         // A face is a widget that fills a home page of its own, the whole screen: it gets a screen's room, and
         // has no tile's size.
         val allowed = if (isFace) FACE_PROPS else WIDGET_PROPS
@@ -255,7 +264,9 @@ class Compiler private constructor(
         triggers: List<Trigger>,
     ): Program {
         since("app \"…\" { }", 0)
-        for (p in body.props) if (p.name !in setOf("title", "icon", "back", "edge")) fail("an app only takes title, icon, back and edge (no size or page: it isn't a tile)", p.pos)
+        for (p in body.props) if (p.name !in setOf("title", "icon", "back", "edge", "statusBar")) fail("an app only takes title, icon, back, edge and statusBar (no size or page: it isn't a tile)", p.pos)
+        // Whether the status bar stays over the app, read as it changes, as on a face.
+        val statusBar = body.props.firstOrNull { it.name == "statusBar" }?.let { since(APP_STATUS_BAR, it.pos); ex(it.value, root) }
         // Drawn under the navigation bar: fixed in the file, since the whole view moves when it changes.
         val edge =
             body.props.firstOrNull { it.name == "edge" }?.let { p ->
@@ -301,6 +312,7 @@ class Compiler private constructor(
             back = backProp?.let { ex(it.value, root) },
             onBack = onBackHandler?.let { handler(it, root) },
             edge = edge,
+            statusBar = statusBar,
             triggers = triggers,
             commands = commands.toList(),
             warnings = warnings.toList(),
@@ -313,6 +325,56 @@ class Compiler private constructor(
             kind = ast.kind,
             icon = icon,
             iconImage = iconImage,
+        )
+    }
+
+    /**
+     * A panel: the file is a view of its own, which a swipe up (the app drawer) or down on home opens, picked in
+     * gesture settings. The launcher draws the backdrop and moves it with the finger; the prompt bar stays under a
+     * panel opened by swiping up, and `query` is its text. No title, icon or frame: its nodes are the whole of it.
+     */
+    private fun panel(
+        body: Body,
+        meta: Map<String, Value>,
+        level: Int,
+        requires: Map<String, List<String>>,
+        globals: List<Global>,
+        triggers: List<Trigger>,
+    ): Program {
+        since(PANEL_FILE, 0)
+        body.props.firstOrNull { it.name != "enter" }?.let { fail("a panel only takes enter (what the prompt bar says Enter does); the launcher frames it, and gesture settings pick which swipe opens it", it.pos) }
+        body.handlers.firstOrNull { it.name != "onSubmit" && it.name != "onKey" }?.let {
+            fail("handlers go on the nodes inside a panel; only onSubmit (Enter in the prompt bar) and onKey (its arrow and Tab keys) go at its top", it.pos)
+        }
+        body.items.firstOrNull { it is Item.Node && it.type == "screen" }?.let { fail("a panel is a screen already: put its nodes at the top, without screen { }", it.pos) }
+        nodes = 0
+        maxNodes = MAX_SCREEN_NODES
+        inScreen = true
+        val tree = items(body.items, root, Children.UI)
+        if (tree.isEmpty()) fail("a panel needs at least one node, like Text { text: \"hi\" }", 0)
+        openScreen?.let { fail("screen() opens a widget's screen { }; a panel is open already, and close() closes it", it) }
+        val onSubmit = body.handlers.firstOrNull { it.name == "onSubmit" }?.let { handler(it, root) }
+        val onKey = body.handlers.firstOrNull { it.name == "onKey" }?.let { since("onKey", it.pos); handler(it, root) }
+        checkLevel(level)
+        return Program(
+            name = ast.name ?: "panel",
+            meta = meta,
+            level = level,
+            globals = globals,
+            screen = tree,
+            onSubmit = onSubmit,
+            onKey = onKey,
+            enter = body.props.firstOrNull { it.name == "enter" }?.let { ex(it.value, root) },
+            triggers = triggers,
+            commands = commands.toList(),
+            warnings = warnings.toList(),
+            requires = requires,
+            needsLinux = guest || requires.isNotEmpty(),
+            programs = scripts.flatMap(ShellWords::programs).toSortedSet(),
+            animated = animated,
+            terminal = terminal,
+            nodeCount = nodes,
+            kind = ast.kind,
         )
     }
 
@@ -528,6 +590,7 @@ class Compiler private constructor(
                 if (e.name == "notifications") commands += "read Android notifications (apps, titles and text)"
                 if (e.name == "apps") commands += "read installed Android apps (names, packages and icons)"
                 if (e.name == "recent") commands += "read the recently opened apps"
+                if (e.name == "drawer") commands += "read the launcher's apps (names and icons)"
                 Global.Source(d.name, "android.${e.name}", null, (every ?: 60.0).coerceAtLeast(1.0), false, 0)
             }
             else -> fail("a source is cmd(\"...\"), stream(\"...\"), http(\"...\"), file(\"...\"), clock, or android.${ANDROID.joinToString("/")}", e.pos)
@@ -697,6 +760,7 @@ class Compiler private constructor(
             // On a tile it would raise the keyboard whenever its page shows; in a component the launcher ignores it there.
             if (p.name == "focus" && inScreen == false) fail("focus only works in a screen { }", p.pos)
             since("${n.type}.${p.name}", p.pos)
+            if (p.name == "reverse" && body.props.none { it.name == "lazy" }) fail("reverse lists a lazy ${n.type} from its end: add lazy: true", p.pos)
             if (p.name == "background" && gradient(p.value)) since(GRADIENT_BACKGROUND, p.pos)
             if (p.name == "frost") since("frost", p.pos)
             if (p.name == "font") font(p.value, scope)
@@ -705,6 +769,7 @@ class Compiler private constructor(
         val handlers =
             body.handlers.associate { h ->
                 if (h.name !in HANDLER_PARAMS) fail("unknown handler '${h.name}' (${HANDLER_PARAMS.keys.joinToString()})", h.pos)
+                if (h.name == "onKey") fail("onKey goes at the top of a panel, next to onSubmit", h.pos)
                 HANDLER_KINDS[h.name]?.let { kinds -> if (n.type !in kinds) fail("${h.name} only works on ${kinds.joinToString(" and ")}", h.pos) }
                 if (h.name == "onLongPress" && inScreen == false && !isFace) {
                     fail("long-press on a tile belongs to the home screen, which lifts it to move and resize it; onLongPress works in faces, apps and a screen { }", h.pos)
@@ -731,8 +796,11 @@ class Compiler private constructor(
             guest = true
         }
         if (n.type == "Image") body.props.firstOrNull { it.name == "src" }?.let { webFile(it.value, scope, "image") }
-        // Shaders get `time` whether they use it or not.
-        if (n.type == "Shader") animated = true
+        // A shader animates only if its code reads `time`; code that's worked out at run time might.
+        if (n.type == "Shader") {
+            val code = props["code"]?.const
+            if (code == null || shaderReadsTime(code.toString())) animated = true
+        }
         if (kind.children == Children.NONE && body.items.isNotEmpty()) fail("${n.type} can't hold other nodes", body.items[0].pos)
         val children =
             when (kind.children) {
@@ -869,6 +937,14 @@ class Compiler private constructor(
                     run
                 } else if (call?.name == "post") {
                     post(call, scope, slot)
+                } else if (call?.name == "shortcuts") {
+                    // s = shortcuts(key): they load off the main thread, and arrive in the state.
+                    if (call.args.size != 1 || call.named.isNotEmpty()) fail("shortcuts takes an app's key", call.pos)
+                    since("shortcuts", call.pos)
+                    val key = ex(call.args[0], scope)
+                    commands += "read an app's shortcuts (the actions its long-press menu offers)"
+                    val run: (Env) -> Unit = { env -> env.host.shortcutsInto(key(env).toString(), slot) }
+                    run
                 } else {
                     val v = ex(s.value, scope)
                     val run: (Env) -> Unit = { env -> env.host.write(slot, v(env)) }
@@ -878,6 +954,7 @@ class Compiler private constructor(
             is Stmt.Do -> {
                 val call = s.call as Expr.Call
                 if (call.name == "post") return post(call, scope, null)
+                if (call.name == "shortcuts") fail("shortcuts(...) puts an app's shortcuts into a state, when they've loaded: menuShortcuts = shortcuts(a.key)", call.pos)
                 val arity = Builtins.actions[call.name] ?: fail("'${call.name}' isn't an action (${Builtins.actions.keys.joinToString()})", call.pos)
                 if (call.args.size !in arity) fail("${call.name} takes ${arity.first}-${arity.last} values", call.pos)
                 val args = call.args.map { ex(it, scope) }
@@ -890,6 +967,8 @@ class Compiler private constructor(
                 if (call.name == "screen" || call.name == "close") screenAction = screenAction ?: call.pos
                 if (call.name == "screen") openScreen = openScreen ?: call.pos
                 // The reviewer sees what a widget would ask, as it sees a command.
+                // Uninstalling and removing take apps away: the reviewer sees which entries a widget uses.
+                if (call.name == "appAction") commands += "act on an app from the drawer's menu: " + ((args[0].const as? Str)?.v ?: "any of its entries")
                 if (call.name == "ask") commands += (args[0].const as? Str)?.v?.let { "ask the agent: $it" } ?: "ask the agent something built from widget values"
                 if (call.name in setOf("run", "terminal", "app")) {
                     listCommand(call.args[0], args[0], scope, "${call.name}(…)")
@@ -1140,10 +1219,19 @@ class Compiler private constructor(
         if (e.name == "screenInset" && ast.kind != OwlKind.App && !(isFace && inScreen != true)) {
             fail("screenInset is for apps with edge: true and faces; a widget's screen ends above the navigation bar", e.pos)
         }
+        // Only an app runs up to the top edge, with statusBar: false; a face and a widget's screen stay clear of the cutout.
+        if (e.name == "screenTop" && ast.kind != OwlKind.App) {
+            fail("screenTop is for apps with statusBar: false; a face and a widget's screen start below the camera", e.pos)
+        }
         // Not reserved: widgets that already declare `rows` or `cols` keep their own.
         if (e.name in TILE || e.name == LINUX) {
             since(e.name, e.pos)
             return Ev(null) { env -> env.host.tile(e.name) }
+        }
+        if (e.name == QUERY) {
+            if (ast.kind != OwlKind.Panel) fail("query is the prompt bar's text, which only a panel has", e.pos)
+            since(QUERY, e.pos)
+            return Ev(null) { env -> env.host.tile(QUERY) }
         }
         if (e.name in ENUMS.values.flatten()) fail("'${e.name}' isn't a value here", e.pos)
         fail("unknown name '${e.name}'", e.pos)

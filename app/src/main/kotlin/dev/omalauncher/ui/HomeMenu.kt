@@ -82,6 +82,7 @@ fun HomeMenu(
                             "widget" to { newOwlCommand(it, OwlKind.Widget) },
                             // Faces are made from the empty page left of them, which says where the new one goes.
                             "app" to { newOwlCommand(it, OwlKind.App) },
+                            "panel" to { newOwlCommand(it, OwlKind.Panel) },
                         )
                     for ((label, command) in kinds) {
                         BracketAction(label, Palette.accent) {

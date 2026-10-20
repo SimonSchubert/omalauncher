@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import dev.omalauncher.ui.OwlAppWindow
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.applySystemBars
+import dev.omalauncher.ui.showStatusBar
 import dev.omalauncher.widgets.render.LocalInputFocus
 
 /**
@@ -42,6 +43,9 @@ class OwlAppActivity : InstantActivity() {
                 }
             val icon = runtime.owlIcon(spec, mono = false)
             LaunchedEffect(spec.name, icon, Palette.accent) { describeTask(spec.name, icon?.asAndroidBitmap()) }
+            // `statusBar: false` hides the status bar while the app shows, as on a face; a swipe down brings it back for a moment.
+            val statusBar = inst.showsStatusBar()
+            LaunchedEffect(statusBar) { showStatusBar(this@OwlAppActivity, statusBar) }
             // While the app's `back` holds, Back goes up a level inside it; otherwise Back leaves it.
             BackHandler { if (!inst.goUp()) backInstantly() }
             CompositionLocalProvider(LocalInputFocus provides true) { OwlAppWindow(spec, inst) }

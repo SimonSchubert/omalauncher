@@ -293,7 +293,7 @@ fun applySystemBars(
     activity.enableEdgeToEdge(style, style)
 }
 
-/** Home's status bar, or none: a swipe down from the top edge still brings it back for a moment, and the shade. */
+/** Home's or an app's status bar, or none: a swipe down from the top edge still brings it back for a moment, and the shade. */
 fun showStatusBar(
     activity: android.app.Activity,
     shown: Boolean,

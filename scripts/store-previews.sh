@@ -147,6 +147,16 @@ print(json.dumps({"days": days, "entries": [{"date": today.isoformat(), "v": v, 
     nostr-inbox)
       local now; now=$(date +%s)
       json=$(printf '{"who":"009ce97e22b376c406740f9b842f780ca2e92c2093a5f11d12f43f6150d8e6a1","seen":%s,"alerts":true,"notifiedAt":%s}' $((now - 86400)) "$now") ;;
+    # A stop in Berlin's Mitte with trams and buses every few minutes, any line, four minutes away.
+    next-bus) json='{"stopId":"de-VBB_de:11000:900100503::2","stopName":"Berlin, Invalidenpark","route":"","dir":"","walk":4}' ;;
+    # A game under way: three spades, two hearts and a diamond up, runs on most columns.
+    solitaire) json='{"stock":[7,4,51,23,11,49,34],"waste":[32,22,8,31],"found":[3,2,1,0],"tab":[[25,50,36,9],[45,46],[18,33,37,10],[21,48,12,19,5],[16,39,3,27,35],[17,28,40,41,38,47,20,6],[24,42,44,15,29,43,30]],"down":[0,1,2,3,4,5,6],"hist":[],"moves":23,"wins":2,"counted":false,"draw3":false}' ;;
+    # Three space agencies' public accounts; the posts are live from FxTwitter.
+    xfeed) json='{"users":["NASA","esa","Space_Station"]}' ;;
+    # A city under the NWS's radars: the emulator's own location is outside them.
+    nws-radar) json='{"city":"Oklahoma City"}' ;;
+    # Most of a day measured, with a few lost pings, so the day's figures show.
+    network) json=$(printf '{"todayKey":"%s","todaySamples":5140,"todayFails":6,"todaySum":107800}' "$(adb shell date +%F | tr -d '\r')") ;;
     *) return 0 ;;
   esac
   printf '{"v":1,"savedAt":%s,"values":%s}' "$(date +%s)" "$json" > "$WORK/state.json"

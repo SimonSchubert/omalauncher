@@ -1,14 +1,15 @@
 package dev.omalauncher.ui
 
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -50,6 +51,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import dev.omalauncher.Runtime
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
+import dev.omalauncher.widgets.HomeStore
 import dev.omalauncher.widgets.checkSecretsCommand
 import dev.omalauncher.widgets.editWidgetCommand
 import dev.omalauncher.widgets.publishWidgetCommand
@@ -58,6 +60,7 @@ import dev.omalauncher.widgets.render.Backdrop
 import dev.omalauncher.widgets.render.LocalBackdrop
 import dev.omalauncher.widgets.render.LocalHomeCovered
 import dev.omalauncher.widgets.render.LocalInputFocus
+import dev.omalauncher.widgets.render.LocalMenuOpened
 
 @Composable
 fun LauncherRoot(
@@ -88,6 +91,7 @@ private fun DesktopScreen(
             state.shared != null -> state.shared = null
             state.sharing != null -> state.sharing = null
             runtime.widgets.openScreen != null -> runtime.widgets.openScreen = null
+            state.pulled != null -> state.closePull()
             else -> state.close()
         }
     }
@@ -122,8 +126,6 @@ private fun DesktopScreen(
     val panelShown by remember(state) { derivedStateOf { state.drawer.value > 0.01f } }
     // Closing it forgets the search, like stock drawers: the next swipe up shows every app, not the old results.
     LaunchedEffect(panelShown) { if (!panelShown) state.query = "" }
-    val search by remember(runtime, state) { derivedStateOf { searchApps(runtime, state.query) } }
-    val highlighted = search.highlighted(state.picked)
 
     fun launch(hit: AppHit) {
         state.query = ""
@@ -171,6 +173,21 @@ private fun DesktopScreen(
             )
         }
 
+    LaunchedEffect(handlers) { runtime.widgets.appHandlers = handlers }
+
+    // The drawer is a panel: the one picked for swiping up, drawer.owl, or the stock one, whichever runs first.
+    val drawer = runtime.upPanel()
+    // Panels live while they show, so their sources keep up; a panel's close() slides it away.
+    val shownPanels by remember(state, drawer) {
+        derivedStateOf { setOfNotNull(drawer?.takeIf { state.drawer.value > 0f }, state.pulled?.takeIf { state.pull.value > 0f }) }
+    }
+    LaunchedEffect(shownPanels) { runtime.widgets.shownPanels = shownPanels }
+    LaunchedEffect(state) {
+        runtime.widgets.panelCloses.collect { name ->
+            if (name == state.pulled) state.closePull() else if (name == runtime.upPanel()) state.close()
+        }
+    }
+
     if (panelShown) {
         // Near-opaque like stock drawers: home widgets bleeding through made icons hard to read.
         Box(
@@ -179,8 +196,7 @@ private fun DesktopScreen(
                 .graphicsLayer { alpha = state.drawer.value.coerceAtMost(1f) }
                 .background(Palette.background.copy(alpha = 0.97f))
                 .clickable { state.close() }
-                .drawerSwipe(state)
-                .swipeTabs(runtime, state),
+                .drawerSwipe(state),
         )
     }
     // The bar and the panel above it; the keyboard lifts both. Nothing here takes touches while the panel is closed,
@@ -199,22 +215,16 @@ private fun DesktopScreen(
                 .then(if (side != null) Modifier.wrapContentWidth().widthIn(max = ReadingWidth) else Modifier),
         ) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                if (panelShown) {
-                    AppPanel(
-                        runtime = runtime,
-                        state = state,
-                        search = search,
-                        highlighted = highlighted,
-                        handlers = handlers,
-                        onAsk = { state.promptRequest = PromptRequest.Send },
-                        onSettings = { state.show() },
-                        modifier =
-                            Modifier.graphicsLayer {
-                                val progress = state.drawer.value
-                                alpha = progress.coerceAtMost(1f)
-                                translationY = (1f - progress) * size.height * 0.6f
-                            },
-                    )
+                val slide =
+                    Modifier.graphicsLayer {
+                        val progress = state.drawer.value
+                        alpha = progress.coerceAtMost(1f)
+                        translationY = (1f - progress) * size.height * 0.6f
+                    }
+                // Long-pressing an app opens its menu: the keyboard goes then, once, and stays down.
+                val release = remember(state) { { state.promptRequest = PromptRequest.Release } }
+                if (panelShown && drawer != null) {
+                    CompositionLocalProvider(LocalMenuOpened provides release) { UpPanel(runtime, state, drawer, slide) }
                 }
             }
             // Hidden while a tile types: it would sit on the keyboard, over the tile. They slide with the tile pages,
@@ -225,39 +235,44 @@ private fun DesktopScreen(
                     // Swiping up from either does what it does on home, as from the dock on stock launchers.
                     if (LauncherStyle.recentApps && !panelShown) RecentStrip(runtime, handlers, Modifier.homeSwipe(runtime, state))
                     // Insets itself by the grid gap, so it lines up with the tiles and the gap still takes taps.
-                    PromptBar(runtime, state, search = search, highlighted = highlighted, onLaunch = handlers.launch, modifier = Modifier.homeSwipe(runtime, state))
+                    PromptBar(runtime, state, modifier = Modifier.homeSwipe(runtime, state))
                 }
             }
         }
     }
 
+    // Over home and the bar, as it comes down from the top.
+    PulledPanel(runtime, state)
     // Full-screen panels draw over the bar.
     ThemesOverlay(runtime, state)
-    StyleErrors(runtime.style)
+    FileErrors(listOf(StyleStore.FILE to runtime.style.errors, HomeStore.FILE to runtime.widgets.home.errors) + runtime.gestureProblems())
 }
 
 /**
- * What style.toml got wrong, at the top over everything, like Hyprland's bar for config errors: errors.txt is out
- * of sight without a terminal. A tap hides the problems shown; new ones show again.
+ * What style.toml or layout.toml got wrong, at the top over everything, like Hyprland's bar for config errors:
+ * errors.txt is out of sight without a terminal. A tap hides the problems shown; new ones show again.
  */
 @Composable
-private fun StyleErrors(style: StyleStore) {
+private fun FileErrors(files: List<Pair<String, List<String>>>) {
     var hidden by remember { mutableStateOf(emptySet<String>()) }
-    val shown = style.errors.filterNot { it in hidden }
+    val shown = files.map { (name, errors) -> name to errors.filterNot { "$name: $it" in hidden } }.filter { it.second.isNotEmpty() }
     if (shown.isEmpty()) return
     Box(Modifier.fillMaxSize().safePadding().padding(PanelGap), contentAlignment = Alignment.TopCenter) {
-        Column(
-            Modifier
-                .widthIn(max = ReadingWidth)
-                .fillMaxWidth()
-                .frame(2.dp, Palette.red, Palette.background)
-                .clickable { hidden = hidden + shown }
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-        ) {
-            BasicText("style.toml: ${if (shown.size == 1) "1 problem" else "${shown.size} problems"}", style = Mono.copy(color = Palette.red))
-            for (line in shown.take(MAX_ERRORS)) BasicText(line, style = Mono.copy(fontSize = TextSize.Small))
-            val more = if (shown.size > MAX_ERRORS) "${shown.size - MAX_ERRORS} more in errors.txt · " else ""
-            BasicText("${more}tap to hide", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        Column(Modifier.widthIn(max = ReadingWidth).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(PanelGap)) {
+            for ((name, errors) in shown) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .frame(2.dp, Palette.red, Palette.background)
+                        .clickable { hidden = hidden + errors.map { "$name: $it" } }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                ) {
+                    BasicText("$name: ${if (errors.size == 1) "1 problem" else "${errors.size} problems"}", style = Mono.copy(color = Palette.red))
+                    for (line in errors.take(MAX_ERRORS)) BasicText(line, style = Mono.copy(fontSize = TextSize.Small))
+                    val more = if (errors.size > MAX_ERRORS) "${errors.size - MAX_ERRORS} more in errors.txt · " else ""
+                    BasicText("${more}tap to hide", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                }
+            }
         }
     }
 }

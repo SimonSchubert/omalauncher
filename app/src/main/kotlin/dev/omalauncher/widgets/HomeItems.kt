@@ -74,14 +74,14 @@ data class Folder(
 }
 
 /** A folder as saved; its apps are the shortcuts that name it. */
-private data class FolderEntry(
+data class FolderEntry(
     val key: String,
     val page: Int,
     val name: String? = null,
 )
 
 /**
- * Pinned apps and their folders, saved launcher-side next to the grid layout.
+ * Pinned apps and their folders, saved launcher-side next to the grid layout, and in layout.toml by [HomeStore].
  * Folders are saved apart from the apps, so a launcher that predates them
  * still reads its apps (each back on the grid on its own).
  */
@@ -299,6 +299,24 @@ class Shortcuts(
         save()
     }
 
+    /**
+     * Home's apps and folders as layout.toml has them: [apps] in order, each folder's in its order. Apps and folders
+     * no longer there lose their cells.
+     */
+    fun replace(
+        apps: List<Shortcut>,
+        folders: List<FolderEntry>,
+    ) {
+        val keep = apps.mapTo(HashSet()) { it.key } + folders.map { it.key }
+        (items.map { it.key } + folderEntries.map { it.key }).filter { it !in keep }.forEach(layout::remove)
+        items.clear()
+        items += apps
+        folderEntries.clear()
+        folderEntries += folders
+        tidy()
+        save()
+    }
+
     /** Takes an app, or a folder with all its apps, off the home screen. */
     fun remove(key: String) {
         if (folderEntries.removeAll { it.key == key }) {
@@ -345,7 +363,11 @@ class Shortcuts(
             .putString(ITEMS, Versioned.write(VERSION, array))
             .putString(FOLDERS, Versioned.write(VERSION, folders))
             .apply()
+        onSave()
     }
+
+    /** Called after every save; [HomeStore] writes layout.toml then. */
+    var onSave: () -> Unit = {}
 
     private companion object {
         const val ITEMS = "items"

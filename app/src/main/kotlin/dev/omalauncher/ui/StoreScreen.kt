@@ -534,7 +534,7 @@ private fun Detail(
                     when (market.kind) {
                         OwlKind.Widget -> "add to page $page"
                         OwlKind.Face -> "add as a face"
-                        OwlKind.App -> "install"
+                        OwlKind.App, OwlKind.Panel -> "install"
                     },
                     Palette.accent,
                     onInstall,
@@ -552,7 +552,7 @@ private fun Detail(
     }
 }
 
-/** Where an added widget, face or app went. */
+/** Where an added widget, face, app or panel went. */
 @Composable
 internal fun AddedMark(kind: OwlKind) =
     BasicText(
@@ -560,6 +560,7 @@ internal fun AddedMark(kind: OwlKind) =
             OwlKind.Widget -> "✓ on your home screen"
             OwlKind.Face -> "✓ left of your first page"
             OwlKind.App -> "✓ in your app drawer"
+            OwlKind.Panel -> "✓ in gesture settings"
         },
         style = Mono.copy(color = Palette.green),
     )

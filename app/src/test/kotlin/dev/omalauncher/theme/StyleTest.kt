@@ -33,7 +33,7 @@ class StyleTest {
     }
 
     @Test fun reportsTheLineItCantRead() {
-        for ((text, line) in listOf("a = 1\nb = nord" to 2, "[home\n" to 1, "a = [1, 2]" to 1, "a = 1\na = 2" to 2, "a = \"open" to 1, "\"my key\" = 1" to 1, "[\"a.b\"]" to 1)) {
+        for ((text, line) in listOf("a = 1\nb = nord" to 2, "[home\n" to 1, "a = [1, 2" to 1, "a = { b = 1" to 1, "a = 1\na = 2" to 2, "a = \"open" to 1, "\"my key\" = 1" to 1, "[\"a.b\"]" to 1)) {
             try {
                 Toml.parse(text)
                 fail("parsed: $text")

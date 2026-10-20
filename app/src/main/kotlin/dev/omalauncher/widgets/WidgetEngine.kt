@@ -21,6 +21,7 @@ import dev.omalauncher.linux.runJob
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
+import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import dev.omalauncher.upgrade.writeAtomically
@@ -102,6 +103,13 @@ class WidgetEngine(
     private val instances = HashMap<String, WidgetInstance>()
     val layout = WidgetLayout(context)
     val shortcuts = Shortcuts(context, layout)
+
+    /** layout.toml, which [layout] and [shortcuts] write to and an agent's edits come in through. */
+    val home =
+        HomeStore(context, this, runtime).also { home ->
+            layout.onSave = home::changed
+            shortcuts.onSave = home::changed
+        }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val services = WidgetServices(context, proot, runtime, scope)
 
@@ -110,6 +118,9 @@ class WidgetEngine(
 
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction by services::launcherAction
+
+    /** What the drawer's long-press menu does, for appAction(...); set by the UI. */
+    internal var appHandlers by services::appHandlers
 
     /** The home screen's view, for haptic(); set by the UI. */
     var view by services::view
@@ -243,8 +254,33 @@ class WidgetEngine(
     /** App files that compile and can run here, for the app drawer. */
     fun apps(): List<WidgetSpec> = specs.filter { it.kind == OwlKind.App && it.program != null && !waitsForLinux(it) }
 
-    /** On a home page: a widget's tile, or a face; not an app. */
-    fun onHome(spec: WidgetSpec) = spec.kind != OwlKind.App
+    /** Panel files, which gesture settings offer for swiping up and down; ones that don't compile too, to say so. Not the stock drawer. */
+    fun panels(): List<WidgetSpec> = specs.filter { it.kind == OwlKind.Panel && it.file.name != STOCK_DRAWER }
+
+    /**
+     * The panel the drawer shows above the prompt bar: the one picked for swiping up, else drawer.owl, else the stock
+     * drawer, so a drawer that's gone or broken never leaves the apps out of reach. Null until one runs.
+     */
+    fun drawerPanel(): String? = listOf(LauncherStyle.style[Style.SWIPE_UP], DRAWER, STOCK_DRAWER).firstOrNull { panelInstance(it) != null }
+
+    /** The running panel [name] with its spec, for home to show; null if it's gone, doesn't compile or can't run here. */
+    fun panelInstance(name: String): Pair<WidgetSpec, WidgetInstance>? {
+        val spec = specs.firstOrNull { it.file.name == name && it.kind == OwlKind.Panel } ?: return null
+        if (waitsForLinux(spec)) return null
+        return instances[name]?.takeIf { it.program.kind == OwlKind.Panel }?.let { spec to it }
+    }
+
+    /** Panels on screen, by file name; set by home as they slide in and out. */
+    var shownPanels by mutableStateOf(emptySet<String>())
+
+    /** Panels that ran close(): home slides them away. */
+    val panelCloses = MutableSharedFlow<String>(extraBufferCapacity = 4)
+
+    /** The panels gestures open: kept live while home shows, so one is ready the moment a swipe starts. */
+    private fun gesturePanels() = setOfNotNull(drawerPanel(), LauncherStyle.style[Style.SWIPE_DOWN])
+
+    /** On a home page: a widget's tile, or a face; not an app or a panel. */
+    fun onHome(spec: WidgetSpec) = spec.kind != OwlKind.App && spec.kind != OwlKind.Panel
 
     /** The running widget whose screen is open, with its spec (for the title fallback). */
     fun screenInstance(): Pair<WidgetSpec, WidgetInstance>? {
@@ -510,7 +546,7 @@ class WidgetEngine(
         }
     }
 
-    private fun widgetFiles() = dir.listFiles { f -> !f.name.startsWith(".") && f.extension == "owl" }.orEmpty().sortedBy { it.name }
+    private fun widgetFiles() = dir.listFiles { f -> (!f.name.startsWith(".") || f.name == STOCK_DRAWER) && f.extension == "owl" }.orEmpty().sortedBy { it.name }
 
     private suspend fun reload(files: List<File>) {
         val old = specs.associateBy { it.file.name }
@@ -544,12 +580,13 @@ class WidgetEngine(
                     onScreen = { open ->
                         when {
                             program.kind == OwlKind.App -> if (!open) appCloses.tryEmit(name)
+                            program.kind == OwlKind.Panel -> if (!open) panelCloses.tryEmit(name)
                             open -> openScreen = name
                             openScreen == name -> openScreen = null
                         }
                     },
                     linux = { linux },
-                    foreground = { (shownApps[name] ?: 0) > 0 || openScreen == name },
+                    foreground = { (shownApps[name] ?: 0) > 0 || openScreen == name || name in shownPanels },
                 )
             prev?.let(inst::adopt)
             instances[spec.file.name] = inst
@@ -573,6 +610,7 @@ class WidgetEngine(
             // of tiles becomes it again.
             val first = pages.firstOrNull { p -> itemsOn(p).any { !it.isFace } }
             if (first != null && first != 1) arrangePages(pages)
+            home.loaded()
         }
     }
 
@@ -637,7 +675,7 @@ class WidgetEngine(
             }
         if (skip != null) return writeCheck(spec.file, hash, "ok", "preview-skipped $hash $skip")
         val inst = instance(spec)!!
-        if (program.kind == OwlKind.App) return previewView(spec, inst, hash)
+        if (program.kind == OwlKind.App || program.kind == OwlKind.Panel) return previewView(spec, inst, hash)
         val cells = tileCells(spec)
         val (w, h) = if (spec.isFace) layout.pagePx(context.resources.displayMetrics) else layout.tilePx(cells, context.resources.displayMetrics)
         previewing += name
@@ -685,7 +723,7 @@ class WidgetEngine(
                 previewing.remove(name)
             }
         if (hashes[name] != hash) return
-        val tile = "preview-skipped $hash an app has no tile"
+        val tile = "preview-skipped $hash ${if (spec.kind == OwlKind.Panel) "a panel" else "an app"} has no tile"
         writeCheck(spec.file, hash, "ok", if (ok) "$tile\nscreen $hash ${dm.widthPixels}x${dm.heightPixels}" else "$tile; rendering its screen failed")
     }
 
@@ -734,7 +772,7 @@ class WidgetEngine(
                 for (theme in themes) {
                     Palette.apply(theme.colors)
                     val out = File(dir, "${theme.name}/$name${if (n > 0) ".${n + 1}" else ""}.png")
-                    if (spec.kind == OwlKind.App) {
+                    if (spec.kind == OwlKind.App || spec.kind == OwlKind.Panel) {
                         previews.renderScreen(spec, inst, dm.widthPixels, dm.heightPixels, out, ready)
                     } else {
                         previews.render(spec, inst, cells, w, h, out, ready)
@@ -760,6 +798,7 @@ class WidgetEngine(
         if (!visible) return false
         // Its screen is open: it's on screen wherever the pages are.
         if (spec.file.name == openScreen) return true
+        if (spec.kind == OwlKind.Panel) return spec.file.name in shownPanels || spec.file.name in gesturePanels()
         // Apps have no page to be near.
         if (!onHome(spec)) return false
         val pages = pages
@@ -921,6 +960,8 @@ class WidgetEngine(
             add(asset("widgets/README.md", File(dir, "README.md"), Policy.Owned))
             for (name in assets.list("widgets/examples").orEmpty()) add(asset("widgets/examples/$name", File(dir, "examples/$name"), Policy.Seeded))
             for (name in assets.list("widgets").orEmpty().filter { it.endsWith(".owl") }) add(asset("widgets/$name", File(dir, name), Policy.Seeded))
+            // Always as this launcher ships it, whatever became of drawer.owl.
+            add(asset("widgets/$DRAWER", File(dir, STOCK_DRAWER), Policy.Owned))
         }
     }
 
@@ -940,6 +981,15 @@ class WidgetEngine(
 
         /** The default terminal tile, which [addTerminalWidget] copies. */
         private const val TERMINAL_ASSET = "45-terminal.owl"
+
+        /** The app drawer, a panel: the user's to change, from the stock one the launcher ships. */
+        const val DRAWER = "drawer.owl"
+
+        /**
+         * The drawer as this launcher ships it, kept that way: what the drawer shows while drawer.owl is gone or broken,
+         * and what an agent can compare an edited drawer.owl with. Hidden, so it isn't offered as a panel of its own.
+         */
+        const val STOCK_DRAWER = ".stock-drawer.owl"
         private const val TERMINAL_PREFIX = "terminal-"
         private const val AGENT_PREFIX = "agent-"
 
@@ -949,13 +999,18 @@ class WidgetEngine(
         private const val AGENT_POINTER =
             "# omalauncher\n\nThis Arch system runs inside an Android launcher. Home-screen widgets are `.owl` files in " +
                 "~/$GUEST_DIR, written in a small declarative language documented in README.md there; so are apps for the " +
-                "app drawer (`app \"name\" { }`). " +
+                "app drawer (`app \"name\" { }`) and panels that swiping up or down on home opens (`panel \"name\" { }`, picked with " +
+                "gestures.swipe-up and gestures.swipe-down in ~/${StyleStore.GUEST_DIR}/style.toml). The app drawer is the panel " +
+                "drawer.owl there: to change the drawer, edit it; .stock-drawer.owl is the drawer as this launcher ships it. " +
                 "Saved files show up on the phone within seconds. After saving, run `owl-check <file>`: it prints the errors " +
                 "and the path of a PNG of the tile or view, drawn with live data; look at it to check the layout. " +
                 "examples/ holds more widgets to learn from or move up to use. Scripts, cron jobs and hooks can set a running " +
                 "widget's state or refresh it with `owl-send <file> set <state> <value>` and `owl-send <file> refresh`.\n\n" +
                 "The launcher's look (theme, background, tile spacing and borders, corners, the system bars' colors, the " +
                 "terminals' font) is ~/${StyleStore.GUEST_DIR}/${StyleStore.FILE}; ${StyleStore.DEFAULTS} next to it lists every " +
-                "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n"
+                "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n\n" +
+                "Where everything on home is (pages in order, faces, widgets, pinned apps and folders, each tile's cell) is " +
+                "~/${HomeStore.GUEST_DIR}/${HomeStore.FILE}; edit it to move, resize or pin things or reorder pages. " +
+                "\"Home's layout\" in the widgets README explains it.\n"
     }
 }

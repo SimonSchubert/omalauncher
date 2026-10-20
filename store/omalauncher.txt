@@ -1,6 +1,6 @@
 Privacy Policy
 
-Effective Date: 15.10.2026
+Effective Date: 20.10.2026
 
 Omalauncher ("the App") is an Android home screen launcher developed by Simon Schubert ("we," "us," or "our"). This Privacy Policy explains how the App handles information.
 
@@ -42,7 +42,7 @@ wttr.in (weather widget)
 
 Widgets
 - Widgets you add from the widget store may contact other services to show their content (for example prices, news feeds or radio streams). Each widget's page in the store shows what it runs and which addresses it contacts.
-- Widgets you add can see which apps are installed on your phone (their names, package names and icons) and how often you open them from the App. This list is read on your device, only when a widget on your home screen asks for it, and is not stored or sent to us. A widget could send what it reads to a service it contacts; each widget's page in the store says if it reads your apps.
+- Widgets you add, and the app drawer and swipe panels (which are widget files you can edit), can see which apps are installed on your phone (their names, package names and icons), how often you open them from the App, and the shortcuts apps offer in their long-press menus (their names, which can include contact names). This list is read on your device, only when a widget on your home screen asks for it, and is not stored or sent to us. A widget could send what it reads to a service it contacts; each widget's page in the store says if it reads your apps.
 
 Optional Linux environment
 - Only if you choose to install Linux, the App downloads Arch Linux ARM from archlinuxarm.org and its mirrors. Packages you install come from Arch Linux ARM mirrors and, if you choose, the Arch User Repository (aur.archlinux.org).

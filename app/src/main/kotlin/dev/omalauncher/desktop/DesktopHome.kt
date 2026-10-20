@@ -44,7 +44,7 @@ import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.ShortcutTile
 import dev.omalauncher.ui.WidgetScreenPanel
 import dev.omalauncher.ui.WidgetTile
-import dev.omalauncher.ui.rankMatches
+import dev.omalauncher.widgets.lang.rankMatches
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.WidgetItem

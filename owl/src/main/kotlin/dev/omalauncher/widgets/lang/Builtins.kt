@@ -80,7 +80,7 @@ object Builtins {
     val constants = mapOf("pi" to Num(PI), "transparent" to Col(null, 0))
 
     /** Handler-only calls; they reach [Host.act]. */
-    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..1, "notification" to 2..2, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2)
+    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..1, "notification" to 2..2, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2, "appAction" to 2..2, "workApps" to 1..1, "shortcuts" to 1..1)
 
     private fun lst(items: List<Value>) = Lst(capped(items))
 
@@ -685,6 +685,36 @@ object Builtins {
             "last" to Builtin(1, 1) { a -> a.list(0).lastOrNull() ?: Null },
             "indexOf" to Builtin(2, 2) { a -> n(a.list(0).indexOf(a[1]).toDouble()) },
             "unique" to Builtin(1, 1) { a -> lst(a.list(0).distinct()) },
+            // owl 11: chunk(list, n), the list in lists of n, the last one shorter: rows of a grid built by hand.
+            "chunk" to
+                Builtin(2, 2) { a ->
+                    val l = a.list(0)
+                    a.tick(l.size)
+                    lst(l.chunked(a.int(1, 1).coerceAtLeast(1)) { Lst(it.toList()) })
+                },
+            // owl 11: the matches of a query best first, as the bar ranks apps: by a map's name (and alias), with its score as the boost.
+            "rank" to
+                Builtin(2, 2) { a ->
+                    val l = a.list(0)
+                    a.tick(l.size * 4)
+                    val ranked =
+                        rankMatches(
+                            l,
+                            a.str(1),
+                            name = { rankName(it) },
+                            boost = { ((rankField(it, "score")?.num() ?: 0.0) * 10).toInt() },
+                            alias = { rankAlias(it) },
+                        )
+                    lst(ranked.map { it.first })
+                },
+            // owl 11: whether Enter in the bar would open this match rather than ask the agent; the tiers stay the launcher's.
+            "strongMatch" to
+                Builtin(2, 2) { a ->
+                    val item = a.args[0]
+                    val q = a.str(1)
+                    val s = maxOf(matchScore(rankName(item), q), rankAlias(item)?.let { matchScore(it, q) } ?: 0)
+                    bool(isStrongMatch(s, q))
+                },
             // flatten(list): one level of lists in lists; owl 9 takes how many levels.
             "flatten" to
                 Builtin(1, 2) { a ->
@@ -874,6 +904,18 @@ object Builtins {
         return false
     }
 }
+
+// rank() and strongMatch() read a map by its name and alias, as the bar reads apps; a text matches as it is.
+private fun rankText(v: Value?) = v?.takeIf { it != Null }?.toString()
+
+private fun rankField(
+    v: Value,
+    name: String,
+) = (v as? Obj)?.fields?.get(name)
+
+private fun rankName(v: Value) = rankText(if (v is Obj) rankField(v, "name") else v).orEmpty()
+
+private fun rankAlias(v: Value) = rankText(rankField(v, "alias"))
 
 /** [s] in single quotes, each `'` in it closed, escaped and reopened: bash reads it back as one word, exactly [s]. */
 fun shQuote(s: String) = "'" + s.replace("'", "'\\''") + "'"

@@ -14,7 +14,9 @@
 # files, `fastfetch` greets terminal-profiles, cleaner finds caches worth clearing, `adb` answers
 # private-space like a phone with its Private Space open, `perl` answers wifi-radar's scan with a
 # made-up home network, `ssh` answers server-pulse's collector, speedtest finds a finished run,
-# share-bridge a link that's up, and `websocat` answers nostr-inbox's relays. With "off", puts everything back.
+# share-bridge a link that's up, and `websocat` answers nostr-inbox's relays. `ping` answers network
+# with real-looking round trips (the emulator's own replies all say 0 ms), and `python3` answers vacuum's
+# status like a robot on its dock. With "off", puts everything back.
 set -u
 demo=/tmp/store-previews-demo
 ha=~/.config/omarchy-proot/home-assistant
@@ -74,7 +76,8 @@ if [ "${1:-}" = off ]; then
   rm -rf "$demo" /usr/local/bin/gh /usr/local/bin/curl /usr/local/bin/python3 /usr/local/bin/pgrep \
     /usr/local/bin/python /usr/local/bin/claude /usr/local/bin/ssh /usr/local/bin/agy /usr/local/bin/ip \
     /usr/local/bin/getent /usr/local/bin/fastfetch /usr/local/bin/yt-dlp /usr/local/bin/ffmpeg \
-    /usr/local/bin/ffprobe /usr/local/bin/adb /usr/local/bin/perl /usr/local/bin/websocat
+    /usr/local/bin/ffprobe /usr/local/bin/adb /usr/local/bin/perl /usr/local/bin/websocat \
+    /usr/local/bin/ping
   for f in "$ha" "$cursor" "$tesla" "$opencode" "$history" "$photoprism" "$owlmaker" "$owlstatus" "$flipper" \
     "$agy" "$agenda" "$voice" "$voicestate" "$dictated" "$codex" "$codexcache" "$apkver" "$apkbin" \
     "$apkcache/setup.json" "$apkcache/apps.json" "$apkcache/job.json" "$apkcache/log.txt" "$simkl" \
@@ -219,12 +222,15 @@ items = [{"t": t, "kind": k, "title": title, "sub": sub, "url": "https://simkl.c
           "poster": poster("%d" % i, top, bottom)} for i, (title, k, sub, t, fin, top, bottom) in enumerate(shows)]
 print(json.dumps({"user": "Sam", "items": items}, ensure_ascii=False))
 PY
+# vacuum: a robot charged on its dock after a sweep and mop of the flat.
+printf '%s\n' '{"ok":true,"ip":"192.168.1.40","did":"123456789","status":4,"status_text":"Charging","busy":false,"fault":2103,"fault_warn":false,"fault_text":"docked","battery":87,"mode":1,"mode_text":"Sweep + mop","sweep_type":0,"sweep_text":"Global","suction":2,"suction_text":"Medium","water":1,"water_text":"Mid","mop_route":1,"mop_text":"Y","minutes":42,"area":58,"map_url":"","consumables":{"side_brush":71,"main_brush":84,"filter":63,"mop":38}}' > "$demo/vacuum.json"
 cat > /usr/local/bin/python3 <<'EOF'
 #!/bin/sh
 case "$*" in
   *owl-gcal*) exec /usr/bin/python3 /tmp/store-previews-demo/gcal.py ;;
   *lastfm.py\ fetch*) exec /usr/bin/python3 /tmp/store-previews-demo/lastfm.py ;;
   *simkl.py\ fetch*) exec /usr/bin/python3 /tmp/store-previews-demo/simkl.py ;;
+  *vacuum.py\ status*) cat /tmp/store-previews-demo/vacuum.json ;;
   *) exec /usr/bin/python3 "$@" ;;
 esac
 EOF
@@ -673,6 +679,14 @@ esac
 exit 0
 EOF
 chmod +x /usr/local/bin/adb
+
+# network: the emulator answers every ping itself in 0 ms, which network reads as no reply, so
+# `ping` prints a reply from 1.1.1.1 the way a phone on Wi-Fi would see one.
+cat > /usr/local/bin/ping <<'EOF'
+#!/bin/sh
+printf '64 bytes from 1.1.1.1: icmp_seq=1 ttl=57 time=%s ms\n' "$(awk 'BEGIN { srand(); printf "%.1f", 16 + rand() * 9 }')"
+EOF
+chmod +x /usr/local/bin/ping
 
 # wifi-radar: `perl` answers its scan with a made-up home network, so the preview never shows
 # the host's real Wi-Fi or LAN names.

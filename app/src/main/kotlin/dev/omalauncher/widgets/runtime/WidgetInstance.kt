@@ -17,6 +17,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.ui.graphics.toArgb
@@ -39,6 +41,7 @@ import dev.omalauncher.widgets.lang.FALSE
 import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.lang.Sprite
 import dev.omalauncher.widgets.lang.Str
+import dev.omalauncher.widgets.lang.text
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.Trigger
 import dev.omalauncher.widgets.lang.WidgetError
@@ -123,6 +126,12 @@ interface Services {
 
     /** A launcher app's icon by its `android.recent` key, `Image { src: "icon:l:foot" }`: Linux, Android, owl apps and shortcuts alike. */
     fun launcherIcon(key: String): ImageBitmap? = null
+
+    /** The shortcuts the app [key] offers in its long-press menu, each `{key, name, icon}`, given to [done] on the main thread. */
+    fun shortcuts(
+        key: String,
+        done: (Value) -> Unit,
+    ) = done(Lst(emptyList()))
 
     /** Runs an action; [done] is called once its effects should be visible, to refresh the widget that ran it. */
     fun act(
@@ -318,7 +327,21 @@ class WidgetInstance(
         screenInset.doubleValue = dp
     }
 
+    /** How much of the screen's top a camera cutout covers, in dp: only an app with `statusBar: false` draws there. */
+    private val screenTop = mutableDoubleStateOf(0.0)
+
+    fun setScreenTop(dp: Double) {
+        screenTop.doubleValue = dp
+    }
+
+    /**
+     * A panel's `query`: reads the prompt bar's text, set by home while the panel shows. A reader, not a copy, so what
+     * reads `query` sees each keystroke in the frame it's typed, not one frame on.
+     */
+    var query by mutableStateOf<() -> String>({ "" })
+
     override fun tile(name: String): Value {
+        if (name == "query") return Str(query())
         val v =
             when (name) {
                 "linux" -> return bool(linux())
@@ -326,6 +349,7 @@ class WidgetInstance(
                 "screenWidth" -> screenSize.value[0]
                 "screenHeight" -> screenSize.value[1]
                 "screenInset" -> screenInset.doubleValue
+                "screenTop" -> screenTop.doubleValue
                 "cols" -> tileSize.value[0]
                 "rows" -> tileSize.value[1]
                 "tileWidth" -> tileSize.value[2]
@@ -354,6 +378,11 @@ class WidgetInstance(
             refresh()
         }
     }
+
+    override fun shortcutsInto(
+        key: String,
+        slot: Int,
+    ) = services.shortcuts(key) { list -> write(slot, list) }
 
     override fun post(
         url: String,
@@ -762,7 +791,7 @@ class WidgetInstance(
         return null
     }
 
-    /** Whether a face keeps the status bar over it now: its `statusBar`, true unless it says otherwise. */
+    /** Whether a face or an app keeps the status bar over it now: its `statusBar`, true unless it says otherwise. */
     fun showsStatusBar() = program.statusBar?.let { eval(it, root, "statusBar").truthy } ?: true
 
     /** Whether an app's Back goes up a level inside it now, because its `back` holds. */
@@ -772,6 +801,23 @@ class WidgetInstance(
     fun goUp(): Boolean {
         if (!canGoUp()) return false
         program.onBack?.run(root, emptyList())
+        return true
+    }
+
+    /** What a panel's `enter` says Enter does now; null without one, "" for nothing to say. */
+    fun enterHint(): String? = program.enter?.let { eval(it, root, "enter").text() }
+
+    /** Runs a panel's onSubmit with [text] as `value`; false when it has none, and Enter does what the bar does. */
+    fun submit(text: String): Boolean {
+        val action = program.onSubmit ?: return false
+        action.run(root, listOf(Str(text)))
+        return true
+    }
+
+    /** Runs a panel's onKey with [key] (up, down, tab, shift-tab) as `value`; false when it has none, and the bar moves its own highlight. */
+    fun key(key: String): Boolean {
+        val action = program.onKey ?: return false
+        action.run(root, listOf(Str(key)))
         return true
     }
 

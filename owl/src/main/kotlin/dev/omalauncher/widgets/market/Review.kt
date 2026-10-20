@@ -1,6 +1,7 @@
 package dev.omalauncher.widgets.market
 
 import dev.omalauncher.widgets.lang.CompileError
+import dev.omalauncher.widgets.lang.Global
 import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.lang.Program
@@ -87,6 +88,7 @@ class Review(
                 "See \"Values in commands\" in the widgets README"
         }
         warnings += risks(p.commands - unquoted.toSet())
+        warnings += costs(p)
 
         val before = previous
         if (before != null && version != null) {
@@ -156,6 +158,44 @@ class Review(
         /** What in [commands] matches [RISKS], one line each: "command pipes a download into a shell: curl ... | sh". */
         fun risks(commands: List<String>): List<String> =
             commands.flatMap { cmd -> RISKS.filter { (pattern, _) -> pattern.containsMatchIn(cmd) }.map { (_, why) -> "command $why: ${cmd.lines().first().take(80)}" } }
+
+        /**
+         * What makes a widget cost more than it needs to, one line each: sources that poll very often, a
+         * command that sleeps while it holds one of the few shells every widget shares, curl run once per item.
+         */
+        fun costs(p: Program): List<String> {
+            val out = ArrayList<String>()
+            for (g in p.globals) {
+                if (g !is Global.Source) continue
+                val every = "every ${g.every.toInt()}s"
+                val cmd = g.arg?.const?.toString()
+                when {
+                    g.kind == "cmd" && g.every <= 5 -> out += "source ${g.name} runs a command $every, which costs battery while its page shows: does it need to be that often?"
+                    g.kind == "http" && g.every <= 10 -> out += "source ${g.name} fetches $every, which costs battery and data while its page shows: does it need to be that often?"
+                }
+                if (g.kind == "cmd" && g.every <= 30 && cmd != null && SLEEP.containsMatchIn(cmd)) {
+                    out += "source ${g.name} sleeps while it runs $every, holding one of the few shells all widgets share: " +
+                        "sample once per run and compare with the last one through prev() instead"
+                }
+            }
+            for (c in p.commands) {
+                // A loop that breaks out is waiting for something, like a server starting, not fetching per item;
+                // one that puts its work in the background (&) already fetches in parallel.
+                if (LOOP.findAll(c).any { CURL_OUT.containsMatchIn(it.value) && !BREAK.containsMatchIn(it.value) && !BACKGROUND.containsMatchIn(it.value) }) {
+                    out += "command runs curl once per item in a loop, one after another: give one curl all the URLs, or use an http() source: ${c.lines().first().take(80)}"
+                }
+            }
+            return out
+        }
+
+        private val SLEEP = Regex("""\bsleep\s+[0-9.]+""")
+        /** A loop's body, up to its first `done`. */
+        private val LOOP = Regex("""\b(for|while)\b[^\n]*?\bdo\b(?:(?!\bdone\b)[\s\S])*""")
+
+        /** A curl that prints what it fetches; one saving to a file (-o, -O) is a cache filled once, which is fine. */
+        private val CURL_OUT = Regex("""\bcurl\b(?![^\n|;]*(\s-[a-zA-Z]*[oO]\b|--output|--remote-name))""")
+        private val BREAK = Regex("""\bbreak\b""")
+        private val BACKGROUND = Regex("""&\s*$""", RegexOption.MULTILINE)
 
         private val IF_LINUX = Regex.escape(Compiler.IF_LINUX)
 

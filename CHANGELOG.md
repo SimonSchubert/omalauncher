@@ -4,6 +4,26 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 0.10.0 (versionCode 18) – 2026-10-20
+
+- The app drawer is an owl file: drawer.owl, which you or an agent can edit, with
+  .stock-drawer.owl as the fallback when it's removed or doesn't compile. Owl 11
+  adds `panel "…" { }` files that a swipe on home opens (up: the drawer, down: from
+  the top), picked in settings › gestures or style.toml, with the prompt bar's
+  `query`, `enter`, `onSubmit` and `onKey`; `android.drawer`, `appAction`,
+  `workApps`, `shortcuts()`, `rank` and `strongMatch` for the drawer's apps, search
+  and menus. The Kotlin drawer is gone.
+- Home's layout is a file: ~/.config/omalauncher/home/layout.toml lists home's
+  pages in order and where every widget, app and folder sits. Moving things on the
+  phone rewrites it, and an agent (or you) can edit it to move, resize, pin or
+  reorder; problems show on home and in errors.txt next to it. A widget's `page:`,
+  `order:` and `size:` only place it the first time.
+- Owl 11 also: Column and Grid `lazy: true` and `reverse`, Image `label` for screen
+  readers, Text `minLines`, `chunk(list, n)`, apps without a status bar or title
+  row, and a Column in a Row or Flow is as wide as its content.
+- owl review warns about widgets that poll more often than they need to.
+- Faster: a Shader animates only when it reads time; Canvas text layouts are cached.
+
 ## 0.9.0 (versionCode 17) – 2026-10-18
 
 - Faces: an owl file can be a whole home screen (`face "name" { }`, owl 10), left of

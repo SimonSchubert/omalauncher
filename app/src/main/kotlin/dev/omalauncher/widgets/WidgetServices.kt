@@ -37,6 +37,7 @@ import dev.omalauncher.MainActivity
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.Agent
+import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.agentInvocation
 import dev.omalauncher.linux.GuestShell
 import dev.omalauncher.linux.Proot
@@ -57,7 +58,15 @@ import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.bool
 import dev.omalauncher.androidAppKey
+import dev.omalauncher.OfferedShortcut
+import dev.omalauncher.ui.AppHandlers
+import dev.omalauncher.ui.ShortcutMenu
+import dev.omalauncher.ui.initials
 import dev.omalauncher.ui.AppHit
+import dev.omalauncher.ui.act
+import dev.omalauncher.ui.actionWords
+import dev.omalauncher.ui.kind
+import dev.omalauncher.ui.profileKind
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.SettingsPage
 import dev.omalauncher.ui.allApps
@@ -80,7 +89,11 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -91,6 +104,15 @@ import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 
 private const val MAX_HTTP_BYTES = 1 shl 20
+
+/**
+ * How often `android.drawer` changes at most. Icons load one at a time, and each changes `hasIcon`: without this a
+ * cold start would rebuild the drawer, and everything a panel works out from it, once for every icon.
+ */
+private const val DRAWER_EVERY_MS = 200L
+
+/** How many shortcuts from shortcuts(...) stay openable by key: a few menus' worth. */
+private const val MAX_OFFERED = 64
 
 /** Web images and sounds: largest download, how long a kept one is used without asking again, how long to wait after a failure, and the cache's size. */
 private const val MAX_FILE_BYTES = 8 shl 20
@@ -125,6 +147,9 @@ class WidgetServices(
 
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction: ((String) -> Unit)? = null
+
+    /** What the drawer's long-press menu does, for appAction(...); set by the UI. */
+    internal var appHandlers: AppHandlers? = null
 
     /** The home screen's view, for haptic(): View haptics follow the user's touch feedback setting and need no permission; set by the UI. */
     var view: View? = null
@@ -164,6 +189,7 @@ class WidgetServices(
             "apps" -> apps()
             "agents" -> agents()
             "recent" -> recent()
+            "drawer" -> drawer()
             else -> throw WidgetError("unknown android source $name")
         }
 
@@ -178,6 +204,14 @@ class WidgetServices(
             "apps" -> snapshotFlow { apps() }
             "agents" -> snapshotFlow { agents() }
             "recent" -> snapshotFlow { recent() }
+            // Linux's state is a flow of its own, not Compose state: a change of its word starts the drawer's anew.
+            "drawer" -> runtime.bootstrap.state.map(::linuxWord).distinctUntilChanged().flatMapLatest { snapshotFlow { drawer() } }
+                // The first at once, then the latest at most every DRAWER_EVERY_MS.
+                .conflate()
+                .transform {
+                    emit(it)
+                    delay(DRAWER_EVERY_MS)
+                }
             "battery" ->
                 callbackFlow {
                     val receiver =
@@ -224,7 +258,37 @@ class WidgetServices(
         return if (LauncherStyle.monochromeIcons) apps.masks[key] else apps.icons[key]
     }
 
-    override fun launcherIcon(key: String) = appIconOf(runtime, key, LauncherStyle.monochromeIcons)
+    override fun launcherIcon(key: String) =
+        offered[key]?.let { (_, s) -> if (LauncherStyle.monochromeIcons) s.mask else s.icon } ?: appIconOf(runtime, key, LauncherStyle.monochromeIcons)
+
+    /**
+     * Shortcuts handed out by shortcuts(...), by the key they got ("x:3"): open(...), appAction("pin", ...) and
+     * `icon:` take it. Each keeps the menu it came from, which opens and pins it as the drawer's own menu does.
+     */
+    private val offered = ConcurrentHashMap<String, Pair<ShortcutMenu, OfferedShortcut>>()
+    private var offeredCount = 0
+
+    override fun shortcuts(
+        key: String,
+        done: (Value) -> Unit,
+    ) {
+        val app = (hitOf(key) as? AppHit.Android)?.app
+        val menu = app?.let { appHandlers?.shortcuts?.invoke(it) } ?: return done(Lst(emptyList()))
+        scope.launch {
+            val list = withContext(Dispatchers.IO) { runCatching { menu.load() }.getOrDefault(emptyList()) }
+            // Only the latest few menus' keys stay: a key from a menu long closed opens nothing.
+            if (offered.size > MAX_OFFERED) offered.clear()
+            done(
+                Lst(
+                    list.map { s ->
+                        val k = "x:" + offeredCount++
+                        offered[k] = menu to s
+                        Obj(mapOf("key" to Str(k), "name" to Str(s.label), "icon" to Str("icon:$k")))
+                    },
+                ),
+            )
+        }
+    }
 
     override fun terminal(
         command: String?,
@@ -363,17 +427,10 @@ class WidgetServices(
     private fun recent(): Value =
         Lst(
             recentApps(runtime, Builtins.MAX_LIST).map { hit ->
-                val kind =
-                    when (hit) {
-                        is AppHit.Android -> "android"
-                        is AppHit.Linux -> "linux"
-                        is AppHit.Owl -> "owl"
-                        is AppHit.Shortcut -> "shortcut"
-                    }
                 Obj(
                     mapOf(
                         "key" to Str(hit.key),
-                        "kind" to Str(kind),
+                        "kind" to Str(hit.kind),
                         "name" to Str(hit.label),
                         "icon" to Str("icon:" + hit.key),
                         "score" to Num(Math.round(runtime.usage.score(hit.key) * 10.0) / 10.0),
@@ -382,6 +439,48 @@ class WidgetServices(
                 )
             },
         )
+
+    /**
+     * The drawer for `source d = android.drawer`: `{apps, linux, monochrome, work, updates}`. `apps` is every app in the drawer's
+     * order (owl apps, Linux apps, shortcuts, Android apps, then the work profile's shortcuts and apps), each
+     * `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`:
+     * - `label` what screen readers say for it ("WhatsApp work"), for an Image's `label`; `profile` as in `android.apps`; `alias` what search matches besides the name ("WhatsApp work");
+     * - `paused` for an app in a paused work profile; `actions` the words its long-press menu offers, for appAction(...);
+     * - `hasIcon` whether `icon` draws anything yet; without, the drawer shows `initials` on a badge, as it does a
+     *   silhouette when `monochrome`.
+     * `linux` is "installed", "installing" or "missing"; `work` is `{paused}` while there's a work profile, else null;
+     * `updates` counts the system updates waiting.
+     */
+    private fun drawer(): Value {
+        val apps = runtime.androidApps
+        val hits =
+            runtime.widgets.apps().map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } +
+                apps.shortcuts.filter { !it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { !it.work }.map { AppHit.Android(it) } +
+                apps.shortcuts.filter { it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.work }.map { AppHit.Android(it) }
+        val list =
+            hits.take(Builtins.MAX_LIST).map { hit ->
+                Obj(
+                    mapOf(
+                        "key" to Str(hit.key),
+                        "kind" to Str(hit.kind),
+                        "name" to Str(hit.label),
+                        "label" to Str(hit.spoken),
+                        "icon" to Str("icon:" + hit.key),
+                        "profile" to (hit.profileKind?.let(::Str) ?: Null),
+                        "alias" to (hit.alias?.let(::Str) ?: Null),
+                        "paused" to bool(hit.paused(runtime)),
+                        // Whether `icon` draws anything: its silhouette, with monochrome icons. Without one, the drawer shows the initials.
+                        "hasIcon" to bool(appIconOf(runtime, hit.key, LauncherStyle.monochromeIcons) != null),
+                        "initials" to Str(initials(hit.label)),
+                        "actions" to Lst(hit.actionWords().map(::Str)),
+                        "score" to Num(Math.round(runtime.usage.score(hit.key) * 10.0) / 10.0),
+                        "last" to (runtime.usage.last(hit.key)?.let { Num((it / 1000).toDouble()) } ?: Null),
+                    ),
+                )
+            }
+        val work = if (apps.workProfiles.isEmpty()) Null else Obj(mapOf("paused" to bool(apps.workProfiles.any { apps.paused(it) })))
+        return Obj(mapOf("apps" to Lst(list), "linux" to Str(linuxWord(runtime.bootstrap.state.value)), "monochrome" to bool(LauncherStyle.monochromeIcons), "work" to work, "updates" to Num((runtime.updates.pending?.count ?: 0).toDouble())))
+    }
 
     /** Android hides the battery from the guest (/sys/class/power_supply), so expose it here. */
     private fun battery(): Value {
@@ -454,6 +553,8 @@ class WidgetServices(
             "haptic" -> view?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             "open" -> openApp(arg)
             "ask" -> ask(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
+            "appAction" -> args.getOrNull(1)?.takeIf { it != Null }?.let { appAction(arg, it.toString()) }
+            "workApps" -> workApps(arg)
         }
         // Anything the action changed should show up without waiting for the next interval.
         scope.launch {
@@ -624,10 +725,55 @@ class WidgetServices(
         context.packageManager.getLaunchIntentForPackage(arg)?.let { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)) }
     }
 
-    /** open(key): an app from `android.recent` or `android.agents`, or an `android.apps` key, opened as from the drawer. */
+    /**
+     * open(key): an app from `android.recent` or `android.agents`, or an `android.apps` key, opened as from the drawer: the
+     * drawer, or a panel open in its place or from the top, closes, and the bar's text goes.
+     */
     private fun openApp(key: String) {
+        offered[key]?.let { (menu, s) -> return menu.open(s) }
+        val hit = hitOf(key) ?: return
+        appHandlers?.launch?.invoke(hit) ?: hit.open(runtime)
+    }
+
+    /** appAction(word, key): the drawer's long-press menu entry [word] for the app [key], as `android.drawer` lists them. */
+    private fun appAction(
+        word: String,
+        key: String,
+    ) {
+        val handlers = appHandlers ?: return
+        // A shortcut from shortcuts(...): pinning is all its + in the drawer's menu does.
+        offered[key]?.let { (menu, s) ->
+            if (word == "pin") menu.pin(s)
+            return
+        }
+        hitOf(key)?.act(word, handlers)
+    }
+
+    /** Linux as `android.drawer` says it: "installed", "installing" (the drawer's offer says so) or "missing". */
+    private fun linuxWord(state: LinuxState) =
+        when (state) {
+            LinuxState.Installed -> "installed"
+            is LinuxState.Installing -> "installing"
+            else -> "missing"
+        }
+
+    /** The drawer's app with [key], as `android.drawer` and `android.recent` give it, or an `android.apps` key. */
+    private fun hitOf(key: String): AppHit? {
         val apps = allApps(runtime)
-        (apps.firstOrNull { it.key == key } ?: apps.firstOrNull { it.key == "a:$key" })?.open(runtime)
+        return apps.firstOrNull { it.key == key } ?: apps.firstOrNull { it.key == "a:$key" }
+    }
+
+    /** workApps("pause"), workApps("resume") or workApps("toggle"): the drawer's switch for work apps. */
+    private fun workApps(word: String) {
+        val apps = runtime.androidApps
+        if (apps.workProfiles.isEmpty()) return
+        apps.pauseWork(
+            when (word) {
+                "pause" -> true
+                "resume" -> false
+                else -> apps.workProfiles.none { apps.paused(it) }
+            },
+        )
     }
 
     /**

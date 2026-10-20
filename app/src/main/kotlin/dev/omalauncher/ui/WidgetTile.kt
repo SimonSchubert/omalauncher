@@ -144,7 +144,10 @@ private fun TileButton(
     )
 }
 
-/** An owl app's window: its title, with a back chevron while its `back` holds, over its view. */
+/**
+ * An owl app's window: its title, with a back chevron while its `back` holds, over its view. `title: ""` leaves the
+ * title row out, for an app that draws its own; Back still goes up a level while `back` holds.
+ */
 @Composable
 internal fun OwlAppWindow(
     spec: WidgetSpec,
@@ -155,17 +158,30 @@ internal fun OwlAppWindow(
     // Full screen like any Android app: no window border or side gap, and no ✕ (Back leaves the app and
     // Recents closes it; close() still does). The view runs to the screen's edges.
     // With `edge` it runs on under the navigation bar too: only the keyboard pushes its bottom up.
-    val insets =
-        if (instance.program.edge) {
-            WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).union(WindowInsets.ime)
-        } else {
-            WindowInsets.safeDrawing
-        }
+    // With `statusBar: false` it runs up to the top edge, around a camera cutout, which `screenTop` measures.
+    val statusBar = instance.showsStatusBar()
+    var sides = WindowInsetsSides.Horizontal
+    if (!instance.program.edge) sides += WindowInsetsSides.Bottom
+    if (statusBar) sides += WindowInsetsSides.Top
+    val insets = WindowInsets.safeDrawing.only(sides).union(WindowInsets.ime)
     Column(Modifier.fillMaxSize().background(Palette.background).windowInsetsPadding(insets)) {
-        Box(Modifier.padding(horizontal = PanelPadding, vertical = 8.dp)) { BackTitle(title, up) }
+        if (title.isNotEmpty()) Box(Modifier.padding(horizontal = PanelPadding, vertical = 8.dp)) { BackTitle(title, up) }
         WidgetScreen(instance, Modifier.weight(1f).fillMaxWidth())
     }
     if (instance.program.edge) ScreenInset(instance)
+    ScreenTop(instance, statusBar)
+}
+
+/** Tells an app's `screenTop` how much of its top a camera cutout covers: none while the status bar shows, which the view starts below. */
+@Composable
+private fun ScreenTop(
+    instance: WidgetInstance,
+    statusBar: Boolean,
+) {
+    val density = LocalDensity.current
+    val covered = if (statusBar) 0 else WindowInsets.displayCutout.getTop(density)
+    val dp = with(density) { covered.toDp().value.toDouble() }
+    SideEffect { instance.setScreenTop(dp) }
 }
 
 /**

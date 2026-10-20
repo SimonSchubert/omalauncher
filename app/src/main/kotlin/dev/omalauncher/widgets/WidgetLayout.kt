@@ -51,8 +51,9 @@ const val CLASSIC_COLUMNS = 6
 
 /**
  * Where each widget and pinned app sits on the home grid, keyed by file name
- * (or shortcut key), and the page a widget was moved to on the phone. Kept on
- * the launcher side so rearranging never rewrites the widget files agents own.
+ * (or shortcut key), and the page a widget was moved to on the phone. Kept apart
+ * from the widget files, so rearranging never rewrites the files agents own:
+ * [HomeStore] writes it all to layout.toml, which agents may edit instead.
  */
 class WidgetLayout(
     context: Context,
@@ -268,6 +269,11 @@ class WidgetLayout(
         return null
     }
 
+    /** Takes [name]'s cell, so its page places it afresh in its first free spot. */
+    fun clearCell(name: String) {
+        cells.remove(name)
+    }
+
     /** Forgets everything about [name]: its cell and page. */
     fun remove(name: String) {
         cells.remove(name)
@@ -311,7 +317,11 @@ class WidgetLayout(
                 .put("cells", json)
                 .put("pages", JSONObject(pages as Map<*, *>))
         prefs.edit().putString(LAYOUT, Versioned.write(VERSION, data)).apply()
+        onSave()
     }
+
+    /** Called after every save; [HomeStore] writes layout.toml then. */
+    var onSave: () -> Unit = {}
 
     private companion object {
         const val LAYOUT = "layout"

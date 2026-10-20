@@ -90,6 +90,16 @@ private fun SettingsPage(
     onDismiss: () -> Unit,
 ) {
     val close = onDismiss
+
+    // Settings has no home underneath: the agent opens in its own terminal, or the agents screen offers one.
+    fun agent(
+        title: String,
+        command: (String) -> String,
+    ) {
+        val agent = runtime.agents.default ?: return stack.push(SettingsPage.Agents)
+        runtime.terminal(command(agent.bin), title, agent)
+    }
+
     when (page) {
         SettingsPage.Settings ->
             SettingsScreen(
@@ -105,14 +115,6 @@ private fun SettingsPage(
             )
         SettingsPage.Style -> StyleScreen(runtime, onDismiss = close, onBrowse = { stack.push(SettingsPage.Themes) })
         SettingsPage.Pages -> {
-            // Settings has no home underneath: the agent opens in its own terminal, or the agents screen offers one.
-            fun agent(
-                title: String,
-                command: (String) -> String,
-            ) {
-                val agent = runtime.agents.default ?: return stack.push(SettingsPage.Agents)
-                runtime.terminal(command(agent.bin), title, agent)
-            }
             var sharing by remember { mutableStateOf<WidgetSpec?>(null) }
             PagesScreen(runtime, onDismiss = close, onAgent = ::agent, onShare = { sharing = it })
             sharing?.let { spec ->
@@ -151,6 +153,6 @@ private fun SettingsPage(
         SettingsPage.Packages -> PackagesScreen(runtime, onDismiss = close)
         SettingsPage.Linux -> LinuxScreen(runtime, onDismiss = close)
         SettingsPage.Licenses -> LicensesScreen(onDismiss = close)
-        SettingsPage.Gestures -> GesturesScreen(runtime, onDismiss = close)
+        SettingsPage.Gestures -> GesturesScreen(runtime, onDismiss = close, onAgent = ::agent)
     }
 }
