@@ -67,17 +67,20 @@ internal sealed interface AppHit {
     val key: String
     val label: String
 
-    /** What screen readers say, to tell a work app or a clone from the personal one of the same name. */
+    /** What screen readers say, to tell a work app, a clone or a private one from the personal one of the same name. */
     val spoken: String get() = label
 
     /**
      * Another name search matches: a work app's own name with "work" added, so "work" or "whatsapp work"
-     * finds it; a clone's with "clone".
+     * finds it; a clone's with "clone", a private one's with "private".
      */
     val alias: String? get() = null
 
     /** In a paused work profile: shown dimmed, and opening it turns work apps back on. */
     fun paused(runtime: Runtime) = false
+
+    /** In the private space: kept off home, and opening it isn't counted, so it never shows among recent apps. */
+    val privateSpace: Boolean get() = false
 
     data class Linux(
         val app: LinuxApp,
@@ -92,7 +95,8 @@ internal sealed interface AppHit {
         override val key get() = "a:" + app.key
         override val label get() = app.label
         override val spoken get() = app.spoken
-        override val alias get() = if (app.profile != null) "${app.label} ${if (app.clone) "clone" else "work"}" else null
+        override val alias get() = profileKind?.let { "${app.label} $it" }
+        override val privateSpace get() = app.privateSpace
 
         override fun paused(runtime: Runtime) = runtime.androidApps.paused(app.profile)
     }
@@ -112,7 +116,8 @@ internal sealed interface AppHit {
         override val key get() = "s:" + shortcut.key
         override val label get() = shortcut.label
         override val spoken get() = shortcut.spoken
-        override val alias get() = if (shortcut.profile != null) "${shortcut.label} ${if (shortcut.clone) "clone" else "work"}" else null
+        override val alias get() = profileKind?.let { "${shortcut.label} $it" }
+        override val privateSpace get() = shortcut.privateSpace
 
         override fun paused(runtime: Runtime) = runtime.androidApps.paused(shortcut.profile)
     }
@@ -152,25 +157,39 @@ internal val AppHit.kind: String
             is AppHit.Shortcut -> "shortcut"
         }
 
-/** `work` or `clone` for an app or shortcut in a profile beside the launcher's own, else null. */
+/** `work`, `clone` or `private` for an app or shortcut in a profile beside the launcher's own, else null. */
 internal val AppHit.profileKind: String?
     get() =
         when (this) {
-            is AppHit.Android -> app.profile?.let { if (app.clone) "clone" else "work" }
-            is AppHit.Shortcut -> shortcut.profile?.let { if (shortcut.clone) "clone" else "work" }
+            is AppHit.Android -> profileWord(app.profile, app.clone, app.privateSpace)
+            is AppHit.Shortcut -> profileWord(shortcut.profile, shortcut.clone, shortcut.privateSpace)
             else -> null
         }
 
+/** As [AppHit.profileKind] words it, for an app in [profile] (as in [AndroidApp.profile]). */
+internal fun profileWord(
+    profile: Long?,
+    clone: Boolean,
+    privateSpace: Boolean,
+): String? =
+    when {
+        profile == null -> null
+        clone -> "clone"
+        privateSpace -> "private"
+        else -> "work"
+    }
+
 /**
  * The long-press menu's entries, as the words `appAction(word, key)` takes: pin to home, for owl apps editing,
- * sharing and removing, for Android apps their info and uninstall, and for shortcuts removing them.
+ * sharing and removing, for Android apps their info and uninstall, and for shortcuts removing them. The private
+ * space's apps can't go on home, which shows while it's locked too.
  */
 internal fun AppHit.actionWords(): List<String> =
     when (this) {
         is AppHit.Linux -> listOf("pin")
         is AppHit.Owl -> listOf("pin", "edit", "share", "remove")
-        is AppHit.Android -> listOfNotNull("pin", "info", if (app.system) null else "uninstall")
-        is AppHit.Shortcut -> listOf("pin", "remove")
+        is AppHit.Android -> listOfNotNull(if (app.privateSpace) null else "pin", "info", if (app.system) null else "uninstall")
+        is AppHit.Shortcut -> listOfNotNull(if (shortcut.privateSpace) null else "pin", "remove")
     }
 
 private val ACTION_LABELS = mapOf("pin" to "add to home", "info" to "app info")
@@ -208,9 +227,12 @@ internal fun AppHit.icons(runtime: Runtime): Pair<ImageBitmap?, ImageBitmap?> =
         is AppHit.Shortcut -> runtime.androidApps.icons[shortcut.key] to runtime.androidApps.masks[shortcut.key]
     }
 
-/** Opens the app and counts it for the recent strip and search, wherever it was tapped. */
+/**
+ * Opens the app and counts it for the recent strip and search, wherever it was tapped; not the private space's,
+ * whose use would otherwise be kept outside it, in the launcher's own profile.
+ */
 internal fun AppHit.open(runtime: Runtime) {
-    runtime.usage.record(key)
+    if (!privateSpace) runtime.usage.record(key)
     when (this) {
         is AppHit.Linux -> runtime.launch(app)
         is AppHit.Android -> runtime.androidApps.open(app)

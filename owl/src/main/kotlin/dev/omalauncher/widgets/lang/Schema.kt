@@ -124,7 +124,9 @@ internal val SINCE =
         // owl 12: the extra keys over the soft keyboard as a file; keys for the focused Linux window; touches as they go down.
         listOf(KEYS_FILE, "pressKey", "typeText", "latch", "android.modifiers", "onPress", "onRelease", "repeats").associateWith { 12 } +
         // owl 12: requests other than POST; base64 text.
-        listOf(POST_METHOD, "toBase64", "fromBase64").associateWith { 12 }
+        listOf(POST_METHOD, "toBase64", "fromBase64").associateWith { 12 } +
+        // owl 13: the private space's lock, settings and install button, for the drawer's private tab.
+        mapOf("privateSpace" to 13)
 
 /** `method:` on post(...), named like this in [SINCE]. */
 internal const val POST_METHOD = "method:"
@@ -211,6 +213,7 @@ internal val ACTION_WORDS =
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
+        "privateSpace" to setOf("lock", "unlock", "toggle", "settings", "install", "hide", "show").let { Words(it, "privateSpace takes ${it.joinToString()}") },
     )
 
 /** The tile's size, readable anywhere a declaration of the same name doesn't shadow it. */

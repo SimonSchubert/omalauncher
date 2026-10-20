@@ -574,7 +574,7 @@ class WidgetInstance(
                             snapshotFlow { linux() }.first { it }
                             continue
                         }
-                        val pushed = if (g.kind.startsWith("android.")) services.androidUpdates(g.kind.removePrefix("android.")) else null
+                        val pushed = if (g.kind.startsWith("android.")) services.androidUpdates(g.kind.removePrefix("android."))?.map { forLevel(g.kind, it) } else null
                         if (pushed != null) {
                             // Listens while on screen, like a stream, instead of polling.
                             untilPaused(active, g) {
@@ -891,7 +891,7 @@ class WidgetInstance(
                 }
                 else ->
                     try {
-                        services.android(g.kind.removePrefix("android."))
+                        forLevel(g.kind, services.android(g.kind.removePrefix("android.")))
                     } catch (e: RuntimeException) {
                         report("${g.name}: ${e.message ?: e}")
                         return true
@@ -954,7 +954,23 @@ class WidgetInstance(
 
     private val lastSample = HashMap<Int, Value>()
 
+    /**
+     * [v] from the source [kind] as this program may see it: a drawer written before owl 13 knows nothing of the private
+     * space, and would list its apps among the personal ones, so `android.drawer` leaves them out for it.
+     */
+    private fun forLevel(
+        kind: String,
+        v: Value,
+    ): Value {
+        if (kind != "android.drawer" || program.level >= PRIVATE_SPACE_LEVEL || v !is Obj) return v
+        val apps = v.fields["apps"] as? Lst ?: return v
+        return Obj(v.fields + ("apps" to Lst(apps.items.filter { (it as? Obj)?.fields?.get("profile") != Str("private") })) + ("private" to Null))
+    }
+
     companion object {
+        /** The owl version that brought the private space to `android.drawer`, with privateSpace(...). */
+        private const val PRIVATE_SPACE_LEVEL = 13
+
         private const val SLOW_DRAW_NANOS = 4_000_000.0
 
         /** [parkedStart] while the frame clock runs. */

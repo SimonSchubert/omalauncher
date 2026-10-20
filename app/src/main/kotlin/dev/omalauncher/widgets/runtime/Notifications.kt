@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.map
 class Notifications(
     private val context: Context,
     private val media: Media,
-    /** "work" or "clone" for a profile beside the launcher's own, null for its own. */
+    /** "work", "clone" or "private" for a profile beside the launcher's own, null for its own. */
     private val profile: (UserHandle) -> String?,
 ) {
     /** App labels by package; the lookup is a binder call. */
@@ -63,7 +63,7 @@ class Notifications(
                         "key" to Str(sbn.key),
                         "app" to Str(label(sbn.packageName)),
                         "package" to Str(sbn.packageName),
-                        // From a work profile or a cloned app; icon is the app's icon from that profile, badge included.
+                        // From a work profile, a cloned app or the private space (which Android silences while it's locked); icon is the app's icon from that profile, badge included.
                         "profile" to (kind?.let(::Str) ?: Null),
                         "icon" to Str("app:" + sbn.packageName + (kind?.let { "@$it" } ?: "")),
                         "title" to Str(title(sbn).orEmpty()),

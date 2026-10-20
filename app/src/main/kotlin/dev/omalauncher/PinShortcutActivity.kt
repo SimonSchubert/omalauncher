@@ -22,11 +22,12 @@ class PinShortcutActivity : ComponentActivity() {
                 .getPinItemRequest(intent)
                 ?.takeIf { it.requestType == LauncherApps.PinItemRequest.REQUEST_TYPE_SHORTCUT && it.isValid }
         val info = request?.shortcutInfo
-        if (request == null || info == null) {
+        val catalog = runtime.androidApps
+        // The private space's apps stay off home, which shows while it's locked too.
+        if (request == null || info == null || catalog.isPrivate(info.userHandle)) {
             finish()
             return
         }
-        val catalog = runtime.androidApps
         setContent {
             PinShortcutDialog(
                 label = shortcutLabel(info),
