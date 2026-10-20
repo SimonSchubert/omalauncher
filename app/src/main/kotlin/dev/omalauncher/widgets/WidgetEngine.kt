@@ -122,13 +122,14 @@ class WidgetEngine(
     /** The home screen's view, for haptic(); set by the UI. */
     var view by services::view
 
-    /** The store's widgets, and its apps. */
+    /** The store's widgets, faces, apps and panels. */
     val market = Market(this, OwlKind.Widget)
     val faceMarket = Market(this, OwlKind.Face)
     val appMarket = Market(this, OwlKind.App)
+    val panelMarket = Market(this, OwlKind.Panel)
 
-    /** All three, in the store's order. */
-    val markets get() = listOf(market, faceMarket, appMarket)
+    /** One per kind, in the store's order: the store's toggle offers every [OwlKind], so each needs its market. */
+    val markets get() = listOf(market, faceMarket, appMarket, panelMarket)
 
     /** The store for [kind]. */
     fun market(kind: OwlKind) = markets.first { it.kind == kind }
