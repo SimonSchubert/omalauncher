@@ -68,8 +68,8 @@ android {
 // ExamplesTest reads the widget examples and the README from here, so editing them reruns it.
 tasks.withType<Test>().configureEach { inputs.dir("src/main/assets/widgets") }
 
-// Gitignored, built by scripts/fetch-proot.sh. Without it a release still builds, but every Linux command fails.
-tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+// Gitignored, built by scripts/fetch-proot.sh. Without it a build still succeeds, but every Linux command fails.
+tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
     val proot = file("src/main/jniLibs/arm64-v8a/libproot.so")
     doFirst { check(proot.exists()) { "$proot is missing; run scripts/fetch-proot.sh" } }
 }
