@@ -1143,6 +1143,11 @@ class WidgetEngine(
                 "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n\n" +
                 "Where everything on home is (pages in order, faces, widgets, pinned apps and folders, each tile's cell) is " +
                 "~/${HomeStore.GUEST_DIR}/${HomeStore.FILE}; edit it to move, resize or pin things or reorder pages. " +
-                "docs/home.md in the widgets folder explains it.\n"
+                "docs/home.md in the widgets folder explains it.\n\n" +
+                "To install an Android app you built inside Linux, run `omalauncher-install /absolute/path/app-debug.apk \"reason\"`. " +
+                "This sends a bounded request to the Android host; it does not give Linux ADB access or Android credentials. " +
+                "The host shows the package, version, APK SHA-256, signing certificate and requested permissions for explicit user approval, " +
+                "then Android's system installer asks for its own confirmation. The command returns `ok` only after installation succeeds; " +
+                "otherwise it returns an error. Do not try to bypass the approval screen or request an APK you did not intend to install.\n"
     }
 }
