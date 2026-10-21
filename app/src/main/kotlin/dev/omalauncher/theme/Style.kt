@@ -205,6 +205,12 @@ class Style(
                 "drawer.owl",
                 "The app drawer, which swiping up opens: a panel's file name in ~/.config/omalauncher/widgets, by default drawer.owl; \"none\" leaves only tapping the bar to open drawer.owl. One that's gone or doesn't compile falls back to drawer.owl, then to .stock-drawer.owl, the drawer as it ships.",
             )
+        val SWIPE_UP_KEYBOARD =
+            Setting.Flag(
+                "gestures.swipe-up-keyboard",
+                true,
+                "Swiping up into the drawer brings up the keyboard to search; false leaves it down until the prompt bar is tapped. Opening the drawer otherwise (tapping the bar, Super+Space) always brings it up.",
+            )
         val SWIPE_DOWN =
             Setting.Text(
                 "gestures.swipe-down",
@@ -251,7 +257,7 @@ object StyleFile {
         with(Style) {
             listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, KEYBAR_GAPS_OUT, KEYBAR_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
-                listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, SWIPE_UP, SWIPE_DOWN)
+                listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, SWIPE_UP, SWIPE_UP_KEYBOARD, SWIPE_DOWN)
         }
 
     private val byKey = ALL.associateBy { it.key }

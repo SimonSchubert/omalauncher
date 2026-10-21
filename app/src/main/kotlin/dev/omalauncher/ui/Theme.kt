@@ -132,6 +132,9 @@ object LauncherStyle {
     /** The strip of recently used apps above the bar on home. */
     val recentApps get() = style[Style.RECENT_APPS]
 
+    /** Whether swiping up into the drawer brings up the keyboard. */
+    val swipeUpKeyboard get() = style[Style.SWIPE_UP_KEYBOARD]
+
     /** Forces one home page even on a screen [SideRail]'s auto-detect would otherwise split in two. */
     val forceSinglePage get() = style[Style.FORCE_SINGLE_PAGE]
 
