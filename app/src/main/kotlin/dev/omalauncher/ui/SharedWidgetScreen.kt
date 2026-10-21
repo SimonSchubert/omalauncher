@@ -108,6 +108,7 @@ fun SharedWidgetScreen(
                                     OwlKind.Face -> "add as a face"
                                     OwlKind.Widget -> "add to page $page"
                                     OwlKind.Panel -> "add to gesture panels"
+                                    OwlKind.Keys -> "add to your widgets folder"
                                 },
                                 Palette.accent,
                             ) {

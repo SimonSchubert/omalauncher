@@ -4,6 +4,17 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 0.10.1 (versionCode 19) – 2026-10-20
+
+- The store's kind toggle showed a "panels" tab with no store behind it, and tapping
+  it crashed the launcher; it lists widgets, faces and apps again.
+- Going home while a backup or device transfer ran crashed (the process runs with a
+  plain Application then); home now closes until the process restarts.
+- Backups and device transfers leave out Linux (the rootfs and its setup records)
+  and Omarchy's downloaded release: a restored phone shows Linux as not installed
+  instead of a broken rootfs, and the backup fits Android's 25 MB quota. Before,
+  a phone with Linux got no backup at all ("Size quota exceeded").
+
 ## 0.10.0 (versionCode 18) – 2026-10-20
 
 - The app drawer is an owl file: drawer.owl, which you or an agent can edit, with

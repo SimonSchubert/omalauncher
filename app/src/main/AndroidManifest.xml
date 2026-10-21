@@ -31,9 +31,11 @@
 
     <application
         android:name=".App"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:extractNativeLibs="true"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:label="${launcherLabel}"
+        android:label="@string/app_name"
         android:theme="@style/Theme.Omalauncher"
         android:usesCleartextTraffic="true">
 

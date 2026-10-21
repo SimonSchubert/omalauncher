@@ -476,6 +476,7 @@ class LangTest {
         // Without Linux, tapping app(...) or terminal(...) offers to install it instead.
         assertEquals(false, needs("onTap: app(\"btop\")\nText { text: \"x\" }"))
         assertEquals(true, needs("requires { pacman: [\"jq\"] }\nText { text: \"x\" }"))
+        assertEquals(false, needs("requires { pacman: [] }\nText { text: \"x\" }"))
         val dir = java.io.File("../app/src/main/assets/widgets")
         fun bundled(name: String) = Compiler.compile(java.io.File(dir, name).readText()).needsLinux
         assertEquals(false, bundled("10-today.owl"))
@@ -798,6 +799,63 @@ class LangTest {
         Compiler.compile("panel {\n meta { owl: 11 }\n state query = 1\n Text { text: query } }")
     }
 
+    @Test fun extraKeysAreAFileOfTheirOwn() {
+        val p =
+            Compiler.compile(
+                "keybar \"mine\" {\n meta { owl: 12 }\n source kb = android.modifiers\n state down = \"\"\n" +
+                    " Row { Box { repeats: true; onPress: { if repeat == 0 { down = \"up\" }; pressKey(\"up\") }; onRelease: down = \"\" }\n" +
+                    " Text { text: get(kb ?? {}, \"ctrl\", \"off\"); onTap: latch(\"ctrl\"); onLongPress: latch(\"ctrl\", \"locked\") }\n" +
+                    " Button { text: \"ls\"; onPress: typeText(\"ls\\n\") } } }",
+            )
+        assertEquals(OwlKind.Keys, p.kind)
+        assertEquals("mine", p.name)
+        assertTrue(p.root.isEmpty())
+        assertFalse(p.needsLinux)
+        assertEquals(listOf("press keys in the Linux window you're typing in: up", "type into the Linux window you're typing in: ls\n"), p.commands)
+        val host = TestHost(p)
+        val env = Env.root(host)
+        val row = (p.screen!!.single() as WNode.Element).children.map { it as WNode.Element }
+        // The press, then a repeat: the state is set once, the key sent each time.
+        row[0].handlers["onPress"]!!.run(env, listOf(Num(0.0), Num(0.0), Num(0.0)))
+        row[0].handlers["onPress"]!!.run(env, listOf(Num(0.0), Num(0.0), Num(1.0)))
+        assertEquals(Str("up"), host.slots[1])
+        row[0].handlers["onRelease"]!!.run(env, emptyList())
+        assertEquals(Str(""), host.slots[1])
+        row[1].handlers["onLongPress"]!!.run(env, listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("pressKey up", "pressKey up", "latch ctrl, locked"), host.actions)
+
+        assertTrue(compileError("keybar {\n meta { owl: 11 }\n Text { text: 1 } }").contains("needs owl 12"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n size: 2x2\n Text { text: 1 } }").contains("take no properties"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n onTap: pressKey(\"esc\")\n Text { text: 1 } }").contains("handlers go on the keys"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n screen { Text { text: 1 } } }").contains("no screen { }"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: close() } }").contains("come and go with the keyboard"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; repeats: true; onTap: pressKey(\"up\") } }").contains("add onPress"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: pressKey(\"ctrl+escape\") } }").contains("pressKey takes a key"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: latch(\"super\") } }").contains("latch takes ctrl, alt, shift"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: latch(\"ctrl\", \"twice\") } }").contains("once, locked, off"))
+        assertEquals(Lst(listOf(Str("a"))), Compiler.compile("keybar {\n meta { owl: 12 }\n Text { text: keys({a: 1}) } }").let { (it.screen!![0] as WNode.Element).props["text"]!!(Env.root(TestHost(it))) })
+        assertTrue(compileError("widget {\n meta { owl: 12 }\n Text { text: typeText(1) } }").contains("is an action"))
+        // Anywhere in owl 12, not only in extra keys.
+        for (old in listOf("Text { text: 1; onTap: pressKey(\"esc\") }", "Text { text: 1; onPress: haptic() }", "Text { text: 1; onRelease: haptic() }")) {
+            assertTrue(compileError("widget {\n meta { owl: 11 }\n $old }").contains("needs owl 12"))
+            Compiler.compile("widget {\n meta { owl: 12 }\n $old }")
+        }
+    }
+
+    @Test fun keyNamesAndCombos() {
+        assertEquals(KeyNames.Combo(1, emptyList()), KeyNames.combo("esc"))
+        assertEquals(KeyNames.Combo(46, listOf(29)), KeyNames.combo("ctrl+c"))
+        assertEquals(KeyNames.Combo(46, listOf(29)), KeyNames.combo("CTRL+c"))
+        assertEquals(KeyNames.Combo(110, listOf(42)), KeyNames.combo("shift+insert"))
+        assertEquals(KeyNames.Combo(20, listOf(29, 56)), KeyNames.combo("ctrl+alt+t"))
+        // A shifted character holds Shift itself; + on its own, or last after a +, is the key.
+        assertEquals(KeyNames.Combo(39, listOf(42)), KeyNames.combo(":"))
+        assertEquals(KeyNames.Combo(13, listOf(29, 42)), KeyNames.combo("ctrl++"))
+        assertEquals(KeyNames.Combo(13, listOf(42)), KeyNames.combo("+"))
+        assertEquals(KeyNames.Combo(88, emptyList()), KeyNames.combo("f12"))
+        for (bad in listOf("", "escape", "hyper+a", "ctrl+", "é", "ctrl+ab")) assertNull(bad, KeyNames.combo(bad))
+    }
+
     @Test fun drawerCellsAndMenus() {
         val p =
             Compiler.compile(
@@ -943,6 +1001,9 @@ class LangTest {
         assertTrue(compileError("app {\n meta { owl: 8 }\n onTap: close()\n Text { text: 1 } }").contains("handlers go on the nodes"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n back: true\n Text { text: 1 } }").contains("back and onBack go together"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onBack: close()\n Text { text: 1 } }").contains("back and onBack go together"))
+        // What an app's title, back and onBack use counts toward the level it must declare.
+        assertTrue(compileError("app {\n meta { owl: 8 }\n title: capitalize(\"x\")\n Text { text: 1 } }").contains("needs owl 9"))
+        assertTrue(compileError("app {\n meta { owl: 8 }\n back: true\n onBack: { if true { close() } }\n Text { text: 1 } }").contains("needs owl 9"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n screen { Text { text: 1 } } }").contains("is a screen already"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n Text { text: 1; onTap: screen() } }").contains("close() closes it"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n }").contains("needs at least one node"))

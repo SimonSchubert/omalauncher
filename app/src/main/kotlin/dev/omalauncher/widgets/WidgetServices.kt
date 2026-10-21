@@ -49,6 +49,7 @@ import dev.omalauncher.readUpTo
 import dev.omalauncher.sha256Hex
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.Builtins
+import dev.omalauncher.widgets.lang.KeyNames
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
@@ -190,6 +191,7 @@ class WidgetServices(
             "agents" -> agents()
             "recent" -> recent()
             "drawer" -> drawer()
+            "modifiers" -> modifiers()
             else -> throw WidgetError("unknown android source $name")
         }
 
@@ -204,6 +206,7 @@ class WidgetServices(
             "apps" -> snapshotFlow { apps() }
             "agents" -> snapshotFlow { agents() }
             "recent" -> snapshotFlow { recent() }
+            "modifiers" -> snapshotFlow { modifiers() }
             // Linux's state is a flow of its own, not Compose state: a change of its word starts the drawer's anew.
             "drawer" -> runtime.bootstrap.state.map(::linuxWord).distinctUntilChanged().flatMapLatest { snapshotFlow { drawer() } }
                 // The first at once, then the latest at most every DRAWER_EVERY_MS.
@@ -527,6 +530,9 @@ class WidgetServices(
         )
     }
 
+    /** `source m = android.modifiers`: how the extra keys hold each modifier, `{ctrl, alt, shift}`, each "off", "once" or "locked". */
+    private fun modifiers(): Value = Obj(runtime.keyboard.latches.mapValues { (_, m) -> Str(m.latch.name.lowercase()) })
+
     /** Runs a widget action: terminal, app, run, url, launcher, media, volume, notification, ... */
     override fun act(
         name: String,
@@ -537,6 +543,12 @@ class WidgetServices(
         if (args.firstOrNull() == Null) return
         val arg = args.firstOrNull()?.toString().orEmpty()
         if (name == "run") return run(arg) { done() }
+        // Keys go out as they're pressed, many a second while one repeats: nothing to refresh after them.
+        when (name) {
+            "pressKey" -> return KeyNames.combo(arg)?.let(runtime.keyboard::press) ?: Unit
+            "typeText" -> return runtime.keyboard.type(arg)
+            "latch" -> return runtime.keyboard.latch(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
+        }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.
             "terminal" -> runtime.terminal("$arg; exec bash", args.getOrNull(1)?.toString() ?: arg.substringBefore(' '))

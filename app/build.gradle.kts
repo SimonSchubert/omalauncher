@@ -19,11 +19,10 @@ android {
 
     defaultConfig {
         applicationId = "dev.omalauncher"
-        manifestPlaceholders["launcherLabel"] = "Omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 18
-        versionName = "0.10.0"
+        versionCode = 19
+        versionName = "0.10.1"
         ndk { abiFilters += "arm64-v8a" }
     }
 
@@ -61,7 +60,6 @@ android {
             initWith(getByName("debug"))
             applicationIdSuffix = ".embedded"
             versionNameSuffix = "-embedded-prototype"
-            manifestPlaceholders["launcherLabel"] = "Linux Face Prototype"
             matchingFallbacks += "debug"
         }
         release {

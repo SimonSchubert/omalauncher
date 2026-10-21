@@ -4,7 +4,8 @@ Each `*.owl` file in this folder is a widget on the Android home screen,
 written in OWL, a small declarative language in the spirit of QML. Its first
 word says what it is: `widget "name" { }` is a home-screen tile, `face "name" { }` a face, a whole home page
 left of your first one (see Faces), and `app "name" { }` an app in the app drawer that opens full screen
-(see Apps). Everything below is about widgets unless it says otherwise; faces and apps are written
+(see Apps). `panel "name" { }` is a view a swipe on home opens (see Panels), and `keybar "name" { }` the extra keys
+over the keyboard while typing in a terminal (see Extra keys). Everything below is about widgets unless it says otherwise; faces and apps are written
 the same way. Save a file and it appears within a second. Then run `owl-check <file>`:
 
 ```
@@ -80,6 +81,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `source ag = android.agents` | the coding agents installed in Linux: `{default, installed}`, each agent `{bin, name, description, command, key, icon}`, updated as they change. `default` is the one the prompt bar asks and `ask(text)` sends to, null with none installed; `open(a.key)` starts one without a prompt, and `icon` is its logo (owl 10) |
 | `source r = android.recent` | the apps in the recent strip above the prompt bar, last opened first: a list of `{key, kind, name, icon, score, last}`, Android and Linux apps, owl apps and shortcuts alike (`kind` is `android`, `linux`, `owl` or `shortcut`). `open(r.key)` opens one, `icon` goes in `Image { src: r.icon }`, and `score` and `last` are as in `android.apps`. Like the strip, it reorders once home is out of sight, not under the finger that tapped (owl 10) |
 | `source d = android.drawer` | the app drawer: `{apps, linux, monochrome, work, updates}`, updated as it changes. `apps` lists every app in the drawer's order, owl apps, Linux apps, shortcuts and Android apps, then the work profile's shortcuts and apps, each `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`: `kind`, `icon`, `score` and `last` as in `android.recent`, `label` what screen readers should say for it, for an Image's `label` ("WhatsApp work"), `profile` as in `android.apps`, `alias` what search matches besides the name (`WhatsApp work`), `paused` for an app in a paused work profile (the drawer dims those), and `actions` the words of its long-press menu for `appAction(word, a.key)`. `hasIcon` is false while `icon` would draw nothing (no icon, or not loaded yet), when the drawer shows `initials` on a badge instead; `monochrome` on `d` says icons are silhouettes, which the drawer puts on a badge too. `d.linux` is `installed`, `installing` or `missing`; `d.work` is `{paused}` while there's a work profile, else null; `d.updates` is how many system updates wait, the dot on the drawer's settings button. `open(a.key)` opens one (owl 11) |
+| `source kb = android.modifiers` | how the extra keys hold each modifier: `{ctrl, alt, shift}`, each `off`, `once` (for the next key, tapped or typed) or `locked` (until it's set off). `latch(...)` sets them; see Extra keys (owl 12) |
 | `source m = android.modes` | the phone's modes: `{dnd, saver, ringer, torch}`, updated as they change. `dnd` is Do Not Disturb in any form, `saver` battery saver, `ringer` is `normal`, `vibrate` or `silent`, and `torch` is null on a phone without a flash. Switch the torch with `torch(...)` (owl 7) |
 | `state x = 0` | a value that handlers can change. Add `persist` to keep it across restarts: `state endsAt = 0 persist` |
 | `let x = expr` | a derived value, recomputed only when what it reads changes. It can use sources, state and earlier lets |
@@ -89,7 +91,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, or a font for `font: logo` (owl 10, see Fonts), so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see Sharing) |
-| `meta { owl: 11 }` | the language version the widget needs (this launcher has 13; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, `enc`, `post`, images from the web, `sound` and `screenInset` 8, and `parseTime`, `fmtAgo`, `fmtNum`, `random`, `shuffle`, `hash`, `fmtTime`'s zone and language, `set`, `remove`, `merge`, `reduce`, `scan`, `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten`'s depth, `on … first`, and `if` and `let` in handlers 9, and `face "…" { }` files, `onLongPress`, Text's `spans`, `fontWeight` and `letterSpacing`, gradient backgrounds, `frost`, fonts of a widget's own and Canvas `text`'s `font`, `fontWeight`, `italic` and `letterSpacing`, `android.agents`, `android.recent`, `open`, `ask`, `Popup` and Input's `underline` 10, and `android.drawer`, `appAction`, `workApps`, `rank`, `strongMatch`, `chunk`, Column's and Grid's `lazy`, `panel "…" { }` files with `query`, `enter`, `onSubmit` and `onKey`, `shortcuts`, Column's and Grid's `reverse`, Image's `label`, Text's `minLines`, an app's `statusBar` and a Column in a Row as wide as its content 11, and `screenTop` 12, and `LinuxApp` and `LinuxKey` 13; using them without declaring it is an error |
+| `meta { owl: 11 }` | the language version the widget needs (this launcher has 13; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. `Terminal` needs 2, `sprite` 3, triggers, `file`, `Slider`, `Input`, `android.notifications`, `android.volume`, `volume` and `notification` need 4, and `screen { }`, `screen()`, `close()`, `screenWidth` and `screenHeight` need 5, `Input`'s `focus`, `sh()` and `corners` 6, and `android.alarm`, `android.modes`, `torch`, `share` and `haptic` 7, and `app "…" { }` files, `android.apps`, `enc`, `post`, images from the web, `sound` and `screenInset` 8, and `parseTime`, `fmtAgo`, `fmtNum`, `random`, `shuffle`, `hash`, `fmtTime`'s zone and language, `set`, `remove`, `merge`, `reduce`, `scan`, `groupBy`, `toJson`, `capitalize`, `asin`, `acos`, `flatten`'s depth, `on … first`, and `if` and `let` in handlers 9, and `face "…" { }` files, `onLongPress`, Text's `spans`, `fontWeight` and `letterSpacing`, gradient backgrounds, `frost`, fonts of a widget's own and Canvas `text`'s `font`, `fontWeight`, `italic` and `letterSpacing`, `android.agents`, `android.recent`, `open`, `ask`, `Popup` and Input's `underline` 10, and `android.drawer`, `appAction`, `workApps`, `rank`, `strongMatch`, `chunk`, Column's and Grid's `lazy`, `panel "…" { }` files with `query`, `enter`, `onSubmit` and `onKey`, `shortcuts`, Column's and Grid's `reverse`, Image's `label`, Text's `minLines`, an app's `statusBar` and a Column in a Row as wide as its content 11, and `screenTop`, `keybar "…" { }` files, `pressKey`, `typeText`, `latch`, `android.modifiers`, `onPress`, `onRelease` and `repeats` 12, and `LinuxApp` and `LinuxKey` 13; using them without declaring it is an error |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see Screens (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -321,7 +323,11 @@ Every node also takes:
   (without `radius`, bordered elements follow the launcher's corner style: 0 for edge, 4 for soft, 8 for round;
   anything else matches it with `radius: 8 * corners`)
 - `opacity`, `rotation` (degrees), `scale`, `offset: [x, y]` (dp), `visible`
-- handlers: `onTap` (with `x`, `y`) and `onDrag` (with `dx`, `dy`, `x`, `y`); `Slider` and `Input` also take
+- handlers: `onTap` (with `x`, `y`) and `onDrag` (with `dx`, `dy`, `x`, `y`); `onPress` as the finger goes down, before
+  it's a tap (with `x`, `y` and `repeat`), and `onRelease` when it lifts or moves on to a scroll (owl 12). `onPress` runs for
+  every touch, the start of a scroll too, so in a list or anything else that scrolls, `onTap` is the one for a tap. With
+  `repeats: true`, `onPress` runs again while the finger stays down, after 400 ms and then every 50 ms, as a keyboard's
+  keys repeat: `repeat` is 0 for the press and counts up from there; `Slider` and `Input` also take
   `onChange`, and `Input` `onSubmit`, both with `value`; `Popup` takes `onDismiss`. In pages, apps and a widget's `screen { }`,
   `onLongPress` (with `x`, `y`, owl 10); on a tile, long-press belongs to the home screen, which uses it
   to move and resize tiles
@@ -484,6 +490,9 @@ after it in its block (and blocks inside them), and needs a name not used for a 
 | `url("https://...")` | opens in the Android browser. Other links open in the app that takes them: `tel:` the dialer, `geo:` maps, `mailto:` email |
 | `share(text)` | opens Android's share sheet with the text (owl 7) |
 | `haptic()` | a short tap of haptic feedback, if the user has touch feedback on (owl 7) |
+| `pressKey("ctrl+c")` | presses a key in the Linux window being typed in (a terminal tile, or a Linux app's window: a terminal or a graphical app), with any modifiers latched on the extra keys held too: a name, `esc`, `tab`, `enter`, `backspace`, `delete`, `insert`, `space`, `home`, `end`, `pgup`, `pgdn`, `up`, `down`, `left`, `right`, `f1`…`f12`, or a character on a US keyboard (`/`, `A`, `:`), after any of `ctrl+`, `alt+`, `shift+` and `super+`. Nothing happens while no Linux window has the keyboard, and a tap on another tile takes it from a terminal tile first: a key on home works from the extra keys, or from a widget's own tile next to its `Terminal`, not from another tile or an app. Only from a touch, not in a trigger; the store's reviewer sees which keys. See Extra keys (owl 12) |
+| `typeText("git status\n")` | types the text into the same window, as the keyboard would, latched modifiers and all; `\n` is Enter (owl 12) |
+| `latch("ctrl")` | holds `ctrl`, `alt` or `shift` for the next key, the extra keys' or the keyboard's, or lets it go if it's held; `latch("ctrl", "locked")` holds it until set `off`, and `"once"` or `"off"` set it so. `android.modifiers` says how each is held (owl 12) |
 | `sound("https://…/a.mp3")` | plays a sound once, in place of the one playing; `sound("stop")` stops it. Takes a URL, an asset or a file, like `Image`; see Sounds (owl 8) |
 | `torch(true)` | turns the torch on or off; also `torch("toggle")`. Does nothing on a phone without a flash, or while the camera app holds it (owl 7) |
 | `launcher("style")` | opens a launcher screen: `style` (theme, background, home screen, terminal; `themes` too), `agents`, `store`, `drawer`, `linux` (the sheet that installs Linux) or `settings` (owl 11 launchers; older ones ignore it) |
@@ -830,6 +839,53 @@ highlight (drawer.owl keeps a `pick`). Up and Down come only while what's typed 
 between its lines. Without `onKey`, the keys stay with the bar and do what they do in any text field. `open(...)` and `appAction(...)` leave the
 panel as opening an app from the drawer does, and `close()` slides it away. Besides `enter`, a panel has no
 properties, title or icon; like an app's, its nodes are the screen's. Give a long list `lazy: true`.
+
+## Extra keys
+
+While you type in a terminal, on home or in a Linux app's window, a bar of extra keys sits over the soft keyboard: esc,
+tab, ctrl, alt, the arrows and the rest a phone keyboard lacks. It's the file `keybar.owl`, a `keybar "…" { }` file, and
+it's yours to change: different keys, more rows, a key that types a command. `.stock-keybar.owl` is the bar as this
+launcher ships it, which it keeps that way; it shows while `keybar.owl` is gone or doesn't compile (home's banner says
+so), and comparing the two shows what changed in a newer launcher. The keys only show over a docked keyboard: a
+hardware keyboard has these keys already.
+
+```owl
+keybar "my keys" {
+  meta { owl: 12 }
+  source kb = android.modifiers
+  component K(label, send) {
+    Box { weight: 1; height: 40; padding: 3
+      Box { fill: true; align: center; radius: 8 * corners; background: surface; repeats: send == "up" || send == "down"
+        onPress: { if repeat == 0 { haptic() }; pressKey(send) }
+        Text { text: label; font: mono } } }
+  }
+  Row {
+    gap: 0
+    padding: [6, 0, 6, 6]
+    K { label: "esc"; send: "esc" }
+    K { label: "^C"; send: "ctrl+c" }
+    Box { weight: 1; height: 40; padding: 3
+      Box { fill: true; align: center; radius: 8 * corners; background: get(kb ?? {}, "ctrl", "off") == "off" ? surface : accent
+        onTap: latch("ctrl"); onLongPress: latch("ctrl", "locked")
+        Text { text: "ctrl"; font: mono } } }
+    K { label: "↑"; send: "up" }
+    K { label: "↓"; send: "down" }
+    Box { weight: 1; height: 40; padding: 3
+      Box { fill: true; align: center; radius: 8 * corners; background: surface; onPress: typeText("git status\n")
+        Text { text: "gs"; font: mono } } }
+  }
+}
+```
+
+The file is the whole bar, as wide as the screen and as tall as its nodes; the launcher keeps it over the keyboard and
+moves a terminal tile up by its height. It takes no properties or handlers of its own, and has no `screen { }`. Its
+keys never take focus, so the keyboard stays up. A key acts as the finger goes down with `onPress`, not when it lifts
+as `onTap` does, and `repeats: true` keeps an arrow going while it's held. `pressKey(...)`, `typeText(...)` and
+`latch(...)` reach the Linux window being typed in, and work in any owl 12 file, as do `onPress`, `onRelease` and
+`android.modifiers`.
+`latch` is how the stock bar's ctrl and alt work: a tap holds one for the next key, from the bar or the keyboard, a
+long press until it's tapped again, and `android.modifiers` tells the key how to look meanwhile. Closing the keyboard
+lets every latch go. `owl-check keybar.owl` draws the bar at the bottom of a phone's screen.
 
 ## Components
 

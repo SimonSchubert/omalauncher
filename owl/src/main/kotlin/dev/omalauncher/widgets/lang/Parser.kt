@@ -54,7 +54,7 @@ class Parser private constructor(
     }
 
     private fun widget(): WidgetAst {
-        val kind = OwlKind.entries.firstOrNull { t.isId(it.word) } ?: fail("an owl file starts with: widget \"name\" {, face \"name\" {, app \"name\" { or panel \"name\" {")
+        val kind = OwlKind.entries.firstOrNull { t.isId(it.word) } ?: fail("an owl file starts with: widget \"name\" {, face \"name\" {, app \"name\" {, panel \"name\" { or keybar \"name\" {")
         next()
         val name = if (t.type == T.Str) literalString(next()) else null
         punct("{")

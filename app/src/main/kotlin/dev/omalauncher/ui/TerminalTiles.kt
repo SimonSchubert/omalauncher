@@ -72,6 +72,9 @@ class TerminalTiles(
     /** Controller nodes are part of their client's input area, even outside its window. */
     internal val controls = HashMap<Any, Pair<EmbeddedTerminal, Rect>>()
 
+    /** How tall the extra keys measured, in pixels: keybar.owl decides it. 0 until they've shown. */
+    var extraKeysHeight by mutableFloatStateOf(0f)
+
     /** How far the home screen is lifted so the active tile clears the soft keyboard, in pixels. */
     var lift = 0f
         private set

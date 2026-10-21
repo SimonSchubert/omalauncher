@@ -138,6 +138,9 @@ class MarketTest {
         val e = Review("widgets/simon/disk/widget.owl", good).entry("widgets/simon/disk/preview.png")
         val parsed = Catalog.parse(Catalog.write(listOf(e), "2026-09-30T00:00:00Z"))
         assertEquals(listOf(e), parsed)
+        // An index written before the compiler dropped `pacman: []` lists no packages.
+        val empty = Catalog.write(listOf(e), "2026-09-30T00:00:00Z").replace("\"pacman\": [\"coreutils\"]", "\"pacman\": []")
+        assertEquals(emptyMap<String, List<String>>(), Catalog.parse(empty).single().requires)
     }
 
     @Test fun themedPreviewsRoundTripAndFallBack() {

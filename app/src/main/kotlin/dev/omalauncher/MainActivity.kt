@@ -35,6 +35,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // While a backup or device transfer runs, the process has a plain Application and no runtime;
+        // Home starts this activity in it anyway. Close until the process restarts as itself.
+        if (application !is App) {
+            finish()
+            return
+        }
         applySystemBars(this, Palette.isLight)
         runtime.start()
         state.onSettings = { page, homePage -> runtime.openSettings(page, homePage) }

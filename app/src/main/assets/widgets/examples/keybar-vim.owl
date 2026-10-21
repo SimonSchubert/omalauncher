@@ -1,0 +1,80 @@
+keybar "vim" {
+  // Extra keys for vim and neovim: esc where your thumb is, saving and quitting in one tap, and hjkl that repeat while
+  // held. Keys that are commands type them whole (:w and Enter). To use it, copy it over keybar.owl in the folder above.
+  meta { description: "Extra keys for vim: esc, :w, :q, undo and redo, hjkl that repeat, and the motions you reach for most"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  state down = ""
+
+  // l: what it shows; k: a key to press, or t: text to type; r: repeats while held; c: its color.
+  let rows = [
+    [
+      {l: "esc", k: "esc", c: red},
+      {l: ":w", t: ":w\n", c: green},
+      {l: ":q", t: ":q\n", c: yellow},
+      {l: ":wq", t: ":wq\n", c: green},
+      {l: "u", k: "u", r: true},
+      {l: "^r", k: "ctrl+r", r: true},
+      {l: "/", k: "/"},
+      {l: "n", k: "n", r: true}
+    ],
+    [
+      {l: "h", k: "h", r: true, c: blue},
+      {l: "j", k: "j", r: true, c: blue},
+      {l: "k", k: "k", r: true, c: blue},
+      {l: "l", k: "l", r: true, c: blue},
+      {l: "w", k: "w", r: true},
+      {l: "b", k: "b", r: true},
+      {l: "dd", t: "dd", r: true},
+      {l: "^d", k: "ctrl+d", r: true}
+    ]
+  ]
+
+  component Cap(k) {
+    Box {
+      weight: 1
+      fill: height
+      padding: 3
+      Box {
+        fill: true
+        align: center
+        radius: 8 * corners
+        background: down == k.l ? (k.c ?? accent) : surface
+        border: k.c != null ? 1 : 0
+        borderColor: k.c ?? border
+        repeats: k.r ?? false
+        onPress: {
+          if repeat == 0 {
+            down = k.l
+            haptic()
+          }
+          if k.t != null {
+            typeText(k.t)
+          } else {
+            pressKey(k.k)
+          }
+        }
+        onRelease: down = ""
+        Text { text: k.l; font: mono; fontSize: 15; bold: true; align: center; maxLines: 1; color: down == k.l ? background : k.c ?? foreground }
+      }
+    }
+  }
+
+  Column {
+    padding: [6, 0, 6, 6]
+    gap: 0
+    Column {
+      gap: 0
+      padding: 3
+      background: background
+      border: 2
+      borderColor: border
+      radius: 12 * corners
+      for row in rows {
+        Row {
+          height: 42
+          gap: 0
+          for k in row { Cap { k: k } }
+        }
+      }
+    }
+  }
+}
