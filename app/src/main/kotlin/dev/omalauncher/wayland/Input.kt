@@ -13,7 +13,7 @@ const val AXIS_SOURCE_WHEEL = 0
 const val AXIS_SOURCE_FINGER = 1
 
 private const val MOD_SHIFT = 1
-private const val MOD_LOCK = 2
+internal const val MOD_LOCK = 2
 private const val MOD_CTRL = 4
 private const val MOD_ALT = 8
 private const val MOD_SUPER = 64
@@ -112,9 +112,24 @@ class Input(
         }
     }
 
+    /**
+     * Caps Lock as Android has it. It can change without a key reaching a window (toggled
+     * in another app, or on before this window had focus); left alone, the guest's copy
+     * drifts and every letter comes out in the wrong case.
+     */
+    fun syncCapsLock(on: Boolean) {
+        val locked = withCapsLock(lockedMods, on)
+        if (locked == lockedMods) return
+        lockedMods = locked
+        val focus = keyboardFocus ?: return
+        keyboardsOf(focus.client).forEach(::sendModifiers)
+    }
+
+    /** [capsLock] is Android's Caps Lock state with this key, when known; it wins over toggling our own copy. */
     fun key(
         code: Int,
         pressed: Boolean,
+        capsLock: Boolean? = null,
     ) {
         if (pressed && !pressedKeys.add(code)) return
         if (!pressed && !pressedKeys.remove(code)) return
@@ -125,12 +140,12 @@ class Input(
             it.send(it.event(3).uint(serial).uint(time).uint(code).uint(if (pressed) 1 else 0))
         }
         val bit = modifierBit(code)
-        if (bit != 0) {
-            if (bit == MOD_LOCK) {
-                if (pressed) lockedMods = lockedMods xor MOD_LOCK
-            } else {
-                depressedMods = pressedKeys.fold(0) { acc, k -> acc or (modifierBit(k).takeIf { it != MOD_LOCK } ?: 0) }
-            }
+        val locked = lockedModsAfter(lockedMods, bit, pressed, capsLock)
+        val depressed =
+            if (bit != 0) pressedKeys.fold(0) { acc, k -> acc or (modifierBit(k).takeIf { it != MOD_LOCK } ?: 0) } else depressedMods
+        if (bit != 0 || locked != lockedMods) {
+            lockedMods = locked
+            depressedMods = depressed
             keyboardsOf(focus.client).forEach(::sendModifiers)
         }
     }
@@ -276,3 +291,25 @@ class Input(
         touchFocus.values.removeAll { it === surface }
     }
 }
+
+/** [locked] with Caps Lock set to [on], other locked modifiers kept. */
+internal fun withCapsLock(
+    locked: Int,
+    on: Boolean,
+): Int = if (on) locked or MOD_LOCK else locked and MOD_LOCK.inv()
+
+/**
+ * Locked modifiers after a key whose modifier bit is [bit]: Android's Caps Lock state when
+ * it gave one, else the Caps Lock key toggles ours on its press.
+ */
+internal fun lockedModsAfter(
+    locked: Int,
+    bit: Int,
+    pressed: Boolean,
+    capsLock: Boolean?,
+): Int =
+    when {
+        capsLock != null -> withCapsLock(locked, capsLock)
+        bit == MOD_LOCK && pressed -> locked xor MOD_LOCK
+        else -> locked
+    }
