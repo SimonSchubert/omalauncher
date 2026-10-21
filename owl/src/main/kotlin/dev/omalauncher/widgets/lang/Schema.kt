@@ -41,7 +41,7 @@ internal val KINDS: Map<String, Kind> =
         "LinuxKey" to Kind(setOf("target", "keys", "text", "color"), Children.NONE),
         // owl 4: input.
         "Slider" to Kind(setOf("value", "min", "max", "step", "color", "track", "live"), Children.NONE),
-        "Input" to Kind(setOf("text", "placeholder", "color", "fontSize", "clear", "focus", "underline"), Children.NONE),
+        "Input" to Kind(setOf("text", "placeholder", "color", "fontSize", "clear", "focus", "underline", "password"), Children.NONE),
         // owl 10: a menu over everything else, next to the node that holds it.
         "Popup" to Kind(setOf("position", "gap", "align"), Children.UI),
     )
@@ -124,7 +124,20 @@ internal val SINCE =
         // owl 12: how much of an app's top a camera cutout covers, once it hides the status bar.
         mapOf("screenTop" to 12) +
         // owl 12: the extra keys over the soft keyboard as a file; keys for the focused Linux window; touches as they go down.
-        listOf(KEYS_FILE, "pressKey", "typeText", "latch", "android.modifiers", "onPress", "onRelease", "repeats").associateWith { 12 }
+        listOf(KEYS_FILE, "pressKey", "typeText", "latch", "android.modifiers", "onPress", "onRelease", "repeats").associateWith { 12 } +
+        // owl 12: requests other than POST; base64 text.
+        listOf(POST_METHOD, "toBase64", "fromBase64").associateWith { 12 } +
+        // owl 12: tokens kept encrypted, which only go into requests, and fields that hide what's typed.
+        listOf(SECRET, "Input.password").associateWith { 12 }
+
+/** `state x = null secret`, named like this in [SINCE]. */
+internal const val SECRET = "secret"
+
+/** `method:` on post(...), named like this in [SINCE]. */
+internal const val POST_METHOD = "method:"
+
+/** The methods post(...) sends; Android's HttpURLConnection has no PATCH. */
+internal val POST_METHODS = setOf("POST", "PUT", "DELETE")
 
 internal const val FACE_FILE = "face \"…\" { }"
 

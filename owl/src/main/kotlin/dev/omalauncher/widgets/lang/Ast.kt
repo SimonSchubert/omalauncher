@@ -190,6 +190,8 @@ sealed interface Decl {
         override val pos: Int,
         /** `persist`: the value survives restarts. */
         val persist: Boolean = false,
+        /** `secret`: survives restarts encrypted, and only goes into requests. */
+        val secret: Boolean = false,
     ) : Decl
 
     class Let(

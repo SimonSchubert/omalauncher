@@ -458,6 +458,7 @@ class WidgetEngine(
     private fun forget(fileName: String) {
         layout.remove(fileName)
         File(stateDir, "$fileName.json").delete()
+        File(stateDir, "$fileName.secret").delete()
         hashes.remove(fileName)
         File(checkDir, "$fileName.txt").delete()
         File(previewDir, "$fileName.png").delete()
@@ -589,6 +590,7 @@ class WidgetEngine(
                     services,
                     { message -> writeError(spec.file, message, append = true) },
                     File(stateDir, "$name.json"),
+                    File(stateDir, "$name.secret"),
                     onScreen = { open ->
                         when {
                             program.kind == OwlKind.App -> if (!open) appCloses.tryEmit(name)
@@ -695,7 +697,7 @@ class WidgetEngine(
         var screen: String? = null
         val ok =
             try {
-                previews.render(spec, inst, cells, w, h, File(previewDir, "$name.png"), loaded).also {
+                previews.render(spec, inst, shownCells(cells), w, h, File(previewDir, "$name.png"), loaded).also {
                     // The screen { } as it opens over home, at the phone's size.
                     if (it && program.screen != null) {
                         val dm = context.resources.displayMetrics
@@ -709,12 +711,18 @@ class WidgetEngine(
             }
         // The file may have changed while this rendered; its own preview follows.
         if (hashes[name] != hash) return
-        val line = if (ok) "preview $hash ${cells.first}x${cells.second} ${w}x$h" else "preview-skipped $hash rendering failed"
+        val line = if (ok) shownCells(cells).let { (c, r) -> "preview $hash ${c}x$r ${w}x$h" } else "preview-skipped $hash rendering failed"
         writeCheck(spec.file, hash, "ok", listOfNotNull(line, screen).joinToString("\n"))
     }
 
     /** The tile's cells as it's laid out on home, else as the file sizes it; a face's are the whole grid. */
     private fun tileCells(spec: WidgetSpec) = (if (spec.isFace) layout.grid ?: (layout.columns to 12) else null) ?: layout.cell(spec.file.name)?.let { it.w to it.h } ?: spec.size?.let { (w, h) -> w.coerceIn(1, layout.columns) to h.coerceAtLeast(1) } ?: (3 to 3)
+
+    /**
+     * [cells] as home shows them, for `cols` and `rows`: on its side in landscape, like the tile on home. The preview
+     * shares the tile's instance, so drawing it with the file's cells would put them in the tile on home too.
+     */
+    private fun shownCells(cells: Pair<Int, Int>) = if (layout.turned) cells.second to cells.first else cells
 
     /** Waits until every source of [inst] has a value; what a preview draws after. */
     private fun loadedOf(inst: WidgetInstance): suspend () -> Unit = { snapshotFlow { inst.loaded() }.first { it } }
@@ -793,7 +801,7 @@ class WidgetEngine(
                     if (spec.kind == OwlKind.App || spec.kind == OwlKind.Panel || spec.kind == OwlKind.Keys) {
                         previews.renderScreen(spec, inst, dm.widthPixels, dm.heightPixels, out, ready)
                     } else {
-                        previews.render(spec, inst, cells, w, h, out, ready)
+                        previews.render(spec, inst, shownCells(cells), w, h, out, ready)
                     }
                 }
             }
@@ -978,6 +986,7 @@ class WidgetEngine(
         val assets = context.assets
         return buildList {
             add(asset("widgets/README.md", File(dir, "README.md"), Policy.Owned))
+            for (name in assets.list("widgets/docs").orEmpty()) add(asset("widgets/docs/$name", File(dir, "docs/$name"), Policy.Owned))
             for (name in assets.list("widgets/examples").orEmpty()) add(asset("widgets/examples/$name", File(dir, "examples/$name"), Policy.Seeded))
             for (name in assets.list("widgets").orEmpty().filter { it.endsWith(".owl") }) add(asset("widgets/$name", File(dir, name), Policy.Seeded))
             // Always as this launcher ships them, whatever became of drawer.owl and keybar.owl.
@@ -1025,7 +1034,7 @@ class WidgetEngine(
 
         private const val AGENT_POINTER =
             "# omalauncher\n\nThis Arch system runs inside an Android launcher. Home-screen widgets are `.owl` files in " +
-                "~/$GUEST_DIR, written in a small declarative language documented in README.md there; so are apps for the " +
+                "~/$GUEST_DIR, written in a small declarative language documented in README.md there (and docs/ next to it); so are apps for the " +
                 "app drawer (`app \"name\" { }`) and panels that swiping up or down on home opens (`panel \"name\" { }`, picked with " +
                 "gestures.swipe-up and gestures.swipe-down in ~/${StyleStore.GUEST_DIR}/style.toml). The app drawer is the panel " +
                 "drawer.owl there: to change the drawer, edit it; .stock-drawer.owl is the drawer as this launcher ships it. " +
@@ -1040,6 +1049,6 @@ class WidgetEngine(
                 "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n\n" +
                 "Where everything on home is (pages in order, faces, widgets, pinned apps and folders, each tile's cell) is " +
                 "~/${HomeStore.GUEST_DIR}/${HomeStore.FILE}; edit it to move, resize or pin things or reorder pages. " +
-                "\"Home's layout\" in the widgets README explains it.\n"
+                "docs/home.md in the widgets folder explains it.\n"
     }
 }

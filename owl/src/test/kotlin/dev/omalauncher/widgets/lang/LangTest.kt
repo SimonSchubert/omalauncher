@@ -60,8 +60,9 @@ class LangTest {
             body: Value,
             headers: Map<String, String>,
             slot: Int?,
+            method: String,
         ) {
-            actions += "post $slot $url $body $headers"
+            actions += "post $slot $url $body $headers" + (if (method != "POST") " $method" else "")
         }
     }
 
@@ -289,6 +290,60 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 7 }\n onTap: post(\"https://x.test/\")\n Text { text: 1 } }").contains("post needs owl 8"))
         assertTrue(compileError("app \"t\" {\n meta { owl: 8 }\n back: true\n onBack: post(\"file:///x\")\n Text { text: 1 } }").contains("http:// or https://"))
         assertEquals(listOf("http POST (a URL built from widget values)"), Compiler.compile("app \"t\" {\n meta { owl: 8 }\n state u = \"\"\n back: true\n onBack: post(u)\n Text { text: 1 } }").commands)
+    }
+
+    /** post's method: sends PUT or DELETE (owl 12), listed as what it is. */
+    @Test fun postMethods() {
+        val p =
+            Compiler.compile(
+                "app \"t\" {\n meta { owl: 12 }\n back: true\n" +
+                    " onBack: { post(\"https://x.test/items/1\", null, {}, method: \"delete\"); post(\"https://x.test/b\", {a: 1}, {}, method: \"PUT\") }\n" +
+                    " Text { text: 1 } }",
+            )
+        val host = TestHost(p)
+        p.onBack!!.run(Env.root(host), emptyList())
+        assertEquals(listOf("post null https://x.test/items/1 null {} DELETE", "post null https://x.test/b {a: 1} {} PUT"), host.actions)
+        assertEquals(setOf("http DELETE https://x.test/items/1", "http PUT https://x.test/b"), p.commands.toSet())
+        val app = "app \"t\" {\n meta { owl: 12 }\n back: true\n onBack: post(\"https://x.test/\", null, {}, "
+        assertTrue(compileError("app \"t\" {\n meta { owl: 11 }\n back: true\n onBack: post(\"https://x.test/\", null, {}, method: \"PUT\")\n Text { text: 1 } }").contains("needs owl 12"))
+        assertTrue(compileError(app + "method: \"PATCH\")\n Text { text: 1 } }").contains("method: is one of"))
+        assertTrue(compileError(app + "retries: 3)\n Text { text: 1 } }").contains("no other named arguments"))
+    }
+
+    /** A secret only goes into a request's headers and body, or a check that it's set (owl 12). */
+    @Test fun secretsOnlyGoIntoRequests() {
+        val w = "widget {\n meta { owl: 12 }\n state token = null secret\n state out = null\n"
+        val p =
+            Compiler.compile(
+                w + " source s = http(token == null ? null : \"https://x.test/a\", {Authorization: \"Bearer ${'$'}{token}\"})\n" +
+                    " onTap: { if token == null { token = \"t\" } else { out = post(\"https://x.test/b\", {t: token}, {}) } }\n Text { text: token != \"\" ? \"in\" : \"out\" } }",
+            )
+        val host = TestHost(p)
+        assertEquals("in", (p.root.single() as WNode.Element).props["text"]!!(Env.root(host)).toString())
+        p.onTap!!.run(Env.root(host), emptyList())
+        p.onTap!!.run(Env.root(host), emptyList())
+        assertEquals(listOf("post 1 https://x.test/b {t: t} {}"), host.actions)
+        assertTrue((p.globals[0] as Global.State).secret)
+        for (leak in listOf("Text { text: token }", "Text { text: \"x\"; onTap: copy(token) }", "Text { text: \"x\"; onTap: run(\"echo ${'$'}{token}\") }", "Text { text: (token ?? \"\") == \"a\" }")) {
+            assertTrue(leak, compileError("$w $leak }").contains("token is a secret"))
+        }
+        compileError(w + " on token { out = 1 }\n Text { text: 1 } }").let { assertTrue(it, it.contains("token is a secret")) }
+        compileError(w + " source s = http(\"https://x.test/${'$'}{token}\")\n Text { text: 1 } }").let { assertTrue(it, it.contains("token is a secret")) }
+        // Bound to the servers it goes to, which are written out, so an edit can't send it elsewhere unnoticed.
+        assertEquals(mapOf("token" to listOf("https://x.test")), p.secretHosts)
+        compileError(w + " state h = \"x.test\"\n source s = http(\"https://${'$'}{h}/a\", {A: token})\n Text { text: 1 } }").let { assertTrue(it, it.contains("server it goes to is written out")) }
+        compileError(w + " state u = \"https://x.test\"\n onTap: post(u, {t: token})\n Text { text: 1 } }").let { assertTrue(it, it.contains("server it goes to is written out")) }
+        assertEquals(listOf("https://x.test:8443"), Compiler.compile(w + " onTap: post(\"https://X.test:8443\", {t: token})\n Text { text: 1 } }").secretHosts["token"])
+        compileError("widget {\n meta { owl: 12 }\n state token = null secret persist\n Text { text: 1 } }").let { assertTrue(it, it.contains("without persist")) }
+        compileError("widget {\n meta { owl: 11 }\n state token = null secret\n Text { text: 1 } }").let { assertTrue(it, it.contains("secret needs owl 12")) }
+    }
+
+    @Test fun base64() {
+        assertEquals("aGk/Pz4=", text("toBase64(\"hi??>\")", "meta { owl: 12 }"))
+        // base64url, unpadded, as a JWT or a link carries JSON.
+        assertEquals("hi??>", text("fromBase64(\"aGk_Pz4\")", "meta { owl: 12 }"))
+        assertEquals("pc", text("parseJson(fromBase64(\"eyJob3N0IjoicGMifQ\")).host", "meta { owl: 12 }"))
+        assertEquals("null", text("fromBase64(\"*\")", "meta { owl: 12 }"))
     }
 
     @Test fun imagesFromTheWeb() {
@@ -598,6 +653,21 @@ class LangTest {
         assertTrue(compileError("widget { Text { text: a } \n state a = 1 \n onTap: b = 2 }").contains("unknown state 'b'"))
         assertTrue(compileError("widget { Column { circle(1, 2, 3) } }").contains("inside a Canvas"))
         assertTrue(compileError("widget { let a = b\n let b = a\n Text { text: a } }").contains("unknown name 'b'"))
+    }
+
+    /** What code written from QML or JavaScript habit gets wrong: the error says what to write instead. */
+    @Test fun errorsSayTheFix() {
+        assertTrue(compileError("widget { let n = 1e9\n Text { text: n } }").contains("write 1e9 as 1000000000"))
+        assertTrue(compileError("widget { let n = 2.5e-3\n Text { text: n } }").contains("write 2.5e-3 as 0.0025"))
+        assertTrue(compileError("widget { let n = 1e+9\n Text { text: n } }").contains("write 1e+9 as 1000000000"))
+        assertTrue(compileError("widget { let a = b + 1\n let b = 2\n Text { text: a } }").contains("unknown name 'b': it's declared below"))
+        assertTrue(compileError("widget { Column { let a = b\n let b = 2\n Text { text: a } } }").contains("unknown name 'b': it's declared below"))
+        assertTrue(compileError("widget { Column { width: k\n let k = 3\n Text { text: k } } }").contains("unknown name 'k': it's a let inside a node"))
+        assertTrue(compileError("widget { let f = x => x * 2\n Text { text: f(2) } }").contains("'f' is a let, and a let can't be called"))
+        assertTrue(compileError("widget { state a = true\n Text { text: \"x\"; style: a ? title : muted } }").contains("as in style: title; in an expression, quote it"))
+        assertTrue(compileError("widget { state n = 0\n component Chip(l) { Text { text: l } }\n Chip { l: \"a\"; onTap: n = 1 } }").contains("or wrap it: Box { onTap: …; Chip { … } }"))
+        // The quoted words work, read as text like the bare ones.
+        Compiler.compile("widget { state a = true\n Text { text: \"x\"; align: a ? \"start\" : \"end\"; style: a ? \"title\" : \"muted\" } }")
     }
 
     @Test fun enumsAndThemeColors() {

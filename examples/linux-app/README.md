@@ -10,7 +10,7 @@ Python package dependencies. `demo.py` is the same embedded script, kept
 separately for inspection and host tests.
 
 For the API, client requirements and advice for coding agents, read the
-[OWL LinuxApp guide](../../app/src/main/assets/widgets/README.md#linuxapp).
+[OWL LinuxApp guide](../../app/src/main/assets/widgets/docs/linux-app.md).
 The launcher also ships a smaller
 [foot example](../../app/src/main/assets/widgets/examples/46-linux-app.owl) and
 [keyboard controls example](../../app/src/main/assets/widgets/examples/47-linux-keys.owl),

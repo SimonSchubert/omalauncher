@@ -47,13 +47,15 @@ interface Host {
 
     /**
      * `post(url, body, headers)` in a handler: an HTTP POST, with a map or list [body] sent as JSON. With a
-     * [slot] (`x = post(...)`), the answer goes there as `{code, ok, out}` when it arrives.
+     * [slot] (`x = post(...)`), the answer goes there as `{code, ok, out}` when it arrives. [method] is
+     * POST, or `method:`'s PUT or DELETE.
      */
     fun post(
         url: String,
         body: Value,
         headers: Map<String, String>,
         slot: Int?,
+        method: String,
     ) {}
 
     val budget: Budget
@@ -250,6 +252,8 @@ sealed interface Global {
         val init: Ev,
         /** Saved across restarts. */
         val persist: Boolean = false,
+        /** `secret`: saved across restarts encrypted, apart from [persist]'s values; it only goes into requests. */
+        val secret: Boolean = false,
     ) : Global
 
     class Let(
@@ -341,6 +345,8 @@ class Program(
     val triggers: List<Trigger>,
     /** Shell commands this widget can run, known without running it; for reviewing shared widgets. */
     val commands: List<String>,
+    /** Each `secret` state's servers, sorted: its sealed value is kept only while these stay the same. */
+    val secretHosts: Map<String, List<String>> = emptyMap(),
     /** Declared dependencies: package manager -> package names, e.g. pacman -> [jq, curl]. */
     val requires: Map<String, List<String>>,
     /**

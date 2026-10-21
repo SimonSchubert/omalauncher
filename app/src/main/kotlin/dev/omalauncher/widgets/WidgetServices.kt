@@ -43,6 +43,7 @@ import dev.omalauncher.linux.GuestShell
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.ShellPool
 import dev.omalauncher.linux.ShellResult
+import dev.omalauncher.SecretBox
 import dev.omalauncher.openHttp
 import dev.omalauncher.openUrl
 import dev.omalauncher.readUpTo
@@ -590,6 +591,7 @@ class WidgetServices(
         headers: Map<String, String>,
         timeoutSeconds: Int,
         body: ByteArray?,
+        method: String,
     ): ShellResult =
         withContext(Dispatchers.IO) {
             if (!url.startsWith("https://") && !url.startsWith("http://")) return@withContext ShellResult("", "not an http(s) URL: $url", -1)
@@ -599,10 +601,13 @@ class WidgetServices(
                     connection.setRequestProperty("User-Agent", "omalauncher-widgets")
                     headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
                     if (body != null) {
-                        connection.requestMethod = "POST"
-                        connection.doOutput = true
-                        connection.setFixedLengthStreamingMode(body.size)
-                        connection.outputStream.use { it.write(body) }
+                        connection.requestMethod = method
+                        // A DELETE usually has no body, and some servers refuse one.
+                        if (method != "DELETE" || body.isNotEmpty()) {
+                            connection.doOutput = true
+                            connection.setFixedLengthStreamingMode(body.size)
+                            connection.outputStream.use { it.write(body) }
+                        }
                     }
                     val code = connection.responseCode
                     val stream = if (code >= 400) connection.errorStream else connection.inputStream
@@ -616,6 +621,10 @@ class WidgetServices(
                 ShellResult("", e.message ?: e.toString(), -1)
             }
         }
+
+    override fun seal(plain: ByteArray) = SecretBox.seal(plain)
+
+    override fun unseal(sealed: ByteArray) = SecretBox.unseal(sealed)
 
     /** Web images and sounds on disk, by the SHA-256 of their URL. */
     private val fileCache by lazy { File(context.cacheDir, "owl-files") }

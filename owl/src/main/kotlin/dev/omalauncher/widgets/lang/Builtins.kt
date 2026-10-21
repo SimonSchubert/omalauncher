@@ -13,6 +13,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
 import java.time.temporal.TemporalQueries
+import java.util.Base64
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.floor
@@ -632,6 +633,13 @@ object Builtins {
                 },
             "matchAll" to Builtin(2, 2) { a -> lst(regex(a.str(1)).findAll(a.str(0)).take(MAX_LIST).map { m -> if (m.groupValues.size > 1) Lst(m.groupValues.drop(1).map(::Str)) else Str(m.value) }.toList()) },
             "parseJson" to Builtin(1, 1) { a -> Json.parseOrText(a.str(0)) },
+            // Text as base64 and back; fromBase64 also reads base64url, with or without padding, and gives null for anything else.
+            "toBase64" to Builtin(1, 1) { a -> Str(Base64.getEncoder().encodeToString(a.str(0).toByteArray())) },
+            "fromBase64" to
+                Builtin(1, 1) { a ->
+                    val s = a.str(0).filterNot { it.isWhitespace() }.replace('-', '+').replace('_', '/').trimEnd('=')
+                    runCatching { Str(String(Base64.getDecoder().decode(s.padEnd((s.length + 3) / 4 * 4, '=')), Charsets.UTF_8)) }.getOrDefault(Null)
+                },
             // lists
             "range" to
                 Builtin(1, 3) { a ->
