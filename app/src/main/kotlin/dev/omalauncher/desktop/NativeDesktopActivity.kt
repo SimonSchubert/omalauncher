@@ -46,8 +46,9 @@ class NativeDesktopActivity : ComponentActivity() {
         val original = checkNotNull(window.callback)
         window.callback = object : Window.Callback by original {
             override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-                if (event.isMetaPressed && event.keyCode in listOf(KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_A)) {
-                    if (event.action == KeyEvent.ACTION_DOWN) desktopSession?.uiAction("search")
+                if (event.isMetaPressed && event.keyCode in listOf(KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_A, KeyEvent.KEYCODE_ENTER)) {
+                    if (event.action == KeyEvent.ACTION_DOWN) desktopSession?.uiAction(
+                        if (event.keyCode == KeyEvent.KEYCODE_ENTER) "terminal" else "search")
                     return true
                 }
                 return original.dispatchKeyEvent(event)
@@ -87,7 +88,10 @@ class NativeDesktopActivity : ComponentActivity() {
         desktopSession?.close()
         sessionDisplayId = displayId
         desktopSession = DesktopHomeSession(this, runtime, "native_display_$displayId", true, true,
-            false, 0, 0, 1f, ::launch, { !isFinishing && !isDestroyed }).also { it.start() }
+            false, 0, 0, 1f, ::launch,
+            { app -> runtime.launch(app, displayId) { desktopSession?.unavailable(it) } },
+            { runtime.terminal(null, "Terminal", displayId = displayId) { desktopSession?.unavailable(it) } },
+            { !isFinishing && !isDestroyed }).also { it.start() }
     }
 
     private fun launch(app: AndroidApp) {

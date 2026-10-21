@@ -73,7 +73,10 @@ internal class DesktopSurface @RequiresApi(30) constructor(
         "external_" + DesktopAccess.digest((identity.packageName + identity.certificate + profile).toByteArray()),
         pagesSideBySide, inheritPhoneLayout, workspacePages,
         display.mode.physicalWidth, display.mode.physicalHeight, uiScale,
-        ::launch, ::authorized, { view.requestFocus() },
+        ::launch,
+        { app -> runtime.launch(app, displayId, ::reportLinuxError) },
+        { runtime.terminal(null, "Terminal", displayId = displayId, onDisplayError = ::reportLinuxError) },
+        ::authorized, { view.requestFocus() },
         { text -> runCatching { callback.onStatus(id, "unsupported_action", text) } })
 
     fun attach(width: Int, height: Int) {
@@ -117,6 +120,8 @@ internal class DesktopSurface @RequiresApi(30) constructor(
         }
         return true
     }
+
+    private fun reportLinuxError(text: String) { home.unavailable(text) }
 
     fun launch(app: AndroidApp) {
         if (!authorized()) return

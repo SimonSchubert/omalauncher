@@ -99,8 +99,12 @@ abstract class InstantActivity : ComponentActivity() {
         fun startInstantly(
             context: Context,
             intent: Intent,
+            displayId: Int? = null,
         ) {
-            val options = if (Build.VERSION.SDK_INT >= 33) ActivityOptions.makeBasic().setSplashScreenStyle(SplashScreen.SPLASH_SCREEN_STYLE_SOLID_COLOR).toBundle() else null
+            val options = ActivityOptions.makeBasic().apply {
+                if (Build.VERSION.SDK_INT >= 33) setSplashScreenStyle(SplashScreen.SPLASH_SCREEN_STYLE_SOLID_COLOR)
+                if (displayId != null) launchDisplayId = displayId
+            }.toBundle()
             context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION), options)
         }
     }

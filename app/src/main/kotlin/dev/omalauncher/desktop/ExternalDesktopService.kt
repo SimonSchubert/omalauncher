@@ -54,7 +54,7 @@ class ExternalDesktopService : Service() {
     private fun reply(status: String) = Bundle().apply {
         putInt("protocol", DESKTOP_PROTOCOL)
         putString("status", status)
-        putStringArrayList("capabilities", if (Build.VERSION.SDK_INT >= 30) arrayListOf("home_surface", "widgets", "android_launch", "work_profiles", "search", "key", "surface_input", "pointer", "home_pages", "appearance", "multi_display", "system_launch") else arrayListOf())
+        putStringArrayList("capabilities", if (Build.VERSION.SDK_INT >= 30) arrayListOf("home_surface", "widgets", "android_launch", "work_profiles", "search", "key", "surface_input", "pointer", "home_pages", "appearance", "multi_display", "system_launch", "linux_launch") else arrayListOf())
     }
 
     private fun status(protocol: Int, identity: DesktopIdentity?): String = when {

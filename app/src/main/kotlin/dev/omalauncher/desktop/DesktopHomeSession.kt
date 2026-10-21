@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.Runtime
+import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.ui.Arrange
 import dev.omalauncher.ui.Palette
 
@@ -24,6 +25,8 @@ internal class DesktopHomeSession(
     screenHeightPx: Int,
     uiScale: Float,
     private val launchApp: (AndroidApp) -> Unit,
+    private val launchLinuxApp: (LinuxApp) -> Unit,
+    private val launchTerminal: () -> Unit,
     private val authorized: () -> Boolean,
     private val focus: () -> Unit = {},
     private val report: (String) -> Unit = {},
@@ -44,6 +47,16 @@ internal class DesktopHomeSession(
     fun visible(value: Boolean) { widgets.visible = value; if (!value) dismiss() }
 
     fun launch(app: AndroidApp) { if (authorized()) launchApp(app) }
+    fun launch(app: LinuxApp) {
+        if (!authorized()) return
+        if (!runtime.linuxAvailable) return unavailable("Install Linux in Omalauncher on the phone first")
+        launchLinuxApp(app)
+        dismiss()
+    }
+    fun launch(app: DesktopApp) = when (app) {
+        is DesktopApp.Android -> launch(app.app)
+        is DesktopApp.Linux -> launch(app.app)
+    }
     fun unavailable(text: String) { message = text; report(text) }
 
     fun dismiss() {
@@ -64,6 +77,8 @@ internal class DesktopHomeSession(
         when (action) {
             "drawer", "search" -> { drawer = true; focus() }
             "widgets" -> picker = true
+            "terminal" -> if (runtime.linuxAvailable) { launchTerminal(); dismiss() }
+                else unavailable("Install Linux in Omalauncher on the phone first")
             "dismiss" -> dismiss()
             "focus" -> focus()
             else -> unavailable("Action is unavailable on this desktop: $action")

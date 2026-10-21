@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.AndroidApp
 import dev.omalauncher.Runtime
+import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.ui.FolderTile
 import dev.omalauncher.ui.GridPad
 import dev.omalauncher.ui.HomeGrid
@@ -51,8 +52,25 @@ import dev.omalauncher.widgets.WidgetItem
 import dev.omalauncher.widgets.isFacePage
 import dev.omalauncher.widgets.lang.OwlKind
 
-internal fun matchingApps(runtime: Runtime, query: String): List<AndroidApp> = if (query.isBlank()) runtime.androidApps.apps.toList() else
-    rankMatches(runtime.androidApps.apps.toList(), query, { it.label }, alias = { if (it.profile != null) "${it.label} work" else null }).map { it.first }
+internal sealed interface DesktopApp {
+    val key: String
+    val label: String
+    data class Android(val app: AndroidApp) : DesktopApp {
+        override val key get() = "android:${app.key}"
+        override val label get() = app.spoken
+    }
+    data class Linux(val app: LinuxApp) : DesktopApp {
+        override val key get() = "linux:${app.id}"
+        override val label get() = app.name
+    }
+}
+
+internal fun matchingApps(runtime: Runtime, query: String): List<DesktopApp> {
+    val apps = runtime.linuxApps.apps.map(DesktopApp::Linux) + runtime.androidApps.apps.map(DesktopApp::Android)
+    return if (query.isBlank()) apps else rankMatches(apps, query, { it.label }, alias = {
+        (it as? DesktopApp.Android)?.app?.takeIf { app -> app.profile != null }?.let { app -> "${app.label} work" }
+    }).map { it.first }
+}
 
 /** Tile pages can share a desktop row; a face always owns the whole window. */
 internal fun desktopSlots(pages: List<Int>, per: Int, full: (Int) -> Boolean): List<List<Int>> {
@@ -104,7 +122,8 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                             onInstall = { session.unavailable("Install widget dependencies from the phone") },
                             onFix = { session.unavailable("Agent windows are unavailable on this desktop") })
                         is Shortcut -> ShortcutTile(item, runtime.shortcutLabel(item), runtime.shortcutIcon(item, LauncherStyle.monochromeIcons), focused, tile,
-                            onTap = { item.component?.let { runtime.androidApps.pinned(it, item.profile) }?.let(session::launch)
+                            onTap = { item.linux?.let(session::launch)
+                                ?: item.component?.let { runtime.androidApps.pinned(it, item.profile) }?.let(session::launch)
                                 ?: session.unavailable("This app presentation is unavailable on this desktop") },
                             paused = runtime.androidApps.paused(item.profile), clone = runtime.androidApps.cloned(item.profile))
                         is Folder -> FolderTile(item, item.apps.take(4).map { runtime.shortcutIcon(it, LauncherStyle.monochromeIcons) },
@@ -134,12 +153,23 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { apps.firstOrNull()?.let(session::launch) }))
                 LazyColumn(Modifier.weight(1f), state = session.drawerScroll, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(apps, key = { it.key }) { app ->
-                        Row(Modifier.fillMaxWidth().alpha(if (runtime.androidApps.paused(app.profile)) 0.5f else 1f).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        val android = (app as? DesktopApp.Android)?.app
+                        Row(Modifier.fillMaxWidth().alpha(if (android != null && runtime.androidApps.paused(android.profile)) 0.5f else 1f).padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Row(Modifier.weight(1f).clickable { session.launch(app) }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                runtime.androidApps.icons[app.key]?.let { Image(it, app.spoken, Modifier.size(40.dp)) }
-                                BasicText(app.spoken, style = Mono)
+                                (when (app) {
+                                    is DesktopApp.Android -> runtime.androidApps.icons[app.app.key]
+                                    is DesktopApp.Linux -> runtime.linuxApps.icons[app.app.id]
+                                })?.let { Image(it, app.label, Modifier.size(40.dp)) }
+                                BasicText(app.label, style = Mono)
                             }
-                            BasicText("[pin]", Modifier.clickable { widgets.pin(app, slots.getOrNull(pager.currentPage)?.firstOrNull { it > 0 } ?: 1); session.dismiss() }.padding(8.dp), style = Mono.copy(color = Palette.accent))
+                            BasicText("[pin]", Modifier.clickable {
+                                val page = slots.getOrNull(pager.currentPage)?.firstOrNull { it > 0 } ?: 1
+                                when (app) {
+                                    is DesktopApp.Android -> widgets.pin(app.app, page)
+                                    is DesktopApp.Linux -> widgets.pin(app.app, page)
+                                }
+                                session.dismiss()
+                            }.padding(8.dp), style = Mono.copy(color = Palette.accent))
                         }
                     }
                 }

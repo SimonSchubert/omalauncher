@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.AndroidApp
+import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.Runtime
 import dev.omalauncher.ui.EmbeddedTerminal
 import dev.omalauncher.widgets.HomeItem
@@ -174,6 +175,11 @@ internal class DesktopWidgets(
     fun pin(app: AndroidApp, page: Int) {
         shortcuts.addAndroid(app, page)
         layout.setPage("app:" + app.key, page)
+    }
+
+    fun pin(app: LinuxApp, page: Int) {
+        shortcuts.addLinux(app, page)
+        layout.setPage("linux:" + app.id, page)
     }
 
     fun group(app: Shortcut, target: HomeItem) { shortcuts.group(app, target) }

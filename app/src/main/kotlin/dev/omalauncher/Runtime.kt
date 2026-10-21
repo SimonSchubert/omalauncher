@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import androidx.compose.runtime.getValue
@@ -24,6 +25,7 @@ import dev.omalauncher.linux.EDIT_COMMAND
 import dev.omalauncher.linux.FILES_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
+import dev.omalauncher.linux.LinuxWindowRoutes
 import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
@@ -131,6 +133,7 @@ class Runtime(
 
     /** Linux is installed and its services run: guest commands (like the update check) can go. */
     private var linux = false
+    val linuxAvailable get() = linux
 
     /** The Linux install and removal; one at a time. */
     private var linuxJob: Job? = null
@@ -166,6 +169,7 @@ class Runtime(
         wm.openAppWindow = { handle ->
             // Recents uses the activity's manifest label, not the task description's; see the aliases in the manifest.
             val window = wm.windowByHandle(handle)
+            val route = window?.let { windowRoutes.claim(it.appId, it.title) }
             val name = window?.let { displayName(it.appId, it.title) }
             val activity =
                 when (name) {
@@ -173,13 +177,16 @@ class Runtime(
                     "btop" -> "BtopWindow"
                     else -> agentOf(window?.appId.orEmpty(), name)?.windowAlias ?: "LinuxWindowActivity"
                 }
-            InstantActivity.startInstantly(
-                context,
-                Intent()
+            val intent = Intent()
                     .setClassName(context, "dev.omalauncher.$activity")
                     .setData(Uri.parse("omarchy://window/$handle"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
-            )
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            runCatching { InstantActivity.startInstantly(context, intent, route?.displayId) }
+                .onFailure { error ->
+                    Log.e(TAG, "Cannot open Linux window on display ${route?.displayId}", error)
+                    route?.onError?.invoke("Android refused the external Linux window: ${error.message}")
+                    if (route != null && window != null) wm.close(window)
+                }
         }
     }
 
@@ -447,6 +454,14 @@ class Runtime(
     /** Wayland app_id -> the agent running in it, for sessions not named after their agent ("New app"). */
     private val launchedAgents = ConcurrentHashMap<String, Agent>()
 
+    /** Display requests belong to a chosen app, not to every Linux window the phone may open meanwhile. Main thread only. */
+    private val windowRoutes = LinuxWindowRoutes(SystemClock::uptimeMillis)
+
+    private fun routeNextWindow(displayId: Int?, onError: (String) -> Unit, matches: (String, String) -> Boolean) {
+        if (displayId == null) return
+        windowRoutes.request(displayId, onError, matches)
+    }
+
     /** Whether a window's foot takes its size from foot.ini, as its own terminals, plain foot and most tiles do. */
     private fun followsTerminalFont(appId: String) =
         when {
@@ -465,6 +480,8 @@ class Runtime(
         command: String?,
         name: String,
         agent: Agent? = null,
+        displayId: Int? = null,
+        onDisplayError: (String) -> Unit = {},
     ) {
         if (!linux) {
             openSettings(SettingsPage.Linux)
@@ -475,6 +492,7 @@ class Runtime(
         val appId = "omarchy." + slug.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
         launchedNames[appId] = name
         if (agent != null) launchedAgents[appId] = agent
+        routeNextWindow(displayId, onDisplayError) { windowId, _ -> windowId == appId }
         val args = command?.let { " -e bash -c " + shellQuote(it) }.orEmpty()
         launch("foot --app-id=$appId${terminalFont.optionFor(appId, command)}$args")
     }
@@ -487,17 +505,27 @@ class Runtime(
         shortcut.owl?.let(::openOwlApp)
     }
 
-    fun launch(app: LinuxApp) {
+    fun launch(app: LinuxApp, displayId: Int? = null, onDisplayError: (String) -> Unit = {}) {
         // Our own Files app: open it directly rather than round-tripping through the guest.
-        if (app.exec == FILES_COMMAND) return openFiles()
-        if (app.exec == EDIT_COMMAND) return edit()
-        if (app.terminal) return terminal(app.exec, app.name)
+        if (app.exec == FILES_COMMAND) return openFiles(displayId = displayId)
+        if (app.exec == EDIT_COMMAND) return edit(displayId = displayId)
+        if (app.terminal) return terminal(app.exec, app.name, displayId = displayId, onDisplayError = onDisplayError)
         // Like an Android icon: an app that already has a window comes back to it. Single-instance
         // apps would otherwise just exit on a second launch, showing nothing. Quickshell apps (App Finder)
         // all share the app_id org.quickshell, so their window title, which is their name, decides.
         wm.appWindows
             .firstOrNull { (it.appId.isNotEmpty() && app.matches(it.appId)) || it.title.equals(app.name, ignoreCase = true) }
-            ?.let { if (bringToFront(it)) return }
+            ?.let {
+                if (displayId != null) {
+                    // AppTask does not expose its display. The host already lists Linux windows,
+                    // so avoid pulling an existing phone window in front of the external workspace.
+                    onDisplayError("This Linux app is already open; select or move its window in PhoneUI")
+                    return
+                }
+                if (bringToFront(it)) return
+            }
+        routeNextWindow(displayId, onDisplayError) { windowId, title -> (windowId.isNotEmpty() && app.matches(windowId)) ||
+            title.equals(app.name, ignoreCase = true) }
         launch(app.exec)
     }
 
@@ -548,8 +576,8 @@ class Runtime(
     }
 
     /** Opens the Files app, at [path] (a guest path) if given. */
-    fun openFiles(path: String? = null) {
-        InstantActivity.startInstantly(context, Intent(context, FilesActivity::class.java).putExtra(FilesActivity.EXTRA_PATH, path))
+    fun openFiles(path: String? = null, displayId: Int? = null) {
+        InstantActivity.startInstantly(context, Intent(context, FilesActivity::class.java).putExtra(FilesActivity.EXTRA_PATH, path), displayId)
     }
 
     /**
@@ -559,8 +587,9 @@ class Runtime(
     fun edit(
         path: String? = null,
         done: String? = null,
+        displayId: Int? = null,
     ) {
-        InstantActivity.startInstantly(context, EditorActivity.intent(context, path, done))
+        InstantActivity.startInstantly(context, EditorActivity.intent(context, path, done), displayId)
     }
 
     /** Starts a command inside the guest; its output goes to logcat. Returns at once; [onExit] runs on the launch thread. */
