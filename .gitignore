@@ -1,4 +1,5 @@
 .DS_Store
+/dist/
 .gradle/
 build/
 local.properties

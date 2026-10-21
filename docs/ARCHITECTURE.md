@@ -11,7 +11,7 @@ Linux is optional. Without it the launcher still has Omarchy's themes and
 wallpapers, Android apps from the bar and the widgets that don't run commands.
 Everything else is offered as an install from settings › linux and wherever
 it appears: Linux apps, terminal widgets, coding agents, pacman and Files.
-Widgets that need Linux (`Program.needsLinux`: cmd/stream sources, `Terminal`,
+Widgets that need Linux (`Program.needsLinux`: cmd/stream sources, `Terminal`, `LinuxApp`,
 run/terminal/app actions, `requires`) show as placeholders in their cells until
 it's installed. Removing Linux deletes `files/arch` only.
 
@@ -28,7 +28,7 @@ touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
 - `wayland/`: the Wayland server in Kotlin (wl_compositor, wl_shm,
   wl_subcompositor, wl_seat, wl_output, xdg_wm_base, xdg-decoration) and
   `WindowRenderer`, which draws one window into its activity's SurfaceView
-  (or, for a widget's `Terminal`, into a TextureView in the tile)
+  (or, for a widget's `Terminal`/`LinuxApp`, into a TextureView in the tile)
 - `linux/`: proot, the rootfs setup and its update steps, pacman, coding
   agents, and the bridges to Android (audio, URLs, /proc)
 - `ui/`: the Compose home screen, the bar and its app list, settings and Files

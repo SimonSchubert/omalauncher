@@ -21,7 +21,7 @@ Part of the widget docs: README.md, one folder up, comes first, and paths here a
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, or a font for `font: logo` (owl 10, see Fonts in docs/nodes.md), so the widget is one self-contained file |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see docs/sharing.md) |
-| `meta { owl: 12 }` | the language version the file needs (this launcher has 12; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
+| `meta { owl: 12 }` | the language version the file needs (this launcher has 13; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see docs/screens.md (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -54,7 +54,7 @@ Unix seconds (`endsAt = now + 25 * 60`), not countdowns, so they're still right 
 
 ## Values in commands
 
-Put a value into a command (`cmd`, `stream`, `run`, `terminal`, `Terminal`) with `sh(value)`,
+Put a value into a command (`cmd`, `stream`, `run`, `terminal`, `Terminal`, `LinuxApp`) with `sh(value)`,
 on its own and outside any quotes. `sh()` single-quotes the value, so it stays one word and
 can't run as code, whatever text it holds (owl 6):
 
@@ -142,7 +142,7 @@ widget "grok" {
 ## Without Linux
 
 Linux (this Arch system) is an optional download in the launcher. A widget that runs commands,
-declares packages or has a `Terminal` needs it: without Linux its tile offers to install Linux
+declares packages or has a `Terminal` or `LinuxApp` needs it: without Linux its tile offers to install Linux
 instead of running. Widgets with only `http`, `clock` and `android.*` sources work on any phone.
 Tapping `terminal(...)` or `app(...)` without Linux opens the install sheet, so those don't
 make a widget need it.

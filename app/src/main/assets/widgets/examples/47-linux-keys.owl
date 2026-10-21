@@ -1,0 +1,36 @@
+face "linux controls" {
+  // Copy into the widgets directory to activate. These are ordinary keyboard keys.
+  meta {
+    owl: 13
+    description: "A LinuxApp with OWL controls that hold keys and chords"
+    version: "1.0"
+    license: "MIT"
+    category: "tools"
+  }
+  requires { pacman: ["foot", "bash"] }
+  page: 0
+  padding: 12
+  Column {
+    fill: true
+    gap: 12
+    LinuxApp {
+      inputId: "shell"
+      command: 'foot --app-id="$OMALAUNCHER_APP_ID" -e bash'
+      weight: 1
+      fill: width
+    }
+    Text { text: "Start the window, then hold these controls. Each finger has its own key."; style: small }
+    Row {
+      LinuxKey { target: "shell"; keys: "left"; text: "←"; size: 52 }
+      LinuxKey { target: "shell"; keys: "up"; text: "↑"; size: 52 }
+      LinuxKey { target: "shell"; keys: "down"; text: "↓"; size: 52 }
+      LinuxKey { target: "shell"; keys: "right"; text: "→"; size: 52 }
+    }
+    Row {
+      LinuxKey { target: "shell"; keys: "z"; text: "Z"; size: 52 }
+      LinuxKey { target: "shell"; keys: "x"; text: "X"; size: 52 }
+      LinuxKey { target: "shell"; keys: "enter"; text: "Enter" }
+      LinuxKey { target: "shell"; keys: ["leftctrl", "c"]; text: "Ctrl+C" }
+    }
+  }
+}

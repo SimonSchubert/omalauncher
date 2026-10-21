@@ -24,6 +24,9 @@ dependencies {
     testImplementation(libs.junit)
 }
 
+// ShareTest round-trips the shipped OWL files; changing an example must rerun it.
+tasks.withType<Test>().configureEach { inputs.dir(rootProject.file("app/src/main/assets/widgets")) }
+
 /** A single runnable jar (`java -jar owl.jar check ...`) for CI. */
 tasks.register<Jar>("owlJar") {
     archiveFileName = "owl.jar"

@@ -29,8 +29,13 @@ class Input(
         private set
     var keyboardFocus: Surface? = null
         private set
+    var keyboardEpoch = 0L
+        private set
 
     private val pressedKeys = linkedSetOf<Int>()
+    private val keyOwners = linkedMapOf<Int, MutableSet<Any>>()
+    private val physicalKeyboard = Any()
+    private val pressedButtons = linkedSetOf<Int>()
     private var depressedMods = 0
     private var lockedMods = 0
 
@@ -78,7 +83,7 @@ class Input(
         if (k.version >= 4) k.send(k.event(5).int(0).int(0))
         val focus = keyboardFocus
         if (focus != null && focus.client === k.client) {
-            k.send(k.event(1).uint(server.nextSerial()).obj(focus.id).ints(IntArray(0)))
+            k.send(k.event(1).uint(server.nextSerial()).obj(focus.id).ints(pressedKeys.toIntArray()))
             sendModifiers(k)
         }
     }
@@ -93,9 +98,12 @@ class Input(
 
     fun setKeyboardFocus(surface: Surface?) {
         if (surface === keyboardFocus || surface?.destroyed == true) return
+        keyboardEpoch++
         // Android doesn't tell a window about keys released after it lost focus; start clean
         // so a key held across the switch isn't swallowed as "already down" next time.
-        pressedKeys.clear()
+        // Release before leave as well: game clients must not retain a direction on focus loss.
+        pressedKeys.toList().forEach { sendKey(it, false) }
+        keyOwners.clear()
         depressedMods = 0
         keyboardFocus?.let { old ->
             keyboardsOf(old.client).forEach { it.send(it.event(2).uint(server.nextSerial()).obj(old.id)) }
@@ -115,7 +123,32 @@ class Input(
     fun key(
         code: Int,
         pressed: Boolean,
-    ) {
+    ) = ownedKey(physicalKeyboard, code, pressed)
+
+    /** A controller can only send to its own, currently focused surface. Never redirects to another client. */
+    fun holdKeys(surface: Surface, owner: Any, codes: List<Int>, epoch: Long = keyboardEpoch) {
+        if (epoch != keyboardEpoch || surface.destroyed || keyboardFocus !== surface) return
+        codes.forEach { ownedKey(owner, it, true) }
+    }
+
+    fun releaseKeys(owner: Any) {
+        keyOwners.filterValues { owner in it }.keys.toList().asReversed().forEach { ownedKey(owner, it, false) }
+    }
+
+    private fun ownedKey(owner: Any, code: Int, pressed: Boolean) {
+        if (keyboardFocus == null) return
+        if (pressed) {
+            val owners = keyOwners.getOrPut(code) { linkedSetOf() }
+            if (!owners.add(owner) || owners.size > 1) return
+        } else {
+            val owners = keyOwners[code] ?: return
+            if (!owners.remove(owner) || owners.isNotEmpty()) return
+            keyOwners.remove(code)
+        }
+        sendKey(code, pressed)
+    }
+
+    private fun sendKey(code: Int, pressed: Boolean) {
         if (pressed && !pressedKeys.add(code)) return
         if (!pressed && !pressedKeys.remove(code)) return
         val focus = keyboardFocus ?: return
@@ -186,6 +219,8 @@ class Input(
         pressed: Boolean,
     ) {
         val s = pointerFocus ?: return
+        if (pressed && !pressedButtons.add(button)) return
+        if (!pressed && !pressedButtons.remove(button)) return
         val serial = server.nextSerial()
         val time = now()
         pointersOf(s.client).forEach {
@@ -219,6 +254,7 @@ class Input(
         val time = now()
         pointersOf(s.client).filter { it.version >= 5 }.forEach { p ->
             p.send(p.event(7).uint(time).uint(0))
+            p.send(p.event(7).uint(time).uint(1))
             p.frame()
         }
     }
@@ -270,9 +306,31 @@ class Input(
         }
     }
 
+    /** Ends only this owner's seat state, even if another window has since acquired focus. */
+    fun cancelInput(owns: (Surface) -> Boolean) {
+        // wl_touch.cancel ends the whole sequence for a client, including points on its popups.
+        val clients = touchFocus.values.filter(owns).map { it.client }.toSet()
+        clients.forEach { client -> touchesOf(client).forEach { it.send(it.event(4)) } }
+        touchFocus.values.removeAll { it.client in clients }
+        if (pointerFocus?.let(owns) == true) {
+            pressedButtons.toList().forEach { pointerButton(it, false) }
+            pointerAxisStop()
+            pointerMotion(null, 0f, 0f)
+        }
+    }
+
     fun surfaceDestroyed(surface: Surface) {
-        if (pointerFocus === surface) pointerFocus = null
-        if (keyboardFocus === surface) keyboardFocus = null
+        if (pointerFocus === surface) {
+            pointerFocus = null
+            pressedButtons.clear()
+        }
+        if (keyboardFocus === surface) {
+            keyboardEpoch++
+            keyboardFocus = null
+            pressedKeys.clear()
+            keyOwners.clear()
+            depressedMods = 0
+        }
         touchFocus.values.removeAll { it === surface }
     }
 }

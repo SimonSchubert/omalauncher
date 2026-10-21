@@ -1,0 +1,17 @@
+face "linux app" {
+  // Copy from examples/ into the widgets directory to activate this face.
+  meta {
+    owl: 13
+    description: "A Linux terminal window embedded in a face with LinuxApp"
+    version: "1.0"
+    license: "MIT"
+    category: "tools"
+  }
+  requires { pacman: ["foot", "bash"] }
+  page: 0
+  padding: 0
+  LinuxApp {
+    command: 'foot --app-id="$OMALAUNCHER_APP_ID" -e bash'
+    fill: true
+  }
+}

@@ -51,6 +51,44 @@ class WindowManager : WindowManagerHooks {
 
     /** Toplevels shown inside tiles. */
     private val embedded = HashSet<XdgToplevel>()
+    private val inputLeases = HashMap<XdgToplevel, InputLease>()
+    private val keyLeases = HashMap<XdgToplevel, MutableSet<InputLease>>()
+
+    /** One physical press, independent of other controls and the real keyboard. UI thread only. */
+    internal fun holdKeys(window: XdgToplevel, codes: List<Int>): InputLease? {
+        if (window.surface.destroyed || window !== focused || codes.isEmpty()) return null
+        val owner = Any()
+        val epoch = synchronized(server) { server.input.keyboardEpoch }
+        lateinit var lease: InputLease
+        lease = InputLease(
+            dispatch = { event -> server.postInput { event() } },
+            finish = { server.input.releaseKeys(owner) },
+            onClose = {
+                keyLeases[window]?.let { leases ->
+                    leases.remove(lease)
+                    if (leases.isEmpty()) keyLeases.remove(window)
+                }
+            },
+        )
+        keyLeases.getOrPut(window) { linkedSetOf() }.add(lease)
+        lease.post { server.input.holdKeys(window.surface, owner, codes, epoch) }
+        return lease
+    }
+
+    internal fun inputLease(window: XdgToplevel): InputLease {
+        // A replacement view (including a drag copy) takes over. Its predecessor's late
+        // onDispose must not cancel the replacement's gesture through a shared lease.
+        inputLeases.remove(window)?.close()
+        return InputLease(
+            dispatch = { event -> server.postInput { event() } },
+            finish = { server.input.cancelInput { it === window.surface || server.toplevelOf(it) === window } },
+        ).also { inputLeases[window] = it }
+    }
+
+    private fun releaseInput(window: XdgToplevel) {
+        inputLeases.remove(window)?.close()
+        keyLeases.remove(window)?.toList()?.forEach { it.close() }
+    }
 
     /**
      * Handles tie Recents cards to windows. Cards outlive this process, so handles
@@ -84,6 +122,7 @@ class WindowManager : WindowManagerHooks {
 
     override fun toplevelDestroyed(toplevel: XdgToplevel) {
         main.post {
+            releaseInput(toplevel)
             if (embedded.remove(toplevel)) release(toplevel)
             appWindows -= toplevel
             handles.values.remove(toplevel)
@@ -106,6 +145,7 @@ class WindowManager : WindowManagerHooks {
 
     fun focus(toplevel: XdgToplevel?) {
         val previous = focused
+        if (previous !== toplevel) previous?.let(::releaseInput)
         focused = toplevel
         synchronized(server) {
             server.input.setKeyboardFocus(toplevel?.surface)

@@ -68,7 +68,7 @@ A file holds declarations, then the nodes it shows:
   out from the others, again whenever they change.
 - Nodes are `Name { prop: value; ...children }`, with `if c { } else { }`, `for x in list { }` and `let` among them.
   `Column`, `Row`, `Box`, `Grid` and `Flow` lay out; `Text`, `Button`, `Image`, `Progress`, `Ring`, `Sparkline`,
-  `Slider`, `Input`, `Canvas`, `Shader`, `Terminal` and `Spacer` show things. Every node takes `width`, `height`,
+  `Slider`, `Input`, `Canvas`, `Shader`, `Terminal`, `LinuxApp`, `LinuxKey` and `Spacer` show things. Every node takes `width`, `height`,
   `weight`, `fill`, `padding`, `background`, `radius`, `visible` and more.
 - Handlers, like `onTap: count = count + 1`, set state and run actions: `terminal("btop")`, `run("cmd")`,
   `url("https://...")`, `notify("title", "text")`, `post(url, body)`.
@@ -76,7 +76,7 @@ A file holds declarations, then the nodes it shows:
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 12.
+  it's 1. This launcher has 13.
 
 ## The docs
 
@@ -89,6 +89,7 @@ declarations.md and nodes.md, a face, an app, a panel or extra keys their own fi
 | docs/android.md | the phone's data: battery, media, notifications, volume, the next alarm, modes, apps, the drawer, agents |
 | docs/expressions.md | operators and every function, dates and times, numbers, changing lists and maps, chance |
 | docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal |
+| docs/linux-app.md | embedded Wayland programs with `LinuxApp`, held keyboard controls with `LinuxKey`, client requirements and phone validation |
 | docs/handlers.md | handlers, every action, sending to web APIs with `post`, tokens and passwords, sounds |
 | docs/drawing.md | Canvas and Shader |
 | docs/screens.md | a widget's full-screen view behind its tile |
@@ -135,6 +136,7 @@ docs say what's current.
 | panels and the prompt bar | `drawer.owl` (lazy lists, search with rank, Popup), `examples/65-ai-bar` (android.agents, ask, open) |
 | extra keys | `keybar.owl`, `examples/keybar-layers` (latch, layers), `examples/keybar-vim`, `examples/keybar-gamepad`, `examples/keybar-commands` (typeText) |
 | a live terminal | `45-terminal` |
+| an embedded Linux window and controls | `examples/46-linux-app`, `examples/47-linux-keys` |
 | an app that sends | `examples/ntfy` (two views with `back`, a source whose URL takes a state, `post` with a JSON body, and what it answers shown at once) |
 
 ## Limits

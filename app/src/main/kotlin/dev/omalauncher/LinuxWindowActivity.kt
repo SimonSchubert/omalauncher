@@ -95,6 +95,13 @@ class LinuxWindowActivity : InstantActivity() {
         window?.let(runtime.wm::focus)
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        val w = window ?: return
+        if (hasFocus) runtime.wm.focus(w)
+        else if (runtime.wm.focused === w) runtime.wm.focus(null)
+    }
+
     override fun onStop() {
         super.onStop()
         runtime.screenStopped()

@@ -24,7 +24,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 12
+        const val LEVEL = 13
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -913,6 +913,30 @@ class Compiler private constructor(
                 listCommand(body.props.first { it.name == "command" }.value, command, scope, "Terminal command")
             }
             guest = true
+        }
+        if (n.type == "LinuxApp") {
+            val command = props["command"] ?: fail("LinuxApp needs command: a foreground Wayland program", n.pos)
+            if (command.const?.toString()?.isBlank() == true) fail("LinuxApp command must not be blank", n.pos)
+            listCommand(body.props.first { it.name == "command" }.value, command, scope, "LinuxApp command")
+            props["appId"]?.const?.toString()?.let {
+                if (!it.matches(Regex("[A-Za-z0-9_][A-Za-z0-9_.-]{0,254}"))) fail("LinuxApp appId must be a non-empty Wayland app ID", n.pos)
+            }
+            guest = true
+        }
+        if (n.type == "LinuxApp" || n.type == "LinuxKey") {
+            val name = if (n.type == "LinuxApp") "inputId" else "target"
+            val target = props[name]
+            if (target == null && n.type == "LinuxKey") fail("LinuxKey needs target: a LinuxApp inputId in this widget", n.pos)
+            target?.const?.let {
+                if (!LinuxKeys.validTarget(it)) fail("${n.type} $name must be 1–64 letters, digits, underscores, dots or hyphens", n.pos)
+            }
+        }
+        if (n.type == "LinuxKey") {
+            val keys = props["keys"] ?: fail("LinuxKey needs keys: a key name or list of key names", n.pos)
+            keys.const?.let {
+                if (LinuxKeys.codes(it) == null) fail("LinuxKey keys must be known key names, for example \"z\" or [\"leftctrl\", \"s\"] (1–16 keys)", n.pos)
+            }
+            if (handlers.isNotEmpty()) fail("LinuxKey handles presses and releases itself; put actions on separate buttons", n.pos)
         }
         if (n.type == "Image") body.props.firstOrNull { it.name == "src" }?.let { webFile(it.value, scope, "image") }
         // A shader animates only if its code reads `time`; code that's worked out at run time might.

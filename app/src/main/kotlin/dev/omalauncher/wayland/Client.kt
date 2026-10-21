@@ -57,9 +57,11 @@ fun interface Deferred {
 }
 
 /** A connected Wayland client; reads and dispatches requests on its own thread. */
-class Client(
+class Client internal constructor(
     val server: WaylandServer,
     private val fd: Int,
+    /** An in-process transport for protocol tests; production writes through the socket thread. */
+    private val eventSink: ((Event) -> Unit)? = null,
 ) {
     val objects = HashMap<Int, Resource>()
     private val fds = ArrayDeque<Int>()
@@ -118,7 +120,9 @@ class Client(
     fun <T : Resource> all(type: Class<T>): List<T> = (typed[type] ?: emptyList<Resource>()) as List<T>
 
     fun send(event: Event) {
-        if (alive) outbox.put(event) else event.releaseFd()
+        if (!alive) event.releaseFd()
+        else if (eventSink != null) eventSink.invoke(event)
+        else outbox.put(event)
     }
 
     fun postError(
@@ -178,7 +182,7 @@ class Client(
     private val sent = ArrayList<Event>()
 
     // Declared after every field writeLoop uses: those declared below it would still be null when it starts.
-    private val writer = thread(name = "wl-writer-$fd", isDaemon = true) { writeLoop() }
+    private val writer = if (eventSink == null) thread(name = "wl-writer-$fd", isDaemon = true) { writeLoop() } else null
 
     private fun flush(
         buf: ByteBuffer,
@@ -197,6 +201,7 @@ class Client(
     }
 
     fun run() {
+        check(eventSink == null) { "An in-process client has no socket reader" }
         val buf = ByteBuffer.allocateDirect(MAX_MESSAGE * 16).order(ByteOrder.LITTLE_ENDIAN)
         val fdTmp = IntArray(MAX_FDS + 1)
         val args = Args(buf, fds)
@@ -238,7 +243,7 @@ class Client(
             }
         } finally {
             disconnect()
-            writer.join(1000)
+            writer?.join(1000)
             // A writer still blocked on a client that stopped reading gets woken this way.
             Native.shutdown(fd)
             synchronized(server) {
