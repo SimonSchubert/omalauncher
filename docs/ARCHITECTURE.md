@@ -20,6 +20,15 @@ into it by proot (`LauncherData.kt`), so installing or removing Linux never
 touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
 `~/.config/omalauncher/widgets`.
 
+APK installation is a host-owned bridge. The managed `omalauncher-install`
+command writes a bounded request into the guest runtime directory. Android
+parses it outside Linux, resolves only a guest-visible APK, computes its
+SHA-256 and signing certificate, and shows an approval screen. After approval,
+`PackageInstaller` is used with user action required; the result is written
+back to the request. No ADB socket, GitHub credential, or signing key is bound
+into the guest. USB ADB remains a computer-side development transport, not an
+Android-app capability.
+
 ## Source layout
 
 - `app/src/main/cpp/wlbridge.c`: JNI for unix sockets with fd passing, shm

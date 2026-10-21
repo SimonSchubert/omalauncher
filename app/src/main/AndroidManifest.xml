@@ -13,6 +13,8 @@
 
     <!-- Uninstall from the app drawer's long-press menu (ACTION_DELETE). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- Agent-requested APKs still go through this app's approval screen and Android's installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <uses-feature
         android:name="android.software.live_wallpaper"
@@ -229,6 +231,20 @@
             android:taskAffinity="${applicationId}.settings"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- Not exported: only the host-side guest bridge can open an APK approval request. -->
+        <activity
+            android:name=".packageinstall.PackageInstallActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="APK install approval"
+            android:theme="@style/Theme.Omalauncher.Window"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- PackageInstaller sends asynchronous results through this explicit, non-exported receiver. -->
+        <receiver
+            android:name=".packageinstall.PackageInstallReceiver"
+            android:exported="false" />
 
         <!-- One task per file, named after it; launched with the file in the intent's data. -->
         <activity

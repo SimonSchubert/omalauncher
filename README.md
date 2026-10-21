@@ -70,6 +70,13 @@ builds `owl/build/cli/owl.jar`, the checker the widget store's CI runs.
 In debug builds you can launch guest commands with
 `adb shell am start -n dev.omalauncher/.MainActivity --es exec foot`.
 
+An agent can request a locally built APK without access to ADB or Android
+secrets: run `omalauncher-install /root/path/to/app-debug.apk "reason"` in the
+guest. Omalauncher checks the guest-visible path and APK metadata, asks the user
+to approve the package, hash, signing certificate and permissions, then hands it
+to Android's PackageInstaller. The request returns only after the system
+installer succeeds or rejects it.
+
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the compositor, rendering, GPU
   acceleration, and how updates reach existing installs
 - [docs/RELEASING.md](docs/RELEASING.md): Play releases and store assets

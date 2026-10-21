@@ -55,6 +55,7 @@ import dev.omalauncher.wayland.XdgToplevel
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.WidgetEngine
 import dev.omalauncher.widgets.WidgetSpec
+import dev.omalauncher.packageinstall.PackageInstallBridge
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +89,7 @@ class Runtime(
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
     private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit)
+    val packageInstalls = PackageInstallBridge(context, proot)
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
@@ -106,6 +108,7 @@ class Runtime(
                 { defaultApps(proot.applications) },
                 { bundledIcons(context, proot.home) },
                 openBridge::managed,
+                packageInstalls::managed,
                 pacman::managed,
                 agents::managed,
                 themes::managed,
@@ -302,6 +305,7 @@ class Runtime(
                 server.start()
                 proot.procShim.start()
                 openBridge.start()
+                packageInstalls.start()
             }
         } else {
             // Linux installed again: its new home has no foot-font.ini yet.
