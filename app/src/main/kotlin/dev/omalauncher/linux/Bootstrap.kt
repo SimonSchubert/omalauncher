@@ -8,6 +8,7 @@ import android.util.Log
 import dev.omalauncher.CountingInputStream
 import dev.omalauncher.LauncherData
 import dev.omalauncher.hex
+import dev.omalauncher.openHttp
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.upgrade.StepJournal
 import dev.omalauncher.upgrade.writeAtomically
