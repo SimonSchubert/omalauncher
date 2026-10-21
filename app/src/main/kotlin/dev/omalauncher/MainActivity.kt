@@ -1,6 +1,5 @@
 package dev.omalauncher
 
-import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.role.RoleManager
 import android.content.Intent
@@ -26,6 +25,7 @@ import dev.omalauncher.ui.showStatusBar
 import dev.omalauncher.ui.LauncherRoot
 import dev.omalauncher.ui.LauncherState
 import dev.omalauncher.ui.PromptRequest
+import dev.omalauncher.ui.interceptKeys
 import dev.omalauncher.widgets.market.Share
 
 /** The home screen: widgets, pinned apps and the drawer; Linux windows open as their own tasks. */
@@ -40,6 +40,14 @@ class MainActivity : ComponentActivity() {
         if (application !is App) {
             finish()
             return
+        }
+        // Launcher shortcuts and active terminal keys precede focused views; Back stays Android's.
+        interceptKeys { event ->
+            when {
+                event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN && shortcut(event.keyCode) -> true
+                event.keyCode != KeyEvent.KEYCODE_BACK && runtime.terminals.active != null -> runtime.keyboard.handle(event)
+                else -> false
+            }
         }
         applySystemBars(this, Palette.isLight)
         runtime.start()
@@ -134,15 +142,6 @@ class MainActivity : ComponentActivity() {
         state.editing = null
         handleDebugExec(intent)
         handleSharedWidget(intent)
-    }
-
-    // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
-    /** Launcher shortcuts (Super+key), then typing into a terminal tile that has the keyboard. Back stays the launcher's. */
-    @SuppressLint("RestrictedApi")
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN && shortcut(event.keyCode)) return true
-        if (event.keyCode != KeyEvent.KEYCODE_BACK && runtime.terminals.active != null && runtime.keyboard.handle(event)) return true
-        return super.dispatchKeyEvent(event)
     }
 
     /** Widgets only refresh while the home screen is visible. */

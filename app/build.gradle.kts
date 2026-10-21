@@ -23,10 +23,11 @@ android {
         targetSdk = 37
         versionCode = 19
         versionName = "0.10.1"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += "arm64-v8a" }
     }
 
-    buildFeatures { buildConfig = true }
+    buildFeatures { buildConfig = true; aidl = true }
 
     externalNativeBuild {
         cmake { path = file("src/main/cpp/CMakeLists.txt") }
@@ -89,4 +90,6 @@ dependencies {
     testImplementation(libs.junit)
     // android.jar only has stubs of org.json.
     testImplementation(libs.org.json)
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }

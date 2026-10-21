@@ -57,8 +57,9 @@ const val CLASSIC_COLUMNS = 6
  */
 class WidgetLayout(
     context: Context,
+    profile: String? = null,
 ) {
-    private val prefs = context.getSharedPreferences("widget_grid", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(profile?.let { "widget_grid_$it" } ?: "widget_grid", Context.MODE_PRIVATE)
     private val cells = mutableStateMapOf<String, Cell>()
     /** Read while compiling widgets, off the main thread. */
     private val pages = java.util.concurrent.ConcurrentHashMap<String, Int>()
@@ -118,6 +119,40 @@ class WidgetLayout(
     }
 
     fun cell(name: String) = cells[name]
+
+    /** Copies initial placement into an independent external profile. */
+    internal fun seedFrom(source: WidgetLayout) {
+        columns = source.columns
+        cells.clear()
+        cells.putAll(source.cells.toMap())
+        pages.clear()
+        pages.putAll(source.pages.toMap())
+        save()
+    }
+
+    /** A desktop grid changes its cell count with UI scale, while widgets keep their cell spans. */
+    internal fun reflowDesktop(to: Int, rows: Int, items: List<HomeItem>) {
+        if (to == columns) return
+        val previous = cells.toMap()
+        cells.clear()
+        columns = to
+        for (group in items.groupBy { page(it.key) ?: it.page }.values) {
+            val occupied = ArrayList<Cell>()
+            for (item in group.sortedWith(compareBy({ previous[it.key]?.y ?: Int.MAX_VALUE }, { previous[it.key]?.x ?: Int.MAX_VALUE }))) {
+                if (item.isFace) continue
+                val old = previous[item.key]
+                val w = (old?.w ?: item.size?.first ?: to / 2).coerceIn(item.minSize.first.coerceAtMost(to), to)
+                val h = (old?.h ?: item.size?.second ?: 3).coerceIn(item.minSize.second.coerceAtMost(rows), rows)
+                val spot = (0..rows - h).asSequence().flatMap { y -> (0..to - w).asSequence().map { x -> Cell(x, y, w, h) } }
+                    .firstOrNull { candidate -> occupied.none(candidate::overlaps) }
+                if (spot != null) {
+                    cells[item.key] = spot
+                    occupied += spot
+                }
+            }
+        }
+        save()
+    }
 
     /** Live update while dragging; [save] persists. An unchanged cell isn't written, so pointer moves within it don't recompose the page. */
     fun set(

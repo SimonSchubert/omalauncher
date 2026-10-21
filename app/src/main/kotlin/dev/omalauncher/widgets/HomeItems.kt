@@ -88,8 +88,9 @@ data class FolderEntry(
 class Shortcuts(
     context: Context,
     private val layout: WidgetLayout,
+    profile: String? = null,
 ) {
-    private val prefs = context.getSharedPreferences("shortcuts", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(profile?.let { "shortcuts_$it" } ?: "shortcuts", Context.MODE_PRIVATE)
     val items = mutableStateListOf<Shortcut>()
     private val folderEntries = mutableStateListOf<FolderEntry>()
 
@@ -109,6 +110,14 @@ class Shortcuts(
     fun onGrid(): List<HomeItem> =
         items.filter { it.folder == null } +
             folderEntries.map { f -> Folder(f.key, f.page, items.filter { it.folder == f.key }, f.name) }
+
+    internal fun seedFrom(source: Shortcuts) {
+        items.clear()
+        items += source.items.toList()
+        folderEntries.clear()
+        folderEntries += source.folderEntries.toList()
+        save()
+    }
 
     /**
      * Drops [app] on [target]: into it if it's a folder, otherwise both go into a new

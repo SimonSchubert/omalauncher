@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Speech input for the agent prompt bar; only recognized text reaches Linux. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
 
     <!-- Uninstall from the app drawer's long-press menu (ACTION_DELETE). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
@@ -273,6 +274,42 @@
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- An independently approved host can render one home via a local Binder connection. -->
+        <!-- Android's own desktop uses an Activity, rather than a third-party Binder host. -->
+        <activity
+            android:name=".desktop.NativeDesktopActivity"
+            android:label="Omalauncher desktop"
+            android:exported="true"
+            android:launchMode="standard"
+            android:taskAffinity="${applicationId}.desktop"
+            android:resizeableActivity="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Omalauncher.Window">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.SECONDARY_HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.omalauncher.action.DESKTOP_HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".desktop.DesktopConsentActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Omalauncher.Window" />
+        <service
+            android:name=".desktop.ExternalDesktopService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="dev.omalauncher.action.EXTERNAL_DESKTOP" />
             </intent-filter>
         </service>
 

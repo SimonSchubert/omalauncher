@@ -85,6 +85,9 @@ fun SettingsScreen(
                     Triple("coding agents", "needs linux", onLinux)
                 },
                 Triple("packages", if (installed) "install Linux apps and tools with pacman and the AUR" else "needs linux", if (installed) onPackages else onLinux),
+                Triple("external desktops", "review or revoke approved desktop hosts") {
+                    context.startActivity(Intent(context, dev.omalauncher.desktop.DesktopConsentActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                },
                 if (localNetworkMissing) {
                     Triple("local network", "let widgets and linux reach your printer, home assistant, …") {
                         askLocalNetwork.launch(LocalNetwork.PERMISSION)
