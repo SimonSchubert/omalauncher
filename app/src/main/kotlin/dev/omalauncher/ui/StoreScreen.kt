@@ -124,12 +124,13 @@ fun StoreScreen(
                         e = e,
                         theme = theme,
                         linux = engine.linux,
+                        linuxAccess = market.installedVersion(e)?.let { engine.isWidgetTrusted(it.file) } == true,
                         page = page,
                         message = message,
                         modifier = modifier,
-                        onInstall = {
+                        onInstall = { allowLinux ->
                             scope.launch {
-                                message = market.install(e, page)
+                                message = market.install(e, page, allowLinux)
                                 // A widget closes the store to show it on its page; an app or a face stays, its page saying where it went.
                                 if (message == null && market.kind == OwlKind.Widget) onDismiss()
                             }
@@ -485,10 +486,11 @@ private fun Detail(
     e: CatalogEntry,
     theme: String?,
     linux: Boolean,
+    linuxAccess: Boolean,
     page: Int,
     message: String?,
     modifier: Modifier,
-    onInstall: () -> Unit,
+    onInstall: (allowLinux: Boolean) -> Unit,
 ) = key(e.id) {
     val installed = market.installedVersion(e)
     val update = market.hasUpdate(e)
@@ -529,21 +531,44 @@ private fun Detail(
         when {
             busy != null -> BasicText(busy, style = Mono.copy(color = Palette.accent))
             !e.supported -> BasicText("needs a newer launcher (owl ${e.owl}); update the launcher to install it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
-            update -> BracketAction("update ${installed?.version} → ${e.version}", Palette.accent, onInstall)
-            installed != null -> AddedMark(market.kind)
-            else ->
+            update -> {
+                BracketAction(
+                    if (e.needsLinux) "update without Linux access" else "update ${installed?.version} → ${e.version}",
+                    Palette.accent,
+                ) { onInstall(false) }
+                if (e.needsLinux) {
+                    BracketAction("update and allow Linux access", Palette.red) { onInstall(true) }
+                }
+            }
+            installed != null -> {
+                AddedMark(market.kind)
+                if (e.needsLinux && !linuxAccess) {
+                    BracketAction("allow Linux access", Palette.red) { onInstall(true) }
+                }
+            }
+            else -> {
                 BracketAction(
                     when (market.kind) {
-                        OwlKind.Widget -> "add to page $page"
-                        OwlKind.Face -> "add as a face"
-                        OwlKind.App, OwlKind.Panel, OwlKind.Keybar -> "install"
+                        OwlKind.Widget -> if (e.needsLinux) "add without Linux access" else "add to page $page"
+                        OwlKind.Face -> if (e.needsLinux) "add without Linux access" else "add as a face"
+                        OwlKind.App, OwlKind.Panel, OwlKind.Keybar -> if (e.needsLinux) "install without Linux access" else "install"
                     },
                     Palette.accent,
-                    onInstall,
-                )
+                ) { onInstall(false) }
+                if (e.needsLinux) {
+                    BracketAction(
+                        when (market.kind) {
+                            OwlKind.Widget -> "add and allow Linux access"
+                            OwlKind.Face -> "add as a face and allow Linux access"
+                            OwlKind.App, OwlKind.Panel, OwlKind.Keybar -> "install and allow Linux access"
+                        },
+                        Palette.red,
+                    ) { onInstall(true) }
+                }
+            }
         }
         message?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
-        if (!linux && e.needsLinux) NeedsLinuxNote(market.kind == OwlKind.App)
+        if (!linux && e.needsLinux && linuxAccess) NeedsLinuxNote(market.kind == OwlKind.App)
 
         Spacer(Modifier.height(4.dp))
         InstallDisclosure(e.requires, e.commands) {

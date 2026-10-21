@@ -121,6 +121,7 @@ class Market(
     suspend fun install(
         e: CatalogEntry,
         page: Int,
+        allowLinux: Boolean = false,
     ): String? {
         busy[e.id] = "installing…"
         try {
@@ -134,8 +135,13 @@ class Market(
                     if (kind == OwlKind.Widget) engine.setPage(name, page)
                     if (kind == OwlKind.Face) engine.setPage(name, engine.newFacePage())
                 }
-                engine.installDependenciesWhenLoaded(name)
                 File(engine.dir, name).writeBytes(bytes)
+                if (allowLinux) {
+                    check(engine.trustWidget(name)) { "couldn't record Linux access approval" }
+                    engine.installDependenciesWhenLoaded(name)
+                } else {
+                    engine.revokeWidget(name)
+                }
             }
             installed[e.id] = Installed(e.id, name, e.version, e.commands, e.requires)
             save()

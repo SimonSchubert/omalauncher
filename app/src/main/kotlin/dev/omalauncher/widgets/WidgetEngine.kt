@@ -34,6 +34,7 @@ import dev.omalauncher.widgets.lang.Source
 import dev.omalauncher.widgets.market.Review
 import dev.omalauncher.widgets.market.Shared
 import dev.omalauncher.widgets.runtime.WidgetInstance
+import dev.omalauncher.widgets.runtime.RestrictedServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,11 +64,13 @@ class WidgetSpec(
     val stamp: Long = 0,
     /** A home tile or an app in the drawer; known from the first word even when it doesn't compile. */
     val kind: OwlKind = OwlKind.Widget,
+    /** Whether this file may use guest/Linux and other sensitive launcher capabilities. */
+    val trusted: Boolean = true,
 ) {
     /** A face file: it is its home page; see [WidgetLayout.owner]. Known from the first word, so also while it doesn't compile. */
     val isFace get() = kind == OwlKind.Face
 
-    fun onPage(page: Int) = WidgetSpec(file, name, page, order, program, error, size, minSize, stamp, kind)
+    fun onPage(page: Int) = WidgetSpec(file, name, page, order, program, error, size, minSize, stamp, kind, trusted)
 }
 
 /**
@@ -96,6 +99,9 @@ class WidgetEngine(
 
     /** SHA-256 of each widget file as last compiled. */
     private val hashes = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /** Explicit Linux access grants, keyed by the exact contents of a shared/store widget. */
+    private val trustPrefs = LauncherData.prefs(context)
 
     /** `persist` values, launcher-side like the grid layout, so widget files stay the agent's. */
     private val stateDir = File(context.filesDir, "widget-state")
@@ -219,7 +225,7 @@ class WidgetEngine(
     }
 
     /** [spec] needs Linux, which isn't installed: it shows as a placeholder. */
-    fun waitsForLinux(spec: WidgetSpec) = !linux && spec.program?.needsLinux == true
+    fun waitsForLinux(spec: WidgetSpec) = !linux && spec.trusted && spec.program?.needsLinux == true
 
     /** File name of the widget whose screen { } is open, full screen over home; see [screenInstance]. */
     var openScreen by mutableStateOf<String?>(null)
@@ -387,6 +393,63 @@ class WidgetEngine(
             markets.none { m -> m.installed.values.any { it.file == name } }
     }
 
+    /** Whether [fileName] is allowed to use the guest and other sensitive widget capabilities. */
+    fun isWidgetTrusted(fileName: String): Boolean = hasLinuxAccess(fileName, currentHash(fileName).orEmpty())
+
+    /** Grants access to the current bytes of [fileName]; changing those bytes requires a new grant. */
+    @Synchronized
+    fun trustWidget(fileName: String): Boolean {
+        if (defaultTrusted(fileName)) return true
+        val hash = currentHash(fileName) ?: return false
+        hashes[fileName] = hash
+        val grants = trustPrefs.getStringSet(TRUSTED_WIDGETS, emptySet()).orEmpty().toMutableSet()
+        grants.removeAll { it.startsWith(trustPrefix(fileName)) }
+        grants += trustKey(fileName, hash)
+        trustPrefs.edit().putStringSet(TRUSTED_WIDGETS, grants).apply()
+        changes.trySend(Unit)
+        return true
+    }
+
+    /** Revokes every grant for [fileName], including grants for older versions. */
+    @Synchronized
+    fun revokeWidget(fileName: String) {
+        val old = trustPrefs.getStringSet(TRUSTED_WIDGETS, emptySet()).orEmpty()
+        val grants = old.filterNot { it.startsWith(trustPrefix(fileName)) }.toSet()
+        if (grants != old) {
+            trustPrefs.edit().putStringSet(TRUSTED_WIDGETS, grants).apply()
+            changes.trySend(Unit)
+        }
+    }
+
+    private fun currentHash(fileName: String): String? =
+        runCatching { File(dir, fileName).takeIf { it.isFile }?.readBytes()?.let(Review::sha256) }.getOrNull()
+
+    private fun hasLinuxAccess(
+        fileName: String,
+        hash: String,
+    ): Boolean {
+        if (defaultTrusted(fileName)) return true
+        if (hash.isEmpty()) return false
+        return trustPrefs.getStringSet(TRUSTED_WIDGETS, emptySet()).orEmpty().contains(trustKey(fileName, hash))
+    }
+
+    private fun defaultTrusted(fileName: String): Boolean =
+        fileName in bundledFiles ||
+            fileName == DRAWER ||
+            fileName == STOCK_DRAWER ||
+            fileName == KEYBAR ||
+            fileName == STOCK_KEYBAR ||
+            fileName.startsWith(AGENT_PREFIX) ||
+            fileName.startsWith(TERMINAL_PREFIX) ||
+            (!fileName.startsWith(Shared.FILE_PREFIX) && !fileName.startsWith(MARKET_PREFIX))
+
+    private fun trustKey(
+        fileName: String,
+        hash: String,
+    ) = "${trustPrefix(fileName)}$hash"
+
+    private fun trustPrefix(fileName: String) = "$fileName|"
+
     /** [agent]'s terminal tile is on the home screen. */
     fun hasAgentWidget(agent: Agent) = specs.any { it.file.name == agentWidgetFile(agent) }
 
@@ -422,11 +485,18 @@ class WidgetEngine(
     suspend fun addSharedWidget(
         shared: Shared,
         page: Int,
+        allowLinux: Boolean = false,
     ) = withContext(Dispatchers.IO) {
         val name = shared.fileName
         if (!File(dir, name).exists()) setPage(name, if (OwlKind.of(shared.text) == OwlKind.Face) newFacePage() else page)
-        installDependenciesWhenLoaded(name)
         File(dir, name).writeText(shared.text)
+        if (allowLinux) {
+            check(trustWidget(name)) { "couldn't record Linux access approval" }
+            installDependenciesWhenLoaded(name)
+        } else {
+            revokeWidget(name)
+            autoInstall.remove(name)
+        }
     }
 
     /** A copy of a shared widget for an agent to review ([Shared.forReview]), where nothing loads it; its path from ~/[GUEST_DIR]. */
@@ -459,6 +529,7 @@ class WidgetEngine(
         layout.remove(fileName)
         File(stateDir, "$fileName.json").delete()
         File(stateDir, "$fileName.secret").delete()
+        revokeWidget(fileName)
         hashes.remove(fileName)
         File(checkDir, "$fileName.txt").delete()
         File(previewDir, "$fileName.png").delete()
@@ -571,7 +642,10 @@ class WidgetEngine(
         val changed = ArrayList<String>()
         val parsed =
             withContext(Dispatchers.IO) {
-                files.map { f -> old[f.name]?.takeIf { it.stamp == f.lastModified() } ?: compile(f, old[f.name]).also { changed += f.name } }
+            files.map { f ->
+                old[f.name]?.takeIf { it.stamp == f.lastModified() && it.trusted == hasLinuxAccess(f.name, hashes[f.name].orEmpty()) }
+                    ?: compile(f, old[f.name]).also { changed += f.name }
+            }
             }
         specs.clear()
         specs += parsed.sortedWith(compareBy({ it.page }, { it.order }, { it.file.name }))
@@ -581,18 +655,26 @@ class WidgetEngine(
         for (spec in parsed) {
             val program = spec.program ?: continue
             // Stopped below with the other leftovers.
-            if (program.needsLinux && !linux) continue
+            if (waitsForLinux(spec)) continue
             val prev = previous.remove(spec.file.name)
-            if (prev?.program === program) {
+            if (prev?.program === program && old[spec.file.name]?.trusted == spec.trusted) {
                 instances[spec.file.name] = prev
                 continue
             }
             prev?.stop()
             val name = spec.file.name
+            val widgetServices =
+                if (spec.trusted) {
+                    services
+                } else {
+                    RestrictedServices(services) {
+                        writeError(spec.file, "warning: Linux and sensitive app access is disabled until you explicitly allow Linux access for this widget", append = true)
+                    }
+                }
             val inst =
                 WidgetInstance(
                     program,
-                    services,
+                    widgetServices,
                     { message -> writeError(spec.file, message, append = true) },
                     File(stateDir, "$name.json"),
                     File(stateDir, "$name.secret"),
@@ -855,7 +937,7 @@ class WidgetEngine(
             // Advice, after the clear and before the check result, so owl-check prints it with the rest.
             for (w in p.warnings) writeError(file, "warning: $w", append = true)
             writeCheck(file, hash, "ok")
-            WidgetSpec(file, p.name, layout.page(file.name) ?: p.page, p.order, p, null, p.size, p.minSize, stamp, p.kind)
+            WidgetSpec(file, p.name, layout.page(file.name) ?: p.page, p.order, p, null, p.size, p.minSize, stamp, p.kind, trusted = hasLinuxAccess(file.name, hash))
         } catch (e: CompileError) {
             broken(file, previous, stamp, Source(text).format(e), hash, OwlKind.of(text))
         } catch (e: RuntimeException) {
@@ -874,7 +956,7 @@ class WidgetEngine(
     ): WidgetSpec {
         writeError(file, error)
         writeCheck(file, hash, "error")
-        return WidgetSpec(file, file.nameWithoutExtension, previous?.page ?: layout.page(file.name) ?: if (kind == OwlKind.Face) FACE_PAGE else 1, previous?.order ?: 999, null, error, previous?.size, previous?.minSize ?: (1 to 1), stamp, kind)
+        return WidgetSpec(file, file.nameWithoutExtension, previous?.page ?: layout.page(file.name) ?: if (kind == OwlKind.Face) FACE_PAGE else 1, previous?.order ?: 999, null, error, previous?.size, previous?.minSize ?: (1 to 1), stamp, kind, trusted = hasLinuxAccess(file.name, hash))
     }
 
     /** Error files are written in order: a clear must never land after the error that follows it. */
@@ -933,7 +1015,7 @@ class WidgetEngine(
      */
     private suspend fun checkDependencies(specs: List<WidgetSpec>) {
         if (!linux) return
-        val programs = specs.mapNotNull { it.program }
+        val programs = specs.filter { it.trusted }.mapNotNull { it.program }
         val packages = programs.flatMap { it.requires["pacman"].orEmpty() }.distinct()
         val bins = programs.flatMap { it.programs }.distinct()
         if (packages.isEmpty() && bins.isEmpty()) {
@@ -946,6 +1028,11 @@ class WidgetEngine(
         val missingBins = found.programs
         for (spec in specs) {
             val p = spec.program ?: continue
+            if (!spec.trusted) {
+                missing.remove(spec.file.name)
+                autoInstall.remove(spec.file.name)
+                continue
+            }
             val need = p.requires["pacman"].orEmpty().filter { it in missingPkgs }
             if (need.isEmpty()) missing.remove(spec.file.name) else missing[spec.file.name] = need
             if (need.isNotEmpty() && autoInstall.remove(spec.file.name)) installDependencies(spec)
@@ -1033,6 +1120,8 @@ class WidgetEngine(
         const val STOCK_KEYBAR = ".stock-keybar.owl"
         private const val TERMINAL_PREFIX = "terminal-"
         private const val AGENT_PREFIX = "agent-"
+        private const val MARKET_PREFIX = "market-"
+        private const val TRUSTED_WIDGETS = "trusted_widget_hashes"
 
         /** The widgets dir, relative to the guest home. */
         const val GUEST_DIR = ".config/omalauncher/widgets"

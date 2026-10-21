@@ -164,7 +164,7 @@ interface Services {
     fun terminal(
         command: String?,
         fontSize: Double?,
-    ): EmbeddedTerminal
+    ): EmbeddedTerminal?
 }
 
 /**
@@ -957,9 +957,9 @@ class WidgetInstance(
         node: Any,
         command: String?,
         fontSize: Double?,
-    ): EmbeddedTerminal {
+    ): EmbeddedTerminal? {
         terminals[node]?.let { if (it.command == command && it.fontSize == fontSize) return it else it.close() }
-        return services.terminal(command, fontSize).also { terminals[node] = it }
+        return services.terminal(command, fontSize)?.also { terminals[node] = it }
     }
 
     /** [term] is one of this widget's terminals. */

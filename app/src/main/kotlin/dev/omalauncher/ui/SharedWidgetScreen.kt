@@ -81,7 +81,7 @@ fun SharedWidgetScreen(
             }
             Spacer(Modifier.height(4.dp))
             BasicText(
-                "Only add it if you trust whoever sent it. It runs the commands below in Arch as you, with your files and the network.",
+                "Only add it if you trust whoever sent it. The safe option keeps Linux commands, guest files, terminals, notifications and external actions disabled. The red option explicitly enables them.",
                 Modifier.fillMaxWidth().background(Palette.red.copy(alpha = 0.12f)).padding(8.dp),
                 style = Mono.copy(color = Palette.red, fontSize = TextSize.Small),
             )
@@ -92,33 +92,52 @@ fun SharedWidgetScreen(
                     BasicText("needs a newer launcher (owl ${p.level}); update the launcher to add it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
                 else -> {
                     val same = engine.sharedWidgetIsSame(shared)
+                    val needsLinuxAccess = p?.needsLinux == true
+                    val add: (Boolean) -> Unit = { allowLinux ->
+                        scope.launch {
+                            engine.addSharedWidget(shared, page, allowLinux)
+                            onDismiss()
+                        }
+                    }
                     when (same) {
-                        true -> AddedMark(kind)
-                        false ->
-                            BracketAction("replace the ${shared.name} shared before", Palette.accent) {
-                                scope.launch {
-                                    engine.addSharedWidget(shared, page)
-                                    onDismiss()
-                                }
+                        true -> {
+                            AddedMark(kind)
+                            if (needsLinuxAccess && !engine.isWidgetTrusted(shared.fileName)) {
+                                BracketAction("allow Linux access", Palette.red) { add(true) }
                             }
-                        null ->
+                        }
+                        false -> {
                             BracketAction(
-                                when (kind) {
-                                    OwlKind.App -> "add to app drawer"
-                                    OwlKind.Face -> "add as a face"
-                                    OwlKind.Widget -> "add to page $page"
-                                    OwlKind.Panel -> "add to gesture panels"
-                                    OwlKind.Keybar -> "add to your widgets folder"
+                                if (needsLinuxAccess) "replace without Linux access" else "replace the ${shared.name} shared before",
+                                Palette.accent,
+                            ) {
+                                add(false)
+                            }
+                            if (needsLinuxAccess) {
+                                BracketAction("replace and allow Linux access", Palette.red) { add(true) }
+                            }
+                        }
+                        null -> {
+                            BracketAction(
+                                when {
+                                    needsLinuxAccess -> "add without Linux access"
+                                    kind == OwlKind.App -> "add to app drawer"
+                                    kind == OwlKind.Face -> "add as a face"
+                                    kind == OwlKind.Widget -> "add to page $page"
+                                    kind == OwlKind.Panel -> "add to gesture panels"
+                                    kind == OwlKind.Keybar -> "add to your widgets folder"
+                                    else -> "add to your widgets folder"
                                 },
                                 Palette.accent,
                             ) {
-                                scope.launch {
-                                    engine.addSharedWidget(shared, page)
-                                    onDismiss()
-                                }
+                                add(false)
                             }
+                            if (needsLinuxAccess) {
+                                BracketAction("add and allow Linux access", Palette.red) { add(true) }
+                            }
+                        }
                     }
-                    if (!engine.linux && p?.needsLinux == true) NeedsLinuxNote(app)
+                    if (!engine.linux && needsLinuxAccess && engine.isWidgetTrusted(shared.fileName)) NeedsLinuxNote(app)
                 }
             }
 

@@ -696,7 +696,11 @@ private fun Element(
             // A command built from a value still loading waits for it, rather than starting a shell and restarting.
             if (command != Null) {
                 val term = remember(el, command, fontSize) { inst.terminal(el, command?.toString(), fontSize) }
-                TerminalView(term, mod.then(if (sized) Modifier else Modifier.fillMaxSize()))
+                if (term != null) {
+                    TerminalView(term, mod.then(if (sized) Modifier else Modifier.fillMaxSize()))
+                } else {
+                    BasicText("Linux access disabled", mod.then(if (sized) Modifier else Modifier.fillMaxSize()).padding(8.dp), style = WidgetMono.copy(color = Palette.muted))
+                }
             }
         }
     }
