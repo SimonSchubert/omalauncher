@@ -43,12 +43,14 @@ import dev.omalauncher.linux.GuestShell
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.ShellPool
 import dev.omalauncher.linux.ShellResult
+import dev.omalauncher.SecretBox
 import dev.omalauncher.openHttp
 import dev.omalauncher.openUrl
 import dev.omalauncher.readUpTo
 import dev.omalauncher.sha256Hex
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.Builtins
+import dev.omalauncher.widgets.lang.KeyNames
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
@@ -190,6 +192,7 @@ class WidgetServices(
             "agents" -> agents()
             "recent" -> recent()
             "drawer" -> drawer()
+            "modifiers" -> modifiers()
             else -> throw WidgetError("unknown android source $name")
         }
 
@@ -204,6 +207,7 @@ class WidgetServices(
             "apps" -> snapshotFlow { apps() }
             "agents" -> snapshotFlow { agents() }
             "recent" -> snapshotFlow { recent() }
+            "modifiers" -> snapshotFlow { modifiers() }
             // Linux's state is a flow of its own, not Compose state: a change of its word starts the drawer's anew.
             "drawer" -> runtime.bootstrap.state.map(::linuxWord).distinctUntilChanged().flatMapLatest { snapshotFlow { drawer() } }
                 // The first at once, then the latest at most every DRAWER_EVERY_MS.
@@ -525,6 +529,9 @@ class WidgetServices(
         )
     }
 
+    /** `source m = android.modifiers`: how the extra keys hold each modifier, `{ctrl, alt, shift}`, each "off", "once" or "locked". */
+    private fun modifiers(): Value = Obj(runtime.keyboard.latches.mapValues { (_, m) -> Str(m.latch.name.lowercase()) })
+
     /** Runs a widget action: terminal, app, run, url, launcher, media, volume, notification, ... */
     override fun act(
         name: String,
@@ -535,6 +542,12 @@ class WidgetServices(
         if (args.firstOrNull() == Null) return
         val arg = args.firstOrNull()?.toString().orEmpty()
         if (name == "run") return run(arg) { done() }
+        // Keys go out as they're pressed, many a second while one repeats: nothing to refresh after them.
+        when (name) {
+            "pressKey" -> return KeyNames.combo(arg)?.let(runtime.keyboard::press) ?: Unit
+            "typeText" -> return runtime.keyboard.type(arg)
+            "latch" -> return runtime.keyboard.latch(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
+        }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.
             "terminal" -> runtime.terminal("$arg; exec bash", args.getOrNull(1)?.toString() ?: arg.substringBefore(' '))
@@ -576,6 +589,7 @@ class WidgetServices(
         headers: Map<String, String>,
         timeoutSeconds: Int,
         body: ByteArray?,
+        method: String,
     ): ShellResult =
         withContext(Dispatchers.IO) {
             if (!url.startsWith("https://") && !url.startsWith("http://")) return@withContext ShellResult("", "not an http(s) URL: $url", -1)
@@ -585,10 +599,13 @@ class WidgetServices(
                     connection.setRequestProperty("User-Agent", "omalauncher-widgets")
                     headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
                     if (body != null) {
-                        connection.requestMethod = "POST"
-                        connection.doOutput = true
-                        connection.setFixedLengthStreamingMode(body.size)
-                        connection.outputStream.use { it.write(body) }
+                        connection.requestMethod = method
+                        // A DELETE usually has no body, and some servers refuse one.
+                        if (method != "DELETE" || body.isNotEmpty()) {
+                            connection.doOutput = true
+                            connection.setFixedLengthStreamingMode(body.size)
+                            connection.outputStream.use { it.write(body) }
+                        }
                     }
                     val code = connection.responseCode
                     val stream = if (code >= 400) connection.errorStream else connection.inputStream
@@ -602,6 +619,10 @@ class WidgetServices(
                 ShellResult("", e.message ?: e.toString(), -1)
             }
         }
+
+    override fun seal(plain: ByteArray) = SecretBox.seal(plain)
+
+    override fun unseal(sealed: ByteArray) = SecretBox.unseal(sealed)
 
     /** Web images and sounds on disk, by the SHA-256 of their URL. */
     private val fileCache by lazy { File(context.cacheDir, "owl-files") }

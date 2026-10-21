@@ -82,7 +82,7 @@ class Runtime(
     val terminals = TerminalTiles(this)
     val style = StyleStore(context)
     val terminalFont = TerminalFont(proot, style)
-    val launcherFont = LauncherFont(proot, style).also { it.restore() }
+    val launcherFont = LauncherFont(proot, style, context.resources).also { it.restore() }
     val gestures = Gestures(context, style)
     val linuxApps = LinuxAppCatalog(context, proot)
     val androidApps = AndroidAppCatalog(context)

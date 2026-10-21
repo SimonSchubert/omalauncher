@@ -1,0 +1,1 @@
+Fixes a crash when opening the store's panels tab, and one when going home during a backup or phone transfer. Backups and transfers to a new phone leave out Linux, which can be gigabytes; install it again there.

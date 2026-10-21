@@ -1,6 +1,7 @@
 package dev.omalauncher.wayland
 
 import android.view.KeyEvent
+import dev.omalauncher.widgets.lang.KeyNames
 
 /** Maps Android key codes and characters to Linux evdev codes (US layout). */
 object Keys {
@@ -80,22 +81,6 @@ object Keys {
     /** Shift, Ctrl, Alt, Super and Caps Lock, which a latched modifier shouldn't fold into. */
     fun isModifier(code: Int) = code in setOf(29, 42, 54, 56, 58, 97, 100, 125, 126)
 
-    private const val UNSHIFTED = "1234567890-=qwertyuiop[]asdfghjkl;'`\\zxcvbnm,./ "
-    private const val SHIFTED = "!@#$%^&*()_+QWERTYUIOP{}ASDFGHJKL:\"~|ZXCVBNM<>? "
-    private val CODES =
-        intArrayOf(
-            2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
-            30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 43,
-            44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 57,
-        )
-
     /** Returns (evdev code, needs shift) for a character typed via the soft keyboard. */
-    fun forChar(c: Char): Pair<Int, Boolean>? {
-        if (c == '\n') return KEY_ENTER to false
-        if (c == '\t') return 15 to false
-        UNSHIFTED.indexOf(c).takeIf { it >= 0 }?.let { return CODES[it] to false }
-        SHIFTED.indexOf(c).takeIf { it >= 0 }?.let { return CODES[it] to true }
-        return null
-    }
+    fun forChar(c: Char): Pair<Int, Boolean>? = KeyNames.forChar(c)
 }

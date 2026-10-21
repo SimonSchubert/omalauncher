@@ -60,8 +60,9 @@ class LangTest {
             body: Value,
             headers: Map<String, String>,
             slot: Int?,
+            method: String,
         ) {
-            actions += "post $slot $url $body $headers"
+            actions += "post $slot $url $body $headers" + (if (method != "POST") " $method" else "")
         }
     }
 
@@ -291,6 +292,60 @@ class LangTest {
         assertEquals(listOf("http POST (a URL built from widget values)"), Compiler.compile("app \"t\" {\n meta { owl: 8 }\n state u = \"\"\n back: true\n onBack: post(u)\n Text { text: 1 } }").commands)
     }
 
+    /** post's method: sends PUT or DELETE (owl 12), listed as what it is. */
+    @Test fun postMethods() {
+        val p =
+            Compiler.compile(
+                "app \"t\" {\n meta { owl: 12 }\n back: true\n" +
+                    " onBack: { post(\"https://x.test/items/1\", null, {}, method: \"delete\"); post(\"https://x.test/b\", {a: 1}, {}, method: \"PUT\") }\n" +
+                    " Text { text: 1 } }",
+            )
+        val host = TestHost(p)
+        p.onBack!!.run(Env.root(host), emptyList())
+        assertEquals(listOf("post null https://x.test/items/1 null {} DELETE", "post null https://x.test/b {a: 1} {} PUT"), host.actions)
+        assertEquals(setOf("http DELETE https://x.test/items/1", "http PUT https://x.test/b"), p.commands.toSet())
+        val app = "app \"t\" {\n meta { owl: 12 }\n back: true\n onBack: post(\"https://x.test/\", null, {}, "
+        assertTrue(compileError("app \"t\" {\n meta { owl: 11 }\n back: true\n onBack: post(\"https://x.test/\", null, {}, method: \"PUT\")\n Text { text: 1 } }").contains("needs owl 12"))
+        assertTrue(compileError(app + "method: \"PATCH\")\n Text { text: 1 } }").contains("method: is one of"))
+        assertTrue(compileError(app + "retries: 3)\n Text { text: 1 } }").contains("no other named arguments"))
+    }
+
+    /** A secret only goes into a request's headers and body, or a check that it's set (owl 12). */
+    @Test fun secretsOnlyGoIntoRequests() {
+        val w = "widget {\n meta { owl: 12 }\n state token = null secret\n state out = null\n"
+        val p =
+            Compiler.compile(
+                w + " source s = http(token == null ? null : \"https://x.test/a\", {Authorization: \"Bearer ${'$'}{token}\"})\n" +
+                    " onTap: { if token == null { token = \"t\" } else { out = post(\"https://x.test/b\", {t: token}, {}) } }\n Text { text: token != \"\" ? \"in\" : \"out\" } }",
+            )
+        val host = TestHost(p)
+        assertEquals("in", (p.root.single() as WNode.Element).props["text"]!!(Env.root(host)).toString())
+        p.onTap!!.run(Env.root(host), emptyList())
+        p.onTap!!.run(Env.root(host), emptyList())
+        assertEquals(listOf("post 1 https://x.test/b {t: t} {}"), host.actions)
+        assertTrue((p.globals[0] as Global.State).secret)
+        for (leak in listOf("Text { text: token }", "Text { text: \"x\"; onTap: copy(token) }", "Text { text: \"x\"; onTap: run(\"echo ${'$'}{token}\") }", "Text { text: (token ?? \"\") == \"a\" }")) {
+            assertTrue(leak, compileError("$w $leak }").contains("token is a secret"))
+        }
+        compileError(w + " on token { out = 1 }\n Text { text: 1 } }").let { assertTrue(it, it.contains("token is a secret")) }
+        compileError(w + " source s = http(\"https://x.test/${'$'}{token}\")\n Text { text: 1 } }").let { assertTrue(it, it.contains("token is a secret")) }
+        // Bound to the servers it goes to, which are written out, so an edit can't send it elsewhere unnoticed.
+        assertEquals(mapOf("token" to listOf("https://x.test")), p.secretHosts)
+        compileError(w + " state h = \"x.test\"\n source s = http(\"https://${'$'}{h}/a\", {A: token})\n Text { text: 1 } }").let { assertTrue(it, it.contains("server it goes to is written out")) }
+        compileError(w + " state u = \"https://x.test\"\n onTap: post(u, {t: token})\n Text { text: 1 } }").let { assertTrue(it, it.contains("server it goes to is written out")) }
+        assertEquals(listOf("https://x.test:8443"), Compiler.compile(w + " onTap: post(\"https://X.test:8443\", {t: token})\n Text { text: 1 } }").secretHosts["token"])
+        compileError("widget {\n meta { owl: 12 }\n state token = null secret persist\n Text { text: 1 } }").let { assertTrue(it, it.contains("without persist")) }
+        compileError("widget {\n meta { owl: 11 }\n state token = null secret\n Text { text: 1 } }").let { assertTrue(it, it.contains("secret needs owl 12")) }
+    }
+
+    @Test fun base64() {
+        assertEquals("aGk/Pz4=", text("toBase64(\"hi??>\")", "meta { owl: 12 }"))
+        // base64url, unpadded, as a JWT or a link carries JSON.
+        assertEquals("hi??>", text("fromBase64(\"aGk_Pz4\")", "meta { owl: 12 }"))
+        assertEquals("pc", text("parseJson(fromBase64(\"eyJob3N0IjoicGMifQ\")).host", "meta { owl: 12 }"))
+        assertEquals("null", text("fromBase64(\"*\")", "meta { owl: 12 }"))
+    }
+
     @Test fun imagesFromTheWeb() {
         val p =
             Compiler.compile(
@@ -476,6 +531,7 @@ class LangTest {
         // Without Linux, tapping app(...) or terminal(...) offers to install it instead.
         assertEquals(false, needs("onTap: app(\"btop\")\nText { text: \"x\" }"))
         assertEquals(true, needs("requires { pacman: [\"jq\"] }\nText { text: \"x\" }"))
+        assertEquals(false, needs("requires { pacman: [] }\nText { text: \"x\" }"))
         val dir = java.io.File("../app/src/main/assets/widgets")
         fun bundled(name: String) = Compiler.compile(java.io.File(dir, name).readText()).needsLinux
         assertEquals(false, bundled("10-today.owl"))
@@ -597,6 +653,21 @@ class LangTest {
         assertTrue(compileError("widget { Text { text: a } \n state a = 1 \n onTap: b = 2 }").contains("unknown state 'b'"))
         assertTrue(compileError("widget { Column { circle(1, 2, 3) } }").contains("inside a Canvas"))
         assertTrue(compileError("widget { let a = b\n let b = a\n Text { text: a } }").contains("unknown name 'b'"))
+    }
+
+    /** What code written from QML or JavaScript habit gets wrong: the error says what to write instead. */
+    @Test fun errorsSayTheFix() {
+        assertTrue(compileError("widget { let n = 1e9\n Text { text: n } }").contains("write 1e9 as 1000000000"))
+        assertTrue(compileError("widget { let n = 2.5e-3\n Text { text: n } }").contains("write 2.5e-3 as 0.0025"))
+        assertTrue(compileError("widget { let n = 1e+9\n Text { text: n } }").contains("write 1e+9 as 1000000000"))
+        assertTrue(compileError("widget { let a = b + 1\n let b = 2\n Text { text: a } }").contains("unknown name 'b': it's declared below"))
+        assertTrue(compileError("widget { Column { let a = b\n let b = 2\n Text { text: a } } }").contains("unknown name 'b': it's declared below"))
+        assertTrue(compileError("widget { Column { width: k\n let k = 3\n Text { text: k } } }").contains("unknown name 'k': it's a let inside a node"))
+        assertTrue(compileError("widget { let f = x => x * 2\n Text { text: f(2) } }").contains("'f' is a let, and a let can't be called"))
+        assertTrue(compileError("widget { state a = true\n Text { text: \"x\"; style: a ? title : muted } }").contains("as in style: title; in an expression, quote it"))
+        assertTrue(compileError("widget { state n = 0\n component Chip(l) { Text { text: l } }\n Chip { l: \"a\"; onTap: n = 1 } }").contains("or wrap it: Box { onTap: …; Chip { … } }"))
+        // The quoted words work, read as text like the bare ones.
+        Compiler.compile("widget { state a = true\n Text { text: \"x\"; align: a ? \"start\" : \"end\"; style: a ? \"title\" : \"muted\" } }")
     }
 
     @Test fun enumsAndThemeColors() {
@@ -798,6 +869,63 @@ class LangTest {
         Compiler.compile("panel {\n meta { owl: 11 }\n state query = 1\n Text { text: query } }")
     }
 
+    @Test fun extraKeysAreAFileOfTheirOwn() {
+        val p =
+            Compiler.compile(
+                "keybar \"mine\" {\n meta { owl: 12 }\n source kb = android.modifiers\n state down = \"\"\n" +
+                    " Row { Box { repeats: true; onPress: { if repeat == 0 { down = \"up\" }; pressKey(\"up\") }; onRelease: down = \"\" }\n" +
+                    " Text { text: get(kb ?? {}, \"ctrl\", \"off\"); onTap: latch(\"ctrl\"); onLongPress: latch(\"ctrl\", \"locked\") }\n" +
+                    " Button { text: \"ls\"; onPress: typeText(\"ls\\n\") } } }",
+            )
+        assertEquals(OwlKind.Keys, p.kind)
+        assertEquals("mine", p.name)
+        assertTrue(p.root.isEmpty())
+        assertFalse(p.needsLinux)
+        assertEquals(listOf("press keys in the Linux window you're typing in: up", "type into the Linux window you're typing in: ls\n"), p.commands)
+        val host = TestHost(p)
+        val env = Env.root(host)
+        val row = (p.screen!!.single() as WNode.Element).children.map { it as WNode.Element }
+        // The press, then a repeat: the state is set once, the key sent each time.
+        row[0].handlers["onPress"]!!.run(env, listOf(Num(0.0), Num(0.0), Num(0.0)))
+        row[0].handlers["onPress"]!!.run(env, listOf(Num(0.0), Num(0.0), Num(1.0)))
+        assertEquals(Str("up"), host.slots[1])
+        row[0].handlers["onRelease"]!!.run(env, emptyList())
+        assertEquals(Str(""), host.slots[1])
+        row[1].handlers["onLongPress"]!!.run(env, listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("pressKey up", "pressKey up", "latch ctrl, locked"), host.actions)
+
+        assertTrue(compileError("keybar {\n meta { owl: 11 }\n Text { text: 1 } }").contains("needs owl 12"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n size: 2x2\n Text { text: 1 } }").contains("take no properties"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n onTap: pressKey(\"esc\")\n Text { text: 1 } }").contains("handlers go on the keys"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n screen { Text { text: 1 } } }").contains("no screen { }"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: close() } }").contains("come and go with the keyboard"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; repeats: true; onTap: pressKey(\"up\") } }").contains("add onPress"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: pressKey(\"ctrl+escape\") } }").contains("pressKey takes a key"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: latch(\"super\") } }").contains("latch takes ctrl, alt, shift"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: latch(\"ctrl\", \"twice\") } }").contains("once, locked, off"))
+        assertEquals(Lst(listOf(Str("a"))), Compiler.compile("keybar {\n meta { owl: 12 }\n Text { text: keys({a: 1}) } }").let { (it.screen!![0] as WNode.Element).props["text"]!!(Env.root(TestHost(it))) })
+        assertTrue(compileError("widget {\n meta { owl: 12 }\n Text { text: typeText(1) } }").contains("is an action"))
+        // Anywhere in owl 12, not only in extra keys.
+        for (old in listOf("Text { text: 1; onTap: pressKey(\"esc\") }", "Text { text: 1; onPress: haptic() }", "Text { text: 1; onRelease: haptic() }")) {
+            assertTrue(compileError("widget {\n meta { owl: 11 }\n $old }").contains("needs owl 12"))
+            Compiler.compile("widget {\n meta { owl: 12 }\n $old }")
+        }
+    }
+
+    @Test fun keyNamesAndCombos() {
+        assertEquals(KeyNames.Combo(1, emptyList()), KeyNames.combo("esc"))
+        assertEquals(KeyNames.Combo(46, listOf(29)), KeyNames.combo("ctrl+c"))
+        assertEquals(KeyNames.Combo(46, listOf(29)), KeyNames.combo("CTRL+c"))
+        assertEquals(KeyNames.Combo(110, listOf(42)), KeyNames.combo("shift+insert"))
+        assertEquals(KeyNames.Combo(20, listOf(29, 56)), KeyNames.combo("ctrl+alt+t"))
+        // A shifted character holds Shift itself; + on its own, or last after a +, is the key.
+        assertEquals(KeyNames.Combo(39, listOf(42)), KeyNames.combo(":"))
+        assertEquals(KeyNames.Combo(13, listOf(29, 42)), KeyNames.combo("ctrl++"))
+        assertEquals(KeyNames.Combo(13, listOf(42)), KeyNames.combo("+"))
+        assertEquals(KeyNames.Combo(88, emptyList()), KeyNames.combo("f12"))
+        for (bad in listOf("", "escape", "hyper+a", "ctrl+", "é", "ctrl+ab")) assertNull(bad, KeyNames.combo(bad))
+    }
+
     @Test fun drawerCellsAndMenus() {
         val p =
             Compiler.compile(
@@ -943,6 +1071,9 @@ class LangTest {
         assertTrue(compileError("app {\n meta { owl: 8 }\n onTap: close()\n Text { text: 1 } }").contains("handlers go on the nodes"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n back: true\n Text { text: 1 } }").contains("back and onBack go together"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onBack: close()\n Text { text: 1 } }").contains("back and onBack go together"))
+        // What an app's title, back and onBack use counts toward the level it must declare.
+        assertTrue(compileError("app {\n meta { owl: 8 }\n title: capitalize(\"x\")\n Text { text: 1 } }").contains("needs owl 9"))
+        assertTrue(compileError("app {\n meta { owl: 8 }\n back: true\n onBack: { if true { close() } }\n Text { text: 1 } }").contains("needs owl 9"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n screen { Text { text: 1 } } }").contains("is a screen already"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n Text { text: 1; onTap: screen() } }").contains("close() closes it"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n }").contains("needs at least one node"))

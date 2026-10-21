@@ -198,7 +198,7 @@ private fun AppWindow(
             }
             // Below the window rather than over it, so the window shrinks and nothing hides behind the keys; only over a
             // docked keyboard (a hardware keyboard's toolbar takes no height, and that keyboard has these keys).
-            if (keyboard > 0) ExtraKeys(runtime.keyboard, Modifier.background(Palette.background))
+            if (keyboard > 0) ExtraKeys(runtime, Modifier.background(Palette.background))
         }
     }
 }

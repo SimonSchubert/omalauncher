@@ -1,0 +1,111 @@
+keybar "gamepad" {
+  // Extra keys shaped like a game controller, for games and full-screen programs in a terminal (nethack, 2048, tetris,
+  // btop, a file manager): a d-pad that repeats while held, and four round buttons, enter, esc, space and q. To use it,
+  // copy it over keybar.owl in the folder above.
+  meta { description: "Extra keys shaped like a game controller: a d-pad that repeats, and enter, esc, space and q as round buttons"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  asset chevron = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNNy40MSwxNS40MUwxMiwxMC44M2w0LjU5LDQuNThMMTgsMTRsLTYsLTYgLTYsNnoiLz48L3N2Zz4="
+  state down = ""
+
+  // One arm of the d-pad, its chevron turned toward where it goes.
+  component Pad(send, turn) {
+    Box {
+      size: 44
+      align: center
+      radius: 10 * corners
+      background: down == send ? accent : surface
+      repeats: true
+      onPress: {
+        if repeat == 0 {
+          down = send
+          haptic()
+        }
+        pressKey(send)
+      }
+      onRelease: down = ""
+      Image { src: chevron; size: 26; rotation: turn; tint: down == send ? background : foreground; label: send }
+    }
+  }
+
+  // A round face button in its own color.
+  component Face(label, send, tone) {
+    Box {
+      size: 46
+      align: center
+      radius: 23
+      background: down == send ? tone : mix(surface, tone, 0.2)
+      border: 2
+      borderColor: tone
+      onPress: {
+        down = send
+        haptic()
+        pressKey(send)
+      }
+      onRelease: down = ""
+      Text { text: label; font: mono; fontSize: 12; bold: true; align: center; color: down == send ? background : tone }
+    }
+  }
+
+  // A small pill in the middle, like select and start.
+  component Pill(label, send) {
+    Box {
+      width: 56
+      height: 24
+      align: center
+      radius: 12
+      background: down == send ? accent : surface
+      onPress: {
+        down = send
+        haptic()
+        pressKey(send)
+      }
+      onRelease: down = ""
+      Text { text: label; font: mono; fontSize: 11; align: center; color: down == send ? background : muted }
+    }
+  }
+
+  Column {
+    padding: [6, 0, 6, 6]
+    gap: 0
+    Row {
+      padding: [12, 8]
+      gap: 0
+      align: center
+      background: background
+      border: 2
+      borderColor: border
+      radius: 20 * corners
+      // The d-pad: a cross of three rows.
+      Column {
+        gap: 2
+        align: center
+        Pad { send: "up"; turn: 0 }
+        Row {
+          gap: 2
+          Pad { send: "left"; turn: -90 }
+          Box { size: 44; radius: 10 * corners; background: alpha(surface, 0.5) }
+          Pad { send: "right"; turn: 90 }
+        }
+        Pad { send: "down"; turn: 180 }
+      }
+      Column {
+        weight: 1
+        gap: 10
+        align: center
+        Pill { label: "tab"; send: "tab" }
+        Pill { label: "^c"; send: "ctrl+c" }
+      }
+      // Face buttons in a diamond, as on a controller.
+      Column {
+        gap: 0
+        align: center
+        Face { label: "q"; send: "q"; tone: yellow }
+        Row {
+          gap: 44
+          Face { label: "esc"; send: "esc"; tone: red }
+          Face { label: "⏎"; send: "enter"; tone: green }
+        }
+        Face { label: "␣"; send: "space"; tone: blue }
+      }
+    }
+  }
+}

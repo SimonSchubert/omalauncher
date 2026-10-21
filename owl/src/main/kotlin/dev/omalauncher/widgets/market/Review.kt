@@ -85,7 +85,7 @@ class Review(
                 "write each one as ${'$'}{sh(value)}, outside any quotes, so it stays one word and can't run as code " +
                 "(run(\"notify-send ${'$'}{sh(title)}\"), not '${'$'}{title}' or \"${'$'}{sh(title)}\"). " +
                 "Other functions go inside it, ${'$'}{sh(upper(title))}, and a heredoc (<<) can't take values. " +
-                "See \"Values in commands\" in the widgets README"
+                "See \"Values in commands\" in the widgets docs (docs/declarations.md)"
         }
         warnings += risks(p.commands - unquoted.toSet())
         warnings += costs(p)

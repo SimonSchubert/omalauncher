@@ -64,6 +64,9 @@ class TerminalTiles(
     /** Where the extra-keys row sits, in window coordinates, while it shows; pressing it isn't leaving the tile. */
     var extraKeys: Rect? = null
 
+    /** How tall the extra keys measured, in pixels: keybar.owl decides it. 0 until they've shown. */
+    var extraKeysHeight by mutableFloatStateOf(0f)
+
     /** How far the home screen is lifted so the active tile clears the soft keyboard, in pixels. */
     var lift = 0f
         private set

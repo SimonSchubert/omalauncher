@@ -190,6 +190,8 @@ sealed interface Decl {
         override val pos: Int,
         /** `persist`: the value survives restarts. */
         val persist: Boolean = false,
+        /** `secret`: survives restarts encrypted, and only goes into requests. */
+        val secret: Boolean = false,
     ) : Decl
 
     class Let(
@@ -247,11 +249,14 @@ sealed interface Decl {
 class WidgetAst(
     val name: String?,
     val body: Body,
-    /** What the file is, from its first word: widget, face, app or panel; see [OwlKind]. */
+    /** What the file is, from its first word: widget, face, app, panel or keys; see [OwlKind]. */
     val kind: OwlKind = OwlKind.Widget,
 )
 
-/** What an owl file is: a home-screen tile, a face (a whole home page), an app in the drawer, or a panel a swipe on home opens. */
+/**
+ * What an owl file is: a home-screen tile, a face (a whole home page), an app in the drawer, a panel a swipe on home
+ * opens, or the extra keys over the soft keyboard while typing in a terminal.
+ */
 enum class OwlKind(
     val word: String,
 ) {
@@ -259,6 +264,7 @@ enum class OwlKind(
     Face("face"),
     App("app"),
     Panel("panel"),
+    Keys("keybar"),
     ;
 
     companion object {

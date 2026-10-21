@@ -269,7 +269,7 @@ fun HomeScreen(
             // Typing in a tile (its terminal or a widget's text field): lift the pages so the tile stays above the keyboard,
             // but not under the status bar; a tile too tall for both gives up the rest at its bottom.
             .graphicsLayer {
-                val keys = if (extraKeys) ExtraKeysHeight.toPx() else 0f
+                val keys = if (extraKeys) terminals.extraKeysHeight.takeIf { it > 0f } ?: ExtraKeysHeight.toPx() else 0f
                 translationY =
                     -terminals.liftFor(
                         imeHeight = ime.getBottom(density),
@@ -288,7 +288,7 @@ fun HomeScreen(
                 if (!terminals.typing || keyboard == 0 || faceTyping) {
                     drawContent()
                 } else {
-                    val keys = if (extraKeys) ExtraKeysHeight.toPx() else 0f
+                    val keys = if (extraKeys) terminals.extraKeysHeight.takeIf { it > 0f } ?: ExtraKeysHeight.toPx() else 0f
                     val lift = terminals.lift - origin.y
                     clipRect(
                         top = statusBar.getTop(density) + lift,
@@ -443,11 +443,14 @@ fun HomeScreen(
 
     if (extraKeys) {
         ExtraKeys(
-            runtime.keyboard,
+            runtime,
             Modifier
                 .align(Alignment.BottomCenter)
                 .imePadding()
-                .onGloballyPositioned { terminals.extraKeys = it.boundsInWindow() },
+                .onGloballyPositioned {
+                    terminals.extraKeys = it.boundsInWindow()
+                    terminals.extraKeysHeight = it.size.height.toFloat()
+                },
         )
     }
 
