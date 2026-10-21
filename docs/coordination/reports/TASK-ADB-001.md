@@ -24,17 +24,23 @@ gets ADB, signing keys, or host credentials.
   components.
 - `README.md` and `docs/ARCHITECTURE.md`: workflow and security boundary.
 - `app/src/test/kotlin/dev/omalauncher/packageinstall/`: malformed-input tests.
+- `app/build.gradle.kts`: debug and release builds now fail early when the
+  required proot runtime is missing.
 
 ## Evidence
 
 - `./gradlew --no-daemon :owl:test :app:testDebugUnitTest`: passed.
-- `./gradlew --no-daemon :app:assembleDebug`: passed.
-- `./gradlew --no-daemon :app:lintDebug`: passed; reported only existing
-  project warnings and removable API-check warnings, which were cleaned up.
-- Final APK SHA-256: `d162bb80ccc527a01f23449c631b19974662e44fe500916fb92d48cd620bebc1`.
-- Installed successfully on Xiaomi `Mi 9T Pro`, ADB serial `2d64b093`; launched
-  `dev.omalauncher/.MainActivity`, process stayed alive, and no launcher fatal
-  exception appeared in the smoke-test log window.
+- `./gradlew --no-daemon :app:assembleDebug`: passed after the debug proot guard.
+- `./gradlew --no-daemon :app:lintDebug`: passed; only existing project
+  warnings remained.
+- Final APK SHA-256: `3075f567599f0994a042b5450ecac3e08e508df933f3ad8d47536c27959bcfaf`.
+- Installed APK hash matches the local artifact on Xiaomi `Mi 9T Pro`, ADB
+  serial `2d64b093`; `dev.omalauncher/.MainActivity` stayed alive.
+- On-device Linux journal reached `{"setup":true}` with `packages-1`,
+  `keymap-1`, and `cliamp-v2.3.0` complete; the process tree showed the
+  running proot guest.
+- On-device inspection found `files/arch/usr/local/bin/omalauncher-install`,
+  `files/arch/root/AGENTS.md`, and `files/arch/root/CLAUDE.md`.
 
 ## Decisions
 
@@ -46,17 +52,17 @@ gets ADB, signing keys, or host credentials.
 
 ## Risks / Open Questions
 
-- The connected Xiaomi did not have Linux/rootfs installed, so the complete
-  guest-command-to-approval-screen flow was not exercised on-device. Doing that
-  requires the user to intentionally install the large Linux image and then run
-  a benign local APK request.
+- The complete guest-command-to-approval-screen flow was not triggered with a
+  test APK. The user should exercise it only with a benign APK they intended to
+  install; the bridge still requires both Omalauncher approval and Android's
+  system confirmation.
 - Android/Xiaomi may require enabling “install unknown apps” for Omalauncher;
   the approval screen links to that system setting and still leaves the system
   installer confirmation in place.
 
 ## Handoff
 
-After Linux is intentionally installed on the phone, run a benign local debug
-APK build from the guest with `omalauncher-install`, verify the approval details,
-reject once, then approve once and confirm the guest receives `ok`. Owner:
+Next action: from the guest, run a benign local debug APK build with
+`omalauncher-install`, verify the approval details, and approve only if the
+package, hash, signing certificate, and permissions are expected. Owner:
 Codex/user during the next device-integration pass.

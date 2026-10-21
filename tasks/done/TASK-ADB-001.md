@@ -35,7 +35,8 @@ host access. Android's PackageInstaller is the phone-native installation seam.
 - [x] Require explicit user approval, then hand the APK to Android's PackageInstaller with system user action required.
 - [x] Return a bounded result to the guest and retain no long-lived privilege in the guest.
 - [x] Add unit tests for request parsing, malformed UTF-8, and rejection cases.
-- [x] Build, install, and smoke-test the known local APK on the connected Xiaomi device.
+- [x] Build, install, and smoke-test the corrected APK on the connected Xiaomi device.
+- [x] Complete the Linux bootstrap on-device and verify the guest helper and agent guidance.
 
 ## Acceptance Criteria
 
@@ -47,12 +48,13 @@ host access. Android's PackageInstaller is the phone-native installation seam.
 
 ## Test Instructions
 
-Run the project unit tests and debug build with the repository-managed JDK/SDK,
-then install the resulting APK only on the explicit Xiaomi serial and launch
-`dev.omalauncher/.MainActivity`. The phone did not have Linux/rootfs installed,
-so the guest-command end-to-end prompt was not exercised without downloading
-the large Linux image; protocol, build, manifest, and host-side behavior were
-validated instead.
+Run the project unit tests and debug build with the isolated JDK/SDK, then
+install the resulting APK only on the explicit Xiaomi serial and launch
+`dev.omalauncher/.MainActivity`. Verify the Linux journal reaches `setup:true`
+and that `/usr/local/bin/omalauncher-install`, `AGENTS.md`, and `CLAUDE.md`
+are provisioned in the guest. The full guest-command approval interaction was
+not triggered with a test APK; protocol and host-side behavior remain covered
+by unit tests and the bridge is ready for a deliberate benign APK request.
 
 ## Dependencies / Risks
 
