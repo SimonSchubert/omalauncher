@@ -75,7 +75,10 @@ secrets: run `omalauncher-install /root/path/to/app-debug.apk "reason"` in the
 guest. Omalauncher checks the guest-visible path and APK metadata, asks the user
 to approve the package, hash, signing certificate and permissions, then hands it
 to Android's PackageInstaller. The request returns only after the system
-installer succeeds or rejects it.
+installer succeeds or rejects it. On proot-based phones, Codex is configured with
+`sandbox_mode = "danger-full-access"` and `approval_policy = "on-request"` because
+its nested bubblewrap sandbox cannot start; the Android app UID, proot guest
+boundary, and explicit PackageInstaller approvals remain in force.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the compositor, rendering, GPU
   acceleration, and how updates reach existing installs

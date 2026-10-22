@@ -1148,6 +1148,8 @@ class WidgetEngine(
                 "This sends a bounded request to the Android host; it does not give Linux ADB access or Android credentials. " +
                 "The host shows the package, version, APK SHA-256, signing certificate and requested permissions for explicit user approval, " +
                 "then Android's system installer asks for its own confirmation. The command returns `ok` only after installation succeeds; " +
-                "otherwise it returns an error. Do not try to bypass the approval screen or request an APK you did not intend to install.\n"
+                "otherwise it returns an error. Do not try to bypass the approval screen or request an APK you did not intend to install. " +
+                "On this proot-based phone, Codex's inner Linux sandbox is disabled because nested bubblewrap cannot start; Codex still uses on-request approvals, " +
+                "and the Android app UID, proot guest boundary and APK approval screen remain in force.\n"
     }
 }

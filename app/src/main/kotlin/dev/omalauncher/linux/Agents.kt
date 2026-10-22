@@ -55,6 +55,19 @@ val AGENTS =
     )
 
 /**
+ * Codex's normal Linux sandbox needs a nested bubblewrap mount namespace. The guest already runs
+ * as the Android app UID inside proot, so that second layer cannot start here. Keep Codex's
+ * interactive approval policy while disabling only the incompatible inner filesystem sandbox.
+ */
+internal const val CODEX_SYSTEM_CONFIG =
+    "# Written by the launcher.\n" +
+        "# The Android app UID and proot guest are the outer security boundary.\n" +
+        "approval_policy = \"on-request\"\n" +
+        "sandbox_mode = \"danger-full-access\"\n" +
+        "[features]\n" +
+        "daemon_auto_start = false\n"
+
+/**
  * Brings mise itself up to date. Which backend a tool installs from is built into mise, and an old mise
  * breaks when a tool moves: OpenCode 2 left GitHub releases for npm, and mise 2026.10.8 still looked for
  * it on GitHub (404). Best effort, since the old mise may still manage.
@@ -183,7 +196,7 @@ class AgentStore(
         } else {
             listOf(
                 Managed.text(File(proot.rootfs, "etc/codex/config.toml"), Policy.Owned) {
-                    "# Written by the launcher.\n[features]\ndaemon_auto_start = false\n"
+                    CODEX_SYSTEM_CONFIG
                 },
             )
         }

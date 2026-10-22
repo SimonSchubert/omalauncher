@@ -55,4 +55,16 @@ class AgentsTest {
             MISE_NODE_FOR_AGENTS,
         )
     }
+
+    @Test fun codexUsesPhoneCompatibleRunnerWithInteractiveApprovals() {
+        assertEquals(
+            "# Written by the launcher.\n" +
+                "# The Android app UID and proot guest are the outer security boundary.\n" +
+                "approval_policy = \"on-request\"\n" +
+                "sandbox_mode = \"danger-full-access\"\n" +
+                "[features]\n" +
+                "daemon_auto_start = false\n",
+            CODEX_SYSTEM_CONFIG,
+        )
+    }
 }

@@ -29,6 +29,13 @@ back to the request. No ADB socket, GitHub credential, or signing key is bound
 into the guest. USB ADB remains a computer-side development transport, not an
 Android-app capability.
 
+Codex's managed guest configuration uses `sandbox_mode = "danger-full-access"`
+with `approval_policy = "on-request"`. The inner Linux bubblewrap sandbox cannot
+create its app-server socket mount inside proot, so keeping that setting would
+prevent the agent from running any command. The Android app UID and proot guest
+remain the outer boundary, and APK installation still requires both the
+Omalauncher approval screen and Android's PackageInstaller confirmation.
+
 ## Source layout
 
 - `app/src/main/cpp/wlbridge.c`: JNI for unix sockets with fd passing, shm
