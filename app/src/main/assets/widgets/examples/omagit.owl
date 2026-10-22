@@ -18,6 +18,11 @@ app "omagit" {
   state climit = 40         // how many commits the log has fetched
   state msg = ""            // commit message
   state dsel = ""           // path whose diff is open
+  state diffFull = false
+  state diffWhitespace = false
+  state diffWrap = true
+  state diffLimit = 160
+  state diffFocus = 0
   state dmode = "w"         // "w" working tree, "s" staged, "c" from a commit
   state hsel = ""           // hash of the open commit
   state hmsg = ""           // its subject
@@ -30,9 +35,12 @@ app "omagit" {
 
   // An untracked file has no diff against HEAD; show it against /dev/null so
   // a new file can be read before it is staged.
-  let difCmd = dmode == "c" ? "git show ${sh(hsel)} -- ${sh(dsel)}"
-    : dmode == "s" ? "git diff --cached -- ${sh(dsel)}"
-    : "(git diff -- ${sh(dsel)}; git ls-files --error-unmatch ${sh(dsel)} >/dev/null 2>&1 || git diff --no-index -- /dev/null ${sh(dsel)})"
+  let diffFlags = "--no-ext-diff --no-textconv --no-color --unified=${diffFull ? 1000000 : 3} ${diffWhitespace ? '--ignore-all-space --ignore-blank-lines' : ''}"
+  let difCmd = dmode == "c" ? "git show --format= ${diffFlags} ${sh(hsel)} -- ${sh(dsel)}"
+    : dmode == "s" ? "git diff ${diffFlags} --cached -- ${sh(dsel)}"
+    : "(git diff ${diffFlags} -- ${sh(dsel)}; git ls-files --error-unmatch ${sh(dsel)} >/dev/null 2>&1 || git diff ${diffFlags} --no-index -- /dev/null ${sh(dsel)})"
+
+  let diffRequest = toJson([repo, dsel, dmode, hsel, diffFull, diffWhitespace])
 
   // ── what git says ──────────────────────────────────────────────────────────
   source repos = cmd('find $HOME -maxdepth 4 -type d -name .git 2>/dev/null | sed "s|/.git$||" | sort -u') every 10s
@@ -47,7 +55,8 @@ app "omagit" {
   source cmeta = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git show -s --format='%h|%an|%ar|%s' ${sh(hsel)}") every 10s status
   source cstat = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git show --shortstat --format='' ${sh(hsel)} 2>&1 | tail -n 1") every 10s status
   source cbody = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git log -1 --format='%b' ${sh(hsel)} 2>/dev/null") every 10s status
-  source dif = cmd("[ ${len(dsel)} -gt 1 ] && cd ${sh(repo)} && ${difCmd} 2>&1 | head -c 12000") every 5s status
+  // Tag responses so a slow result can never appear under another file's title.
+  source dif = cmd("printf '%s\\n' ${sh(diffRequest)}; [ ${len(dsel)} -gt 1 ] && cd ${sh(repo)} && ${difCmd} 2>&1 | head -c 120001") every 5s status
 
   let localHome = trim(home ?? "/root")
   let openPath = trim(folderPath) == "~" ? localHome : startsWith(trim(folderPath), "~/") ? localHome + sub(trim(folderPath), 1, len(trim(folderPath))) : trim(folderPath)
@@ -358,6 +367,31 @@ app "omagit" {
     : contains(lowOut, "command not found") ? "git is not installed"
     : outRaw
   let showOut = outMsg != "" && now != null && outAt > 0 && now - outAt < 90
+
+  // Bound the OWL list budget explicitly; never present a partial diff as complete.
+  let diffResponse = split(dif == null ? "" : (dif.out ?? ""), "\n")
+  let diffReady = dif != null && diffResponse[0] == diffRequest
+  let diffRaw = diffReady ? join(drop(diffResponse, 1), "\n") : ""
+  let diffLines = split(diffRaw, "\n")
+  let diffCut = len(diffRaw) > 120000 || len(diffLines) >= 950
+  let diffInput = diffLines.take(950).filter(l => startsWith(l, "@@ ") || startsWith(l, " ") || (startsWith(l, "+") && !startsWith(l, "+++ ")) || (startsWith(l, "-") && !startsWith(l, "--- ")) || startsWith(l, "\\"))
+  let diffRows = scan(diffInput, (p, l, i) => {
+    text: l,
+    i: i,
+    old: startsWith(l, "@@ ") ? num(split(sub(words(l)[1], 1, len(words(l)[1])), ",")[0], 0) : p.old + (startsWith(l, " ") || startsWith(l, "-") ? 1 : 0),
+    new: startsWith(l, "@@ ") ? num(split(sub(words(l)[2], 1, len(words(l)[2])), ",")[0], 0) : p.new + (startsWith(l, " ") || startsWith(l, "+") ? 1 : 0),
+    changed: startsWith(l, "+") || startsWith(l, "-"),
+    block: p.block + ((startsWith(l, "+") || startsWith(l, "-")) && !p.changed ? 1 : 0)
+  }, {old: 0, new: 0, changed: false, block: 0})
+  let diffBlocks = diffRows.filter(r => r.changed && (r.i == 0 || !diffRows[r.i - 1].changed))
+  let diffIndex = min(diffFocus, len(diffBlocks))
+  let diffSelected = diffBlocks[diffIndex - 1]
+  let diffEnd = last(diffRows.filter(r => r.changed && r.block == diffIndex))
+  let diffVisible = diffIndex == 0 ? diffRows : diffRows.filter(r => r.i >= max(0, diffSelected.i - 3) && r.i <= diffEnd.i + 3)
+  let diffViewKey = toJson([diffRequest, diffIndex, diffWrap])
+  on diffRequest { diffLimit = 160; diffFocus = 0 }
+  // Keep selection on refresh, but clamp it if edits removed a change block.
+  on diffBlocks { if diffReady { diffFocus = min(diffFocus, len(diffBlocks)) } }
 
   // Another repository starts its log at the top again.
   on repo { climit = 40; cq = ""; hsel = ""; dsel = ""; confirm = "" }
@@ -887,51 +921,83 @@ app "omagit" {
           if confirm == "discard:" + dsel {
             Confirm { question: dIsNew ? "Delete this new file?" : "Throw away the changes to this file?"; label: dIsNew ? "Delete" : "Discard" }
           }
+          Column {
+            gap: 10
+            padding: [14, 0, 14, 12]
+            Row {
+              gap: 8
+              wrap: true
+              Button { text: "Concise"; onTap: diffFull = false; color: !diffFull ? accent : secondaryInk }
+              Button { text: "Full file"; onTap: diffFull = true; color: diffFull ? accent : secondaryInk }
+              Spacer { weight: 1 }
+              Text { text: "+${len(diffRows.filter(r => startsWith(r.text, "+")))} / −${len(diffRows.filter(r => startsWith(r.text, "-")))}${diffCut ? " (partial)" : ""}"; font: mono; fontSize: 11; color: secondaryInk }
+            }
+            Row {
+              gap: 8
+              wrap: true
+              Button { text: diffWhitespace ? "Whitespace: ignored" : "Whitespace: shown"; onTap: diffWhitespace = !diffWhitespace }
+              Button { text: diffWrap ? "Wrap: on" : "Wrap: off"; onTap: diffWrap = !diffWrap }
+            }
+            if len(diffBlocks) > 0 {
+              Row {
+                gap: 8
+                align: center
+                Button { text: "‹"; color: diffIndex == 1 ? secondaryInk : accent; onTap: { diffFocus = diffIndex == 0 ? len(diffBlocks) : max(1, diffIndex - 1); diffLimit = 160 } }
+                Text { text: diffIndex == 0 ? "${len(diffBlocks)} change blocks" : "Change ${diffIndex} of ${len(diffBlocks)}"; fontSize: 11; color: secondaryInk; weight: 1 }
+                Button { text: "›"; color: diffIndex == len(diffBlocks) ? secondaryInk : accent; onTap: { diffFocus = min(len(diffBlocks), diffIndex + 1); diffLimit = 160 } }
+                if diffIndex > 0 { Button { text: "All lines"; onTap: { diffFocus = 0; diffLimit = 160 } } }
+              }
+            }
+          }
           Rule { }
+          // Key the scroller itself, not just its rows: each destination starts at top.
+          for viewKey in [diffViewKey] key viewKey {
           Column {
             scroll: true
             lazy: true
             weight: 1
             gap: 0
-            padding: [0, 6, 0, 6]
-            let dl = lines(dif == null ? "" : (dif.out ?? "")).filter(l => !startsWith(l, "index ") && !startsWith(l, "diff --git") && !startsWith(l, "--- ") && !startsWith(l, "+++ ") && !startsWith(l, "new file mode") && !startsWith(l, "deleted file mode") && !startsWith(l, "old mode") && !startsWith(l, "new mode") && !startsWith(l, "similarity index") && !startsWith(l, "rename from") && !startsWith(l, "rename to"))
-            let addN = dl.filter(l => startsWith(l, "+")).length
-            let delN = dl.filter(l => startsWith(l, "-")).length
-            if len(dl) == 0 {
+            if !diffReady {
+              Text { text: "Reading diff…"; padding: 16; color: secondaryInk }
+            } else if len(diffRows) == 0 {
               Column {
-                gap: 6
-                padding: [12, 10, 0, 12]
-                Text { text: dmode == "w" ? "No changes to show yet" : "Nothing to show"; fontSize: 14; fontWeight: 600 }
-                Text { text: dmode == "c" ? "This commit didn't change this file's text." : "The file is unchanged, empty, or binary."; fontSize: 12; color: secondaryInk }
-              }
-            } else {
-              Row {
                 gap: 8
-                align: center
-                padding: [10, 8, 8, 8]
-                Text { text: "+${addN}"; font: mono; fontSize: 10; color: positiveInk }
-                Text { text: "−${delN}"; font: mono; fontSize: 10; color: red }
-                Spacer { weight: 1 }
-                Text { text: "${len(dl)} lines"; font: mono; fontSize: 10; color: secondaryInk }
-              }
-              for l, i in dl.take(400) key i {
-                let add = startsWith(l, "+")
-                let del = startsWith(l, "-")
-                let hdr = startsWith(l, "@@")
-                let bin = startsWith(l, "Binary files")
-                Text {
-                  text: l == "" ? " " : l
-                  font: mono
-                  fontSize: 9.5
-                  color: add ? positiveInk : del ? red : hdr ? accent : bin ? yellow : secondaryInk
-                  background: add ? alpha(green, 0.08) : del ? alpha(red, 0.08) : hdr ? alpha(accent, 0.07) : alpha(accent, 0)
-                  padding: [6, 1, 6, 1]
-                }
-              }
-              if len(dl) > 400 {
-                Text { text: "… ${len(dl) - 400} more lines — open the file in Shell"; fontSize: 12; color: secondaryInk; padding: [10, 8, 10, 8] }
+                padding: 16
+                Text { text: dif.ok == false && trim(dif.err ?? "") != "" ? "Couldn't read this diff" : contains(diffRaw, "Binary files") ? "Binary file changed" : "No text changes"; fontSize: 16; fontWeight: 600 }
+                Text { text: trim(dif.err ?? "") != "" ? trim(dif.err) : diffWhitespace ? "Whitespace-only changes are hidden. Turn off Ignore whitespace to see them." : "The file is unchanged, empty, binary, or only its name or permissions changed."; fontSize: 12; color: secondaryInk }
               }
             }
+            for r in diffVisible.take(diffLimit) key r.i {
+              let l = r.text
+              let add = startsWith(l, "+")
+              let del = startsWith(l, "-")
+              let hdr = startsWith(l, "@@ ")
+              let note = startsWith(l, "\\")
+              if hdr {
+                Text { text: l; font: mono; fontSize: 10; color: accent; background: alpha(accent, 0.08); padding: [12, 10, 12, 10] }
+              } else {
+                Row {
+                  gap: 0
+                  align: top
+                  background: add ? alpha(green, 0.10) : del ? alpha(red, 0.10) : background
+                  Box { width: 3; height: 20; background: add ? positiveInk : del ? red : hairline }
+                  Text { text: add || note ? "" : "${r.old - 1}"; width: 34; align: end; font: mono; fontSize: 9; color: secondaryInk; padding: [0, 3, 5, 3] }
+                  Text { text: del || note ? "" : "${r.new - 1}"; width: 34; align: end; font: mono; fontSize: 9; color: secondaryInk; padding: [0, 3, 5, 3] }
+                  Text { text: add ? "+" : del ? "−" : " "; width: 16; font: mono; fontSize: 11; color: add ? positiveInk : red; padding: [2, 2, 0, 2] }
+                  Text { text: note ? l : sub(l, 1, len(l)) == "" ? " " : replace(sub(l, 1, len(l)), "\t", "    "); weight: 1; font: mono; fontSize: 11; color: add ? positiveInk : del ? mix(red, foreground, 0.3) : foreground; maxLines: diffWrap ? 100 : 1; padding: [0, 2, 10, 2] }
+                }
+              }
+            }
+            if len(diffVisible) > diffLimit {
+              Button { text: "Load 160 more lines (${len(diffVisible) - diffLimit} remaining)"; onTap: diffLimit = diffLimit + 160 }
+            }
+            if !diffWrap { Text { text: "Long lines are clipped. Turn Wrap on to read them in full."; fontSize: 11; color: secondaryInk; padding: 12 } }
+            if diffCut {
+              Text { text: "Large diff: preview limited to 950 raw lines / 120 KB. Counts and change navigation cover only this preview. Use Shell for the complete diff."; fontSize: 11; color: yellow; padding: 12 }
+              Action { tag: "shell"; label: "Open Shell" }
+            }
+            Spacer { height: 16 }
+          }
           }
         }
       } else if tab == "history" && hsel != "" {
