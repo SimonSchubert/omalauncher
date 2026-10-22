@@ -439,6 +439,8 @@ repository includes a reproducible preparation script that:
 - reuses the five ARM64 libraries from the currently installed Omalauncher
   through the read-only `/run/omalauncher/native` bind, so a fresh clone does
   not need to rebuild proot before the first custom build; and
+- exposes only the OS-managed `/system` and `/apex` runtime paths needed by
+  Android-linked ARM64 AAPT2/AIDL binaries to find `/system/bin/linker64`; and
 - writes only the ignored checkout-local `local.properties` SDK path.
 
 Run it in the Omalauncher checkout and keep the exported environment in the

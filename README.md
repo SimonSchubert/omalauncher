@@ -129,7 +129,9 @@ type. It produces the separately installable package
 The preparation script downloads checksum-pinned native ARM64 AAPT2/AIDL
 packages from the official Termux repository, creates an ignored SDK overlay,
 and seeds the generated native libraries from the installed launcher through a
-read-only guest bind. Install
+read-only guest bind. The guest also exposes only Android's OS-managed
+`/system` and `/apex` runtime paths so the Android-linked ARM64 tools can find
+`/system/bin/linker64`. Install
 `app/build/outputs/apk/custom/app-custom.apk` through `omalauncher-install`.
 It is a separate app with separate Linux data, so the original launcher stays
 available as a fallback and its Codex sessions/settings are not shared. The

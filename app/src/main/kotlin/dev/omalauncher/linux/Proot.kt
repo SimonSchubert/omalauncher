@@ -68,6 +68,12 @@ class Proot(
             "/dev/shm" to tmpDir,
             GUEST_RUNTIME_DIR to runtimeDir,
             GUEST_NATIVE_LIB_DIR to nativeDir,
+            // Android-linked ARM64 build tools use /system/bin/linker64, whose
+            // symlink target and runtime libraries live under /apex. These are
+            // OS-managed read-only mounts; expose them only so verified native
+            // AAPT2/AIDL can start inside the guest.
+            "/system" to File("/system"),
+            "/apex" to File("/apex"),
         ) + dataBinds
 
     /**
