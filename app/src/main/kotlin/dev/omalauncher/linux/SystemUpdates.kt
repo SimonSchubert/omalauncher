@@ -178,6 +178,6 @@ class SystemUpdates(
         /** Databases refreshed (-Syy) even if pacman thinks they're current: mirrors lag each other. */
         val UPDATE_SCRIPT =
             "pacman -Syyu --noconfirm && $CLEAN_PACMAN_CACHE && " +
-                "if command -v mise >/dev/null; then $MISE_SELF_UPDATE && $MISE_NODE_FOR_AGENTS && mise upgrade && mise prune -y && mise cache clear; fi"
+                "if command -v mise >/dev/null; then $MISE_SELF_UPDATE && $MISE_NODE_FOR_AGENTS && $MISE_SECURITY_ENV mise upgrade && mise prune -y && mise cache clear; fi"
     }
 }

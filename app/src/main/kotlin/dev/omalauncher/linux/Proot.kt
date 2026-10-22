@@ -39,6 +39,12 @@ class Proot(
     /** Replaces /usr/bin/bwrap in the guest, see assets/bwrap-shim.sh. */
     private val bwrapShim = File(filesDir, "bwrap-shim")
 
+    /** AUR builds get an empty home and temporary directory, not the agent's home or bridge. */
+    private val untrustedHome = File(filesDir, "aur-home")
+    private val untrustedTmp = File(filesDir, "aur-tmp")
+    /** Exists only as a read-only bind during an app-approved AUR job; a guest agent cannot forge it. */
+    private val aurApproval = File(filesDir, "aur-approval")
+
     /** Launcher data the guest sees in its home, kept outside the rootfs; see [LauncherData]. */
     private val dataBinds =
         listOf(
@@ -143,27 +149,43 @@ class Proot(
         if (!bwrapShim.isFile || !bwrapShim.readBytes().contentEquals(shim)) writeAtomically(bwrapShim, shim, executable = true)
     }
 
-    private fun command(script: String): List<String> =
-        listOf(
+    private fun command(
+        script: String,
+        isolated: Boolean = false,
+    ): List<String> {
+        val home = if (isolated) "/home/builder" else GUEST_HOME
+        val guestBinds =
+            if (isolated) {
+                listOf(
+                    "/tmp" to untrustedTmp,
+                    "/dev/shm" to untrustedTmp,
+                    "/dev/omalauncher-aur-approval" to aurApproval,
+                    "/root" to untrustedHome,
+                )
+            } else {
+                binds
+            }
+        val procBinds: List<Pair<String, File>> = if (isolated) emptyList() else procShim.binds.toList()
+        return listOf(
             File(nativeDir, "libproot.so").path,
             "--kill-on-exit",
             "--link2symlink",
             "-0",
             "-r",
             rootfs.path,
-        ) + procShim.binds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
+        ) + procBinds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
             listOf(
                 "-b", "/dev",
                 "-b", "/proc",
                 "-b", "${sysDir.path}:/sys",
                 "-b", "/sys/devices/system/cpu",
-            ) + (if (cjkFont.isFile) listOf("-b", "${cjkFont.path}:$GUEST_CJK_FONT") else emptyList()) +
-            binds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
+            ) + (if (!isolated && cjkFont.isFile) listOf("-b", "${cjkFont.path}:$GUEST_CJK_FONT") else emptyList()) +
+            guestBinds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
             listOf(
                 "-b", "${bwrapShim.path}:/usr/bin/bwrap",
-                "-w", GUEST_HOME,
+                "-w", home,
                 "/usr/bin/env", "-i",
-                "HOME=$GUEST_HOME",
+                "HOME=$home",
                 "USER=root",
                 "LANG=C.UTF-8",
                 // Android's zone name (e.g. Europe/Berlin); the guest otherwise runs on UTC.
@@ -191,14 +213,15 @@ class Proot(
                 // The launcher's editor; yazi and git open files with it. Its shim falls back to micro.
                 "EDITOR=$EDIT_COMMAND",
                 "VISUAL=$EDIT_COMMAND",
-                "XDG_RUNTIME_DIR=$GUEST_RUNTIME_DIR",
-                "WAYLAND_DISPLAY=${waylandSocket.name}",
-                "XDG_SESSION_TYPE=wayland",
-                "GDK_BACKEND=wayland",
-                "QT_QPA_PLATFORM=wayland",
-                "MOZ_ENABLE_WAYLAND=1",
-                "SDL_VIDEODRIVER=wayland",
+                "XDG_RUNTIME_DIR=${if (isolated) "/tmp" else GUEST_RUNTIME_DIR}",
+                "WAYLAND_DISPLAY=${if (isolated) "" else waylandSocket.name}",
+                "XDG_SESSION_TYPE=${if (isolated) "" else "wayland"}",
+                "GDK_BACKEND=${if (isolated) "" else "wayland"}",
+                "QT_QPA_PLATFORM=${if (isolated) "" else "wayland"}",
+                "MOZ_ENABLE_WAYLAND=${if (isolated) "" else "1"}",
+                "SDL_VIDEODRIVER=${if (isolated) "" else "wayland"}",
             ) + graphicsEnv + listOf("/bin/sh", "-c", script)
+    }
 
     /**
      * Kills every proot we started and every guest process: before the rootfs
@@ -219,8 +242,21 @@ class Proot(
     }
 
     /** A guest `sh -c [script]`, stderr merged into stdout. Needs [prepare] to have run. */
-    fun process(script: String): ProcessBuilder =
-        ProcessBuilder(command(script)).apply {
+    fun process(
+        script: String,
+        isolated: Boolean = false,
+    ): ProcessBuilder {
+        if (isolated) {
+            LauncherData.deleteTree(untrustedHome)
+            LauncherData.deleteTree(untrustedTmp)
+            aurApproval.delete()
+            untrustedHome.mkdirs()
+            untrustedTmp.mkdirs()
+            aurApproval.writeText("approved\n")
+            aurApproval.setReadable(true, false)
+            aurApproval.setWritable(false, false)
+        }
+        return ProcessBuilder(command(script, isolated)).apply {
             environment().apply {
                 clear()
                 put("PROOT_LOADER", File(nativeDir, "libproot-loader.so").path)
@@ -229,6 +265,7 @@ class Proot(
             }
             redirectErrorStream(true)
         }
+    }
 
     companion object {
         const val GUEST_HOME = "/root"

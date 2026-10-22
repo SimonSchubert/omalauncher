@@ -2,6 +2,10 @@
 # Builds and installs an AUR package with yay. Runs as (proot's fake) root;
 # /usr/local/bin/yay runs the build as the unprivileged `builder`.
 set -e
+if [ ! -r /dev/omalauncher-aur-approval ]; then
+    echo "AUR installs are blocked unless approved from Omalauncher's package screen" >&2
+    exit 77
+fi
 pkg="$1"
 case "$pkg" in
     '' | -* | *[!a-z0-9@._+-]*) echo "invalid package name: $pkg" >&2; exit 2 ;;

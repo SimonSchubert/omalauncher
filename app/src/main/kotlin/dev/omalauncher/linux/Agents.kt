@@ -68,15 +68,36 @@ internal const val CODEX_SYSTEM_CONFIG =
         "daemon_auto_start = false\n"
 
 /**
- * Brings mise itself up to date. Which backend a tool installs from is built into mise, and an old mise
- * breaks when a tool moves: OpenCode 2 left GitHub releases for npm, and mise 2026.10.8 still looked for
- * it on GitHub (404). Best effort, since the old mise may still manage.
+ * mise is an executable installer, so do not pipe a moving install script into a shell. Keep the
+ * version and checksum together; updating either is an intentional source change that can be reviewed.
  */
-const val MISE_SELF_UPDATE = "{ mise self-update -y || true; }"
+private const val MISE_VERSION = "2026.10.17"
+private const val MISE_URL = "https://github.com/jdx/mise/releases/download/v$MISE_VERSION/mise-v$MISE_VERSION-linux-arm64"
+private const val MISE_SHA256 = "e90904144ba4377c5fbe385f429830282c68f3b4f9c690bf6c5a2ae9b74a809b"
+
+/** Keep newly published agent releases out of the default install/update path while they are investigated. */
+const val MISE_SECURITY_ENV = "MISE_MINIMUM_RELEASE_AGE=7d"
+
+/** A source-pinned mise is updated with Omalauncher, not by a floating self-update command. */
+const val MISE_SELF_UPDATE = ":"
+
+private fun miseInstallScript() =
+    """
+    current="${'$'}(mise --version 2>/dev/null | sed -n 's/^mise \([0-9.]*\).*/\1/p')"
+    if [ "${'$'}current" != "$MISE_VERSION" ]; then
+      tmp="${'$'}(mktemp)"
+      trap 'rm -f "${'$'}tmp"' EXIT
+      curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --output "${'$'}tmp" "$MISE_URL"
+      printf '%s  %s\n' "$MISE_SHA256" "${'$'}tmp" | sha256sum -c -
+      install -Dm755 "${'$'}tmp" "${'$'}HOME/.local/bin/mise"
+      rm -f "${'$'}tmp"
+      trap - EXIT
+    fi
+    """.trimIndent()
 
 /** Adds node to the global config when an installed agent needs it but was installed before it did (OpenCode 1). */
 val MISE_NODE_FOR_AGENTS =
-    AGENTS.filter { it.node }.joinToString(" ", prefix = "if [ -z \"\$(mise ls -g node)\" ] && [ -n \"\$(mise ls -g ", postfix = ")\" ]; then mise use -g node@lts; fi") {
+    AGENTS.filter { it.node }.joinToString(" ", prefix = "if [ -z \"\$(mise ls -g node)\" ] && [ -n \"\$(mise ls -g ", postfix = ")\" ]; then $MISE_SECURITY_ENV mise use -g node@lts; fi") {
         shellQuote(it.pkg)
     }
 
@@ -113,7 +134,6 @@ class AgentStore(
     /** Called when the set of installed agents changed, so their desktop entries follow. */
     private val onChanged: () -> Unit,
 ) {
-    private val mise get() = File(proot.home, ".local/bin/mise")
     private val shims get() = File(proot.home, ".local/share/mise/shims")
 
     val states = mutableStateMapOf<String, JobState>()
@@ -156,9 +176,10 @@ class AgentStore(
     /** Installs [agent] with mise, bootstrapping mise itself if needed. */
     fun installScript(agent: Agent) =
         buildString {
-            append(if (mise.exists()) "$MISE_SELF_UPDATE && " else "curl -fsSL https://mise.run | sh && ")
-            if (agent.node) append("mise use -g node@lts && ")
-            append("mise use -g ${shellQuote(agent.pkg)}")
+            append(miseInstallScript())
+            append(" && ")
+            if (agent.node) append("$MISE_SECURITY_ENV mise use -g node@lts && ")
+            append("$MISE_SECURITY_ENV mise use -g ${shellQuote(agent.pkg)}")
             // Downloads are only needed during install; storage on phones is tight.
             append(" && mise cache clear && rm -rf ~/.local/share/mise/downloads")
         }

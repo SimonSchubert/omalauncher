@@ -4,6 +4,10 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import dev.omalauncher.LauncherData
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +24,8 @@ data class Package(
     /** Sync repo (core, extra, alarm, ...) or [AUR]; null for the installed list. */
     val repo: String?,
     val installed: Boolean,
+    /** AUR's Unix timestamp for the latest package metadata change; null for repo/local entries. */
+    val aurLastModified: Long? = null,
 )
 
 /** Installs and removes guest packages from the settings screen, one pacman at a time. */
@@ -27,6 +33,17 @@ class Pacman(
     private val context: Context,
     private val proot: Proot,
 ) {
+    private val prefs = LauncherData.prefs(context)
+
+    /** One explicit user choice allows mature AUR entries; recent/undated entries still require review. */
+    var matureAurAllowed by mutableStateOf(prefs.getBoolean(MATURE_AUR_ALLOWED, false))
+        private set
+
+    fun allowMatureAur() {
+        matureAurAllowed = true
+        prefs.edit().putBoolean(MATURE_AUR_ALLOWED, true).apply()
+    }
+
     /** pacman holds a lock on its database; everything that runs it takes this first. */
     val lock = Mutex()
 
@@ -139,14 +156,20 @@ class Pacman(
     /** A full sync plus the package, like the bootstrap: never a partial upgrade. */
     suspend fun install(pkg: Package) =
         if (pkg.repo == AUR) {
-            run(pkg.name, "building", "/usr/local/lib/aur/install.sh ${shellQuote(pkg.name)}")
+            run(
+                pkg.name,
+                "building",
+                "/usr/local/lib/aur/install.sh ${shellQuote(pkg.name)}",
+                isolated = true,
+            )
         } else {
             run(pkg.name, "installing", pacmanInstall(listOf(pkg.name)))
         }
 
     /**
      * The AUR build scripts (assets/aur) in the guest's /usr/local/lib/aur, the fakeroot shim in its bin,
-     * and the yay wrapper that builds as a user even when called as root (by App Finder, say).
+     * and the yay wrapper that builds as a user. AUR jobs run without the agent home, user-data binds,
+     * Android bridge, or SDK/native-library binds.
      */
     fun managed(): List<Managed> {
         val dir = File(proot.rootfs, "usr/local/lib/aur")
@@ -175,8 +198,12 @@ class Pacman(
         name: String,
         action: String,
         script: String,
+        isolated: Boolean = false,
     ): Boolean {
-        val (ok, _) = proot.trackedJob(action, script, lock) { if (it == JobState.Idle) states.remove(name) else states[name] = it }
+        val (ok, _) =
+            proot.trackedJob(action, script, lock, isolated = isolated) {
+                if (it == JobState.Idle) states.remove(name) else states[name] = it
+            }
         Log.i(TAG, "$action $name: ${if (ok) "ok" else "failed"}")
         revision.intValue++
         return ok
@@ -184,6 +211,7 @@ class Pacman(
 
     companion object {
         private const val TAG = "pacman"
+        private const val MATURE_AUR_ALLOWED = "linux.mature_aur_allowed"
 
         /** Short AUR queries match thousands of packages. */
         private const val MAX_RESULTS = 100

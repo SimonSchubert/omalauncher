@@ -66,21 +66,31 @@ class OutputTail(
  */
 fun Proot.run(
     script: String,
+    isolated: Boolean = false,
     onLine: (String) -> Unit = {},
 ): Int {
-    val process = process(script).start()
-    process.inputStream.bufferedReader().forEachLine(onLine)
-    return process.waitFor()
+    return try {
+        val process = process(script, isolated).start()
+        process.inputStream.bufferedReader().forEachLine(onLine)
+        process.waitFor()
+    } finally {
+        if (isolated) {
+            dev.omalauncher.LauncherData.deleteTree(java.io.File(filesDir, "aur-home"))
+            dev.omalauncher.LauncherData.deleteTree(java.io.File(filesDir, "aur-tmp"))
+            java.io.File(filesDir, "aur-approval").delete()
+        }
+    }
 }
 
 /** Like [run], reporting the tail of the output to [report] as it comes. Returns success and the tail. */
 fun Proot.runJob(
     script: String,
+    isolated: Boolean = false,
     tail: OutputTail = OutputTail(),
     report: (List<String>) -> Unit = {},
 ): Pair<Boolean, OutputTail> {
     val ok =
-        runCatching { run(script) { if (tail.add(it)) report(tail.toList()) } == 0 }
+        runCatching { run(script, isolated = isolated) { if (tail.add(it)) report(tail.toList()) } == 0 }
             .getOrElse {
                 tail.add(it.message ?: it.toString())
                 false
@@ -97,13 +107,14 @@ suspend fun Proot.trackedJob(
     action: String,
     script: String,
     lock: Mutex? = null,
+    isolated: Boolean = false,
     publish: (JobState) -> Unit,
 ): Pair<Boolean, OutputTail> {
     if (lock != null) publish(JobState.Working("waiting", emptyList()))
     val job: suspend () -> Pair<Boolean, OutputTail> = {
         withContext(Dispatchers.IO) {
             publish(JobState.Working(action, emptyList()))
-            runJob(script) { publish(JobState.Working(action, it)) }.also { (ok, tail) ->
+            runJob(script, isolated = isolated) { publish(JobState.Working(action, it)) }.also { (ok, tail) ->
                 publish(if (ok) JobState.Idle else JobState.Failed(tail.toList()))
             }
         }

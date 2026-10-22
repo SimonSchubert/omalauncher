@@ -6,6 +6,10 @@
 # drive yay themselves, like App Finder, get the same build as the Packages
 # screen. Their --sudo (App Finder's pkexec, which has no polkit here) loses
 # to ours: yay takes an option's first value.
+if [ ! -r /dev/omalauncher-aur-approval ]; then
+    echo "AUR installs are blocked unless approved from Omalauncher's package screen" >&2
+    exit 77
+fi
 [ "$(id -u)" = 0 ] || exec /usr/bin/yay "$@"
 
 # The rootfs ships without sudo, and a terminal's yay doesn't come through
@@ -14,7 +18,7 @@
 pacman -Qq base-devel git >/dev/null 2>&1 || pacman -Syu --noconfirm --needed base-devel git || exit
 
 id builder >/dev/null 2>&1 || useradd -m -s /bin/bash builder
-echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/aur-builder
+echo 'builder ALL=(root) NOPASSWD: /usr/bin/pacman' > /etc/sudoers.d/aur-builder
 chmod 440 /etc/sudoers.d/aur-builder
 
 # Runs script $1 as builder, with the rest as its "$@". The fakeroot shim is
@@ -22,8 +26,10 @@ chmod 440 /etc/sudoers.d/aur-builder
 build() {
     script=$1
     shift
-    # -- first: su would read yay's own options (-S) as its.
-    su -s /bin/sh -c "export PATH=/usr/local/lib/aur/bin:\$PATH; cd; $script" -- builder yay "$@"
+    # Keep build scripts out of the agent's environment and home. The first
+    # argument after `--` is $0, so `script` and the remaining yay arguments
+    # are passed separately without re-parsing package names as shell code.
+    su -s /bin/sh -c 'script=$1; shift; cd /home/builder; exec env -i HOME=/home/builder PATH=/usr/local/lib/aur/bin:/usr/bin:/bin LANG=C /bin/sh -c "$script" -- "$@"' -- builder aur "$script" "$@"
 }
 
 if [ ! -x /usr/bin/yay ]; then
@@ -31,4 +37,4 @@ if [ ! -x /usr/bin/yay ]; then
     build 'rm -rf yay-bin && git clone --depth 1 https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm && cd && rm -rf yay-bin' || exit
 fi
 
-build 'exec /usr/bin/yay --sudo sudo --sudoflags "" "$@"' "$@"
+build '/usr/bin/yay --sudo sudo --sudoflags "" "$@"' "$@"

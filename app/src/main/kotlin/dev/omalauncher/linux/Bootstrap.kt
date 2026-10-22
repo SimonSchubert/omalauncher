@@ -187,7 +187,8 @@ class Bootstrap(
     private val steps =
         listOf(
             Step("rootfs", Stage.Download, "Downloading Arch Linux ARM", network = true) { installRootfs() },
-            Step("etc-2", Stage.Configure, "Configuring the system", network = false) { configure() },
+            // Bumped so existing guests receive the HTTPS mirror and strict signature policy.
+            Step("etc-3", Stage.Configure, "Configuring the system", network = false) { configure() },
             Step("keyring-1", Stage.Configure, "Initializing pacman keyring", network = false) {
                 guest("pacman-key --init && pacman-key --populate archlinuxarm")
             },
@@ -609,15 +610,18 @@ class Bootstrap(
         File(root, "etc/hosts").writeText("127.0.0.1 localhost\n::1 localhost\n")
         File(root, "etc/locale.conf").writeText("LANG=C.UTF-8\n")
         // The geo-balanced default mirror often lags behind; pacman falls through this list on 404s.
-        File(root, "etc/pacman.d/mirrorlist").writeText(MIRRORS.joinToString("") { "Server = http://$it/\$arch/\$repo\n" })
+        File(root, "etc/pacman.d/mirrorlist").writeText(MIRRORS.joinToString("") { "Server = https://$it/\$arch/\$repo\n" })
         // pacman drops privileges and uses Landlock for downloads; neither works under proot.
         // Its low-speed timeout aborts big packages on slow phone connections, every retry.
         val conf = File(root, "etc/pacman.conf")
         conf.writeText(
             conf
                 .readText()
-                .replace(Regex("(?m)^(DownloadUser|CheckSpace|DisableSandbox|DisableDownloadTimeout|NoExtract)\\b.*\n"), "")
-                .replaceFirst("[options]", "[options]\nDisableSandbox\nDisableDownloadTimeout\n$NO_EXTRACT"),
+                .replace(Regex("(?m)^(DownloadUser|CheckSpace|DisableSandbox|DisableDownloadTimeout|SigLevel|NoExtract)\\b.*\n"), "")
+                .replaceFirst(
+                    "[options]",
+                    "[options]\nSigLevel = Required DatabaseOptional TrustedOnly\nDisableSandbox\nDisableDownloadTimeout\n$NO_EXTRACT",
+                ),
         )
     }
 

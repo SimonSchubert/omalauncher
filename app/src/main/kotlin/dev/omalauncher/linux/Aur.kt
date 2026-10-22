@@ -12,6 +12,13 @@ object Aur {
     private const val TAG = "aur"
     private const val RPC = "https://aur.archlinux.org/rpc/v5/search/"
 
+    /** Cool-off window after an AUR maintainer changes a package recipe. */
+    const val MINIMUM_AGE_DAYS = 14L
+    private const val DAY_MS = 24L * 60L * 60L * 1000L
+
+    fun isMature(lastModified: Long?, now: Long = System.currentTimeMillis()): Boolean =
+        lastModified != null && lastModified > 0 && now - lastModified * 1000L >= MINIMUM_AGE_DAYS * DAY_MS
+
     /** Package name and description matches; the RPC rejects queries under two characters. */
     suspend fun search(query: String): List<Package> {
         val q = query.trim()
@@ -43,6 +50,7 @@ object Aur {
                 description = if (o.isNull("Description")) "" else o.getString("Description"),
                 repo = AUR,
                 installed = false,
+                aurLastModified = o.optLong("LastModified", 0L).takeIf { it > 0 },
             )
         }
     }

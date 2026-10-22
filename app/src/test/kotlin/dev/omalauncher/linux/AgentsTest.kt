@@ -51,9 +51,16 @@ class AgentsTest {
     @Test fun updatesAddNodeForOpencode() {
         assertEquals(
             "if [ -z \"\$(mise ls -g node)\" ] && [ -n \"\$(mise ls -g 'opencode' 'npm:@xai-official/grok' 'npm:@moonshot-ai/kimi-code')\" ]; " +
-                "then mise use -g node@lts; fi",
+                "then MISE_MINIMUM_RELEASE_AGE=7d mise use -g node@lts; fi",
             MISE_NODE_FOR_AGENTS,
         )
+    }
+
+    @Test fun miseSelfUpdateCannotMoveBeyondTheReviewedBinary() {
+        assertEquals(":", MISE_SELF_UPDATE)
+        assertEquals("MISE_MINIMUM_RELEASE_AGE=7d", MISE_SECURITY_ENV)
+        val script = File("src/main/assets/aur/install.sh").readText()
+        assertTrue("AUR installs need the host-side approval path", script.contains("/dev/omalauncher-aur-approval"))
     }
 
     @Test fun codexUsesPhoneCompatibleRunnerWithInteractiveApprovals() {
