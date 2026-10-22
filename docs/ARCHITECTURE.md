@@ -52,6 +52,11 @@ above. A phone-local build cannot replace the installed launcher without its
 matching private signing key, so that key stays outside Linux and self-update
 requires a separate host-side signer.
 
+The checked-in Gradle defaults are intentionally conservative for phone-local
+builds: a 2 GiB Gradle heap, a 1 GiB Kotlin daemon, one worker, and no parallel
+tooling. Agents should keep those limits and avoid running multiple variants
+at once.
+
 The installed launcher does not pull its own source or APK updates from
 GitHub. For this development install, the canonical fork is
 `https://github.com/danielsanchezaran/omalauncher`, with `main` as the
@@ -61,6 +66,14 @@ installation of a companion APK through the approval bridge. It must preserve
 dirty worktrees and never resolve conflicts with a hard reset or force-push.
 Updating `dev.omalauncher` itself still requires a build signed by the same
 key as the installed APK, so that final step remains host-side.
+
+For phone-local development, the `custom` build type uses the package
+`dev.omalauncher.custom` and the label `Omalauncher Custom`. It is signed with
+the guest's debug configuration and is intentionally side-by-side with the
+normal launcher, so it can be installed through `omalauncher-install` without
+the normal launcher's key. Its Android data and Linux guest are separate; the
+user selects it as the default Home app manually and keeps the normal launcher
+as a fallback.
 
 Codex's managed guest configuration uses `sandbox_mode = "danger-full-access"`
 with `approval_policy = "on-request"`. The inner Linux bubblewrap sandbox cannot

@@ -59,6 +59,17 @@ android {
     }
 
     buildTypes {
+        // A side-by-side phone-local build. It has a separate package name and
+        // can therefore be installed without the production/debug launcher's
+        // signing key. Keep the normal debug build unchanged for development
+        // installs from the host.
+        create("custom") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".custom"
+            versionNameSuffix = "-custom"
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = true
+        }
         release {
             // Shrinks the APK and drops what the app doesn't use, like the owl module's unused parts.
             isMinifyEnabled = true
@@ -72,7 +83,7 @@ android {
 tasks.withType<Test>().configureEach { inputs.dir("src/main/assets/widgets") }
 
 // Gitignored, built by scripts/fetch-proot.sh. Without it a build still succeeds, but every Linux command fails.
-tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
+tasks.matching { it.name == "preDebugBuild" || it.name == "preCustomBuild" || it.name == "preReleaseBuild" }.configureEach {
     val proot = file("src/main/jniLibs/arm64-v8a/libproot.so")
     doFirst { check(proot.exists()) { "$proot is missing; run scripts/fetch-proot.sh" } }
 }

@@ -121,6 +121,16 @@ companion APKs. It must preserve dirty worktrees and never reset or force-push
 to resolve a conflict. Replacing `dev.omalauncher` itself still requires the
 matching host-side signing key.
 
+For phone-local launcher development, the project also has a `custom` build
+type. It produces the separately installable package
+`dev.omalauncher.custom` (shown as **Omalauncher Custom**) and can be built with
+`./gradlew --no-daemon --max-workers=1 --no-parallel :app:testDebugUnitTest :app:assembleCustom`. Install
+`app/build/outputs/apk/custom/app-custom.apk` through `omalauncher-install`.
+It is a separate app with separate Linux data, so the original launcher stays
+available as a fallback and its Codex sessions/settings are not shared.
+The repository also caps Gradle at 2 GiB, the Kotlin daemon at 1 GiB, and one
+worker so phone-local builds do not consume the whole device.
+
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the compositor, rendering, GPU
   acceleration, and how updates reach existing installs
 - [docs/RELEASING.md](docs/RELEASING.md): Play releases and store assets

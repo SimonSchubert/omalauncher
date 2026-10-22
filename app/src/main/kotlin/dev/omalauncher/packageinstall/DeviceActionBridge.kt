@@ -408,6 +408,31 @@ To ask Android to put two launchable apps next to each other, use `omalauncher-d
 
 For an APK built in the guest, use `omalauncher-install /absolute/path/app-debug.apk "reason"`; it remains the package-install path and has its own APK inspection and Android PackageInstaller policy.
 
+## Building a side-by-side custom launcher
+
+When the user wants the agent to compile and install launcher changes from the
+phone, use the dedicated `custom` build type. It is deliberately a different
+package (`dev.omalauncher.custom`) with the label `Omalauncher Custom`, so it
+can be installed alongside `dev.omalauncher` without the original launcher's
+signing key:
+
+Builds are intentionally resource-conservative. The project Gradle settings
+cap Gradle at 2 GiB, cap the Kotlin daemon at 1 GiB, disable parallel tooling,
+and use one worker. Keep those limits; do not add `--parallel`, increase the
+heap, or run debug and custom builds concurrently on the phone.
+
+```sh
+./gradlew --no-daemon --max-workers=1 --no-parallel --console=plain :app:testDebugUnitTest :app:assembleCustom
+omalauncher-install "${'$'}PWD/app/build/outputs/apk/custom/app-custom.apk" "install the tested Omalauncher Custom build"
+```
+
+Keep `dev.omalauncher` installed as the fallback. The custom app has separate
+Android data and a separate Linux guest, so it does not automatically inherit
+the original launcher's Codex sessions, files, settings, or Linux packages.
+The user must choose it as the default Home app through Android's UI if they
+want to use it as the launcher. Do not uninstall the original app or silently
+change the default Home app.
+
 ## Updating Omalauncher from source
 
 For this installation, the user's fork is the canonical source:
@@ -420,7 +445,7 @@ git status --short
 git remote -v
 git fetch origin main
 git rebase origin/main
-./gradlew --no-daemon --console=plain :app:testDebugUnitTest :app:assembleDebug
+./gradlew --no-daemon --max-workers=1 --no-parallel --console=plain :app:testDebugUnitTest :app:assembleDebug
 ```
 
 If the worktree is dirty, preserve it first with a named stash or a WIP commit,
