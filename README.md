@@ -100,13 +100,13 @@ On proot-based phones, Codex is configured with `sandbox_mode = "danger-full-acc
 and `approval_policy = "on-request"` because its nested bubblewrap sandbox cannot
 start; the Android app UID and proot guest boundary remain in force.
 
-This phone's guest also exposes an ARM-native JDK 17 and Gradle, plus the
-official Android command-line tools under `/opt/android-sdk`. `JAVA_HOME`,
-`ANDROID_HOME` and `ANDROID_SDK_ROOT` are exported for guest processes, while
-ADB is intentionally not installed there. Git is part of the guest package set,
-so an agent can clone and edit source. Build an app with its Gradle wrapper or
-`gradle`, then use `omalauncher-install`; it is approval-gated unless YOLO is
-explicitly enabled in Omalauncher's settings. Updating the installed
+The guest exports its Java/Gradle and Android SDK paths through `JAVA_HOME`,
+`ANDROID_HOME` and `ANDROID_SDK_ROOT`; inspect the local device profile before
+assuming a JDK, SDK revision, or host-tool architecture. ADB is intentionally
+not installed there. Git is part of the guest package set, so an agent can
+clone and edit source. Build an app with its Gradle wrapper or `gradle`, then
+use `omalauncher-install`; it is approval-gated unless YOLO is explicitly
+enabled in Omalauncher's settings. Updating the installed
 Omalauncher itself still needs a signer matching the installed APK; the
 launcher's private signing key is never exposed to Linux, so that final
 self-update step belongs to a host-side signer/development transport.
