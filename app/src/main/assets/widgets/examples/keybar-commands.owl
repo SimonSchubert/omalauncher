@@ -1,0 +1,82 @@
+keybar "commands" {
+  // A key bar for the shell: the control keys you need most on top, then commands as chips. A tap types the command
+  // and runs it; a long press types it without Enter, to add to it first. Change the list to your own. To use it, copy
+  // it over keybar.owl in the folder above.
+  meta { description: "A key bar for the shell: ctrl+c, history search and clear, then your commands as chips that type and run them"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  state down = ""
+
+  let controls = [
+    {l: "^c", k: "ctrl+c", c: red},
+    {l: "^r", k: "ctrl+r"},
+    {l: "^l", k: "ctrl+l"},
+    {l: "^d", k: "ctrl+d"},
+    {l: "tab", k: "tab"},
+    {l: "↑", k: "up", r: true},
+    {l: "↓", k: "down", r: true},
+    {l: "esc", k: "esc"}
+  ]
+  let commands = ["git status", "git diff", "git log --oneline -20", "ls -la", "cd ..", "btop", "sudo pacman -Syu", "clear"]
+
+  component Control(k) {
+    Box {
+      weight: 1
+      fill: height
+      padding: 3
+      Box {
+        fill: true
+        align: center
+        radius: 8 * corners
+        background: down == k.l ? (k.c ?? accent) : surface
+        repeats: k.r ?? false
+        onPress: {
+          if repeat == 0 {
+            down = k.l
+            haptic()
+          }
+          pressKey(k.k)
+        }
+        onRelease: down = ""
+        Text { text: k.l; font: mono; fontSize: 14; align: center; maxLines: 1; color: down == k.l ? background : k.c ?? foreground }
+      }
+    }
+  }
+
+  // A Row, as wide as its text: a Box would stretch it across the bar.
+  component Chip(cmd) {
+    Row {
+      padding: [10, 6]
+      radius: 14
+      background: down == cmd ? accent : transparent
+      border: 1
+      borderColor: down == cmd ? accent : border
+      onPress: { down = cmd; haptic() }
+      onRelease: down = ""
+      onTap: typeText(cmd + "\n")
+      onLongPress: typeText(cmd)
+      Text { text: cmd; font: mono; fontSize: 12; maxLines: 1; color: down == cmd ? background : foreground }
+    }
+  }
+
+  Column {
+    padding: [6, 0, 6, 6]
+    gap: 0
+    Column {
+      gap: 4
+      padding: [3, 3, 3, 8]
+      background: background
+      border: 2
+      borderColor: border
+      radius: 12 * corners
+      Row {
+        height: 40
+        gap: 0
+        for k in controls { Control { k: k } }
+      }
+      Flow {
+        gap: 6
+        padding: [3, 0]
+        for c in commands { Chip { cmd: c } }
+      }
+    }
+  }
+}

@@ -32,6 +32,7 @@ import dev.omalauncher.Runtime
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.widgets.WidgetEngine
+import dev.omalauncher.widgets.WidgetSpec
 import dev.omalauncher.widgets.editWidgetCommand
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -81,7 +82,7 @@ internal fun Runtime.gestureLabel(choice: String) =
     if (choice == Gestures.NONE) "nothing" else widgets.panels().firstOrNull { it.file.name == choice }?.name ?: choice.removeSuffix(".owl")
 
 /**
- * Picked panels that don't compile, and drawer.owl, for home's error banner: without a tile, nothing else would say so,
+ * Picked panels that don't compile, drawer.owl and keybar.owl, for home's error banner: without a tile, nothing else would say so,
  * and the drawer quietly shows another until they're fixed.
  */
 internal fun Runtime.gestureProblems(): List<Pair<String, List<String>>> {
@@ -89,10 +90,14 @@ internal fun Runtime.gestureProblems(): List<Pair<String, List<String>>> {
     val meanwhile =
         linkedMapOf(gestures.swipeUp to "the drawer shows $drawer", WidgetEngine.DRAWER to "the drawer shows $drawer") +
             (gestures.swipeDown to "swiping down opens nothing")
-    return meanwhile.mapNotNull { (choice, what) ->
-        val spec = widgets.panels().firstOrNull { it.file.name == choice && it.error != null } ?: return@mapNotNull null
-        spec.file.name to listOf("$what until it's fixed: " + spec.error!!.lineSequence().first())
-    }
+    val panels =
+        meanwhile.mapNotNull { (choice, what) ->
+            val spec = widgets.panels().firstOrNull { it.file.name == choice && it.error != null } ?: return@mapNotNull null
+            spec.file.name to listOf("$what until it's fixed: " + spec.error!!.lineSequence().first())
+        }
+    // keybar.owl too: the stock keys stand in for it as quietly.
+    val keys = widgets.specs.firstOrNull { it.file.name == WidgetEngine.KEYBAR && it.error != null }?.let { it.file.name to listOf("the terminal key bar is the stock one until it's fixed: " + it.error!!.lineSequence().first()) }
+    return panels + listOfNotNull(keys)
 }
 
 /** The panel the drawer shows: the one picked for swiping up, else drawer.owl, else the stock drawer. */
@@ -226,7 +231,10 @@ internal fun Modifier.pullSwipe(state: LauncherState): Modifier {
     )
 }
 
-/** Gesture settings: what swiping up and swiping down on home open, each picked from a dropdown of choices and panels. */
+/**
+ * Gesture settings: what swiping up and swiping down on home open, each picked from a dropdown of choices and panels,
+ * owl files to edit with the agent.
+ */
 @Composable
 fun GesturesScreen(
     runtime: Runtime,
@@ -259,7 +267,15 @@ private fun EditPanel(
     choice: String,
     onAgent: (title: String, command: (bin: String) -> String) -> Unit,
 ) {
-    val spec = runtime.widgets.panels().firstOrNull { it.file.name == choice } ?: return
+    EditFile(runtime.widgets.panels().firstOrNull { it.file.name == choice } ?: return, onAgent)
+}
+
+/** [edit] starts the agent on [spec]'s file, as one edits a face or a widget. */
+@Composable
+private fun EditFile(
+    spec: WidgetSpec,
+    onAgent: (title: String, command: (bin: String) -> String) -> Unit,
+) {
     Row(Modifier.padding(start = 6.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         BracketAction("edit", Palette.accent) { onAgent("Edit ${spec.name}") { editWidgetCommand(it, spec) } }
         BasicText(spec.file.name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))

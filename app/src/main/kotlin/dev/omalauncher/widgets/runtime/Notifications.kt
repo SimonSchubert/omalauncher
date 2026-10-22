@@ -13,9 +13,11 @@ import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.bool
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 /**
  * The phone's notifications, for `source n = android.notifications`, and
@@ -29,6 +31,9 @@ class Notifications(
     /** "work" or "clone" for a profile beside the launcher's own, null for its own. */
     private val profile: (UserHandle) -> String?,
 ) {
+    /** Where [value] runs: reading the shade is a binder call with every notification's extras; one at a time, for [labels]. */
+    private val worker = Dispatchers.Default.limitedParallelism(1)
+
     /** App labels by package; the lookup is a binder call. */
     private val labels = HashMap<String, String>()
 
@@ -77,7 +82,7 @@ class Notifications(
     }
 
     /** Emits whenever a notification is posted or removed, or access is granted or revoked. */
-    fun updates(): Flow<Value> = MediaListener.changes.map { value() }.distinctUntilChanged()
+    fun updates(): Flow<Value> = MediaListener.changes.map { withContext(worker) { value() } }.distinctUntilChanged()
 
     /** "open" runs the notification's tap action, "dismiss" clears it; without access, opens the setting that grants it. */
     fun control(

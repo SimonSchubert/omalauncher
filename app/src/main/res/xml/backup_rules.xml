@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Backups (Android 11 and older) leave out Linux: the rootfs is gigabytes, and its
+  symlinks wouldn't survive a restore. Without the setup records a restored phone
+  shows Linux as not installed, and installing it starts fresh. Omarchy's release
+  (64 MB of themes) is downloaded again too. With both, a backup fits Android's
+  25 MB quota; with either, it was skipped whole. Same list as
+  data_extraction_rules.xml.
+-->
+<full-backup-content>
+    <exclude domain="file" path="arch" />
+    <exclude domain="file" path="tmp" />
+    <exclude domain="file" path="xdg" />
+    <exclude domain="file" path="sys" />
+    <exclude domain="file" path="proc" />
+    <exclude domain="file" path="keymap.xkb" />
+    <exclude domain="file" path="bwrap-shim" />
+    <exclude domain="file" path="rootfs-steps.json" />
+    <exclude domain="file" path="setup-agents" />
+    <exclude domain="file" path="updates.json" />
+    <exclude domain="file" path="omarchy" />
+    <exclude domain="file" path=".omarchy.download" />
+</full-backup-content>

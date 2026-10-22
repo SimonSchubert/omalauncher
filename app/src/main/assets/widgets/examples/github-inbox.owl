@@ -1,0 +1,69 @@
+app "github inbox" {
+  // Your GitHub notifications, each marked read with a tap. Shows a token kept as a secret (typed in once,
+  // kept encrypted on the phone, never in this file), sent in a header to the one server written out, and
+  // post with method: "PATCH", which GitHub's API takes to mark a thread read. Make a token at
+  // github.com/settings/tokens: a classic one with the notifications scope.
+  meta { description: "Your GitHub notifications, marked read with a tap, with a token kept encrypted on the phone"; version: "1.0"; license: "MIT"; category: "dev"; owl: 12 }
+  title: "inbox"
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 28l6-18h24l6 18v10H6z"/>
+    <path d="M6 28h11l2 5h10l2-5h11"/>
+  </svg>"""
+
+  state token = null secret
+  // Threads marked read here, hidden at once: the next fetch may still list them.
+  state done = []
+  // post's answer: {ok, code, out}. Starts at 0 so the first answer counts as a change.
+  state marked = 0
+  state problem = ""
+
+  source now = clock every 1m
+  // A null URL waits for the token rather than asking without one.
+  source inbox = http(token == null ? null : "https://api.github.com/notifications", {Authorization: "Bearer ${token}", Accept: "application/vnd.github+json"}) every 2m timeout 15s json status
+  let threads = (inbox.out ?? []).filter(t => !contains(done, t.id))
+
+  on marked {
+    problem = value.ok ? "" : "couldn't mark it read (${value.code})"
+  }
+
+  Column {
+    gap: 10
+    padding: [12, 0]
+    if token == null {
+      Text { text: "A GitHub token with the notifications scope, from github.com/settings/tokens. It's kept encrypted on this phone."; style: muted }
+      Input { placeholder: "token"; password: true; focus: true; onSubmit: token = trim(value) }
+    } else {
+      Row {
+        Text { text: inbox == null ? "loading…" : inbox.code == 401 ? "GitHub doesn't take this token" : "${len(threads)} unread"; style: muted; weight: 1 }
+        Text { text: "sign out"; color: accent; style: small; onTap: { token = null; done = [] } }
+      }
+      if problem != "" { Text { text: problem; color: red; style: small } }
+      Column {
+        scroll: true
+        weight: 1
+        gap: 8
+        if inbox.ok == true && len(threads) == 0 { Text { text: "Nothing unread."; style: muted } }
+        for t in threads {
+          Row {
+            gap: 8
+            Column {
+              weight: 1
+              gap: 2
+              Text { text: t.subject.title; maxLines: 2 }
+              Text { text: "${t.repository.full_name} · ${t.reason} · ${fmtAgo(parseTime(t.updated_at), now)}"; style: muted }
+            }
+            // The secret goes in the header written out here: a let can't hold it.
+            Text {
+              text: "✓"
+              color: accent
+              onTap: {
+                marked = post("https://api.github.com/notifications/threads/${enc(t.id)}", null, {Authorization: "Bearer ${token}", Accept: "application/vnd.github+json"}, method: "PATCH")
+                done = done + [t.id]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

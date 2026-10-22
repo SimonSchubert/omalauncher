@@ -900,7 +900,7 @@ private fun TiledPage(
                 }
             }
             if (!arrange.holding) {
-                // Above the tile, or below it when there's no room for it there: as tall as it turned out, since an
+                // Above the tile, below the status bar, or below the tile when there's no room for it there: as tall as it turned out, since an
                 // app's shortcuts stack above its bar. Lined up with the tile's left edge, pulled in by however wide
                 // the bar turned out when that would run past the grid's edge, which keeps the gap tiles keep from the
                 // screen: a lone "remove" for an app at the edge stays next to it. A tile with room on neither side (one
@@ -912,7 +912,7 @@ private fun TiledPage(
                     val above = r.top - size.height - barGap
                     val below = r.bottom + barGap
                     return when {
-                        above >= 0 -> IntOffset(r.left.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left), above)
+                        above >= grid.pad.top -> IntOffset(r.left.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left), above)
                         below + size.height <= grid.height - grid.pad.bottom + grid.gap -> IntOffset(r.left.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left), below)
                         else -> IntOffset(r.center.x - size.width / 2, r.top + inset)
                     }

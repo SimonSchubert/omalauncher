@@ -4,7 +4,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -13,6 +15,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -34,6 +39,15 @@ fun hexColor(hex: String?): Color? {
     }
 }
 
+/** WCAG's contrast ratio of two colors, from 1 (the same) to 21 (black on white). */
+private fun contrast(
+    a: Color,
+    b: Color,
+): Float {
+    val (light, dark) = listOf(a.luminance(), b.luminance()).sortedDescending()
+    return (light + 0.05f) / (dark + 0.05f)
+}
+
 /** A theme's colors, parsed once when it's applied rather than on every read. */
 @Immutable
 class ThemePalette(
@@ -52,7 +66,11 @@ class ThemePalette(
     val surface = color("lighter_background", 0xFF24283B)
     val overlay = background.copy(alpha = 0.9f)
     val foreground = color("foreground", 0xFFC0CAF5)
-    val muted = color("dark_foreground", 0xFF565F89)
+    val muted =
+        color("dark_foreground", 0xFF565F89).let { m ->
+            // Subtitles sit on the surface: White's dark_foreground is its lighter_background too, which hid them.
+            if (contrast(m, surface) < 1.2f) lerp(foreground, background, 0.5f) else m
+        }
     val accent = color("accent", 0xFF7AA2F7)
     val border = color("muted", 0xFF414868)
     val red = color("red", 0xFFF7768E)
@@ -291,6 +309,16 @@ fun applySystemBars(
             androidx.activity.SystemBarStyle.dark(transparent)
         }
     activity.enableEdgeToEdge(style, style)
+}
+
+/**
+ * [applySystemBars] whenever the theme turns light or dark, and after every configuration change: a fold put the bars
+ * back as the window had them at the start, white icons on a theme that had turned light since.
+ */
+@Composable
+fun SystemBarsEffect(activity: androidx.activity.ComponentActivity) {
+    val configuration = LocalConfiguration.current
+    LaunchedEffect(Palette.isLight, configuration) { applySystemBars(activity, Palette.isLight) }
 }
 
 /** Home's or an app's status bar, or none: a swipe down from the top edge still brings it back for a moment, and the shade. */

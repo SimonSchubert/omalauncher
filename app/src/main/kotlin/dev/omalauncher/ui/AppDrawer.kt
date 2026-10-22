@@ -346,8 +346,22 @@ internal fun recentApps(
     runtime: Runtime,
     limit: Int,
 ): List<AppHit> {
-    val byKey = allApps(runtime).associateBy { it.key }
-    return runtime.usage.recent.mapNotNull { byKey[it] }.take(limit)
+    // By kind, as appIconOf does, rather than through allApps: the strip asks on each recomposition, for a handful of keys.
+    val android = runtime.androidApps
+    val owl by lazy { runtime.widgets.apps() }
+    return runtime.usage.recent
+        .asSequence()
+        .mapNotNull { key ->
+            val id = key.substringAfter(':')
+            when (key.substringBefore(':')) {
+                "a" -> android.byKey[id]?.let(AppHit::Android)
+                "s" -> android.shortcuts.lastOrNull { it.key == id }?.let(AppHit::Shortcut)
+                "l" -> runtime.linuxApps.apps.lastOrNull { it.id == id }?.let(AppHit::Linux)
+                "o" -> owl.lastOrNull { it.file.name == id }?.let(AppHit::Owl)
+                else -> null
+            }
+        }.take(limit)
+        .toList()
 }
 
 /** Pulling down past the top of a list in the drawer drags it closed, like stock drawers; for its list, and a panel's in its place. */

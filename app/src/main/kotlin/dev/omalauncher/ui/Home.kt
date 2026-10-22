@@ -7,6 +7,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import android.app.WallpaperManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import dev.omalauncher.widgets.FACE_PAGE
 import dev.omalauncher.widgets.isFacePage
 import dev.omalauncher.widgets.lang.OwlKind
@@ -98,12 +101,19 @@ fun HomeScreen(
     fun slotOf(page: Int) = slots.indexOfFirst { page in it }
     // Home opens on page 1, not left of it; on the first tile page, if a layout from before faces has none numbered 1.
     val pager = rememberPagerState(initialPage = slotOf(pageNumbers.firstOrNull { it >= 1 } ?: 1).coerceAtLeast(0)) { slots.size }
-    // A tile dropped on another page: show that page once the page list has caught up.
+    // A tile dropped on another page: show that page once the page list has caught up, by the list as it is then. The
+    // list the request was made with could be one from before (a store add spilling onto page 2 showed a face). A swipe
+    // meanwhile wins, and the request goes with it rather than firing later.
     var showPage by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(showPage, slots) {
-        val i = showPage?.let(::slotOf) ?: return@LaunchedEffect
-        if (i >= 0) pager.scrollToPage(i)
-        showPage = null
+    val currentSlots by rememberUpdatedState(slots)
+    LaunchedEffect(showPage) {
+        val page = showPage ?: return@LaunchedEffect
+        try {
+            withTimeoutOrNull(2_000) { snapshotFlow { currentSlots.indexOfFirst { page in it } }.first { it >= 0 } }?.let { pager.scrollToPage(it) }
+        } finally {
+            // Not when another page was asked for meanwhile: that one runs this again.
+            if (showPage == page) showPage = null
+        }
     }
     var menuFor by remember { mutableStateOf<HomeItem?>(null) }
 
@@ -269,7 +279,7 @@ fun HomeScreen(
             // Typing in a tile (its terminal or a widget's text field): lift the pages so the tile stays above the keyboard,
             // but not under the status bar; a tile too tall for both gives up the rest at its bottom.
             .graphicsLayer {
-                val keys = if (extraKeys) ExtraKeysHeight.toPx() else 0f
+                val keys = if (extraKeys) terminals.extraKeysHeight.takeIf { it > 0f } ?: ExtraKeysHeight.toPx() else 0f
                 translationY =
                     -terminals.liftFor(
                         imeHeight = ime.getBottom(density),
@@ -288,7 +298,7 @@ fun HomeScreen(
                 if (!terminals.typing || keyboard == 0 || faceTyping) {
                     drawContent()
                 } else {
-                    val keys = if (extraKeys) ExtraKeysHeight.toPx() else 0f
+                    val keys = if (extraKeys) terminals.extraKeysHeight.takeIf { it > 0f } ?: ExtraKeysHeight.toPx() else 0f
                     val lift = terminals.lift - origin.y
                     clipRect(
                         top = statusBar.getTop(density) + lift,
@@ -443,11 +453,14 @@ fun HomeScreen(
 
     if (extraKeys) {
         ExtraKeys(
-            runtime.keyboard,
+            runtime,
             Modifier
                 .align(Alignment.BottomCenter)
                 .imePadding()
-                .onGloballyPositioned { terminals.extraKeys = it.boundsInWindow() },
+                .onGloballyPositioned {
+                    terminals.extraKeys = it.boundsInWindow()
+                    terminals.extraKeysHeight = it.size.height.toFloat()
+                },
         )
     }
 

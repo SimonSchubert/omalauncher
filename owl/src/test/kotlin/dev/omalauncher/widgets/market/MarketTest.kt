@@ -114,6 +114,9 @@ class MarketTest {
         assertTrue(Review.risks(listOf("http GET (a URL built from widget values)")).single().contains("send its data anywhere"))
         assertTrue(Review.risks(listOf("http POST (a URL built from widget values)")).single().contains("send its data anywhere"))
         assertTrue(Review.risks(listOf("http POST https://a.b/c/${Compiler.VALUE}")).isEmpty())
+        for (method in listOf("PUT", "PATCH", "DELETE")) {
+            assertTrue(Review.risks(listOf("http $method (a URL built from widget values)")).single().contains("send its data anywhere"))
+        }
     }
 
     @Test fun theStoreTakesValuesInCommandsOnlyQuoted() {
@@ -138,6 +141,9 @@ class MarketTest {
         val e = Review("widgets/simon/disk/widget.owl", good).entry("widgets/simon/disk/preview.png")
         val parsed = Catalog.parse(Catalog.write(listOf(e), "2026-09-30T00:00:00Z"))
         assertEquals(listOf(e), parsed)
+        // An index written before the compiler dropped `pacman: []` lists no packages.
+        val empty = Catalog.write(listOf(e), "2026-09-30T00:00:00Z").replace("\"pacman\": [\"coreutils\"]", "\"pacman\": []")
+        assertEquals(emptyMap<String, List<String>>(), Catalog.parse(empty).single().requires)
     }
 
     @Test fun themedPreviewsRoundTripAndFallBack() {

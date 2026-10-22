@@ -28,6 +28,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import dev.omalauncher.ui.RepeatDelay
+import dev.omalauncher.ui.RepeatInterval
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -38,6 +43,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
@@ -113,7 +119,10 @@ import dev.omalauncher.widgets.lang.WNode
 import dev.omalauncher.widgets.lang.num
 import dev.omalauncher.widgets.lang.text
 import dev.omalauncher.widgets.runtime.WidgetInstance
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlin.math.max
 import kotlin.math.min
 
@@ -221,6 +230,24 @@ fun WidgetScreen(
         // Set before the nodes compose, so the first frame already has the size instead of null.
         inst.setScreen(maxWidth.value.toDouble(), maxHeight.value.toDouble())
         Column(Modifier.fillMaxSize()) {
+            CompositionLocalProvider(LocalLongPress provides true) {
+                Nodes(nodes, inst.root, inst, this)
+            }
+        }
+    }
+}
+
+/** Extra keys (`keybar "…" { }`): their nodes over the soft keyboard, as wide as there's room for and as tall as they are. */
+@Composable
+fun WidgetKeybar(
+    inst: WidgetInstance,
+    modifier: Modifier = Modifier,
+) {
+    val nodes = inst.program.screen ?: return
+    if (inst.program.animated) FrameClock(inst) { false }
+    BoxWithConstraints(modifier) {
+        inst.setScreen(maxWidth.value.toDouble(), maxHeight.value.toDouble())
+        Column(Modifier.fillMaxWidth()) {
             CompositionLocalProvider(LocalLongPress provides true) {
                 Nodes(nodes, inst.root, inst, this)
             }
@@ -610,7 +637,13 @@ private fun Element(
             )
         }
         "Image" -> {
-            val src = p.observe("src")?.toString().orEmpty()
+            // A src still loading is no image yet, not one named "null".
+            val src = p.observe("src")?.takeIf { it != Null }?.toString().orEmpty()
+            // Images on show are kept before others when there are more than a widget keeps.
+            DisposableEffect(inst, src) {
+                inst.imageShown(src, true)
+                onDispose { inst.imageShown(src, false) }
+            }
             val image =
                 if (src.startsWith("media:")) {
                     // Album art isn't a file to watch: look again whenever a source (the media one) updates,
@@ -838,6 +871,43 @@ private fun handlers(p: Props): Modifier {
     }
     el.handlers["onDrag"]?.let { a ->
         m = m.pointerInput(el, p.env) { detectDragGestures { change, drag -> change.consume(); fire(a, drag.x, drag.y, change.position.x, change.position.y) } }
+    }
+    // As the finger goes down, not up: a key acts at once, and with `repeats` again while held, as a keyboard's
+    // keys do (owl 12). Touches aren't consumed, so onTap and onLongPress on the same node still see them.
+    val press = el.handlers["onPress"]
+    val release = el.handlers["onRelease"]
+    if (press != null || release != null) {
+        m =
+            m.pointerInput(el, p.env) {
+                coroutineScope {
+                    val scope = this
+                    awaitEachGesture {
+                        val at = awaitFirstDown(requireUnconsumed = false).position
+                        val repeating =
+                            press?.let { a ->
+                                fun run(n: Int) = a.run(p.env, listOf(Num((at.x / density).toDouble()), Num((at.y / density).toDouble()), Num(n.toDouble())))
+                                run(0)
+                                if (p.now("repeats")?.truthy != true) return@let null
+                                scope.launch {
+                                    delay(RepeatDelay)
+                                    var n = 1
+                                    while (true) {
+                                        run(n++)
+                                        delay(RepeatInterval)
+                                    }
+                                }
+                            }
+                        // Also when the node goes while it's held (the keyboard closes, the screen turns): a key's
+                        // pressed look kept in state would otherwise stay on until the next touch.
+                        try {
+                            waitForUpOrCancellation()
+                        } finally {
+                            repeating?.cancel()
+                            release?.run(p.env, emptyList())
+                        }
+                    }
+                }
+            }
     }
     return m
 }

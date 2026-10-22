@@ -1,0 +1,103 @@
+keybar "layers" {
+  // A key bar in layers, like a split keyboard's: tabs along the top switch between navigation, F-keys, the symbols a
+  // phone keyboard hides two taps deep, and tmux, whose keys send its prefix (ctrl+b) and then the key. To use it, copy
+  // it over keybar.owl in the folder above.
+  meta { description: "A key bar in four layers: navigation, F1 to F12, symbols, and tmux commands"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  source kb = android.modifiers
+  state layer = "nav" persist
+  state down = ""
+
+  let layers = {
+    nav: [
+      [{l: "esc", k: "esc"}, {l: "home", k: "home"}, {l: "↑", k: "up", r: true}, {l: "end", k: "end"}, {l: "pgup", k: "pgup", r: true}, {l: "copy", k: "ctrl+insert"}],
+      [{l: "tab", k: "tab"}, {l: "ctrl", m: "ctrl"}, {l: "←", k: "left", r: true}, {l: "↓", k: "down", r: true}, {l: "→", k: "right", r: true}, {l: "paste", k: "shift+insert"}]
+    ],
+    fn: [
+      range(1, 7).map(n => {l: "f${n}", k: "f${n}"}),
+      range(7, 13).map(n => {l: "f${n}", k: "f${n}"})
+    ],
+    sym: [
+      ["|", "~", "`", "{", "}", "[", "]", "\\"].map(c => {l: c, k: c}),
+      ["<", ">", "&", "*", "$", "'", "\"", ";"].map(c => {l: c, k: c})
+    ],
+    tmux: [
+      [{l: "new", t: "c"}, {l: "next", t: "n"}, {l: "prev", t: "p"}, {l: "zoom", t: "z"}, {l: "copy", t: "["}],
+      [{l: "split│", t: "%"}, {l: "split─", t: "\""}, {l: "pane", t: "o"}, {l: "list", t: "w"}, {l: "detach", t: "d"}]
+    ]
+  }
+
+  component Tab(name) {
+    Box {
+      weight: 1
+      height: 26
+      padding: [3, 3, 3, 0]
+      onPress: { layer = name; haptic() }
+      Box {
+        fill: true
+        align: center
+        radius: 8 * corners
+        background: layer == name ? surface : transparent
+        Text { text: name; font: mono; fontSize: 12; align: center; color: layer == name ? foreground : muted; bold: layer == name }
+      }
+    }
+  }
+
+  component Cap(k) {
+    let held = k.m != null ? get(kb ?? {}, k.m, "off") : "off"
+    let lit = down == k.l || held == "locked"
+    Box {
+      weight: 1
+      fill: height
+      padding: 3
+      Box {
+        fill: true
+        align: center
+        radius: 8 * corners
+        background: lit ? accent : layer == "tmux" ? mix(surface, green, 0.25) : surface
+        border: held == "once" ? 2 : 0
+        borderColor: accent
+        repeats: k.r ?? false
+        onPress: {
+          if repeat == 0 {
+            down = k.l
+            haptic()
+          }
+          if k.m != null {
+            latch(k.m)
+          } else if k.t != null {
+            pressKey("ctrl+b")
+            pressKey(k.t)
+          } else {
+            pressKey(k.k)
+          }
+        }
+        onRelease: down = ""
+        Text { text: k.l; font: mono; fontSize: 14; align: center; maxLines: 1; color: lit ? background : held == "once" ? accent : foreground }
+      }
+    }
+  }
+
+  Column {
+    padding: [6, 0, 6, 6]
+    gap: 0
+    Column {
+      gap: 0
+      padding: 3
+      background: background
+      border: 2
+      borderColor: border
+      radius: 12 * corners
+      Row {
+        gap: 0
+        for name in ["nav", "fn", "sym", "tmux"] { Tab { name: name } }
+      }
+      for row in get(layers, layer, layers.nav) {
+        Row {
+          height: 40
+          gap: 0
+          for k in row { Cap { k: k } }
+        }
+      }
+    }
+  }
+}

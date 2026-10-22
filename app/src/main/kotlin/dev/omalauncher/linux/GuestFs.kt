@@ -28,6 +28,8 @@ data class GuestEntry(
 class GuestFs(
     /** The Android file for an absolute guest path, following proot's binds (see [Proot.hostFile]). */
     private val hostOf: (String) -> File,
+    /** Whether a resolved file, links followed by Android, is still one the guest can see (see [Proot.guestVisible]). */
+    private val inside: (File) -> Boolean = { true },
 ) {
     /** Collapses ".", ".." and duplicate slashes; always absolute. */
     fun normalize(path: String): String {
@@ -69,8 +71,9 @@ class GuestFs(
             val candidate = "$current/$part"
             val host = hostOf(candidate).toPath()
             val follow = followLast || pending.isNotEmpty()
-            if (follow && hops < 40 && Files.isSymbolicLink(host)) {
-                hops++
+            if (follow && Files.isSymbolicLink(host)) {
+                // Like the kernel's ELOOP: left unfollowed, Android would follow the link itself, out of the rootfs.
+                if (++hops > 40) throw IOException("too many levels of symbolic links: $path")
                 val target = Files.readSymbolicLink(host).toString()
                 if (target.startsWith("/")) current = ""
                 target.split('/').filter { it.isNotEmpty() && it != "." }.asReversed().forEach(pending::addFirst)
@@ -81,11 +84,20 @@ class GuestFs(
         return current.ifEmpty { "/" }
     }
 
-    /** The Android file for a guest path, symlinks resolved in the guest. */
+    /**
+     * The Android file for a guest path, symlinks resolved in the guest. It's never one the guest
+     * can't see, like the launcher's own files: a link swapped in after [resolve] fails here.
+     */
     fun host(
         path: String,
         followLast: Boolean = true,
-    ) = hostOf(resolve(path, followLast))
+    ): File {
+        val file = hostOf(resolve(path, followLast))
+        // Acting on a link itself, only where it is has to be inside.
+        val real = (if (followLast) file else file.parentFile)?.canonicalFile
+        if (real != null && !inside(real)) throw IOException("outside Linux: $path")
+        return file
+    }
 
     fun isDir(path: String) = host(path).isDirectory
 
@@ -101,16 +113,17 @@ class GuestFs(
                 val path = child(base, name)
                 val self = hostOf(path)
                 val isLink = Files.isSymbolicLink(self.toPath())
-                val target = if (isLink) host(path) else self
-                val isDir = target.isDirectory
+                // A link in a loop or out of Linux shows as broken.
+                val target = if (isLink) runCatching { host(path) }.getOrNull() else self
+                val isDir = target?.isDirectory == true
                 GuestEntry(
                     name = name,
                     path = path,
                     isDir = isDir,
                     isLink = isLink,
-                    size = if (isDir) 0 else target.length(),
-                    modified = target.lastModified(),
-                    children = if (isDir) target.list()?.count { showHidden || !it.startsWith('.') } else null,
+                    size = if (isDir) 0 else target?.length() ?: 0,
+                    modified = target?.lastModified() ?: 0,
+                    children = if (isDir) target?.list()?.count { showHidden || !it.startsWith('.') } else null,
                 )
             }.sortedWith(compareBy<GuestEntry>({ !it.isDir }, { it.name.lowercase() }))
     }

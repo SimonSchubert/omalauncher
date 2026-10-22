@@ -1,6 +1,7 @@
 package dev.omalauncher.widgets.runtime
 
 import dev.omalauncher.linux.Proot
+import dev.omalauncher.linux.killTree
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.widgets.lang.WidgetError
 import kotlinx.coroutines.CoroutineScope
@@ -83,8 +84,8 @@ class Streams(
                 }
                 close()
             }
-            // Destroying the process closes its output, which ends the reader.
-            awaitClose { process.destroy() }
+            // Killing the process closes its output, which ends the reader.
+            awaitClose { killTree(process) }
         }.flowOn(Dispatchers.IO)
             // The sharing coroutine lives in the engine's scope; if it failed, the app would crash.
             .catch { }

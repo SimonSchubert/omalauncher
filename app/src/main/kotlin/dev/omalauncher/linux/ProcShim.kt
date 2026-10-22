@@ -27,6 +27,10 @@ class ProcShim(
     /** Guest path -> host stand-in, only for files we can't read directly. */
     val binds: Map<String, File> by lazy {
         dir.mkdirs()
+        // These never change; update() keeps only stat and uptime current.
+        write("loadavg") { "0.00 0.00 0.00 1/1 1\n" }
+        write("version") { "Linux version $kernel (android) #1 SMP PREEMPT\n" }
+        write("vmstat") { "pgpgin 0\npgpgout 0\npswpin 0\npswpout 0\n" }
         update()
         hidden.associate { "/proc/$it" to File(dir, it) }
     }
@@ -76,9 +80,6 @@ class ProcShim(
             }
         }
         write("uptime") { "%.2f %.2f\n".format(Locale.ROOT, uptimeS, uptimeS * cpus) }
-        write("loadavg") { "0.00 0.00 0.00 1/1 1\n" }
-        write("version") { "Linux version $kernel (android) #1 SMP PREEMPT\n" }
-        write("vmstat") { "pgpgin 0\npgpgout 0\npswpin 0\npswpout 0\n" }
     }
 
     /** Sums utime/stime over all processes we can see, which Android limits to our own uid. */

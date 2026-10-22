@@ -20,7 +20,11 @@ private val WORD_BREAK = Regex("[^\\p{L}\\p{N}]+")
 private val MARKS = Regex("\\p{M}+")
 
 /** Lowercase with accents stripped; lowercased first, so a mark lowercasing adds (İ's dot) goes too, and folding twice changes nothing. */
-fun foldAccents(s: String) = MARKS.replace(Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD), "")
+fun foldAccents(s: String): String {
+    // Most names are ASCII, which NFD leaves as is: skip the normalizing, which ran for every app on every keystroke.
+    if (s.all { it < '\u0080' }) return s.lowercase()
+    return MARKS.replace(Normalizer.normalize(s.lowercase(), Normalizer.Form.NFD), "")
+}
 
 /** The words of a string that's folded already. */
 private fun split(folded: String) = folded.split(WORD_BREAK).filter { it.isNotEmpty() }

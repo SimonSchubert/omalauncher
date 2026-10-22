@@ -21,6 +21,7 @@ import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.theme.Style
 import dev.omalauncher.ui.LauncherStyle
+import dev.omalauncher.ui.SystemBarsEffect
 import dev.omalauncher.ui.applySystemBars
 import dev.omalauncher.ui.showStatusBar
 import dev.omalauncher.ui.LauncherRoot
@@ -35,12 +36,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // While a backup or device transfer runs, the process has a plain Application and no runtime;
+        // Home starts this activity in it anyway. Close until the process restarts as itself.
+        if (application !is App) {
+            finish()
+            return
+        }
         applySystemBars(this, Palette.isLight)
         runtime.start()
         state.onSettings = { page, homePage -> runtime.openSettings(page, homePage) }
         setContent {
             LauncherRoot(runtime, state)
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@MainActivity, Palette.isLight) }
+            SystemBarsEffect(this@MainActivity)
             // A face whose statusBar is false takes the status bar's room too.
             val fullScreen by remember { derivedStateOf { state.fullScreen && runtime.widgets.openScreen == null } }
             val statusBar = LauncherStyle.style[Style.STATUS_BAR_SHOWN] && !fullScreen

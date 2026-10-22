@@ -41,12 +41,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.GuestEntry
-import dev.omalauncher.linux.GuestFs
 import dev.omalauncher.linux.shellQuote
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 
 /** A touch-first file manager for the guest filesystem, in the Omarchy theme. */
 @Composable
@@ -56,7 +56,7 @@ fun FilesScreen(
     onExit: () -> Unit,
 ) {
     val context = LocalContext.current
-    val fs = remember { GuestFs(runtime.proot::hostFile) }
+    val fs = runtime.proot.guestFs
     val scope = rememberCoroutineScope()
 
     var path by remember(startPath) { mutableStateOf(fs.normalize(startPath)) }
@@ -119,9 +119,21 @@ fun FilesScreen(
 
     fun edit(entry: GuestEntry) = runtime.edit(entry.path)
 
+    /**
+     * The Android file for [entry]; null, with a toast, for a link that leads out of Linux, round in a loop or to
+     * nothing, like one into /proc, which Linux sees and Files doesn't.
+     */
+    fun hostFile(entry: GuestEntry): File? =
+        try {
+            fs.host(entry.path).also { if (!it.exists()) throw IOException("it leads to nothing") }
+        } catch (e: IOException) {
+            toast("can't open ${entry.name}: ${e.message}")
+            null
+        }
+
     fun open(entry: GuestEntry) {
         if (entry.isDir) return navigate(fs.resolve(entry.path))
-        val file = fs.host(entry.path)
+        val file = hostFile(entry) ?: return
         when {
             isImage(entry.name) -> viewing = file
             isText(entry.name, file) -> edit(entry)
@@ -245,7 +257,7 @@ fun FilesScreen(
                 val single = entries?.firstOrNull { it.path == selected.singleOrNull() }
                 // Sniffing a file for text reads it: off the main thread, once per selection.
                 val singleIsText by produceState(false, single?.path) {
-                    value = single?.takeIf { !it.isDir }?.let { s -> withContext(Dispatchers.IO) { isText(s.name, fs.host(s.path)) } } == true
+                    value = single?.takeIf { !it.isDir }?.let { s -> withContext(Dispatchers.IO) { runCatching { isText(s.name, fs.host(s.path)) }.getOrDefault(false) } } == true
                 }
                 SelectionBar(
                     onSelectAll = {
@@ -264,8 +276,8 @@ fun FilesScreen(
                     },
                     onDelete = { dialog = FileDialog.Delete(selected.toList()) },
                     onRename = single?.let { { dialog = FileDialog.Rename(it) } },
-                    onShare = single?.takeIf { !it.isDir }?.let { { openWithAndroid(fs.host(it.path), share = true) } },
-                    onOpenWith = single?.takeIf { !it.isDir }?.let { { openWithAndroid(fs.host(it.path)) } },
+                    onShare = single?.takeIf { !it.isDir }?.let { { hostFile(it)?.let { f -> openWithAndroid(f, share = true) } } },
+                    onOpenWith = single?.takeIf { !it.isDir }?.let { { hostFile(it)?.let(::openWithAndroid) } },
                     onEdit = single?.takeIf { singleIsText }?.let { { edit(it) } },
                 )
             } else if (clip.isNotEmpty()) {

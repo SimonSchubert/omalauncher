@@ -83,7 +83,8 @@ class ManagedFiles(
             val file = File(base, key)
             if (hash(file) == sha) file.delete()
         }
-        save(next)
+        // Most syncs change nothing; skip the fsync then.
+        if (next != recorded) save(next)
     }
 
     fun forgetAll() = manifest.delete()

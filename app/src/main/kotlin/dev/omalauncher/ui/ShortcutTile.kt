@@ -141,8 +141,10 @@ internal fun IconBadge(
     content: @Composable BoxScope.() -> Unit,
 ) = Box(Modifier.size(size).clip(LauncherStyle.shape(size / 2)).background(fill), contentAlignment = Alignment.Center, content = content)
 
+private val NON_ALNUM = Regex("[^A-Za-z0-9]+")
+
 internal fun initials(name: String): String {
-    val words = name.split(Regex("[^A-Za-z0-9]+")).filter { it.isNotEmpty() }
+    val words = name.split(NON_ALNUM).filter { it.isNotEmpty() }
     return when {
         words.size >= 2 -> "${words[0][0]}${words[1][0]}".uppercase()
         words.isNotEmpty() -> words[0].take(2).replaceFirstChar(Char::uppercase)

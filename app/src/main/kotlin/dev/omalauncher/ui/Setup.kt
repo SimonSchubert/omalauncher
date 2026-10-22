@@ -155,7 +155,7 @@ private fun Welcome(
         Column {
             Label("linux")
             Spacer(Modifier.height(12.dp))
-            Choice("also set up Arch Linux", "terminal apps, agents, pacman · ~1 GB", linux, onToggleLinux)
+            Choice("also set up Arch Linux", "terminal apps, agents, pacman · ~1 GB download, 3 GB space", linux, onToggleLinux)
             if (linux) {
                 Spacer(Modifier.height(24.dp))
                 AgentPicker(picked, onToggle)
@@ -192,8 +192,8 @@ private fun StartButton(
         PrimaryButton(if (linux) "start and set up linux" else "start", onStart)
         BasicText(
             if (linux) {
-                "Linux downloads about 1 GB, so Wi-Fi is best. It installs in the background in 10 to 20 minutes; " +
-                    "the home screen is ready right away."
+                "Linux downloads about 1 GB, so Wi-Fi is best, and takes 3 GB of space. It installs in the " +
+                    "background in 10 to 20 minutes; the home screen is ready right away."
             } else {
                 "Downloads the theme's wallpaper now and Omarchy's other themes (about 70 MB) in the background."
             },
@@ -299,6 +299,8 @@ internal fun LinuxProgress(
     state: LinuxState,
     agents: List<Agent>,
     onRetry: () -> Unit,
+    /** Stops the install and deletes what it put on disk; null once it can't be (an update of an installed system). */
+    onCancel: (() -> Unit)?,
 ) {
     val failed = state as? LinuxState.Failed
     val working = state as? LinuxState.Installing
@@ -330,6 +332,10 @@ internal fun LinuxProgress(
     Spacer(Modifier.height(24.dp))
     if (failed != null) {
         PrimaryButton("try again", onRetry)
+        Spacer(Modifier.height(16.dp))
+    }
+    if (onCancel != null) {
+        BracketAction("cancel install", Palette.red, onCancel)
         Spacer(Modifier.height(16.dp))
     }
     LogTail(log, expandedByDefault = failed != null)

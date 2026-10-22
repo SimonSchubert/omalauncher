@@ -1,0 +1,113 @@
+keybar "terminal key bar" {
+  // The keys a phone keyboard lacks, over it while you type in a terminal: on home and in a Linux app's window. They're
+  // yours to change: ask your agent to edit them. .stock-keybar.owl next to it is this file as the launcher ships it, kept
+  // up to date: compare the two to see what changed in a newer launcher. If this file is gone or doesn't compile, the
+  // stock keys show instead.
+  meta { description: "The key bar over the keyboard while typing in a terminal: esc, tab, ctrl, alt, the arrows, copy and paste"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  // The launcher's chevron; currentColor takes the tint.
+  asset chevron = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNNy40MSwxNS40MUwxMiwxMC44M2w0LjU5LDQuNThMMTgsMTRsLTYsLTYgLTYsNnoiLz48L3N2Zz4="
+  // Whether ctrl, alt and shift are latched: "off", "once" (for the next key) or "locked".
+  source kb = android.modifiers
+  // The key under the finger, drawn pressed.
+  state down = ""
+
+  // Each key: what it shows, then what it sends, pressKey(...)'s names, or the modifier it latches. repeats: held, it
+  // sends again and again, like a keyboard's arrows; arrow: a chevron turned that many degrees instead of the label.
+  // Ctrl+Insert and Shift+Insert are the clipboard keys foot, GTK and Qt all know.
+  let rows = [
+    [
+      {label: "esc", key: "esc"},
+      {label: "/", key: "/"},
+      {label: "-", key: "-"},
+      {label: "home", key: "home"},
+      {label: "up", key: "up", repeats: true, arrow: 0},
+      {label: "end", key: "end"},
+      {label: "pgup", key: "pgup", repeats: true},
+      {label: "copy", key: "ctrl+insert"}
+    ],
+    [
+      {label: "tab", key: "tab"},
+      {label: "ctrl", latch: "ctrl"},
+      {label: "alt", latch: "alt"},
+      {label: "left", key: "left", repeats: true, arrow: -90},
+      {label: "down", key: "down", repeats: true, arrow: 180},
+      {label: "right", key: "right", repeats: true, arrow: 90},
+      {label: "pgdn", key: "pgdn", repeats: true},
+      {label: "paste", key: "shift+insert"}
+    ]
+  ]
+
+  // A key that sends as the finger goes down; held with repeats, again every 50 ms after 400 ms.
+  component Plain(k) {
+    Box {
+      fill: true
+      align: center
+      radius: 8 * corners
+      background: down == k.label ? accent : surface
+      repeats: k.repeats ?? false
+      onPress: {
+        if repeat == 0 {
+          down = k.label
+          haptic()
+        }
+        pressKey(k.key)
+      }
+      onRelease: down = ""
+      if k.arrow != null {
+        Image { src: chevron; size: 20; rotation: k.arrow; tint: down == k.label ? background : foreground; label: k.label }
+      } else {
+        Text { text: k.label; font: mono; fontSize: 14; maxLines: 1; align: center; color: down == k.label ? background : foreground }
+      }
+    }
+  }
+
+  // ctrl and alt: a tap holds them for the next key, outlined, and a long press until tapped again, filled.
+  component Latched(k) {
+    let held = get(kb ?? {}, k.latch, "off")
+    Box {
+      fill: true
+      align: center
+      radius: 8 * corners
+      background: held == "locked" ? accent : surface
+      border: held == "once" ? 2 : 0
+      borderColor: accent
+      onPress: haptic()
+      onTap: latch(k.latch)
+      onLongPress: latch(k.latch, "locked")
+      Text { text: k.label; font: mono; fontSize: 14; align: center; color: held == "locked" ? background : held == "once" ? accent : foreground }
+    }
+  }
+
+  // Framed like the tiles above it, by the terminal key bar's gaps and border width in settings › style: gapsOut to the
+  // screen's sides and the keyboard. 6 between the keys and to the frame, half of it around each key.
+  Column {
+    padding: [gapsOut, 0, gapsOut, gapsOut]
+    gap: 0
+    Column {
+      gap: 0
+      padding: 3
+      background: background
+      border: borderWidth
+      borderColor: border
+      radius: 12 * corners
+      for row in rows {
+        Row {
+          height: 40
+          gap: 0
+          for k in row {
+            Box {
+              weight: 1
+              fill: height
+              padding: 3
+              if k.latch != null {
+                Latched { k: k }
+              } else {
+                Plain { k: k }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

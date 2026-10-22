@@ -24,6 +24,7 @@ import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.bool
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Notification access, which the user grants in Android's settings. Android
@@ -87,7 +89,14 @@ class Media(
 
     val granted get() = notifications.isNotificationListenerAccessGranted(component)
 
-    /** Album art by the id widgets see in `art`; only the current track's is kept. */
+    /**
+     * Where [value] runs: its binder calls and the art's parcel stay off the main thread, one at a time,
+     * since it keeps the art and labels below.
+     */
+    private val worker = Dispatchers.Default.limitedParallelism(1)
+
+    /** Album art by the id widgets see in `art`; only the current track's is kept. Read by the image loader. */
+    @Volatile
     private var art: Pair<String, Bitmap>? = null
 
     /** What [art] was taken for: the app, the track and the art's size. */
@@ -223,7 +232,7 @@ class Media(
                 current?.unregisterCallback(callback)
                 if (listening) sessions.removeOnActiveSessionsChangedListener(changed)
             }
-        }.conflate().map { value() }.distinctUntilChanged()
+        }.conflate().map { withContext(worker) { value() } }.distinctUntilChanged()
 
     /** media("toggle"), "play", "pause", "next", "previous"; without access, opens the setting that grants it. */
     fun control(command: String) {

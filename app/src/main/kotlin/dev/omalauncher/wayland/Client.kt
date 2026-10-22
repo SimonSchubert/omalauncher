@@ -232,7 +232,10 @@ class Client(
                     work?.run() ?: break
                 }
                 if (len - pos > 0) {
-                    for (i in 0 until len - pos) buf.put(i, buf.get(pos + i))
+                    // Reads use absolute offsets, so only the bytes' place matters, not position or limit.
+                    buf.limit(len).position(pos)
+                    buf.compact()
+                    buf.clear()
                 }
                 len -= pos
             }

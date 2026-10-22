@@ -13,7 +13,14 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
 import java.time.temporal.TemporalQueries
+import java.util.Base64
+import java.util.Collections
 import java.util.Locale
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import kotlin.math.PI
 import kotlin.math.floor
 import kotlin.math.roundToLong
@@ -80,7 +87,7 @@ object Builtins {
     val constants = mapOf("pi" to Num(PI), "transparent" to Col(null, 0))
 
     /** Handler-only calls; they reach [Host.act]. */
-    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..1, "notification" to 2..2, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2, "appAction" to 2..2, "workApps" to 1..1, "shortcuts" to 1..1)
+    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..1, "notification" to 2..2, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2, "appAction" to 2..2, "workApps" to 1..1, "shortcuts" to 1..1, "pressKey" to 1..1, "typeText" to 1..1, "latch" to 1..2)
 
     private fun lst(items: List<Value>) = Lst(capped(items))
 
@@ -108,7 +115,8 @@ object Builtins {
         // Numeric text compares as numbers: command output is always text.
         val x = a.num()
         val y = b.num()
-        return if (x != null && y != null) x.compareTo(y) else a.toString().compareTo(b.toString())
+        // + 0.0 makes -0.0 zero: Double.compareTo orders it below 0, so -(a - b) < 0 held for a == b.
+        return if (x != null && y != null) (x + 0.0).compareTo(y + 0.0) else a.toString().compareTo(b.toString())
     }
 
     /** ARGB of any color-like value: theme names, #hex strings, colors. */
@@ -181,7 +189,52 @@ object Builtins {
 
     private val regexCache = HashMap<String, Regex>()
 
-    private fun regex(p: String) = synchronized(regexCache) { regexCache.getOrPut(p) { Regex(p) } }
+    private val WHITESPACE = Regex("\\s+")
+
+    /** Patterns built from changing values would fill the cache without end. */
+    private fun regex(p: String) =
+        synchronized(regexCache) {
+            if (regexCache.size >= 256) regexCache.clear()
+            regexCache.getOrPut(p) { Regex(p) }
+        }
+
+    /**
+     * Where match() and matchAll() run. A pattern like `(.*a){20}b` backtracks for minutes on 25 characters, and a
+     * let runs while the screen is built, on the main thread: home froze. Android's regex engine (ICU, native) can't be
+     * interrupted or given a deadline, so a match runs on one of these threads and the caller waits [REGEX_MS] at most;
+     * one that runs over goes on, at the lowest priority, until it ends.
+     */
+    private val regexThreads =
+        Executors.newCachedThreadPool { r ->
+            Thread(r, "owl-regex").apply {
+                isDaemon = true
+                priority = Thread.MIN_PRIORITY
+            }
+        }
+
+    private const val REGEX_MS = 500L
+
+    /** Patterns that ran over [REGEX_MS]: refused from then on, so each leaves at most one thread behind. */
+    private val slowPatterns = Collections.synchronizedSet(HashSet<String>())
+
+    private fun <T> matching(
+        p: String,
+        block: (Regex) -> T,
+    ): T {
+        val slow = "the pattern \"$p\" takes too long: a repeated group with a repeat inside, like (a+)+ or (.*x){5}, or .* " +
+            "several times over long text, tries ever more ways to match; it's off until the launcher restarts"
+        if (p in slowPatterns) throw WidgetError(slow)
+        val r = regex(p)
+        val task = regexThreads.submit(Callable { block(r) })
+        try {
+            return task.get(REGEX_MS, TimeUnit.MILLISECONDS)
+        } catch (e: TimeoutException) {
+            slowPatterns.add(p)
+            throw WidgetError(slow)
+        } catch (e: ExecutionException) {
+            throw e.cause ?: e
+        }
+    }
 
     /** By pattern, and by language tag after a NUL when a widget names one. */
     private val timeFormats = HashMap<String, DateTimeFormatter>()
@@ -268,7 +321,8 @@ object Builtins {
             val offset = g.last().uppercase()
             val at = runCatching { LocalDateTime.of(part(1), part(2), part(3), part(4), part(5), part(6), nanos) }.getOrNull() ?: return Null
             // ZoneOffset reads Z, +02, +0200 and +02:00.
-            return epoch(at.atZone(if (offset == "") zone else ZoneOffset.of(offset)))
+            // An offset past ±18:00 (+99:99) isn't one: null, like any text that isn't a date, rather than an error.
+            return epoch(at.atZone(if (offset == "") zone else runCatching { ZoneOffset.of(offset) }.getOrNull() ?: return Null))
         }
         val named = s.substringAfterLast(' ')
         val rfc = rfc822Zones[named.uppercase()]?.let { s.dropLast(named.length) + it } ?: s
@@ -545,14 +599,32 @@ object Builtins {
             "capitalize" to Builtin(1, 1) { a -> Str(a.str(0).replaceFirstChar { it.titlecase() }) }.strict(),
             "lower" to Builtin(1, 1) { a -> Str(a.str(0).lowercase()) },
             "lines" to Builtin(1, 1) { a -> lst(a.str(0).lines().filter { it.isNotBlank() }.map(::Str)) },
-            "words" to Builtin(1, 1) { a -> lst(a.str(0).trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.map(::Str)) },
+            "words" to Builtin(1, 1) { a -> lst(a.str(0).trim().split(WHITESPACE).filter { it.isNotEmpty() }.map(::Str)) },
             "split" to Builtin(2, 2) { a -> lst(a.str(0).split(a.str(1)).map(::Str)) },
-            "join" to Builtin(1, 2) { a -> Str(a.list(0).joinToString(if (a.size > 1) a.str(1) else "") { if (it is Str) it.v else it.toString() }) },
-            "replace" to Builtin(3, 3) { a -> Str(a.str(0).replace(a.str(1), a.str(2))) },
+            "join" to
+                Builtin(1, 2) { a ->
+                    val sep = if (a.size > 1) a.str(1) else ""
+                    val out = StringBuilder()
+                    a.list(0).forEachIndexed { i, x ->
+                        if (i > 0) out.append(sep)
+                        out.append(if (x is Str) x.v else x.toString())
+                        checkText(out.length)
+                    }
+                    Str(out.toString())
+                },
+            "replace" to
+                Builtin(3, 3) { a ->
+                    val s = a.str(0)
+                    val from = a.str(1)
+                    val to = a.str(2)
+                    // "a" for every character of a long text multiplies it.
+                    if (to.length > from.length && from.isNotEmpty()) checkText(s.length / from.length * to.length + s.length)
+                    Str(s.replace(from, to))
+                },
             // owl 6: a value as one shell word, for commands put together while the widget runs.
             "sh" to Builtin(1, 1) { a -> Str(shQuote(a[0].let { if (it == Null) "" else it.text() })) },
             // owl 8: a value as one URL component, for http(...) URLs put together while the widget runs.
-            "enc" to Builtin(1, 1) { a -> Str(URLEncoder.encode(a[0].let { if (it == Null) "" else it.text() }, "UTF-8").replace("+", "%20")) },
+            "enc" to Builtin(1, 1) { a -> Str(urlEncode(a[0].let { if (it == Null) "" else it.text() })) },
             "startsWith" to Builtin(2, 2) { a -> bool(a.str(0).startsWith(a.str(1))) },
             "endsWith" to Builtin(2, 2) { a -> bool(a.str(0).endsWith(a.str(1))) },
             "contains" to
@@ -608,7 +680,8 @@ object Builtins {
                     )
                 }.strict(),
             // fmtTime(epochSeconds, "HH:mm"): java.time patterns in the phone's time zone; owl 9 takes a zone and a language too.
-            "fmtTime" to Builtin(2, 4) { a -> Str(fmtTime(a.num(0), a.str(1), zone(a[2]), a.str(3))) }.strict(),
+            // NaN and infinity aren't times: null, as for a value still loading, rather than 1970's midnight.
+            "fmtTime" to Builtin(2, 4) { a -> if (!a.num(0).isFinite()) Null else Str(fmtTime(a.num(0), a.str(1), zone(a[2]), a.str(3))) }.strict(),
             // owl 9: parseTime("2026-10-17T10:04:00Z") is Unix seconds, null if the text isn't a date.
             // Not folded: a time without a date is today's, and one without a zone the phone's.
             "parseTime" to Builtin(1, 3, pure = false) { a -> parseTime(a.str(0), a.str(1), zone(a[2])) }.strict(),
@@ -617,6 +690,8 @@ object Builtins {
             // owl 9: fmtNum(x, digits) or fmtNum(x, {digits, compact, sign}). Not folded: it's in the phone's language.
             "fmtNum" to
                 Builtin(1, 2, pure = false) { a ->
+                    // NaN and infinity showed as 0.
+                    if (!a.num(0).isFinite()) return@Builtin Null
                     when (val o = a[1]) {
                         is Obj -> Str(fmtNum(a.num(0), o.fields["digits"]?.num()?.toInt(), o.fields["compact"]?.truthy == true, o.fields["sign"]?.truthy == true))
                         Null -> Str(fmtNum(a.num(0), null, false, false))
@@ -628,10 +703,22 @@ object Builtins {
             // match(s, regex): the groups of the first match (or the whole match), null if none.
             "match" to
                 Builtin(2, 2) { a ->
-                    regex(a.str(1)).find(a.str(0))?.let { m -> if (m.groupValues.size > 1) lst(m.groupValues.drop(1).map(::Str)) else Str(m.value) } ?: Null
+                    val text = a.str(0)
+                    matching(a.str(1)) { r -> r.find(text)?.let { m -> if (m.groupValues.size > 1) lst(m.groupValues.drop(1).map(::Str)) else Str(m.value) } } ?: Null
                 },
-            "matchAll" to Builtin(2, 2) { a -> lst(regex(a.str(1)).findAll(a.str(0)).take(MAX_LIST).map { m -> if (m.groupValues.size > 1) Lst(m.groupValues.drop(1).map(::Str)) else Str(m.value) }.toList()) },
+            "matchAll" to
+                Builtin(2, 2) { a ->
+                    val text = a.str(0)
+                    lst(matching(a.str(1)) { r -> r.findAll(text).take(MAX_LIST).map { m -> if (m.groupValues.size > 1) Lst(m.groupValues.drop(1).map(::Str)) else Str(m.value) }.toList() })
+                },
             "parseJson" to Builtin(1, 1) { a -> Json.parseOrText(a.str(0)) },
+            // Text as base64 and back; fromBase64 also reads base64url, with or without padding, and gives null for anything else.
+            "toBase64" to Builtin(1, 1) { a -> Str(Base64.getEncoder().encodeToString(a.str(0).toByteArray())) },
+            "fromBase64" to
+                Builtin(1, 1) { a ->
+                    val s = a.str(0).filterNot { it.isWhitespace() }.replace('-', '+').replace('_', '/').trimEnd('=')
+                    runCatching { Str(String(Base64.getDecoder().decode(s.padEnd((s.length + 3) / 4 * 4, '=')), Charsets.UTF_8)) }.getOrDefault(Null)
+                },
             // lists
             "range" to
                 Builtin(1, 3) { a ->
@@ -788,7 +875,7 @@ object Builtins {
                     Obj(out.mapValues { Lst(it.value) })
                 },
             // owl 9: JSON text, for a post body built by hand, a file or a command.
-            "toJson" to Builtin(1, 1) { a -> Str(Json.write(a[0]) ?: throw WidgetError("toJson takes numbers, text, lists and maps, not colors or functions")) },
+            "toJson" to Builtin(1, 1) { a -> Str(Json.write(a[0], MAX_TEXT) ?: throw WidgetError("toJson takes numbers, text, lists and maps, not colors or functions")) },
             // colors
             "rgb" to Builtin(3, 4) { a -> rgb(a.num(0), a.num(1), a.num(2), a.num(3, 1.0)) },
             "hsl" to Builtin(3, 4) { a -> hsl(a.num(0), a.num(1), a.num(2), a.num(3, 1.0)) },
@@ -853,7 +940,12 @@ object Builtins {
                     a is Num && b is Num -> Num(a.v + b.v)
                     a is Lst && b is Lst -> lst(a.items + b.items)
                     // Strings join as written ("- " + x keeps its space); only other values are formatted.
-                    a is Str || b is Str -> Str((if (a is Str) a.v else a.text()) + (if (b is Str) b.v else b.text()))
+                    a is Str || b is Str -> {
+                        val x = if (a is Str) a.v else a.text()
+                        val y = if (b is Str) b.v else b.text()
+                        checkText(x.length + y.length)
+                        Str(x + y)
+                    }
                     else -> {
                         val x = a.num()
                         val y = b.num()
@@ -888,8 +980,10 @@ object Builtins {
     private inline fun comparison(crossinline f: (Int) -> Boolean): (Value, Value) -> Value =
         { a, b ->
             when {
-                a is Num && b is Num -> bool(f(a.v.compareTo(b.v)))
+                // Nothing compares with NaN ("NaN" is a number): compareTo puts it above everything.
+                a is Num && b is Num -> if (a.v.isNaN() || b.v.isNaN()) FALSE else bool(f((a.v + 0.0).compareTo(b.v + 0.0)))
                 a == Null || b == Null -> FALSE
+                a.num()?.isNaN() == true || b.num()?.isNaN() == true -> FALSE
                 else -> bool(f(compare(a, b)))
             }
         }
@@ -919,3 +1013,6 @@ private fun rankAlias(v: Value) = rankText(rankField(v, "alias"))
 
 /** [s] in single quotes, each `'` in it closed, escaped and reopened: bash reads it back as one word, exactly [s]. */
 fun shQuote(s: String) = "'" + s.replace("'", "'\\''") + "'"
+
+/** [s] as one URL component, spaces as %20: what enc(...) gives. */
+fun urlEncode(s: String): String = URLEncoder.encode(s, "UTF-8").replace("+", "%20")

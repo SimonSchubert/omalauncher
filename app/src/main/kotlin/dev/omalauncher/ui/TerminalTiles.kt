@@ -64,6 +64,9 @@ class TerminalTiles(
     /** Where the extra-keys row sits, in window coordinates, while it shows; pressing it isn't leaving the tile. */
     var extraKeys: Rect? = null
 
+    /** How tall the extra keys measured, in pixels: keybar.owl decides it. 0 until they've shown. */
+    var extraKeysHeight by mutableFloatStateOf(0f)
+
     /** How far the home screen is lifted so the active tile clears the soft keyboard, in pixels. */
     var lift = 0f
         private set
@@ -137,9 +140,12 @@ class TerminalTiles(
         if (field === f) field = null
     }
 
-    /** A press at window point [p]: outside the typing tile, it gives the home screen its touches back. */
+    /**
+     * A press at window point [p]: outside the typing tile, it gives the home screen its touches back. The whole tile,
+     * not only its terminal: a widget's own keys beside its Terminal press keys in it rather than taking the keyboard away.
+     */
     fun pressAt(p: Offset) {
-        val bounds = active?.bounds ?: tile.takeIf { field != null } ?: return
+        val bounds = typingBounds(field != null, tile, active?.bounds) ?: return
         if (extraKeys?.contains(p) == true) return
         if (!bounds.translate(0f, -lift).contains(p)) deactivate()
     }

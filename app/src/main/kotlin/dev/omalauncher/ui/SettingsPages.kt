@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
 import dev.omalauncher.Runtime
+import dev.omalauncher.linux.LinuxState
 
 /** The screens of the settings activity; each can also be opened on its own, from home or a widget. */
 enum class SettingsPage {
@@ -90,6 +92,7 @@ private fun SettingsPage(
     onDismiss: () -> Unit,
 ) {
     val close = onDismiss
+    val linuxInstalled = runtime.bootstrap.state.collectAsState().value == LinuxState.Installed
 
     // Settings has no home underneath: the agent opens in its own terminal, or the agents screen offers one.
     fun agent(
@@ -113,7 +116,7 @@ private fun SettingsPage(
                 onLicenses = { stack.push(SettingsPage.Licenses) },
                 onGestures = { stack.push(SettingsPage.Gestures) },
             )
-        SettingsPage.Style -> StyleScreen(runtime, onDismiss = close, onBrowse = { stack.push(SettingsPage.Themes) })
+        SettingsPage.Style -> StyleScreen(runtime, onDismiss = close, onBrowse = { stack.push(SettingsPage.Themes) }, onAgent = ::agent)
         SettingsPage.Pages -> {
             var sharing by remember { mutableStateOf<WidgetSpec?>(null) }
             PagesScreen(runtime, onDismiss = close, onAgent = ::agent, onShare = { sharing = it })
@@ -139,15 +142,20 @@ private fun SettingsPage(
             }
         }
         SettingsPage.Themes -> ThemeCatalogScreen(runtime.themes, onDismiss = close)
+        // Agents install into Linux: every way here (a widget's edit, gestures, open("agents")) offers Linux first.
         SettingsPage.Agents ->
-            AgentsScreen(
-                runtime,
-                onDismiss = close,
-                onOpen = { agent ->
-                    close()
-                    runtime.terminal(agent.command, agent.name, agent)
-                },
-            )
+            if (!linuxInstalled) {
+                LinuxScreen(runtime, onDismiss = close)
+            } else {
+                AgentsScreen(
+                    runtime,
+                    onDismiss = close,
+                    onOpen = { agent ->
+                        close()
+                        runtime.terminal(agent.command, agent.name, agent)
+                    },
+                )
+            }
         SettingsPage.Store -> StoreScreen(runtime.widgets, runtime.agents.installed, homePage, runtime.themes.picked, onDismiss = close)
         SettingsPage.FaceStore -> StoreScreen(runtime.widgets, runtime.agents.installed, homePage, runtime.themes.picked, onDismiss = close, initialKind = OwlKind.Face)
         SettingsPage.Packages -> PackagesScreen(runtime, onDismiss = close)
