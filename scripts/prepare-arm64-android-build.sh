@@ -29,7 +29,7 @@ readonly -a PACKAGE_SPECS=(
   'libcxx|pool/main/libc/libc++/libc++_30_aarch64.deb|53d0b84a7ba7459024257cb94d5b136fe13ef858567f65a8064b35950799f2ca'
   'libexpat|pool/main/libe/libexpat/libexpat_2.9.0_aarch64.deb|f8a104e8227c9c181f6818658a3ee2fa4c107fac94219b068144fc6591086cdb'
   'libpng|pool/main/libp/libpng/libpng_1.6.59_aarch64.deb|32d61f0b1a60cf7283aa3a80e288737493df2c6b84c8c749606b77c94a10f2b2'
-  'libzopfli|pool/main/libz/libzopfli/libzopfli_1.0.3-5_aarch64.deb|95cd7cb2209fbafb25825f5fcd4f86f021512175608e038b1c3b8d3fa0a4fe40'
+  'libzopfli|pool/main/libz/libzopfli/libzopfli_1.0.3-5_aarch64.deb|95cd7cb2209fbafb25825f5fcd4f86f021512175608e038b1c3d8d3fa0a4fe40'
   'zlib|pool/main/z/zlib/zlib_1.3.2_aarch64.deb|75e7d0af17fcc3b40004309fdc00a1ddb9ae08346dce5e269902c34ac3966ac9'
   'googletest|pool/main/g/googletest/googletest_1.18.0_aarch64.deb|98f5b032d4c992d1d9b7bc864207a6eab1c343d0e8b56b588b3d5c4e6a7e7327'
 )
