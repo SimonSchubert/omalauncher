@@ -87,6 +87,12 @@ enum class PromptRequest { Type, Send, Listen, Release }
 /** Height of the collapsed bar; the home grid leaves this much room for it. */
 val PromptBarHeight = 48.dp
 
+/** The prompt-bar spelling for opening Codex's saved-chat picker. */
+internal fun isCodexResumeCommand(
+    agentBin: String?,
+    text: String,
+) = agentBin == "codex" && (text.trim().equals("resume", ignoreCase = true) || text.trim().equals("/resume", ignoreCase = true))
+
 /**
  * The one input at the bottom of the home screen: it finds apps and asks agents.
  * Focusing it opens the app panel above it; typing narrows that panel, and Enter
@@ -140,12 +146,22 @@ internal fun PromptBar(
         state.closeNow()
     }
 
+    fun resumeCodex() {
+        if (!linux) return offerLinux()
+        if (runtime.agents.installed.none { it.bin == "codex" }) return state.show(SettingsPage.Agents)
+        runtime.resumeCodex()
+        state.query = ""
+        focusManager.clearFocus()
+        keyboard?.hide()
+        state.closeNow()
+    }
+
     /** The drawer's panel, while it shows: what's typed, Enter and the arrow keys are its. */
     fun drawer() = if (panelShown) runtime.upPanel()?.let { runtime.widgets.panelInstance(it)?.second } else null
 
     /** Enter: what the drawer does with it (open the app it picked), or, from a drawer without onSubmit, the agent. */
     fun submit() {
-        if (drawer()?.submit(text) == true) state.query = "" else send(text)
+        if (isCodexResumeCommand(agent?.bin, text)) resumeCodex() else if (drawer()?.submit(text) == true) state.query = "" else send(text)
     }
 
     /** The drawer gets [key] with its `onKey`, and moves its own highlight; false without one, and the key goes on. */
@@ -316,7 +332,9 @@ internal fun PromptBar(
                     },
                 )
                 // The drawer says what its Enter does, with its `enter`.
-                val enter = drawer()?.enterHint() ?: "⏎ ask"
+                val enter =
+                    if (isCodexResumeCommand(agent?.bin, text)) "⏎ resume"
+                    else drawer()?.enterHint() ?: "⏎ ask"
                 if (text.isNotBlank() && !listening && enter.isNotEmpty()) {
                     // Says what Enter does, so opening an app instead of asking is never a surprise.
                     Box(
@@ -336,7 +354,7 @@ internal fun PromptBar(
                 )
             }
             // Beside the bar's frame, not in it: the menu lines up with the frame, not with the agent's name inside.
-            if (agentsOpen) AgentsMenu(runtime, onDismiss = { agentsOpen = false }, onManage = ::manageAgents)
+            if (agentsOpen) AgentsMenu(runtime, onDismiss = { agentsOpen = false }, onManage = ::manageAgents, onResume = ::resumeCodex)
             // Input level along the bottom edge while listening.
             if (listening) {
                 val accent = Palette.accent
@@ -481,6 +499,7 @@ private fun AgentsMenu(
     runtime: Runtime,
     onDismiss: () -> Unit,
     onManage: () -> Unit,
+    onResume: () -> Unit,
 ) {
     val store = runtime.agents
     // As far above the bar as the drawer's menus are above an app.
@@ -495,6 +514,16 @@ private fun AgentsMenu(
         minWidth = 200.dp,
         sublabel = { it.bin },
     ) {
+        if (store.installed.any { it.bin == "codex" }) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        onDismiss()
+                        onResume()
+                    }.padding(horizontal = 10.dp, vertical = 10.dp),
+            ) { BasicText("  resume Codex…", style = Mono.copy(color = Palette.accent)) }
+        }
         Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(1.dp).background(Palette.border))
         Box(
             Modifier

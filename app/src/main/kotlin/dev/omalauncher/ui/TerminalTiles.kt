@@ -309,7 +309,7 @@ fun TerminalView(
                 }
             active -> {
                 // Over the TextureView, which Compose's pointer input doesn't reach.
-                Box(Modifier.fillMaxSize().linuxWindowInput(tiles.windowManager, window))
+                Box(Modifier.fillMaxSize().linuxWindowInput(tiles.windowManager, window) { tiles.keyboard?.show() })
                 Box(
                     Modifier
                         .align(Alignment.BottomEnd)

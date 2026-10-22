@@ -500,6 +500,25 @@ class Runtime(
         launch("foot --app-id=$appId${terminalFont.optionFor(appId, command)}$args")
     }
 
+    /**
+     * Opens Codex's saved-chat picker from the launcher prompt. If a Codex
+     * window already exists, bring that window back instead of starting a
+     * second process, which Codex rejects as an already-open session.
+     */
+    fun resumeCodex() {
+        if (!linux) {
+            openSettings(SettingsPage.Linux)
+            return
+        }
+        val existing =
+            wm.appWindows.firstOrNull { window ->
+                val name = displayName(window.appId, window.title)
+                agentOf(window.appId, name)?.bin == "codex"
+            }
+        if (existing != null && bringToFront(existing)) return
+        agents.installed.firstOrNull { it.bin == "codex" }?.let { terminal("codex resume --all", "Codex resume", it) }
+    }
+
     /** Opens a pinned app from the home screen. A Linux one runs its current desktop entry, which an update may have changed. */
     fun open(shortcut: Shortcut) {
         shortcut.linux?.let { pinned -> launch(linuxApps.apps.firstOrNull { it.id == pinned.id } ?: pinned) }

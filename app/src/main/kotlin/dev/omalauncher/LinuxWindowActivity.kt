@@ -195,7 +195,7 @@ private fun AppWindow(
                     .onSizeChanged { surfaceView?.visibleHeight = it.height },
             ) {
                 // Over the SurfaceView, which Compose's pointer input doesn't reach.
-                Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window))
+                Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window) { sink?.show() })
                 Box(
                     Modifier
                         .align(Alignment.BottomEnd)

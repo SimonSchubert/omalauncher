@@ -28,8 +28,9 @@ private const val WHEEL_STEP = 15f
 fun Modifier.linuxWindowInput(
     wm: WindowManager,
     window: XdgToplevel,
-) = pointerInput(wm, window) {
-    handlePointer(wm, window, viewConfiguration.touchSlop, viewConfiguration.longPressTimeoutMillis)
+    onTouch: () -> Unit = {},
+) = pointerInput(wm, window, onTouch) {
+    handlePointer(wm, window, viewConfiguration.touchSlop, viewConfiguration.longPressTimeoutMillis, onTouch)
 }
 
 private fun XdgToplevel.hitTest(
@@ -42,6 +43,7 @@ private suspend fun PointerInputScope.handlePointer(
     window: XdgToplevel,
     touchSlop: Float,
     longPressMs: Long,
+    onTouch: () -> Unit,
 ) = awaitPointerEventScope {
     var mouseButtons = 0
     while (true) {
@@ -57,6 +59,11 @@ private suspend fun PointerInputScope.handlePointer(
         val start = change.position
         val hit = window.hitTest(start.x, start.y)
         change.consume()
+        // A Linux terminal owns the real text editor, so the invisible Android
+        // editor cannot request the IME until the user touches the window.
+        // Keep this touch-only: hardware/mouse input must not unexpectedly open
+        // the phone keyboard.
+        onTouch()
         if (!wm.onPress(window, hit) || hit == null) continue
 
         // Clients with wl_touch (foot, GTK) get real touch: foot turns hold-and-drag into selection.

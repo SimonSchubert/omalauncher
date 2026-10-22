@@ -325,6 +325,12 @@ The helper blocks until Omalauncher responds. In normal mode the user sees an ap
 
 For an APK built in the guest, use `omalauncher-install /absolute/path/app-debug.apk "reason"`; it remains the package-install path and has its own APK inspection and Android PackageInstaller policy.
 
+## Returning to an older Codex chat
+
+Codex keeps saved interactive chats separately from the terminal window. If a Codex window is already open, return to that window with Android Recents and type `/resume`; choose the chat there. Starting a second `codex resume` process while the first Codex process is alive can report that the session is already open.
+
+If no Codex window/process is running, open a fresh terminal and use `codex resume --last` for the most recent chat in the current working directory, `codex resume --all` to search chats from other directories, or `codex resume <SESSION_ID>` for an exact session. Do not remove Codex lock files while a Codex process is running. Sessions started with `codex exec --ephemeral` are intentionally not resumable.
+
 Supported actions are deliberately narrow: launch a package's launcher activity, launch an exported component in an installed package, or open an http/https URL. There is no arbitrary `adb shell`, tap/swipe injection, package-data dump, uninstall, settings mutation, or root capability. If a task needs something outside these actions, explain the limitation and ask the user to perform it or use a separate host-side, approval-gated development transport.
 
 Build and test Android apps from source with the guest's Java/Gradle/SDK paths, then request installation through the helper. Do not download malware or untrusted APKs to test the bridge.
