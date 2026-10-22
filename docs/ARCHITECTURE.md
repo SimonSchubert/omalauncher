@@ -32,12 +32,14 @@ when Android permits it. Device policy can still show Android's own installer
 confirmation. No ADB socket, GitHub credential, or signing key is bound into the
 guest. USB ADB remains a computer-side development transport, not an
 Android-app capability. The guest has a separate `omalauncher-device` bridge
-for allowlisted actions: opening a package's launcher activity, opening an
-exported component, opening an http/https URL, and requesting two launchable
-packages side by side through Android's adjacent-launch API. Those requests use the
-same normal approval or explicit YOLO policy, and are never arbitrary
-`adb shell` commands, input injection, package-data access, uninstall
-operations, or root actions.
+for allowlisted launch actions and an optional `adb-shell` action. When the
+user starts Shizuku and grants Omalauncher access, `adb-shell` runs the exact
+approved command through a one-time capability token in a Shizuku user service;
+it has no interactive TTY, a 64 KiB output cap and a two-minute timeout. Every
+shell request keeps the normal Omalauncher approval even when APK-install YOLO
+is enabled. This grants device-side shell/root identity, not the computer's
+`adb push`, `adb pull`, `adb connect` or `adb devices` transport. APK installs
+remain on the inspected PackageInstaller path.
 
 The guest process environment also has fixed paths for the phone-local Android
 toolchain: Java 17 at `/usr/lib/jvm/java-17-openjdk`, Gradle at
@@ -50,6 +52,16 @@ above. A phone-local build cannot replace the installed launcher without its
 matching private signing key, so that key stays outside Linux and self-update
 requires a separate host-side signer.
 
+The installed launcher does not pull its own source or APK updates from
+GitHub. For this development install, the canonical fork is
+`https://github.com/danielsanchezaran/omalauncher`, with `main` as the
+authoritative branch for the accumulated features. A guest agent may fetch and
+rebase its checkout onto `origin/main`, run the Gradle tests/build, and request
+installation of a companion APK through the approval bridge. It must preserve
+dirty worktrees and never resolve conflicts with a hard reset or force-push.
+Updating `dev.omalauncher` itself still requires a build signed by the same
+key as the installed APK, so that final step remains host-side.
+
 Codex's managed guest configuration uses `sandbox_mode = "danger-full-access"`
 with `approval_policy = "on-request"`. The inner Linux bubblewrap sandbox cannot
 create its app-server socket mount inside proot, so keeping that setting would
@@ -57,7 +69,8 @@ prevent the agent from running any command. The Android app UID and proot guest
 remain the outer boundary. In normal mode APK installation and device actions
 require the Omalauncher approval screen; APK installation may also require
 Android's PackageInstaller confirmation. YOLO only removes the Omalauncher
-prompt for validated requests and never makes raw ADB available to the guest.
+prompt for validated APK requests; it never removes approval from raw shell
+requests.
 
 ## Source layout
 

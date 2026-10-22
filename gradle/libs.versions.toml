@@ -9,6 +9,7 @@ zxing = "3.5.4"
 junit = "4.13.2"
 org-json = "20260814"
 bouncycastle = "1.86"
+shizuku = "13.1.5"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
@@ -22,6 +23,8 @@ commons-compress = { module = "org.apache.commons:commons-compress", version.ref
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 bcpg = { module = "org.bouncycastle:bcpg-jdk18on", version.ref = "bouncycastle" }
+shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
+shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

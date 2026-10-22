@@ -31,17 +31,29 @@ fun DeviceActionScreen(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        val shellRequest = request.request.action == dev.omalauncher.packageinstall.DeviceActionProtocol.ADB_SHELL
         BasicText("device action requested", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
-        BasicText("A Linux agent asked Omalauncher to act on the Android device.", style = Mono.copy(color = Palette.muted))
+        BasicText(
+            if (shellRequest) {
+                "A Linux agent asked Omalauncher to run a device-side shell command with ADB-equivalent authority."
+            } else {
+                "A Linux agent asked Omalauncher to act on the Android device."
+            },
+            style = Mono.copy(color = Palette.muted),
+        )
         BasicText(request.request.action, style = Mono.copy(fontSize = TextSize.Item))
-        BasicText("target", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        BasicText(if (shellRequest) "command" else "target", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
         CodeBlock(request.request.target)
         request.request.reason.takeIf { it.isNotEmpty() }?.let {
             BasicText("agent reason", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             BasicText(it, style = Mono.copy(fontSize = TextSize.Small))
         }
         BasicText(
-            "This is an allowlisted Android action, not raw ADB or a shell command. Android may decline an adjacent split or the target app may ask for its own confirmation.",
+            if (shellRequest) {
+                "Approving runs exactly this command once through the user-authorized Shizuku shell service. It has no interactive TTY, and output/time are bounded."
+            } else {
+                "This is an allowlisted Android action. Android may decline an adjacent split or the target app may ask for its own confirmation."
+            },
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )
         error?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }

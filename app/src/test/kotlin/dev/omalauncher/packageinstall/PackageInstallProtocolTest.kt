@@ -27,6 +27,18 @@ class PackageInstallProtocolTest {
                 "open-split-packages\norg.example.first,org.example.second\ncompare the apps\n".toByteArray(),
             ),
         )
+        assertEquals(
+            DeviceActionRequest(
+                "shell-1",
+                DeviceActionProtocol.ADB_SHELL,
+                "cmd activity start-activity -W -n com.example/.MainActivity; input keyevent KEYCODE_HOME",
+                "open the app and return home",
+            ),
+            DeviceActionProtocol.parse(
+                "shell-1",
+                "adb-shell\ncmd activity start-activity -W -n com.example/.MainActivity; input keyevent KEYCODE_HOME\nopen the app and return home\n".toByteArray(),
+            ),
+        )
     }
 
     @Test
@@ -45,6 +57,15 @@ class PackageInstallProtocolTest {
         }
         assertThrows(IllegalArgumentException::class.java) {
             DeviceActionProtocol.parse("id", "open-split-packages\norg.example.same,org.example.same\n".toByteArray())
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            DeviceActionProtocol.parse("id", "adb-shell\ninput\u0007 tap 1 1\nreason\n".toByteArray())
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            DeviceActionProtocol.parse(
+                "id",
+                "adb-shell\n${"x".repeat(DeviceActionProtocol.MAX_COMMAND_LENGTH + 1)}\nreason\n".toByteArray(),
+            )
         }
     }
 
@@ -105,6 +126,14 @@ class PackageInstallProtocolTest {
         val response = PackageInstallProtocol.response("failed\nwith details")
         assertEquals("error: failed with details", response)
         assertEquals("ok", PackageInstallProtocol.response("ok"))
+    }
+
+    @Test
+    fun shellResponsesExposeStatusAndStripTerminalControls() {
+        assertEquals(
+            "shell-result:0:0:1:2000\noutput",
+            DeviceActionProtocol.shellResponse(0, timedOut = false, truncated = true, uid = 2000, output = "output\u001b[31m"),
+        )
     }
 
     @Test

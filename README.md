@@ -86,8 +86,16 @@ For other Android actions, the guest can use the same policy with
 `omalauncher-device open-url <http-or-https-url> [reason]`. To request two
 launchable apps side by side on Android 12L+, use
 `omalauncher-device open-split-packages <package-a>,<package-b> [reason]`.
-These are allowlisted host API calls, not arbitrary `adb shell` or input
-injection; Android and the device manufacturer may still decline a split.
+For arbitrary device-side ADB-equivalent work, start Shizuku, grant
+Omalauncher access in Settings › agent device access, and use
+`omalauncher-device adb-shell '<command>' [reason]`. The exact command is
+shown in Omalauncher's approval screen and must be approved for every request;
+the bridge uses a one-time capability token, has no interactive TTY, limits
+output to 64 KiB and execution to two minutes. This can run commands available
+to Android's shell/root identity, but it is not the computer's `adb` transport:
+`adb push`, `adb pull`, `adb connect` and `adb devices` still need a host. APK
+installation remains on the inspected PackageInstaller path. Android and the
+device manufacturer may still decline a split.
 On proot-based phones, Codex is configured with `sandbox_mode = "danger-full-access"`
 and `approval_policy = "on-request"` because its nested bubblewrap sandbox cannot
 start; the Android app UID and proot guest boundary remain in force.
@@ -102,6 +110,16 @@ explicitly enabled in Omalauncher's settings. Updating the installed
 Omalauncher itself still needs a signer matching the installed APK; the
 launcher's private signing key is never exposed to Linux, so that final
 self-update step belongs to a host-side signer/development transport.
+
+The launcher does not automatically pull or replace its own source from
+GitHub. For this installation, the canonical fork is
+`https://github.com/danielsanchezaran/omalauncher`, and its `main` branch is
+where the completed local features are kept. An agent updating that checkout
+should run `git fetch origin main`, rebase its work onto `origin/main`, run the
+Gradle tests and assemble task, and then use the approval-gated installer for
+companion APKs. It must preserve dirty worktrees and never reset or force-push
+to resolve a conflict. Replacing `dev.omalauncher` itself still requires the
+matching host-side signing key.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the compositor, rendering, GPU
   acceleration, and how updates reach existing installs

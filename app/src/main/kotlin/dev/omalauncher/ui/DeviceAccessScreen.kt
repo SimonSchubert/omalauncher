@@ -3,6 +3,7 @@ package dev.omalauncher.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,8 +29,11 @@ fun DeviceAccessScreen(
     val context = LocalContext.current
     var confirming by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var shellStatus by remember { mutableStateOf(runtime.deviceActions.shellStatus()) }
     val installAllowed = runtime.packageInstalls.canRequestPackageInstalls()
     val yolo = runtime.packageInstalls.yoloEnabled
+    val shizukuPackage = "moe.shizuku.privileged.api"
+    val shizukuIntent = context.packageManager.getLaunchIntentForPackage(shizukuPackage)
 
     fun setYolo(enabled: Boolean) {
         if (runtime.packageInstalls.setYoloEnabled(enabled)) {
@@ -48,9 +52,38 @@ fun DeviceAccessScreen(
         BasicText(
             "The guest can build an APK and request an install with omalauncher-install. " +
                 "It can also request allowlisted Android actions such as opening an installed app or URL. " +
-                if (yolo) "Validated requests skip Omalauncher's approval screen." else "Omalauncher shows the details before acting.",
+                "For arbitrary device-side ADB-equivalent commands, start Shizuku and grant Omalauncher access below. " +
+                if (yolo) "Validated APK requests skip Omalauncher's approval screen; shell requests still ask first." else "Omalauncher shows the details before acting.",
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )
+        Column(Modifier.card(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            BasicText("approved device shell", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Item))
+            BasicText(
+                "${shellStatus}. Each adb-shell request still shows the exact command and requires your approval. " +
+                    "This is device-side shell authority, not the computer's adb push/pull transport.",
+                style = Mono.copy(fontSize = TextSize.Small),
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                BracketAction(
+                    if (shizukuIntent != null) "open Shizuku" else "get Shizuku",
+                    Palette.accent,
+                ) {
+                    val intent = shizukuIntent ?: Intent(Intent.ACTION_VIEW, Uri.parse("https://shizuku.rikka.app/download/"))
+                    context.startActivity(intent)
+                }
+                BracketAction("grant access", Palette.green) {
+                    val activity = context as? ComponentActivity
+                    if (activity == null) {
+                        error = "could not access the current Android activity"
+                    } else {
+                        runtime.deviceActions.requestShellPermission(activity) { granted ->
+                            shellStatus = runtime.deviceActions.shellStatus()
+                            if (!granted) error = shellStatus
+                        }
+                    }
+                }
+            }
+        }
         Column(Modifier.card(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             BasicText("YOLO warning", style = Mono.copy(color = Palette.red, fontSize = TextSize.Item))
             BasicText(
@@ -93,7 +126,7 @@ fun DeviceAccessScreen(
             }
         }
         BasicText(
-            "Raw ADB remains unavailable inside the guest. PackageInstaller and the allowlisted device-action bridge are the supported in-phone capabilities.",
+            "APK installs remain on the inspected PackageInstaller path. Approved adb-shell requests use Shizuku only when it is running and Omalauncher is authorized; there is no shell YOLO switch.",
             Modifier.padding(top = 8.dp),
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )

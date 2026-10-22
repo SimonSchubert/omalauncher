@@ -26,7 +26,10 @@ android {
         ndk { abiFilters += "arm64-v8a" }
     }
 
-    buildFeatures { buildConfig = true }
+    buildFeatures {
+        buildConfig = true
+        aidl = true
+    }
 
     externalNativeBuild {
         cmake { path = file("src/main/cpp/CMakeLists.txt") }
@@ -59,7 +62,7 @@ android {
         release {
             // Shrinks the APK and drops what the app doesn't use, like the owl module's unused parts.
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName(if (uploadKey != null) "release" else "debug")
         }
     }
@@ -87,6 +90,8 @@ dependencies {
     implementation(libs.bcpg)
     implementation(libs.androidsvg)
     implementation(libs.zxing.core)
+    implementation(libs.shizuku.api)
+    implementation(libs.shizuku.provider)
     implementation(project(":owl"))
     testImplementation(libs.junit)
     // android.jar only has stubs of org.json.
