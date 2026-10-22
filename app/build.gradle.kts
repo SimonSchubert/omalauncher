@@ -11,11 +11,19 @@ val uploadKey = rootProject.file("keystore.properties").takeIf { it.exists() }
 
 // The NDK proot is built with (scripts/fetch-proot.sh); wlbridge uses the same one.
 val prootNdk = rootProject.file("scripts/fetch-proot.sh").readLines().first { it.startsWith("NDK_VERSION=") }.substringAfter('=')
+// ARM64 phone builds package the verified JNI libraries prepared by the guest
+// helper. Normal host builds keep the Android Gradle Plugin's CMake integration
+// unchanged.
+val usePrebuiltNative = providers.gradleProperty("omalauncher.prebuiltNative")
+    .map { it.equals("true", ignoreCase = true) }
+    .getOrElse(false)
 
 android {
     namespace = "dev.omalauncher"
     compileSdk = 37
-    ndkVersion = prootNdk
+    if (!usePrebuiltNative) {
+        ndkVersion = prootNdk
+    }
 
     defaultConfig {
         applicationId = "dev.omalauncher"
@@ -31,8 +39,10 @@ android {
         aidl = true
     }
 
-    externalNativeBuild {
-        cmake { path = file("src/main/cpp/CMakeLists.txt") }
+    if (!usePrebuiltNative) {
+        externalNativeBuild {
+            cmake { path = file("src/main/cpp/CMakeLists.txt") }
+        }
     }
 
     packaging {

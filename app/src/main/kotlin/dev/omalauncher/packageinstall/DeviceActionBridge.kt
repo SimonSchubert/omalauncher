@@ -426,49 +426,58 @@ heap, or run debug and custom builds concurrently on the phone.
 omalauncher-install "${'$'}PWD/app/build/outputs/apk/custom/app-custom.apk" "install the tested Omalauncher Custom build"
 ```
 
-### Phone build prerequisite: native artifacts
+### Phone build preparation
 
-This repository's `app/src/main/jniLibs/arm64-v8a/` directory is generated and
-normally ignored by Git. A fresh clone therefore does not contain
-`libproot.so`, `libproot-loader.so`, `libtalloc.so`, `libandroid-shmem.so`, or
-the native `libwlbridge.so` needed by the APK. Check for those files before
-starting a long build:
+Read `~/.omalauncher/device-profile.md` first. On an ARM64 guest, do not run
+the normal `scripts/fetch-proot.sh`: the SDK's NDK host compiler and the SDK
+`aidl`/`aapt2` binaries may be x86-64 even though Gradle itself runs. The
+repository includes a reproducible preparation script that:
 
-```sh
-for f in libproot.so libproot-loader.so libtalloc.so libandroid-shmem.so libwlbridge.so; do
-  test -s "app/src/main/jniLibs/arm64-v8a/${'$'}{f}" || { echo "missing native artifact: ${'$'}{f}" >&2; exit 2; }
-done
-```
+- downloads only checksum-pinned ARM64 AAPT2/AIDL runtime packages from the
+  official Termux package repository;
+- creates an ignored SDK overlay whose `aidl` and `aapt2` are native ARM64;
+- reuses the five ARM64 libraries from the currently installed Omalauncher
+  through the read-only `/run/omalauncher/native` bind, so a fresh clone does
+  not need to rebuild proot before the first custom build; and
+- writes only the ignored checkout-local `local.properties` SDK path.
 
-Phone images may ship Android SDK host tools for a different architecture.
-Omalauncher needs `aidl`, `aapt2`, CMake and the NDK compiler, so check their
-architecture before Gradle. Read `~/.omalauncher/device-profile.md` for local
-device facts, but do not copy those facts into source or assume another phone
-has the same SDK paths:
+Run it in the Omalauncher checkout and keep the exported environment in the
+same shell as Gradle:
 
 ```sh
-uname -m
-file "${'$'}ANDROID_HOME"/build-tools/*/aidl "${'$'}ANDROID_HOME"/build-tools/*/aapt2 \
-  "${'$'}ANDROID_HOME"/ndk/*/toolchains/llvm/prebuilt/*/bin/clang
+eval "${'$'}(./scripts/prepare-arm64-android-build.sh --shell-env)"
+file "${'$'}OMALAUNCHER_ARM64_BUILD_TOOLS"/libexec/omalauncher-aapt2 \
+  "${'$'}OMALAUNCHER_ARM64_BUILD_TOOLS"/libexec/omalauncher-aidl
 ```
 
-Every executable used by the build must match `uname -m`. On an ARM64 guest,
-a fresh clone fails first in `scripts/fetch-proot.sh` and may then fail at
-`:app:compileDebugAidl` when those host tools are x86-64; the custom package
-suffix does not change that limitation.
+The script aborts on a checksum mismatch, a missing installed native library,
+or a non-ARM64 executable. It does not install x86 emulation, alter global Git
+or Gradle configuration, expose ADB, or expose signing keys. It is safe to run
+again; downloads remain in the user cache after verification.
 
-Do not run `scripts/fetch-proot.sh` as a repair inside this ARM64 proot guest.
-That script invokes the Android NDK's `linux-x86_64` host compiler, which
-cannot execute here and fails with exit 127. Do not install x86 emulation,
-download a second untrusted SDK, or retry the same build in parallel. If the
-native artifacts or any ARM64 SDK host tool is missing, stop and report that
-the checkout needs a host-side build/artifact seeding step; the host can run
-`scripts/fetch-proot.sh`, build the APK, and install it through the approved
-host transport. Only run the custom Gradle command above after the five
-ARM64 `.so` files and a complete ARM-native Android toolchain are present.
-Use `./gradlew --stop` after a failed attempt before diagnosing or retrying.
+The `custom` Gradle mode packages the prepared native libraries and skips the
+SDK's incompatible CMake host executable. It compiles the Kotlin/Java/OWL
+source changes locally and produces the side-by-side `dev.omalauncher.custom`
+package. If the requested source change edits `app/src/main/cpp` or the proot
+build itself, report that native source still needs a host build; do not claim
+those native changes are in the APK.
 
-Keep `dev.omalauncher` installed as the fallback. The custom app has separate
+After preparation, use one conservative build, then the normal inspected
+PackageInstaller bridge:
+
+```sh
+./gradlew --stop
+./gradlew --no-daemon --max-workers=1 --no-parallel --console=plain \
+  -Pandroid.aapt2FromMavenOverride="${'$'}OMALAUNCHER_ARM64_BUILD_TOOLS/bin/aapt2" \
+  -Pomalauncher.prebuiltNative=true :app:testDebugUnitTest :app:assembleCustom
+omalauncher-install "${'$'}PWD/app/build/outputs/apk/custom/app-custom.apk" "install the tested Omalauncher Custom build"
+```
+
+Wait for `omalauncher-install` to return `ok`; that means Omalauncher inspected
+the APK and Android's PackageInstaller completed it. An install request shows
+the exact package, certificate, hash and permissions for user approval unless
+the user explicitly enabled APK-install YOLO. Keep `dev.omalauncher` installed
+as the fallback. The custom app has separate
 Android data and a separate Linux guest, so it does not automatically inherit
 the original launcher's Codex sessions, files, settings, or Linux packages.
 The user must choose it as the default Home app through Android's UI if they

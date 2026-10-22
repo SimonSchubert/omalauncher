@@ -124,18 +124,18 @@ matching host-side signing key.
 For phone-local launcher development, the project also has a `custom` build
 type. It produces the separately installable package
 `dev.omalauncher.custom` (shown as **Omalauncher Custom**) and can be built with
-`./gradlew --no-daemon --max-workers=1 --no-parallel :app:testDebugUnitTest :app:assembleCustom`. Install
+`eval "$(./scripts/prepare-arm64-android-build.sh --shell-env)"` followed by
+`./gradlew --no-daemon --max-workers=1 --no-parallel --console=plain -Pandroid.aapt2FromMavenOverride="$OMALAUNCHER_ARM64_BUILD_TOOLS/bin/aapt2" -Pomalauncher.prebuiltNative=true :app:testDebugUnitTest :app:assembleCustom`.
+The preparation script downloads checksum-pinned native ARM64 AAPT2/AIDL
+packages from the official Termux repository, creates an ignored SDK overlay,
+and seeds the generated native libraries from the installed launcher through a
+read-only guest bind. Install
 `app/build/outputs/apk/custom/app-custom.apk` through `omalauncher-install`.
 It is a separate app with separate Linux data, so the original launcher stays
-available as a fallback and its Codex sessions/settings are not shared.
-The generated `app/src/main/jniLibs/arm64-v8a/` artifacts must already be
-seeded for a phone-local source build. `scripts/fetch-proot.sh` uses the NDK's
-x86_64 host compiler and cannot run inside the ARM64 proot guest; seed those
-artifacts or build on the host instead of installing x86 emulation there. The
-phone also needs `aidl`, `aapt2`, CMake and NDK host tools matching its guest
-architecture; an ARM64 guest with x86_64 `aidl` fails at
-`:app:compileDebugAidl`. Inspect the local device profile and use the host
-build fallback until a complete matching Android toolchain is provided.
+available as a fallback and its Codex sessions/settings are not shared. The
+phone-local mode compiles Kotlin/Java/OWL changes; edits to the C++ JNI or
+proot build still need the host toolchain and must not be reported as included
+in the custom APK.
 The repository also caps Gradle at 2 GiB, the Kotlin daemon at 1 GiB, and one
 worker so phone-local builds do not consume the whole device.
 

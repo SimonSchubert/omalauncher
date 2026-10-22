@@ -56,8 +56,19 @@ class Proot(
      */
     private val cjkFont = File("/system/fonts/NotoSansCJK-Regular.ttc")
 
-    /** Host directories bound over guest paths by [command]. */
-    private val binds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
+    /**
+     * Host directories bound over guest paths by [command]. The native-library
+     * bind is read-only in practice: it exposes only the currently installed
+     * launcher's ARM64 `.so` files so a side-by-side custom build can reuse
+     * them without downloading or rebuilding the proot runtime first.
+     */
+    private val binds =
+        listOf(
+            "/tmp" to tmpDir,
+            "/dev/shm" to tmpDir,
+            GUEST_RUNTIME_DIR to runtimeDir,
+            GUEST_NATIVE_LIB_DIR to nativeDir,
+        ) + dataBinds
 
     /**
      * Where an absolute guest path lives on the Android side, following the
@@ -218,6 +229,9 @@ class Proot(
 
         /** XDG_RUNTIME_DIR in the guest, bound to [runtimeDir]. */
         const val GUEST_RUNTIME_DIR = "/run/user/0"
+
+        /** Read-only view of this APK's already-installed ARM64 native libraries. */
+        const val GUEST_NATIVE_LIB_DIR = "/run/omalauncher/native"
 
         /** Guest-local Android build toolchain locations; absent tools remain harmless until provisioned. */
         const val GUEST_JAVA_HOME = "/usr/lib/jvm/java-17-openjdk"
