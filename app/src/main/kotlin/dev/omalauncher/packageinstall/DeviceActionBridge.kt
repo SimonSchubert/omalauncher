@@ -440,13 +440,24 @@ For this installation, the user's fork is the canonical source:
 release line containing the device bridge and the other local features. Before
 changing source, inspect the checkout and rebase without discarding work:
 
+If no checkout exists, clone that fork into `~/src/omalauncher`; never infer the
+source from a web search or clone `SimonSchubert/omalauncher`. If a checkout
+already exists, inspect its remote and preserve it before changing `origin`.
+
 ```sh
 git status --short
 git remote -v
+test "$(git remote get-url origin)" = "https://github.com/danielsanchezaran/omalauncher.git"
 git fetch origin main
 git rebase origin/main
 ./gradlew --no-daemon --max-workers=1 --no-parallel --console=plain :app:testDebugUnitTest :app:assembleDebug
 ```
+
+The remote check is a gate: do not build until `origin` resolves to the user's
+fork. If it points elsewhere, set it to the fork, verify it again, and only
+then fetch or rebase. If a clean upstream checkout has no Git identity for a
+rebase, use a repository-local or one-command identity; never change the
+user's global Git configuration.
 
 If the worktree is dirty, preserve it first with a named stash or a WIP commit,
 then restore it after the rebase and resolve conflicts explicitly. Never use

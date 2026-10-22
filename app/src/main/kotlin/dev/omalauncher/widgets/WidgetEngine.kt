@@ -1157,6 +1157,15 @@ class WidgetEngine(
                 "The supported Android actions are documented in ~/.codex/skills/omalauncher-device/SKILL.md and requested with `omalauncher-device`: " +
                 "open-package, open-component for an exported activity, or open-url for http/https. " +
                 "On this proot-based phone, Codex's inner Linux sandbox is disabled because nested bubblewrap cannot start; Codex still uses on-request approvals, " +
-                "and the Android app UID and proot guest boundary remain in force.\n"
+                "and the Android app UID and proot guest boundary remain in force.\n\n" +
+                "For Omalauncher source work, the canonical repository is https://github.com/danielsanchezaran/omalauncher. " +
+                "Never substitute SimonSchubert/omalauncher or another upstream checkout. If no checkout exists, clone the user's fork into " +
+                "~/src/omalauncher; if one exists, inspect git status first, preserve uncommitted work, set origin to the user's fork, fetch origin main, " +
+                "verify `git remote get-url origin` before any build, and rebase onto origin/main without a hard reset or force-push. If a clean checkout " +
+                "lacks Git identity for a rebase, use a local or one-command identity without changing global Git config. For phone-local launcher testing, use the separate " +
+                "dev.omalauncher.custom package: run `./gradlew --no-daemon --max-workers=1 --no-parallel --console=plain :app:testDebugUnitTest :app:assembleCustom`, " +
+                "then request `omalauncher-install \$PWD/app/build/outputs/apk/custom/app-custom.apk \"reason\"`. Keep dev.omalauncher installed; " +
+                "the custom app has separate data and must not silently become the default Home app. Gradle is intentionally capped at a 2 GiB heap, " +
+                "a 1 GiB Kotlin daemon and one worker; do not override those limits or run variants concurrently.\n"
     }
 }
