@@ -426,6 +426,46 @@ heap, or run debug and custom builds concurrently on the phone.
 omalauncher-install "${'$'}PWD/app/build/outputs/apk/custom/app-custom.apk" "install the tested Omalauncher Custom build"
 ```
 
+### Phone build prerequisite: native artifacts
+
+This repository's `app/src/main/jniLibs/arm64-v8a/` directory is generated and
+normally ignored by Git. A fresh clone therefore does not contain
+`libproot.so`, `libproot-loader.so`, `libtalloc.so`, `libandroid-shmem.so`, or
+the native `libwlbridge.so` needed by the APK. Check for those files before
+starting a long build:
+
+```sh
+for f in libproot.so libproot-loader.so libtalloc.so libandroid-shmem.so libwlbridge.so; do
+  test -s "app/src/main/jniLibs/arm64-v8a/${'$'}{f}" || { echo "missing native artifact: ${'$'}{f}" >&2; exit 2; }
+done
+```
+
+The current phone image also ships several Android SDK host tools as
+x86-64 ELF binaries. Omalauncher needs `aidl`, `aapt2`, CMake and the NDK
+compiler, so check their architecture before Gradle:
+
+```sh
+uname -m
+file "${'$'}ANDROID_HOME"/build-tools/*/aidl "${'$'}ANDROID_HOME"/build-tools/*/aapt2 \
+  "${'$'}ANDROID_HOME"/ndk/*/toolchains/llvm/prebuilt/*/bin/clang
+```
+
+Every executable used by the build must be ARM64/aarch64. A fresh clone on
+the current phone fails first in `scripts/fetch-proot.sh` and then at
+`:app:compileDebugAidl` because those host tools are x86-64; the custom
+package suffix does not change that limitation.
+
+Do not run `scripts/fetch-proot.sh` as a repair inside this ARM64 proot guest.
+That script invokes the Android NDK's `linux-x86_64` host compiler, which
+cannot execute here and fails with exit 127. Do not install x86 emulation,
+download a second untrusted SDK, or retry the same build in parallel. If the
+native artifacts or any ARM64 SDK host tool is missing, stop and report that
+the checkout needs a host-side build/artifact seeding step; the host can run
+`scripts/fetch-proot.sh`, build the APK, and install it through the approved
+host transport. Only run the custom Gradle command above after the five
+ARM64 `.so` files and a complete ARM-native Android toolchain are present.
+Use `./gradlew --stop` after a failed attempt before diagnosing or retrying.
+
 Keep `dev.omalauncher` installed as the fallback. The custom app has separate
 Android data and a separate Linux guest, so it does not automatically inherit
 the original launcher's Codex sessions, files, settings, or Linux packages.

@@ -1163,7 +1163,12 @@ class WidgetEngine(
                 "~/src/omalauncher; if one exists, inspect git status first, preserve uncommitted work, set origin to the user's fork, fetch origin main, " +
                 "verify `git remote get-url origin` before any build, and rebase onto origin/main without a hard reset or force-push. If a clean checkout " +
                 "lacks Git identity for a rebase, use a local or one-command identity without changing global Git config. For phone-local launcher testing, use the separate " +
-                "dev.omalauncher.custom package: run `./gradlew --no-daemon --max-workers=1 --no-parallel --console=plain :app:testDebugUnitTest :app:assembleCustom`, " +
+                "dev.omalauncher.custom package only after checking that app/src/main/jniLibs/arm64-v8a contains libproot.so, libproot-loader.so, libtalloc.so, " +
+                "libandroid-shmem.so and libwlbridge.so. A fresh clone lacks these generated native artifacts; never run scripts/fetch-proot.sh in this ARM64 " +
+                "guest because its NDK linux-x86_64 compiler cannot execute here. Also check that aidl, aapt2, CMake and the NDK compiler are ARM64; this phone's " +
+                "x86-64 SDK host tools fail at :app:compileDebugAidl even when Gradle itself runs. If artifacts or any ARM-native Android tool are missing, stop and report that " +
+                "the host must seed/build the APK; do not install x86 emulation or retry in parallel. With prerequisites present, run `./gradlew --stop` after a failed " +
+                "attempt, then `./gradlew --no-daemon --max-workers=1 --no-parallel --console=plain :app:testDebugUnitTest :app:assembleCustom`, " +
                 "then request `omalauncher-install \$PWD/app/build/outputs/apk/custom/app-custom.apk \"reason\"`. Keep dev.omalauncher installed; " +
                 "the custom app has separate data and must not silently become the default Home app. Gradle is intentionally capped at a 2 GiB heap, " +
                 "a 1 GiB Kotlin daemon and one worker; do not override those limits or run variants concurrently.\n"

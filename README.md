@@ -128,6 +128,13 @@ type. It produces the separately installable package
 `app/build/outputs/apk/custom/app-custom.apk` through `omalauncher-install`.
 It is a separate app with separate Linux data, so the original launcher stays
 available as a fallback and its Codex sessions/settings are not shared.
+The generated `app/src/main/jniLibs/arm64-v8a/` artifacts must already be
+seeded for a phone-local source build. `scripts/fetch-proot.sh` uses the NDK's
+x86_64 host compiler and cannot run inside the ARM64 proot guest; seed those
+artifacts or build on the host instead of installing x86 emulation there. The
+phone also needs ARM64 `aidl`, `aapt2`, CMake and NDK host tools; the current
+image's x86_64 `aidl` fails at `:app:compileDebugAidl`, so the host build is the
+supported fallback until a complete ARM-native Android toolchain is provided.
 The repository also caps Gradle at 2 GiB, the Kotlin daemon at 1 GiB, and one
 worker so phone-local builds do not consume the whole device.
 
