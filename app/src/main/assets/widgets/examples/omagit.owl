@@ -1,7 +1,7 @@
 app "omagit" {
   meta { description: "Manage local Git repositories with staging, diffs, history, branches, stashes, and clone support"; version: "1.0.0"; license: "MIT"; category: "dev"; owl: 12 }
-  // Git and SSH transport, repository discovery, text tools, and Shell commands.
-  requires { pacman: ["git", "openssh", "findutils", "sed", "coreutils", "bash"] }
+  // Git/SSH, repository discovery, text tools, Shell, and the stdlib diff helper.
+  requires { pacman: ["git", "openssh", "findutils", "sed", "coreutils", "bash", "python"] }
 
   // ── what the app remembers ─────────────────────────────────────────────────
   state repo = "" persist   // the folder being looked at
@@ -23,6 +23,9 @@ app "omagit" {
   state diffWrap = true
   state diffLimit = 160
   state diffFocus = 0
+  state diffSplit = false
+  state hunkResult = null
+  state hunkBusy = false
   state dmode = "w"         // "w" working tree, "s" staged, "c" from a commit
   state hsel = ""           // hash of the open commit
   state hmsg = ""           // its subject
@@ -33,14 +36,175 @@ app "omagit" {
   state act = ""            // what the last button asked for
   state confirm = ""        // the action waiting for a yes: "<verb>:<argument>"
 
-  // An untracked file has no diff against HEAD; show it against /dev/null so
-  // a new file can be read before it is staged.
-  let diffFlags = "--no-ext-diff --no-textconv --no-color --unified=${diffFull ? 1000000 : 3} ${diffWhitespace ? '--ignore-all-space --ignore-blank-lines' : ''}"
-  let difCmd = dmode == "c" ? "git show --format= ${diffFlags} ${sh(hsel)} -- ${sh(dsel)}"
-    : dmode == "s" ? "git diff ${diffFlags} --cached -- ${sh(dsel)}"
-    : "(git diff ${diffFlags} -- ${sh(dsel)}; git ls-files --error-unmatch ${sh(dsel)} >/dev/null 2>&1 || git diff ${diffFlags} --no-index -- /dev/null ${sh(dsel)})"
+  // Python's standard library pairs lines/words and keeps raw patch bytes out of OWL.
+  // Only git apply --cached can write: it validates the exact displayed diff first.
+  let diffTool = """
+import difflib
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
 
+operation, request = sys.argv[1:3]
+repo, path, mode, revision, full, whitespace = json.loads(request)
+os.environ['GIT_LITERAL_PATHSPECS'] = '1'
+
+def git(args, data=None, allowed=(0,)):
+    p = subprocess.run(['git', *args], input=data, stdout=subprocess.PIPE,
+                       stderr=subprocess.PIPE, timeout=12)
+    if p.returncode not in allowed:
+        raise ValueError(p.stderr.decode('utf-8', 'replace').strip() or 'Git could not read this diff.')
+    return p.stdout
+
+def read_diff():
+    flags = ['--no-ext-diff', '--no-textconv', '--no-color',
+             '--src-prefix=a/', '--dst-prefix=b/', '--no-relative',
+             '--unified=' + ('1000000' if full else '3')]
+    if whitespace:
+        flags += ['--ignore-all-space', '--ignore-blank-lines']
+    if mode == 'c':
+        return git(['show', '--format=', *flags, revision, '--', path])
+    if mode == 's':
+        return git(['diff', *flags, '--cached', '--', path])
+    tracked = git(['ls-files', '--error-unmatch', '--', path], allowed=(0, 1))
+    if tracked:
+        return git(['diff', *flags, '--', path])
+    return git(['diff', *flags, '--no-index', '--', '/dev/null', path], allowed=(0, 1))
+
+def parts(patch):
+    header, hunks = [], []
+    for line in patch.splitlines(keepends=True):
+        if line.startswith(b'@@ '):
+            hunks.append([])
+        (hunks[-1] if hunks else header).append(line)
+    return b''.join(header), [b''.join(h) for h in hunks]
+
+def can_apply(patch, header, hunks):
+    structural = (b'new file mode ', b'deleted file mode ', b'old mode ', b'new mode ',
+                  b'rename from ', b'rename to ', b'copy from ', b'copy to ')
+    return (mode in ('w', 's') and not full and not whitespace and bool(hunks)
+            and len(patch) <= 120000 and len(patch.splitlines()) < 950
+            and patch.count(b'diff --git ') == 1
+            and not any(line.startswith(structural) for line in header.splitlines())
+            and not git(['ls-files', '--unmerged', '-z', '--', path]))
+
+def highlight(left, right):
+    # Pair replacement lines by position; unmatched lines remain whole-line changes.
+    a = re.findall(r'\s+|\w+|[^\w\s]', left['code'])
+    b = re.findall(r'\s+|\w+|[^\w\s]', right['code'])
+    if len(a) + len(b) > 800:
+        return
+    lp, rp = [], []
+    for tag, i, j, k, l in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if i != j:
+            lp.append({'text': ''.join(a[i:j]), 'emphasis': tag != 'equal'})
+        if k != l:
+            rp.append({'text': ''.join(b[k:l]), 'emphasis': tag != 'equal'})
+    left['pieces'], right['pieces'] = lp, rp
+
+def view(patch, applicable):
+    raw = patch[:120001].decode('utf-8', 'replace')
+    lines = raw.split('\n')
+    rows, old, new, block, hunk, was_changed = [], 0, 0, 0, 0, False
+    seen = set()
+    for line in lines[:950]:
+        hdr = re.match(r'^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@', line)
+        if hdr:
+            old, new = int(hdr[1]), int(hdr[2])
+            hunk += 1
+            was_changed = False
+        elif not hunk or not line.startswith((' ', '+', '-', '\\')):
+            continue
+        added, removed = line.startswith('+'), line.startswith('-')
+        changed = added or removed
+        if changed:
+            if full:
+                if not was_changed:
+                    block += 1
+            else:
+                block = hunk
+        code = line if line.startswith('\\') else line[1:]
+        row = {'i': len(rows), 'text': line, 'code': code.replace('\t', '    '),
+               'old': old, 'new': new, 'block': block, 'hunk': hunk,
+               'changed': changed, 'blockStart': changed and block not in seen,
+               'pieces': [{'text': code.replace('\t', '    '), 'emphasis': False}]}
+        rows.append(row)
+        if changed:
+            seen.add(block)
+        if not hdr and not line.startswith('\\'):
+            if not added:
+                old += 1
+            if not removed:
+                new += 1
+        was_changed = changed
+    split_rows, i = [], 0
+    while i < len(rows):
+        r = rows[i]
+        if not r['changed']:
+            split_rows.append({'i': r['i'], 'text': r['text'], 'left': r, 'right': r})
+            i += 1
+            continue
+        group = []
+        while i < len(rows) and rows[i]['changed']:
+            group.append(rows[i])
+            i += 1
+        removed = [r for r in group if r['text'].startswith('-')]
+        added = [r for r in group if r['text'].startswith('+')]
+        for j in range(max(len(removed), len(added))):
+            left = removed[j] if j < len(removed) else None
+            right = added[j] if j < len(added) else None
+            # Word-level highlights only make sense when the run is a true
+            # replacement; positional pairing of unrelated lines would paint
+            # whole statements as if they were hunk changes.
+            if left is not None and right is not None and len(removed) == len(added):
+                highlight(left, right)
+            split_rows.append({'i': min(r['i'] for r in (left, right) if r is not None),
+                               'text': '', 'left': left, 'right': right})
+    return {'request': request, 'rows': rows, 'splitRows': split_rows,
+            'digest': hashlib.sha256(patch).hexdigest(), 'applicable': applicable,
+            'cut': len(patch) > 120000 or len(lines) >= 950,
+            'binary': b'Binary files ' in patch or b'GIT binary patch' in patch,
+            'error': ''}
+
+try:
+    if not repo or not path:
+        raise ValueError('Open a file to read its diff.')
+    os.chdir(repo)
+    patch = read_diff()
+    header, hunks = parts(patch)
+    applicable = can_apply(patch, header, hunks)
+    if operation == 'view':
+        print(json.dumps(view(patch, applicable), ensure_ascii=True))
+    elif operation == 'apply':
+        expected, number = sys.argv[3:5]
+        number = int(number)
+        if not applicable or not 1 <= number <= len(hunks):
+            raise ValueError('Hunk staging requires a complete, ordinary text diff in Concise mode with whitespace shown. Use whole-file staging for new, deleted, renamed or conflicted files.')
+        if hashlib.sha256(patch).hexdigest() != expected:
+            raise ValueError('This diff changed since it was displayed. Nothing was staged. Refresh and try again.')
+        selected = header + hunks[number - 1]
+        args = ['apply', '--cached', '--whitespace=nowarn']
+        if mode == 's':
+            args.append('--reverse')
+        git([*args, '--check', '-'], selected)
+        git([*args, '-'], selected)
+        print('Hunk unstaged. Working files kept.' if mode == 's' else 'Hunk staged. Working files kept.')
+    else:
+        raise ValueError('Unknown diff action.')
+except (OSError, ValueError, subprocess.TimeoutExpired) as error:
+    message = str(error)
+    if operation == 'view':
+        print(json.dumps({'request': request, 'rows': [], 'splitRows': [], 'raw': '',
+                          'applicable': False, 'error': message}))
+    else:
+        print('Error: ' + message)
+        sys.exit(1)
+"""
   let diffRequest = toJson([repo, dsel, dmode, hsel, diffFull, diffWhitespace])
+  let diffLandscape = (screenWidth ?? 0) > (screenHeight ?? 0)
+  let diffSideBySide = diffLandscape && diffSplit
 
   // ── what git says ──────────────────────────────────────────────────────────
   source repos = cmd('find $HOME -maxdepth 4 -type d -name .git 2>/dev/null | sed "s|/.git$||" | sort -u') every 10s
@@ -58,8 +222,7 @@ app "omagit" {
   source workNums = cmd("printf '%s\\n' ${sh(repo)}; cd ${sh(repo)} && { git -c core.quotePath=false diff --no-ext-diff --numstat; git ls-files --others --exclude-standard -z | while IFS= read -r -d '' f; do stat=$(git diff --no-ext-diff --numstat --no-index -- /dev/null \"$f\" 2>/dev/null); IFS=$'\\t' read -r added removed rest <<< \"$stat\"; [ -n \"$added\" ] && printf '%s\\t%s\\t%s\\n' \"$added\" \"$removed\" \"$f\"; done; }") every 10s timeout 20s
   source commitNums = cmd("printf '%s\\n' ${sh(toJson([repo, hsel]))}; [ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git -c core.quotePath=false show --format= --no-ext-diff --numstat ${sh(hsel)}") every 10s
   source cbody = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git log -1 --format='%b' ${sh(hsel)} 2>/dev/null") every 10s status
-  // Tag responses so a slow result can never appear under another file's title.
-  source dif = cmd("printf '%s\\n' ${sh(diffRequest)}; [ ${len(dsel)} -gt 1 ] && cd ${sh(repo)} && ${difCmd} 2>&1 | head -c 120001") every 5s status
+  source dif = cmd("python -c ${sh(diffTool)} view ${sh(diffRequest)}") every 5s json status timeout 20s
 
   let localHome = trim(home ?? "/root")
   let openPath = trim(folderPath) == "~" ? localHome : startsWith(trim(folderPath), "~/") ? localHome + sub(trim(folderPath), 1, len(trim(folderPath))) : trim(folderPath)
@@ -237,6 +400,39 @@ app "omagit" {
     }
   }
 
+  component DiffCode(row, side = "") {
+    let added = startsWith(row.text ?? "", "+")
+    let removed = startsWith(row.text ?? "", "-")
+    let note = startsWith(row.text ?? "", "\\")
+    let ink = added ? positiveInk : removed ? mix(red, foreground, 0.3) : foreground
+    if row == null {
+      Box { fill: width; height: 20; background: fieldFill }
+    } else {
+      Row {
+        fill: width
+        gap: 0
+        align: top
+        background: added ? alpha(green, 0.10) : removed ? alpha(red, 0.10) : background
+        Box { width: 3; height: 20; background: added ? positiveInk : removed ? red : hairline }
+        if side != "right" {
+          Text { text: added || note ? "" : "${row.old}"; width: 34; align: end; font: mono; fontSize: 9; color: secondaryInk; padding: [0, 3, 5, 3] }
+        }
+        if side != "left" {
+          Text { text: removed || note ? "" : "${row.new}"; width: 34; align: end; font: mono; fontSize: 9; color: secondaryInk; padding: [0, 3, 5, 3] }
+        }
+        Text { text: added ? "+" : removed ? "−" : " "; width: 16; font: mono; fontSize: 11; color: added ? positiveInk : red; padding: [2, 2, 0, 2] }
+        Text {
+          spans: row.code == "" ? [" "] : row.pieces.map(p => {text: p.text, color: p.emphasis ? foreground : ink, bold: p.emphasis})
+          weight: 1
+          font: mono
+          fontSize: 11
+          maxLines: diffWrap ? 100 : 1
+          padding: [0, 2, 10, 2]
+        }
+      }
+    }
+  }
+
   component FileMark(letter, tint) {
     let status = letter == "??" || letter == "?" ? "untracked" : letter == "A" || letter == "C" ? "added" : letter == "D" ? "deleted" : letter == "R" ? "renamed" : letter == "U" ? "conflict" : "modified"
     Icon { name: status; tint: tint; description: "File status: ${status}" }
@@ -399,28 +595,22 @@ app "omagit" {
     : outRaw
   let showOut = outMsg != "" && now != null && outAt > 0 && now - outAt < 90
 
-  // Bound the OWL list budget explicitly; never present a partial diff as complete.
-  let diffResponse = split(dif == null ? "" : (dif.out ?? ""), "\n")
-  let diffReady = dif != null && diffResponse[0] == diffRequest
-  let diffRaw = diffReady ? join(drop(diffResponse, 1), "\n") : ""
-  let diffLines = split(diffRaw, "\n")
-  let diffCut = len(diffRaw) > 120000 || len(diffLines) >= 950
-  let diffInput = diffLines.take(950).filter(l => startsWith(l, "@@ ") || startsWith(l, " ") || (startsWith(l, "+") && !startsWith(l, "+++ ")) || (startsWith(l, "-") && !startsWith(l, "--- ")) || startsWith(l, "\\"))
-  let diffRows = scan(diffInput, (p, l, i) => {
-    text: l,
-    i: i,
-    old: startsWith(l, "@@ ") ? num(split(sub(words(l)[1], 1, len(words(l)[1])), ",")[0], 0) : p.old + (startsWith(l, " ") || startsWith(l, "-") ? 1 : 0),
-    new: startsWith(l, "@@ ") ? num(split(sub(words(l)[2], 1, len(words(l)[2])), ",")[0], 0) : p.new + (startsWith(l, " ") || startsWith(l, "+") ? 1 : 0),
-    changed: startsWith(l, "+") || startsWith(l, "-"),
-    block: p.block + ((startsWith(l, "+") || startsWith(l, "-")) && !p.changed ? 1 : 0)
-  }, {old: 0, new: 0, changed: false, block: 0})
-  let diffBlocks = diffRows.filter(r => r.changed && (r.i == 0 || !diffRows[r.i - 1].changed))
+  // Responses carry their request so stale data cannot appear under a new file title.
+  let diffReady = dif != null && dif.ok && dif.out.request == diffRequest
+  let diffData = diffReady ? dif.out : null
+  let diffCut = diffData.cut ?? false
+  let diffRows = diffData.rows ?? []
+  let diffBlocks = diffRows.filter(r => r.blockStart)
   let diffIndex = min(diffFocus, len(diffBlocks))
   let diffSelected = diffBlocks[diffIndex - 1]
   let diffEnd = last(diffRows.filter(r => r.changed && r.block == diffIndex))
   let diffVisible = diffIndex == 0 ? diffRows : diffRows.filter(r => r.i >= max(0, diffSelected.i - 3) && r.i <= diffEnd.i + 3)
-  let diffViewKey = toJson([diffRequest, diffIndex, diffWrap])
-  on diffRequest { diffLimit = 160; diffFocus = 0 }
+  let diffSplitRows = diffData.splitRows ?? []
+  let diffVisibleSplit = diffIndex == 0 ? diffSplitRows : diffSplitRows.filter(r => r.i >= max(0, diffSelected.i - 3) && r.i <= diffEnd.i + 3)
+  let diffDisplay = diffSideBySide ? diffVisibleSplit : diffVisible
+  let diffViewKey = toJson([diffRequest, diffIndex, diffWrap, diffSideBySide])
+  on diffRequest { diffLimit = 160; diffFocus = 0; hunkResult = null }
+  on hunkResult { if value != null && value != "" { hunkBusy = false } }
   // Keep selection on refresh, but clamp it if edits removed a change block.
   on diffBlocks { if diffReady { diffFocus = min(diffFocus, len(diffBlocks)) } }
 
@@ -542,6 +732,12 @@ app "omagit" {
     } else if verb == "track" {
       outAt = now
       out = run("cd ${sh(repo)} && git checkout --track ${sh(arg)} 2>&1 | tail -n 3")
+    } else if verb == "hunk" {
+      if diffReady && diffData.applicable && !hunkBusy {
+        hunkBusy = true
+        hunkResult = null
+        hunkResult = run("python -c ${sh(diffTool)} apply ${sh(diffRequest)} ${sh(diffData.digest)} ${sh(arg)} 2>&1")
+      }
     } else if verb == "stage" {
       outAt = now
       out = run("cd ${sh(repo)} && git add -- ${sh(arg)} 2>&1 | tail -n 2")
@@ -933,7 +1129,7 @@ app "omagit" {
           Row {
             gap: 10
             align: center
-            padding: [16, 16, 16, 16]
+            padding: diffLandscape ? [12, 6, 12, 6] : [16, 16, 16, 16]
             wrap: true
             Column {
               gap: 4
@@ -955,19 +1151,23 @@ app "omagit" {
           Column {
             gap: 10
             padding: [14, 0, 14, 12]
-            Row {
+            Flow {
               gap: 8
-              wrap: true
+              align: center
               Button { text: "Concise"; onTap: diffFull = false; color: !diffFull ? accent : secondaryInk }
               Button { text: "Full file"; onTap: diffFull = true; color: diffFull ? accent : secondaryInk }
-              Spacer { weight: 1 }
-              Text { text: "+${len(diffRows.filter(r => startsWith(r.text, "+")))} / −${len(diffRows.filter(r => startsWith(r.text, "-")))}${diffCut ? " (partial)" : ""}"; font: mono; fontSize: 11; color: secondaryInk }
-            }
-            Row {
-              gap: 8
-              wrap: true
               Button { text: diffWhitespace ? "Whitespace: ignored" : "Whitespace: shown"; onTap: diffWhitespace = !diffWhitespace }
               Button { text: diffWrap ? "Wrap: on" : "Wrap: off"; onTap: diffWrap = !diffWrap }
+              if diffLandscape {
+                Button { text: diffSideBySide ? "Side-by-side" : "Inline"; onTap: diffSplit = !diffSplit }
+              }
+              Text { text: "+${len(diffRows.filter(r => startsWith(r.text, "+")))} / −${len(diffRows.filter(r => startsWith(r.text, "-")))}${diffCut ? " (partial)" : ""}"; font: mono; fontSize: 11; color: secondaryInk }
+            }
+            if dmode != "c" && len(diffBlocks) > 0 && !diffData.applicable {
+              Text { text: diffFull || diffWhitespace ? "Hunk staging: use Concise with whitespace shown." : "Use whole-file staging for new, deleted, renamed, binary, conflicted or large files."; fontSize: 10; color: secondaryInk }
+            }
+            if hunkBusy || hunkResult != null {
+              Text { text: hunkBusy ? "Updating staging area…" : hunkResult; fontSize: 11; color: startsWith(hunkResult ?? "", "Error:") ? red : positiveInk; maxLines: 4 }
             }
             if len(diffBlocks) > 0 {
               Row {
@@ -977,6 +1177,9 @@ app "omagit" {
                 Text { text: diffIndex == 0 ? "${len(diffBlocks)} change blocks" : "Change ${diffIndex} of ${len(diffBlocks)}"; fontSize: 11; color: secondaryInk; weight: 1 }
                 Button { text: "›"; color: diffIndex == len(diffBlocks) ? secondaryInk : accent; onTap: { diffFocus = min(len(diffBlocks), diffIndex + 1); diffLimit = 160 } }
                 if diffIndex > 0 { Button { text: "All lines"; onTap: { diffFocus = 0; diffLimit = 160 } } }
+              }
+              if diffIndex > 0 && diffData.applicable {
+                Action { tag: "hunk:" + diffSelected.hunk; label: dmode == "s" ? "Unstage hunk" : "Stage hunk"; glyph: dmode == "s" ? "unstage" : "stage"; enabled: !hunkBusy }
               }
             }
           }
@@ -989,38 +1192,48 @@ app "omagit" {
             weight: 1
             gap: 0
             if !diffReady {
-              Text { text: "Reading diff…"; padding: 16; color: secondaryInk }
+              Text { text: dif != null && !dif.ok ? "Couldn't read diff: ${dif.err ?? 'command failed'}" : "Reading diff…"; padding: 16; color: secondaryInk }
             } else if len(diffRows) == 0 {
               Column {
                 gap: 8
                 padding: 16
-                Text { text: dif.ok == false && trim(dif.err ?? "") != "" ? "Couldn't read this diff" : contains(diffRaw, "Binary files") ? "Binary file changed" : "No text changes"; fontSize: 16; fontWeight: 600 }
-                Text { text: trim(dif.err ?? "") != "" ? trim(dif.err) : diffWhitespace ? "Whitespace-only changes are hidden. Turn off Ignore whitespace to see them." : "The file is unchanged, empty, binary, or only its name or permissions changed."; fontSize: 12; color: secondaryInk }
+                Text { text: diffData.error != "" ? "Couldn't read this diff" : diffData.binary ? "Binary file changed" : "No text changes"; fontSize: 16; fontWeight: 600 }
+                Text { text: diffData.error != "" ? diffData.error : diffWhitespace ? "Whitespace-only changes are hidden. Turn off Ignore whitespace to see them." : "The file is unchanged, empty, binary, or only its name or permissions changed."; fontSize: 12; color: secondaryInk }
               }
             }
-            for r in diffVisible.take(diffLimit) key r.i {
-              let l = r.text
-              let add = startsWith(l, "+")
-              let del = startsWith(l, "-")
-              let hdr = startsWith(l, "@@ ")
-              let note = startsWith(l, "\\")
-              if hdr {
-                Text { text: l; font: mono; fontSize: 10; color: accent; background: alpha(accent, 0.08); padding: [12, 10, 12, 10] }
-              } else {
+            if diffSideBySide {
+              Row {
+                padding: [12, 8]
+                Text { text: "Before"; weight: 1; fontSize: 10; color: secondaryInk }
+                Text { text: "After"; weight: 1; fontSize: 10; color: secondaryInk }
+              }
+            }
+            for r in diffDisplay.take(diffLimit) key r.i {
+              if startsWith(r.text, "@@ ") {
+                Row {
+                  gap: 8
+                  align: center
+                  padding: [12, 8]
+                  background: alpha(accent, 0.08)
+                  Text { text: r.text; weight: 1; font: mono; fontSize: 10; color: accent; maxLines: 2 }
+                  if diffData.applicable {
+                    Action { tag: "hunk:" + (diffSideBySide ? r.left.hunk : r.hunk); label: dmode == "s" ? "Unstage hunk" : "Stage hunk"; glyph: dmode == "s" ? "unstage" : "stage"; enabled: !hunkBusy }
+                  }
+                }
+              } else if diffSideBySide {
                 Row {
                   gap: 0
                   align: top
-                  background: add ? alpha(green, 0.10) : del ? alpha(red, 0.10) : background
-                  Box { width: 3; height: 20; background: add ? positiveInk : del ? red : hairline }
-                  Text { text: add || note ? "" : "${r.old - 1}"; width: 34; align: end; font: mono; fontSize: 9; color: secondaryInk; padding: [0, 3, 5, 3] }
-                  Text { text: del || note ? "" : "${r.new - 1}"; width: 34; align: end; font: mono; fontSize: 9; color: secondaryInk; padding: [0, 3, 5, 3] }
-                  Text { text: add ? "+" : del ? "−" : " "; width: 16; font: mono; fontSize: 11; color: add ? positiveInk : red; padding: [2, 2, 0, 2] }
-                  Text { text: note ? l : sub(l, 1, len(l)) == "" ? " " : replace(sub(l, 1, len(l)), "\t", "    "); weight: 1; font: mono; fontSize: 11; color: add ? positiveInk : del ? mix(red, foreground, 0.3) : foreground; maxLines: diffWrap ? 100 : 1; padding: [0, 2, 10, 2] }
+                  Column { weight: 1; gap: 0; DiffCode { row: r.left; side: "left" } }
+                  Box { width: 1; height: 20; background: hairline }
+                  Column { weight: 1; gap: 0; DiffCode { row: r.right; side: "right" } }
                 }
+              } else {
+                DiffCode { row: r }
               }
             }
-            if len(diffVisible) > diffLimit {
-              Button { text: "Load 160 more lines (${len(diffVisible) - diffLimit} remaining)"; onTap: diffLimit = diffLimit + 160 }
+            if len(diffDisplay) > diffLimit {
+              Button { text: "Load 160 more lines (${len(diffDisplay) - diffLimit} remaining)"; onTap: diffLimit = diffLimit + 160 }
             }
             if !diffWrap { Text { text: "Long lines are clipped. Turn Wrap on to read them in full."; fontSize: 11; color: secondaryInk; padding: 12 } }
             if diffCut {
