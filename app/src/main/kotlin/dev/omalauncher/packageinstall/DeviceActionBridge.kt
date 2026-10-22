@@ -138,15 +138,18 @@ class DeviceActionBridge(
             ?: error("first package has no launcher activity")
         val second = context.packageManager.getLaunchIntentForPackage(secondPackage)
             ?: error("second package has no launcher activity")
-        val flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
-        val adjacent = second.addFlags(flags or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
-        require(context.packageManager.resolveActivity(first, PackageManager.MATCH_DEFAULT_ONLY) != null) {
+        // Android's documented adjacent-launch path is NEW_TASK plus
+        // LAUNCH_ADJACENT. MULTIPLE_TASK creates independent task roots and
+        // can prevent the system from pairing the two activities on OEM builds.
+        val firstIntent = first.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val adjacent = second.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+        require(context.packageManager.resolveActivity(firstIntent, PackageManager.MATCH_DEFAULT_ONLY) != null) {
             "no activity can launch the first package"
         }
         require(context.packageManager.resolveActivity(adjacent, PackageManager.MATCH_DEFAULT_ONLY) != null) {
             "no activity can launch the second package"
         }
-        context.startActivity(first.addFlags(flags))
+        context.startActivity(firstIntent)
         context.startActivity(adjacent)
     }
 
