@@ -440,9 +440,11 @@ for f in libproot.so libproot-loader.so libtalloc.so libandroid-shmem.so libwlbr
 done
 ```
 
-The current phone image also ships several Android SDK host tools as
-x86-64 ELF binaries. Omalauncher needs `aidl`, `aapt2`, CMake and the NDK
-compiler, so check their architecture before Gradle:
+Phone images may ship Android SDK host tools for a different architecture.
+Omalauncher needs `aidl`, `aapt2`, CMake and the NDK compiler, so check their
+architecture before Gradle. Read `~/.omalauncher/device-profile.md` for local
+device facts, but do not copy those facts into source or assume another phone
+has the same SDK paths:
 
 ```sh
 uname -m
@@ -450,10 +452,10 @@ file "${'$'}ANDROID_HOME"/build-tools/*/aidl "${'$'}ANDROID_HOME"/build-tools/*/
   "${'$'}ANDROID_HOME"/ndk/*/toolchains/llvm/prebuilt/*/bin/clang
 ```
 
-Every executable used by the build must be ARM64/aarch64. A fresh clone on
-the current phone fails first in `scripts/fetch-proot.sh` and then at
-`:app:compileDebugAidl` because those host tools are x86-64; the custom
-package suffix does not change that limitation.
+Every executable used by the build must match `uname -m`. On an ARM64 guest,
+a fresh clone fails first in `scripts/fetch-proot.sh` and may then fail at
+`:app:compileDebugAidl` when those host tools are x86-64; the custom package
+suffix does not change that limitation.
 
 Do not run `scripts/fetch-proot.sh` as a repair inside this ARM64 proot guest.
 That script invokes the Android NDK's `linux-x86_64` host compiler, which

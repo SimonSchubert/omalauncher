@@ -132,9 +132,10 @@ The generated `app/src/main/jniLibs/arm64-v8a/` artifacts must already be
 seeded for a phone-local source build. `scripts/fetch-proot.sh` uses the NDK's
 x86_64 host compiler and cannot run inside the ARM64 proot guest; seed those
 artifacts or build on the host instead of installing x86 emulation there. The
-phone also needs ARM64 `aidl`, `aapt2`, CMake and NDK host tools; the current
-image's x86_64 `aidl` fails at `:app:compileDebugAidl`, so the host build is the
-supported fallback until a complete ARM-native Android toolchain is provided.
+phone also needs `aidl`, `aapt2`, CMake and NDK host tools matching its guest
+architecture; an ARM64 guest with x86_64 `aidl` fails at
+`:app:compileDebugAidl`. Inspect the local device profile and use the host
+build fallback until a complete matching Android toolchain is provided.
 The repository also caps Gradle at 2 GiB, the Kotlin daemon at 1 GiB, and one
 worker so phone-local builds do not consume the whole device.
 
