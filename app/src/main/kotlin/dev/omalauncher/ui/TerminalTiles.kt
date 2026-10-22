@@ -26,7 +26,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -179,7 +178,8 @@ class TerminalTiles(
     ) {
         val font = term.fontSize?.let { " -o " + shellQuote("main.font=${runtime.terminalFont.family}:size=${TerminalFont.format(it)}") }.orEmpty()
         val command = term.command?.let { " -e bash -c " + shellQuote(it) }.orEmpty()
-        runtime.launch("foot --app-id=${term.appId}$font$command", onExit)
+        // The tile's glass is the background: foot's own shows through, as cells colored by an app don't.
+        runtime.launch("foot --app-id=${term.appId} -o colors-dark.alpha=0$font$command", onExit)
     }
 
     internal fun close(window: XdgToplevel) = wm.close(window)
@@ -293,14 +293,10 @@ fun TerminalView(
     val window = term.window
     val active = tiles.active === term
     LaunchedEffect(term) { term.autoStart() }
-    val background = Palette.background.toArgb()
     Box(modifier.onGloballyPositioned { term.bounds = it.boundsInWindow().translate(0f, tiles.lift) }) {
         AndroidView(
             factory = { EmbeddedWindowView(it, tiles) },
-            update = {
-                it.background = background
-                it.window = window
-            },
+            update = { it.window = window },
             onRelease = { it.window = null },
             modifier = Modifier.fillMaxSize(),
         )
@@ -349,12 +345,6 @@ private class EmbeddedWindowView(
     private var surfaceHeight = 0
     private var renderer: WindowRenderer? = null
 
-    var background = 0
-        set(value) {
-            field = value
-            renderer?.background = value
-        }
-
     var window: XdgToplevel? = null
         set(value) {
             if (value === field) return
@@ -365,13 +355,14 @@ private class EmbeddedWindowView(
 
     init {
         surfaceTextureListener = this
-        isOpaque = true
+        // The tile's glass shows through where foot draws its default background, at widgets.opacity.
+        isOpaque = false
     }
 
     private fun bind() {
         val w = window ?: return
         if (renderer != null || !isAttachedToWindow) return
-        val r = WindowRenderer(tiles.server, w).also { it.background = background }
+        val r = WindowRenderer(tiles.server, w, translucent = true).also { it.background = android.graphics.Color.TRANSPARENT }
         renderer = r
         showing.getOrPut(w) { ArrayList() } += r
         w.renderer = r

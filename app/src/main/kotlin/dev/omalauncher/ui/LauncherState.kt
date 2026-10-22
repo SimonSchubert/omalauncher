@@ -118,9 +118,14 @@ class LauncherState {
     fun closeNow() =
         scope.launch {
             drawer.snapTo(0f)
-            // The swipe-down panel too: opening an app from it, or leaving the launcher, leaves it.
-            pull.snapTo(0f)
-            pulled = null
+            // The swipe-down panel stays where it was going, so coming back from an app opened from it finds it open;
+            // one on its way up, or only part way down, goes.
+            if (pulled != null && pull.targetValue > 0.5f) {
+                pull.snapTo(1f)
+            } else {
+                pull.snapTo(0f)
+                pulled = null
+            }
         }
 
     fun toggle() = if (drawer.targetValue > 0.5f) close() else open()

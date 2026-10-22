@@ -108,6 +108,7 @@ internal fun BoxWithConstraintsScope.tileIconSize(
 internal const val PausedAlpha = 0.4f
 
 /** An app tile's frame, or none for bare icons unless [focused]. */
+@Composable
 internal fun Modifier.tileFrame(focused: Boolean) =
     when {
         !LauncherStyle.bareAppIcons -> tile(focused)

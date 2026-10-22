@@ -58,6 +58,7 @@ privspace=~/.cache/private-space.json
 speedtest=~/.local/share/omalauncher/speedtest/status.json
 bridge=~/.local/share/omalauncher/share-bridge/status.json
 nostr=~/.cache/nostr-inbox/009ce97e22b376c406740f9b842f780ca2e92c2093a5f11d12f43f6150d8e6a1
+omagit=~/projects/weather-cli
 
 # Moves a real file aside before the demo writes its own; "off" puts it back.
 aside() { [ -f "$1" ] && [ ! -f "$1.before-demo" ] && mv "$1" "$1.before-demo"; mkdir -p "${1%/*}"; }
@@ -75,6 +76,7 @@ if [ "${1:-}" = off ]; then
   for d in $(cat "$demo/cleaner-dirs" 2>/dev/null); do rm -rf "$d"; done
   rm -rf ~/Decks; [ -d ~/Decks.before-demo ] && mv ~/Decks.before-demo ~/Decks
   rm -rf "$layout"; [ -d "$layout.before-demo" ] && mv "$layout.before-demo" "$layout"
+  rm -rf "$omagit"; [ -d "$omagit.before-demo" ] && mv "$omagit.before-demo" "$omagit"
   rm -rf "$demo" /usr/local/bin/gh /usr/local/bin/curl /usr/local/bin/python3 /usr/local/bin/pgrep \
     /usr/local/bin/python /usr/local/bin/claude /usr/local/bin/ssh /usr/local/bin/agy /usr/local/bin/ip \
     /usr/local/bin/getent /usr/local/bin/fastfetch /usr/local/bin/yt-dlp /usr/local/bin/ffmpeg \
@@ -580,6 +582,56 @@ aside "$layoutlog"
 t=$(( $(date +%s) - 7200 ))
 printf '%s saved: %s\n%s uploaded to demo/omalauncher-layout\n' "$(date -d "@$t" +%H:%M:%S)" "$(git -C "$layout" log -1 --format=%s)" \
   "$(date -d "@$((t + 6))" +%H:%M:%S)" > "$layoutlog"
+
+# shafiqimtiaz's omagit: a small project with a week of history, a feature branch merged back,
+# another still open, two commits not pushed yet, a stash, and work staged, changed and new.
+# scripts/store-previews.sh opens it from the app's screens.txt.
+[ -d "$omagit" ] && [ ! -d "$omagit.before-demo" ] && mv "$omagit" "$omagit.before-demo"
+rm -rf "$omagit"
+mkdir -p "$omagit/src"
+(
+  cd "$omagit" && git init -q -b main && git config user.name "Mara Jensen" && git config user.email mara@localhost
+  commit() {
+    local t=$(( $(date +%s) - $1 * 3600 ))
+    git add -A
+    GIT_AUTHOR_DATE="@$t" GIT_COMMITTER_DATE="@$t" git commit -q -m "$2"
+  }
+  printf '# weather-cli\n\nThe forecast in your terminal.\n' > README.md
+  printf 'import sys\n\nfrom src.forecast import today\n\nprint(today(sys.argv[1]))\n' > main.py
+  printf 'def today(city):\n    return f"{city}: 14°C, light rain"\n' > src/forecast.py
+  commit 170 "First version: today's forecast for a city"
+  printf 'requests==2.32.3\n' > requirements.txt
+  printf 'import requests\n\nAPI = "https://api.open-meteo.com/v1/forecast"\n\ndef today(city):\n    r = requests.get(API, params={"city": city}, timeout=10)\n    return r.json()["current"]\n' > src/forecast.py
+  commit 150 "Fetch the forecast from Open-Meteo"
+  git checkout -q -b feature/hourly
+  printf '\ndef hourly(city, hours=12):\n    r = requests.get(API, params={"city": city, "hourly": "temperature_2m"}, timeout=10)\n    return r.json()["hourly"]["temperature_2m"][:hours]\n' >> src/forecast.py
+  commit 120 "Hourly temperatures for the next 12 hours"
+  printf 'import sys\n\nfrom src.forecast import today, hourly\n\nprint(today(sys.argv[1]))\nprint(hourly(sys.argv[1]))\n' > main.py
+  commit 110 "Print the hourly forecast under today's"
+  git checkout -q main
+  printf '# weather-cli\n\nThe forecast in your terminal, from Open-Meteo.\n\n    python main.py Berlin\n' > README.md
+  commit 100 "README: how to run it"
+  t=$(( $(date +%s) - 90 * 3600 ))
+  GIT_AUTHOR_DATE="@$t" GIT_COMMITTER_DATE="@$t" git merge -q --no-ff feature/hourly -m "Merge branch 'feature/hourly'"
+  git remote add origin https://github.com/demo/weather-cli.git
+  git update-ref refs/remotes/origin/main HEAD
+  git update-ref refs/remotes/origin/feature/hourly feature/hourly
+  git branch -q --set-upstream-to=origin/main
+  git checkout -q -b fix/units
+  printf 'UNITS = {"metric": "°C", "imperial": "°F"}\n' > src/units.py
+  commit 60 "Units: Celsius or Fahrenheit"
+  git checkout -q main
+  printf 'def colour(temp):\n    return "blue" if temp < 5 else "yellow" if temp < 25 else "red"\n' > src/colour.py
+  commit 30 "Colour temperatures by how warm they are"
+  printf '.venv/\n__pycache__/\n' > .gitignore
+  commit 5 "Ignore the virtualenv and caches"
+  printf '\ndef wind(city):\n    return requests.get(API, params={"city": city, "current": "wind_speed_10m"}, timeout=10).json()\n' >> src/forecast.py
+  git stash push -q -m "wind speed, half done"
+  printf '# weather-cli\n\nThe forecast in your terminal, from Open-Meteo.\n\n    python main.py Berlin\n    python main.py Berlin --hourly\n' > README.md
+  git add README.md
+  printf 'import requests\n\nAPI = "https://api.open-meteo.com/v1/forecast"\n\ndef today(city, units="metric"):\n    r = requests.get(API, params={"city": city, "temperature_unit": units}, timeout=10)\n    r.raise_for_status()\n    return r.json()["current"]\n\ndef hourly(city, hours=12):\n    r = requests.get(API, params={"city": city, "hourly": "temperature_2m"}, timeout=10)\n    return r.json()["hourly"]["temperature_2m"][:hours]\n' > src/forecast.py
+  printf 'def alert(temp):\n    if temp > 30:\n        return "Heat warning"\n' > src/alerts.py
+)
 
 # radio: the station scripts/store-previews.sh seeds, playing a track. The tile checks the player
 # with `kill -0 $(cat pid)`, and pid 0 is the checking shell's own process group, so it reads

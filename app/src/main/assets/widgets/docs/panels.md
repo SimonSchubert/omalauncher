@@ -3,8 +3,9 @@
 Part of the widget docs: README.md, one folder up, comes first, and paths here are from the widgets folder.
 
 A panel is a file of its own that a swipe on home opens: swiping up opens the app drawer, above the prompt bar;
-swiping down brings one from the top. The app drawer is a panel too, `drawer.owl`, and the launcher has no other:
-edit it to change the drawer, or read it to see how a whole drawer is put together. Which panel each swipe opens
+swiping down brings one from the top. The app drawer is a panel too, `drawer.owl`: edit it to change the drawer, or
+read it to see how a whole drawer is put together. The launcher ships one more, `controls.owl`, for swiping down: the
+phone's switches, the volume, what's playing, the next alarm and the notifications. Which panel each swipe opens
 is picked in settings › gestures, or in style.toml as the panel's file name (see `defaults.toml`):
 
 ```toml
@@ -18,6 +19,11 @@ launcher ships it, which it keeps that way. So a drawer that's removed or stops 
 their apps (a panel picked for swiping down that's broken opens nothing). Home's banner says which, and settings list it
 with "(has errors)". Compare `drawer.owl` with `.stock-drawer.owl` to see what changed in the stock drawer since. With
 nothing on swipe up, tapping the bar still opens the drawer.
+
+Behind a panel the launcher draws the theme's background, as opaque as the panel's `opacity` says: from 0, home shows
+through, to 1, solid; without one 0.97, so home barely shows (owl 13). `drawer.owl` and `controls.owl` both have 0.97. Leave
+a panel's outer node without a `background` of its own, or it covers home whatever `opacity` is; a background on the
+boxes inside it is fine.
 
 ```owl
 panel "my drawer" {
@@ -52,5 +58,5 @@ panel opened by swiping up has the bar: in one from the top, `query` stays "" an
 Shift+Tab go to `onKey` with `value` set to `up`, `down`, `tab` or `shift-tab`, so a panel can move its own
 highlight (drawer.owl keeps a `pick`). Up and Down come only while what's typed is one line; in more, they move
 between its lines. Without `onKey`, the keys stay with the bar and do what they do in any text field. `open(...)` and `appAction(...)` leave the
-panel as opening an app from the drawer does, and `close()` slides it away. Besides `enter`, a panel has no
-properties, title or icon; like an app's, its nodes are the screen's. Give a long list `lazy: true`.
+panel as opening an app from the drawer does, and `close()` slides it away. Besides `enter` and
+`opacity`, a panel has no properties, title or icon; like an app's, its nodes are the screen's. Give a long list `lazy: true`.

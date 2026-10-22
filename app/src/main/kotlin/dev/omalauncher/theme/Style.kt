@@ -145,7 +145,7 @@ class Style(
     fun changed(other: Style) = StyleFile.ALL.filter { this[it] != other[it] }.map { it.key }.toSet()
 
     companion object {
-        /** How much tiles and the system bars' bands cover the wallpaper. */
+        /** How much tiles and the system bars' bands cover the wallpaper, by default. */
         const val GLASS = 0.88
 
         val THEME = Setting.Name("theme", "The Omarchy theme, by its directory name in ~/.local/share/omarchy/themes or ~/.config/omarchy/themes (yours win).")
@@ -163,6 +163,17 @@ class Style(
 
         val GAPS_IN = Setting.Number("widgets.gaps-in", 6.0, 0.0..24.0, "Space in dp between two of home's widgets (all of it, unlike Hyprland's gaps_in, which each window has on its side).")
         val GAPS_OUT = Setting.Number("widgets.gaps-out", 6.0, 0.0..48.0, "Space in dp from home's widgets, the strip and the prompt bar to the screen's edges.")
+        val TILE_OPACITY =
+            Setting.Number(
+                "widgets.opacity",
+                GLASS,
+                0.0..1.0,
+                "How much widgets, terminal widgets among them, the prompt bar and the rails cover the wallpaper: 0 clear, 1 solid. The system bars' bands have their own.",
+            )
+        val TILE_FROST = Setting.Flag("widgets.frost", false, "The wallpaper behind widgets, the prompt bar and the rails blurred, like frosted glass, under widgets.opacity's tint.")
+
+        /** How much widgets.frost blurs, in dp: owl's frost: 24, as its examples use. */
+        const val TILE_FROST_DP = 24.0
         val TILE_BORDER_WIDTH = Setting.Number("widgets.border-width", 2.0, 0.0..8.0, "How thick widgets' outlines are, in dp. 0 draws none, but the focused one's.")
         val TILE_BORDER = Setting.Color("widgets.border", "The outline of widgets, the prompt bar and the rails: \"theme\" is the theme's border color.")
         val TILE_BORDER_FOCUSED = Setting.Color("widgets.border-focused", "The outline of the widget in use or being arranged: \"theme\" is the theme's accent.")
@@ -210,7 +221,7 @@ class Style(
     ) {
         val framed = Setting.Flag("$name.framed", false, "$what on a band of the tiles' glass; false leaves the bare wallpaper.")
         val background = Setting.Color("$name.background", "The band's color: \"theme\" is the theme's background, like the tiles.")
-        val opacity = Setting.Number("$name.opacity", GLASS, 0.0..1.0, "How much the band covers the wallpaper: ${Toml.format(GLASS)} like the tiles, 1 solid.")
+        val opacity = Setting.Number("$name.opacity", GLASS, 0.0..1.0, "How much the band covers the wallpaper: ${Toml.format(GLASS)} like the tiles by default (widgets.opacity), 1 solid.")
         val border = Setting.Color("$name.border", "The line on the band's side facing the widgets: \"theme\" follows widgets.border.", noneAllowed = true)
         val borderWidth = Setting.Number("$name.border-width", 2.0, 0.0..8.0, "How thick that line is, in dp; 0 draws none.")
         val all = listOf(framed, background, opacity, border, borderWidth)
@@ -238,7 +249,7 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, KEYBAR_GAPS_OUT, KEYBAR_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
                 listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, SWIPE_UP, SWIPE_DOWN)
         }

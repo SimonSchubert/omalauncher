@@ -105,6 +105,9 @@ class Media(
 
     fun art(src: String): Bitmap? = art?.takeIf { it.first == src }?.second
 
+    /** The app [value] shows, for Android's output switcher to move its sound; null without one. */
+    fun playingPackage(): String? = controller()?.packageName
+
     /** The session to show and control: the one playing, else the most recent. */
     private fun controller(): MediaController? {
         if (!granted) return null

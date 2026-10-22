@@ -44,7 +44,8 @@ face "morning" {
   (`if screenInset < 120 { ... }`) to make room. The face itself stays put, under the status bar and the keyboard.
 - **Looks.** There's no tile frame and no background: it draws straight on the wallpaper. Where text needs
   one to be readable, give the face `background: alpha(background, 0.7)` or a gradient (owl 10), or just the
-  nodes that hold it, which can be frosted glass (`frost`, owl 10).
+  nodes that hold it, which can be frosted glass (`frost`, owl 10). To look like home's tiles and follow the
+  user's widget opacity and frosted glass, give them `background: alpha(background, tileOpacity); frost: tileFrost` (owl 13).
   `padding` (12 by default) is around everything, as on a tile.
 - **Size.** `cols` and `rows` are the whole grid (6 or so by 12), and `tileWidth` and `tileHeight` the
   screen's size in dp: lay it out by those, since phones differ. It takes no `size` or `minSize`.

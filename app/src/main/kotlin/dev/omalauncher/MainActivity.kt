@@ -107,6 +107,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        away = false
         runtime.wm.focus(null)
         removeStaleWindowTasks()
         // Made the default home app (or no longer it) while away: only then does Android show us pinned shortcuts.
@@ -126,10 +127,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Whether the launcher was out of sight since it was last in front: Home then only brings it back. */
+    private var away = false
+
     /** Pressing Home while already home closes the menu, like other launchers. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         state.close()
+        // The swipe-down panel only for a Home pressed on home: coming back from an app opened from it keeps it.
+        if (!away) state.closePull()
         state.closeScreens()
         runtime.widgets.openScreen = null
         state.editing = null
@@ -155,6 +161,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        away = true
         state.closeNow()
         // An app was just opened from home: it moves to the front of the strip now, out of sight.
         runtime.usage.settle()

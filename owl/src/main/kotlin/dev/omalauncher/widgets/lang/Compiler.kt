@@ -24,7 +24,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 12
+        const val LEVEL = 13
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -491,7 +491,9 @@ class Compiler private constructor(
         triggers: List<Trigger>,
     ): Program {
         since(PANEL_FILE, 0)
-        body.props.firstOrNull { it.name != "enter" }?.let { fail("a panel only takes enter (what the prompt bar says Enter does); the launcher frames it, and gesture settings pick which swipe opens it", it.pos) }
+        body.props.firstOrNull { it.name != "enter" && it.name != "opacity" }?.let {
+            fail("a panel only takes enter (what the prompt bar says Enter does) and opacity (how much it covers home); the launcher frames it, and gesture settings pick which swipe opens it", it.pos)
+        }
         body.handlers.firstOrNull { it.name != "onSubmit" && it.name != "onKey" }?.let {
             fail("handlers go on the nodes inside a panel; only onSubmit (Enter in the prompt bar) and onKey (its arrow and Tab keys) go at its top", it.pos)
         }
@@ -506,6 +508,14 @@ class Compiler private constructor(
         val onKey = body.handlers.firstOrNull { it.name == "onKey" }?.let { since("onKey", it.pos); handler(it, root) }
         // Before the level check, which counts what it uses.
         val enter = body.props.firstOrNull { it.name == "enter" }?.let { ex(it.value, root) }
+        val opacity =
+            body.props.firstOrNull { it.name == "opacity" }?.let {
+                since(PANEL_OPACITY, it.pos)
+                val e = ex(it.value, root)
+                val n = e.const?.let { c -> (c as? Num)?.v ?: Double.NaN }
+                if (n != null && n !in 0.0..1.0) fail("a panel's opacity is from 0 (home shows through) to 1 (solid)", it.pos)
+                e
+            }
         checkLevel(level)
         return Program(
             name = ast.name ?: "panel",
@@ -516,6 +526,7 @@ class Compiler private constructor(
             onSubmit = onSubmit,
             onKey = onKey,
             enter = enter,
+            opacity = opacity,
             triggers = triggers,
             commands = commands.toList(),
             secretHosts = secretHosts.mapValues { it.value.sorted() },
@@ -980,6 +991,12 @@ class Compiler private constructor(
             if (p.name == "reverse" && body.props.none { it.name == "lazy" }) fail("reverse lists a lazy ${n.type} from its end: add lazy: true", p.pos)
             if (p.name == "background" && gradient(p.value)) since(GRADIENT_BACKGROUND, p.pos)
             if (p.name == "frost") since("frost", p.pos)
+            if (p.name == "drag") {
+                since("drag", p.pos)
+                val axes = ENUMS.getValue("drag")
+                if ((p.value as? Expr.Name)?.name !in axes) fail("drag is ${axes.joinToString(" or ")}", p.pos)
+                if (body.handlers.none { it.name == "onDrag" }) fail("drag picks the direction onDrag follows: add onDrag", p.pos)
+            }
             if (p.name == "repeats") {
                 since("repeats", p.pos)
                 if (body.handlers.none { it.name == "onPress" }) fail("repeats runs onPress again while the finger stays down: add onPress", p.pos)
@@ -992,6 +1009,7 @@ class Compiler private constructor(
             body.handlers.associate { h ->
                 if (h.name !in HANDLER_PARAMS) fail("unknown handler '${h.name}' (${HANDLER_PARAMS.keys.joinToString()})", h.pos)
                 if (h.name == "onKey") fail("onKey goes at the top of a panel, next to onSubmit", h.pos)
+                if (h.name == "onDragEnd" && body.handlers.none { it.name == "onDrag" }) fail("onDragEnd runs when an onDrag drag ends: add onDrag", h.pos)
                 HANDLER_KINDS[h.name]?.let { kinds -> if (n.type !in kinds) fail("${h.name} only works on ${kinds.joinToString(" and ")}", h.pos) }
                 if (h.name == "onLongPress" && inScreen == false && !isFace) {
                     fail("long-press on a tile belongs to the home screen, which lifts it to move and resize it; onLongPress works in faces, apps and a screen { }", h.pos)
@@ -1002,6 +1020,7 @@ class Compiler private constructor(
         val animations =
             body.animations.associate { a ->
                 if (a.name !in ANIMATABLE) fail("'${a.name}' can't animate (${ANIMATABLE.joinToString()})", a.pos)
+                if (a.name == "offset") since(ANIMATE_OFFSET, a.pos)
                 a.name to ex(a.value, scope)
             }
         since(n.type, n.pos)
@@ -1049,6 +1068,7 @@ class Compiler private constructor(
             }
         val wrapper = body.props.filter { it.name !in c.params }.associate { it.name to prop(it, scope) }
         body.props.firstOrNull { it.name == "frost" && it.name !in c.params }?.let { since("frost", it.pos) }
+        body.props.firstOrNull { it.name == "drag" && it.name !in c.params }?.let { fail("drag goes on the node inside ${n.type} that has onDrag", it.pos) }
         return WNode.Use(n.type, args, wrapper, c.body, n.pos)
     }
 
@@ -1183,8 +1203,27 @@ class Compiler private constructor(
                 ACTION_WORDS[call.name]?.let { w ->
                     val c = (args[0].const as? Str)?.v
                     if (c != null && c !in w.words && !(w.numbers && c.toDoubleOrNull() != null)) fail(w.message, call.pos)
+                    w.forms[c]?.let { (arity, usage) -> if (call.args.size !in arity) fail("it's $usage", call.pos) }
+                    // A word newer than its action, like notification("reply"), needs the level it came with.
+                    if ("${call.name}(\"$c\")" in SINCE) since("${call.name}(\"$c\")", call.pos)
                 }
                 since(call.name, call.pos)
+                // notification(...) with one value or three is a word from owl 13, even when the word isn't written out.
+                if (call.name == "notification" && call.args.size != 2) since("notification(\"action\")", call.pos)
+                // A written-out brightness; one from a value, like a Slider's, can't be told from on and off here.
+                if (call.name == "torch" && (args[0].const is Num || (args[0].const as? Str)?.v?.toDoubleOrNull() != null)) since(TORCH_LEVEL, call.pos)
+                if (call.name == "volume" && call.args.size == 2) {
+                    (args[1].const as? Str)?.v?.let { if (it !in VOLUME_STREAMS) fail("volume's stream is ${VOLUME_STREAMS.joinToString()}", call.args[1].pos) }
+                    since(VOLUME_STREAM, call.pos)
+                }
+                // Both act as the user in other apps: the reviewer sees which a widget does, and with what text.
+                if (call.name == "notification") {
+                    when ((args[0].const as? Str)?.v) {
+                        "reply" -> commands += "reply to notifications as you: " + ((args[2].const as? Str)?.v ?: "text built from widget values")
+                        "action" -> commands += "press the buttons on notifications"
+                        null -> if (call.args.size == 3) commands += "press the buttons on notifications, or reply to them as you with text built from widget values"
+                    }
+                }
                 if (call.name == "sound") webFile(call.args[0], scope, "sound")
                 if (call.name == "pressKey") {
                     (args[0].const as? Str)?.v?.let { if (KeyNames.combo(it) == null) fail(KeyNames.help, call.args[0].pos) }

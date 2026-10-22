@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import dev.omalauncher.widgets.render.frost
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -109,7 +110,7 @@ object Palette {
     val green get() = current.green
 
     /** The translucent fill of tiles, bars and rails over the wallpaper. */
-    val glass get() = background.copy(alpha = Style.GLASS.toFloat())
+    val glass get() = background.copy(alpha = LauncherStyle.style[Style.TILE_OPACITY].toFloat())
 }
 
 /**
@@ -230,9 +231,13 @@ val PanelGap: Dp get() = LauncherStyle.style[Style.SCREEN_GAPS_OUT].toFloat().dp
 /** The widest a column of text and rows gets on a big screen: the bar beside landscape home, text-heavy panels. */
 val ReadingWidth = 640.dp
 
-/** A home-screen surface over the wallpaper: tiles, the prompt bar, the rails; outlined as focused while [focused]. */
+/**
+ * A home-screen surface over the wallpaper: tiles, the prompt bar, the rails; outlined as focused while [focused].
+ * With widgets.frost, the wallpaper under its glass is blurred (only on home, which has a wallpaper behind).
+ */
+@Composable
 fun Modifier.tile(focused: Boolean = false): Modifier =
-    frame(
+    frost(if (LauncherStyle.style[Style.TILE_FROST]) Style.TILE_FROST_DP else 0.0) { 16f * LauncherStyle.cornerScale }.frame(
         if (focused) LauncherStyle.focusWidth else LauncherStyle.borderWidth,
         if (focused) LauncherStyle.focusBorder else LauncherStyle.tileBorder,
         Palette.glass,

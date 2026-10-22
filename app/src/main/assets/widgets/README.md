@@ -77,7 +77,7 @@ A file holds declarations, then the nodes it shows:
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 12.
+  it's 1. This launcher has 13.
 
 ## The docs
 
@@ -111,6 +111,7 @@ OWL looks like QML and JavaScript but isn't either; these are what code written 
 - An arrow function can't be kept in a `let` and called: `let f = x => x * 2` then `f(3)` is "unknown function 'f'". Write the expression out where it's used, or make a component for repeated nodes.
 - Words like `start` and `title` stand alone, as in `align: start`; in an expression they're names, so `align: mine ? start : end` is "'start' isn't a value here". Quote them there: `align: mine ? "start" : "end"`, `style: big ? "title" : "body"`. Colors are values, so `color: hot ? red : foreground` works as it is.
 - Handlers and `animate` go inside a component, not where it's used: `Chip { label: "a"; onTap: n = 1 }` is an error. Wrap the use instead, `Box { onTap: n = 1; Chip { label: "a" } }`.
+- `animate offset` follows the finger only during the same node's `onDrag`: `Box { onDrag: x = x + dx; Row { offset: [x, 0]; animate offset: spring() } }` lags behind the finger. Put `offset`, `animate offset`, `onDrag` and `onDragEnd` on one node (owl 13).
 - `on x { }` doesn't run for x's first value, so to save what a source fetched the first time, write `on x first { }` (owl 9).
 - `Progress`, `Ring`, `Slider` and other nodes with a default size lose it once they have `width`, `height`, `size`, `fill` or `weight`: `Progress { fill: width }` is zero high. A Progress is full width already; leave `fill` off, or give it a `height`.
 - In a handler each statement sees the writes before it: read what a later statement needs before changing it.

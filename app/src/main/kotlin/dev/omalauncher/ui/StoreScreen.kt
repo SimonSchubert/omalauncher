@@ -65,7 +65,7 @@ import kotlinx.coroutines.launch
  * and one per installed coding agent), then reviewed widgets from the marketplace repo as a grid of
  * previews, with search and category tabs (and one for the newest). Faces and apps: the reviewed ones, the same way.
  * Tapping one opens its page, which shows what it installs and runs; from there a widget goes on the current page,
- * a face left of page 1 and an app in the drawer (or any of them updates).
+ * a face left of page 1 and an app in the drawer (or any of them updates). An installed app opens from its page too.
  */
 @Composable
 fun StoreScreen(
@@ -77,6 +77,8 @@ fun StoreScreen(
     onDismiss: () -> Unit,
     /** The kind it opens on. */
     initialKind: OwlKind = OwlKind.Widget,
+    /** Opens the installed app in this file, as the drawer does. */
+    onOpenApp: (String) -> Unit = {},
 ) {
     var kind by remember { mutableStateOf(initialKind) }
     val market = engine.market(kind)
@@ -127,6 +129,7 @@ fun StoreScreen(
                         page = page,
                         message = message,
                         modifier = modifier,
+                        onOpen = { market.installedVersion(e)?.let { onOpenApp(it.file) } },
                         onInstall = {
                             scope.launch {
                                 message = market.install(e, page)
@@ -390,6 +393,27 @@ private fun rememberIcon(
     return icon
 }
 
+/**
+ * [e]'s preview the size a card draws it. Cards are at least 150 dp wide and, with an adaptive grid, under twice that and the gap;
+ * less their padding, a preview is [CardPreviewWidth] at most and [CardPreviewHeight] high, and a whole screen shows
+ * its top [CardPreviewHeight] / [CardPreviewMinWidth] of its width at most.
+ */
+@Composable
+private fun rememberCardPreview(
+    market: Market,
+    e: CatalogEntry,
+    theme: String?,
+): ImageBitmap? {
+    val (w, h) = with(LocalDensity.current) { CardPreviewWidth.roundToPx() to CardPreviewHeight.roundToPx() }
+    val top = if (market.kind == OwlKind.Widget) null else CardPreviewHeight / CardPreviewMinWidth
+    val preview by produceState<ImageBitmap?>(null, e.previewFor(theme), w, h) { value = market.thumbnail(e, theme, w, h, top) }
+    return preview
+}
+
+private val CardPreviewHeight = 104.dp
+private val CardPreviewMinWidth = 150.dp - 16.dp
+private val CardPreviewWidth = 150.dp * 2 + 8.dp - 16.dp
+
 /** A grid cell: the preview, the name, and whether it's installed; [selected] while its page shows beside the grid. */
 @Composable
 private fun Card(
@@ -400,7 +424,7 @@ private fun Card(
     selected: Boolean,
     onOpen: () -> Unit,
 ) {
-    val preview = rememberPreview(market, e, theme)
+    val preview = rememberCardPreview(market, e, theme)
     val busy = market.busy[e.id]
     val update = market.hasUpdate(e)
     val installed = market.installedVersion(e) != null
@@ -412,7 +436,7 @@ private fun Card(
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Box(Modifier.fillMaxWidth().height(104.dp), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().height(CardPreviewHeight), contentAlignment = Alignment.Center) {
             if (preview != null && market.kind != OwlKind.Widget) {
                 // A whole phone screen would be a sliver this high: its top, as wide as the card, reads as the app or face.
                 Image(preview, null, Modifier.fillMaxSize(), alignment = Alignment.TopCenter, contentScale = ContentScale.FillWidth)
@@ -488,6 +512,7 @@ private fun Detail(
     page: Int,
     message: String?,
     modifier: Modifier,
+    onOpen: () -> Unit,
     onInstall: () -> Unit,
 ) = key(e.id) {
     val installed = market.installedVersion(e)
@@ -530,6 +555,13 @@ private fun Detail(
             busy != null -> BasicText(busy, style = Mono.copy(color = Palette.accent))
             !e.supported -> BasicText("needs a newer launcher (owl ${e.owl}); update the launcher to install it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
             update -> BracketAction("update ${installed?.version} → ${e.version}", Palette.accent, onInstall)
+            // An app opens from here, unless it waits for Linux.
+            installed != null && market.kind == OwlKind.App && (linux || !e.needsLinux) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AddedMark(market.kind)
+                    Spacer(Modifier.width(8.dp))
+                    BracketAction("open", Palette.accent, onOpen)
+                }
             installed != null -> AddedMark(market.kind)
             else ->
                 BracketAction(

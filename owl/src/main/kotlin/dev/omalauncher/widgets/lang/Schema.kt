@@ -47,10 +47,10 @@ internal val KINDS: Map<String, Kind> =
 internal val COMMON =
     setOf(
         "width", "height", "size", "fill", "weight", "padding", "background", "border", "borderColor",
-        "radius", "opacity", "rotation", "scale", "offset", "clip", "visible", "frost", "repeats",
+        "radius", "opacity", "rotation", "scale", "offset", "clip", "visible", "frost", "repeats", "drag",
     )
 
-internal val ANIMATABLE = setOf("opacity", "rotation", "scale", "value", "color", "background")
+internal val ANIMATABLE = setOf("opacity", "rotation", "scale", "offset", "value", "color", "background")
 
 internal val ALIGN = setOf("start", "center", "end", "top", "bottom", "topStart", "topEnd", "bottomStart", "bottomEnd")
 internal val ENUMS =
@@ -63,6 +63,8 @@ internal val ENUMS =
         "fill" to setOf("width", "height"),
         "cap" to setOf("round", "butt", "square"),
         "position" to setOf("above", "below"),
+        // The one direction onDrag follows (owl 13); without it, any.
+        "drag" to setOf("horizontal", "vertical"),
     )
 
 /** text(...)'s options beyond size, color, align and bold, as Text has them (owl 10). */
@@ -128,7 +130,33 @@ internal val SINCE =
         // owl 12: requests other than POST; base64 text.
         listOf(POST_METHOD, "toBase64", "fromBase64").associateWith { 12 } +
         // owl 12: tokens kept encrypted, which only go into requests, and fields that hide what's typed.
-        listOf(SECRET, "Input.password").associateWith { 12 }
+        listOf(SECRET, "Input.password").associateWith { 12 } +
+        // owl 13: more of the phone, still without new permissions: Android's own panels for what a launcher may show but
+        // not switch, the other volume streams, and a notification's buttons and replies.
+        listOf("settings", VOLUME_STREAM, "notification(\"clear\")", "notification(\"action\")", "notification(\"reply\")").associateWith { 13 } +
+        // owl 13: drags along one direction, which leave the other to the list they're in, and their end.
+        listOf("drag", "onDragEnd").associateWith { 13 } +
+        // owl 13: how much a panel covers home, set by the panel itself.
+        listOf(PANEL_OPACITY).associateWith { 13 } +
+        // owl 13: the bytes the phone sent and received, for throughput.
+        mapOf("android.network" to 13) +
+        // owl 13: the SIM and its signal; Do Not Disturb switched and notifications snoozed through notification access;
+        // offsets that ease back when a drag lets go; the torch dimmed.
+        listOf("android.sim", "dnd", "notification(\"snooze\")", "notification(\"snoozeAll\")", "notification(\"unsnooze\")", "notification(\"unsnoozeAll\")", ANIMATE_OFFSET, TORCH_LEVEL).associateWith { 13 } +
+        // owl 13: the glass home's tiles have, for a face's or a widget's own windows.
+        listOf("tileOpacity", "tileFrost").associateWith { 13 }
+
+/** `animate offset: ...`, named like this in [SINCE]. */
+internal const val ANIMATE_OFFSET = "animate offset"
+
+/** volume(level, stream), named like this in [SINCE]. */
+internal const val VOLUME_STREAM = "volume(…, stream)"
+
+/** `torch(40)`, a brightness, named like this in [SINCE]. */
+internal const val TORCH_LEVEL = "torch(level)"
+
+/** volume(...)'s second value; media without one. */
+internal val VOLUME_STREAMS = setOf("media", "ring", "notification", "alarm")
 
 /** `state x = null secret`, named like this in [SINCE]. */
 internal const val SECRET = "secret"
@@ -142,6 +170,9 @@ internal val POST_METHODS = setOf("POST", "PUT", "PATCH", "DELETE")
 internal const val FACE_FILE = "face \"…\" { }"
 
 internal const val PANEL_FILE = "panel \"…\" { }"
+
+/** A panel's own `opacity:`, named like this in [SINCE]. */
+internal const val PANEL_OPACITY = "panel opacity"
 
 internal const val KEYBAR_FILE = "keybar \"…\" { }"
 
@@ -184,6 +215,8 @@ internal val HANDLER_PARAMS =
         "onPress" to listOf("x", "y", "repeat"),
         "onRelease" to emptyList(),
         "onDrag" to listOf("dx", "dy", "x", "y"),
+        // How fast the finger was moving as it let go, in dp a second: a flick dismisses what a slow drag puts back.
+        "onDragEnd" to listOf("vx", "vy"),
         "onChange" to listOf("value"),
         "onSubmit" to listOf("value"),
         "onDismiss" to emptyList(),
@@ -197,15 +230,22 @@ internal val HANDLER_KINDS = mapOf("onChange" to setOf("Slider", "Input"), "onSu
 /** What triggers bind in their statements. */
 internal val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 
-/** Data from the phone and the launcher; device is fixed, system is polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers")
+/** Data from the phone and the launcher; device is fixed, system and network are polled, the rest update as they change. */
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers")
 
-/** The words an action's first value may be, when it's written out; [numbers] also allows a number. */
+/**
+ * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the
+ * words that take another number of values than the action's usual, with how many and how they're written.
+ */
 internal class Words(
     val words: Set<String>,
     val message: String,
     val numbers: Boolean = false,
+    val forms: Map<String, Pair<IntRange, String>> = emptyMap(),
 )
+
+/** settings("...")'s pages. */
+internal val SETTINGS_PAGES = setOf("internet", "wifi", "bluetooth", "airplane", "data", "location", "cast", "nfc", "volume", "output", "sound", "dnd", "display", "dark", "battery", "notifications")
 
 internal val ACTION_WORDS =
     mapOf(
@@ -213,15 +253,36 @@ internal val ACTION_WORDS =
         // A number sets the level in percent.
         "volume" to setOf("up", "down", "mute", "unmute", "toggle").let { Words(it, "volume takes a level in percent, or ${it.joinToString()}", numbers = true) },
         // true and false also turn it on and off.
-        "torch" to setOf("on", "off", "toggle").let { Words(it, "torch takes true, false, ${it.joinToString()}") },
-        "notification" to setOf("open", "dismiss").let { Words(it, "notification takes ${it.joinToString()} and a notification's key") },
+        // A number turns it on at that brightness, in percent.
+        "torch" to setOf("on", "off", "toggle").let { Words(it, "torch takes a brightness in percent, true, false, ${it.joinToString()}", numbers = true) },
+        // Besides on, off and toggle, what android.modes' dndAllows says, so dnd(m.dndAllows) sets back what it read.
+        "dnd" to setOf("on", "off", "toggle", "all", "priority", "alarms", "none").let { Words(it, "dnd takes true, false, ${it.joinToString()}") },
+        "notification" to
+            Words(
+                setOf("open", "dismiss", "clear", "action", "reply", "snooze", "snoozeAll", "unsnooze", "unsnoozeAll"),
+                "notification takes open, dismiss, clear, action, reply, snooze, snoozeAll, unsnooze or unsnoozeAll",
+                forms =
+                    mapOf(
+                        "open" to (2..2 to "notification(\"open\", key)"),
+                        "dismiss" to (2..2 to "notification(\"dismiss\", key)"),
+                        "clear" to (1..1 to "notification(\"clear\")"),
+                        "action" to (3..3 to "notification(\"action\", key, i)"),
+                        "reply" to (3..3 to "notification(\"reply\", key, text)"),
+                        "snooze" to (3..3 to "notification(\"snooze\", key, seconds)"),
+                        "snoozeAll" to (2..2 to "notification(\"snoozeAll\", seconds)"),
+                        "unsnooze" to (2..2 to "notification(\"unsnooze\", key)"),
+                        "unsnoozeAll" to (1..1 to "notification(\"unsnoozeAll\")"),
+                    ),
+            ),
+        // Android's panel (a sheet over home) where it has one, else its settings screen.
+        "settings" to SETTINGS_PAGES.let { Words(it, "settings takes ${it.joinToString()}") },
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
     )
 
 /** The tile's size, readable anywhere a declaration of the same name doesn't shadow it. */
-internal val TILE = setOf("cols", "rows", "tileWidth", "tileHeight", "screenWidth", "screenHeight", "screenInset", "screenTop", "corners", "gapsIn", "gapsOut", "borderWidth")
+internal val TILE = setOf("cols", "rows", "tileWidth", "tileHeight", "screenWidth", "screenHeight", "screenInset", "screenTop", "corners", "gapsIn", "gapsOut", "borderWidth", "tileOpacity", "tileFrost")
 
 /** Builtins that always give a number (or null, which reads as …). */
 internal val NUMBERS = setOf("int", "round", "floor", "ceil", "abs", "fixed", "len", "count", "sum", "min", "max", "clamp")

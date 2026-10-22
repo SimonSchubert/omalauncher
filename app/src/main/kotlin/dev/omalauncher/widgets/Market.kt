@@ -1,6 +1,9 @@
 package dev.omalauncher.widgets
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.BitmapRegionDecoder
+import android.graphics.Rect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -157,17 +160,41 @@ class Market(
     suspend fun image(path: String): ImageBitmap? {
         previews.decoded(path)?.let { return it }
         return withContext(Dispatchers.IO) {
-            val bytes =
-                if (previews.wasFetched(path)) {
-                    previews.fetched(path)
-                } else {
-                    runCatching { httpGet(BASE + path) }.getOrNull().also { previews.fetched(path, it) }
-                }
-            bytes
+            bytes(path)
                 ?.let { runCatching { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }.getOrNull() }
                 ?.also { previews.decoded(path, it) }
         }
     }
+
+    /**
+     * [e]'s preview for a grid card, no bigger than the card draws it: at most [width] px wide and [height] px high, and
+     * for a whole screen (an app or a face) only its top, [top] of its width high. The full image is a phone screen of up
+     * to 10 MB decoded; a dozen of those filled the cache, so scrolling decoded and uploaded them again and again.
+     */
+    suspend fun thumbnail(
+        e: CatalogEntry,
+        theme: String?,
+        width: Int,
+        height: Int,
+        top: Float?,
+    ): ImageBitmap? {
+        val path = e.previewFor(theme) ?: return null
+        val key = "$path#$width:$height:$top"
+        previews.decoded(key)?.let { return it }
+        return withContext(Dispatchers.IO) {
+            bytes(path)
+                ?.let { runCatching { decodeThumbnail(it, width, height, top)?.asImageBitmap() }.getOrNull() }
+                ?.also { previews.decoded(key, it) }
+        }
+    }
+
+    /** The fetched file at [path], fetched once; null when it can't be. */
+    private fun bytes(path: String): ByteArray? =
+        if (previews.wasFetched(path)) {
+            previews.fetched(path)
+        } else {
+            runCatching { httpGet(BASE + path) }.getOrNull().also { previews.fetched(path, it) }
+        }
 
     /**
      * [e]'s icon at [size] px square, as the drawer draws it: an SVG with `currentColor` in [accent], an image as it is;
@@ -229,6 +256,30 @@ class Market(
             )
         }
         runCatching { writeAtomically(record, Versioned.write(VERSION, data).toByteArray()) }
+    }
+}
+
+/** See [Market.thumbnail]: decodes only the part that shows, subsampled, then scales it to fit; never up. */
+private fun decodeThumbnail(
+    bytes: ByteArray,
+    width: Int,
+    height: Int,
+    top: Float?,
+): Bitmap? {
+    val decoder = BitmapRegionDecoder.newInstance(bytes, 0, bytes.size)
+    try {
+        val w = decoder.width
+        val h = top?.let { minOf(decoder.height, (w * it).toInt().coerceAtLeast(1)) } ?: decoder.height
+        val scale = minOf(1f, width.toFloat() / w, if (top == null) height.toFloat() / h else 1f)
+        val opts = BitmapFactory.Options().apply { inSampleSize = 1 }
+        while (w / (opts.inSampleSize * 2) >= w * scale) opts.inSampleSize *= 2
+        val region = decoder.decodeRegion(Rect(0, 0, w, h), opts) ?: return null
+        val tw = (w * scale).toInt().coerceAtLeast(1)
+        val th = (h * scale).toInt().coerceAtLeast(1)
+        if (region.width == tw && region.height == th) return region
+        return Bitmap.createScaledBitmap(region, tw, th, true).also { if (it !== region) region.recycle() }
+    } finally {
+        decoder.recycle()
     }
 }
 

@@ -36,7 +36,10 @@ Every node also takes:
   (without `radius`, bordered elements follow the launcher's corner style: 0 for edge, 4 for soft, 8 for round;
   anything else matches it with `radius: 8 * corners`)
 - `opacity`, `rotation` (degrees), `scale`, `offset: [x, y]` (dp), `visible`
-- handlers: `onTap` (with `x`, `y`) and `onDrag` (with `dx`, `dy`, `x`, `y`); `onPress` as the finger goes down, before
+- handlers: `onTap` (with `x`, `y`) and `onDrag` (with `dx`, `dy`, `x`, `y`). Since owl 13, `drag: horizontal` (or
+  `vertical`) has `onDrag` take only moves along it, so a list it's in still scrolls the other way, and `onDragEnd` runs as
+  the finger lets go, with `vx` and `vy`, how fast it was moving in dp a second: a row that follows the finger with
+  `offset: [dragX, 0]` can go when it's let go far out or flicked (see `controls.owl`); `onPress` as the finger goes down, before
   it's a tap (with `x`, `y` and `repeat`), and `onRelease` when it lifts or moves on to a scroll (owl 12). `onPress` runs for
   every touch, the start of a scroll too, so in a list or anything else that scrolls, `onTap` is the one for a tap. With
   `repeats: true`, `onPress` runs again while the finger stays down, after 400 ms and then every 50 ms, as a keyboard's
@@ -45,8 +48,10 @@ Every node also takes:
   `onLongPress` (with `x`, `y`, owl 10); on a tile, long-press belongs to the home screen, which uses it
   to move and resize tiles
 - `animate prop: spring()` or `tween(300ms, "linear"/"in"/"out"/"ease")`, for `value`,
-  `opacity`, `rotation`, `scale`, `color` or `background`. For springs:
-  `spring(damping, stiffness)`
+  `opacity`, `rotation`, `scale`, `color` or `background`, and `offset` (owl 13). For springs:
+  `spring(damping, stiffness)`. While a node's own `onDrag` has the finger, its animated `offset` follows the finger
+  as it is; let go, it eases to where `onDragEnd` puts it, so a row swiped too little springs back. Only its own: an `onDrag` on a
+  parent or a child doesn't count, and the offset trails the finger on its spring
 
 `opacity`, `rotation`, `scale`, `offset`, colors and the contents of Canvas and
 Shader apply at draw time. Changing them, even every frame, costs no layout.
@@ -69,6 +74,11 @@ doesn't. It needs `meta { owl: 6 }`.
 `gapsIn`, `gapsOut` and `borderWidth` are the user's widget gaps and border width in dp, from settings › style: a
 widget with a frame of its own can space and outline it like home's tiles (`border: borderWidth`). In a keybar `gapsOut`
 and `borderWidth` are the terminal key bar's own settings instead. They need `meta { owl: 12 }`.
+
+`tileOpacity` and `tileFrost` are the glass of home's tiles, from settings › style: how much a widget covers the
+wallpaper, 0 (clear) to 1 (solid), and how much it blurs it in dp, 0 with frosted glass off. A face's windows, or a
+widget's cards, look like home's tiles with `background: alpha(background, tileOpacity); frost: tileFrost`, and follow
+the settings as they change. They need `meta { owl: 13 }`.
 
 ## Text in a Row
 
@@ -233,3 +243,5 @@ widget "shell" {
   tap the restart hint, even after leaving and returning to its page. Use
   `"btop; exec bash"` to fall back to a shell.
 - `padding: 0` lets the terminal fill the tile's frame.
+- Its background is see-through: the tile's glass (`widgets.opacity` in style.toml), or a `background`
+  behind it, shows where the program leaves the terminal's own. Cells a program colors, like a status line, stay solid.

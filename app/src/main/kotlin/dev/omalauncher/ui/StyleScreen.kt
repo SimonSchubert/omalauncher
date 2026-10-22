@@ -14,7 +14,14 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.PaddingValues
@@ -138,6 +145,8 @@ fun StyleScreen(
             Stepper("gaps in", style, Style.GAPS_IN)
             Stepper("gaps out", style, Style.GAPS_OUT)
             Stepper("border width", style, Style.TILE_BORDER_WIDTH)
+            NumberSlider("opacity", style, Style.TILE_OPACITY)
+            Flag("frosted glass", "on", "off", style, Style.TILE_FROST)
             WidgetPreview()
             Heading("screens")
             Stepper("gaps out", style, Style.SCREEN_GAPS_OUT)
@@ -730,6 +739,57 @@ private fun Stepper(
         if (all.any { style.style[it] != it.default }) BracketAction("reset", Palette.muted) { style.update { it.with(all) { s -> s.default } } }
     }
     if (style.style.common(all) == null) OptionHint("they differ in style.toml; a step sets them all", Modifier.padding(bottom = 4.dp))
+}
+
+/**
+ * A [Style] number dragged or tapped across its range in steps of 0.01, applied as it moves
+ * (style.toml is saved once it settles).
+ */
+@Composable
+private fun NumberSlider(
+    label: String,
+    style: StyleStore,
+    setting: Setting.Number,
+) {
+    val value = style.style[setting]
+    val range = setting.range
+    fun set(
+        x: Float,
+        width: Int,
+    ) {
+        val f = (x / width.coerceAtLeast(1)).coerceIn(0f, 1f)
+        val v = Math.round((range.start + f * (range.endInclusive - range.start)) * 100) / 100.0
+        style.update { it.with(setting, v) }
+    }
+    val accent = Palette.accent
+    val track = Palette.surface
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        OptionLabel(label)
+        Spacer(
+            Modifier
+                .weight(1f)
+                .height(40.dp)
+                .pointerInput(setting) { detectTapGestures { set(it.x, size.width) } }
+                .pointerInput(setting) {
+                    detectHorizontalDragGestures { change, _ ->
+                        change.consume()
+                        set(change.position.x, size.width)
+                    }
+                }.drawBehind {
+                    val f = ((value - range.start) / (range.endInclusive - range.start)).toFloat().coerceIn(0f, 1f)
+                    val line = 4.dp.toPx()
+                    val thumbW = 10.dp.toPx()
+                    val thumbH = 20.dp.toPx()
+                    val cy = size.height / 2
+                    drawRect(track, Offset(0f, cy - line / 2), Size(size.width, line))
+                    drawRect(accent, Offset(0f, cy - line / 2), Size(size.width * f, line))
+                    drawRoundRect(accent, Offset((size.width - thumbW) * f, cy - thumbH / 2), Size(thumbW, thumbH), CornerRadius(3.dp.toPx() * LauncherStyle.cornerScale))
+                },
+        )
+        BasicText(Toml.format(value), Modifier.widthIn(min = 56.dp).padding(start = 12.dp), style = Mono.copy(textAlign = TextAlign.End), softWrap = false)
+        // Always there, so the slider doesn't narrow under the finger as it leaves the default.
+        BracketAction("reset", Palette.muted) { style.update { it.with(setting, setting.default) } }
+    }
 }
 
 /** [Style] flags as a choice of two, [on] first, set together. */
