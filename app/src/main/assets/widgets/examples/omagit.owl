@@ -28,6 +28,7 @@ app "omagit" {
   state hunkBusy = false
   state dmode = "w"         // "w" working tree, "s" staged, "c" from a commit
   state hsel = ""           // hash of the open commit
+  state pickerFromBack = false // the picker was opened by Back, so Back on it leaves the app
   state hmsg = ""           // its subject
   state nbx = ""            // new branch name
   state smsg = ""           // stash message
@@ -638,6 +639,7 @@ except (OSError, ValueError, subprocess.TimeoutExpired) as error:
     if verb == "repos" {
       pick = true
       q = ""
+      pickerFromBack = false
       entry = ""
       entryError = ""
     } else if verb == "openform" || verb == "cloneform" {
@@ -653,6 +655,7 @@ except (OSError, ValueError, subprocess.TimeoutExpired) as error:
       } else {
         repo = target
         pick = false
+        pickerFromBack = false
         entry = ""
         tab = "changes"
         dsel = ""
@@ -794,14 +797,19 @@ except (OSError, ValueError, subprocess.TimeoutExpired) as error:
 
   // ── the window ─────────────────────────────────────────────────────────────
   title: entry == "clone" ? "Clone repository" : entry == "open" ? "Open repository" : pick ? "Repositories" : dsel != "" ? last(split(dsel, "/")) : (hsel != "" && tab == "history" ? sub(hsel, 0, 7) : "omagit")
-  back: entry != "" || (repo != "" && (pick || dsel != "" || (hsel != "" && tab == "history")))
+  // Back climbs one level: form ← picker, diff/commit ← project, and from a project
+  // it opens the repository list; only a list reached by Back itself lets Back leave.
+  back: entry != "" || (repo != "" && !(pick && pickerFromBack))
 
   onBack: {
     if entry != "" {
       entry = ""
       entryError = ""
+    } else if pick && pickerFromBack {
+      // Back opened this list already; the next Back leaves the app.
     } else if pick {
       pick = false
+      pickerFromBack = false
     } else if dsel != "" {
       dsel = ""
       dmode = "w"
@@ -809,6 +817,10 @@ except (OSError, ValueError, subprocess.TimeoutExpired) as error:
       hsel = ""
       hmsg = ""
       confirm = ""
+    } else {
+      pick = true
+      q = ""
+      pickerFromBack = true
     }
   }
 
@@ -934,7 +946,7 @@ except (OSError, ValueError, subprocess.TimeoutExpired) as error:
               gap: 12
               align: center
               padding: [14, 11, 14, 11]
-              onTap: { repo = r; pick = false; tab = "changes"; dsel = ""; hsel = ""; out = ""; msg = ""; cq = ""; confirm = "" }
+              onTap: { repo = r; pick = false; pickerFromBack = false; tab = "changes"; dsel = ""; hsel = ""; out = ""; msg = ""; cq = ""; confirm = "" }
               Box {
                 width: 6
                 height: 6
@@ -992,7 +1004,7 @@ except (OSError, ValueError, subprocess.TimeoutExpired) as error:
             Column {
               gap: 4
               weight: 1
-              onTap: { pick = true; q = "" }
+              onTap: { pick = true; q = ""; pickerFromBack = false }
               Text { text: shortR; fontSize: 25; fontWeight: 600; letterSpacing: -0.6; maxLines: 1 }
               Row {
                 gap: 7
