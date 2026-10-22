@@ -32,8 +32,9 @@ when Android permits it. Device policy can still show Android's own installer
 confirmation. No ADB socket, GitHub credential, or signing key is bound into the
 guest. USB ADB remains a computer-side development transport, not an
 Android-app capability. The guest has a separate `omalauncher-device` bridge
-for three allowlisted actions: opening a package's launcher activity, opening
-an exported component, and opening an http/https URL. Those requests use the
+for allowlisted actions: opening a package's launcher activity, opening an
+exported component, opening an http/https URL, and requesting two launchable
+packages side by side through Android's adjacent-launch API. Those requests use the
 same normal approval or explicit YOLO policy, and are never arbitrary
 `adb shell` commands, input injection, package-data access, uninstall
 operations, or root actions.
@@ -42,9 +43,12 @@ The guest process environment also has fixed paths for the phone-local Android
 toolchain: Java 17 at `/usr/lib/jvm/java-17-openjdk`, Gradle at
 `/opt/gradle/current/bin`, and the Android SDK at `/opt/android-sdk`. The
 launcher exports `JAVA_HOME`, `ANDROID_HOME` and `ANDROID_SDK_ROOT` and adds
-Gradle plus the SDK command-line tools to `PATH`; it does not install or expose
-ADB in the guest. Agents build from source with Gradle and request installs
-through the bounded approval bridge above.
+Gradle plus the SDK command-line tools to `PATH`; Git is installed with the
+base guest packages, but ADB is not installed or exposed. Agents build from
+source with Gradle and request installs through the bounded approval bridge
+above. A phone-local build cannot replace the installed launcher without its
+matching private signing key, so that key stays outside Linux and self-update
+requires a separate host-side signer.
 
 Codex's managed guest configuration uses `sandbox_mode = "danger-full-access"`
 with `approval_policy = "on-request"`. The inner Linux bubblewrap sandbox cannot

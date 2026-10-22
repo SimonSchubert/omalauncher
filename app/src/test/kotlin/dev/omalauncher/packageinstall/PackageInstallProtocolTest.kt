@@ -15,6 +15,18 @@ class PackageInstallProtocolTest {
             DeviceActionRequest("url-1", DeviceActionProtocol.OPEN_URL, "https://example.com", "open docs"),
             DeviceActionProtocol.parse("url-1", "open-url\nhttps://example.com\nopen docs\n".toByteArray()),
         )
+        assertEquals(
+            DeviceActionRequest(
+                "split-1",
+                DeviceActionProtocol.OPEN_SPLIT_PACKAGES,
+                "org.example.first,org.example.second",
+                "compare the apps",
+            ),
+            DeviceActionProtocol.parse(
+                "split-1",
+                "open-split-packages\norg.example.first,org.example.second\ncompare the apps\n".toByteArray(),
+            ),
+        )
     }
 
     @Test
@@ -27,6 +39,12 @@ class PackageInstallProtocolTest {
         }
         assertThrows(IllegalArgumentException::class.java) {
             DeviceActionProtocol.parse("id", "open-component\norg.example/.Not Valid\n".toByteArray())
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            DeviceActionProtocol.parse("id", "open-split-packages\norg.example.only\n".toByteArray())
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            DeviceActionProtocol.parse("id", "open-split-packages\norg.example.same,org.example.same\n".toByteArray())
         }
     }
 
@@ -42,6 +60,12 @@ class PackageInstallProtocolTest {
         val policy = PackageInstallApprovalPolicy(yolo = true)
         assertEquals(false, policy.showLauncherApproval)
         assertEquals(false, policy.requestAndroidUserAction)
+    }
+
+    @Test
+    fun launcherUpdatesAlwaysNeedExplicitApproval() {
+        assertEquals(true, requiresExplicitApproval("dev.omalauncher", "dev.omalauncher"))
+        assertEquals(false, requiresExplicitApproval("com.example.app", "dev.omalauncher"))
     }
 
     @Test

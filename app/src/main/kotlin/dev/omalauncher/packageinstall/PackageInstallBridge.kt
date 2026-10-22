@@ -114,6 +114,9 @@ class PackageInstallBridge(
     ): PackageInstallApproval {
         if (policy.yolo && !yoloEnabled) return PackageInstallApproval.Rejected("YOLO mode is disabled")
         val request = pending[id] ?: return PackageInstallApproval.Rejected("request is no longer pending")
+        if (policy.yolo && requiresExplicitApproval(request.info.packageName, context.packageName)) {
+            return PackageInstallApproval.Rejected("self-update requires explicit approval")
+        }
         if (!canRequestPackageInstalls()) {
             return PackageInstallApproval.Rejected("allow installs from this source first")
         }
@@ -180,6 +183,11 @@ class PackageInstallBridge(
 
     /** Starts a validated request without opening Omalauncher's approval UI. */
     private fun startWithoutApproval(id: String) {
+        val request = pending[id] ?: return
+        if (requiresExplicitApproval(request.info.packageName, context.packageName)) {
+            prompt(request)
+            return
+        }
         thread(name = "package-install-yolo", isDaemon = true) {
             val result = start(id, PackageInstallApprovalPolicy(yolo = true))
             if (result is PackageInstallApproval.Rejected && pending.containsKey(id)) {
@@ -224,7 +232,11 @@ class PackageInstallBridge(
             return
         }
         pending[id] = result
-        if (yoloEnabled) startWithoutApproval(id) else prompt(result)
+        if (yoloEnabled && !requiresExplicitApproval(result.info.packageName, context.packageName)) {
+            startWithoutApproval(id)
+        } else {
+            prompt(result)
+        }
     }
 
     private fun inspect(request: PackageInstallRequest): Result<PendingPackageInstall> = runCatching {

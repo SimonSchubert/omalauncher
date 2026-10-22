@@ -41,7 +41,7 @@ fun DeviceActionScreen(
             BasicText(it, style = Mono.copy(fontSize = TextSize.Small))
         }
         BasicText(
-            "This is an allowlisted action, not raw ADB or a shell command. The target app or Android may still ask for its own confirmation.",
+            "This is an allowlisted Android action, not raw ADB or a shell command. Android may decline an adjacent split or the target app may ask for its own confirmation.",
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )
         error?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }

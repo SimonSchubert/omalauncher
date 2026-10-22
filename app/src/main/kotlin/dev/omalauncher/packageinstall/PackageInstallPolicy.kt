@@ -5,7 +5,8 @@ package dev.omalauncher.packageinstall
  *
  * YOLO is deliberately limited to the host bridge: it skips Omalauncher's
  * approval screen and asks PackageInstaller not to require user action. Android
- * can still require its own confirmation based on device policy.
+ * can still require its own confirmation based on device policy. An update of
+ * Omalauncher itself remains explicitly approved.
  */
 internal data class PackageInstallApprovalPolicy(
     val yolo: Boolean,
@@ -16,3 +17,9 @@ internal data class PackageInstallApprovalPolicy(
     val requestAndroidUserAction: Boolean
         get() = !yolo
 }
+
+/** The launcher cannot silently replace itself, even when unattended installs are enabled. */
+internal fun requiresExplicitApproval(
+    packageName: String,
+    launcherPackageName: String,
+) = packageName == launcherPackageName

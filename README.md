@@ -83,8 +83,11 @@ confirmation. YOLO does not expose raw ADB, Android secrets or a root shell.
 For other Android actions, the guest can use the same policy with
 `omalauncher-device open-package <package> [reason]`,
 `omalauncher-device open-component <package>/<exported-activity> [reason]`, or
-`omalauncher-device open-url <http-or-https-url> [reason]`. These are
-allowlisted host API calls, not arbitrary `adb shell` or input injection.
+`omalauncher-device open-url <http-or-https-url> [reason]`. To request two
+launchable apps side by side on Android 12L+, use
+`omalauncher-device open-split-packages <package-a>,<package-b> [reason]`.
+These are allowlisted host API calls, not arbitrary `adb shell` or input
+injection; Android and the device manufacturer may still decline a split.
 On proot-based phones, Codex is configured with `sandbox_mode = "danger-full-access"`
 and `approval_policy = "on-request"` because its nested bubblewrap sandbox cannot
 start; the Android app UID and proot guest boundary remain in force.
@@ -92,9 +95,13 @@ start; the Android app UID and proot guest boundary remain in force.
 This phone's guest also exposes an ARM-native JDK 17 and Gradle, plus the
 official Android command-line tools under `/opt/android-sdk`. `JAVA_HOME`,
 `ANDROID_HOME` and `ANDROID_SDK_ROOT` are exported for guest processes, while
-ADB is intentionally not installed there. Build an app with its Gradle wrapper
-or `gradle`, then use `omalauncher-install`; it is approval-gated unless YOLO is
-explicitly enabled in Omalauncher's settings.
+ADB is intentionally not installed there. Git is part of the guest package set,
+so an agent can clone and edit source. Build an app with its Gradle wrapper or
+`gradle`, then use `omalauncher-install`; it is approval-gated unless YOLO is
+explicitly enabled in Omalauncher's settings. Updating the installed
+Omalauncher itself still needs a signer matching the installed APK; the
+launcher's private signing key is never exposed to Linux, so that final
+self-update step belongs to a host-side signer/development transport.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the compositor, rendering, GPU
   acceleration, and how updates reach existing installs

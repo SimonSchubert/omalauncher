@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.util.Log
 import dev.omalauncher.R
 import dev.omalauncher.linux.Proot
@@ -99,6 +100,10 @@ class DeviceActionBridge(
     }
 
     private fun perform(request: DeviceActionRequest) {
+        if (request.action == DeviceActionProtocol.OPEN_SPLIT_PACKAGES) {
+            performSplit(DeviceActionProtocol.splitPackages(request.target))
+            return
+        }
         val intent =
             when (request.action) {
                 DeviceActionProtocol.OPEN_PACKAGE ->
@@ -121,6 +126,28 @@ class DeviceActionBridge(
             "no activity can handle this action"
         }
         context.startActivity(intent)
+    }
+
+    /** Requests Android's public adjacent-launch behavior; the system may still decline the split. */
+    private fun performSplit(packages: Pair<String, String>) {
+        require(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S_V2) {
+            "programmatic split-screen requires Android 12L or newer"
+        }
+        val (firstPackage, secondPackage) = packages
+        val first = context.packageManager.getLaunchIntentForPackage(firstPackage)
+            ?: error("first package has no launcher activity")
+        val second = context.packageManager.getLaunchIntentForPackage(secondPackage)
+            ?: error("second package has no launcher activity")
+        val flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+        val adjacent = second.addFlags(flags or Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT)
+        require(context.packageManager.resolveActivity(first, PackageManager.MATCH_DEFAULT_ONLY) != null) {
+            "no activity can launch the first package"
+        }
+        require(context.packageManager.resolveActivity(adjacent, PackageManager.MATCH_DEFAULT_ONLY) != null) {
+            "no activity can launch the second package"
+        }
+        context.startActivity(first.addFlags(flags))
+        context.startActivity(adjacent)
     }
 
     private fun scan() {
@@ -242,13 +269,13 @@ class DeviceActionBridge(
                 # Request a bounded Android action from the host.
                 set -u
                 if [ "${'$'}#" -lt 2 ] || [ "${'$'}#" -gt 3 ]; then
-                  echo "usage: omalauncher-device open-package|open-component|open-url target [reason]" >&2
+                  echo "usage: omalauncher-device open-package|open-component|open-url|open-split-packages target [reason]" >&2
                   exit 2
                 fi
                 action=${'$'}1
                 target=${'$'}2
                 reason=${'$'}{3-}
-                case "${'$'}action" in open-package|open-component|open-url) ;; *) echo "unsupported device action" >&2; exit 2 ;; esac
+                case "${'$'}action" in open-package|open-component|open-url|open-split-packages) ;; *) echo "unsupported device action" >&2; exit 2 ;; esac
                 case "${'$'}target" in *$'\n'*|*$'\r'*) echo "target contains a newline" >&2; exit 2 ;; esac
                 dir="${Proot.GUEST_RUNTIME_DIR}/device-action"
                 mkdir -p -- "${'$'}dir"
@@ -319,9 +346,12 @@ This Codex session runs inside Omalauncher's Android app, inside an Arch proot g
 omalauncher-device open-package com.example.app "why it is needed"
 omalauncher-device open-component com.example.app/.MainActivity "why it is needed"
 omalauncher-device open-url https://example.com "why it is needed"
+omalauncher-device open-split-packages com.example.first,com.example.second "why both apps are needed"
 ```
 
 The helper blocks until Omalauncher responds. In normal mode the user sees an approval screen with the action and target. If the user explicitly enabled Settings > agent device access > YOLO, the host may perform the validated action without Omalauncher's extra prompt. Android and the target app can still reject or confirm the action. Never try to write the request files yourself or bypass the helper.
+
+To ask Android to put two launchable apps next to each other, use `omalauncher-device open-split-packages package.one,package.two "reason"`. This uses Android's public adjacent-launch API on Android 12L+; Android or the device manufacturer may decline the split, so it is not a guarantee.
 
 For an APK built in the guest, use `omalauncher-install /absolute/path/app-debug.apk "reason"`; it remains the package-install path and has its own APK inspection and Android PackageInstaller policy.
 
@@ -331,7 +361,7 @@ Codex keeps saved interactive chats separately from the terminal window. If a Co
 
 If no Codex window/process is running, open a fresh terminal and use `codex resume --last` for the most recent chat in the current working directory, `codex resume --all` to search chats from other directories, or `codex resume <SESSION_ID>` for an exact session. Do not remove Codex lock files while a Codex process is running. Sessions started with `codex exec --ephemeral` are intentionally not resumable.
 
-Supported actions are deliberately narrow: launch a package's launcher activity, launch an exported component in an installed package, or open an http/https URL. There is no arbitrary `adb shell`, tap/swipe injection, package-data dump, uninstall, settings mutation, or root capability. If a task needs something outside these actions, explain the limitation and ask the user to perform it or use a separate host-side, approval-gated development transport.
+Supported actions are deliberately narrow: launch a package's launcher activity, launch an exported component in an installed package, open an http/https URL, or request two launchable packages side by side. There is no arbitrary `adb shell`, tap/swipe injection, package-data dump, uninstall, settings mutation, or root capability. If a task needs something outside these actions, explain the limitation and ask the user to perform it or use a separate host-side, approval-gated development transport.
 
 Build and test Android apps from source with the guest's Java/Gradle/SDK paths, then request installation through the helper. Do not download malware or untrusted APKs to test the bridge.
 """
