@@ -48,6 +48,11 @@ even if its Android Recents card is missing. This does not start another app
 or terminal session. Embedded terminal widgets are not listed. Windows whose
 Linux app has exited cannot be recovered this way.
 
+The app drawer is a widget too, `drawer.owl` in the widgets folder, so an
+agent can rewrite it. Here Grok sorts it into folders:
+
+<img src="art/drawer-folders.webp" width="360" alt="Grok rewrites drawer.owl, and the app drawer opens sorted into folders">
+
 Touch input in Linux windows: tap is a left click, long press is a right
 click, drag scrolls; apps with touch support (foot, GTK) get real touch.
 Hardware keyboard shortcuts: Super+Enter (terminal), Super+Space or

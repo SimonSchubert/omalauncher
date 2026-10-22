@@ -96,6 +96,10 @@ internal fun CanvasNode(
             inst.report("Canvas: ${e.message}")
         } catch (e: RuntimeException) {
             inst.report("Canvas: $e")
+        } catch (e: StackOverflowError) {
+            inst.report("Canvas: too deeply nested")
+        } catch (e: OutOfMemoryError) {
+            inst.report("Canvas: out of memory")
         }
         inst.recordDraw(System.nanoTime() - started)
     }
@@ -117,7 +121,7 @@ private class Painter(
     fun eval(
         ev: dev.omalauncher.widgets.lang.Ev,
         env: Env,
-    ): Value = inst.budget.run { ev(env) }
+    ): Value = inst.budget.eval(ev, env)
 
     fun DrawScope.paint(
         nodes: List<WNode>,
@@ -280,6 +284,8 @@ private class Painter(
             }
             "image" -> {
                 val color = named["color"]?.let { Builtins.argb(it, inst) }
+                // A src still loading draws nothing yet, rather than asking for an image named "null".
+                if (first == Null) return
                 when (val image = inst.image(first.toString()) ?: return) {
                     is WidgetImage.Raster -> {
                         val bitmap = image.bitmap

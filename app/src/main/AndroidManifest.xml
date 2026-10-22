@@ -23,6 +23,13 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Lets settings("output") see whether the phone's System UI has Android's output switcher. -->
+        <intent>
+            <action android:name="com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG" />
+        </intent>
+        <intent>
+            <action android:name="com.android.systemui.action.LAUNCH_SYSTEM_MEDIA_OUTPUT_DIALOG" />
+        </intent>
         <!-- Lets SpeechRecognizer find the phone's recognition service. -->
         <intent>
             <action android:name="android.speech.RecognitionService" />
@@ -31,9 +38,11 @@
 
     <application
         android:name=".App"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:extractNativeLibs="true"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
-        android:label="Omalauncher"
+        android:label="@string/app_name"
         android:theme="@style/Theme.Omalauncher"
         android:usesCleartextTraffic="true">
 
@@ -213,7 +222,7 @@
             android:label="Files"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:taskAffinity="dev.omalauncher.files"
+            android:taskAffinity="${applicationId}.files"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
 
@@ -224,7 +233,7 @@
             android:label="Settings"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
-            android:taskAffinity="dev.omalauncher.settings"
+            android:taskAffinity="${applicationId}.settings"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
 

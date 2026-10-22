@@ -10,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.asAndroidBitmap
 import dev.omalauncher.ui.OwlAppWindow
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.ui.SystemBarsEffect
 import dev.omalauncher.ui.applySystemBars
 import dev.omalauncher.ui.showStatusBar
 import dev.omalauncher.widgets.render.LocalInputFocus
@@ -34,7 +35,7 @@ class OwlAppActivity : InstantActivity() {
         this.name = name
         applySystemBars(this, Palette.isLight)
         setInstantContent {
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@OwlAppActivity, Palette.isLight) }
+            SystemBarsEffect(this@OwlAppActivity)
             LaunchedEffect(name) { runtime.widgets.appCloses.collect { if (it == name) closeInstantly() } }
             val (spec, inst) =
                 runtime.widgets.appInstance(name) ?: run {

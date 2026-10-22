@@ -58,7 +58,7 @@ fun LinuxScreen(
             when (val s = state) {
                 LinuxState.Checking -> {}
                 LinuxState.NotInstalled -> InstallOffer(runtime)
-                is LinuxState.Installing, is LinuxState.Failed -> LinuxProgress(s, runtime.bootstrap.chosenAgents, runtime::retryLinux)
+                is LinuxState.Installing, is LinuxState.Failed -> LinuxProgress(s, runtime.bootstrap.chosenAgents, runtime::retryLinux, runtime::cancelLinux.takeIf { runtime.bootstrap.cancellable })
                 LinuxState.Installed -> Installed(runtime)
                 LinuxState.Removing -> BasicText("removing linux…", style = Mono.copy(color = Palette.accent))
             }
@@ -93,7 +93,7 @@ private fun InstallOffer(runtime: Runtime) {
     BasicText("arch linux, optional", style = Mono.copy(fontSize = TextSize.Large))
     Spacer(Modifier.height(8.dp))
     BasicText(
-        "Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download; installs in the background.",
+        "Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download and 3 GB of space; installs in the background.",
         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
     )
     Spacer(Modifier.height(16.dp))

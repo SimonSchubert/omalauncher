@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cloud backup and device transfer (Android 12+) leave out Linux and Omarchy's release; see backup_rules.xml. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="arch" />
+        <exclude domain="file" path="tmp" />
+        <exclude domain="file" path="xdg" />
+        <exclude domain="file" path="sys" />
+        <exclude domain="file" path="proc" />
+        <exclude domain="file" path="keymap.xkb" />
+        <exclude domain="file" path="bwrap-shim" />
+        <exclude domain="file" path="rootfs-steps.json" />
+        <exclude domain="file" path="setup-agents" />
+        <exclude domain="file" path="updates.json" />
+        <exclude domain="file" path="omarchy" />
+        <exclude domain="file" path=".omarchy.download" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="arch" />
+        <exclude domain="file" path="tmp" />
+        <exclude domain="file" path="xdg" />
+        <exclude domain="file" path="sys" />
+        <exclude domain="file" path="proc" />
+        <exclude domain="file" path="keymap.xkb" />
+        <exclude domain="file" path="bwrap-shim" />
+        <exclude domain="file" path="rootfs-steps.json" />
+        <exclude domain="file" path="setup-agents" />
+        <exclude domain="file" path="updates.json" />
+        <exclude domain="file" path="omarchy" />
+        <exclude domain="file" path=".omarchy.download" />
+    </device-transfer>
+</data-extraction-rules>

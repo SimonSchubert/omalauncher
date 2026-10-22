@@ -33,6 +33,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.omalauncher.ui.LauncherStyle
@@ -140,7 +143,8 @@ internal fun SliderNode(
  * A one-line text field. `text` sets what it shows, and replaces what's
  * typed whenever it changes; `onChange` gets the text as it's typed and
  * `onSubmit` when the keyboard's done key is pressed, both as `value`.
- * `clear: true` empties it after a submit. `underline: false` leaves out its line, for a field framed by what's around it. `focus: true` focuses it, raising
+ * `clear: true` empties it after a submit. `underline: false` leaves out its line, for a field framed by what's around it. `password: true` shows dots
+ * and asks the keyboard for a password, which it neither suggests nor learns. `focus: true` focuses it, raising
  * the keyboard, when the screen opens or when `focus` turns true; only on a
  * screen, see [LocalInputFocus].
  */
@@ -154,6 +158,7 @@ internal fun InputNode(
     val placeholder = p.observe("placeholder")?.toString().orEmpty()
     val clear = p.observe("clear")?.truthy == true
     val underline = p.observe("underline")?.truthy != false
+    val password = p.observe("password")?.truthy == true
     val color = p.color("color") { Palette.foreground }
     val style = WidgetMono.copy(fontSize = p.observe("fontSize")?.num()?.sp ?: WidgetMono.fontSize)
     val onChange = p.el.handlers["onChange"]
@@ -195,7 +200,12 @@ internal fun InputNode(
         singleLine = true,
         textStyle = style.copy(color = color()),
         cursorBrush = SolidColor(Palette.accent),
-        keyboardOptions = KeyboardOptions(imeAction = if (onSubmit != null) ImeAction.Send else ImeAction.Done),
+        keyboardOptions =
+            KeyboardOptions(
+                keyboardType = if (password) KeyboardType.Password else KeyboardType.Unspecified,
+                imeAction = if (onSubmit != null) ImeAction.Send else ImeAction.Done,
+            ),
+        visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardActions =
             KeyboardActions(onAny = {
                 onSubmit?.run(p.env, listOf(Str(field.text)))

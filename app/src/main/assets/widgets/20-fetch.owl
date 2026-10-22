@@ -3,12 +3,13 @@ widget "fetch" {
   order: 2
   size: 3x3
   minSize: 3x2
-  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.0"; license: "MIT"; category: "system"; owl: 5 }
+  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.6"; license: "MIT"; category: "system"; owl: 13 }
 
   // The phone, from Android: works without Linux.
   source dev = android.device
   source sys = android.system every 5s
   source bat = android.battery
+  source net = android.network every 5s
   // The Arch side, once Linux is installed. Base tools only, so it doesn't make the widget need Linux.
   source lx = cmd("""
     . /etc/os-release
@@ -25,6 +26,16 @@ widget "fetch" {
   let shown = sys.display
   let kernel = split(sys.kernel ?? "", "-")[0]
   let batColor = bat.level <= 15 ? red : bat.level <= 30 ? yellow : green
+
+  // Bytes a second over the last two reads; null until there are two, and after a reboot restarts the counters.
+  state down = null
+  state up = null
+  on net {
+    if old != null && value.rx >= old.rx && value.uptime > old.uptime {
+      down = (value.rx - old.rx) / (value.uptime - old.uptime)
+      up = (value.tx - old.tx) / (value.uptime - old.uptime)
+    }
+  }
 
   onTap: screen()
 
@@ -149,6 +160,11 @@ widget "fetch" {
       Line { key: "display"; value: shown.width == null ? null : "${shown.width}x${shown.height} @ ${shown.hz}Hz · ${shown.dpi} dpi"; size: 13; keyWidth: 110 }
       Meter { label: "memory"; used: mem.used; total: mem.total; tint: round(mem.used / mem.total * 100) > 85 ? red : accent }
       Meter { label: "storage"; used: disk.used; total: disk.total; tint: round(disk.used / disk.total * 100) > 90 ? red : accent }
+
+      Heading { label: "network" }
+      Line { key: "speed"; value: down == null ? null : "↓ ${fmtBytes(down)}/s · ↑ ${fmtBytes(up)}/s"; size: 13; keyWidth: 110 }
+      Line { key: "received"; value: net.rx == null ? null : "${fmtBytes(net.rx)}${net.mobileRx == null ? "" : " (${fmtBytes(net.mobileRx)} mobile)"}"; size: 13; keyWidth: 110 }
+      Line { key: "sent"; value: net.tx == null ? null : "${fmtBytes(net.tx)}${net.mobileTx == null ? "" : " (${fmtBytes(net.mobileTx)} mobile)"}"; size: 13; keyWidth: 110 }
 
       Heading { label: "battery" }
       Line { key: "level"; value: bat == null ? null : "${bat.level}% · ${bat.status}${bat.plugged == null ? "" : " (" + bat.plugged + ")"}"; size: 13; keyWidth: 110 }

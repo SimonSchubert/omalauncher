@@ -25,18 +25,23 @@ private const val MAX_FILE_BYTES = 1 shl 20
  * seconds covers a folder that doesn't exist yet or was replaced. A missing
  * file reads as "".
  */
-fun watchFile(file: File): Flow<String> =
+fun watchFile(file: File): Flow<String> = watchFile { file }
+
+/** Like watchFile(File), finding the file again before every read with [locate]; null reads as "". */
+fun watchFile(locate: () -> File?): Flow<String> =
     callbackFlow {
         val changed = Channel<Unit>(Channel.CONFLATED)
         var observer: FileObserver? = null
         var watched: File? = null
 
-        fun watch() {
-            val dir = file.parentFile ?: return
-            if (observer != null && watched == dir && dir.isDirectory) return
+        fun watch(file: File?) {
+            if (observer != null && watched == file && file?.parentFile?.isDirectory == true) return
             observer?.stopWatching()
             observer = null
+            watched = null
+            val dir = file?.parentFile ?: return
             if (!dir.isDirectory) return
+            val name = file.name
             val mask = FileObserver.CLOSE_WRITE or FileObserver.MODIFY or FileObserver.MOVED_TO or FileObserver.MOVED_FROM or FileObserver.CREATE or FileObserver.DELETE
             observer =
                 object : FileObserver(dir, mask) {
@@ -44,22 +49,23 @@ fun watchFile(file: File): Flow<String> =
                         event: Int,
                         path: String?,
                     ) {
-                        if (path == file.name) changed.trySend(Unit)
+                        if (path == name) changed.trySend(Unit)
                     }
                 }.also { it.startWatching() }
-            watched = dir
+            watched = file
         }
 
         val loop =
             launch {
-                var stamp: Pair<Long, Long>? = null
+                var stamp: Pair<String, Pair<Long, Long>>? = null
                 var force = true
                 while (isActive) {
-                    watch()
-                    val now = file.lastModified() to file.length()
+                    val file = locate()
+                    watch(file)
+                    val now = file?.let { it.path to (it.lastModified() to it.length()) }
                     if (force || now != stamp) {
                         stamp = now
-                        send(read(file))
+                        send(file?.let(::read).orEmpty())
                     }
                     force = withTimeoutOrNull(if (observer != null) 30_000L else 5_000L) { changed.receive() } != null
                     // A writer may still be at it; read once it's done.

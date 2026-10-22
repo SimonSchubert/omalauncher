@@ -21,6 +21,7 @@ import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.theme.Style
 import dev.omalauncher.ui.LauncherStyle
+import dev.omalauncher.ui.SystemBarsEffect
 import dev.omalauncher.ui.applySystemBars
 import dev.omalauncher.ui.showStatusBar
 import dev.omalauncher.ui.LauncherRoot
@@ -35,12 +36,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // While a backup or device transfer runs, the process has a plain Application and no runtime;
+        // Home starts this activity in it anyway. Close until the process restarts as itself.
+        if (application !is App) {
+            finish()
+            return
+        }
         applySystemBars(this, Palette.isLight)
         runtime.start()
         state.onSettings = { page, homePage -> runtime.openSettings(page, homePage) }
         setContent {
             LauncherRoot(runtime, state)
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@MainActivity, Palette.isLight) }
+            SystemBarsEffect(this@MainActivity)
             // A face whose statusBar is false takes the status bar's room too.
             val fullScreen by remember { derivedStateOf { state.fullScreen && runtime.widgets.openScreen == null } }
             val statusBar = LauncherStyle.style[Style.STATUS_BAR_SHOWN] && !fullScreen
@@ -100,6 +107,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        away = false
         runtime.wm.focus(null)
         removeStaleWindowTasks()
         // Made the default home app (or no longer it) while away: only then does Android show us pinned shortcuts.
@@ -119,10 +127,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Whether the launcher was out of sight since it was last in front: Home then only brings it back. */
+    private var away = false
+
     /** Pressing Home while already home closes the menu, like other launchers. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         state.close()
+        // The swipe-down panel only for a Home pressed on home: coming back from an app opened from it keeps it.
+        if (!away) state.closePull()
         state.closeScreens()
         runtime.widgets.openScreen = null
         state.editing = null
@@ -148,6 +161,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        away = true
         state.closeNow()
         // An app was just opened from home: it moves to the front of the strip now, out of sight.
         runtime.usage.settle()

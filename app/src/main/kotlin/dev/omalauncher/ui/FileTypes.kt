@@ -19,7 +19,7 @@ internal val TEXT_EXTENSIONS =
     setOf(
         "txt", "md", "conf", "cfg", "ini", "toml", "yml", "yaml", "json", "jsonc", "xml", "sh", "bash", "zsh", "fish",
         "py", "js", "ts", "kt", "kts", "java", "c", "h", "cpp", "rs", "go", "lua", "rb", "pl", "css", "html", "desktop",
-        "log", "csv", "service", "rules", "list", "gitignore", "patch", "diff", "vim", "el",
+        "log", "csv", "service", "rules", "list", "gitignore", "patch", "diff", "vim", "el", "owl",
     )
 
 internal fun extension(name: String) = name.substringAfterLast('.', "").lowercase()

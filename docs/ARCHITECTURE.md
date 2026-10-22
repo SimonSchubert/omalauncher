@@ -39,7 +39,11 @@ touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
 - `linux/`: proot, the rootfs setup and its update steps, pacman, coding
   agents, and the bridges to Android (audio, URLs, /proc)
 - `ui/`: the Compose home screen, the bar and its app list, settings and Files
-- `widgets/`: the widget engine; the language itself is in the `owl` module
+- `widgets/`: the widget engine; the language itself is in the `owl` module.
+  A widget's state and sources live in its `WidgetInstance`, which runs while
+  its page or a neighbour is on screen, but the pager composes only the
+  current page: a node drawn in Kotlin loses its `remember` state when its
+  page is swiped away, and keeps anything lasting in the instance
 - `theme/`: Omarchy themes, applied to the launcher and the guest
 - `upgrade/`: how installs follow app updates (see below)
 

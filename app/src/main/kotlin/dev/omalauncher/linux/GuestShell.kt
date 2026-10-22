@@ -100,7 +100,7 @@ class GuestShell(
     }
 
     private fun stop() {
-        process?.destroy()
+        process?.let(::killTree)
         process = null
     }
 }
