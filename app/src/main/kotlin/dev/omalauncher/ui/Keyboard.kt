@@ -197,15 +197,11 @@ class KeyboardSink(
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
         cjk = cjkKeyboard()
-        // Like Termux: no suggestions or autocorrect, raw keys where the IME allows. Gboard
-        // drops pinyin and the like in such a field, so those get plain text, autocorrect and all.
-        outAttrs.inputType =
-            if (cjk) {
-                InputType.TYPE_CLASS_TEXT
-            } else {
-                InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or
-                    InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
-            }
+        // Keep this a normal text field: Android documents that NO_SUGGESTIONS can disable the
+        // suggestions that gesture typing needs. Leaving AUTO_CORRECT unset still prevents an IME
+        // from silently changing shell commands, while Gboard can offer glide typing. CJK input
+        // uses the same class so its composing text continues through the existing path.
+        outAttrs.inputType = terminalInputType()
         outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN or EditorInfo.IME_FLAG_NO_EXTRACT_UI
         return object : BaseInputConnection(this, false) {
             /**
@@ -288,5 +284,8 @@ class KeyboardSink(
 }
 
 private val cjkLanguages = setOf("zh", "ja", "ko")
+
+/** Input contract for terminal text: gesture-friendly, but without auto-correction. */
+internal fun terminalInputType() = InputType.TYPE_CLASS_TEXT
 
 private val volumeKeys = setOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)

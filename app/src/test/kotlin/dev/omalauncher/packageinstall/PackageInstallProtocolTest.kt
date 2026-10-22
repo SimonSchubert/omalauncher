@@ -6,6 +6,45 @@ import org.junit.Test
 
 class PackageInstallProtocolTest {
     @Test
+    fun parsesAllowlistedDeviceActions() {
+        assertEquals(
+            DeviceActionRequest("open-1", DeviceActionProtocol.OPEN_PACKAGE, "org.example.app", "open the test app"),
+            DeviceActionProtocol.parse("open-1", "open-package\norg.example.app\nopen the test app\n".toByteArray()),
+        )
+        assertEquals(
+            DeviceActionRequest("url-1", DeviceActionProtocol.OPEN_URL, "https://example.com", "open docs"),
+            DeviceActionProtocol.parse("url-1", "open-url\nhttps://example.com\nopen docs\n".toByteArray()),
+        )
+    }
+
+    @Test
+    fun rejectsUnboundedDeviceActions() {
+        assertThrows(IllegalArgumentException::class.java) {
+            DeviceActionProtocol.parse("id", "shell\ninput tap 1 1\n".toByteArray())
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            DeviceActionProtocol.parse("id", "open-url\nfile:///etc/passwd\n".toByteArray())
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            DeviceActionProtocol.parse("id", "open-component\norg.example/.Not Valid\n".toByteArray())
+        }
+    }
+
+    @Test
+    fun normalModeKeepsBothApprovalPrompts() {
+        val policy = PackageInstallApprovalPolicy(yolo = false)
+        assertEquals(true, policy.showLauncherApproval)
+        assertEquals(true, policy.requestAndroidUserAction)
+    }
+
+    @Test
+    fun yoloOnlySkipsTheHostPromptAndRequestsNonInteractiveInstall() {
+        val policy = PackageInstallApprovalPolicy(yolo = true)
+        assertEquals(false, policy.showLauncherApproval)
+        assertEquals(false, policy.requestAndroidUserAction)
+    }
+
+    @Test
     fun parsesPathAndReason() {
         assertEquals(
             PackageInstallRequest("123-test", "/root/build/app.apk", "debug build"),

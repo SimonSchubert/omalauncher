@@ -46,6 +46,7 @@ fun SettingsScreen(
     onAgents: () -> Unit,
     onPackages: () -> Unit,
     onLinux: () -> Unit,
+    onDeviceAccess: () -> Unit,
     onLicenses: () -> Unit,
     onGestures: () -> Unit,
 ) {
@@ -85,6 +86,11 @@ fun SettingsScreen(
                     Triple("coding agents", "needs linux", onLinux)
                 },
                 Triple("packages", if (installed) "install Linux apps and tools with pacman and the AUR" else "needs linux", if (installed) onPackages else onLinux),
+                Triple(
+                    "agent device access",
+                    if (runtime.packageInstalls.yoloEnabled) "YOLO on · APK installs skip Omalauncher approval" else "APK installs ask before PackageInstaller",
+                    onDeviceAccess,
+                ),
                 if (localNetworkMissing) {
                     Triple("local network", "let widgets and linux reach your printer, home assistant, …") {
                         askLocalNetwork.launch(LocalNetwork.PERMISSION)

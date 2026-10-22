@@ -152,8 +152,12 @@ class Proot(
                 // Android's zone name (e.g. Europe/Berlin); the guest otherwise runs on UTC.
                 "TZ=${java.util.TimeZone.getDefault().id}",
                 "TERM=xterm-256color",
-                // mise-installed tools (coding agents, node) live in the last two.
-                "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/root/.local/bin:/root/.local/share/mise/shims",
+                // The Android build toolchain is guest-local. ADB is deliberately not installed or exposed.
+                // mise-installed tools (coding agents, node) live in the last two entries.
+                "PATH=/opt/gradle/current/bin:/opt/android-sdk/cmdline-tools/latest/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/root/.local/bin:/root/.local/share/mise/shims",
+                "JAVA_HOME=$GUEST_JAVA_HOME",
+                "ANDROID_HOME=$GUEST_ANDROID_HOME",
+                "ANDROID_SDK_ROOT=$GUEST_ANDROID_HOME",
                 // As (fake) root, GNU tar restores directory modes with fchmodat(AT_SYMLINK_NOFOLLOW),
                 // which fails with ENOENT under proot on newer kernels and fails the extraction (mise.run).
                 "TAR_OPTIONS=--no-same-permissions",
@@ -214,6 +218,10 @@ class Proot(
 
         /** XDG_RUNTIME_DIR in the guest, bound to [runtimeDir]. */
         const val GUEST_RUNTIME_DIR = "/run/user/0"
+
+        /** Guest-local Android build toolchain locations; absent tools remain harmless until provisioned. */
+        const val GUEST_JAVA_HOME = "/usr/lib/jvm/java-17-openjdk"
+        const val GUEST_ANDROID_HOME = "/opt/android-sdk"
 
         private const val GUEST_CJK_FONT = "/usr/share/fonts/android/NotoSansCJK-Regular.ttc"
     }

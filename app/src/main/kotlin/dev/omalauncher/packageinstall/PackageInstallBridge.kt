@@ -11,6 +11,9 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import dev.omalauncher.R
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.upgrade.writeAtomically
@@ -61,11 +64,27 @@ class PackageInstallBridge(
     private val context: Context,
     private val proot: Proot,
 ) {
+    private val prefs = context.getSharedPreferences(DEVICE_ACCESS_PREFS, Context.MODE_PRIVATE)
     private val pending = ConcurrentHashMap<String, PendingPackageInstall>()
     private val approving = ConcurrentHashMap.newKeySet<String>()
     private val started = AtomicBoolean(false)
     private val inbox get() = File(proot.runtimeDir, INBOX_NAME)
     private val stagingDir = File(context.filesDir, STAGING_DIRECTORY)
+
+    /** Explicitly enabled by the user; the guest cannot change this app-private setting. */
+    var yoloEnabled by mutableStateOf(prefs.getBoolean(YOLO_ENABLED_PREF, false))
+        private set
+
+    /**
+     * Changes unattended install mode and immediately drains requests already
+     * waiting for the normal approval screen when it is enabled.
+     */
+    fun setYoloEnabled(enabled: Boolean): Boolean {
+        if (!prefs.edit().putBoolean(YOLO_ENABLED_PREF, enabled).commit()) return false
+        yoloEnabled = enabled
+        if (enabled) pending.keys.forEach(::startWithoutApproval)
+        return true
+    }
 
     fun start() {
         if (!started.compareAndSet(false, true)) return
@@ -85,8 +104,15 @@ class PackageInstallBridge(
 
     fun canRequestPackageInstalls(): Boolean = context.packageManager.canRequestPackageInstalls()
 
-    /** Starts a PackageInstaller session only after the approval activity calls this. */
-    fun approve(id: String): PackageInstallApproval {
+    /** Starts a PackageInstaller session after the approval activity calls this. */
+    fun approve(id: String): PackageInstallApproval =
+        start(id, PackageInstallApprovalPolicy(yolo = false))
+
+    private fun start(
+        id: String,
+        policy: PackageInstallApprovalPolicy,
+    ): PackageInstallApproval {
+        if (policy.yolo && !yoloEnabled) return PackageInstallApproval.Rejected("YOLO mode is disabled")
         val request = pending[id] ?: return PackageInstallApproval.Rejected("request is no longer pending")
         if (!canRequestPackageInstalls()) {
             return PackageInstallApproval.Rejected("allow installs from this source first")
@@ -111,8 +137,13 @@ class PackageInstallBridge(
                     setAppPackageName(request.info.packageName)
                     setAppLabel(request.info.label)
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        // Even if this app is later granted install-from-source, the system must ask again.
-                        setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
+                        setRequireUserAction(
+                            if (policy.requestAndroidUserAction) {
+                                PackageInstaller.SessionParams.USER_ACTION_REQUIRED
+                            } else {
+                                PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED
+                            },
+                        )
                     }
                 }
                 sessionId = installer.createSession(params)
@@ -144,6 +175,16 @@ class PackageInstallBridge(
             }
         } finally {
             approving.remove(id)
+        }
+    }
+
+    /** Starts a validated request without opening Omalauncher's approval UI. */
+    private fun startWithoutApproval(id: String) {
+        thread(name = "package-install-yolo", isDaemon = true) {
+            val result = start(id, PackageInstallApprovalPolicy(yolo = true))
+            if (result is PackageInstallApproval.Rejected && pending.containsKey(id)) {
+                rejectNow(id, result.message)
+            }
         }
     }
 
@@ -183,7 +224,7 @@ class PackageInstallBridge(
             return
         }
         pending[id] = result
-        prompt(result)
+        if (yoloEnabled) startWithoutApproval(id) else prompt(result)
     }
 
     private fun inspect(request: PackageInstallRequest): Result<PendingPackageInstall> = runCatching {
@@ -362,6 +403,8 @@ class PackageInstallBridge(
         private const val REQUEST_TIMEOUT_MS = 10 * 60 * 1000L
         private const val MAX_APK_BYTES = 512L * 1024 * 1024
         private const val MAX_PERMISSIONS = 16
+        private const val DEVICE_ACCESS_PREFS = "device_access"
+        private const val YOLO_ENABLED_PREF = "agent_yolo_package_installs"
 
         private fun readBounded(file: File, max: Int): ByteArray? {
             if (!file.isFile || file.length() > max) return null
@@ -405,7 +448,7 @@ class PackageInstallBridge(
                 """
                 #!/bin/bash
                 # Ask Omalauncher to install a locally built APK. The Android host
-                # validates and displays the APK before PackageInstaller is called.
+                # validates the APK and applies the user's approval policy before PackageInstaller is called.
                 set -u
                 if [ "${'$'}#" -lt 1 ] || [ "${'$'}#" -gt 2 ]; then
                   echo "usage: omalauncher-install /absolute/path/app.apk [reason]" >&2

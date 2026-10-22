@@ -1146,10 +1146,17 @@ class WidgetEngine(
                 "docs/home.md in the widgets folder explains it.\n\n" +
                 "To install an Android app you built inside Linux, run `omalauncher-install /absolute/path/app-debug.apk \"reason\"`. " +
                 "This sends a bounded request to the Android host; it does not give Linux ADB access or Android credentials. " +
-                "The host shows the package, version, APK SHA-256, signing certificate and requested permissions for explicit user approval, " +
-                "then Android's system installer asks for its own confirmation. The command returns `ok` only after installation succeeds; " +
-                "otherwise it returns an error. Do not try to bypass the approval screen or request an APK you did not intend to install. " +
+                "Normally the host shows the package, version, APK SHA-256, signing certificate and requested permissions for explicit user approval, " +
+                "then Android's system installer asks for its own confirmation. If the user deliberately enabled YOLO in Omalauncher settings, " +
+                "the host may submit the validated APK without its approval screen; Android may still show its own confirmation. The command returns `ok` " +
+                "only after installation succeeds; otherwise it returns an error. Do not try to bypass the host or Android installer, and do not request " +
+                "an APK you did not intend to install. " +
+                "For Android app development, this phone's guest exports JAVA_HOME=/usr/lib/jvm/java-17-openjdk, " +
+                "ANDROID_HOME=/opt/android-sdk and ANDROID_SDK_ROOT=/opt/android-sdk, with Gradle and the SDK command-line tools on PATH. " +
+                "Use a project's Gradle wrapper or `gradle` to build from source; ADB is intentionally unavailable inside the guest. " +
+                "The supported Android actions are documented in ~/.codex/skills/omalauncher-device/SKILL.md and requested with `omalauncher-device`: " +
+                "open-package, open-component for an exported activity, or open-url for http/https. " +
                 "On this proot-based phone, Codex's inner Linux sandbox is disabled because nested bubblewrap cannot start; Codex still uses on-request approvals, " +
-                "and the Android app UID, proot guest boundary and APK approval screen remain in force.\n"
+                "and the Android app UID and proot guest boundary remain in force.\n"
     }
 }

@@ -20,4 +20,5 @@
     <exclude domain="file" path="updates.json" />
     <exclude domain="file" path="omarchy" />
     <exclude domain="file" path=".omarchy.download" />
+    <exclude domain="sharedpref" path="device_access.xml" />
 </full-backup-content>

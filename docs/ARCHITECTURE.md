@@ -25,16 +25,35 @@ command writes a bounded request into the guest runtime directory. Android
 parses it outside Linux, resolves only a guest-visible APK, computes its
 SHA-256 and signing certificate, and shows an approval screen. After approval,
 `PackageInstaller` is used with user action required; the result is written
-back to the request. No ADB socket, GitHub credential, or signing key is bound
-into the guest. USB ADB remains a computer-side development transport, not an
-Android-app capability.
+back to the request. The user can deliberately enable the off-by-default YOLO
+mode in Settings › agent device access; then validated requests skip the
+Omalauncher approval screen and use PackageInstaller's non-interactive request
+when Android permits it. Device policy can still show Android's own installer
+confirmation. No ADB socket, GitHub credential, or signing key is bound into the
+guest. USB ADB remains a computer-side development transport, not an
+Android-app capability. The guest has a separate `omalauncher-device` bridge
+for three allowlisted actions: opening a package's launcher activity, opening
+an exported component, and opening an http/https URL. Those requests use the
+same normal approval or explicit YOLO policy, and are never arbitrary
+`adb shell` commands, input injection, package-data access, uninstall
+operations, or root actions.
+
+The guest process environment also has fixed paths for the phone-local Android
+toolchain: Java 17 at `/usr/lib/jvm/java-17-openjdk`, Gradle at
+`/opt/gradle/current/bin`, and the Android SDK at `/opt/android-sdk`. The
+launcher exports `JAVA_HOME`, `ANDROID_HOME` and `ANDROID_SDK_ROOT` and adds
+Gradle plus the SDK command-line tools to `PATH`; it does not install or expose
+ADB in the guest. Agents build from source with Gradle and request installs
+through the bounded approval bridge above.
 
 Codex's managed guest configuration uses `sandbox_mode = "danger-full-access"`
 with `approval_policy = "on-request"`. The inner Linux bubblewrap sandbox cannot
 create its app-server socket mount inside proot, so keeping that setting would
 prevent the agent from running any command. The Android app UID and proot guest
-remain the outer boundary, and APK installation still requires both the
-Omalauncher approval screen and Android's PackageInstaller confirmation.
+remain the outer boundary. In normal mode APK installation and device actions
+require the Omalauncher approval screen; APK installation may also require
+Android's PackageInstaller confirmation. YOLO only removes the Omalauncher
+prompt for validated requests and never makes raw ADB available to the guest.
 
 ## Source layout
 

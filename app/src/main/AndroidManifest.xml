@@ -93,6 +93,14 @@
             android:resizeableActivity="true"
             android:windowSoftInputMode="adjustResize|stateAlwaysHidden" />
 
+        <activity
+            android:name=".packageinstall.DeviceActionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
+
         <!-- Recents names a task after its activity's manifest label, so the common windows get their own. -->
         <activity-alias
             android:name=".TerminalWindow"

@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.view.KeyEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -88,6 +89,9 @@ class LinuxWindowActivity : InstantActivity() {
 
     override fun onStart() {
         super.onStart()
+        // A build or install can take a while. Keep the display awake only while this
+        // Linux/Codex window is visible; leaving it lets the normal phone timeout apply.
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         runtime.screenStarted()
     }
 
@@ -97,6 +101,7 @@ class LinuxWindowActivity : InstantActivity() {
     }
 
     override fun onStop() {
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         super.onStop()
         runtime.screenStopped()
     }

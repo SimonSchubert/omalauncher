@@ -72,13 +72,29 @@ In debug builds you can launch guest commands with
 
 An agent can request a locally built APK without access to ADB or Android
 secrets: run `omalauncher-install /root/path/to/app-debug.apk "reason"` in the
-guest. Omalauncher checks the guest-visible path and APK metadata, asks the user
-to approve the package, hash, signing certificate and permissions, then hands it
-to Android's PackageInstaller. The request returns only after the system
-installer succeeds or rejects it. On proot-based phones, Codex is configured with
-`sandbox_mode = "danger-full-access"` and `approval_policy = "on-request"` because
-its nested bubblewrap sandbox cannot start; the Android app UID, proot guest
-boundary, and explicit PackageInstaller approvals remain in force.
+guest. Omalauncher checks the guest-visible path and APK metadata, then normally
+asks the user to approve the package, hash, signing certificate and permissions
+before handing it to Android's PackageInstaller. The request returns only after
+the system installer succeeds or rejects it. For deliberate unattended work,
+Settings › agent device access has an explicit, off-by-default YOLO mode. It
+skips Omalauncher's prompt for validated requests and asks PackageInstaller for
+non-interactive installation, but Android or Xiaomi can still require its own
+confirmation. YOLO does not expose raw ADB, Android secrets or a root shell.
+For other Android actions, the guest can use the same policy with
+`omalauncher-device open-package <package> [reason]`,
+`omalauncher-device open-component <package>/<exported-activity> [reason]`, or
+`omalauncher-device open-url <http-or-https-url> [reason]`. These are
+allowlisted host API calls, not arbitrary `adb shell` or input injection.
+On proot-based phones, Codex is configured with `sandbox_mode = "danger-full-access"`
+and `approval_policy = "on-request"` because its nested bubblewrap sandbox cannot
+start; the Android app UID and proot guest boundary remain in force.
+
+This phone's guest also exposes an ARM-native JDK 17 and Gradle, plus the
+official Android command-line tools under `/opt/android-sdk`. `JAVA_HOME`,
+`ANDROID_HOME` and `ANDROID_SDK_ROOT` are exported for guest processes, while
+ADB is intentionally not installed there. Build an app with its Gradle wrapper
+or `gradle`, then use `omalauncher-install`; it is approval-gated unless YOLO is
+explicitly enabled in Omalauncher's settings.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the compositor, rendering, GPU
   acceleration, and how updates reach existing installs

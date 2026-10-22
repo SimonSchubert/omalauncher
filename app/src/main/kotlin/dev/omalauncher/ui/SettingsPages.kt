@@ -40,6 +40,8 @@ enum class SettingsPage {
 
     /** Install, progress, remove; opened by anything that needs Linux. */
     Linux,
+    /** Agent APK install approval and unattended-install mode. */
+    DeviceAccess,
     Licenses,
     Gestures,
 }
@@ -113,6 +115,7 @@ private fun SettingsPage(
                 onAgents = { stack.push(SettingsPage.Agents) },
                 onPackages = { stack.push(SettingsPage.Packages) },
                 onLinux = { stack.push(SettingsPage.Linux) },
+                onDeviceAccess = { stack.push(SettingsPage.DeviceAccess) },
                 onLicenses = { stack.push(SettingsPage.Licenses) },
                 onGestures = { stack.push(SettingsPage.Gestures) },
             )
@@ -160,6 +163,7 @@ private fun SettingsPage(
         SettingsPage.FaceStore -> StoreScreen(runtime.widgets, runtime.agents.installed, homePage, runtime.themes.picked, onDismiss = close, initialKind = OwlKind.Face)
         SettingsPage.Packages -> PackagesScreen(runtime, onDismiss = close)
         SettingsPage.Linux -> LinuxScreen(runtime, onDismiss = close)
+        SettingsPage.DeviceAccess -> DeviceAccessScreen(runtime, onDismiss = close)
         SettingsPage.Licenses -> LicensesScreen(onDismiss = close)
         SettingsPage.Gestures -> GesturesScreen(runtime, onDismiss = close, onAgent = ::agent)
     }
