@@ -138,6 +138,13 @@ docs say what's current.
 | the terminal key bar | `keybar.owl`, `examples/keybar-layers` (latch, layers), `examples/keybar-vim`, `examples/keybar-gamepad`, `examples/keybar-commands` (typeText) |
 | a live terminal | `45-terminal` |
 | an app that sends | `examples/ntfy` (two views with `back`, a source whose URL takes a state, `post` with a JSON body, and what it answers shown at once), `examples/github-inbox` (a token kept as a `secret`, `post` with `method: "PATCH"`) |
+| a Git client | `examples/omagit` (open or clone repositories, stage files, read diffs and commit history, manage branches and stashes, hold to confirm destructive actions) |
+
+To use [omagit](examples/omagit.owl), copy `examples/omagit.owl` into this folder as
+`omagit.owl`; it appears in the app drawer, not on the home screen. It needs Linux
+and the packages in its `requires` block. Cloning opens a Shell for progress and
+authentication; return to omagit and choose **Open destination** after Git reports
+success. Its Lucide icons are embedded, so they work offline.
 
 ## Limits
 

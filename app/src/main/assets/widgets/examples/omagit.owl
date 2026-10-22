@@ -1,0 +1,1579 @@
+app "omagit" {
+  meta { description: "Manage local Git repositories with staging, diffs, history, branches, stashes, and clone support"; version: "1.0.0"; license: "MIT"; category: "dev"; owl: 12 }
+  // Git and SSH transport, repository discovery, text tools, and Shell commands.
+  requires { pacman: ["git", "openssh", "findutils", "sed", "coreutils", "bash"] }
+
+  // ── what the app remembers ─────────────────────────────────────────────────
+  state repo = "" persist   // the folder being looked at
+  state pick = false        // the repository picker is open
+  state tab = "changes"
+  state q = ""              // filter in the picker
+  state entry = ""          // "open" or "clone" repository form
+  state folderPath = ""
+  state cloneUrl = ""
+  state cloneFolder = ""
+  state cloneLaunched = false
+  state entryError = ""
+  state cq = ""             // filter in the history
+  state climit = 40         // how many commits the log has fetched
+  state msg = ""            // commit message
+  state dsel = ""           // path whose diff is open
+  state dmode = "w"         // "w" working tree, "s" staged, "c" from a commit
+  state hsel = ""           // hash of the open commit
+  state hmsg = ""           // its subject
+  state nbx = ""            // new branch name
+  state smsg = ""           // stash message
+  state out = ""            // last command's output
+  state outAt = 0           // when it arrived, so it can fade on its own
+  state act = ""            // what the last button asked for
+  state confirm = ""        // the action waiting for a yes: "<verb>:<argument>"
+
+  // An untracked file has no diff against HEAD; show it against /dev/null so
+  // a new file can be read before it is staged.
+  let difCmd = dmode == "c" ? "git show ${sh(hsel)} -- ${sh(dsel)}"
+    : dmode == "s" ? "git diff --cached -- ${sh(dsel)}"
+    : "(git diff -- ${sh(dsel)}; git ls-files --error-unmatch ${sh(dsel)} >/dev/null 2>&1 || git diff --no-index -- /dev/null ${sh(dsel)})"
+
+  // ── what git says ──────────────────────────────────────────────────────────
+  source repos = cmd('find $HOME -maxdepth 4 -type d -name .git 2>/dev/null | sed "s|/.git$||" | sort -u') every 10s
+  source home = cmd("echo $HOME") every 1h
+  source now = clock every 15s
+  source st = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && (git rev-parse --git-dir >/dev/null 2>&1 || echo '## not a repository') && git status --porcelain -b -uno && git ls-files --others --exclude-standard --directory | sed 's|^|?? |'") every 3s status timeout 20s
+  source abr = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && git rev-list --left-right --count '@{u}'...HEAD 2>/dev/null || echo 0 0") every 20s status
+  source cmts = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && git log --graph --max-count=${climit} --pretty=format:'%h~%ct~%D~%s' 2>/dev/null") every 20s status
+  source bral = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && git branch -a --format='%(refname)~%(refname:short)~%(upstream:short)~%(upstream:track)~%(HEAD)~%(contents:subject)' 2>/dev/null") every 10s status
+  source stsh = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && git stash list --pretty=format:'%gd|%ct|%gs'") every 20s status
+  source cf = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git show --pretty=format: --name-status ${sh(hsel)} 2>&1 | tr '\\t' '|'") every 10s status
+  source cmeta = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git show -s --format='%h|%an|%ar|%s' ${sh(hsel)}") every 10s status
+  source cstat = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git show --shortstat --format='' ${sh(hsel)} 2>&1 | tail -n 1") every 10s status
+  source cbody = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git log -1 --format='%b' ${sh(hsel)} 2>/dev/null") every 10s status
+  source dif = cmd("[ ${len(dsel)} -gt 1 ] && cd ${sh(repo)} && ${difCmd} 2>&1 | head -c 12000") every 5s status
+
+  let localHome = trim(home ?? "/root")
+  let openPath = trim(folderPath) == "~" ? localHome : startsWith(trim(folderPath), "~/") ? localHome + sub(trim(folderPath), 1, len(trim(folderPath))) : trim(folderPath)
+  let clonePath = trim(cloneFolder) == "~" ? localHome : startsWith(trim(cloneFolder), "~/") ? localHome + sub(trim(cloneFolder), 1, len(trim(cloneFolder))) : trim(cloneFolder)
+  // Cloning stays in a real Shell: progress and authentication are visible, with no job timeout.
+  let cloneCmd = "if [ -e ${sh(clonePath)} ] || [ -L ${sh(clonePath)} ]; then printf 'Destination already exists. Choose a new folder.\\n'; elif git -c protocol.ext.allow=never clone -- ${sh(trim(cloneUrl))} ${sh(clonePath)}; then printf '\\nClone complete. Return to omagit and open the destination.\\n'; else printf '\\nClone failed. Review the Git error above before trying again.\\n'; fi; exec bash"
+
+  // Shared visual tokens follow the active launcher theme.
+  let secondaryInk = mix(muted, foreground, 0.70)
+  let positiveInk = mix(green, foreground, 0.45)
+  let hairline = alpha(foreground, 0.14)
+  let fieldFill = mix(background, foreground, 0.035)
+  let controlFill = mix(background, foreground, 0.055)
+
+  // Official lucide-static 1.61.0 SVGs: bundled so every icon works offline.
+  // Source: https://www.npmjs.com/package/lucide-static/v/1.61.0
+  // ISC License
+  // Copyright (c) 2026 Lucide Icons and Contributors
+  // Permission to use, copy, modify, and/or distribute this software for any
+  // purpose with or without fee is hereby granted, provided that the above
+  // copyright notice and this permission notice appear in all copies.
+  // THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+  // WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+  // MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+  // ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+  // WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+  // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+  // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+  // Feather-derived icons are also covered by The MIT License (MIT):
+  // Copyright (c) 2013-present Cole Bemis
+  // Permission is hereby granted, free of charge, to any person obtaining a copy
+  // of this software and associated documentation files (the "Software"), to deal
+  // in the Software without restriction, including without limitation the rights
+  // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  // copies of the Software, and to permit persons to whom the Software is
+  // furnished to do so, subject to the following conditions:
+  // The above copyright notice and this permission notice shall be included in all
+  // copies or substantial portions of the Software.
+  // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  // SOFTWARE.
+  asset lucide_download = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1kb3dubG9hZCIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSJjdXJyZW50Q29sb3IiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTEyIDE1VjMiIC8+CiAgPHBhdGggZD0iTTIxIDE1djRhMiAyIDAgMCAxLTIgMkg1YTIgMiAwIDAgMS0yLTJ2LTQiIC8+CiAgPHBhdGggZD0ibTcgMTAgNSA1IDUtNSIgLz4KPC9zdmc+Cg=="
+  asset lucide_upload = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS11cGxvYWQiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Ik0xMiAzdjEyIiAvPgogIDxwYXRoIGQ9Im0xNyA4LTUtNS01IDUiIC8+CiAgPHBhdGggZD0iTTIxIDE1djRhMiAyIDAgMCAxLTIgMkg1YTIgMiAwIDAgMS0yLTJ2LTQiIC8+Cjwvc3ZnPgo="
+  asset lucide_refresh_cw = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1yZWZyZXNoLWN3IgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMyAxMmE5IDkgMCAwIDEgOS05IDkuNzUgOS43NSAwIDAgMSA2Ljc0IDIuNzRMMjEgOCIgLz4KICA8cGF0aCBkPSJNMjEgM3Y1aC01IiAvPgogIDxwYXRoIGQ9Ik0yMSAxMmE5IDkgMCAwIDEtOSA5IDkuNzUgOS43NSAwIDAgMS02Ljc0LTIuNzRMMyAxNiIgLz4KICA8cGF0aCBkPSJNOCAxNkgzdjUiIC8+Cjwvc3ZnPgo="
+  asset lucide_terminal = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS10ZXJtaW5hbCIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSJjdXJyZW50Q29sb3IiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTEyIDE5aDgiIC8+CiAgPHBhdGggZD0ibTQgMTcgNi02LTYtNiIgLz4KPC9zdmc+Cg=="
+  asset lucide_folder_open = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1mb2xkZXItb3BlbiIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSJjdXJyZW50Q29sb3IiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0ibTYgMTQgMS41LTIuOUEyIDIgMCAwIDEgOS4yNCAxMEgyMGEyIDIgMCAwIDEgMS45NCAyLjVsLTEuNTQgNmEyIDIgMCAwIDEtMS45NSAxLjVINGEyIDIgMCAwIDEtMi0yVjVhMiAyIDAgMCAxIDItMmgzLjlhMiAyIDAgMCAxIDEuNjkuOWwuODEgMS4yYTIgMiAwIDAgMCAxLjY3LjlIMThhMiAyIDAgMCAxIDIgMnYyIiAvPgo8L3N2Zz4K"
+  asset lucide_trash_2 = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS10cmFzaC0yIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMTAgMTF2NiIgLz4KICA8cGF0aCBkPSJNMTQgMTF2NiIgLz4KICA8cGF0aCBkPSJNMTkgNnYxNGEyIDIgMCAwIDEtMiAySDdhMiAyIDAgMCAxLTItMlY2IiAvPgogIDxwYXRoIGQ9Ik0zIDZoMTgiIC8+CiAgPHBhdGggZD0iTTggNlY0YTIgMiAwIDAgMSAyLTJoNGEyIDIgMCAwIDEgMiAydjIiIC8+Cjwvc3ZnPgo="
+  asset lucide_x = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS14IgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMTggNiA2IDE4IiAvPgogIDxwYXRoIGQ9Im02IDYgMTIgMTIiIC8+Cjwvc3ZnPgo="
+  asset lucide_copy = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jb3B5IgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cmVjdCB3aWR0aD0iMTQiIGhlaWdodD0iMTQiIHg9IjgiIHk9IjgiIHJ4PSIyIiByeT0iMiIgLz4KICA8cGF0aCBkPSJNNCAxNmMtMS4xIDAtMi0uOS0yLTJWNGMwLTEuMS45LTIgMi0yaDEwYzEuMSAwIDIgLjkgMiAyIiAvPgo8L3N2Zz4K"
+  asset lucide_git_commit_horizontal = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1naXQtY29tbWl0LWhvcml6b250YWwiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjMiIC8+CiAgPGxpbmUgeDE9IjMiIHgyPSI5IiB5MT0iMTIiIHkyPSIxMiIgLz4KICA8bGluZSB4MT0iMTUiIHgyPSIyMSIgeTE9IjEyIiB5Mj0iMTIiIC8+Cjwvc3ZnPgo="
+  asset lucide_arrow_right_left = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1hcnJvdy1yaWdodC1sZWZ0IgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJtMTYgMyA0IDQtNCA0IiAvPgogIDxwYXRoIGQ9Ik0yMCA3SDQiIC8+CiAgPHBhdGggZD0ibTggMjEtNC00IDQtNCIgLz4KICA8cGF0aCBkPSJNNCAxN2gxNiIgLz4KPC9zdmc+Cg=="
+  asset lucide_undo_2 = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS11bmRvLTIiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Ik05IDE0IDQgOWw1LTUiIC8+CiAgPHBhdGggZD0iTTQgOWgxMC41YTUuNSA1LjUgMCAwIDEgNS41IDUuNWE1LjUgNS41IDAgMCAxLTUuNSA1LjVIMTEiIC8+Cjwvc3ZnPgo="
+  asset lucide_archive = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1hcmNoaXZlIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iNSIgeD0iMiIgeT0iMyIgcng9IjEiIC8+CiAgPHBhdGggZD0iTTQgOHYxMWEyIDIgMCAwIDAgMiAyaDEyYTIgMiAwIDAgMCAyLTJWOCIgLz4KICA8cGF0aCBkPSJNMTAgMTJoNCIgLz4KPC9zdmc+Cg=="
+  asset lucide_check = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jaGVjayIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSJjdXJyZW50Q29sb3IiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTIwIDYgOSAxN2wtNS01IiAvPgo8L3N2Zz4K"
+  asset lucide_minus = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1taW51cyIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSJjdXJyZW50Q29sb3IiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTUgMTJoMTQiIC8+Cjwvc3ZnPgo="
+  asset lucide_plus = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1wbHVzIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNNSAxMmgxNCIgLz4KICA8cGF0aCBkPSJNMTIgNXYxNCIgLz4KPC9zdmc+Cg=="
+  asset lucide_chevron_right = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jaGV2cm9uLXJpZ2h0IgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJtOSAxOCA2LTYtNi02IiAvPgo8L3N2Zz4K"
+  asset lucide_arrow_left = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1hcnJvdy1sZWZ0IgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJtMTIgMTktNy03IDctNyIgLz4KICA8cGF0aCBkPSJNMTkgMTJINSIgLz4KPC9zdmc+Cg=="
+  asset lucide_search = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1zZWFyY2giCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Im0yMSAyMS00LjM0LTQuMzQiIC8+CiAgPGNpcmNsZSBjeD0iMTEiIGN5PSIxMSIgcj0iOCIgLz4KPC9zdmc+Cg=="
+  asset lucide_cherry = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jaGVycnkiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Ik0yIDE3YTUgNSAwIDAgMCAxMCAwYzAtMi43Ni0yLjUtNS01LTMtMi41LTItNSAuMjQtNSAzWiIgLz4KICA8cGF0aCBkPSJNMTIgMTdhNSA1IDAgMCAwIDEwIDBjMC0yLjc2LTIuNS01LTUtMy0yLjUtMi01IC4yNC01IDNaIiAvPgogIDxwYXRoIGQ9Ik03IDE0YzMuMjItMi45MSA0LjI5LTguNzUgNS0xMiAxLjY2IDIuMzggNC45NCA5IDUgMTIiIC8+CiAgPHBhdGggZD0iTTIyIDljLTQuMjkgMC03LjE0LTIuMzMtMTAtNyA1LjcxIDAgMTAgNC42NyAxMCA3WiIgLz4KPC9zdmc+Cg=="
+  asset lucide_circle_alert = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jaXJjbGUtYWxlcnQiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIiAvPgogIDxsaW5lIHgxPSIxMiIgeDI9IjEyIiB5MT0iOCIgeTI9IjEyIiAvPgogIDxsaW5lIHgxPSIxMiIgeDI9IjEyLjAxIiB5MT0iMTYiIHkyPSIxNiIgLz4KPC9zdmc+Cg=="
+  asset lucide_circle_plus = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jaXJjbGUtcGx1cyIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSJjdXJyZW50Q29sb3IiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPGNpcmNsZSBjeD0iMTIiIGN5PSIxMiIgcj0iMTAiIC8+CiAgPHBhdGggZD0iTTggMTJoOCIgLz4KICA8cGF0aCBkPSJNMTIgOHY4IiAvPgo8L3N2Zz4K"
+  asset lucide_circle_check = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jaXJjbGUtY2hlY2siCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIiAvPgogIDxwYXRoIGQ9Im0xNiA5LTUuNSA1LjVMOCAxMiIgLz4KPC9zdmc+Cg=="
+  asset lucide_file_pen_line = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1maWxlLXBlbi1saW5lIgogIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICB3aWR0aD0iMjQiCiAgaGVpZ2h0PSIyNCIKICB2aWV3Qm94PSIwIDAgMjQgMjQiCiAgZmlsbD0ibm9uZSIKICBzdHJva2U9ImN1cnJlbnRDb2xvciIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMTQuMzY0IDEzLjYzNGEyIDIgMCAwIDAtLjUwNi44NTRsLS44MzcgMi44N2EuNS41IDAgMCAwIC42Mi42MmwyLjg3LS44MzdhMiAyIDAgMCAwIC44NTQtLjUwNmw0LjAxMy00LjAwOWExIDEgMCAwIDAtMy4wMDQtMy4wMDR6IiAvPgogIDxwYXRoIGQ9Ik0xNC40ODcgNy44NThBMSAxIDAgMCAxIDE0IDdWMiIgLz4KICA8cGF0aCBkPSJNMjAgMTkuNjQ1VjIwYTIgMiAwIDAgMS0yIDJINmEyIDIgMCAwIDEtMi0yVjRhMiAyIDAgMCAxIDItMmg4YTIuNCAyLjQgMCAwIDEgMS43MDQuNzA2bDIuNTE2IDIuNTE2IiAvPgogIDxwYXRoIGQ9Ik04IDE4aDEiIC8+Cjwvc3ZnPgo="
+  asset lucide_file_plus_2 = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1maWxlLXBsdXMtMiIKICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgd2lkdGg9IjI0IgogIGhlaWdodD0iMjQiCiAgdmlld0JveD0iMCAwIDI0IDI0IgogIGZpbGw9Im5vbmUiCiAgc3Ryb2tlPSJjdXJyZW50Q29sb3IiCiAgc3Ryb2tlLXdpZHRoPSIyIgogIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIKICBzdHJva2UtbGluZWpvaW49InJvdW5kIgo+CiAgPHBhdGggZD0iTTExLjM1IDIySDZhMiAyIDAgMCAxLTItMlY0YTIgMiAwIDAgMSAyLTJoOGEyLjQgMi40IDAgMCAxIDEuNzA2LjcwNmwzLjU4OCAzLjU4OEEyLjQgMi40IDAgMCAxIDIwIDh2NS4zNSIgLz4KICA8cGF0aCBkPSJNMTQgMnY1YTEgMSAwIDAgMCAxIDFoNSIgLz4KICA8cGF0aCBkPSJNMTQgMTloNiIgLz4KICA8cGF0aCBkPSJNMTcgMTZ2NiIgLz4KPC9zdmc+Cg=="
+  asset lucide_file_minus_2 = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1maWxlLW1pbnVzLTIiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Ik0yMCAxNFY4YTIuNCAyLjQgMCAwIDAtLjcwNi0xLjcwNmwtMy41ODgtMy41ODhBMi40IDIuNCAwIDAgMCAxNCAySDZhMiAyIDAgMCAwLTIgMnYxNmEyIDIgMCAwIDAgMiAyaDEyIiAvPgogIDxwYXRoIGQ9Ik0xNCAydjVhMSAxIDAgMCAwIDEgMWg1IiAvPgogIDxwYXRoIGQ9Ik0xNCAxOGg2IiAvPgo8L3N2Zz4K"
+  asset lucide_file_symlink = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1maWxlLXN5bWxpbmsiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Ik00IDExVjRhMiAyIDAgMCAxIDItMmg4YTIuNCAyLjQgMCAwIDEgMS43MDYuNzA2bDMuNTg4IDMuNTg4QTIuNCAyLjQgMCAwIDEgMjAgOHYxMmEyIDIgMCAwIDEtMiAySDZhMiAyIDAgMCAxLTItMnYtM2EyIDIgMCAwIDEgMi0yaDciIC8+CiAgPHBhdGggZD0iTTE0IDJ2NWExIDEgMCAwIDAgMSAxaDUiIC8+CiAgPHBhdGggZD0ibTEwIDE4IDMtMy0zLTMiIC8+Cjwvc3ZnPgo="
+  asset lucide_file_warning = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1maWxlLXdhcm5pbmciCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Ik02IDIyYTIgMiAwIDAgMS0yLTJWNGEyIDIgMCAwIDEgMi0yaDhhMi40IDIuNCAwIDAgMSAxLjcwNC43MDZsMy41ODggMy41ODhBMi40IDIuNCAwIDAgMSAyMCA4djEyYTIgMiAwIDAgMS0yIDJ6IiAvPgogIDxwYXRoIGQ9Ik0xMiA5djQiIC8+CiAgPHBhdGggZD0iTTEyIDE3aC4wMSIgLz4KPC9zdmc+Cg=="
+  asset lucide_file_question_mark = base64"PCEtLSBAbGljZW5zZSBsdWNpZGUtc3RhdGljIHYxLjYxLjAgLSBJU0MgLS0+CjxzdmcKICBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1maWxlLXF1ZXN0aW9uLW1hcmsiCiAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iY3VycmVudENvbG9yIgogIHN0cm9rZS13aWR0aD0iMiIKICBzdHJva2UtbGluZWNhcD0icm91bmQiCiAgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIKPgogIDxwYXRoIGQ9Ik02IDIyYTIgMiAwIDAgMS0yLTJWNGEyIDIgMCAwIDEgMi0yaDhhMi40IDIuNCAwIDAgMSAxLjcwNC43MDZsMy41ODggMy41ODhBMi40IDIuNCAwIDAgMSAyMCA4djEyYTIgMiAwIDAgMS0yIDJ6IiAvPgogIDxwYXRoIGQ9Ik0xMiAxN2guMDEiIC8+CiAgPHBhdGggZD0iTTkuMSA5YTMgMyAwIDAgMSA1LjgyIDFjMCAyLTMgMy0zIDMiIC8+Cjwvc3ZnPgo="
+
+  let lucideIcons = {
+    pull: lucide_download, push: lucide_upload, fetch: lucide_refresh_cw,
+    clone: lucide_download, cloneform: lucide_download, more: lucide_download,
+    shell: lucide_terminal,
+    repos: lucide_folder_open, openform: lucide_folder_open,
+    openrepo: lucide_folder_open, openclone: lucide_folder_open,
+    del: lucide_trash_2, delremote: lucide_trash_2, discard: lucide_trash_2,
+    drop: lucide_trash_2, delete: lucide_trash_2,
+    cancel: lucide_x, dismiss: lucide_x,
+    copyhash: lucide_copy, copypath: lucide_copy,
+    commit: lucide_git_commit_horizontal, amend: lucide_git_commit_horizontal,
+    switch: lucide_arrow_right_left, track: lucide_arrow_right_left,
+    revert: lucide_undo_2, stash: lucide_archive, stashes: lucide_archive,
+    apply: lucide_check, confirm: lucide_check, go: lucide_check,
+    unstage: lucide_minus, unstageall: lucide_minus,
+    stage: lucide_plus, stageall: lucide_plus, create: lucide_plus,
+    next: lucide_chevron_right, entrycancel: lucide_arrow_left,
+    search: lucide_search, cherry: lucide_cherry,
+    error: lucide_circle_alert, initial: lucide_circle_plus, clean: lucide_circle_check,
+    modified: lucide_file_pen_line, added: lucide_file_plus_2,
+    deleted: lucide_file_minus_2, renamed: lucide_file_symlink,
+    conflict: lucide_file_warning, untracked: lucide_file_question_mark
+  }
+
+  // ── pieces ─────────────────────────────────────────────────────────────────
+
+  component Rule {
+    Box { fill: width; height: 1; background: hairline }
+  }
+
+  component Caps(text, tint = secondaryInk) {
+    Text { text: text == upper(text) ? capitalize(lower(text)) : text; fontSize: 11; fontWeight: 600; color: tint; maxLines: 1 }
+  }
+
+  component Section(label, count = 0, tint = secondaryInk) {
+    Row {
+      gap: 8
+      align: center
+      padding: [16, 16, 16, 8]
+      Caps { text: label }
+      if count > 0 {
+        Text { text: "${count}"; fontSize: 11; color: tint }
+      }
+      Box { weight: 1; height: 1; background: hairline }
+    }
+  }
+
+  // Official Lucide SVGs, rendered at 20dp without rebuilding their geometry.
+  component Icon(name, tint = foreground, extent = 20, description = "") {
+    let n = split(name, ":")[0] == "ask" ? split(name, ":")[1] : split(name, ":")[0]
+    Image {
+      src: get(lucideIcons, n, lucide_circle_alert)
+      width: extent
+      height: extent
+      fit: contain
+      tint: tint
+      label: description
+    }
+  }
+
+  // One control for every action, including disabled and held confirmations.
+  component Action(tag, label, kind = "quiet", glyph = "", enabled = true, held = false, iconOnly = false, wide = false) {
+    Row {
+      height: iconOnly ? 44 : 40
+      width: iconOnly ? 44 : null
+      fill: wide ? "width" : false
+      gap: 6
+      align: center
+      justify: center
+      padding: iconOnly ? 0 : [12, 0]
+      radius: 7 * corners
+      background: !enabled ? fieldFill : held ? red : kind == "primary" ? accent : kind == "danger" ? alpha(red, 0.07) : controlFill
+      border: 1
+      borderColor: !enabled ? hairline : held ? red : kind == "primary" ? accent : kind == "danger" ? alpha(red, 0.45) : alpha(foreground, 0.22)
+      onTap: { if enabled && !held { act = tag } }
+      onLongPress: { if enabled && held { act = tag } }
+      Icon { name: glyph == "" ? tag : glyph; tint: !enabled ? secondaryInk : held || kind == "primary" ? background : kind == "danger" ? red : foreground; description: iconOnly ? label : "" }
+      if !iconOnly {
+        Text { text: label; fontSize: 11.5; fontWeight: 600; color: !enabled ? secondaryInk : held || kind == "primary" ? background : kind == "danger" ? red : foreground; maxLines: 1 }
+      }
+    }
+  }
+
+  component Confirm(question, label) {
+    Column {
+      gap: 12
+      padding: [12, 12, 12, 12]
+      background: alpha(red, 0.05)
+      border: 1
+      borderColor: alpha(red, 0.25)
+      radius: 7 * corners
+      Text { text: question; fontSize: 12; color: foreground; maxLines: 5 }
+      Text { text: "Hold ${label} to confirm."; fontSize: 11; color: secondaryInk }
+      Row {
+        gap: 8
+        align: center
+        Action { tag: "cancel"; label: "Cancel" }
+        Spacer { weight: 1 }
+        Action { tag: "go"; label: label; kind: "danger"; glyph: label == "Delete" || label == "Drop" || label == "Discard" ? "delete" : "confirm"; held: true }
+      }
+    }
+  }
+
+  component FileMark(letter, tint) {
+    let status = letter == "??" || letter == "?" ? "untracked" : letter == "A" || letter == "C" ? "added" : letter == "D" ? "deleted" : letter == "R" ? "renamed" : letter == "U" ? "conflict" : "modified"
+    Icon { name: status; tint: tint; description: "File status: ${status}" }
+  }
+
+  // A count or a word in a little tinted pill.
+  component Pill(text, tint = secondaryInk, glyph = "") {
+    Row {
+      gap: 4
+      align: center
+      padding: [7, 2]
+      if glyph != "" { Icon { name: glyph; tint: tint } }
+      radius: 4 * corners
+      background: alpha(tint, 0.09)
+      border: 1
+      borderColor: alpha(tint, 0.24)
+      Text { text: text; font: mono; fontSize: 9; color: tint; maxLines: 1 }
+    }
+  }
+
+  // A stat in the masthead strip: a number and what it counts.
+  component Stat(label, value, tint) {
+    Column {
+      gap: 2
+      weight: 1
+      Text { text: "${value}"; font: mono; fontSize: 15; fontWeight: 600; color: value > 0 ? tint : alpha(foreground, 0.3) }
+      Text { text: upper(label); fontSize: 8; letterSpacing: 0.9; color: muted; maxLines: 1 }
+    }
+  }
+
+  // ── reading the status ─────────────────────────────────────────────────────
+  let stl = lines(st == null ? "" : (st.out ?? ""))
+  let bline = stl[0] ?? ""
+  let chLines = drop(stl, 1)
+  let notARepo = bline == "## not a repository"
+  let isRepo = bline != "" && !notARepo
+
+  let stagedRows = chLines.filter(l => sub(l, 0, 1) != " " && sub(l, 0, 1) != "?")
+  let workRows = chLines.filter(l => sub(l, 1, 2) != " " || sub(l, 0, 1) == "?")
+  let untrackedRows = chLines.filter(l => sub(l, 0, 1) == "?")
+  let modifiedRows = workRows.filter(l => sub(l, 0, 1) != "?")
+  let conflictRows = chLines.filter(l => sub(l, 0, 1) == "U" || sub(l, 1, 2) == "U" || (sub(l, 0, 1) == "A" && sub(l, 1, 2) == "A") || (sub(l, 0, 1) == "D" && sub(l, 1, 2) == "D"))
+  let changes = chLines
+
+  let bleft = split(bline, "...")[0] ?? ""
+  let detached = contains(bline, "(no branch)")
+  let noCommits = startsWith(bleft, "## No commits")
+  // A folder that isn't there, or can't be read: nothing came back at all.
+  let missing = st != null && !st.ok && bline == "" && repo != ""
+  let branchName = notARepo ? "no git repository" : noCommits ? "no commits yet" : trim(replace(bleft, "#", ""))
+  let branchLabel = missing ? "can't read this folder" : bline == "" ? "reading…" : detached ? "detached HEAD" : branchName == "" ? "no branch" : branchName
+
+  let abw = words(abr == null ? "0 0" : (abr.out ?? "0 0"))
+  let aheadN = num(abw[1] ?? "0", 0)
+  let behindN = num(abw[0] ?? "0", 0)
+  let shortR = repo == "" ? "omagit" : last(split(repo, "/"))
+
+  let repoList = lines(repos ?? "")
+  let shown = repoList.filter(r => q == "" || contains(lower(r), lower(q)))
+
+  let errLine = st != null && st.ok == false && !notARepo && trim(st.err ?? "") != "" ? trim(lines(st.err)[0] ?? "") : ""
+
+  // ── reading the history ────────────────────────────────────────────────────
+  let cmtsL = lines(cmts == null ? "" : (cmts.out ?? ""))
+  let cmtsF = cmtsL.filter(c => contains(c, "~"))
+  // git's art is two characters per lane: a mark (* or |) and the connector to
+  // the next lane. We read those marks and draw the graph ourselves.
+  let gLens = cmtsL.map(c => len(split(c, "~")[0] ?? "") - len(last(words(split(c, "~")[0] ?? "")) ?? ""))
+  let gMax = len(gLens) == 0 ? 2 : last(gLens.sortBy(x => x))
+  let gLanes = gMax <= 2 ? 1 : min(4, ceil(gMax / 2))
+  let gwid = 12 + 15 * (gLanes - 1)
+  // Every lane gets a colour, so a branch is a colour you can follow.
+  let lane0 = accent
+  let lane1 = cyan
+  let lane2 = magenta
+  let lane3 = green
+  let headHash = len(cmtsF) == 0 ? "" : (last(words(split(cmtsF[0], "~")[0] ?? "")) ?? "")
+  let cmtsShown = cmtsF.filter(c => cq == "" || contains(lower(join(drop(split(c, "~"), 3), "~")), lower(cq)))
+  let head = cmtsF[0] ?? ""
+  let lastTs = head == "" ? 0 : num(split(head, "~")[1] ?? "0", 0)
+  let lastSubj = head == "" ? "" : join(drop(split(head, "~"), 3), "~")
+  let lastAgo = lastTs == 0 ? "" : fmtAgo(lastTs, now)
+
+  // ── reading branches and stashes ───────────────────────────────────────────
+  let brlL = lines(bral == null ? "" : (bral.out ?? "")).filter(l => l != "")
+  let localB = brlL.filter(l => startsWith(split(l, "~")[0] ?? "", "refs/heads/"))
+  let remoteB = brlL.filter(l => startsWith(split(l, "~")[0] ?? "", "refs/remotes/") && !endsWith(split(l, "~")[0] ?? "", "/HEAD"))
+  let curRow = localB.find(b => split(b, "~")[4] == "*")
+  let curUp = curRow == null ? "" : (split(curRow, "~")[2] ?? "")
+  let stashL = lines(stsh == null ? "" : (stsh.out ?? "")).filter(l => l != "")
+
+  let cLines = lines(cf == null ? "" : (cf.out ?? "")).filter(l => trim(l) != "")
+  let metaL = lines(cmeta == null ? "" : (cmeta.out ?? ""))
+  let mw = split(metaL[0] ?? "", "|")
+  let mAuthor = mw[1] ?? ""
+  let mWhen = mw[2] ?? ""
+  let mSubj = join(drop(mw, 3), "|")
+  let mBody = trim(cbody == null ? "" : (cbody.out ?? ""))
+
+  // The file being discarded is one git has never seen: it goes, not back.
+  let dIsNew = dsel != "" && len(workRows.filter(l => sub(l, 0, 1) == "?" && last(split(trim(sub(l, 3, len(l))), " -> ")) == dsel)) > 0
+
+  // ── what the last command said, in plain words ─────────────────────────────
+  let outRaw = trim(out ?? "")
+  let lowOut = lower(outRaw)
+  let outBad = lowOut == "" ? false
+    : contains(lowOut, "fatal") || contains(lowOut, "error") || contains(lowOut, "rejected")
+    || contains(lowOut, "conflict") || contains(lowOut, "denied") || contains(lowOut, "diverged")
+    || contains(lowOut, "aborting") || contains(lowOut, "no upstream") || contains(lowOut, "not a git repository")
+  let outWarn = contains(lowOut, "nothing staged") || contains(lowOut, "write a commit") || contains(lowOut, "name the branch") || contains(lowOut, "open a repository")
+  let outTone = outBad ? red : outWarn ? yellow : positiveInk
+  let outMsg = outRaw == "" ? ""
+    : contains(lowOut, "could not read username") || contains(lowOut, "authentication failed") || contains(lowOut, "permission denied (publickey)") ? "GitHub login needed — run gh auth login in Terminal"
+    : contains(lowOut, "not fully merged") ? "Not deleted: branch has commits Git does not consider merged. Unmerged work is protected."
+    : contains(lowOut, "already up to date") ? "Already up to date"
+    : contains(lowOut, "everything up-to-date") ? "Everything up to date"
+    : contains(lowOut, "branch is up to date") ? "Your branch matches the remote"
+    : contains(lowOut, "fast-forward") ? "Pulled — fast-forward"
+    : contains(lowOut, "merge made by") ? "Pulled — merge commit"
+    : contains(lowOut, "fetch_head") ? "Fetched from the remote"
+    : contains(lowOut, "reconcile divergent") ? "Branch diverged — merge or reset it in Terminal"
+    : contains(lowOut, "diverged") ? "Branch diverged — pull, then push"
+    : contains(lowOut, "non-fast-forward") || contains(lowOut, "rejected") ? "Push rejected — pull first"
+    : contains(lowOut, "no upstream branch") || contains(lowOut, "no tracking information") ? "No upstream — Push to set one"
+    : contains(lowOut, "does not appear to be a git repository") || contains(lowOut, "could not read from remote") ? "No remote named origin — add one in Terminal"
+    : contains(lowOut, "would be overwritten") ? "Commit or stash your changes first"
+    : contains(lowOut, "conflict") || contains(lowOut, "automatic merge failed") ? "Merge conflict — resolve it in Terminal"
+    : contains(lowOut, "nothing to commit") ? "Nothing to commit"
+    : contains(lowOut, "pathspec") || contains(lowOut, "no such file") ? "That path is not in the repo"
+    : contains(lowOut, "not a git repository") ? "This folder isn't a git repository"
+    : contains(lowOut, "command not found") ? "git is not installed"
+    : outRaw
+  let showOut = outMsg != "" && now != null && outAt > 0 && now - outAt < 90
+
+  // Another repository starts its log at the top again.
+  on repo { climit = 40; cq = ""; hsel = ""; dsel = ""; confirm = "" }
+
+  // ── one bus for every button ───────────────────────────────────────────────
+  // The key says what to do, the argument is what to do it to.
+  // Destructive ones wait for a second, deliberate press.
+  on act {
+    let a = value ?? ""
+    let parts = split(a, ":")
+    let verb = parts[0] ?? ""
+    let arg = join(drop(parts, 1), ":")
+    let sep = split(arg, "|")
+    let one = sep[0] ?? ""
+    let two = join(drop(sep, 1), "|")
+    let k = confirm
+    let kp = split(k, ":")
+    let kv = kp[0] ?? ""
+    let ka = join(drop(kp, 1), ":")
+    let rs = split(ka, "|")
+    let rsn = rs[0] ?? "origin"
+    let rbn = join(drop(rs, 1), "|")
+    if verb == "repos" {
+      pick = true
+      q = ""
+      entry = ""
+      entryError = ""
+    } else if verb == "openform" || verb == "cloneform" {
+      entry = verb == "cloneform" ? "clone" : "open"
+      entryError = ""
+    } else if verb == "entrycancel" {
+      entry = ""
+      entryError = ""
+    } else if verb == "openrepo" || verb == "openclone" {
+      let target = verb == "openclone" ? clonePath : openPath
+      if target == "" || !startsWith(target, "/") {
+        entryError = "Enter an absolute folder path or ~/folder, not a command."
+      } else {
+        repo = target
+        pick = false
+        entry = ""
+        tab = "changes"
+        dsel = ""
+        hsel = ""
+        out = ""
+        msg = ""
+        confirm = ""
+      }
+    } else if verb == "clone" {
+      if trim(cloneUrl) == "" || clonePath == "" {
+        entryError = "Enter the repository URL and a new destination folder."
+      } else if !startsWith(clonePath, "/") {
+        entryError = "Use an absolute destination path or ~/folder."
+      } else {
+        entryError = ""
+        cloneLaunched = true
+        terminal(cloneCmd, "Clone repository")
+      }
+    } else if verb == "dismiss" {
+      out = ""
+    } else if verb == "more" {
+      climit = climit + 40
+    } else if repo == "" && verb != "cancel" {
+      outAt = now
+      out = "Open a repository first"
+    } else if verb == "ask" {
+      confirm = arg
+    } else if verb == "cancel" {
+      confirm = ""
+    } else if verb == "go" {
+      confirm = ""
+      if kv == "del" {
+        outAt = now
+        out = run("cd ${sh(repo)} && git branch -d -- ${sh(ka)} 2>&1")
+        haptic()
+      } else if kv == "delremote" {
+        outAt = now
+        let remoteHead = "refs/heads/" + rbn
+        let remoteCache = "refs/remotes/" + rsn + "/" + rbn
+        out = run("cd ${sh(repo)} || exit; result=$(GIT_TERMINAL_PROMPT=0 git push --delete -- ${sh(rsn)} ${sh(remoteHead)} 2>&1); code=$?; if [ \"$code\" -eq 0 ]; then git update-ref -d ${sh(remoteCache)} 2>&1 && printf 'Deleted %s on %s. Local branches were kept.\\n' ${sh(rbn)} ${sh(rsn)}; else GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code --heads -- ${sh(rsn)} ${sh(remoteHead)} >/dev/null 2>&1; check=$?; if [ \"$check\" -eq 2 ]; then git update-ref -d ${sh(remoteCache)} 2>&1 && printf '%s is already gone on %s; removed its stale entry.\\n' ${sh(rbn)} ${sh(rsn)}; else printf '%s\\n' \"$result\"; exit \"$code\"; fi; fi")
+        haptic()
+      } else if kv == "revert" {
+        outAt = now
+        out = run("cd ${sh(repo)} && git revert --no-edit ${sh(ka)} 2>&1 | tail -n 3")
+        haptic()
+      } else if kv == "cherry" {
+        outAt = now
+        out = run("cd ${sh(repo)} && git cherry-pick ${sh(ka)} 2>&1 | tail -n 3")
+        haptic()
+      } else if kv == "amend" {
+        outAt = now
+        out = run("cd ${sh(repo)} && git commit --amend --no-edit 2>&1 | tail -n 3")
+        haptic()
+      } else if kv == "discard" {
+        outAt = now
+        out = run("cd ${sh(repo)} && s=$(git status --porcelain -- ${sh(ka)} 2>/dev/null); case $s in \\?\\?*) rm -f -- ${sh(ka)} ;; *) git restore --worktree -- ${sh(ka)} 2>&1 | tail -n 2 ;; esac")
+        haptic()
+      } else if kv == "drop" {
+        outAt = now
+        out = run("cd ${sh(repo)} && git stash drop ${sh(ka)} 2>&1 | tail -n 2")
+        haptic()
+      }
+    } else if verb == "shell" {
+      terminal("cd ${sh(repo)} && exec bash", shortR)
+    } else if verb == "pull" {
+      outAt = now
+      out = run("cd ${sh(repo)} && GIT_TERMINAL_PROMPT=0 git pull 2>&1 | tail -n 4")
+    } else if verb == "push" {
+      outAt = now
+      out = run("cd ${sh(repo)} && GIT_TERMINAL_PROMPT=0 git push -u origin HEAD 2>&1 | tail -n 4")
+    } else if verb == "fetch" {
+      outAt = now
+      out = run("cd ${sh(repo)} && GIT_TERMINAL_PROMPT=0 git fetch --all --prune 2>&1 | tail -n 3")
+    } else if verb == "switch" {
+      outAt = now
+      out = run("cd ${sh(repo)} && git checkout ${sh(arg)} 2>&1 | tail -n 3")
+    } else if verb == "track" {
+      outAt = now
+      out = run("cd ${sh(repo)} && git checkout --track ${sh(arg)} 2>&1 | tail -n 3")
+    } else if verb == "stage" {
+      outAt = now
+      out = run("cd ${sh(repo)} && git add -- ${sh(arg)} 2>&1 | tail -n 2")
+    } else if verb == "unstage" {
+      outAt = now
+      out = run("cd ${sh(repo)} && git reset -q HEAD -- ${sh(arg)} 2>/dev/null || git rm --cached -q -- ${sh(arg)}")
+    } else if verb == "stageall" {
+      outAt = now
+      out = run("cd ${sh(repo)} && git add -A -- . 2>&1 | tail -n 2")
+    } else if verb == "unstageall" {
+      outAt = now
+      out = run("cd ${sh(repo)} && git reset -q HEAD -- .")
+    } else if verb == "commit" {
+      if len(stagedRows) == 0 {
+        outAt = now
+        out = "nothing staged yet"
+      } else if trim(msg) == "" {
+        outAt = now
+        out = "write a commit message"
+      } else {
+        outAt = now
+        out = run("cd ${sh(repo)} && git commit -m ${sh(msg)} 2>&1 | tail -n 3")
+        msg = ""
+        haptic()
+      }
+    } else if verb == "copyhash" {
+      copy(arg)
+      haptic()
+    } else if verb == "copypath" {
+      copy(arg)
+      haptic()
+    } else if verb == "close" {
+      dsel = ""
+      dmode = "w"
+    } else if verb == "apply" {
+      outAt = now
+      out = run("cd ${sh(repo)} && git stash apply ${sh(arg)} 2>&1 | tail -n 3")
+    } else if verb == "create" {
+      if trim(nbx) == "" {
+        outAt = now
+        out = "name the branch first"
+      } else {
+        outAt = now
+        out = run("cd ${sh(repo)} && git checkout -b ${sh(nbx)} 2>&1 | tail -n 3")
+        nbx = ""
+      }
+    } else if verb == "stash" {
+      outAt = now
+      out = run("cd ${sh(repo)} && git stash push -u -m ${sh(smsg == "" ? "Stash from the phone" : smsg)} 2>&1 | tail -n 3")
+      smsg = ""
+    }
+    act = ""
+  }
+
+  // ── the window ─────────────────────────────────────────────────────────────
+  title: entry == "clone" ? "Clone repository" : entry == "open" ? "Open repository" : pick ? "Repositories" : dsel != "" ? last(split(dsel, "/")) : (hsel != "" && tab == "history" ? sub(hsel, 0, 7) : "omagit")
+  back: entry != "" || (repo != "" && (pick || dsel != "" || (hsel != "" && tab == "history")))
+
+  onBack: {
+    if entry != "" {
+      entry = ""
+      entryError = ""
+    } else if pick {
+      pick = false
+    } else if dsel != "" {
+      dsel = ""
+      dmode = "w"
+    } else if hsel != "" {
+      hsel = ""
+      hmsg = ""
+      confirm = ""
+    }
+  }
+
+  // Lucide git-fork, with its original 24x24 geometry and theme-aware stroke.
+  icon: """<svg class="lucide lucide-git-fork" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="18" r="3" />
+    <circle cx="6" cy="6" r="3" />
+    <circle cx="18" cy="6" r="3" />
+    <path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9" />
+    <path d="M12 12v3" />
+  </svg>"""
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // The repository picker
+  // ═══════════════════════════════════════════════════════════════════════════
+  if repo == "" || pick {
+    Column {
+      gap: 16
+      padding: [16, 20, 16, 16]
+
+      if entry != "" {
+        Column {
+          gap: 16
+          scroll: true
+          weight: 1
+          Text { text: entry == "clone" ? "Clone repository" : "Open existing repository"; fontSize: 23; fontWeight: 600; letterSpacing: -0.5 }
+          Text { text: entry == "clone" ? "Download a remote repository into a new local folder." : "Open a Git repository already saved on this phone. Enter its folder path, not a Git command."; fontSize: 12; color: secondaryInk }
+          if entry == "clone" {
+            Column {
+              gap: 8
+              Caps { text: "Repository URL" }
+              Row {
+                background: fieldFill; border: 1; borderColor: hairline; radius: 7 * corners; padding: [12, 12]
+                Input { text: cloneUrl; fontSize: 12; underline: false; placeholder: "https://github.com/owner/repository.git"; onChange: { cloneUrl = value; cloneLaunched = false; entryError = "" } }
+              }
+            }
+            Column {
+              gap: 8
+              Caps { text: "New destination folder" }
+              Row {
+                background: fieldFill; border: 1; borderColor: hairline; radius: 7 * corners; padding: [12, 12]
+                Input { text: cloneFolder; fontSize: 12; underline: false; placeholder: "~/projects/repository"; onChange: { cloneFolder = value; cloneLaunched = false; entryError = "" }; onSubmit: act = "clone" }
+              }
+            }
+            Text { text: "Cloning opens Shell for progress and sign-in. Existing folders are never overwritten."; fontSize: 11; color: secondaryInk }
+            Action { tag: "clone"; label: "Clone in Shell"; kind: "primary"; enabled: trim(cloneUrl) != "" && clonePath != ""; wide: true }
+            if cloneLaunched {
+              Text { text: "After Git reports success, return here and open the destination."; fontSize: 12; color: secondaryInk }
+              Action { tag: "openclone"; label: "Open destination"; wide: true }
+            }
+          } else {
+            Column {
+              gap: 8
+              Caps { text: "Repository folder" }
+              Row {
+                background: fieldFill; border: 1; borderColor: hairline; radius: 7 * corners; padding: [12, 12]
+                Input { text: folderPath; fontSize: 12; underline: false; placeholder: "~/projects/site or /path/to/site"; onChange: { folderPath = value; entryError = "" }; onSubmit: act = "openrepo" }
+              }
+            }
+            Action { tag: "openrepo"; label: "Open repository"; kind: "primary"; enabled: openPath != ""; wide: true }
+          }
+          if entryError != "" {
+            Text { text: entryError; fontSize: 12; color: red }
+          }
+          Action { tag: "entrycancel"; label: "Repositories"; wide: true }
+        }
+      } else {
+      Column {
+        gap: 6
+        Text { text: "Repositories"; fontSize: 26; fontWeight: 600; letterSpacing: -0.6; maxLines: 1 }
+        Text {
+          text: repos == null ? "Finding local repositories…" : "${len(repoList)} local repositories"
+          font: mono
+          fontSize: 10
+          color: secondaryInk
+          maxLines: 1
+        }
+      }
+
+      Row {
+        height: 44
+        align: center
+        radius: 7 * corners
+        background: fieldFill
+        border: 1
+        borderColor: hairline
+        padding: [12, 0]
+        Icon { name: "search"; tint: secondaryInk }
+        Input {
+          text: q
+          weight: 1
+          fontSize: 12
+          underline: false
+          placeholder: "Search a name or a path"
+          onChange: q = value
+          onSubmit: q = value
+        }
+      }
+
+      Column {
+        scroll: true
+        lazy: true
+        weight: 1
+        gap: 0
+        if repos == null {
+          Column {
+            gap: 10
+            padding: [2, 20]
+            Text { text: "Scanning your home folder…"; fontSize: 14; fontWeight: 500 }
+            Text { text: "Repositories under your home folder appear here automatically."; fontSize: 12; color: secondaryInk }
+          }
+        } else if len(shown) == 0 {
+          Column {
+            gap: 8
+            padding: [2, 20]
+            Text { text: q == "" ? "No repositories yet" : "Nothing matches “${q}”"; fontSize: 15; fontWeight: 600; letterSpacing: -0.2 }
+            Text { text: q == "" ? "Open an existing repository or clone one using the actions below." : "Try another name or open the repository by its full folder path."; fontSize: 12; color: secondaryInk; maxLines: 3 }
+          }
+        } else {
+          for r in shown.take(80) key r {
+            let nm = last(split(r, "/"))
+            Row {
+              gap: 12
+              align: center
+              padding: [14, 11, 14, 11]
+              onTap: { repo = r; pick = false; tab = "changes"; dsel = ""; hsel = ""; out = ""; msg = ""; cq = ""; confirm = "" }
+              Box {
+                width: 6
+                height: 6
+                radius: 3
+                background: r == repo ? accent : alpha(foreground, 0.18)
+              }
+              Column {
+                gap: 3
+                weight: 1
+                Text { text: nm; fontSize: 14; fontWeight: r == repo ? 600 : 400; maxLines: 1; color: r == repo ? accent : foreground }
+                Text { text: r; font: mono; fontSize: 10; color: secondaryInk; maxLines: 1 }
+              }
+              if r == repo {
+                Pill { text: "open"; tint: accent }
+              } else {
+                Icon { name: "next"; tint: secondaryInk }
+              }
+            }
+            Rule { }
+          }
+          if len(shown) > 80 {
+            Text { text: "${len(shown) - 80} more — narrow the search"; fontSize: 12; color: secondaryInk; padding: [14, 10, 14, 10] }
+          }
+        }
+      }
+
+      Column {
+        gap: 10
+        Rule { }
+        Spacer { height: 2 }
+        Action { tag: "openform"; label: "Open existing repository"; wide: true }
+        Action { tag: "cloneform"; label: "Clone repository"; kind: "primary"; wide: true }
+      }
+      }
+    }
+  } else {
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // The repository
+    // ═════════════════════════════════════════════════════════════════════════
+    Column {
+      gap: 0
+      padding: [0, 0, 0, 0]
+
+      // ── masthead: who this is, where the branch stands, what to do ─────────
+      if dsel == "" && hsel == "" {
+        Column {
+          gap: 12
+          padding: [16, 18, 16, 16]
+          background: background
+
+          Row {
+            gap: 12
+            align: center
+            Column {
+              gap: 4
+              weight: 1
+              onTap: { pick = true; q = "" }
+              Text { text: shortR; fontSize: 25; fontWeight: 600; letterSpacing: -0.6; maxLines: 1 }
+              Row {
+                gap: 7
+                align: center
+                Row {
+                  gap: 0
+                  align: center
+                  padding: [8, 3, 9, 3]
+                  radius: 5 * corners
+                  background: isRepo ? alpha(accent, 0.08) : alpha(red, 0.08)
+                  border: 1
+                  borderColor: isRepo ? alpha(accent, 0.22) : alpha(red, 0.28)
+                  Text { text: branchLabel; font: mono; fontSize: 10; color: isRepo ? accent : red; maxLines: 1 }
+                }
+                if aheadN > 0 {
+                  Pill { text: "${aheadN}"; tint: positiveInk; glyph: "push" }
+                }
+                if behindN > 0 {
+                  Pill { text: "${behindN}"; tint: red; glyph: "pull" }
+                }
+                if curUp == "" && isRepo && !detached && aheadN == 0 && behindN == 0 {
+                  Text { text: "No upstream"; fontSize: 10; color: secondaryInk }
+                }
+              }
+            }
+            Action { tag: "repos"; label: "Repositories"; iconOnly: true }
+          }
+
+          Row {
+            gap: 8
+            align: center
+            wrap: true
+            if isRepo {
+              Action { tag: "pull"; label: "Pull" }
+              Action { tag: "push"; label: "Push" }
+              Action { tag: "fetch"; label: "Fetch" }
+            }
+            Action { tag: "shell"; label: "Shell" }
+            if !isRepo && st != null {
+              Action { tag: "repos"; label: "Change folder" }
+            }
+          }
+
+          // A three-way meter: staged, modified, new.
+          if len(changes) > 0 {
+            Row {
+              gap: 2
+              height: 3
+              if len(stagedRows) > 0 {
+                Box { weight: len(stagedRows); height: 3; radius: 1.5; background: green }
+              }
+              if len(modifiedRows) > 0 {
+                Box { weight: len(modifiedRows); height: 3; radius: 1.5; background: yellow }
+              }
+              if len(untrackedRows) > 0 {
+                Box { weight: len(untrackedRows); height: 3; radius: 1.5; background: alpha(foreground, 0.32) }
+              }
+              if len(conflictRows) > 0 {
+                Box { weight: len(conflictRows); height: 3; radius: 1.5; background: red }
+              }
+            }
+          }
+        }
+
+        // ── tabs ─────────────────────────────────────────────────────────────
+        if isRepo || st == null {
+        Rule { }
+        Row {
+          gap: 0
+          for t in [{k: "changes", l: "Changes"}, {k: "history", l: "History"}, {k: "branches", l: "Branches"}, {k: "stashes", l: "Stashes"}] key t.k {
+            let tid = t.k
+            let tc = tid == "changes" ? len(changes) : tid == "branches" ? len(localB) : tid == "stashes" ? len(stashL) : 0
+            Column {
+              gap: 6
+              weight: 1
+              align: center
+              padding: [0, 12, 0, 10]
+              onTap: { tab = tid; dsel = ""; hsel = ""; confirm = "" }
+              Row {
+                gap: 5
+                align: center
+                Text { text: t.l; align: center; fontSize: 11.5; color: tab == tid ? foreground : secondaryInk; fontWeight: tab == tid ? 600 : 400; maxLines: 1 }
+                if tc > 0 {
+                  Text { text: "${tc}"; fontSize: 10; color: tab == tid ? accent : secondaryInk }
+                }
+              }
+              Box {
+                width: 28
+                height: 2
+                radius: 1
+                background: tab == tid ? accent : alpha(accent, 0)
+                animate background: tween(180ms, "out")
+              }
+            }
+          }
+        }
+        Rule { }
+        }
+
+        // ── the one thin line that reports the last command ──────────────────
+        if showOut {
+          Row {
+            gap: 9
+            align: center
+            padding: [10, 8, 8, 8]
+            background: alpha(outTone, 0.07)
+            border: 1
+            borderColor: alpha(outTone, 0.2)
+            radius: 7 * corners
+            Box { width: 3; height: 16; radius: 1.5; background: outTone }
+            Text { text: outMsg; font: mono; fontSize: 10; color: outTone; maxLines: 3; weight: 1 }
+            Action { tag: "dismiss"; label: "Dismiss message"; iconOnly: true }
+          }
+        }
+        if errLine != "" && isRepo {
+          Row {
+            gap: 9
+            align: top
+            padding: [10, 0, 8, 8]
+            Box { width: 3; height: 14; radius: 1.5; background: red }
+            Text { text: errLine; font: mono; fontSize: 10; color: red; maxLines: 2; weight: 1 }
+          }
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════════════════
+      // A file's diff
+      // ═══════════════════════════════════════════════════════════════════════
+      if dsel != "" {
+        Column {
+          gap: 0
+          weight: 1
+          padding: [0, 0, 0, 0]
+          Row {
+            gap: 10
+            align: center
+            padding: [16, 16, 16, 16]
+            wrap: true
+            Column {
+              gap: 4
+              weight: 1
+              Caps { text: dmode == "c" ? "In this commit" : dmode == "s" ? "Staged" : "Working tree" }
+              Text { text: dsel; font: mono; fontSize: 11; color: secondaryInk; maxLines: 2 }
+            }
+            if dmode == "s" {
+              Action { tag: "unstage:" + dsel; label: "Unstage"; kind: "accent" }
+            }
+            if dmode == "w" {
+              Action { tag: "ask:discard:" + dsel; label: "Discard"; kind: "danger" }
+            }
+            Action { tag: "copypath:" + dsel; label: "Copy path"; kind: "quiet" }
+          }
+          if confirm == "discard:" + dsel {
+            Confirm { question: dIsNew ? "Delete this new file?" : "Throw away the changes to this file?"; label: dIsNew ? "Delete" : "Discard" }
+          }
+          Rule { }
+          Column {
+            scroll: true
+            lazy: true
+            weight: 1
+            gap: 0
+            padding: [0, 6, 0, 6]
+            let dl = lines(dif == null ? "" : (dif.out ?? "")).filter(l => !startsWith(l, "index ") && !startsWith(l, "diff --git") && !startsWith(l, "--- ") && !startsWith(l, "+++ ") && !startsWith(l, "new file mode") && !startsWith(l, "deleted file mode") && !startsWith(l, "old mode") && !startsWith(l, "new mode") && !startsWith(l, "similarity index") && !startsWith(l, "rename from") && !startsWith(l, "rename to"))
+            let addN = dl.filter(l => startsWith(l, "+")).length
+            let delN = dl.filter(l => startsWith(l, "-")).length
+            if len(dl) == 0 {
+              Column {
+                gap: 6
+                padding: [12, 10, 0, 12]
+                Text { text: dmode == "w" ? "No changes to show yet" : "Nothing to show"; fontSize: 14; fontWeight: 600 }
+                Text { text: dmode == "c" ? "This commit didn't change this file's text." : "The file is unchanged, empty, or binary."; fontSize: 12; color: secondaryInk }
+              }
+            } else {
+              Row {
+                gap: 8
+                align: center
+                padding: [10, 8, 8, 8]
+                Text { text: "+${addN}"; font: mono; fontSize: 10; color: positiveInk }
+                Text { text: "−${delN}"; font: mono; fontSize: 10; color: red }
+                Spacer { weight: 1 }
+                Text { text: "${len(dl)} lines"; font: mono; fontSize: 10; color: secondaryInk }
+              }
+              for l, i in dl.take(400) key i {
+                let add = startsWith(l, "+")
+                let del = startsWith(l, "-")
+                let hdr = startsWith(l, "@@")
+                let bin = startsWith(l, "Binary files")
+                Text {
+                  text: l == "" ? " " : l
+                  font: mono
+                  fontSize: 9.5
+                  color: add ? positiveInk : del ? red : hdr ? accent : bin ? yellow : secondaryInk
+                  background: add ? alpha(green, 0.08) : del ? alpha(red, 0.08) : hdr ? alpha(accent, 0.07) : alpha(accent, 0)
+                  padding: [6, 1, 6, 1]
+                }
+              }
+              if len(dl) > 400 {
+                Text { text: "… ${len(dl) - 400} more lines — open the file in Shell"; fontSize: 12; color: secondaryInk; padding: [10, 8, 10, 8] }
+              }
+            }
+          }
+        }
+      } else if tab == "history" && hsel != "" {
+
+        // ═════════════════════════════════════════════════════════════════════
+        // One commit
+        // ═════════════════════════════════════════════════════════════════════
+        Column {
+          scroll: true
+          lazy: true
+          weight: 1
+          gap: 0
+          Column {
+            gap: 10
+            padding: [14, 14, 12, 14]
+            Text { text: mSubj != "" ? mSubj : hmsg; fontSize: 18; fontWeight: 600; letterSpacing: -0.3; maxLines: 4 }
+            if mBody != "" {
+              Text { text: mBody; fontSize: 12.5; color: alpha(foreground, 0.7); maxLines: 14 }
+            }
+            Row {
+              gap: 8
+              align: center
+              Row {
+                gap: 6
+                align: center
+                padding: [7, 2, 8, 2]
+                radius: 4 * corners
+                background: alpha(accent, 0.08)
+                border: 1
+                borderColor: alpha(accent, 0.22)
+                Text { text: sub(hsel, 0, 7); font: mono; fontSize: 9.5; color: accent }
+              }
+              Text { text: mAuthor; font: mono; fontSize: 10; color: secondaryInk; maxLines: 1; weight: 1 }
+              Text { text: mWhen; font: mono; fontSize: 10; color: secondaryInk; maxLines: 1 }
+            }
+            if (cstat != null ? trim(cstat.out ?? "") : "") != "" {
+              Text { text: trim(cstat.out ?? ""); font: mono; fontSize: 10; color: secondaryInk }
+            }
+          }
+          Rule { }
+          Section { label: "Files"; count: len(cLines) }
+          if len(cLines) == 0 {
+            Text { text: "A merge commit: nothing to list."; fontSize: 12; color: secondaryInk; padding: [14, 10, 14, 10] }
+          }
+          for fl in cLines key fl {
+            let fp = split(fl, "|")
+            let fcode = trim(fp[0] ?? "")
+            let raw = last(fp) ?? ""
+            let unq = startsWith(raw, "\"") && endsWith(raw, "\"") ? sub(raw, 1, len(raw) - 1) : raw
+            let pth = trim(unq)
+            let letter = sub(fcode, 0, 1)
+            let tint = letter == "A" ? positiveInk : letter == "D" ? red : letter == "R" ? magenta : yellow
+            Row {
+              gap: 12
+              align: center
+              padding: [14, 10, 14, 10]
+              onTap: { dsel = pth; dmode = "c" }
+              FileMark { letter: letter; tint: tint }
+              Text { text: pth; font: mono; fontSize: 11; maxLines: 1; weight: 1 }
+              Icon { name: "next"; tint: secondaryInk }
+            }
+            Rule { }
+          }
+          Column {
+            gap: 10
+            padding: [14, 14, 12, 14]
+            Caps { text: "ACTIONS" }
+            Row {
+              gap: 8
+              wrap: true
+              Action { tag: "copyhash:" + hsel; label: "Copy hash"; kind: "quiet" }
+              Action { tag: "ask:cherry:" + hsel; label: "Cherry-pick"; kind: "accent" }
+              Action { tag: "ask:revert:" + hsel; label: "Revert"; kind: "danger" }
+              if hsel == headHash {
+                Action { tag: "ask:amend"; label: "Amend"; kind: "quiet" }
+              }
+            }
+            if confirm == "revert:" + hsel {
+              Confirm { question: "Revert this commit? It makes a new one."; label: "Revert" }
+            }
+            if confirm == "cherry:" + hsel {
+              Confirm { question: "Cherry-pick this commit onto ${branchLabel}?"; label: "Cherry-pick" }
+            }
+            if confirm == "amend" {
+              Confirm { question: "Rewrite the last commit with what is staged now?"; label: "Amend" }
+            }
+          }
+          Spacer { height: 14 }
+        }
+      } else if tab == "changes" {
+
+        // ═════════════════════════════════════════════════════════════════════
+        // Changes
+        // ═════════════════════════════════════════════════════════════════════
+        Column {
+          gap: 0
+          weight: 1
+
+          if len(changes) == 0 {
+            Column {
+              gap: 12
+              weight: 1
+              align: center
+              justify: center
+              padding: [24, 24, 24, 24]
+              Box {
+                width: 76
+                height: 76
+                align: center
+                Icon { name: notARepo || missing ? "error" : st == null || bline == "" ? "fetch" : noCommits ? "initial" : "clean"; tint: notARepo || missing ? red : accent; extent: 64 }
+              }
+              if notARepo {
+                Text { text: "Not a Git repository"; align: center; fontSize: 17; fontWeight: 600; letterSpacing: -0.3 }
+                Text { text: repo; align: center; font: mono; fontSize: 10; color: secondaryInk; maxLines: 2 }
+                Text { text: "Choose another folder using Repositories above."; align: center; fontSize: 12; color: secondaryInk }
+              } else if missing {
+                Text { text: "Can't read this folder"; align: center; fontSize: 17; fontWeight: 600; letterSpacing: -0.3 }
+                Text { text: repo; align: center; font: mono; fontSize: 10; color: secondaryInk; maxLines: 2 }
+                Text { text: "It may have moved, or Git may not have permission."; align: center; fontSize: 12; color: secondaryInk; maxLines: 3 }
+              } else if st == null || bline == "" {
+                Text { text: "Reading the repository…"; align: center; fontSize: 15; fontWeight: 500 }
+                Text { text: "This takes a moment on a large folder."; align: center; fontSize: 12; color: secondaryInk }
+              } else if noCommits {
+                Text { text: "No commits yet"; align: center; fontSize: 17; fontWeight: 600; letterSpacing: -0.3 }
+                Text { text: "Stage a file below and make the first commit."; align: center; fontSize: 12; color: secondaryInk }
+              } else {
+                Text { text: "Everything is committed"; align: center; fontSize: 17; fontWeight: 600; letterSpacing: -0.3 }
+                Text { text: "No changes on ${branchLabel}."; align: center; fontSize: 12; color: secondaryInk }
+                if lastSubj != "" {
+                  Text {
+                    text: "Last: ${lastSubj} · ${lastAgo}"
+                    align: center
+                    font: mono
+                    fontSize: 9.5
+                    color: secondaryInk
+                    maxLines: 2
+                    padding: [24, 0, 24, 0]
+                  }
+                }
+                Row {
+                  gap: 8
+                  align: center
+                  justify: center
+                  padding: [6, 8, 0, 0]
+                  Action { tag: "fetch"; label: "Fetch"; kind: "accent" }
+                  Action { tag: "pull"; label: "Pull"; kind: "quiet" }
+                }
+              }
+            }
+          } else {
+            if len(conflictRows) > 0 {
+              Row {
+                gap: 9
+                align: center
+                padding: [12, 8, 10, 10]
+                background: alpha(red, 0.08)
+                border: 1
+                borderColor: alpha(red, 0.22)
+                radius: 7 * corners
+                Text { text: "${len(conflictRows)} conflicts — resolve them in Shell"; fontSize: 10.5; color: red; weight: 1; maxLines: 2 }
+                Action { tag: "shell"; label: "Shell" }
+              }
+            }
+
+            Column {
+              scroll: true
+              lazy: true
+              weight: 1
+              gap: 0
+              if len(stagedRows) > 0 {
+                Row {
+                  gap: 8
+                  align: center
+                  padding: [14, 10, 14, 6]
+                  Caps { text: "STAGED" }
+                  Text { text: "${len(stagedRows)}"; font: mono; fontSize: 9; color: positiveInk }
+                  Box { weight: 1; height: 1; background: alpha(foreground, 0.06) }
+                  Action { tag: "unstageall"; label: "Unstage all"; kind: "quiet" }
+                }
+              }
+              for fl in stagedRows key fl {
+                let raw = trim(sub(fl, 3, len(fl)))
+                let unq = startsWith(raw, "\"") && endsWith(raw, "\"") ? sub(raw, 1, len(raw) - 1) : raw
+                let parts = split(unq, " -> ")
+                let pth = trim(last(parts))
+                let tail = split(pth, "/")
+                let dir = join(take(tail, len(tail) - 1), "/")
+                let base = last(tail)
+                let letter = trim(sub(fl, 0, 1))
+                let tint = letter == "A" ? positiveInk : letter == "D" || letter == "U" ? red : letter == "R" ? magenta : yellow
+                Row {
+                  gap: 12
+                  align: center
+                  padding: [14, 10, 14, 10]
+                  onTap: { dsel = pth; dmode = "s" }
+                  FileMark { letter: letter; tint: tint }
+                  Text {
+                    spans: [dir == "" ? "" : {text: dir + "/", color: secondaryInk}, {text: base}]
+                    font: mono
+                    fontSize: 10.5
+                    maxLines: 1
+                    weight: 1
+                  }
+                  Action { tag: "unstage:" + pth; label: "Unstage"; kind: "quiet" }
+                }
+                Rule { }
+              }
+
+              if len(stagedRows) == 0 {
+                Text { text: "Nothing staged yet — stage a file to commit it."; fontSize: 12; color: secondaryInk; padding: [14, 10, 14, 12] }
+              }
+
+              Row {
+                gap: 8
+                align: center
+                padding: [14, 10, 14, 6]
+                Caps { text: "NOT STAGED" }
+                Text { text: "${len(workRows)}"; font: mono; fontSize: 9; color: yellow }
+                Box { weight: 1; height: 1; background: alpha(foreground, 0.06) }
+                if len(workRows) > 0 {
+                  Action { tag: "stageall"; label: "Stage all"; kind: "quiet" }
+                }
+              }
+              if len(workRows) == 0 {
+                Text { text: "Everything is staged."; fontSize: 12; color: secondaryInk; padding: [14, 10, 14, 12] }
+              }
+              for fl in workRows key fl {
+                let raw = trim(sub(fl, 3, len(fl)))
+                let unq = startsWith(raw, "\"") && endsWith(raw, "\"") ? sub(raw, 1, len(raw) - 1) : raw
+                let parts = split(unq, " -> ")
+                let pth = trim(last(parts))
+                let tail = split(pth, "/")
+                let dir = join(take(tail, len(tail) - 1), "/")
+                let base = last(tail)
+                let letter = startsWith(sub(fl, 0, 1), "?") ? "??" : trim(sub(fl, 1, 2))
+                let tint = letter == "??" ? positiveInk : letter == "D" || letter == "U" ? red : letter == "R" ? magenta : yellow
+                Row {
+                  gap: 12
+                  align: center
+                  padding: [14, 10, 14, 10]
+                  onTap: { dsel = pth; dmode = "w" }
+                  FileMark { letter: letter; tint: tint }
+                  Text {
+                    spans: [dir == "" ? "" : {text: dir + "/", color: secondaryInk}, {text: base}]
+                    font: mono
+                    fontSize: 10.5
+                    maxLines: 1
+                    weight: 1
+                  }
+                  Action { tag: "stage:" + pth; label: "Stage"; kind: "accent" }
+                }
+                Rule { }
+              }
+              Spacer { height: 8 }
+            }
+
+            // ── the composer, above the keyboard, never scrolled away ────────
+            if dsel == "" {
+              Column {
+                gap: 0
+                Rule { }
+                Row {
+                  gap: 10
+                  align: center
+                  padding: [10, 12, 10, 12]
+                  Box {
+                    weight: 1
+                    radius: 7 * corners
+                    background: fieldFill
+                    border: 1
+                    borderColor: hairline
+                    padding: [12, 10]
+                    Input {
+                      text: msg
+                      fontSize: 12
+                      underline: false
+                      placeholder: "Commit message"
+                      onChange: msg = value
+                      onSubmit: {
+                        msg = value
+                        act = "commit"
+                      }
+                    }
+                  }
+                  Action { tag: "commit"; label: "Commit"; kind: "primary"; enabled: len(stagedRows) > 0 && trim(msg) != "" }
+                }
+                Row {
+                  gap: 6
+                  align: center
+                  padding: [14, 4, 14, 16]
+                  Text { text: "${len(stagedRows)} staged"; fontSize: 10; color: len(stagedRows) > 0 ? positiveInk : secondaryInk }
+                  Text { text: "·"; fontSize: 10; color: secondaryInk }
+                  Text { text: "${len(workRows)} unstaged"; fontSize: 10; color: len(workRows) > 0 ? yellow : secondaryInk }
+                }
+              }
+            }
+          }
+        }
+      } else if tab == "history" {
+
+        // ═════════════════════════════════════════════════════════════════════
+        // History
+        // ═════════════════════════════════════════════════════════════════════
+        Column {
+          gap: 0
+          weight: 1
+          Row {
+            gap: 10
+            align: center
+            padding: [12, 14, 10, 14]
+            Row {
+              weight: 1
+              height: 44
+              align: center
+              radius: 7 * corners
+              background: fieldFill
+              border: 1
+              borderColor: hairline
+              padding: [12, 0]
+              Icon { name: "search"; tint: secondaryInk }
+              Input {
+                text: cq
+                weight: 1
+                fontSize: 12
+                underline: false
+                placeholder: "Filter commits"
+                onChange: cq = value
+                onSubmit: cq = value
+              }
+            }
+          }
+          if cq != "" {
+            Text { text: "${len(cmtsShown)} of ${len(cmtsF)} commits"; font: mono; fontSize: 10; color: secondaryInk; padding: [14, 0, 14, 8] }
+          }
+          Rule { }
+          Column {
+            scroll: true
+            lazy: true
+            weight: 1
+            gap: 0
+            if len(cmtsShown) == 0 {
+              Column {
+                gap: 6
+                padding: [14, 16, 14, 16]
+                Text { text: cq == "" ? "No commits yet" : "No commit matches “${cq}”"; fontSize: 14; fontWeight: 600 }
+                Text { text: cq == "" ? "Stage a file in Changes to make the first commit." : "Try a shorter word."; fontSize: 12; color: secondaryInk }
+              }
+            }
+            // The graph, drawn: a dot for every commit, a line for every lane,
+            // a slope wherever a branch leaves or joins.
+            for c, i in cmtsL key i {
+              let f = split(c, "~")
+              let f0 = f[0] ?? ""
+              let isC = len(f) >= 4
+              let hash = isC ? (last(words(f0)) ?? "") : ""
+              let subj0 = isC ? (join(drop(f, 3), "~")) : ""
+              let rowH = isC ? 44 : 16
+              if (isC && (cq == "" || contains(lower(subj0), lower(cq)))) || (!isC && cq == "") {
+                let ap = (isC ? sub(f0, 0, len(f0) - len(hash)) : c) + "        "
+                let a0 = sub(ap, 0, 1)
+                let b0 = sub(ap, 1, 2)
+                let a1 = sub(ap, 2, 3)
+                let b1 = sub(ap, 3, 4)
+                let a2 = sub(ap, 4, 5)
+                let b2 = sub(ap, 5, 6)
+                let a3 = sub(ap, 6, 7)
+                let b3 = sub(ap, 7, 8)
+                Row {
+                  gap: 10
+                  align: top
+                  padding: [10, 0, 14, 0]
+                  background: isC && hash == headHash ? alpha(accent, 0.04) : alpha(accent, 0)
+                  Box {
+                    width: gwid
+                    height: rowH
+                    Canvas {
+                    fill: true
+                    if a0 == "*" { circle(6, 11, 4, fill: lane0) }
+                    if a0 == "*" && hash == headHash { circle(6, 11, 6.6, stroke: alpha(accent, 0.5), width: 1.2) }
+                    if a0 == "*" || a0 == "|" { line(6, 0, 6, rowH, stroke: alpha(lane0, 0.45), width: 1.7, cap: round) }
+                    if b0 == "\\" { line(6, 0, 21, rowH, stroke: alpha(lane0, 0.5), width: 1.7, cap: round) }
+                    if b0 == "/" { line(21, 0, 6, rowH, stroke: alpha(lane1, 0.5), width: 1.7, cap: round) }
+
+                    if a1 == "*" { circle(21, 11, 4, fill: lane1) }
+                    if a1 == "*" || a1 == "|" { line(21, 0, 21, rowH, stroke: alpha(lane1, 0.45), width: 1.7, cap: round) }
+                    if b1 == "\\" { line(21, 0, 36, rowH, stroke: alpha(lane1, 0.5), width: 1.7, cap: round) }
+                    if b1 == "/" { line(36, 0, 21, rowH, stroke: alpha(lane2, 0.5), width: 1.7, cap: round) }
+
+                    if a2 == "*" { circle(36, 11, 4, fill: lane2) }
+                    if a2 == "*" || a2 == "|" { line(36, 0, 36, rowH, stroke: alpha(lane2, 0.45), width: 1.7, cap: round) }
+                    if b2 == "\\" { line(36, 0, 51, rowH, stroke: alpha(lane2, 0.5), width: 1.7, cap: round) }
+                    if b2 == "/" { line(51, 0, 36, rowH, stroke: alpha(lane2, 0.5), width: 1.7, cap: round) }
+
+                    if a3 == "*" { circle(51, 11, 4, fill: lane3) }
+                    if a3 == "*" || a3 == "|" { line(51, 0, 51, rowH, stroke: alpha(lane3, 0.45), width: 1.7, cap: round) }
+                    if b3 == "\\" { line(51, 0, 66, rowH, stroke: alpha(lane3, 0.5), width: 1.7, cap: round) }
+                    if b3 == "/" { line(66, 0, 51, rowH, stroke: alpha(lane3, 0.5), width: 1.7, cap: round) }
+                    }
+                  }
+                  if isC {
+                    let ts = num(f[1] ?? "0", 0)
+                    let dec = f[2] ?? ""
+                    let subj = join(drop(f, 3), "~")
+                    let refs = split(dec, ", ").filter(r => r != "").map(r => startsWith(r, "HEAD") ? "HEAD" : replace(replace(r, "tag: ", ""), "origin/", ""))
+                    Column {
+                      gap: 3
+                      weight: 1
+                      padding: [0, 2, 0, 0]
+                      onTap: { hsel = hash; hmsg = subj; confirm = "" }
+                      Text { text: subj; fontSize: 12.5; maxLines: 1 }
+                      Row {
+                        gap: 8
+                        align: center
+                        Text { text: hash; font: mono; fontSize: 10; color: secondaryInk }
+                        if len(refs) > 0 {
+                          Text { text: join(refs.take(2), " · "); weight: 1; font: mono; fontSize: 9; color: alpha(accent, 0.85); maxLines: 1 }
+                        } else {
+                          Spacer { weight: 1 }
+                        }
+                        Text { text: fmtAgo(ts, now); font: mono; fontSize: 10; color: secondaryInk }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            // The log holds every commit we asked for: git may have more.
+            if len(cmtsF) >= climit && cq == "" {
+              Row {
+                padding: [14, 12, 14, 12]
+                align: center
+                Action { tag: "more"; label: "Load 40 older commits" }
+              }
+            }
+            Spacer { height: 8 }
+          }
+        }
+      } else if tab == "branches" {
+
+        // ═════════════════════════════════════════════════════════════════════
+        // Branches
+        // ═════════════════════════════════════════════════════════════════════
+        Column {
+          gap: 0
+          weight: 1
+          Row {
+            gap: 10
+            align: center
+            padding: [12, 14, 10, 14]
+            Row {
+              weight: 1
+              height: 44
+              align: center
+              radius: 7 * corners
+              background: fieldFill
+              border: 1
+              borderColor: hairline
+              padding: [12, 0]
+              Input {
+                text: nbx
+                fontSize: 12
+                underline: false
+                placeholder: "New branch from ${branchLabel}"
+                onChange: nbx = value
+                onSubmit: nbx = value
+              }
+            }
+            Action { tag: "create"; label: "Create"; kind: "primary"; enabled: trim(nbx) != "" }
+          }
+          Rule { }
+          Column {
+            scroll: true
+            lazy: true
+            weight: 1
+            gap: 0
+            Section { label: "Local"; count: len(localB) }
+            if len(localB) == 0 {
+              Text { text: "No local branches yet."; fontSize: 12; color: secondaryInk; padding: [14, 10, 14, 10] }
+            }
+            for b in localB key b {
+              let bw = split(b, "~")
+              let bn = sub(bw[0] ?? "", 11, len(bw[0] ?? ""))
+              let ups = bw[2] ?? ""
+              let trk = replace(replace(bw[3] ?? "", "[", ""), "]", "")
+              let ah = num(trim(split(trim(split(trk, "ahead")[1] ?? ""), ",")[0] ?? ""), 0)
+              let bh = num(trim(split(trim(split(trk, "behind")[1] ?? ""), ",")[0] ?? ""), 0)
+              let cur = bw[4] == "*"
+              let subj = bw[5] ?? ""
+              Column {
+                gap: 8
+                padding: [14, 10, 14, 10]
+                Row {
+                  gap: 10
+                  align: center
+                  Box {
+                    width: 6
+                    height: 6
+                    radius: 3
+                    background: cur ? accent : alpha(foreground, 0.2)
+                  }
+                  Text { text: bn; font: mono; fontSize: 12; maxLines: 2; weight: 1; color: foreground; fontWeight: cur ? 600 : 400 }
+                  if ah > 0 {
+                    Pill { text: "${ah}"; tint: positiveInk; glyph: "push" }
+                  }
+                  if bh > 0 {
+                    Pill { text: "${bh}"; tint: red; glyph: "pull" }
+                  }
+                  if cur {
+                    Pill { text: "HEAD"; tint: accent }
+                  } else {
+                    Action { tag: "switch:" + bn; label: "Switch"; kind: "accent" }
+                  }
+                }
+                Row {
+                  gap: 10
+                  align: center
+                  Text { text: ups == "" ? subj : "${ups} · ${subj}"; fontSize: 10.5; color: secondaryInk; maxLines: 2; weight: 1; padding: [16, 0, 0, 0] }
+                  if !cur && confirm != "del:" + bn {
+                    Action { tag: "ask:del:" + bn; label: "Delete"; kind: "danger" }
+                  }
+                }
+                if confirm == "del:" + bn {
+                  Confirm { question: "Delete local branch ${bn}? Unmerged commits are protected. This does not delete origin."; label: "Delete" }
+                }
+              }
+              Rule { }
+            }
+            Section { label: "Remote"; count: len(remoteB) }
+            if len(remoteB) == 0 {
+              Text { text: "No remote branches. Fetch to look for them."; fontSize: 12; color: secondaryInk; padding: [14, 10, 14, 10] }
+            }
+            for b in remoteB key b {
+              let bw = split(b, "~")
+              let bn = sub(bw[0] ?? "", 13, len(bw[0] ?? ""))
+              let rn = split(bn, "/")[0] ?? "origin"
+              let rb = join(drop(split(bn, "/"), 1), "/")
+              let subj = bw[5] ?? ""
+              Column {
+                gap: 6
+                padding: [14, 10, 14, 10]
+                Row {
+                  gap: 10
+                  align: center
+                  Box { width: 6; height: 6; radius: 3; background: alpha(foreground, 0.14) }
+                  Text { text: bn; font: mono; fontSize: 12; maxLines: 2; color: foreground; weight: 1 }
+                }
+                Row {
+                  gap: 8
+                  align: center
+                  Text { text: subj; fontSize: 10.5; color: secondaryInk; maxLines: 2; weight: 1; padding: [16, 0, 0, 0] }
+                  Action { tag: "track:" + bn; label: "Track"; kind: "accent" }
+                  if confirm != "delremote:" + rn + "|" + rb {
+                    Action { tag: "ask:delremote:" + rn + "|" + rb; label: "Delete"; kind: "danger" }
+                  }
+                }
+                if confirm == "delremote:" + rn + "|" + rb {
+                  Confirm { question: "Delete ${rb} on ${rn}? It is gone for everyone. Local branches are kept."; label: "Delete" }
+                }
+              }
+              Rule { }
+            }
+            Spacer { height: 8 }
+          }
+        }
+      } else {
+
+        // ═════════════════════════════════════════════════════════════════════
+        // Stashes
+        // ═════════════════════════════════════════════════════════════════════
+        Column {
+          gap: 0
+          weight: 1
+          Row {
+            gap: 10
+            align: center
+            padding: [12, 14, 10, 14]
+            Row {
+              weight: 1
+              height: 44
+              align: center
+              radius: 7 * corners
+              background: fieldFill
+              border: 1
+              borderColor: hairline
+              padding: [12, 0]
+              Input {
+                text: smsg
+                fontSize: 12
+                underline: false
+                placeholder: "Stash message (optional)"
+                onChange: smsg = value
+                onSubmit: smsg = value
+              }
+            }
+            Action { tag: "stash"; label: "Stash"; kind: "primary" }
+          }
+          Rule { }
+          Column {
+            scroll: true
+            lazy: true
+            weight: 1
+            gap: 0
+            Section { label: "Stashes"; count: len(stashL) }
+            if len(stashL) == 0 {
+              Column {
+                gap: 6
+                padding: [14, 16, 14, 16]
+                Text { text: "Nothing stashed"; fontSize: 14; fontWeight: 600 }
+                Text { text: "Stash puts your working changes aside without committing them."; fontSize: 12; color: secondaryInk; maxLines: 3 }
+              }
+            }
+            for s in stashL key s {
+              let sw = split(s, "|")
+              let ref = sw[0] ?? ""
+              let ts = num(sw[1] ?? "0", 0)
+              let sm = join(drop(sw, 2), "|")
+              Column {
+                gap: 8
+                padding: [14, 10, 14, 10]
+                Row {
+                  gap: 8
+                  align: center
+                  Text { text: sm == "" ? "stash" : sm; fontSize: 12; maxLines: 2; weight: 1 }
+                  Text { text: fmtAgo(ts, now); font: mono; fontSize: 10; color: secondaryInk }
+                }
+                Row {
+                  gap: 8
+                  align: center
+                  Text { text: ref; font: mono; fontSize: 10; color: secondaryInk; weight: 1 }
+                  Action { tag: "apply:" + ref; label: "Apply"; kind: "accent" }
+                  Action { tag: "ask:drop:" + ref; label: "Drop"; kind: "danger" }
+                }
+                if confirm == "drop:" + ref {
+                  Confirm { question: "Drop this stash? It is gone for good."; label: "Drop" }
+                }
+              }
+              Rule { }
+            }
+            Spacer { height: 8 }
+          }
+        }
+      }
+    }
+  }
+}

@@ -27,6 +27,14 @@ agent in the launcher, which is not affiliated with or endorsed by any of them.
 | `agent-muse` | Meta | Meta | @lobehub/icons (MIT) |
 | `agent-kimi` | Kimi | Moonshot AI | @lobehub/icons (MIT) |
 
+## Lucide icons
+
+`app/src/main/assets/widgets/examples/omagit.owl` embeds SVG icons from
+[lucide-static 1.61.0](https://www.npmjs.com/package/lucide-static/v/1.61.0),
+Copyright (c) 2026 Lucide Icons and Contributors, under the ISC license.
+Feather-derived icons are also covered by the MIT license, Copyright (c)
+2013-present Cole Bemis. Both license notices are included in the OWL file.
+
 ## Fonts
 
 `app/src/main/res/font/nerd_symbols.ttf`: symbols from
