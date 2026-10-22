@@ -46,7 +46,7 @@ app "omagit" {
   source repos = cmd('find $HOME -maxdepth 4 -type d -name .git 2>/dev/null | sed "s|/.git$||" | sort -u') every 10s
   source home = cmd("echo $HOME") every 1h
   source now = clock every 15s
-  source st = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && (git rev-parse --git-dir >/dev/null 2>&1 || echo '## not a repository') && git status --porcelain -b -uno && git ls-files --others --exclude-standard --directory | sed 's|^|?? |'") every 3s status timeout 20s
+  source st = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && (git rev-parse --git-dir >/dev/null 2>&1 || echo '## not a repository') && git status --porcelain -b -uno && git ls-files --others --exclude-standard | sed 's|^|?? |'") every 3s status timeout 20s
   source abr = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && git rev-list --left-right --count '@{u}'...HEAD 2>/dev/null || echo 0 0") every 20s status
   source cmts = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && git log --graph --max-count=${climit} --pretty=format:'%h~%ct~%D~%s' 2>/dev/null") every 20s status
   source bral = cmd("[ ${len(repo)} -gt 1 ] && cd ${sh(repo)} && git branch -a --format='%(refname)~%(refname:short)~%(upstream:short)~%(upstream:track)~%(HEAD)~%(contents:subject)' 2>/dev/null") every 10s status
@@ -54,6 +54,9 @@ app "omagit" {
   source cf = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git show --pretty=format: --name-status ${sh(hsel)} 2>&1 | tr '\\t' '|'") every 10s status
   source cmeta = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git show -s --format='%h|%an|%ar|%s' ${sh(hsel)}") every 10s status
   source cstat = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git show --shortstat --format='' ${sh(hsel)} 2>&1 | tail -n 1") every 10s status
+  source stagedNums = cmd("printf '%s\\n' ${sh(repo)}; cd ${sh(repo)} && git -c core.quotePath=false diff --no-ext-diff --numstat --cached") every 10s
+  source workNums = cmd("printf '%s\\n' ${sh(repo)}; cd ${sh(repo)} && { git -c core.quotePath=false diff --no-ext-diff --numstat; git ls-files --others --exclude-standard -z | while IFS= read -r -d '' f; do stat=$(git diff --no-ext-diff --numstat --no-index -- /dev/null \"$f\" 2>/dev/null); IFS=$'\\t' read -r added removed rest <<< \"$stat\"; [ -n \"$added\" ] && printf '%s\\t%s\\t%s\\n' \"$added\" \"$removed\" \"$f\"; done; }") every 10s timeout 20s
+  source commitNums = cmd("printf '%s\\n' ${sh(toJson([repo, hsel]))}; [ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git -c core.quotePath=false show --format= --no-ext-diff --numstat ${sh(hsel)}") every 10s
   source cbody = cmd("[ ${len(hsel)} -gt 1 ] && cd ${sh(repo)} && git log -1 --format='%b' ${sh(hsel)} 2>/dev/null") every 10s status
   // Tag responses so a slow result can never appear under another file's title.
   source dif = cmd("printf '%s\\n' ${sh(diffRequest)}; [ ${len(dsel)} -gt 1 ] && cd ${sh(repo)} && ${difCmd} 2>&1 | head -c 120001") every 5s status
@@ -239,6 +242,30 @@ app "omagit" {
     Icon { name: status; tint: tint; description: "File status: ${status}" }
   }
 
+  component LineCounts(stats, path) {
+    let rows = lines(stats ?? "").map(l => split(l, "\t"))
+    let names = rows.map(r => join(drop(r, 2), "\t"))
+    // Git abbreviates renames as either old => new or dir/{old => new}/file.
+    let destinations = names.map(p => !contains(p, " => ") ? p : contains(p, "{") ? replace(p, match(p, '(\\{[^{}]* => [^{}]*\\})')[0] ?? "", match(p, '\\{[^{}]* => ([^{}]*)\\}')[0] ?? "") : last(split(p, " => ")))
+    let index = indexOf(destinations, path)
+    let row = index < 0 ? null : rows[index]
+    Row {
+      gap: 8
+      if stats == null {
+        Text { text: "…"; font: mono; fontSize: 9; color: secondaryInk }
+      } else if row != null {
+        if row[0] == "-" || row[1] == "-" {
+          Text { text: "binary"; font: mono; fontSize: 9; color: secondaryInk }
+        } else {
+          Text { text: "+${row[0]}"; font: mono; fontSize: 9; color: positiveInk }
+          Text { text: "−${row[1]}"; font: mono; fontSize: 9; color: red }
+        }
+      } else {
+        Text { text: "+0 −0"; font: mono; fontSize: 9; color: secondaryInk }
+      }
+    }
+  }
+
   // A count or a word in a little tinted pill.
   component Pill(text, tint = secondaryInk, glyph = "") {
     Row {
@@ -324,6 +351,10 @@ app "omagit" {
   let curRow = localB.find(b => split(b, "~")[4] == "*")
   let curUp = curRow == null ? "" : (split(curRow, "~")[2] ?? "")
   let stashL = lines(stsh == null ? "" : (stsh.out ?? "")).filter(l => l != "")
+
+  let stagedCounts = stagedNums != null && split(stagedNums, "\n")[0] == repo ? join(drop(split(stagedNums, "\n"), 1), "\n") : null
+  let workCounts = workNums != null && split(workNums, "\n")[0] == repo ? join(drop(split(workNums, "\n"), 1), "\n") : null
+  let commitCounts = commitNums != null && split(commitNums, "\n")[0] == toJson([repo, hsel]) ? join(drop(split(commitNums, "\n"), 1), "\n") : null
 
   let cLines = lines(cf == null ? "" : (cf.out ?? "")).filter(l => trim(l) != "")
   let metaL = lines(cmeta == null ? "" : (cmeta.out ?? ""))
@@ -1056,7 +1087,12 @@ app "omagit" {
               padding: [14, 10, 14, 10]
               onTap: { dsel = pth; dmode = "c" }
               FileMark { letter: letter; tint: tint }
-              Text { text: pth; font: mono; fontSize: 11; maxLines: 1; weight: 1 }
+              Column {
+                weight: 1
+                gap: 4
+                Text { text: pth; font: mono; fontSize: 11; maxLines: 1 }
+                LineCounts { stats: commitCounts; path: pth }
+              }
               Icon { name: "next"; tint: secondaryInk }
             }
             Rule { }
@@ -1194,12 +1230,11 @@ app "omagit" {
                   padding: [14, 10, 14, 10]
                   onTap: { dsel = pth; dmode = "s" }
                   FileMark { letter: letter; tint: tint }
-                  Text {
-                    spans: [dir == "" ? "" : {text: dir + "/", color: secondaryInk}, {text: base}]
-                    font: mono
-                    fontSize: 10.5
-                    maxLines: 1
+                  Column {
                     weight: 1
+                    gap: 4
+                    Text { spans: [dir == "" ? "" : {text: dir + "/", color: secondaryInk}, {text: base}]; font: mono; fontSize: 10.5; maxLines: 1 }
+                    LineCounts { stats: stagedCounts; path: pth }
                   }
                   Action { tag: "unstage:" + pth; label: "Unstage"; kind: "quiet" }
                 }
@@ -1240,12 +1275,11 @@ app "omagit" {
                   padding: [14, 10, 14, 10]
                   onTap: { dsel = pth; dmode = "w" }
                   FileMark { letter: letter; tint: tint }
-                  Text {
-                    spans: [dir == "" ? "" : {text: dir + "/", color: secondaryInk}, {text: base}]
-                    font: mono
-                    fontSize: 10.5
-                    maxLines: 1
+                  Column {
                     weight: 1
+                    gap: 4
+                    Text { spans: [dir == "" ? "" : {text: dir + "/", color: secondaryInk}, {text: base}]; font: mono; fontSize: 10.5; maxLines: 1 }
+                    LineCounts { stats: workCounts; path: pth }
                   }
                   Action { tag: "stage:" + pth; label: "Stage"; kind: "accent" }
                 }
