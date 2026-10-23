@@ -82,6 +82,9 @@ fun androidAppKey(
     profile: Long?,
 ) = component.flattenToShortString() + (profile?.let { "@$it" } ?: "")
 
+/** User IDs may be reused after removal; a work app must keep the same stable profile serial. */
+internal fun sameAppProfile(profile: Long?, currentSerial: Long) = currentSerial >= 0 && (profile == null || profile == currentSerial)
+
 /** One of the shortcuts an app made: the app's package, and the shortcut's id there. */
 data class ShortcutRef(
     val packageName: String,
@@ -288,7 +291,7 @@ class AndroidAppCatalog(
      * Opens [app] in its profile. One in a paused work profile asks to turn work apps back on
      * instead (the system may ask for the work PIN first); a second tap then opens it.
      */
-    fun open(app: AndroidApp) = open(app.component, app.user)
+    fun open(app: AndroidApp) = open(app.component, app.profile)
 
     /** Opens a pinned app; [profile] as in [AndroidApp.profile]. */
     fun open(
@@ -325,7 +328,7 @@ class AndroidAppCatalog(
     }
 
     /** Opens [shortcut] through the app that made it; in a paused work profile, as [open] does for apps. */
-    fun open(shortcut: AndroidShortcut) = open(shortcut.ref, shortcut.user)
+    fun open(shortcut: AndroidShortcut) = open(shortcut.ref, shortcut.profile)
 
     /** Opens a pinned shortcut; [profile] as in [AndroidShortcut.profile]. */
     fun open(
@@ -351,7 +354,10 @@ class AndroidAppCatalog(
     }
 
     /** The profile [profile] is the serial number of, as in [AndroidApp.profile]; null once it's gone. */
-    private fun userOf(profile: Long?): UserHandle? = if (profile == null) Process.myUserHandle() else userManager.getUserForSerialNumber(profile)
+    private fun userOf(profile: Long?): UserHandle? {
+        val user = if (profile == null) Process.myUserHandle() else userManager.getUserForSerialNumber(profile)
+        return user?.takeIf { sameAppProfile(profile, userManager.getSerialNumberForUser(it)) }
+    }
 
     /** True if [user] is a paused work profile: asks to turn work apps back on instead (the system may ask for the work PIN first). */
     private fun resume(user: UserHandle): Boolean {
@@ -479,16 +485,18 @@ class AndroidAppCatalog(
 
     /** The system's App info page, as stock launchers open it. */
     fun openInfo(app: AndroidApp) {
-        runCatching { launcherApps.startAppDetailsActivity(app.component, app.user, null, null) }
+        val user = userOf(app.profile) ?: return
+        runCatching { launcherApps.startAppDetailsActivity(app.component, user, null, null) }
             .onFailure { Log.w(TAG, "cannot open info for ${app.component}", it) }
     }
 
     /** Asks the system to uninstall; the list updates through the package callback. */
     fun uninstall(app: AndroidApp) {
+        val user = userOf(app.profile) ?: return
         runCatching {
             context.startActivity(
                 Intent(Intent.ACTION_DELETE, Uri.parse("package:" + app.component.packageName))
-                    .putExtra(Intent.EXTRA_USER, app.user)
+                    .putExtra(Intent.EXTRA_USER, user)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
         }.onFailure { Log.w(TAG, "cannot uninstall ${app.component}", it) }
