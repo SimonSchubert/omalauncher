@@ -73,6 +73,29 @@ data class Folder(
     override val resizable get() = false
 }
 
+/**
+ * A widget one of the phone's apps offers (an app widget: a clock, the weather, a calendar), bound to [id] in the
+ * launcher's widget host. Only apps in the launcher's own profile. [size] and [minSize] are in cells, worked out
+ * from what the app asked for when it was added.
+ */
+data class AndroidWidget(
+    val id: Int,
+    override val page: Int,
+    val provider: ComponentName,
+    /** The widget's name in the picker, for when its app is gone. */
+    val label: String,
+    override val size: Pair<Int, Int>,
+    override val minSize: Pair<Int, Int>,
+) : HomeItem {
+    override val key get() = keyOf(id)
+
+    companion object {
+        const val PREFIX = "appwidget:"
+
+        fun keyOf(id: Int) = PREFIX + id
+    }
+}
+
 /** A folder as saved; its apps are the shortcuts that name it. */
 data class FolderEntry(
     val key: String,
@@ -363,6 +386,96 @@ class Shortcuts(
     private companion object {
         const val ITEMS = "items"
         const val FOLDERS = "folders"
+        const val VERSION = 1
+    }
+}
+
+/**
+ * The phone's apps' widgets on home, saved launcher-side next to the grid layout, and in layout.toml by [HomeStore].
+ * Taking one off frees its id with [onDelete], so Android stops updating it.
+ */
+class AndroidWidgets(
+    context: Context,
+    private val layout: WidgetLayout,
+) {
+    // The file, keys and fields the deploy branch's Android widgets (ToS0/omalauncher) saved theirs in, with the same
+    // host id and tile keys: a phone coming from it keeps its widgets, each in its cell. Theirs have no label.
+    private val prefs = context.getSharedPreferences("app_widgets", Context.MODE_PRIVATE)
+    val items = mutableStateListOf<AndroidWidget>()
+
+    init {
+        (Versioned.read(prefs.getString(ITEMS, null), VERSION) as? JSONArray)?.let { array ->
+            items +=
+                array.mapObjects { o ->
+                    ComponentName.unflattenFromString(o.getString("provider"))?.let { provider ->
+                        AndroidWidget(
+                            id = o.getInt("id"),
+                            page = o.optInt("page", 1),
+                            provider = provider,
+                            label = o.optString("label").ifEmpty { provider.shortClassName.substringAfterLast('.') },
+                            size = o.optInt("w", 2) to o.optInt("h", 2),
+                            minSize = o.optInt("minW", 1) to o.optInt("minH", 1),
+                        )
+                    }
+                }
+        }
+    }
+
+    /** Ids Android has bound for home; one it has that isn't here was left over. */
+    val ids get() = items.map { it.id }.toSet()
+
+    fun add(widget: AndroidWidget) {
+        items.removeAll { it.id == widget.id }
+        items += widget
+        save()
+    }
+
+    fun move(
+        key: String,
+        page: Int,
+    ) {
+        val i = items.indexOfFirst { it.key == key }
+        if (i < 0) return
+        items[i] = items[i].copy(page = page)
+        save()
+    }
+
+    /** Takes it off home, cell and all, and frees its id. */
+    fun remove(key: String) {
+        val widget = items.firstOrNull { it.key == key } ?: return
+        items.remove(widget)
+        layout.remove(key)
+        onDelete(widget.id)
+        save()
+    }
+
+    private fun save() {
+        val array = JSONArray()
+        for (w in items) {
+            array.put(
+                JSONObject()
+                    .put("id", w.id)
+                    .put("page", w.page)
+                    .put("provider", w.provider.flattenToString())
+                    .put("label", w.label)
+                    .put("w", w.size.first)
+                    .put("h", w.size.second)
+                    .put("minW", w.minSize.first)
+                    .put("minH", w.minSize.second),
+            )
+        }
+        prefs.edit().putString(ITEMS, Versioned.write(VERSION, array)).apply()
+        onSave()
+    }
+
+    /** Called after every save; [HomeStore] writes layout.toml then. */
+    var onSave: () -> Unit = {}
+
+    /** Frees a widget's id in the widget host; set by the engine. */
+    var onDelete: (Int) -> Unit = {}
+
+    private companion object {
+        const val ITEMS = "items"
         const val VERSION = 1
     }
 }

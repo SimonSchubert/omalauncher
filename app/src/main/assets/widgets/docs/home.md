@@ -22,6 +22,7 @@ tiles = [
   { app = "org.mozilla.firefox", x = 3, y = 0 },
   { folder = "Work", x = 4, y = 0, apps = ["com.slack", "linux:foot"] },
   { widget = "20-fetch.owl" },   # no x and y: the first free spot, at its size:
+  { android = "com.google.android.deskclock/com.android.alarmclock.DigitalAppWidgetProvider", id = 12, x = 0, y = 4, w = 4, h = 2 },
 ]
 ```
 
@@ -37,6 +38,11 @@ tiles = [
 - A widget file left out of the file stays where it is, and a new file goes by
   its `page:`, `order:` and `size:`. To take a widget off home, move its file to
   `.removed/`.
+- `android` is a widget from one of the phone's apps (a clock, the weather, a
+  calendar), by the `id` Android bound it to; the provider is there to read. Only
+  the phone adds them (home's long-press menu › android widgets, or an app's
+  long-press menu › widgets), since Android asks the user first: here you can
+  move, resize and reorder them. One left out stays where it is.
 - What couldn't be read is in `errors.txt` next to it, and on the phone's home.
   A file that doesn't parse changes nothing, and isn't saved over until it's fixed.
 

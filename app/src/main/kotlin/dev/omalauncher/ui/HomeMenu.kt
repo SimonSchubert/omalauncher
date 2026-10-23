@@ -102,6 +102,11 @@ fun HomeMenu(
             state.homeMenuOpen = false
             state.show(SettingsPage.Store)
         }
+        // The phone's apps' own widgets: a clock, the weather, a calendar.
+        MenuItem("android widgets") {
+            state.homeMenuOpen = false
+            state.pickingWidget = WidgetPick()
+        }
         Box(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
             ThemeStrip(
                 runtime.themes,

@@ -87,6 +87,16 @@
             </intent-filter>
         </activity>
 
+        <!-- Binds a widget from one of the phone's apps for home and shows its settings (AddWidgetActivity.kt); no window
+             of its own. Its own task, like PinShortcutActivity's. -->
+        <activity
+            android:name=".AddWidgetActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
+
         <activity
             android:name=".LinuxWindowActivity"
             android:label="Linux"

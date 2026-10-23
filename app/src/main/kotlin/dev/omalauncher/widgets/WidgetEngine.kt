@@ -104,11 +104,15 @@ class WidgetEngine(
     val layout = WidgetLayout(context)
     val shortcuts = Shortcuts(context, layout)
 
-    /** layout.toml, which [layout] and [shortcuts] write to and an agent's edits come in through. */
+    /** The phone's apps' widgets on home; [Runtime.appWidgets] hosts them. */
+    val androidWidgets = AndroidWidgets(context, layout).also { it.onDelete = { id -> runtime.appWidgets.delete(id) } }
+
+    /** layout.toml, which [layout], [shortcuts] and [androidWidgets] write to and an agent's edits come in through. */
     val home =
         HomeStore(context, this, runtime).also { home ->
             layout.onSave = home::changed
             shortcuts.onSave = home::changed
+            androidWidgets.onSave = home::changed
         }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val services = WidgetServices(context, proot, runtime, scope)
@@ -349,6 +353,7 @@ class WidgetEngine(
             when (item) {
                 is WidgetItem -> removeWidget(item.spec)
                 is Shortcut, is Folder -> shortcuts.remove(item.key)
+                is AndroidWidget -> androidWidgets.remove(item.key)
             }
             layout.remove(item.key)
         }
@@ -367,6 +372,7 @@ class WidgetEngine(
                 if (i >= 0) specs[i] = specs[i].onPage(page)
             }
             is Shortcut, is Folder -> shortcuts.move(item.key, page)
+            is AndroidWidget -> androidWidgets.move(item.key, page)
         }
     }
 
@@ -465,16 +471,16 @@ class WidgetEngine(
         File(previewDir, "$fileName.screen.png").delete()
     }
 
-    /** Widgets, pinned apps and folders on [page]. Wrappers compare by spec, so unchanged pages skip recomposition. */
+    /** Widgets, pinned apps, folders and Android widgets on [page]. Wrappers compare by spec, so unchanged pages skip recomposition. */
     fun itemsOn(page: Int): List<HomeItem> = itemsByPage[page].orEmpty()
 
     /** Built once per change rather than per call: home asks for every page on each recomposition, and drags ask often. */
     private val itemsByPage by derivedStateOf {
-        (specs.filter(::onHome).map(::WidgetItem) + shortcuts.onGrid()).groupBy { it.page }
+        (specs.filter(::onHome).map(::WidgetItem) + shortcuts.onGrid() + androidWidgets.items).groupBy { it.page }
     }
 
     private val pageList by derivedStateOf {
-        (specs.filter(::onHome).map { it.page } + shortcuts.onGrid().map { it.page }).distinct().sorted().ifEmpty { listOf(1) }
+        (specs.filter(::onHome).map { it.page } + shortcuts.onGrid().map { it.page } + androidWidgets.items.map { it.page }).distinct().sorted().ifEmpty { listOf(1) }
     }
 
     val pages: List<Int> get() = pageList
