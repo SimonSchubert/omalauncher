@@ -50,6 +50,30 @@ snapshots the surface tree, redraws only the dirty region of the SurfaceView
 callbacks. Hidden windows get no frame callbacks, so their clients stop
 drawing.
 
+Touch clients normally receive `wl_touch` directly. Tern (`tern` or
+`so.stencil.tern`) binds touch but does not translate finger drags into terminal
+scrolling, so `ui/WindowInput.kt` claims its touch stream before raw forwarding.
+`TernTouchGesture` recognizes taps, drag scrolling, hold-and-drag selection,
+incremental pinch zoom and inner-edge tab swipes. Mouse input, other clients'
+native touch, and their generic tap/right-click/scroll fallback remain separate.
+
+The hold deadline comes from Android's view configuration and does not restart
+on jitter. Pinch steps retain a 1.12 distance-ratio baseline; lifting or replacing
+a contact cancels residual one-finger actions until every finger lifts. Final
+release coordinates are processed too, so a fast down/up swipe is not a click.
+Tab swipes start 24–56 dp inside either side, leaving the outer Android-back
+edges reserved. They must finish at least 60 dp horizontally from their origin;
+vertical-first drags scroll, and reversing a committed swipe cancels navigation.
+
+`WindowManager` keeps gesture sessions registered until queued completion,
+checks the original live surface and window focus on the Wayland input thread,
+and balances emitted selection presses and both scroll axes on cancellation,
+focus loss, or mouse takeover. Tern uses its default Ctrl+Shift+=/− font
+bindings and Ctrl+Shift+Right/Left adjacent-tab bindings, not foot's Ctrl+=/−.
+Only synthetic modifiers are released; held Ctrl/Shift are preserved, and extra
+Alt/Super modifiers suppress Tern gesture chords instead of changing commands.
+Remapping those Tern shortcuts also changes what the gesture chords invoke.
+
 ## GPU acceleration
 
 Opt-in, in settings › linux. The device node picks the driver. Mali (v10+:

@@ -49,6 +49,12 @@ agent can rewrite it. Here Grok sorts it into folders:
 
 Touch input in Linux windows: tap is a left click, long press is a right
 click, drag scrolls; apps with touch support (foot, GTK) get real touch.
+
+Tern has a dedicated mapping: drag to scroll, pinch to change font size, and
+hold then drag to select text. For adjacent tabs, start a horizontal swipe just
+inside either side of the window (24–56 dp from the edge); swipe left for next
+or right for previous. The outer Android-back edges stay reserved. This uses
+Tern's default keyboard bindings; remapped shortcuts may change these actions.
 Hardware keyboard shortcuts: Super+D (the drawer), Super+T (terminal),
 Super+Down (the swipe-down panel), Super+1..9 (home pages) on the home screen;
 Super+W (close) in Linux windows. Android keeps Super on its own, Super+Space,
