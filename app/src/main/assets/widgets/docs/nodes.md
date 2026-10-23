@@ -242,9 +242,11 @@ widget "shell" {
 }
 ```
 
-- The tile is inert until tapped, so swipes still turn pages. Tapping it gives it
-  the keyboard and its touches (drag scrolls, hold-and-drag selects). A tap
-  outside it, Back or another page lets go. The ⌨ button toggles the soft keyboard.
+- A sideways swipe on an inert tile turns the page. Dragging up or down scrolls
+  the terminal on that same press, without tapping first and without the keyboard.
+  A tap gives the tile the keyboard and its touches (then a drag scrolls,
+  hold-and-drag selects). A tap outside it, Back or another page lets go.
+  The ⌨ button toggles the soft keyboard.
 - The terminal keeps running while its page is off screen. It ends when the widget
   is removed or its file changes. When `command` exits, the tile offers a restart;
   use `"btop; exec bash"` to fall back to a shell.

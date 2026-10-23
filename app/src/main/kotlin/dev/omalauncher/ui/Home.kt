@@ -269,9 +269,63 @@ fun HomeScreen(
     Box(
         modifier
             .onGloballyPositioned { origin = it.positionInWindow() }
-            // Sees every press first, without taking it: one outside the active terminal tile ends its turn.
+            // Sees every press first. The tile's own overlay never hears touches on its TextureView.
+            // A still tap wakes an inert tile. A drag up or down scrolls it on that same press.
+            // A sideways drag on an inert tile is left for the pager. One outside the active tile ends its turn.
             .pointerInput(terminals) {
-                awaitEachGesture { terminals.pressAt(origin + awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial).position) }
+                val slop = viewConfiguration.touchSlop
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    val start = down.position
+                    val windowStart = origin + start
+                    if (terminals.keyboardButton?.contains(windowStart) == true) return@awaitEachGesture
+                    terminals.pressAt(windowStart)
+                    val term = terminals.terminalAt(windowStart)
+                    val wasActive = term != null && terminals.active === term
+                    // The active tile owns this press. Take it before the overlay, which would
+                    // otherwise scroll the same drag again on the places it can hear.
+                    if (wasActive) down.consume()
+                    var scrolling = false
+                    var turnedPage = false
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull { it.id == down.id }
+                        if (change == null) {
+                            if (scrolling) terminals.endDrag()
+                            break
+                        }
+                        val delta = change.position - start
+                        if (!scrolling && !turnedPage && term != null && delta.getDistance() > slop) {
+                            when (terminalGesture(wasActive, delta.x, delta.y)) {
+                                TerminalGesture.TurnPage -> turnedPage = true
+                                TerminalGesture.ScrollTile -> scrolling = true
+                            }
+                        }
+                        when {
+                            scrolling && term != null -> {
+                                change.consume()
+                                if (change.pressed) {
+                                    terminals.drag(term, down.id.value.toInt(), windowStart, origin + change.position, wasActive)
+                                } else {
+                                    terminals.endDrag()
+                                    break
+                                }
+                            }
+                            !change.pressed -> {
+                                if (!turnedPage && delta.getDistance() <= slop) {
+                                    if (wasActive) {
+                                        change.consume()
+                                        terminals.clickAt(windowStart)
+                                    } else {
+                                        terminals.activateAt(windowStart)
+                                    }
+                                }
+                                break
+                            }
+                            turnedPage -> break
+                        }
+                    }
+                }
             },
     ) {
         // Owns the soft keyboard for terminal tiles.
