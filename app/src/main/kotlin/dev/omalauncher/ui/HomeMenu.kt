@@ -4,30 +4,31 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.newOwlCommand
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.text.style.TextOverflow
 
 @Composable
 internal fun EditBar(content: @Composable () -> Unit) {
@@ -153,6 +154,8 @@ private fun Menu(
         Modifier
             .fillMaxSize()
             .background(Palette.overlay)
+            // A tap on the scrim closes the menu; keys move between what's in it, not to the scrim.
+            .focusProperties { canFocus = false }
             .clickable(onClick = onDismiss),
         contentAlignment = Alignment.Center,
     ) {
@@ -161,6 +164,7 @@ private fun Menu(
                 .widthIn(min = 240.dp, max = 360.dp)
                 .frame(2.dp, Palette.accent, Palette.background, radius = 20.dp)
                 .clickable(enabled = false) {}
+                .holdsKeys()
                 .padding(8.dp),
         ) { content() }
     }

@@ -26,7 +26,8 @@ class SystemPanels(
                 return
             } catch (e: ActivityNotFoundException) {
                 continue
-            } catch (e: SecurityException) {
+            } catch (e: RuntimeException) {
+                // A SecurityException, or whatever else an OEM's settings throw: also called from a posted block, outside any handler's catch.
                 Log.w("widgets", "settings($page): ${e.message}")
             }
         }

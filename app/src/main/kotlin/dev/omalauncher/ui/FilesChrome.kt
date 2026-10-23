@@ -26,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
@@ -90,12 +92,14 @@ internal fun FileRow(
     selected: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .frame(if (selected) 2.dp else 0.dp, Palette.accent, if (selected) Palette.accent.copy(alpha = 0.18f) else Palette.surface, radius = 12.dp)
+            .menuLongPresses(onLongClick)
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -137,6 +141,8 @@ internal fun FileRow(
 /** What to do with the selection, under the list; the count is the panel's title. */
 @Composable
 internal fun SelectionBar(
+    /** Its buttons all at once, as they go. */
+    modifier: Modifier,
     onSelectAll: () -> Unit,
     onCopy: () -> Unit,
     onCut: () -> Unit,
@@ -147,10 +153,10 @@ internal fun SelectionBar(
     onEdit: (() -> Unit)?,
 ) {
     var menu by remember { mutableStateOf(false) }
-    BottomBar {
-        BracketAction("copy", Palette.accent, onCopy)
-        BracketAction("cut", Palette.accent, onCut)
-        BracketAction("delete", Palette.red, onDelete)
+    BottomBar(modifier) {
+        BracketAction("copy", Palette.accent, onClick = onCopy)
+        BracketAction("cut", Palette.accent, onClick = onCut)
+        BracketAction("delete", Palette.red, onClick = onDelete)
         Spacer(Modifier.weight(1f))
         Box {
             BracketAction("more", Palette.muted) { menu = true }
@@ -173,12 +179,15 @@ internal fun SelectionBar(
 
 @Composable
 internal fun PasteBar(
+    modifier: Modifier,
+    /** Gives keys paste here. */
+    paste: FocusRequester,
     count: Int,
     cut: Boolean,
     onCancel: () -> Unit,
     onPaste: () -> Unit,
 ) {
-    BottomBar {
+    BottomBar(modifier) {
         BasicText(
             // The button says whether they're copied or moved.
             if (count == 1) "1 item" else "$count items",
@@ -187,16 +196,19 @@ internal fun PasteBar(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        BracketAction("cancel", Palette.muted, onCancel)
-        BracketAction(if (cut) "move here" else "paste here", Palette.accent, onPaste)
+        BracketAction("cancel", Palette.muted, onClick = onCancel)
+        BracketAction(if (cut) "move here" else "paste here", Palette.accent, Modifier.focusRequester(paste), onPaste)
     }
 }
 
 /** A surface row of [BracketAction]s under the list. */
 @Composable
-private fun BottomBar(content: @Composable RowScope.() -> Unit) {
+private fun BottomBar(
+    modifier: Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
     Row(
-        Modifier.padding(top = 8.dp).card(6.dp),
+        modifier.padding(top = 8.dp).card(6.dp),
         verticalAlignment = Alignment.CenterVertically,
         content = content,
     )
@@ -210,6 +222,6 @@ internal fun MenuPopup(
     alignment: Alignment = Alignment.TopEnd,
 ) {
     Popup(alignment = alignment, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        MenuItems(items, onDismiss, minWidth = 200.dp, itemPadding = 13.dp, fontSize = TextSize.Item)
+        Box(Modifier.holdsKeys()) { MenuItems(items, onDismiss, minWidth = 200.dp, itemPadding = 13.dp, fontSize = TextSize.Item) }
     }
 }

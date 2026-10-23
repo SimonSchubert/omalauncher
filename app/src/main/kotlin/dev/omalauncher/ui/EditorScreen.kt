@@ -214,7 +214,8 @@ private fun EditorBody(
         if (query != null) closeFind() else close()
     }
 
-    Column(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding().padding(PanelGap)) {
+    // Keys start in the text, to type; Shift+Tab goes back up to the header.
+    Column(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding().padding(PanelGap).holdsKeys(start = editorFocus)) {
         val q = query
         PanelFrame(
             onClose = { if (q != null) closeFind() else close() },
@@ -236,7 +237,7 @@ private fun EditorBody(
                         cursorBrush = SolidColor(Palette.accent),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrectEnabled = false),
                         keyboardActions = KeyboardActions(onSearch = { find() }),
-                        modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                        modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
                         decorationBox = { inner ->
                             Box {
                                 if (q.isEmpty()) BasicText("find in file", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
@@ -329,7 +330,9 @@ private fun EditorBody(
     }
 
     if (confirmClose) {
-        DialogFrame(onDismiss = { confirmClose = false }) {
+        // Keys start on save: Enter right away shouldn't throw the changes away.
+        val saveFocus = remember { FocusRequester() }
+        DialogFrame(onDismiss = { confirmClose = false }, start = saveFocus) {
             BasicText("save $name?", style = Mono.copy(fontSize = TextSize.Title))
             BasicText("You have changes that aren't saved yet.", style = Mono.copy(color = Palette.muted))
             // Cancel is a tap outside or back; three actions don't fit a phone's dialog.
@@ -338,9 +341,11 @@ private fun EditorBody(
                     confirmClose = false
                     onExit()
                 }
-                BracketAction("save", Palette.accent) {
-                    confirmClose = false
-                    scope.launch { if (save()) onExit() }
+                Box(Modifier.focusRequester(saveFocus)) {
+                    BracketAction("save", Palette.accent) {
+                        confirmClose = false
+                        scope.launch { if (save()) onExit() }
+                    }
                 }
             }
         }
@@ -514,9 +519,13 @@ fun EditorHome(
     }
 
     BackHandler(onBack = onExit)
+    // Keys start on the close mark, as in the launcher's panels.
+    val close = remember { FocusRequester() }
     Box(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding().padding(PanelGap)) {
         PanelFrame(
             onClose = onExit,
+            modifier = Modifier.holdsKeys(start = close),
+            closeFocus = close,
             title = { PanelTitle("editor") },
             actions = {
                 BracketAction("new", Palette.accent) { newFile = true }

@@ -27,9 +27,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -39,6 +41,9 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.style.TextOverflow
@@ -64,10 +69,13 @@ fun OverlayPanel(
     onBack: (() -> Unit)? = LocalPanelBack.current,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val close = remember { FocusRequester() }
     Box(
         Modifier
             .fillMaxSize()
             .background(Palette.overlay)
+            // A tap on the scrim closes the panel; keys move between what's in it, not to the scrim.
+            .focusProperties { canFocus = false }
             .clickable(onClick = onDismiss)
             .safeDrawingPadding()
             .padding(PanelGap),
@@ -75,7 +83,8 @@ fun OverlayPanel(
         PanelFrame(
             onClose = onDismiss.takeIf { onBack == null },
             // Taps inside the panel don't reach the scrim behind it.
-            modifier = Modifier.pointerInput(Unit) { detectTapGestures { } },
+            modifier = Modifier.pointerInput(Unit) { detectTapGestures { } }.holdsKeys(start = close),
+            closeFocus = close,
             title = { BackTitle(title, onBack) },
             actions = {
                 actions()
@@ -101,6 +110,8 @@ fun PanelFrame(
     /** The ✕; null for a window Android closes (Back, Recents), like an owl app's. */
     onClose: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** Gives keys the ✕, where a panel's keys start. */
+    closeFocus: FocusRequester? = null,
     title: @Composable () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
     contentWidth: Dp = Dp.Unspecified,
@@ -115,7 +126,10 @@ fun PanelFrame(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.weight(1f)) { title() }
             actions()
-            if (onClose != null) Symbol(Glyph.Close, Palette.red, Modifier.clickable(onClick = onClose).padding(8.dp), TextSize.Title)
+            if (onClose != null) {
+                val focus = closeFocus?.let { Modifier.focusRequester(it) } ?: Modifier
+                Symbol(Glyph.Close, Palette.red, focus.clickable(onClick = onClose).padding(8.dp), TextSize.Title)
+            }
         }
         Spacer(Modifier.height(8.dp))
         if (contentWidth == Dp.Unspecified) {
@@ -202,10 +216,19 @@ fun Modifier.card(
         .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
         .padding(padding)
 
-/** Commands or a widget's source, small, scrolling sideways rather than wrapping. */
+/**
+ * Commands or a widget's source, small, scrolling sideways rather than wrapping. Keys read through it every way.
+ * Lines are cut at [MAX_CODE_LINE]: each is measured whole, and Compose can't lay out one wider than about 16M px,
+ * which a 1 MB widget's one-line data string can be.
+ */
 @Composable
 fun CodeBlock(text: String) =
-    BasicText(text, Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).padding(6.dp), style = Mono.copy(fontSize = TextSize.Small))
+    BasicText(remember(text) { text.cutLongLines() }, Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).keyScrolled().padding(6.dp), style = Mono.copy(fontSize = TextSize.Small))
+
+private const val MAX_CODE_LINE = 10_000
+
+private fun String.cutLongLines(): String =
+    if (lineSequence().none { it.length > MAX_CODE_LINE }) this else lineSequence().joinToString("\n") { if (it.length > MAX_CODE_LINE) it.take(MAX_CODE_LINE) + "…" else it }
 
 /**
  * A framed popup list at [position] with [selected] marked; picking one closes it first.
@@ -224,11 +247,15 @@ fun <T> ChoicePopup(
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
     Popup(popupPositionProvider = position, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
+        // Keys start on the one picked now; a list longer than the screen scrolls to follow them.
+        val selectedFocus = remember { FocusRequester() }
         Column(
             Modifier
                 .width(IntrinsicSize.Max)
                 .widthIn(min = minWidth)
                 .frame(2.dp, Palette.accent, Palette.background)
+                .holdsKeys(start = selectedFocus.takeIf { selected in options })
+                .verticalScroll(rememberScrollState())
                 .padding(4.dp),
         ) {
             for (option in options) {
@@ -236,6 +263,7 @@ fun <T> ChoicePopup(
                 Row(
                     Modifier
                         .fillMaxWidth()
+                        .then(if (current) Modifier.focusRequester(selectedFocus) else Modifier)
                         .clickable {
                             onDismiss()
                             onPick(option)
@@ -275,9 +303,10 @@ fun Symbol(
 fun BracketAction(
     label: String,
     color: Color,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Box(Modifier.clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 6.dp)) {
+    Box(modifier.clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 6.dp)) {
         BasicText("[ $label ]", style = Mono.copy(color = color))
     }
 }

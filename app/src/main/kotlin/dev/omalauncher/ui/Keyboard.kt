@@ -48,14 +48,17 @@ class KeyboardBridge(
 
     fun handle(event: KeyEvent): Boolean {
         if (event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN && onShortcut(event.keyCode)) return true
-        // Volume buttons stay Android's; their scancodes would otherwise reach the window as KEY_VOLUMEUP/DOWN.
-        if (event.keyCode in volumeKeys) return false
+        // Volume buttons stay Android's; their scancodes would otherwise reach the window as KEY_VOLUMEUP/DOWN. So do
+        // Back and a gamepad's buttons: B is Back once nothing takes it, the way out of a window or a terminal tile.
+        if (event.keyCode in volumeKeys || event.keyCode == KeyEvent.KEYCODE_BACK || KeyEvent.isGamepadButton(event.keyCode)) return false
         val code = Keys.evdev(event) ?: event.scanCode.takeIf { it > 0 } ?: return false
         if (wm.focused == null) return false
         if (event.action == KeyEvent.ACTION_UP && code == swallowUp) {
             swallowUp = null
             return true
         }
+        // One pressed before the window had the keys, like the Esc of Super+Esc in the window left: its lift is no key.
+        if (event.action == KeyEvent.ACTION_UP && code !in down) return true
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && latched() && !Keys.isModifier(code)) {
             tap(code)
             swallowUp = code
@@ -145,10 +148,19 @@ class KeyboardBridge(
         held.filter { it.latch == Latch.Once }.forEach { it.latch = Latch.Off }
     }
 
+    /** Lifts every key the window was told is down, as it loses the keys with some still held. */
+    fun releaseHeld() = down.toList().forEach { key(it, false) }
+
+    /** The keys pressed and not released yet, as the window was told. */
+    private val down = mutableSetOf<Int>()
+
     private fun key(
         code: Int,
         pressed: Boolean,
-    ) = wm.server.postInput { key(code, pressed) }
+    ) {
+        if (pressed) down += code else down -= code
+        wm.server.postInput { key(code, pressed) }
+    }
 }
 
 /** An invisible view that owns the soft keyboard and feeds it into [KeyboardBridge]. */
@@ -166,9 +178,10 @@ class KeyboardSink(
     /** Whether the soft keyboard is wanted: shown by us and not hidden by us since. */
     val wanted get() = softKeyboard
 
+    // Focusable only while it has the keyboard: one that always is takes the window's focus on its own, and the keys'
+    // arrows then never reach home's tiles.
     init {
-        isFocusable = true
-        isFocusableInTouchMode = true
+        isFocusable = false
     }
 
     /** Whether the field was last offered as plain text, for a Chinese, Japanese or Korean keyboard. */
@@ -272,6 +285,8 @@ class KeyboardSink(
     fun show() {
         val imm = imm()
         softKeyboard = true
+        isFocusable = true
+        isFocusableInTouchMode = true
         requestFocus()
         imm.restartInput(this)
         imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
@@ -284,6 +299,8 @@ class KeyboardSink(
         softKeyboard = false
         bridge.clearLatches()
         imm.restartInput(this)
+        clearFocus()
+        isFocusable = false
     }
 }
 

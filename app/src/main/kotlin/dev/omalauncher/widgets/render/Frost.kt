@@ -176,7 +176,7 @@ fun Modifier.frost(
     dp: Double,
     corner: () -> Float,
 ): Modifier {
-    if (dp <= 0) return this
+    if (!(dp > 0)) return this
     val backdrop = LocalBackdrop.current ?: return this
     val file = backdrop.file() ?: return this
     val radius = FrostCache.radius(dp, LocalDensity.current.density)

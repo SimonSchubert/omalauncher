@@ -31,10 +31,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +51,8 @@ import java.io.File
 @Composable
 internal fun DialogFrame(
     onDismiss: () -> Unit,
+    /** Where keys start, rather than on the first thing in it. */
+    start: FocusRequester? = null,
     content: @Composable () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss) {
@@ -51,6 +60,10 @@ internal fun DialogFrame(
             Modifier
                 .fillMaxWidth()
                 .frame(2.dp, Palette.accent, Palette.surface, radius = 24.dp)
+                // Keys start in it, and Esc dismisses it as Back does: its own window doesn't pass Esc to the activity's.
+                .onKeyEvent { e ->
+                    (e.key == Key.Escape).also { if (it && e.type == KeyEventType.KeyUp) onDismiss() }
+                }.holdsKeys(start)
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) { content() }
@@ -66,15 +79,17 @@ internal fun TextDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    var text by remember { mutableStateOf(initial) }
+    // The cursor at the end, to type on after the folder given.
+    var field by remember { mutableStateOf(TextFieldValue(initial, TextRange(initial.length))) }
+    val text = field.text
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     DialogFrame(onDismiss) {
         BasicText(title, style = Mono.copy(fontSize = TextSize.Title))
         hint?.let { BasicText(it, style = Mono.copy(color = Palette.muted)) }
         BasicTextField(
-            value = text,
-            onValueChange = { text = it },
+            value = field,
+            onValueChange = { field = it },
             singleLine = true,
             textStyle = Mono.copy(fontSize = TextSize.Large),
             cursorBrush = SolidColor(Palette.accent),
@@ -89,7 +104,7 @@ internal fun TextDialog(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            BracketAction("cancel", Palette.muted, onDismiss)
+            BracketAction("cancel", Palette.muted, onClick = onDismiss)
             BracketAction(confirm, Palette.accent) { if (text.isNotBlank()) onConfirm(text.trim()) }
         }
     }
@@ -109,8 +124,8 @@ internal fun ConfirmDialog(
         BasicText(title, style = Mono.copy(fontSize = TextSize.Title))
         BasicText(message, style = Mono.copy(color = Palette.muted))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            BracketAction("cancel", Palette.muted, onDismiss)
-            BracketAction(confirm, confirmColor, onConfirm)
+            BracketAction("cancel", Palette.muted, onClick = onDismiss)
+            BracketAction(confirm, confirmColor, onClick = onConfirm)
         }
     }
 }
@@ -124,8 +139,14 @@ internal fun ImageViewer(
     val bitmap by produceState<ImageBitmap?>(null, file) {
         value = withContext(Dispatchers.IO) { runCatching { decodeForScreen(file, context)?.asImageBitmap() }.getOrNull() }
     }
+    // Keys close it as a tap does: Enter, or Back.
     Box(
-        Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) { detectTapGestures(onTap = { onClose() }) },
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(Unit) { detectTapGestures(onTap = { onClose() }) }
+            .holdsKeys()
+            .keyActivated(onClose, null),
         contentAlignment = Alignment.Center,
     ) {
         bitmap?.let { Image(it, file.name, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }

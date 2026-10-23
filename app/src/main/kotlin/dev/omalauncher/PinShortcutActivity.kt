@@ -4,6 +4,7 @@ import android.content.pm.LauncherApps
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import dev.omalauncher.ui.KeyIndicated
 import dev.omalauncher.ui.PinShortcutDialog
 
 /**
@@ -28,16 +29,18 @@ class PinShortcutActivity : ComponentActivity() {
         }
         val catalog = runtime.androidApps
         setContent {
-            PinShortcutDialog(
-                label = shortcutLabel(info),
-                from = catalog.apps.firstOrNull { it.component.packageName == info.`package` && it.user == info.userHandle }?.label,
-                loadIcon = { catalog.iconOf(info) },
-                onAdd = {
-                    catalog.accept(request)?.let { runtime.widgets.shortcuts.addAndroidShortcut(it, runtime.widgets.activePage) }
-                    finish()
-                },
-                onDismiss = ::finish,
-            )
+            KeyIndicated {
+                PinShortcutDialog(
+                    label = shortcutLabel(info),
+                    from = catalog.apps.firstOrNull { it.component.packageName == info.`package` && it.user == info.userHandle }?.label,
+                    loadIcon = { catalog.iconOf(info) },
+                    onAdd = {
+                        catalog.accept(request)?.let { runtime.widgets.shortcuts.addAndroidShortcut(it, runtime.widgets.activePage) }
+                        finish()
+                    },
+                    onDismiss = ::finish,
+                )
+            }
         }
     }
 }

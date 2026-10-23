@@ -47,8 +47,8 @@ internal fun PinShortcutDialog(
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            BracketAction("cancel", Palette.muted, onDismiss)
-            BracketAction("add", Palette.accent, onAdd)
+            BracketAction("cancel", Palette.muted, onClick = onDismiss)
+            BracketAction("add", Palette.accent, onClick = onAdd)
         }
     }
 }

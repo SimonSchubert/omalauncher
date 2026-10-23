@@ -21,7 +21,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -119,7 +123,11 @@ class TerminalTiles(
     }
 
     fun deactivate() {
-        if (active != null) wm.focus(null)
+        if (active != null) {
+            // Keys still down, like the Super of Super+Esc, would stay held for the terminal.
+            runtime.keyboard.releaseHeld()
+            wm.focus(null)
+        }
         tile = null
         keyboard?.hide()
         field?.release()
@@ -286,6 +294,16 @@ fun TerminalView(
     val window = term.window
     val active = tiles.active === term
     LaunchedEffect(term) { term.start() }
+    // Keys that went into the terminal come back out to it as it lets the keyboard go, rather than to wherever
+    // Android gives the window's focus.
+    val back = remember { FocusRequester() }
+    var keysIn by remember { mutableStateOf(false) }
+    LaunchedEffect(active) {
+        if (active || !keysIn) return@LaunchedEffect
+        keysIn = false
+        withFrameNanos {}
+        back.requestFocus()
+    }
     Box(modifier.onGloballyPositioned { term.bounds = it.boundsInWindow().translate(0f, tiles.lift) }) {
         AndroidView(
             factory = { EmbeddedWindowView(it, tiles) },
@@ -293,11 +311,14 @@ fun TerminalView(
             onRelease = { it.window = null },
             modifier = Modifier.fillMaxSize(),
         )
+        // Keys reach the terminal inside its tile (Enter on the tile, or Right): Enter there types into it, as a tap
+        // does, or restarts it once it has exited.
         when {
             window == null ->
                 Box(
                     Modifier
                         .fillMaxSize()
+                        .keyActivated({ term.start() }, null, ring = true)
                         .pointerInput(term) { detectTapGestures { term.start() } },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -318,7 +339,17 @@ fun TerminalView(
                     BasicText("⌨", style = Mono.copy(color = Palette.foreground))
                 }
             }
-            interactive -> Box(Modifier.fillMaxSize().pointerInput(term) { detectTapGestures { tiles.activate(term) } })
+            interactive ->
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .focusRequester(back)
+                        .keyActivated({
+                            keysIn = true
+                            tiles.activate(term)
+                        }, null, ring = true)
+                        .pointerInput(term) { detectTapGestures { tiles.activate(term) } },
+                )
         }
     }
 }

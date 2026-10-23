@@ -111,8 +111,19 @@ class LinuxWindowActivity : InstantActivity() {
     // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Super+Esc leaves the window as Back does, where Esc itself is the window's: it keeps running in Recents.
+        if (event.keyCode == KeyEvent.KEYCODE_ESCAPE && event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN) {
+            if (event.repeatCount == 0) backInstantly()
+            return true
+        }
         if (runtime.keyboard.handle(event)) return true
         return super.dispatchKeyEvent(event)
+    }
+
+    /** Keys held as the window goes, like Super, would stay down for it: Android sends their lift elsewhere. */
+    override fun onPause() {
+        super.onPause()
+        runtime.keyboard.releaseHeld()
     }
 }
 

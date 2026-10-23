@@ -36,6 +36,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.FilterQuality
@@ -74,7 +77,8 @@ fun LauncherRoot(
     Box(
         Modifier
             .fillMaxSize()
-            .then(if (showOwnBackground) Modifier.background(Palette.background) else Modifier),
+            .then(if (showOwnBackground) Modifier.background(Palette.background) else Modifier)
+            .keysRoot(),
     ) {
         if (ready) DesktopScreen(runtime, state) else SetupScreen(runtime)
     }
@@ -196,6 +200,8 @@ private fun DesktopScreen(
                 .fillMaxSize()
                 .graphicsLayer { alpha = state.drawer.value.coerceAtMost(1f) }
                 .background(Palette.background.copy(alpha = opacity))
+                // A tap on it closes the drawer; keys move between the drawer's apps, not to it.
+                .focusProperties { canFocus = false }
                 .clickable { state.close() }
                 .drawerSwipe(state),
         )
@@ -225,7 +231,8 @@ private fun DesktopScreen(
                 // Long-pressing an app opens its menu: the keyboard goes then, once, and stays down.
                 val release = remember(state) { { state.promptRequest = PromptRequest.Release } }
                 if (panelShown && drawer != null) {
-                    CompositionLocalProvider(LocalMenuOpened provides release) { UpPanel(runtime, state, drawer, slide) }
+                    // An arrow with nothing focused, as after a tap in it, starts in the drawer.
+                    CompositionLocalProvider(LocalMenuOpened provides release) { UpPanel(runtime, state, drawer, slide.holdsKeys(enters = false, traps = false)) }
                 }
             }
             // Hidden while a tile types: it would sit on the keyboard, over the tile. They slide with the tile pages,
@@ -234,7 +241,10 @@ private fun DesktopScreen(
                 Column(Modifier.graphicsLayer { if (!panelShown) translationX = state.barShift() * size.width }) {
                     // Home only: the open app list has everything.
                     // Swiping up from either does what it does on home, as from the dock on stock launchers.
-                    if (LauncherStyle.recentApps && !panelShown) RecentStrip(runtime, handlers, Modifier.homeSwipe(runtime, state))
+                    // Keys go between it and home's tiles both ways, which Compose's search doesn't find (see PromptBar).
+                    if (LauncherStyle.recentApps && !panelShown) {
+                        RecentStrip(runtime, handlers, Modifier.homeSwipe(runtime, state).focusRequester(state.stripEntry).focusGroup(), home = state.homeEntry)
+                    }
                     // Insets itself by the grid gap, so it lines up with the tiles and the gap still takes taps.
                     PromptBar(runtime, state, modifier = Modifier.homeSwipe(runtime, state))
                 }

@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.ColorProducer
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
@@ -41,6 +43,8 @@ import androidx.compose.ui.unit.sp
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.TileField
+import dev.omalauncher.ui.keyStepped
+import dev.omalauncher.ui.leavesUpDown
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Str
@@ -102,7 +106,22 @@ internal fun SliderNode(
             // A weight or width only sizes it across; it keeps its height unless given one.
             .then(if (sized) Modifier else Modifier.fillMaxWidth())
             .then(if (p.has("height") || p.has("size") || p.has("fill")) Modifier else Modifier.height(28.dp))
-            .pointerInput(p.el, p.env, min, max, step) {
+            // Keys step it by its step, else a twentieth of its range or with Shift a hundredth, sending each one: a
+            // key has no lift to wait for. At either end the arrow moves on.
+            .then(
+                if (onChange == null) {
+                    Modifier
+                } else {
+                    Modifier.keyStepped(vertical = false) { by, fine ->
+                        val from = held ?: value ?: min
+                        val to = (from + by * (step ?: ((max - min) / if (fine) 100 else 20))).coerceIn(min, max)
+                        if (to == from) return@keyStepped false
+                        held = to
+                        send(to)
+                        true
+                    }
+                },
+            ).pointerInput(p.el, p.env, min, max, step) {
                 detectTapGestures { o ->
                     sent[0] = null
                     held = at(o.x, size.width).also(::send)
@@ -164,6 +183,7 @@ internal fun InputNode(
     val onChange = p.el.handlers["onChange"]
     val onSubmit = p.el.handlers["onSubmit"]
     val focus = LocalFocusManager.current
+    val inputMode = LocalInputModeManager.current
     val want = LocalInputFocus.current && p.observe("focus")?.truthy == true
     val requester = remember { FocusRequester() }
     LaunchedEffect(want) { if (want) requester.requestFocus() }
@@ -187,6 +207,7 @@ internal fun InputNode(
         onValueChange = ::edit,
         modifier =
             (if (sized) mod else mod.fillMaxWidth())
+                .leavesUpDown()
                 .focusRequester(requester)
                 .onFocusChanged {
                     focused = it.isFocused
@@ -210,7 +231,8 @@ internal fun InputNode(
             KeyboardActions(onAny = {
                 onSubmit?.run(p.env, listOf(Str(field.text)))
                 if (clear) edit(TextFieldValue(""))
-                focus.clearFocus()
+                // Typed on a keyboard, the keys stay here, as on a soft keyboard Done puts it away.
+                if (inputMode.inputMode != InputMode.Keyboard) focus.clearFocus()
             }),
         decorationBox = { inner ->
             Box(Modifier.padding(vertical = 6.dp)) {
