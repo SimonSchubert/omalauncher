@@ -65,11 +65,13 @@ class Modes(
     private val flashInfo by lazy { flash?.let { runCatching { cameras.getCameraCharacteristics(it) }.getOrNull() } }
 
     /** How many brightness levels the torch has: 1 where it can't be dimmed, as before Android 13. */
-    private val torchSteps: Int by lazy { (if (Build.VERSION.SDK_INT >= 33) flashInfo?.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL) else null) ?: 1 }
+    private val torchSteps: Int by lazy {
+        (if (Build.VERSION.SDK_INT >= 33) runCatching { flashInfo?.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL) }.getOrNull() else null) ?: 1
+    }
 
     /** The level it shines at unless told otherwise. */
     private val torchDefault: Int by lazy {
-        (if (Build.VERSION.SDK_INT >= 33) flashInfo?.get(CameraCharacteristics.FLASH_INFO_STRENGTH_DEFAULT_LEVEL) else null)?.takeIf { it in 1..torchSteps } ?: torchSteps
+        (if (Build.VERSION.SDK_INT >= 33) runCatching { flashInfo?.get(CameraCharacteristics.FLASH_INFO_STRENGTH_DEFAULT_LEVEL) }.getOrNull() else null)?.takeIf { it in 1..torchSteps } ?: torchSteps
     }
 
     private val dimmable get() = Build.VERSION.SDK_INT >= 33 && torchSteps > 1
@@ -221,8 +223,9 @@ class Modes(
     /**
      * dnd(true), dnd(false), or dnd("on"), "off", "toggle": Do Not Disturb as the quick settings tile switches it, letting
      * through what the user's settings let through, or what dnd(...) picked last; dnd("priority"), "alarms" and "none"
-     * pick what gets through and turn it on, and "all" turns it off, the words dndAllows reads. A notification listener
-     * may; false without notification access.
+     * pick what gets through and turn it on, and "all" turns it off, the words dndAllows reads. "none" isn't kept for
+     * next time: a plain tap turning on total silence again, alarms too, could cost someone their alarm. A notification
+     * listener may; false without notification access.
      * Since Android 15 an app's switch is a mode of its own, which ends only its own Do Not Disturb: one the user turned
      * on stays, and [stays] runs, for Android's own settings.
      */
@@ -233,7 +236,7 @@ class Modes(
         val listener = MediaListener.connected ?: return false
         val word = arg.toString()
         val level = arg !is Bool && (word == "priority" || word == "alarms" || word == "none")
-        if (level) prefs.edit().putString("dnd", word).apply()
+        if (level && word != "none") prefs.edit().putString("dnd", word).apply()
         val on =
             when {
                 arg is Bool -> arg.v
@@ -246,7 +249,7 @@ class Modes(
             when {
                 !on -> NotificationListenerService.INTERRUPTION_FILTER_ALL
                 else ->
-                    when (prefs.getString("dnd", null)) {
+                    when (if (word == "none") word else prefs.getString("dnd", null)) {
                         "alarms" -> NotificationListenerService.INTERRUPTION_FILTER_ALARMS
                         "none" -> NotificationListenerService.INTERRUPTION_FILTER_NONE
                         else -> NotificationListenerService.INTERRUPTION_FILTER_PRIORITY

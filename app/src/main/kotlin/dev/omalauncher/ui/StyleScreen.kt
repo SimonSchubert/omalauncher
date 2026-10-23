@@ -49,6 +49,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -289,8 +291,8 @@ private fun ThemeSection(
     val scope = rememberCoroutineScope()
     val current = store.current
     Heading("theme") {
-        BracketAction("browse", Palette.accent, onBrowse)
-        BracketAction("install", Palette.accent, onInstall)
+        BracketAction("browse", Palette.accent, onClick = onBrowse)
+        BracketAction("install", Palette.accent, onClick = onInstall)
     }
     InstallStatus(store)
     if (!store.complete) {
@@ -721,22 +723,35 @@ private fun Stepper(
     fun set(v: Double) = style.update { it.with(all) { s -> v.coerceIn(s.range) } }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         OptionLabel(label)
+        // Keys at the end of the range go on to the other step, and from reset as it goes, to a step.
+        val minus = remember { FocusRequester() }
+        val plus = remember { FocusRequester() }
         Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             val down = value > setting.range.start
             val up = value < setting.range.endInclusive
             BasicText(
                 "−",
-                Modifier.clickable(enabled = down) { set(ceil(value - 1)) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier
+                    .focusRequester(minus)
+                    .passesKeys(plus)
+                    .clickable(enabled = down) { set(ceil(value - 1)) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 style = Mono.copy(color = if (down) Palette.foreground else Palette.muted),
             )
             BasicText(Toml.format(value) + " dp", Modifier.widthIn(min = 64.dp), style = Mono.copy(textAlign = TextAlign.Center), softWrap = false)
             BasicText(
                 "+",
-                Modifier.clickable(enabled = up) { set(floor(value + 1)) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier
+                    .focusRequester(plus)
+                    .passesKeys(minus)
+                    .clickable(enabled = up) { set(floor(value + 1)) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 style = Mono.copy(color = if (up) Palette.foreground else Palette.muted),
             )
         }
-        if (all.any { style.style[it] != it.default }) BracketAction("reset", Palette.muted) { style.update { it.with(all) { s -> s.default } } }
+        if (all.any { style.style[it] != it.default }) {
+            BracketAction("reset", Palette.muted, Modifier.passesKeys(minus, plus)) { style.update { it.with(all) { s -> s.default } } }
+        }
     }
     if (style.style.common(all) == null) OptionHint("they differ in style.toml; a step sets them all", Modifier.padding(bottom = 4.dp))
 }
@@ -769,7 +784,15 @@ private fun NumberSlider(
             Modifier
                 .weight(1f)
                 .height(40.dp)
-                .pointerInput(setting) { detectTapGestures { set(it.x, size.width) } }
+                // Keys step it, a twentieth of its range or with Shift a hundredth.
+                .keyStepped(vertical = false) { by, fine ->
+                    val span = range.endInclusive - range.start
+                    val v = Math.round((value + by * span / (if (fine) 100 else 20)).coerceIn(range.start, range.endInclusive) * 100) / 100.0
+                    // At the end, the arrow goes on, to reset.
+                    if (v == value) return@keyStepped false
+                    style.update { it.with(setting, v) }
+                    true
+                }.pointerInput(setting) { detectTapGestures { set(it.x, size.width) } }
                 .pointerInput(setting) {
                     detectHorizontalDragGestures { change, _ ->
                         change.consume()
@@ -891,9 +914,9 @@ private fun DownloadPrompt(
             is ThemeDownload.Running -> BasicText("downloading… ${state.megabytes} MB", style = Mono.copy(color = Palette.accent))
             is ThemeDownload.Failed -> {
                 BasicText("failed: ${state.message}", style = Mono.copy(color = Palette.red))
-                BracketAction("retry", Palette.accent, onDownload)
+                BracketAction("retry", Palette.accent, onClick = onDownload)
             }
-            ThemeDownload.Idle -> BracketAction("download themes", Palette.accent, onDownload)
+            ThemeDownload.Idle -> BracketAction("download themes", Palette.accent, onClick = onDownload)
         }
     }
 }
@@ -911,7 +934,8 @@ private fun ThemeCard(
             .frame(2.dp, if (selected) Palette.accent else Palette.border, bg, radius = 12.dp)
             .clickable(onClick = onClick),
     ) {
-        Thumbnail(theme.preview, selected = false, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f), onClick = onClick)
+        // The card takes the tap, so keys stop on it once rather than on it and its picture.
+        Thumbnail(theme.preview, selected = false, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f), onClick = null)
         Row(Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicText(theme.title, Modifier.weight(1f), style = Mono.copy(color = theme.colors["foreground"].toColor(), fontSize = TextSize.Small), maxLines = 1)
             for (key in listOf("accent", "red", "green", "yellow")) {
@@ -926,7 +950,8 @@ private fun Thumbnail(
     file: File,
     selected: Boolean,
     modifier: Modifier,
-    onClick: () -> Unit,
+    /** Null when what holds it takes the tap. */
+    onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)? = null,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -936,15 +961,21 @@ private fun Thumbnail(
     Box(
         modifier
             .frame(2.dp, if (selected) Palette.accent else Color.Transparent, Palette.surface, radius = 12.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick =
-                    onLongClick?.let {
-                        {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            it()
-                        }
-                    },
+            .then(
+                if (onClick == null) {
+                    Modifier
+                } else {
+                    Modifier.then(onLongClick?.let { Modifier.menuLongPresses(it) } ?: Modifier).combinedClickable(
+                        onClick = onClick,
+                        onLongClick =
+                            onLongClick?.let {
+                                {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    it()
+                                }
+                            },
+                    )
+                },
             ),
     ) {
         image?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }

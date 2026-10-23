@@ -184,7 +184,8 @@ private fun KindToggle(
                 label,
                 Modifier
                     .background(if (on) Palette.accent.copy(alpha = 0.15f) else Color.Transparent)
-                    .clickable(enabled = !on) { onPick(k) }
+                    // The shown one still takes a tap, doing nothing, so keys on it as it's picked stay there.
+                    .clickable { if (!on) onPick(k) }
                     .padding(horizontal = 12.dp, vertical = 6.dp),
                 style = Mono.copy(color = if (on) Palette.accent else Palette.muted, fontSize = TextSize.Small),
             )
@@ -492,7 +493,8 @@ private fun Screens(
 ) {
     // Until one has loaded, a slot is phone-shaped.
     val ratio = preview?.let { it.width.toFloat() / it.height } ?: PHONE_RATIO
-    val shot = Modifier.height(ScreenHeight).aspectRatio(ratio).frame(1.dp, Palette.border, radius = 8.dp).clip(RoundedCornerShape(8.dp))
+    // Keys stop at each, so the arrows go through them, the row scrolling to follow.
+    val shot = Modifier.height(ScreenHeight).aspectRatio(ratio).frame(1.dp, Palette.border, radius = 8.dp).clip(RoundedCornerShape(8.dp)).keyScrolled()
     LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         item(key = "preview") { Box(shot.background(Palette.surface)) { preview?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) } } }
         items(screens, key = { it }) { path ->
@@ -554,13 +556,13 @@ private fun Detail(
         when {
             busy != null -> BasicText(busy, style = Mono.copy(color = Palette.accent))
             !e.supported -> BasicText("needs a newer launcher (owl ${e.owl}); update the launcher to install it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
-            update -> BracketAction("update ${installed?.version} → ${e.version}", Palette.accent, onInstall)
+            update -> BracketAction("update ${installed?.version} → ${e.version}", Palette.accent, Modifier.passesKeys(), onInstall)
             // An app opens from here, unless it waits for Linux.
             installed != null && market.kind == OwlKind.App && (linux || !e.needsLinux) ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AddedMark(market.kind)
                     Spacer(Modifier.width(8.dp))
-                    BracketAction("open", Palette.accent, onOpen)
+                    BracketAction("open", Palette.accent, Modifier.takesPassedKeys(), onOpen)
                 }
             installed != null -> AddedMark(market.kind)
             else ->
@@ -571,6 +573,8 @@ private fun Detail(
                         OwlKind.App, OwlKind.Panel, OwlKind.Keybar -> "install"
                     },
                     Palette.accent,
+                    // Keys on it wait out the install, for the open an app ends with.
+                    Modifier.passesKeys(),
                     onInstall,
                 )
         }
@@ -624,8 +628,11 @@ internal fun InstallDisclosure(
     notice: @Composable () -> Unit = {},
 ) {
     val packages = requires.entries.joinToString("; ") { (m, l) -> "$m: ${l.joinToString(", ")}" }.ifEmpty { "none" }
-    BasicText("installs packages: $packages", style = Mono.copy(fontSize = TextSize.Small))
-    notice()
-    BasicText(if (commands.isEmpty()) "runs no commands" else "runs these commands in Arch:", style = Mono.copy(fontSize = TextSize.Small))
+    // A stop for keys, at the end of a page that may have nothing else to scroll it there.
+    Column(Modifier.keyScrolled(around = true), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        BasicText("installs packages: $packages", style = Mono.copy(fontSize = TextSize.Small))
+        notice()
+        BasicText(if (commands.isEmpty()) "runs no commands" else "runs these commands in Arch:", style = Mono.copy(fontSize = TextSize.Small))
+    }
     for (c in commands) CodeBlock(c.trimEnd())
 }

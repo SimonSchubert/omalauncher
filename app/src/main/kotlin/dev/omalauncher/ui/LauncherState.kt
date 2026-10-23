@@ -1,6 +1,7 @@
 package dev.omalauncher.ui
 
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.runtime.setValue
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -49,6 +50,15 @@ class LauncherState {
 
     /** Key of the home tile in edit mode (handles and action bar shown), if any. */
     var editing by mutableStateOf<String?>(null)
+
+    /** Home's pages, as keys enter them: requesting focus here gives it to the shown page's first tile. */
+    val homeEntry = FocusRequester()
+
+    /** The recent apps strip, as keys enter it from the tiles above; nothing takes it while the strip is empty. */
+    val stripEntry = FocusRequester()
+
+    /** Gives home's first tile the keys' focus while home shows, for an arrow with nothing focused to start from. Whether one took it. */
+    fun focusHome() = drawer.value == 0f && pulled == null && !homeMenuOpen && homeEntry.requestFocus()
 
     /** How far the home pages are scrolled, 0 (first) to 1 (last); the background slides along. */
     var wallpaperOffset by mutableFloatStateOf(0.5f)
@@ -168,12 +178,23 @@ class LauncherState {
         if (open) composeScope?.launch { pull.animateTo(1f, spring(stiffness = Spring.StiffnessMediumLow)) } else closePull()
     }
 
+    /** Brings [name] down as the swipe-down panel, as a key asks for it rather than a drag; the drawer goes. */
+    fun openPull(name: String) {
+        val compose = composeScope ?: return
+        close()
+        pulled = name
+        compose.launch { pull.animateTo(1f, spring(stiffness = Spring.StiffnessMediumLow)) }
+    }
+
     /** Slides the panel away and lets it go; a drag that catches it on the way keeps it. */
-    fun closePull() =
-        scope.launch {
-            if (composeScope != null) pull.animateTo(0f, spring(stiffness = Spring.StiffnessMedium)) else pull.snapTo(0f)
+    fun closePull() {
+        // Read once: composition can start between launching and running, and animating outside it has no frame clock.
+        val compose = composeScope
+        (compose ?: CoroutineScope(Dispatchers.Main)).launch {
+            if (compose != null) pull.animateTo(0f, spring(stiffness = Spring.StiffnessMedium)) else pull.snapTo(0f)
             pulled = null
         }
+    }
 
     /** Settles after a drag; [velocity] is in px/s, negative = upwards. */
     fun settle(velocity: Float) {

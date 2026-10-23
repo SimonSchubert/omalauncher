@@ -18,6 +18,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
@@ -88,6 +89,11 @@ class Media(
     private val main = Handler(Looper.getMainLooper())
 
     val granted get() = notifications.isNotificationListenerAccessGranted(component)
+
+    /** Asks Android to bind the listener again: access is granted, but it isn't bound yet after a start, or the phone let it go. */
+    fun reconnect() {
+        runCatching { NotificationListenerService.requestRebind(component) }.onFailure { Log.w("widgets", "rebind: ${it.message}") }
+    }
 
     /**
      * Where [value] runs: its binder calls and the art's parcel stay off the main thread, one at a time,

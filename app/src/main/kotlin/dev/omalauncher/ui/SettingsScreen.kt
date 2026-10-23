@@ -20,6 +20,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,10 +101,16 @@ fun SettingsScreen(
             )
         UpdatesBox(runtime, installed)
         if (installed) SetupUpdates(runtime)
+        // The local network row goes once it's granted: keys on it go on to the next.
+        val next = remember { FocusRequester() }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(rows, key = { it.first }) { (title, subtitle, onClick) ->
                 Row(
-                    Modifier.card(onClick = onClick),
+                    when (title) {
+                        "local network" -> Modifier.passesKeys(next)
+                        "android settings" -> Modifier.focusRequester(next)
+                        else -> Modifier
+                    }.card(onClick = onClick),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -132,7 +140,7 @@ private fun SetupUpdates(runtime: Runtime) {
                 Modifier.weight(1f),
                 style = Mono.copy(color = if (failed != null) Palette.red else Palette.accent),
             )
-            if (failed != null) BracketAction("retry", Palette.accent, runtime::retryUpdates)
+            if (failed != null) BracketAction("retry", Palette.accent, onClick = runtime::retryUpdates)
         }
         JobLog(state)
     }
@@ -249,7 +257,7 @@ private fun UpdateLines(
         Column(Modifier.weight(1f).padding(top = 4.dp)) {
             for (line in shown) BasicText(line, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (ready) BracketAction("update", Palette.accent, onUpdate)
+        if (ready) BracketAction("update", Palette.accent, onClick = onUpdate)
     }
 }
 

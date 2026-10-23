@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.BasicText
@@ -160,10 +161,10 @@ fun LicensesScreen(onDismiss: () -> Unit) {
             }
             items(COMPONENTS, key = { it.name }) { c ->
                 val expanded = open == c.name
-                Column(
-                    Modifier.card(onClick = { open = if (expanded) null else c.name }),
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                // Only its header opens and closes it: keys go from there into what it shows, which a tap target around
+                // it all would keep them out of.
+                Column(Modifier.card()) {
+                    Row(Modifier.clickable { open = if (expanded) null else c.name }, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             BasicText(c.name, style = Mono.copy(fontSize = TextSize.Item))
                             BasicText("${c.license} · ${c.use}", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
@@ -203,10 +204,10 @@ private fun Details(c: Component) {
     }
     text?.let {
         Spacer(Modifier.height(10.dp))
-        BasicText(it, style = small.copy(color = Palette.muted))
+        BasicText(it, Modifier.keyScrolled(around = true), style = small.copy(color = Palette.muted))
     }
     gpl3?.let {
         Spacer(Modifier.height(10.dp))
-        BasicText(it, style = small.copy(color = Palette.muted))
+        BasicText(it, Modifier.keyScrolled(around = true), style = small.copy(color = Palette.muted))
     }
 }

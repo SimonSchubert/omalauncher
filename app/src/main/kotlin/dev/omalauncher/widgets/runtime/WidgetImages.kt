@@ -1,7 +1,6 @@
 package dev.omalauncher.widgets.runtime
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.graphics.asImageBitmap
 import dev.omalauncher.ui.decodeSampled
@@ -202,14 +201,16 @@ internal class WidgetImages(
                     if (file.length() >= MAX_FILE_BYTES) return null
                     val head = ByteArray(64)
                     val n = file.inputStream().use { it.read(head) }
-                    if (n <= 0 || !isSvg(head.copyOf(n))) return raster(decodeSampled(file, MAX_IMAGE_SIDE / 2))
+                    if (n <= 0 || !isSvg(head.copyOf(n))) return raster(decodeSampled(file, MAX_IMAGE_SIDE / 2, maxBytes = MAX_IMAGE_BYTES.toLong()))
                     file.readBytes()
                 }
                 src.startsWith("https://") -> if (program.level < 8) return null else services.remoteFile(src)?.readBytes() ?: return null
                 else -> (program.globals.firstOrNull { it.name == src.removePrefix("asset:") } as? Global.Asset)?.bytes ?: return null
             }
         if (isSvg(bytes)) return if (bytes.size <= MAX_SVG_BYTES) decodeSvg(bytes)?.let { WidgetImage.Vector(it) } else null
-        return raster(if (src.startsWith("https://")) decodeSampled(bytes, MAX_IMAGE_SIDE / 2) else BitmapFactory.decodeByteArray(bytes, 0, bytes.size))
+        // An asset is drawn at full size (minWidth too big to halve); either way, nothing over the cap is decoded at all.
+        val minSide = if (src.startsWith("https://")) MAX_IMAGE_SIDE / 2 else Int.MAX_VALUE
+        return raster(decodeSampled(bytes, minSide, maxBytes = MAX_IMAGE_BYTES.toLong()))
     }
 
     // A small PNG can hold a huge flat image; drawing one over Android's limit throws on every frame.

@@ -6,7 +6,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -95,18 +97,22 @@ internal fun ShortcutRows(
     if (offered.isEmpty()) return
     Column {
         for (s in offered) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        onDismiss()
-                        menu.open(s)
-                    }.padding(start = 14.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                ShortcutIcon(s)
-                BasicText(s.label, Modifier.weight(1f), style = Mono.copy(fontSize = fontSize), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // The + beside the row rather than in it, so keys reach both: Right goes from one to the other.
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(end = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clickable {
+                            onDismiss()
+                            menu.open(s)
+                        }.padding(start = 14.dp, end = 10.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    ShortcutIcon(s)
+                    BasicText(s.label, Modifier.weight(1f), style = Mono.copy(fontSize = fontSize), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
                 BracketAction("+", Palette.accent) {
                     onDismiss()
                     menu.pin(s)

@@ -65,13 +65,14 @@ private fun AgentRow(
                 BasicText(agent.name, style = Mono.copy(fontSize = TextSize.Item))
                 BasicText(agent.description, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
+            // Keys on install or remove wait out the job, for what it ends with.
             when {
                 state is JobState.Working -> BasicText("${state.action}…", style = Mono.copy(color = Palette.accent))
                 installed -> {
-                    BracketAction("open", Palette.green, onOpen)
-                    BracketAction("remove", Palette.red, onRemove)
+                    BracketAction("open", Palette.green, Modifier.takesPassedKeys(), onOpen)
+                    BracketAction("remove", Palette.red, Modifier.passesKeys(), onRemove)
                 }
-                else -> BracketAction("install", Palette.accent, onInstall)
+                else -> BracketAction("install", Palette.accent, Modifier.takesPassedKeys().passesKeys(), onInstall)
             }
         }
         JobLog(state)

@@ -4,6 +4,35 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 0.12.0 (versionCode 21) – 2026-10-23
+
+- controls.owl, a control center for swiping down on home: the phone's switches,
+  brightness, volume and where it plays, Do Not Disturb and the torch with their
+  levels, what's playing, the next alarm and the notifications (reply, act, snooze,
+  swipe away). Pick it in settings › gestures. Owl 13 adds what it uses:
+  `settings(...)`, `dnd(...)` with `dndAllows`, `torch(level)`, the radios and more
+  in `android.modes`, `android.sim`, `android.network`, `android.volume`'s output,
+  notification actions, replies and snoozing, `drag` and `onDragEnd`.
+- Widgets' glass is a setting: an opacity slider and frosted glass in Style
+  (widgets.opacity, widgets.frost), terminal widgets included; the drawer and panels
+  set how much they cover home. Owl 13's `tileOpacity` and `tileFrost` let a face or
+  a widget's own cards match.
+- Keyboards and gamepads reach the whole launcher: arrows or the D-pad move between
+  tiles, recent apps, the bar, the drawer, panels, settings and what takes taps in a
+  widget, with an accent ring; Enter opens, holding it or Menu long-presses, Esc or B
+  goes back. Super+D opens the drawer, Super+T a terminal, Super+Down the swipe-down
+  panel.
+- Codex runs commands again (its sandbox failed on every command under proot).
+  Agent updates delete the old versions and npm's cache, which left every upgraded
+  agent installed twice.
+- The store takes widgets, faces and apps up to 1 MB; an installed app opens from
+  its store page; store cards decode their previews at the size they're drawn.
+- Fixes: the mic crashed with some voice assistants (ChatGPT's) as the phone's
+  speech recognizer; store previews were blank on Android 10 and 11; very large
+  widget images ran out of memory; a widget too big for a share link crashed the
+  share screen (it's shared by QR code now); a frost that comes out NaN crashed the
+  launcher; the first key on setup could change the theme.
+
 ## 0.11.0 (versionCode 20) – 2026-10-21
 
 - The terminal key bar is an owl file: keybar.owl, which you or an agent can edit

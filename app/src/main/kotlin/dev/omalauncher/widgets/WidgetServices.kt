@@ -604,8 +604,16 @@ class WidgetServices(
             "copy" -> copy(arg)
             "notify" -> notify(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
             "torch" -> modes.torch(args[0])
-            // Notification access lets the launcher switch it; without it, the setting that grants it.
-            "dnd" -> if (!media.granted || !modes.dnd(args[0]) { panels.open("dnd") }) media.openAccessSettings()
+            // Notification access lets the launcher switch it; without it, the setting that grants it. Granted but not
+            // bound yet: Android's own DND setting this time, while the listener binds again for the next tap.
+            "dnd" ->
+                when {
+                    !media.granted -> media.openAccessSettings()
+                    !modes.dnd(args[0]) { panels.open("dnd") } -> {
+                        media.reconnect()
+                        panels.open("dnd")
+                    }
+                }
             "share" -> share(arg)
             "haptic" -> view?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             "open" -> openApp(arg)

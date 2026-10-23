@@ -52,6 +52,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.referentialEqualityPolicy
@@ -84,6 +85,12 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.focus.onFocusChanged
+import dev.omalauncher.ui.activateKeys
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -111,6 +118,8 @@ import dev.omalauncher.ui.NerdSymbols
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.frame
+import dev.omalauncher.ui.holdsKeys
+import dev.omalauncher.ui.keyActivated
 import dev.omalauncher.ui.TerminalView
 import dev.omalauncher.widgets.lang.Action
 import dev.omalauncher.widgets.lang.Builtins
@@ -884,7 +893,7 @@ private fun handlers(
                         },
                     onTap = tap?.let { a -> { o -> fire(a, o.x, o.y) } },
                 )
-            }
+            }.then(keyFocus(p, tap, long) { a, x, y -> fire(a, x, y) })
     }
     el.handlers["onDrag"]?.let { a ->
         val end = el.handlers["onDragEnd"]
@@ -935,6 +944,8 @@ private fun handlers(
     val press = el.handlers["onPress"]
     val release = el.handlers["onRelease"]
     if (press != null || release != null) {
+        // Keys press one with nothing to tap, like the terminal key bar's keys or a game's D-pad.
+        if (tap == null && long == null) m = m.then(keyPressed(p, press, release))
         m =
             m.pointerInput(el, p.env) {
                 coroutineScope {
@@ -968,6 +979,83 @@ private fun handlers(
             }
     }
     return m
+}
+
+/**
+ * A node with onPress or onRelease and nothing to tap: keys reach it as one that takes taps ([keyFocus]), and Enter
+ * presses it at its middle as it goes down, again as it repeats where it `repeats`, and lets it go as it lifts, or as
+ * keys move off it while it's held.
+ */
+@Composable
+private fun keyPressed(
+    p: Props,
+    press: Action?,
+    release: Action?,
+): Modifier {
+    val density = LocalDensity.current.density
+    val bounds = remember { mutableStateOf(IntSize.Zero) }
+    val held = remember { booleanArrayOf(false, false) }
+    fun run(n: Int) =
+        press?.run(p.env, listOf(Num((bounds.value.width / 2f / density).toDouble()), Num((bounds.value.height / 2f / density).toDouble()), Num(n.toDouble())))
+    fun letGo() {
+        if (!held[1]) return
+        held[1] = false
+        release?.run(p.env, emptyList())
+    }
+    return Modifier
+        .onSizeChanged { bounds.value = it }
+        .onFocusChanged {
+            held[0] = it.isFocused
+            if (!it.isFocused) letGo()
+        }.onPreviewKeyEvent { e ->
+            if (e.key !in activateKeys || !held[0]) return@onPreviewKeyEvent false
+            when (e.type) {
+                KeyEventType.KeyDown -> {
+                    val n = e.nativeKeyEvent.repeatCount
+                    if (n == 0) {
+                        held[1] = true
+                        run(0)
+                    } else if (held[1] && p.now("repeats")?.truthy == true) {
+                        run(n)
+                    }
+                }
+                KeyEventType.KeyUp -> letGo()
+            }
+            true
+        }.then(keyFocus(p, null, null) { _, _, _ -> })
+}
+
+/**
+ * Lets a keyboard or a gamepad reach a node that takes taps (see [keyActivated]), ringed in the accent color while it
+ * has focus. A key taps it at its middle.
+ */
+@Composable
+private fun keyFocus(
+    p: Props,
+    tap: Action?,
+    long: Action?,
+    fire: (Action, Float, Float) -> Unit,
+): Modifier {
+    val haptics = LocalHapticFeedback.current
+    val claim = LocalLongPressClaim.current
+    val bounds = remember { mutableStateOf(IntSize.Zero) }
+    val radius = p.float("radius", (if (p.has("border")) 8f else 4f) * LauncherStyle.cornerScale)
+    fun at(a: Action) = fire(a, bounds.value.width / 2f, bounds.value.height / 2f)
+    return Modifier
+        .onSizeChanged { bounds.value = it }
+        .keyActivated(
+            onTap = tap?.let { { at(it) } },
+            onLongPress =
+                long?.let {
+                    {
+                        claim?.claim()
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        at(it)
+                    }
+                },
+            ring = true,
+            radius = radius,
+        )
 }
 
 /**
@@ -1137,7 +1225,7 @@ private fun PopupNode(
                 else -> Alignment.Start
             }
         Column(
-            (if (framed) mod else Modifier.frame(2.dp, Palette.accent, Palette.background).then(mod).then(if (p.has("padding")) Modifier else Modifier.padding(4.dp))),
+            (if (framed) mod else Modifier.frame(2.dp, Palette.accent, Palette.background).then(mod).then(if (p.has("padding")) Modifier else Modifier.padding(4.dp))).holdsKeys(),
             verticalArrangement = Arrangement.spacedBy(gap),
             horizontalAlignment = align,
         ) { Nodes(el.children, env, inst, this) }

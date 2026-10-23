@@ -184,7 +184,8 @@ internal fun FolderPanel(
     onNamed: () -> Unit = {},
 ) {
     val density = LocalDensity.current
-    Box(Modifier.fillMaxSize().zIndex(4f).background(Palette.overlay.copy(alpha = 0.6f))) {
+    // Keys go between its apps while it's open, not to the tiles behind it.
+    Box(Modifier.fillMaxSize().zIndex(4f).background(Palette.overlay.copy(alpha = 0.6f)).holdsKeys()) {
         val p = geometry.panel
         Box(
             Modifier

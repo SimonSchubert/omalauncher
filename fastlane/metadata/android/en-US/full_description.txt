@@ -22,7 +22,7 @@ CODING AGENTS
 With Linux installed, the prompt bar at the bottom of the home screen sends a prompt to a coding agent such as Claude Code, Codex, Copilot or opencode, which opens in a terminal. Hold the mic to dictate; speech is recognized by Android, so only the text reaches Linux.
 
 KEYBOARD SHORTCUTS
-With a hardware keyboard: Super+Enter opens a terminal, Super+Space the drawer, Super+A the agent prompt, Super+1 to 9 switch pages and Super+W closes a window.
+With a hardware keyboard: Super+T opens a terminal, Super+D the drawer, Super+1 to 9 switch pages and Super+W closes a window.
 
 PRIVACY
 No account, no ads, no tracking. Omalauncher only connects to the internet to download themes, widgets, weather and, if you choose, Linux and its packages.

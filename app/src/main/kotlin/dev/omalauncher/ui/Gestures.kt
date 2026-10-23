@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
@@ -270,14 +272,24 @@ private fun EditPanel(
     EditFile(runtime.widgets.panels().firstOrNull { it.file.name == choice } ?: return, onAgent)
 }
 
-/** [edit] starts the agent on [spec]'s file, as one edits a face or a widget. */
+/**
+ * [edit] starts the agent on [spec]'s file, as one edits a face or a widget. The whole line takes it, file name too: the
+ * keys' arrows then stop on it between the gestures, where a short [ edit ] at its start lost to the full row past it.
+ */
 @Composable
 private fun EditFile(
     spec: WidgetSpec,
     onAgent: (title: String, command: (bin: String) -> String) -> Unit,
 ) {
-    Row(Modifier.padding(start = 6.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        BracketAction("edit", Palette.accent) { onAgent("Edit ${spec.name}") { editWidgetCommand(it, spec) } }
+    Row(
+        Modifier
+            .padding(start = 6.dp, top = 2.dp)
+            .fillMaxWidth()
+            .clickable { onAgent("Edit ${spec.name}") { editWidgetCommand(it, spec) } }
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicText("[ edit ]", Modifier.padding(end = 8.dp), style = Mono.copy(color = Palette.accent))
         BasicText(spec.file.name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
     }
 }
