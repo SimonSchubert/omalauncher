@@ -13,6 +13,8 @@ object Keys {
     const val KEY_LEFTCTRL = 29
     const val KEY_RIGHTCTRL = 97
     const val KEY_LEFTALT = 56
+    const val KEY_LEFT = 105
+    const val KEY_RIGHT = 106
 
     private val byKeyCode =
         buildMap {
@@ -54,8 +56,8 @@ object Keys {
             put(KeyEvent.KEYCODE_MOVE_HOME, 102)
             put(KeyEvent.KEYCODE_DPAD_UP, 103)
             put(KeyEvent.KEYCODE_PAGE_UP, 104)
-            put(KeyEvent.KEYCODE_DPAD_LEFT, 105)
-            put(KeyEvent.KEYCODE_DPAD_RIGHT, 106)
+            put(KeyEvent.KEYCODE_DPAD_LEFT, KEY_LEFT)
+            put(KeyEvent.KEYCODE_DPAD_RIGHT, KEY_RIGHT)
             put(KeyEvent.KEYCODE_MOVE_END, 107)
             put(KeyEvent.KEYCODE_DPAD_DOWN, 108)
             put(KeyEvent.KEYCODE_PAGE_DOWN, 109)
