@@ -7,6 +7,7 @@ import android.os.Looper
 import android.view.Surface
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,6 +31,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.focus.FocusProperties
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -96,6 +101,18 @@ internal fun homeSide(): HomeSide? {
     }
 }
 
+/** Keys' way from the bottom toward the grid to [home]: Up, or across from the [side] the bar and the strip stand on. */
+internal fun FocusProperties.toHome(
+    side: HomeSide?,
+    home: FocusRequester,
+) {
+    when (side) {
+        null -> up = home
+        HomeSide.Left -> right = home
+        HomeSide.Right -> left = home
+    }
+}
+
 /**
  * Whether home shows two pages side by side: when each half of the window is phone-shaped and wide
  * enough to be worth a page of its own, as on a foldable's inner screen in either orientation. Phones,
@@ -142,17 +159,30 @@ internal fun SideRail(
         modifier.fillMaxHeight().padding(vertical = EdgeGap),
         horizontalArrangement = if (side == HomeSide.Left) Arrangement.Start else Arrangement.End,
     ) {
-        // Outward from the grid, like portrait from the grid down: the strip, then the bar.
-        val strip = @Composable { if (LauncherStyle.recentApps) RecentStrip(runtime, handlers, vertical = true) }
+        // Outward from the grid, like portrait from the grid down: the strip, then the bar. Keys come out of the grid
+        // to the first of them there is.
+        val alone = !(LauncherStyle.recentApps && recentApps(runtime, 1).isNotEmpty())
+        val strip = @Composable {
+            if (LauncherStyle.recentApps) {
+                RecentStrip(
+                    runtime,
+                    handlers,
+                    if (alone) Modifier else Modifier.focusRequester(state.stripEntry).focusGroup(),
+                    vertical = true,
+                    home = state.homeEntry,
+                    side = side,
+                )
+            }
+        }
         if (side == HomeSide.Left) {
             Spacer(Modifier.width(EdgeGap))
-            PromptRail(runtime, state)
+            PromptRail(runtime, state, side, alone)
             Spacer(Modifier.width(HomeGap))
             strip()
         } else {
             strip()
             Spacer(Modifier.width(HomeGap))
-            PromptRail(runtime, state)
+            PromptRail(runtime, state, side, alone)
             Spacer(Modifier.width(EdgeGap))
         }
     }
@@ -166,6 +196,9 @@ internal fun SideRail(
 private fun PromptRail(
     runtime: Runtime,
     state: LauncherState,
+    side: HomeSide,
+    /** With no recent apps beside it, keys come to it out of the grid and go back across. */
+    alone: Boolean,
 ) {
     val linuxState by runtime.bootstrap.state.collectAsState()
     val agent = runtime.agents.default
@@ -174,9 +207,12 @@ private fun PromptRail(
     val style = Mono.copy(fontSize = TextSize.Item, color = Palette.muted)
     Column(
         Modifier
+            .then(if (alone) Modifier.focusRequester(state.stripEntry) else Modifier)
             .width(PromptBarHeight)
             .fillMaxHeight()
             .tile()
+            // With no strip between, keys go across to the grid, as portrait's bar goes up to it.
+            .focusProperties { if (alone) toHome(side, state.homeEntry) }
             .clickable { state.open() },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

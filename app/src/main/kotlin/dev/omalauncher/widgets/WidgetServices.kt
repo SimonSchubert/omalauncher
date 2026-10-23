@@ -24,10 +24,13 @@ import android.os.StatFs
 import android.view.Display
 import android.view.HapticFeedbackConstants
 import android.view.View
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.ImageBitmap
 import dev.omalauncher.BuildConfig
 import android.os.Process
+import android.net.TrafficStats
 import android.os.SystemClock
 import android.os.UserHandle
 import android.os.UserManager
@@ -43,12 +46,14 @@ import dev.omalauncher.linux.GuestShell
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.ShellPool
 import dev.omalauncher.linux.ShellResult
+import dev.omalauncher.SecretBox
 import dev.omalauncher.openHttp
 import dev.omalauncher.openUrl
 import dev.omalauncher.readUpTo
 import dev.omalauncher.sha256Hex
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.Builtins
+import dev.omalauncher.widgets.lang.KeyNames
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
@@ -78,7 +83,9 @@ import dev.omalauncher.widgets.runtime.Media
 import dev.omalauncher.widgets.runtime.Modes
 import dev.omalauncher.widgets.runtime.Notifications
 import dev.omalauncher.widgets.runtime.Services
+import dev.omalauncher.widgets.runtime.Sim
 import dev.omalauncher.widgets.runtime.Streams
+import dev.omalauncher.widgets.runtime.SystemPanels
 import dev.omalauncher.widgets.runtime.Volume
 import dev.omalauncher.widgets.runtime.watchFile
 import kotlinx.coroutines.CoroutineScope
@@ -104,6 +111,13 @@ import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 
 private const val MAX_HTTP_BYTES = 1 shl 20
+
+/** Why a request whose response is over [MAX_HTTP_BYTES] failed; it isn't tried again any sooner than its interval. */
+internal const val HTTP_TOO_BIG = "the response is over 1 MB, more than a widget reads"
+
+private const val MAX_REDIRECTS = 5
+
+private val REDIRECTS = setOf(301, 302, 303, 307, 308)
 
 /**
  * How often `android.drawer` changes at most. Icons load one at a time, and each changes `hasIcon`: without this a
@@ -144,6 +158,8 @@ class WidgetServices(
     private val volume = Volume(context)
     private val alarm = Alarm(context)
     private val modes = Modes(context)
+    private val sim = Sim(context)
+    private val panels = SystemPanels(context)
 
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction: ((String) -> Unit)? = null
@@ -181,15 +197,18 @@ class WidgetServices(
             "battery" -> battery()
             "device" -> device()
             "system" -> system()
+            "network" -> network()
             "media" -> media.value()
             "notifications" -> notifications.value()
             "volume" -> volume.value()
             "alarm" -> alarm.value()
             "modes" -> modes.value()
+            "sim" -> sim.value()
             "apps" -> apps()
             "agents" -> agents()
             "recent" -> recent()
             "drawer" -> drawer()
+            "modifiers" -> modifiers()
             else -> throw WidgetError("unknown android source $name")
         }
 
@@ -200,10 +219,12 @@ class WidgetServices(
             "volume" -> volume.updates()
             "alarm" -> alarm.updates()
             "modes" -> modes.updates()
+            "sim" -> sim.updates()
             // Both read Compose state: the app list and its usage, the installed agents and the one picked.
             "apps" -> snapshotFlow { apps() }
             "agents" -> snapshotFlow { agents() }
             "recent" -> snapshotFlow { recent() }
+            "modifiers" -> snapshotFlow { modifiers() }
             // Linux's state is a flow of its own, not Compose state: a change of its word starts the drawer's anew.
             "drawer" -> runtime.bootstrap.state.map(::linuxWord).distinctUntilChanged().flatMapLatest { snapshotFlow { drawer() } }
                 // The first at once, then the latest at most every DRAWER_EVERY_MS.
@@ -240,18 +261,21 @@ class WidgetServices(
         return if (runtime.androidApps.cloned(serial)) "clone" else "work"
     }
 
+    /** Apps by package, in the drawer's order: a widget listing every app asks for each one's icon, and a scan per icon was O(n²). */
+    private val appsByPackage by derivedStateOf { runtime.androidApps.apps.groupBy { it.component.packageName } }
+
     /**
      * An app's icon as the drawer shows it (its silhouette with monochrome icons), badge included. By package, the launcher's
      * own profile first; `pkg@work` and `pkg@clone` ask for the copy in a work profile or a clone profile, and nothing else.
      */
     override fun appIcon(pkg: String): ImageBitmap? {
         val apps = runtime.androidApps
-        val name = pkg.substringBefore('@')
+        val copies = appsByPackage[pkg.substringBefore('@')] ?: return null
         val app =
             when (pkg.substringAfter('@', "")) {
-                "work" -> apps.apps.firstOrNull { it.component.packageName == name && it.work }
-                "clone" -> apps.apps.firstOrNull { it.component.packageName == name && it.clone }
-                "" -> apps.apps.firstOrNull { it.component.packageName == name && it.profile == null } ?: apps.apps.firstOrNull { it.component.packageName == name }
+                "work" -> copies.firstOrNull { it.work }
+                "clone" -> copies.firstOrNull { it.clone }
+                "" -> copies.firstOrNull { it.profile == null } ?: copies.first()
                 else -> null
             } ?: return null
         val key = androidAppKey(app.component, app.profile)
@@ -295,11 +319,12 @@ class WidgetServices(
         fontSize: Double?,
     ) = runtime.terminals.create(command, fontSize)
 
-    override fun fileUpdates(path: String) = watchFile(guestFile(path))
+    // Resolved again for every read, so a folder swapped for a link out of Linux isn't followed.
+    override fun fileUpdates(path: String) = watchFile { guestFile(path) }
 
-    override fun guestFile(path: String): File {
+    override fun guestFile(path: String): File? {
         val p = if (path.startsWith("~/")) Proot.GUEST_HOME + "/" + path.removePrefix("~/") else path
-        return proot.hostFile(p)
+        return proot.guestFile(p)
     }
 
     /** The phone itself, which the guest can't identify: it has no DMI tables, and /system isn't mounted. */
@@ -318,16 +343,36 @@ class WidgetServices(
      * What a fetch shows about the phone, all from Android, so it works without Linux:
      * kernel, uptime, memory, storage, CPU, display, build, locale and the launcher itself.
      */
+    /** Max clock over the cores in kHz, read once: it doesn't change, and system() runs every interval. Some phones don't let apps read it. */
+    private val maxFreq by lazy {
+        (0 until java.lang.Runtime.getRuntime().availableProcessors()).mapNotNull { i ->
+            runCatching { File("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_max_freq").readText().trim().toLong() }.getOrNull()
+        }.maxOrNull()
+    }
+
+    /**
+     * Bytes sent and received since boot, as Android counts them for every app (no permission needed), with when they
+     * were read: a widget's rate is the change in bytes over the change in [SystemClock.elapsedRealtime], whatever the
+     * gap. A phone that doesn't keep a counter answers -1 for it, null here.
+     */
+    private fun network(): Value {
+        fun bytes(v: Long) = if (v == TrafficStats.UNSUPPORTED.toLong()) Null else Num(v.toDouble())
+        return Obj(
+            mapOf(
+                "rx" to bytes(TrafficStats.getTotalRxBytes()),
+                "tx" to bytes(TrafficStats.getTotalTxBytes()),
+                "mobileRx" to bytes(TrafficStats.getMobileRxBytes()),
+                "mobileTx" to bytes(TrafficStats.getMobileTxBytes()),
+                "uptime" to Num(SystemClock.elapsedRealtime() / 1000.0),
+            ),
+        )
+    }
+
     private fun system(): Value {
         val memory = ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java).getMemoryInfo(it) }
         val data = StatFs(Environment.getDataDirectory().path)
         val display = context.getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)
         val mode = display?.mode
-        // Max clock per core in kHz; some phones don't let apps read it.
-        val maxFreq =
-            (0 until java.lang.Runtime.getRuntime().availableProcessors()).mapNotNull { i ->
-                runCatching { File("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_max_freq").readText().trim().toLong() }.getOrNull()
-            }.maxOrNull()
         fun num(v: Long) = Num(v.toDouble())
         return Obj(
             mapOf(
@@ -525,6 +570,9 @@ class WidgetServices(
         )
     }
 
+    /** `source m = android.modifiers`: how the extra keys hold each modifier, `{ctrl, alt, shift}`, each "off", "once" or "locked". */
+    private fun modifiers(): Value = Obj(runtime.keyboard.latches.mapValues { (_, m) -> Str(m.latch.name.lowercase()) })
+
     /** Runs a widget action: terminal, app, run, url, launcher, media, volume, notification, ... */
     override fun act(
         name: String,
@@ -535,6 +583,12 @@ class WidgetServices(
         if (args.firstOrNull() == Null) return
         val arg = args.firstOrNull()?.toString().orEmpty()
         if (name == "run") return run(arg) { done() }
+        // Keys go out as they're pressed, many a second while one repeats: nothing to refresh after them.
+        when (name) {
+            "pressKey" -> return KeyNames.combo(arg)?.let(runtime.keyboard::press) ?: Unit
+            "typeText" -> return runtime.keyboard.type(arg)
+            "latch" -> return runtime.keyboard.latch(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
+        }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.
             "terminal" -> runtime.terminal("$arg; exec bash", args.getOrNull(1)?.toString() ?: arg.substringBefore(' '))
@@ -543,12 +597,23 @@ class WidgetServices(
             "url" -> if (!context.openUrl(arg)) Toast.makeText(context, "no app opens $arg", Toast.LENGTH_SHORT).show()
             "launcher" -> launcherAction?.invoke(arg)
             "media" -> media.control(arg)
-            "volume" -> volume.control(args[0])
-            "notification" -> args.getOrNull(1)?.takeIf { it != Null }?.let { notifications.control(arg, it.toString()) }
+            "volume" -> volume.control(args[0], args.getOrNull(1)?.takeIf { it != Null }?.toString())
+            "notification" -> notifications.control(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString(), args.getOrNull(2))
+            "settings" -> panels.open(arg, media.playingPackage())
             "androidApp" -> openAndroidApp(arg)
             "copy" -> copy(arg)
             "notify" -> notify(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
             "torch" -> modes.torch(args[0])
+            // Notification access lets the launcher switch it; without it, the setting that grants it. Granted but not
+            // bound yet: Android's own DND setting this time, while the listener binds again for the next tap.
+            "dnd" ->
+                when {
+                    !media.granted -> media.openAccessSettings()
+                    !modes.dnd(args[0]) { panels.open("dnd") } -> {
+                        media.reconnect()
+                        panels.open("dnd")
+                    }
+                }
             "share" -> share(arg)
             "haptic" -> view?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             "open" -> openApp(arg)
@@ -576,32 +641,59 @@ class WidgetServices(
         headers: Map<String, String>,
         timeoutSeconds: Int,
         body: ByteArray?,
+        method: String,
     ): ShellResult =
         withContext(Dispatchers.IO) {
             if (!url.startsWith("https://") && !url.startsWith("http://")) return@withContext ShellResult("", "not an http(s) URL: $url", -1)
             try {
-                val connection = openHttp(url, timeoutSeconds * 1000, timeoutSeconds * 1000)
-                try {
-                    connection.setRequestProperty("User-Agent", "omalauncher-widgets")
-                    headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
-                    if (body != null) {
-                        connection.requestMethod = "POST"
-                        connection.doOutput = true
-                        connection.setFixedLengthStreamingMode(body.size)
-                        connection.outputStream.use { it.write(body) }
+                var target = URL(url)
+                var sendMethod = if (body != null) method else "GET"
+                var sendBody = body
+                // Followed here rather than by HttpURLConnection, which would take the widget's headers (an API key, a
+                // secret) along to whatever server a redirect names: they go only to the server the widget wrote out.
+                repeat(MAX_REDIRECTS + 1) {
+                    val connection = openHttp(target.toString(), timeoutSeconds * 1000, timeoutSeconds * 1000)
+                    try {
+                        connection.instanceFollowRedirects = false
+                        connection.setRequestProperty("User-Agent", "omalauncher-widgets")
+                        if (origin(target) == origin(URL(url))) headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
+                        connection.requestMethod = sendMethod
+                        // A DELETE usually has no body, and some servers refuse one.
+                        if (sendBody != null && (sendMethod != "DELETE" || sendBody.isNotEmpty())) {
+                            connection.doOutput = true
+                            connection.setFixedLengthStreamingMode(sendBody.size)
+                            connection.outputStream.use { it.write(sendBody) }
+                        }
+                        val code = connection.responseCode
+                        val location = connection.getHeaderField("Location")
+                        if (code in REDIRECTS && location != null) {
+                            val next = redirect(code, target, URL(target, location), sendMethod, sendBody)
+                            target = next.url
+                            sendMethod = next.method
+                            sendBody = next.body
+                            return@repeat
+                        }
+                        val stream = if (code >= 400) connection.errorStream else connection.inputStream
+                        // Widgets show a few values; a runaway response mustn't fill memory. One cut short would read as
+                        // what the server said, or as broken JSON taken for text: it fails instead.
+                        val bytes = stream?.use { it.readUpTo(MAX_HTTP_BYTES + 1) } ?: ByteArray(0)
+                        if (bytes.size > MAX_HTTP_BYTES) return@withContext ShellResult("", HTTP_TOO_BIG, -1)
+                        val text = String(bytes, Charsets.UTF_8)
+                        return@withContext if (code in 200..299) ShellResult(text.trimEnd(), "", code) else ShellResult(text.trimEnd(), connection.responseMessage.orEmpty(), code)
+                    } finally {
+                        connection.disconnect()
                     }
-                    val code = connection.responseCode
-                    val stream = if (code >= 400) connection.errorStream else connection.inputStream
-                    // Widgets show a few values; a runaway response mustn't fill memory.
-                    val body = stream?.use { String(it.readUpTo(MAX_HTTP_BYTES), Charsets.UTF_8) }.orEmpty()
-                    if (code in 200..299) ShellResult(body.trimEnd(), "", code) else ShellResult(body.trimEnd(), connection.responseMessage.orEmpty(), code)
-                } finally {
-                    connection.disconnect()
                 }
+                ShellResult("", "too many redirects", -1)
             } catch (e: IOException) {
                 ShellResult("", e.message ?: e.toString(), -1)
             }
         }
+
+
+    override fun seal(plain: ByteArray) = SecretBox.seal(plain)
+
+    override fun unseal(sealed: ByteArray) = SecretBox.unseal(sealed)
 
     /** Web images and sounds on disk, by the SHA-256 of their URL. */
     private val fileCache by lazy { File(context.cacheDir, "owl-files") }
@@ -829,6 +921,35 @@ class WidgetServices(
                 .build()
         nm.notify(notificationId++, n)
     }
+}
+
+/** A widget's request after a redirect. */
+internal class Redirect(
+    val url: URL,
+    val method: String,
+    val body: ByteArray?,
+)
+
+/** A URL's scheme, host and port: a redirect that keeps them keeps the widget's headers. */
+internal fun origin(u: URL) = Triple(u.protocol, u.host.lowercase(), if (u.port == -1) u.defaultPort else u.port)
+
+/**
+ * The request a redirect [code] from [from] to [to] asks for, as browsers make it: 303 asks for a GET, as 301 and 302
+ * do for a POST; the others send the same again. Throws when it isn't followed: from https down to http, or a body
+ * (which may hold a secret, bound to the server the widget wrote out) to another server.
+ */
+internal fun redirect(
+    code: Int,
+    from: URL,
+    to: URL,
+    method: String,
+    body: ByteArray?,
+): Redirect {
+    if (to.protocol != "https" && to.protocol != "http") throw IOException("redirected to a URL that isn't http(s), not followed")
+    if (from.protocol == "https" && to.protocol == "http") throw IOException("redirected from https to http (${to.host}), not followed")
+    if (code == 303 || (code == 301 || code == 302) && method == "POST") return Redirect(to, "GET", null)
+    if (body != null && body.isNotEmpty() && origin(to) != origin(from)) throw IOException("redirected to another server (${to.host}), which would get the request's body: not followed")
+    return Redirect(to, method, body)
 }
 
 /** An embedded sound, `asset x = base64"..."`, for MediaPlayer. */

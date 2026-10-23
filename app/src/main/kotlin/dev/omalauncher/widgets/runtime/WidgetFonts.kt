@@ -61,7 +61,7 @@ internal class WidgetFonts(
             when {
                 src.startsWith("asset:") -> (program.globals.firstOrNull { it.name == src.removePrefix("asset:") } as? Global.Asset)?.bytes?.let(::kept)
                 src.startsWith("https://") -> services.remoteFile(src)
-                else -> services.guestFile(src).takeIf { it.isFile }
+                else -> services.guestFile(src)?.takeIf { it.isFile }
             } ?: throw IllegalStateException(if (src.startsWith("https://")) "couldn't be downloaded" else "couldn't be found")
         if (file.length() > MAX_FILE_BYTES) throw IllegalStateException("is over ${MAX_FILE_BYTES shr 20} MB")
         val bytes = file.readBytes()

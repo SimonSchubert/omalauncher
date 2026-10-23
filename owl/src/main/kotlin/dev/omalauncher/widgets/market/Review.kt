@@ -85,7 +85,7 @@ class Review(
                 "write each one as ${'$'}{sh(value)}, outside any quotes, so it stays one word and can't run as code " +
                 "(run(\"notify-send ${'$'}{sh(title)}\"), not '${'$'}{title}' or \"${'$'}{sh(title)}\"). " +
                 "Other functions go inside it, ${'$'}{sh(upper(title))}, and a heredoc (<<) can't take values. " +
-                "See \"Values in commands\" in the widgets README"
+                "See \"Values in commands\" in the widgets docs (docs/declarations.md)"
         }
         warnings += risks(p.commands - unquoted.toSet())
         warnings += costs(p)
@@ -151,7 +151,7 @@ class Review(
     }
 
     companion object {
-        const val MAX_BYTES = 256 * 1024
+        const val MAX_BYTES = 1024 * 1024
         val PATH = Regex("""(widget|face|app)s/([a-z0-9][a-z0-9-]{0,38})/([a-z0-9][a-z0-9-]{0,38})/\1\.owl""")
         private val VERSION = Regex("""\d+(\.\d+){0,2}""")
 
@@ -232,11 +232,13 @@ class Review(
                 Regex("""(^|[;&|(`\n]|\$\()\s*${Compiler.VALUE}""") to "runs a program a widget value names",
                 Regex("""\b(eval|source|$INTERPRETERS)\s+(-\S+\s+)*${Compiler.VALUE}""") to "runs a widget value as code",
                 Regex("""^http GET \(a URL built from widget values\)$""") to "fetches a URL put together while the widget runs, which can send its data anywhere",
-                Regex("""^http POST \(a URL built from widget values\)$""") to "sends to a URL put together while the widget runs, which can send its data anywhere",
+                Regex("""^http (POST|PUT|PATCH|DELETE) \(a URL built from widget values\)$""") to "sends to a URL put together while the widget runs, which can send its data anywhere",
                 // An image, sound or font URL whose host comes from widget values (Compiler's webFile): it can go anywhere too.
                 Regex("""^(image|sound|font) GET https://[^/\s]*…$""") to "loads a file from a server put together while the widget runs, which can send its data anywhere",
                 Regex("""^($IF_LINUX)?read file \(a path built from widget values\)$""") to "reads a file whose path is put together while the widget runs",
                 Regex("""^read Android notifications""") to "sees every notification on the phone; check nothing sends them anywhere",
+                Regex("""^reply to notifications as you""") to "sends messages as you through other apps; check when it replies and what it says",
+                Regex("""^press the buttons on notifications""") to "presses buttons on other apps' notifications (delete, archive, call back); check which and when",
             )
 
         fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

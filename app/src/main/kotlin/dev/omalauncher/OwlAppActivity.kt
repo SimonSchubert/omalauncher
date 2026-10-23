@@ -5,12 +5,16 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import dev.omalauncher.ui.OwlAppWindow
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.ui.SystemBarsEffect
 import dev.omalauncher.ui.applySystemBars
+import dev.omalauncher.ui.holdsKeys
 import dev.omalauncher.ui.showStatusBar
 import dev.omalauncher.widgets.render.LocalInputFocus
 
@@ -34,7 +38,7 @@ class OwlAppActivity : InstantActivity() {
         this.name = name
         applySystemBars(this, Palette.isLight)
         setInstantContent {
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@OwlAppActivity, Palette.isLight) }
+            SystemBarsEffect(this@OwlAppActivity)
             LaunchedEffect(name) { runtime.widgets.appCloses.collect { if (it == name) closeInstantly() } }
             val (spec, inst) =
                 runtime.widgets.appInstance(name) ?: run {
@@ -48,7 +52,8 @@ class OwlAppActivity : InstantActivity() {
             LaunchedEffect(statusBar) { showStatusBar(this@OwlAppActivity, statusBar) }
             // While the app's `back` holds, Back goes up a level inside it; otherwise Back leaves it.
             BackHandler { if (!inst.goUp()) backInstantly() }
-            CompositionLocalProvider(LocalInputFocus provides true) { OwlAppWindow(spec, inst) }
+            // Keys start in it, and an arrow after a tap starts there again.
+            CompositionLocalProvider(LocalInputFocus provides true) { Box(Modifier.holdsKeys()) { OwlAppWindow(spec, inst) } }
         }
     }
 

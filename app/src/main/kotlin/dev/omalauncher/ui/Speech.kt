@@ -106,23 +106,41 @@ class Speech(
             }
         recognizer = r
         r.setRecognitionListener(Listener(r))
-        if (language != null || Build.VERSION.SDK_INT < 33) return r.startListening(intent())
-        r.checkRecognitionSupport(
-            intent(),
-            context.mainExecutor,
-            object : RecognitionSupportCallback {
-                override fun onSupportResult(support: RecognitionSupport) {
-                    if (r !== recognizer) return
-                    language = closestLanguage(support)
-                    Log.i(TAG, "recognizing ${language ?: "the default language"}")
-                    r.startListening(intent())
-                }
+        if (language != null || Build.VERSION.SDK_INT < 33) return begin(r)
+        guarded {
+            r.checkRecognitionSupport(
+                intent(),
+                context.mainExecutor,
+                object : RecognitionSupportCallback {
+                    override fun onSupportResult(support: RecognitionSupport) {
+                        if (r !== recognizer) return
+                        language = closestLanguage(support)
+                        Log.i(TAG, "recognizing ${language ?: "the default language"}")
+                        begin(r)
+                    }
 
-                override fun onError(error: Int) {
-                    if (r === recognizer) r.startListening(intent())
-                }
-            },
-        )
+                    override fun onError(error: Int) {
+                        if (r === recognizer) begin(r)
+                    }
+                },
+            )
+        }
+    }
+
+    private fun begin(r: SpeechRecognizer) = guarded { r.startListening(intent()) }
+
+    /**
+     * Runs [call] on the recognizer. The phone's default one can be another app's that won't let
+     * others bind to it (ChatGPT's voice assistant): that throws instead of reporting an error.
+     */
+    private fun guarded(call: () -> Unit) {
+        try {
+            call()
+        } catch (e: SecurityException) {
+            Log.w(TAG, "the speech recognizer refused", e)
+            if (text.isBlank()) error = "the phone's speech recognizer doesn't let other apps use it"
+            finish()
+        }
     }
 
     private fun intent() =

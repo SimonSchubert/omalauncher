@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.wayland.Keys
+import dev.omalauncher.widgets.lang.KeyNames
 
 /** How a modifier on the extra-keys row is held: for the next key only, or until tapped again. */
 enum class Latch { Off, Once, Locked }
@@ -36,21 +37,28 @@ class KeyboardBridge(
 
     val ctrl = StickyModifier(Keys.KEY_LEFTCTRL)
     val alt = StickyModifier(Keys.KEY_LEFTALT)
-    private val sticky = listOf(ctrl, alt)
+    val shift = StickyModifier(Keys.KEY_LEFTSHIFT)
+    private val sticky = listOf(ctrl, alt, shift)
+
+    /** The modifiers the extra keys latch, by the names `latch(...)` and `android.modifiers` use. */
+    val latches = mapOf("ctrl" to ctrl, "alt" to alt, "shift" to shift)
 
     /** A key sent whole on its press because modifiers were latched; its release is already sent. */
     private var swallowUp: Int? = null
 
     fun handle(event: KeyEvent): Boolean {
         if (event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN && onShortcut(event.keyCode)) return true
-        // Volume buttons stay Android's; their scancodes would otherwise reach the window as KEY_VOLUMEUP/DOWN.
-        if (event.keyCode in volumeKeys) return false
+        // Volume buttons stay Android's; their scancodes would otherwise reach the window as KEY_VOLUMEUP/DOWN. So do
+        // Back and a gamepad's buttons: B is Back once nothing takes it, the way out of a window or a terminal tile.
+        if (event.keyCode in volumeKeys || event.keyCode == KeyEvent.KEYCODE_BACK || KeyEvent.isGamepadButton(event.keyCode)) return false
         val code = Keys.evdev(event) ?: event.scanCode.takeIf { it > 0 } ?: return false
         if (wm.focused == null) return false
         if (event.action == KeyEvent.ACTION_UP && code == swallowUp) {
             swallowUp = null
             return true
         }
+        // One pressed before the window had the keys, like the Esc of Super+Esc in the window left: its lift is no key.
+        if (event.action == KeyEvent.ACTION_UP && code !in down) return true
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && latched() && !Keys.isModifier(code)) {
             tap(code)
             swallowUp = code
@@ -100,6 +108,33 @@ class KeyboardBridge(
         held?.let { key(it, false) }
     }
 
+    /** `pressKey("ctrl+c")`: the key [combo] names, with its modifiers and any latched ones held around it. */
+    fun press(combo: KeyNames.Combo) {
+        // A latched one is held already.
+        val held = combo.held.filter { code -> sticky.none { it.code == code && it.latch != Latch.Off } }
+        withLatched {
+            held.forEach { key(it, true) }
+            key(combo.code, true)
+            key(combo.code, false)
+            held.asReversed().forEach { key(it, false) }
+        }
+    }
+
+    /** `latch("ctrl", how)`: on for the next key ("once"), until set off ("locked"), or "off"; null toggles once and off. */
+    fun latch(
+        name: String,
+        how: String?,
+    ) {
+        val m = latches[name] ?: return
+        m.latch =
+            when (how) {
+                "once" -> Latch.Once
+                "locked" -> Latch.Locked
+                "off" -> Latch.Off
+                else -> if (m.latch == Latch.Off) Latch.Once else Latch.Off
+            }
+    }
+
     /** Drops every latch, so a modifier left on doesn't surprise the next keystroke. */
     fun clearLatches() = sticky.forEach { it.latch = Latch.Off }
 
@@ -113,10 +148,19 @@ class KeyboardBridge(
         held.filter { it.latch == Latch.Once }.forEach { it.latch = Latch.Off }
     }
 
+    /** Lifts every key the window was told is down, as it loses the keys with some still held. */
+    fun releaseHeld() = down.toList().forEach { key(it, false) }
+
+    /** The keys pressed and not released yet, as the window was told. */
+    private val down = mutableSetOf<Int>()
+
     private fun key(
         code: Int,
         pressed: Boolean,
-    ) = wm.server.postInput { key(code, pressed) }
+    ) {
+        if (pressed) down += code else down -= code
+        wm.server.postInput { key(code, pressed) }
+    }
 }
 
 /** An invisible view that owns the soft keyboard and feeds it into [KeyboardBridge]. */
@@ -134,9 +178,10 @@ class KeyboardSink(
     /** Whether the soft keyboard is wanted: shown by us and not hidden by us since. */
     val wanted get() = softKeyboard
 
+    // Focusable only while it has the keyboard: one that always is takes the window's focus on its own, and the keys'
+    // arrows then never reach home's tiles.
     init {
-        isFocusable = true
-        isFocusableInTouchMode = true
+        isFocusable = false
     }
 
     /** Whether the field was last offered as plain text, for a Chinese, Japanese or Korean keyboard. */
@@ -240,6 +285,8 @@ class KeyboardSink(
     fun show() {
         val imm = imm()
         softKeyboard = true
+        isFocusable = true
+        isFocusableInTouchMode = true
         requestFocus()
         imm.restartInput(this)
         imm.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
@@ -252,6 +299,8 @@ class KeyboardSink(
         softKeyboard = false
         bridge.clearLatches()
         imm.restartInput(this)
+        clearFocus()
+        isFocusable = false
     }
 }
 

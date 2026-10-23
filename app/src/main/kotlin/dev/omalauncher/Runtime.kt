@@ -80,7 +80,7 @@ class Runtime(
     val terminals = TerminalTiles(this)
     val style = StyleStore(context)
     val terminalFont = TerminalFont(proot, style)
-    val launcherFont = LauncherFont(proot, style).also { it.restore() }
+    val launcherFont = LauncherFont(proot, style, context.resources).also { it.restore() }
     val gestures = Gestures(context, style)
     val linuxApps = LinuxAppCatalog(context, proot)
     val androidApps = AndroidAppCatalog(context)
@@ -213,6 +213,20 @@ class Runtime(
 
     /** Continues a failed install, or a failed update of an installed system. */
     fun retryLinux() = runLinux { bootstrap.run() }
+
+    /** Stops an install that hasn't completed, running or failed, and deletes what it downloaded and unpacked. */
+    fun cancelLinux() {
+        val install = linuxJob
+        if (!bootstrap.cancel()) return
+        linuxJob =
+            scope.launch {
+                install?.cancel()
+                withContext(Dispatchers.IO) { proot.killAll() }
+                install?.join()
+                bootstrap.remove()
+                setService(false)
+            }
+    }
 
     /** Runs [work] with the foreground service up, so it goes on outside the app; then starts Linux if it's installed. */
     private fun runLinux(work: suspend () -> Unit) {
@@ -414,14 +428,13 @@ class Runtime(
         mono: Boolean,
     ): ImageBitmap? {
         val program = spec.program ?: return null
-        val image = program.iconImage
-        val svg = program.icon
-        if (image == null && svg == null) return null
+        val key = program.iconKey ?: return null
         val accent = Palette.accent.toArgb()
         val size = (52 * context.resources.displayMetrics.density).toInt()
         val drawn =
-            owlIcons.getOrPut((svg ?: "image:" + image.contentHashCode()) to accent) {
-                val bmp = if (image != null) decodeImageIcon(image, size) else decodeSvgIcon(svg!!, size, accent)
+            owlIcons.getOrPut(key to accent) {
+                val image = program.iconImage
+                val bmp = if (image != null) decodeImageIcon(image, size) else decodeSvgIcon(program.icon!!, size, accent)
                 bmp?.let { it.asImageBitmap() to bitmapMask(it).asImageBitmap() }
             }
         return if (mono) drawn?.second else drawn?.first

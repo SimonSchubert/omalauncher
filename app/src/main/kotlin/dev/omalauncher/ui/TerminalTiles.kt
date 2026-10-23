@@ -21,12 +21,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -63,6 +66,9 @@ class TerminalTiles(
 
     /** Where the extra-keys row sits, in window coordinates, while it shows; pressing it isn't leaving the tile. */
     var extraKeys: Rect? = null
+
+    /** How tall the extra keys measured, in pixels: keybar.owl decides it. 0 until they've shown. */
+    var extraKeysHeight by mutableFloatStateOf(0f)
 
     /** How far the home screen is lifted so the active tile clears the soft keyboard, in pixels. */
     var lift = 0f
@@ -117,7 +123,11 @@ class TerminalTiles(
     }
 
     fun deactivate() {
-        if (active != null) wm.focus(null)
+        if (active != null) {
+            // Keys still down, like the Super of Super+Esc, would stay held for the terminal.
+            runtime.keyboard.releaseHeld()
+            wm.focus(null)
+        }
         tile = null
         keyboard?.hide()
         field?.release()
@@ -137,9 +147,12 @@ class TerminalTiles(
         if (field === f) field = null
     }
 
-    /** A press at window point [p]: outside the typing tile, it gives the home screen its touches back. */
+    /**
+     * A press at window point [p]: outside the typing tile, it gives the home screen its touches back. The whole tile,
+     * not only its terminal: a widget's own keys beside its Terminal press keys in it rather than taking the keyboard away.
+     */
     fun pressAt(p: Offset) {
-        val bounds = active?.bounds ?: tile.takeIf { field != null } ?: return
+        val bounds = typingBounds(field != null, tile, active?.bounds) ?: return
         if (extraKeys?.contains(p) == true) return
         if (!bounds.translate(0f, -lift).contains(p)) deactivate()
     }
@@ -173,7 +186,8 @@ class TerminalTiles(
     ) {
         val font = term.fontSize?.let { " -o " + shellQuote("main.font=${runtime.terminalFont.family}:size=${TerminalFont.format(it)}") }.orEmpty()
         val command = term.command?.let { " -e bash -c " + shellQuote(it) }.orEmpty()
-        runtime.launch("foot --app-id=${term.appId}$font$command", onExit)
+        // The tile's glass is the background: foot's own shows through, as cells colored by an app don't.
+        runtime.launch("foot --app-id=${term.appId} -o colors-dark.alpha=0$font$command", onExit)
     }
 
     internal fun close(window: XdgToplevel) = wm.close(window)
@@ -280,22 +294,31 @@ fun TerminalView(
     val window = term.window
     val active = tiles.active === term
     LaunchedEffect(term) { term.start() }
-    val background = Palette.background.toArgb()
+    // Keys that went into the terminal come back out to it as it lets the keyboard go, rather than to wherever
+    // Android gives the window's focus.
+    val back = remember { FocusRequester() }
+    var keysIn by remember { mutableStateOf(false) }
+    LaunchedEffect(active) {
+        if (active || !keysIn) return@LaunchedEffect
+        keysIn = false
+        withFrameNanos {}
+        back.requestFocus()
+    }
     Box(modifier.onGloballyPositioned { term.bounds = it.boundsInWindow().translate(0f, tiles.lift) }) {
         AndroidView(
             factory = { EmbeddedWindowView(it, tiles) },
-            update = {
-                it.background = background
-                it.window = window
-            },
+            update = { it.window = window },
             onRelease = { it.window = null },
             modifier = Modifier.fillMaxSize(),
         )
+        // Keys reach the terminal inside its tile (Enter on the tile, or Right): Enter there types into it, as a tap
+        // does, or restarts it once it has exited.
         when {
             window == null ->
                 Box(
                     Modifier
                         .fillMaxSize()
+                        .keyActivated({ term.start() }, null, ring = true)
                         .pointerInput(term) { detectTapGestures { term.start() } },
                     contentAlignment = Alignment.Center,
                 ) {
@@ -316,7 +339,17 @@ fun TerminalView(
                     BasicText("⌨", style = Mono.copy(color = Palette.foreground))
                 }
             }
-            interactive -> Box(Modifier.fillMaxSize().pointerInput(term) { detectTapGestures { tiles.activate(term) } })
+            interactive ->
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .focusRequester(back)
+                        .keyActivated({
+                            keysIn = true
+                            tiles.activate(term)
+                        }, null, ring = true)
+                        .pointerInput(term) { detectTapGestures { tiles.activate(term) } },
+                )
         }
     }
 }
@@ -336,12 +369,6 @@ private class EmbeddedWindowView(
     private var surfaceHeight = 0
     private var renderer: WindowRenderer? = null
 
-    var background = 0
-        set(value) {
-            field = value
-            renderer?.background = value
-        }
-
     var window: XdgToplevel? = null
         set(value) {
             if (value === field) return
@@ -352,13 +379,14 @@ private class EmbeddedWindowView(
 
     init {
         surfaceTextureListener = this
-        isOpaque = true
+        // The tile's glass shows through where foot draws its default background, at widgets.opacity.
+        isOpaque = false
     }
 
     private fun bind() {
         val w = window ?: return
         if (renderer != null || !isAttachedToWindow) return
-        val r = WindowRenderer(tiles.server, w).also { it.background = background }
+        val r = WindowRenderer(tiles.server, w, translucent = true).also { it.background = android.graphics.Color.TRANSPARENT }
         renderer = r
         showing.getOrPut(w) { ArrayList() } += r
         w.renderer = r

@@ -33,6 +33,9 @@ agent in the launcher, which is not affiliated with or endorsed by any of them.
 [Nerd Fonts](https://www.nerdfonts.com) (MIT), [Weather Icons](https://erikflowers.github.io/weather-icons/)
 (SIL OFL 1.1) and [Material Design Icons](https://pictogrammers.com/library/mdi/) (Apache-2.0).
 
+`app/src/main/res/font/noto_symbols.ttf`: a subset of [Noto Sans Symbols 2](https://github.com/notofonts/symbols)
+(SIL OFL 1.1), Copyright 2022 The Noto Project Authors.
+
 ## Omarchy themes
 
 `app/src/main/assets/themes/*.toml` and `app/src/main/assets/theme-backgrounds.txt`

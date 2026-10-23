@@ -24,7 +24,9 @@ interface Host {
      * Also screenWidth and screenHeight (its screen's size), screenInset (how much of its bottom the
      * navigation bar covers, for an app with `edge` and a face, or the keyboard while a face's field has it), screenTop (how
      * much of an app's top a camera cutout covers, with `statusBar: false`), linux: whether Linux is installed and running,
-     * and corners: the launcher's corner style as a radius scale, 0 (edge), 0.5 (soft) or 1 (round).
+     * corners: the launcher's corner style as a radius scale, 0 (edge), 0.5 (soft) or 1 (round), and gapsIn, gapsOut and
+     * borderWidth: its widgets' gaps and border width in dp, in a keybar the extra keys' own gapsOut and borderWidth, and
+     * tileOpacity and tileFrost: how much its widgets cover the wallpaper, 0 to 1, and how much they blur it in dp, 0 without frost.
      */
     fun tile(name: String): Value = Null
 
@@ -47,13 +49,15 @@ interface Host {
 
     /**
      * `post(url, body, headers)` in a handler: an HTTP POST, with a map or list [body] sent as JSON. With a
-     * [slot] (`x = post(...)`), the answer goes there as `{code, ok, out}` when it arrives.
+     * [slot] (`x = post(...)`), the answer goes there as `{code, ok, out}` when it arrives. [method] is
+     * POST, or `method:`'s PUT, PATCH or DELETE.
      */
     fun post(
         url: String,
         body: Value,
         headers: Map<String, String>,
         slot: Int?,
+        method: String,
     ) {}
 
     val budget: Budget
@@ -73,6 +77,19 @@ class Budget(
         if (depth++ == 0) steps = 0
         try {
             return block()
+        } finally {
+            depth--
+        }
+    }
+
+    /** run { ev(env) } without a closure: it wraps every binding read and Canvas argument, per frame. */
+    fun eval(
+        ev: Ev,
+        env: Env,
+    ): Value {
+        if (depth++ == 0) steps = 0
+        try {
+            return ev(env)
         } finally {
             depth--
         }
@@ -135,6 +152,8 @@ class Ev internal constructor(
      * boxing saved in a Canvas that draws a value still loading every frame.
      */
     internal val fast: Fast?,
+    /** What [invoke] falls back to when [fast] gives NaN; [num] goes straight to it rather than through [fast] again. */
+    private val slow: Ev? = null,
 ) {
     constructor(const: Value?, f: (Env) -> Value) : this(const, f, null)
 
@@ -148,6 +167,7 @@ class Ev internal constructor(
         if (fast != null) {
             val d = fast.of(env)
             if (!d.isNaN()) return d
+            if (slow != null) return slow(env).let { if (it is Num) it.v else it.num() ?: default }
         }
         val v = invoke(env)
         return if (v is Num) v.v else v.num() ?: default
@@ -250,6 +270,8 @@ sealed interface Global {
         val init: Ev,
         /** Saved across restarts. */
         val persist: Boolean = false,
+        /** `secret`: saved across restarts encrypted, apart from [persist]'s values; it only goes into requests. */
+        val secret: Boolean = false,
     ) : Global
 
     class Let(
@@ -337,10 +359,14 @@ class Program(
     val onKey: Action? = null,
     /** A panel's `enter`: what the prompt bar says Enter does while it's open, like "▸ open". */
     val enter: Ev? = null,
+    /** A panel's `opacity`: how much the backdrop the launcher draws behind it covers home, 0 to 1; null for the default. */
+    val opacity: Ev? = null,
     val onTap: Action? = null,
     val triggers: List<Trigger>,
     /** Shell commands this widget can run, known without running it; for reviewing shared widgets. */
     val commands: List<String>,
+    /** Each `secret` state's servers, sorted: its sealed value is kept only while these stay the same. */
+    val secretHosts: Map<String, List<String>> = emptyMap(),
     /** Declared dependencies: package manager -> package names, e.g. pacman -> [jq, curl]. */
     val requires: Map<String, List<String>>,
     /**
@@ -364,4 +390,7 @@ class Program(
     val iconImage: ByteArray? = null,
     /** What compiles but is likely wrong, one line each with its line:col, for owl-check: a URL value not put through enc(). */
     val warnings: List<String> = emptyList(),
-)
+) {
+    /** [icon] or [iconImage] as a cache key, hashed once: the launcher looks icons up on every recomposition. */
+    val iconKey: String? by lazy { icon ?: iconImage?.let { "image:" + it.contentHashCode() } }
+}

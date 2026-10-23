@@ -22,6 +22,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,7 +60,7 @@ fun LinuxScreen(
             when (val s = state) {
                 LinuxState.Checking -> {}
                 LinuxState.NotInstalled -> InstallOffer(runtime)
-                is LinuxState.Installing, is LinuxState.Failed -> LinuxProgress(s, runtime.bootstrap.chosenAgents, runtime::retryLinux)
+                is LinuxState.Installing, is LinuxState.Failed -> LinuxProgress(s, runtime.bootstrap.chosenAgents, runtime::retryLinux, runtime::cancelLinux.takeIf { runtime.bootstrap.cancellable })
                 LinuxState.Installed -> Installed(runtime)
                 LinuxState.Removing -> BasicText("removing linux…", style = Mono.copy(color = Palette.accent))
             }
@@ -93,12 +95,12 @@ private fun InstallOffer(runtime: Runtime) {
     BasicText("arch linux, optional", style = Mono.copy(fontSize = TextSize.Large))
     Spacer(Modifier.height(8.dp))
     BasicText(
-        "Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download; installs in the background.",
+        "Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download and 3 GB of space; installs in the background.",
         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
     )
     Spacer(Modifier.height(16.dp))
     // Above the agent list, so it's in reach without scrolling.
-    PrimaryButton(if (picked.isEmpty()) "install linux" else "install linux and ${picked.size} agent${if (picked.size == 1) "" else "s"}") {
+    PrimaryButton(if (picked.isEmpty()) "install linux" else "install linux and ${picked.size} agent${if (picked.size == 1) "" else "s"}", Modifier.takesPassedKeys().passesKeys()) {
         install(picked)
     }
     Spacer(Modifier.height(24.dp))
@@ -127,8 +129,11 @@ private fun Installed(runtime: Runtime) {
         GpuRow(runtime)
     }
     Spacer(Modifier.height(16.dp))
+    // Keys go between remove linux and its cancel as they swap, and wait out the removal for the install it ends with.
+    val ask = remember { FocusRequester() }
+    val cancel = remember { FocusRequester() }
     if (!confirm) {
-        BracketAction("remove linux", Palette.red) { confirm = true }
+        BracketAction("remove linux", Palette.red, Modifier.focusRequester(ask).passesKeys(cancel)) { confirm = true }
     } else {
         Column(
             Modifier.card(),
@@ -141,8 +146,8 @@ private fun Installed(runtime: Runtime) {
                 style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
             Row {
-                BracketAction("remove", Palette.red, runtime::removeLinux)
-                BracketAction("cancel", Palette.muted) { confirm = false }
+                BracketAction("remove", Palette.red, Modifier.passesKeys(), runtime::removeLinux)
+                BracketAction("cancel", Palette.muted, Modifier.focusRequester(cancel).passesKeys(ask)) { confirm = false }
             }
         }
     }
@@ -171,13 +176,15 @@ private fun GpuRow(runtime: Runtime) {
                     style = Mono.copy(color = if (gpu.active) Palette.green else Palette.muted, fontSize = TextSize.Small),
                 )
             }
+            // Keys on one wait out its job, for the one it ends with.
+            val passed = Modifier.takesPassedKeys().passesKeys()
             when {
                 state is JobState.Working -> {}
                 gpu.wanted -> {
-                    if (state is JobState.Failed) BracketAction("retry", Palette.accent) { runtime.setGpu(true) }
-                    BracketAction("turn off", Palette.red) { runtime.setGpu(false) }
+                    if (state is JobState.Failed) BracketAction("retry", Palette.accent, passed) { runtime.setGpu(true) }
+                    BracketAction("turn off", Palette.red, passed) { runtime.setGpu(false) }
                 }
-                else -> BracketAction("turn on", Palette.accent) { runtime.setGpu(true) }
+                else -> BracketAction("turn on", Palette.accent, passed) { runtime.setGpu(true) }
             }
         }
         JobLog(state)

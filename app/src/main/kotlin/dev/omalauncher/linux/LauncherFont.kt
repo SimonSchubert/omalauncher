@@ -1,11 +1,12 @@
 package dev.omalauncher.linux
 
+import android.content.res.Resources
 import android.graphics.Typeface
+import android.graphics.fonts.Font
+import android.graphics.fonts.FontStyle
 import android.util.Log
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
-import androidx.compose.ui.text.font.FontWeight
+import dev.omalauncher.R
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.ui.LauncherStyle
@@ -20,41 +21,61 @@ import kotlin.math.abs
  * loaded from its files in the rootfs. The files found are remembered in
  * [cache], so the next start draws in it from the first frame without asking
  * fontconfig again. A family Linux doesn't have (or no Linux) falls back to
- * Android's. Main thread.
+ * Android's. Either way, symbols the font lacks come from noto_symbols.ttf
+ * and nerd_symbols.ttf before Android's own fallback, so an agent's ⏵⏵ or ⏺
+ * isn't a box. Main thread.
  */
 class LauncherFont(
     private val proot: Proot,
     private val style: StyleStore,
+    private val resources: Resources,
 ) {
     private val cache = File(proot.filesDir, "launcher-font")
+
+    /** Android's monospace with the symbols; Android's alone if its file isn't where AOSP keeps it. */
+    private val system: FontFamily by lazy {
+        SYSTEM_MONO.takeIf { File(it).isFile }?.let { withSymbols(listOf(Face(400, false, it)), guestPaths = false) } ?: FontFamily.Monospace
+    }
+
+    /** The symbol fonts behind every family, read once: the same for all of them. */
+    private val symbols by lazy { listOf(single(R.font.noto_symbols), single(R.font.nerd_symbols)) }
+
+    /**
+     * The guest faces [LauncherStyle.font] is, null for [system]: applying the same ones again keeps it, since a new
+     * font lays out all text anew.
+     */
+    private var shown: List<Face>? = null
 
     /** Sets [LauncherStyle.font] from what [cache] remembers, without the guest; at start, before the first frame. */
     fun restore() {
         val family = style.style[Style.FONT]
-        if (family == Style.SYSTEM_FONT) return
-        val faces = cached(family) ?: return
-        LauncherStyle.font = load(faces) ?: return
+        show(if (family == Style.SYSTEM_FONT) null else cached(family), null)
     }
 
     /** Sets [LauncherStyle.font] for [Style.FONT], asking the guest for the family's files unless [cache] has them. */
     suspend fun apply() {
         val family = style.style[Style.FONT]
-        if (family == Style.SYSTEM_FONT) {
-            LauncherStyle.font = FontFamily.Monospace
-            return
-        }
-        val loaded =
-            withContext(Dispatchers.IO) {
-                val faces = cached(family) ?: find(family).also { save(family, it) }
-                load(faces)
-            }
+        if (family == Style.SYSTEM_FONT) return show(null, null)
+        val faces = withContext(Dispatchers.IO) { cached(family) ?: find(family).also { save(family, it) } }
+        if (faces == shown) return
+        val font = withContext(Dispatchers.IO) { load(faces) }
         // The setting may have changed while the guest answered.
-        if (style.style[Style.FONT] == family) LauncherStyle.font = loaded ?: FontFamily.Monospace
+        if (style.style[Style.FONT] == family) show(faces, font)
+    }
+
+    /** Shows [faces], loaded as [font] or here when null; [system] without them or when they don't load. */
+    private fun show(
+        faces: List<Face>?,
+        font: FontFamily?,
+    ) {
+        val built = font ?: faces?.let(::load)
+        LauncherStyle.font = built ?: system
+        shown = faces.takeIf { built != null }
     }
 
     /** Back to Android's font, as Linux and its font files are deleted; the setting stays for when it's back. */
     fun forget() {
-        LauncherStyle.font = FontFamily.Monospace
+        show(null, null)
         cache.delete()
         loaded.clear()
     }
@@ -84,7 +105,7 @@ class LauncherFont(
         val lines = runCatching { cache.readLines() }.getOrNull() ?: return null
         if (lines.firstOrNull() != family) return null
         val faces = lines.drop(1).mapNotNull(Face::decode)
-        return faces.takeIf { it.isNotEmpty() && it.all { face -> proot.hostFile(face.path).isFile } }
+        return faces.takeIf { it.isNotEmpty() && it.all { face -> proot.guestFile(face.path)?.isFile == true } }
     }
 
     private fun save(
@@ -95,16 +116,47 @@ class LauncherFont(
             .onFailure { Log.w(TAG, "can't remember the font", it) }
     }
 
-    /** [faces] as a family, leaving out files Android can't read; null if that's all of them. */
-    private fun load(faces: List<Face>): FontFamily? {
+    /** [faces] (guest files) as a family, leaving out files Android can't read; null if that's all of them. */
+    private fun load(faces: List<Face>): FontFamily? = withSymbols(faces, guestPaths = true)
+
+    /**
+     * [faces] with noto_symbols.ttf and Nerd Font's icons behind them, then Android's fallback;
+     * [guestPaths] when their paths are the guest's. noto_symbols.ttf is Noto Sans Symbols 2's
+     * Miscellaneous Technical and Dingbats (U+2300–23FF, U+2700–27BF) without the characters
+     * that default to emoji, which stay color, and with Android monospace's ascent and descent
+     * (928/-244 of 1000), so a line with one is no taller; made with fontTools; SIL OFL 1.1. Compose's FontFamily picks a face by weight
+     * and never falls back per character, so it's one Android Typeface with fallbacks.
+     */
+    private fun withSymbols(
+        faces: List<Face>,
+        guestPaths: Boolean,
+    ): FontFamily? {
         val fonts =
             faces.mapNotNull { face ->
-                val file = proot.hostFile(face.path)
-                val readable = runCatching { Typeface.Builder(file).build() != null }.getOrDefault(false)
-                if (readable) Font(file, FontWeight(face.weight), if (face.italic) FontStyle.Italic else FontStyle.Normal) else null
+                // Paths fontconfig in the guest gave, so read as the guest sees them.
+                val file = (if (guestPaths) proot.guestFile(face.path) else File(face.path)) ?: return@mapNotNull null
+                // A variable font's file is every weight; the axis picks this one, as Compose's Font(file) does.
+                runCatching {
+                    Font.Builder(file)
+                        .setWeight(face.weight)
+                        .setSlant(if (face.italic) FontStyle.FONT_SLANT_ITALIC else FontStyle.FONT_SLANT_UPRIGHT)
+                        .setFontVariationSettings("'wght' ${face.weight}")
+                        .build()
+                }.getOrNull()
             }
-        return if (fonts.isEmpty()) null else FontFamily(fonts)
+        if (fonts.isEmpty()) return null
+        return runCatching {
+            val family = android.graphics.fonts.FontFamily.Builder(fonts.first()).apply { fonts.drop(1).forEach(::addFont) }.build()
+            val typeface =
+                Typeface.CustomFallbackBuilder(family)
+                    .apply { symbols.forEach(::addCustomFallback) }
+                    .setSystemFallback("monospace")
+                    .build()
+            FontFamily(androidx.compose.ui.text.font.Typeface(typeface))
+        }.onFailure { Log.w(TAG, "can't build the font", it) }.getOrNull()
     }
+
+    private fun single(font: Int) = android.graphics.fonts.FontFamily.Builder(Font.Builder(resources, font).build()).build()
 
     /** One weight and slant of a family, in [path] (a guest path); a variable font's file serves several. */
     data class Face(
@@ -124,6 +176,9 @@ class LauncherFont(
 
     companion object {
         private const val TAG = "launcher-font"
+
+        /** The file AOSP's fonts.xml names for "monospace". */
+        private const val SYSTEM_MONO = "/system/fonts/DroidSansMono.ttf"
 
         /** fontconfig's weights and the CSS weights they are, thin to black. */
         private val WEIGHTS = listOf(0 to 100, 40 to 200, 50 to 300, 80 to 400, 100 to 500, 180 to 600, 200 to 700, 205 to 800, 210 to 900)

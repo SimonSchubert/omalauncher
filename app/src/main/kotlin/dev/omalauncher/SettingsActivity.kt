@@ -3,7 +3,6 @@ package dev.omalauncher
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -11,6 +10,7 @@ import androidx.compose.runtime.setValue
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.SettingsPage
 import dev.omalauncher.ui.SettingsPages
+import dev.omalauncher.ui.SystemBarsEffect
 import dev.omalauncher.ui.applySystemBars
 
 /**
@@ -32,7 +32,7 @@ class SettingsActivity : InstantActivity() {
         open(intent)
         applySystemBars(this, Palette.isLight)
         setInstantContent {
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@SettingsActivity, Palette.isLight) }
+            SystemBarsEffect(this@SettingsActivity)
             SettingsPages(runtime, stack, homePage, onClose = ::closeInstantly)
         }
     }

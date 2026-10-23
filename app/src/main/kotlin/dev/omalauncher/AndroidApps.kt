@@ -180,7 +180,7 @@ class AndroidAppCatalog(
     /** Names by [AndroidApp.key] and [AndroidShortcut.key], in the phone's language now; home's tiles go by these. */
     val labels by derivedStateOf { apps.associate { it.key to it.label } + shortcuts.associate { it.key to it.label } }
 
-    private val byKey by derivedStateOf { apps.associateBy { it.key } }
+    internal val byKey by derivedStateOf { apps.associateBy { it.key } }
 
     /**
      * The app a home tile pinned as [component] in [profile] opens now. Apps that let you pick another icon (Duolingo,

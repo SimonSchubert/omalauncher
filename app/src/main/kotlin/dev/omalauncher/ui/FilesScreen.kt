@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
@@ -32,6 +32,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
@@ -41,12 +42,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.GuestEntry
-import dev.omalauncher.linux.GuestFs
 import dev.omalauncher.linux.shellQuote
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 
 /** A touch-first file manager for the guest filesystem, in the Omarchy theme. */
 @Composable
@@ -56,7 +57,7 @@ fun FilesScreen(
     onExit: () -> Unit,
 ) {
     val context = LocalContext.current
-    val fs = remember { GuestFs(runtime.proot::hostFile) }
+    val fs = runtime.proot.guestFs
     val scope = rememberCoroutineScope()
 
     var path by remember(startPath) { mutableStateOf(fs.normalize(startPath)) }
@@ -75,10 +76,33 @@ fun FilesScreen(
     val shown = entries?.filter { e -> query.isNullOrBlank() || query!!.lowercase() in e.name.lowercase() }
     val listState = rememberLazyListState()
     LaunchedEffect(path) { listState.scrollToItem(0) }
+    // Keys in a folder that's gone land on the row of the one they came out of, going up, else on the first row.
+    var landing by remember { mutableStateOf<String?>(null) }
+    var scrollTo by remember { mutableStateOf<String?>(null) }
+    val land = remember { FocusRequester() }
+    // Else, as with that row scrolled away, on a row that shows.
+    val rows = remember { FocusRequester() }
+    LaunchedEffect(shown) {
+        val i = shown?.indexOfFirst { it.path == scrollTo } ?: -1
+        if (i < 0) return@LaunchedEffect
+        scrollTo = null
+        listState.scrollToItem(i)
+    }
 
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
 
+    /** Where keys land in [to], coming from [from]: the row on the way back down to it. */
+    fun landIn(
+        to: String,
+        from: String,
+    ) {
+        val dir = to.trimEnd('/') + "/"
+        landing = if (from.startsWith(dir)) dir + from.removePrefix(dir).substringBefore('/') else null
+        scrollTo = landing
+    }
+
     fun navigate(to: String) {
+        landIn(to, path)
         history += path
         path = to
         query = null
@@ -119,9 +143,21 @@ fun FilesScreen(
 
     fun edit(entry: GuestEntry) = runtime.edit(entry.path)
 
+    /**
+     * The Android file for [entry]; null, with a toast, for a link that leads out of Linux, round in a loop or to
+     * nothing, like one into /proc, which Linux sees and Files doesn't.
+     */
+    fun hostFile(entry: GuestEntry): File? =
+        try {
+            fs.host(entry.path).also { if (!it.exists()) throw IOException("it leads to nothing") }
+        } catch (e: IOException) {
+            toast("can't open ${entry.name}: ${e.message}")
+            null
+        }
+
     fun open(entry: GuestEntry) {
         if (entry.isDir) return navigate(fs.resolve(entry.path))
-        val file = fs.host(entry.path)
+        val file = hostFile(entry) ?: return
         when {
             isImage(entry.name) -> viewing = file
             isText(entry.name, file) -> edit(entry)
@@ -135,6 +171,7 @@ fun FilesScreen(
             selected.isNotEmpty() -> selected.clear()
             query != null -> query = null
             history.isNotEmpty() -> {
+                landIn(history.last(), path)
                 path = history.removeAt(history.lastIndex)
                 selected.clear()
             }
@@ -144,7 +181,11 @@ fun FilesScreen(
 
     Box(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding().padding(PanelGap)) {
         val q = query
+        // Keys start on the close mark, as in the launcher's panels.
+        val close = remember { FocusRequester() }
         PanelFrame(
+            modifier = Modifier.holdsKeys(start = close),
+            closeFocus = close,
             // Like back, the close mark leaves the selection or the search first.
             onClose = {
                 when {
@@ -167,7 +208,7 @@ fun FilesScreen(
                             cursorBrush = SolidColor(Palette.accent),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = {}),
-                            modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                            modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
                             decorationBox = { inner ->
                                 Box {
                                     if (q.isEmpty()) BasicText("filter this folder", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
@@ -220,10 +261,12 @@ fun FilesScreen(
                             Modifier.align(Alignment.Center),
                             style = Mono.copy(color = Palette.muted),
                         )
-                    else ->
-                        LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(shown, key = { it.path }) { entry ->
+                    else -> {
+                        val landAt = shown.indexOfFirst { it.path == landing }.coerceAtLeast(0)
+                        LazyColumn(Modifier.focusRequester(rows).focusGroup(), state = listState, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            itemsIndexed(shown, key = { _, e -> e.path }) { i, entry ->
                                 FileRow(
+                                    modifier = (if (i == landAt) Modifier.focusRequester(land).takesPassedKeys() else Modifier).passesKeys(land, rows),
                                     entry = entry,
                                     selected = entry.path in selected,
                                     onClick = {
@@ -237,17 +280,21 @@ fun FilesScreen(
                                 )
                             }
                         }
+                    }
                 }
             }
 
             val clip = FileClipboard.paths
+            // Keys on a bar as it goes, after copy or cut, go to paste here, and after that to the list.
+            val paste = remember { FocusRequester() }
             if (selected.isNotEmpty()) {
                 val single = entries?.firstOrNull { it.path == selected.singleOrNull() }
                 // Sniffing a file for text reads it: off the main thread, once per selection.
                 val singleIsText by produceState(false, single?.path) {
-                    value = single?.takeIf { !it.isDir }?.let { s -> withContext(Dispatchers.IO) { isText(s.name, fs.host(s.path)) } } == true
+                    value = single?.takeIf { !it.isDir }?.let { s -> withContext(Dispatchers.IO) { runCatching { isText(s.name, fs.host(s.path)) }.getOrDefault(false) } } == true
                 }
                 SelectionBar(
+                    Modifier.passesKeys(paste, land, rows),
                     onSelectAll = {
                         selected.clear()
                         selected += shown.orEmpty().map { it.path }
@@ -264,12 +311,14 @@ fun FilesScreen(
                     },
                     onDelete = { dialog = FileDialog.Delete(selected.toList()) },
                     onRename = single?.let { { dialog = FileDialog.Rename(it) } },
-                    onShare = single?.takeIf { !it.isDir }?.let { { openWithAndroid(fs.host(it.path), share = true) } },
-                    onOpenWith = single?.takeIf { !it.isDir }?.let { { openWithAndroid(fs.host(it.path)) } },
+                    onShare = single?.takeIf { !it.isDir }?.let { { hostFile(it)?.let { f -> openWithAndroid(f, share = true) } } },
+                    onOpenWith = single?.takeIf { !it.isDir }?.let { { hostFile(it)?.let(::openWithAndroid) } },
                     onEdit = single?.takeIf { singleIsText }?.let { { edit(it) } },
                 )
             } else if (clip.isNotEmpty()) {
                 PasteBar(
+                    Modifier.passesKeys(land, rows),
+                    paste,
                     count = clip.size,
                     cut = FileClipboard.cut,
                     onCancel = { FileClipboard.paths = emptyList() },

@@ -1,5 +1,6 @@
 package dev.omalauncher
 
+import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.ActivityOptions
 import android.content.Context
@@ -10,15 +11,26 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.view.KeyEvent
 import android.window.SplashScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Modifier
+import dev.omalauncher.ui.KeyIndicated
+import dev.omalauncher.ui.keyPressed
+import dev.omalauncher.ui.keysRoot
+import dev.omalauncher.ui.keysFocused
+import dev.omalauncher.ui.keysStartAgain
+import dev.omalauncher.ui.movesFocus
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.ui.Palette
+import java.util.Collections
+import java.util.WeakHashMap
 
 /**
  * The launcher's own screens with their own task (settings, Files, the editor, Linux
@@ -33,7 +45,23 @@ abstract class InstantActivity : ComponentActivity() {
 
     /** Like setContent, but drawing nothing while the window leaves. */
     protected fun setInstantContent(content: @Composable () -> Unit) {
-        setContent { if (!hidden) content() }
+        setContent {
+            if (!hidden) KeyIndicated { Box(Modifier.keysRoot()) { content() } }
+        }
+    }
+
+    // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
+    /**
+     * An arrow with nothing focused (as after a tap) starts in the screen's panel again, and so does typing, which then
+     * goes on to where it started, like the editor's text; Esc that nothing took is Back.
+     */
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val down = event.action == KeyEvent.ACTION_DOWN
+        if (down) keyPressed(window.decorView)
+        if (down && movesFocus(event.keyCode) && keysStartAgain(window.decorView)) return true
+        if (down && event.isPrintingKey && !keysFocused(window.decorView)) keysStartAgain(window.decorView)
+        return super.dispatchKeyEvent(event) || escapeAsBack(event)
     }
 
     /** Closes the task, without the slide Android gives a closing task. */
@@ -105,3 +133,23 @@ abstract class InstantActivity : ComponentActivity() {
         }
     }
 }
+
+/**
+ * Esc that nothing else took is Back, as on a desktop: it closes what's open. Android leaves it unhandled. Shift doesn't
+ * matter (the emulator's keyboard can report it held); Ctrl, Alt or Super make it another shortcut.
+ */
+internal fun ComponentActivity.escapeAsBack(event: KeyEvent): Boolean {
+    if (event.keyCode != KeyEvent.KEYCODE_ESCAPE) return false
+    // Only a press seen here: the Esc of Super+Esc, which left another window, lifts in this one.
+    if (event.action == KeyEvent.ACTION_DOWN) {
+        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
+        escapesDown += this
+        return true
+    }
+    if (!escapesDown.remove(this)) return false
+    if (!event.isCanceled) onBackPressedDispatcher.onBackPressed()
+    return true
+}
+
+/** The activities an Esc went down in that hasn't lifted yet. */
+private val escapesDown = Collections.newSetFromMap(WeakHashMap<ComponentActivity, Boolean>())

@@ -155,6 +155,8 @@ print(json.dumps({"days": days, "entries": [{"date": today.isoformat(), "v": v, 
     xfeed) json='{"users":["NASA","esa","Space_Station"]}' ;;
     # A city under the NWS's radars: the emulator's own location is outside them.
     nws-radar) json='{"city":"Oklahoma City"}' ;;
+    # A preset city: its default ("auto") would show the host's own location from its IP.
+    islamic) json='{"city":"Makkah","method":"4"}' ;;
     # Most of a day measured, with a few lost pings, so the day's figures show.
     network) json=$(printf '{"todayKey":"%s","todaySamples":5140,"todayFails":6,"todaySum":107800}' "$(adb shell date +%F | tr -d '\r')") ;;
     *) return 0 ;;

@@ -176,7 +176,16 @@ class Lexer(
             "s", "deg", "dp", "px" -> {}
             "m", "min" -> v *= 60
             "h" -> v *= 3600
-            else -> throw CompileError("unknown unit '$unit'", unitStart)
+            else -> {
+                // 1e9: habit from other languages; say what to write instead.
+                val m = Regex("""[eE]([+-]?\d+)""").matchAt(src, unitStart)
+                val exp = m?.groupValues?.get(1)?.toIntOrNull()
+                if (exp != null && exp in -12..15) {
+                    val spelled = java.math.BigDecimal(src.substring(start, unitStart)).scaleByPowerOfTen(exp).stripTrailingZeros().toPlainString()
+                    throw CompileError("unknown unit '$unit': numbers have no exponents, so write ${src.substring(start, m.range.last + 1)} as $spelled", unitStart)
+                }
+                throw CompileError("unknown unit '$unit'", unitStart)
+            }
         }
         add(Token(T.Num, src.substring(start, i), start, nl, v))
     }

@@ -55,7 +55,7 @@ class OpenBridge(
         // Written by the omarchy-edit shim: its reply FIFO (no spaces, made by mktemp) and the file.
         if (url.startsWith(EDIT_PREFIX)) {
             val (reply, path) = url.removePrefix(EDIT_PREFIX).split(' ', limit = 2).takeIf { it.size == 2 } ?: return
-            return onEdit(path, proot.hostFile(reply).path)
+            return onEdit(path, proot.guestFile(reply)?.path ?: return)
         }
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
             Log.i(TAG, "ignoring non-URL $url")

@@ -8,12 +8,12 @@ import android.os.Bundle
 import android.system.ErrnoException
 import android.system.Os
 import android.system.OsConstants
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.ui.EditorHome
 import dev.omalauncher.ui.EditorScreen
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.ui.SystemBarsEffect
 import dev.omalauncher.ui.applySystemBars
 
 /**
@@ -37,7 +37,7 @@ class EditorActivity : InstantActivity() {
         setTaskDescription(ActivityManager.TaskDescription(name, null, Palette.background.toArgb()))
         applySystemBars(this, Palette.isLight)
         setInstantContent {
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@EditorActivity, Palette.isLight) }
+            SystemBarsEffect(this@EditorActivity)
             if (path == null) {
                 EditorHome(runtime, onExit = ::close)
             } else {

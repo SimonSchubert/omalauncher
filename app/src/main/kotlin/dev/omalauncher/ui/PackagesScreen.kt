@@ -17,6 +17,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.JobState
@@ -107,12 +109,14 @@ private fun PackageRow(
                     BasicText(pkg.description, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small), maxLines = 2)
                 }
             }
+            // Keys stay on the row's button as it changes: remove to confirm, and through the job to what it ends with.
+            val confirm = remember { FocusRequester() }
             when {
                 state is JobState.Working -> BasicText("${state.action}…", style = Mono.copy(color = Palette.accent))
                 pkg.installed && core -> BasicText("required", Modifier.padding(horizontal = 8.dp), style = Mono.copy(color = Palette.muted))
-                pkg.installed && confirming -> BracketAction("confirm", Palette.red, onRemove)
-                pkg.installed -> BracketAction("remove", Palette.red) { confirming = true }
-                else -> BracketAction("install", Palette.accent, onInstall)
+                pkg.installed && confirming -> BracketAction("confirm", Palette.red, Modifier.focusRequester(confirm).passesKeys(), onRemove)
+                pkg.installed -> BracketAction("remove", Palette.red, Modifier.takesPassedKeys().passesKeys(confirm)) { confirming = true }
+                else -> BracketAction("install", Palette.accent, Modifier.takesPassedKeys().passesKeys(), onInstall)
             }
         }
         JobLog(state)

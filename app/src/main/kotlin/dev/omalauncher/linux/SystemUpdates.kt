@@ -175,9 +175,14 @@ class SystemUpdates(
             true
             """.trimIndent()
 
-        /** Databases refreshed (-Syy) even if pacman thinks they're current: mirrors lag each other. */
+        /**
+         * Databases refreshed (-Syy) even if pacman thinks they're current: mirrors lag each other. The old
+         * versions go even when one tool fails to upgrade, or every updated agent stays installed twice
+         * (1.1 GB); the tool that failed keeps its old version, since its config still selects it.
+         */
         val UPDATE_SCRIPT =
             "pacman -Syyu --noconfirm && $CLEAN_PACMAN_CACHE && " +
-                "if command -v mise >/dev/null; then $MISE_SELF_UPDATE && $MISE_NODE_FOR_AGENTS && mise upgrade && mise prune -y && mise cache clear; fi"
+                "if command -v mise >/dev/null; then $MISE_SELF_UPDATE && $MISE_NODE_FOR_AGENTS && mise upgrade; " +
+                "ok=\$?; $MISE_PRUNE; $MISE_CLEANUP; [ \$ok -eq 0 ]; fi"
     }
 }

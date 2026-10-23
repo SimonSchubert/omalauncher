@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Runs in the guest, for scripts/store-previews.sh: demo data for the store widgets that
 # otherwise only say how to set them up. `gh` answers like a signed-in account, Home
-# Assistant's states are files that curl reads, `curl` answers Cursor's dashboard, and
+# Assistant's states are files that curl reads, `curl` answers Cursor's dashboard (cursor-plan, grok-bot) and xai's Grok account, and
 # the Tesla tile reads its own fixture, go-limit reads an OpenCode database, `python3` answers
 # google-calendar's feed script and lastfm's helper, and two sleeping `claude` processes stand in for claude-top's
-# Claude Code instances. `python` answers
+# and alorse/claude's Claude Code instances. `python` answers
 # codex-quota's and photoprism-random's scripts, widget-maker finds its script set up and a
 # draft waiting, and `ssh` streams a Flipper menu to flipper-zero. `agy` answers agy-limits, agenda
 # reads two calendars from local .ics files, 9g420's codex-quota reads a Codex session, and the
@@ -21,6 +21,7 @@ set -u
 demo=/tmp/store-previews-demo
 ha=~/.config/omarchy-proot/home-assistant
 cursor=~/.config/cursor/auth.json
+grok=~/.grok/auth.json
 tesla=~/.config/omarchy-tesla/fixture.json
 opencode=~/.local/share/opencode/opencode.db
 history=~/.claude/history.jsonl
@@ -57,12 +58,14 @@ privspace=~/.cache/private-space.json
 speedtest=~/.local/share/omalauncher/speedtest/status.json
 bridge=~/.local/share/omalauncher/share-bridge/status.json
 nostr=~/.cache/nostr-inbox/009ce97e22b376c406740f9b842f780ca2e92c2093a5f11d12f43f6150d8e6a1
+omagit=~/projects/weather-cli
 
 # Moves a real file aside before the demo writes its own; "off" puts it back.
 aside() { [ -f "$1" ] && [ ! -f "$1.before-demo" ] && mv "$1" "$1.before-demo"; mkdir -p "${1%/*}"; }
 
 if [ "${1:-}" = off ]; then
   for p in $(cat "$demo/claude.pids" 2>/dev/null); do kill "$p" 2>/dev/null; rm -f ~/.claude/sessions/"$p".json; done
+  rm -rf ~/.claude/projects/-demo-widgets
   pid=$(cat ~/.cache/owl-flipper/feed.pid 2>/dev/null) && kill -- "-$pid" 2>/dev/null
   [ -f "$demo/agenda-cache-new" ] && rm -rf ~/.cache/gcal-agenda
   [ -f "$demo/nostr-cache-new" ] && rm -rf ~/.cache/nostr-inbox
@@ -73,12 +76,13 @@ if [ "${1:-}" = off ]; then
   for d in $(cat "$demo/cleaner-dirs" 2>/dev/null); do rm -rf "$d"; done
   rm -rf ~/Decks; [ -d ~/Decks.before-demo ] && mv ~/Decks.before-demo ~/Decks
   rm -rf "$layout"; [ -d "$layout.before-demo" ] && mv "$layout.before-demo" "$layout"
+  rm -rf "$omagit"; [ -d "$omagit.before-demo" ] && mv "$omagit.before-demo" "$omagit"
   rm -rf "$demo" /usr/local/bin/gh /usr/local/bin/curl /usr/local/bin/python3 /usr/local/bin/pgrep \
     /usr/local/bin/python /usr/local/bin/claude /usr/local/bin/ssh /usr/local/bin/agy /usr/local/bin/ip \
     /usr/local/bin/getent /usr/local/bin/fastfetch /usr/local/bin/yt-dlp /usr/local/bin/ffmpeg \
     /usr/local/bin/ffprobe /usr/local/bin/adb /usr/local/bin/perl /usr/local/bin/websocat \
     /usr/local/bin/ping
-  for f in "$ha" "$cursor" "$tesla" "$opencode" "$history" "$photoprism" "$owlmaker" "$owlstatus" "$flipper" \
+  for f in "$ha" "$cursor" "$grok" "$tesla" "$opencode" "$history" "$photoprism" "$owlmaker" "$owlstatus" "$flipper" \
     "$agy" "$agenda" "$voice" "$voicestate" "$dictated" "$codex" "$codexcache" "$apkver" "$apkbin" \
     "$apkcache/setup.json" "$apkcache/apps.json" "$apkcache/job.json" "$apkcache/log.txt" "$simkl" \
     "$pptver" "$pptsetup" "$pptstatus" "$devlogsver" "$devlogsbin" "$devlogserrors" "$flashcards" \
@@ -118,18 +122,42 @@ state switch.coffee_machine on "Coffee machine"
 aside "$ha"
 printf 'file://%s\ndemo\nlight.living_room\nlight.kitchen\nsensor.indoor\nsensor.power\nlock.front_door\nswitch.coffee_machine\n' "$demo" > "$ha"
 
-# Cursor's Pro+ plan, from the cursor-plan author's own picture. Everything else goes to curl.
+# Cursor's Pro+ plan, from the cursor-plan author's own picture, and grok-bot's weekly usage. Everything else goes to curl.
 aside "$cursor"
 echo '{"accessToken":"demo"}' > "$cursor"
 cat > /usr/local/bin/curl <<'EOF'
 #!/bin/sh
 case "$*" in
   *DashboardService/GetCurrentPeriodUsage*) echo '{"billingCycleEnd":"1792627200000","planUsage":{"totalPercentUsed":77,"apiPercentUsed":96,"includedSpend":7000,"limit":7000}}' ;;
-  *DashboardService/GetPlanInfo*) echo '{"planInfo":{"planName":"Pro+","price":"$60/mo"}}' ;;
+  # cursor-plan reads the answer from stdout, xai from -o with the status from -w.
+  *DashboardService/GetPlanInfo*)
+    out=; while [ $# -gt 0 ]; do [ "$1" = -o ] && out=$2; shift; done
+    plan='{"planInfo":{"planName":"Pro+","price":"$60/mo"}}'
+    if [ -n "$out" ]; then echo "$plan" > "$out"; printf 200; else echo "$plan"; fi ;;
+  # grok-bot and xai write the answer to -o and read the status from -w.
+  *DashboardService/GetSandUsageStatus*)
+    while [ $# -gt 0 ]; do [ "$1" = -o ] && out=$2; shift; done
+    echo '{"grokPlanLabel":"Grok Bot","cursorPlanName":"Pro+","usagePercent":42,"nextResetTimestampUtc":"2026-10-26T00:00:00.000Z"}' > "$out"
+    printf 200 ;;
+  # xai's SuperGrok account, its weekly pool and a verified X profile.
+  *cli-chat-proxy.grok.com/v1/user*)
+    while [ $# -gt 0 ]; do [ "$1" = -o ] && out=$2; shift; done
+    echo '{"subscriptionTier":"SuperGrok","cursorMerged":true,"xUserId":"1234567890"}' > "$out"
+    printf 200 ;;
+  *cli-chat-proxy.grok.com/v1/billing*)
+    while [ $# -gt 0 ]; do [ "$1" = -o ] && out=$2; shift; done
+    echo '{"config":{"isUnifiedBillingUser":true,"creditUsagePercent":38,"currentPeriod":{"type":"WEEKLY","end":"2026-10-26T00:00:00Z"},"prepaidBalance":{"val":1250}}}' > "$out"
+    printf 200 ;;
+  *x.com/i/user/*)
+    while [ $# -gt 0 ]; do [ "$1" = -o ] && out=$2; shift; done
+    echo '{\"screen_name\":\"omarchy\",\"tweets\":1842,\"subscribers_count\":0,\"followers\":12400,\"is_blue_verified\":true}' > "$out"
+    printf 'https://x.com/omarchy 200' ;;
   *) exec /usr/bin/curl "$@" ;;
 esac
 EOF
 chmod +x /usr/local/bin/curl
+aside "$grok"
+echo '[{"key":"demo","user_id":"demo","expires_at":"2099-01-01T00:00:00Z"}]' > "$grok"
 
 # The made-up car from the tesla README: Bluebird, parked at 54% with an 80% charge limit.
 aside "$tesla"
@@ -226,6 +254,10 @@ PY
 printf '%s\n' '{"ok":true,"ip":"192.168.1.40","did":"123456789","status":4,"status_text":"Charging","busy":false,"fault":2103,"fault_warn":false,"fault_text":"docked","battery":87,"mode":1,"mode_text":"Sweep + mop","sweep_type":0,"sweep_text":"Global","suction":2,"suction_text":"Medium","water":1,"water_text":"Mid","mop_route":1,"mop_text":"Y","minutes":42,"area":58,"map_url":"","consumables":{"side_brush":71,"main_brush":84,"filter":63,"mop":38}}' > "$demo/vacuum.json"
 cat > /usr/local/bin/python3 <<'EOF'
 #!/bin/sh
+# alorse/claude reads the sessions with python3 - : start them, like pgrep does for claude-top.
+if [ "$*" = - ] && [ -f /tmp/store-previews-demo/claude.sh ] && [ ! -f /tmp/store-previews-demo/claude.pids ]; then
+  bash /tmp/store-previews-demo/claude.sh </dev/null
+fi
 case "$*" in
   *owl-gcal*) exec /usr/bin/python3 /tmp/store-previews-demo/gcal.py ;;
   *lastfm.py\ fetch*) exec /usr/bin/python3 /tmp/store-previews-demo/lastfm.py ;;
@@ -258,12 +290,17 @@ while True:
     time.sleep(1 - $busy)" </dev/null >/dev/null 2>&1) &
   local pid=$!
   echo "$pid" >> "$demo/claude.pids"
-  printf '{"sessionId":"%s","name":"%s","status":"%s","cwd":"%s","version":"2.4.1","statusUpdatedAt":%s,"startedAt":%s}\n' \
-    "$sid" "${cwd##*/}" "$status" "$cwd" $(( ms - 40000 )) $(( ms - ago * 60000 )) > ~/.claude/sessions/"$pid".json
+  printf '{"pid":%s,"sessionId":"%s","name":"%s","status":"%s","cwd":"%s","version":"2.4.1","statusUpdatedAt":%s,"startedAt":%s}\n' \
+    "$pid" "$sid" "${cwd##*/}" "$status" "$cwd" $(( ms - 40000 )) $(( ms - ago * 60000 )) > ~/.claude/sessions/"$pid".json
   printf '{"display":"%s","sessionId":"%s"}\n' "$prompt" "$sid" >> ~/.claude/history.jsonl
 }
 claude ~/Projects/omarchy-widgets demo-widgets busy 410 0.3 "render the themed previews for the new widgets" 52
 claude ~/Projects/website demo-website idle 280 0 "fix the header on small screens" 140
+# A subagent at work in the busy session, for alorse/claude.
+sub=~/.claude/projects/-demo-widgets/demo-widgets/subagents
+mkdir -p "$sub"
+echo '{"description":"Check the renders","model":"claude-sonnet-5-5"}' > "$sub/agent-demo.meta.json"
+: > "$sub/agent-demo.jsonl"
 sleep 0.5
 EOF
 cat > /usr/local/bin/pgrep <<'EOF'
@@ -545,6 +582,56 @@ aside "$layoutlog"
 t=$(( $(date +%s) - 7200 ))
 printf '%s saved: %s\n%s uploaded to demo/omalauncher-layout\n' "$(date -d "@$t" +%H:%M:%S)" "$(git -C "$layout" log -1 --format=%s)" \
   "$(date -d "@$((t + 6))" +%H:%M:%S)" > "$layoutlog"
+
+# shafiqimtiaz's omagit: a small project with a week of history, a feature branch merged back,
+# another still open, two commits not pushed yet, a stash, and work staged, changed and new.
+# scripts/store-previews.sh opens it from the app's screens.txt.
+[ -d "$omagit" ] && [ ! -d "$omagit.before-demo" ] && mv "$omagit" "$omagit.before-demo"
+rm -rf "$omagit"
+mkdir -p "$omagit/src"
+(
+  cd "$omagit" && git init -q -b main && git config user.name "Mara Jensen" && git config user.email mara@localhost
+  commit() {
+    local t=$(( $(date +%s) - $1 * 3600 ))
+    git add -A
+    GIT_AUTHOR_DATE="@$t" GIT_COMMITTER_DATE="@$t" git commit -q -m "$2"
+  }
+  printf '# weather-cli\n\nThe forecast in your terminal.\n' > README.md
+  printf 'import sys\n\nfrom src.forecast import today\n\nprint(today(sys.argv[1]))\n' > main.py
+  printf 'def today(city):\n    return f"{city}: 14°C, light rain"\n' > src/forecast.py
+  commit 170 "First version: today's forecast for a city"
+  printf 'requests==2.32.3\n' > requirements.txt
+  printf 'import requests\n\nAPI = "https://api.open-meteo.com/v1/forecast"\n\ndef today(city):\n    r = requests.get(API, params={"city": city}, timeout=10)\n    return r.json()["current"]\n' > src/forecast.py
+  commit 150 "Fetch the forecast from Open-Meteo"
+  git checkout -q -b feature/hourly
+  printf '\ndef hourly(city, hours=12):\n    r = requests.get(API, params={"city": city, "hourly": "temperature_2m"}, timeout=10)\n    return r.json()["hourly"]["temperature_2m"][:hours]\n' >> src/forecast.py
+  commit 120 "Hourly temperatures for the next 12 hours"
+  printf 'import sys\n\nfrom src.forecast import today, hourly\n\nprint(today(sys.argv[1]))\nprint(hourly(sys.argv[1]))\n' > main.py
+  commit 110 "Print the hourly forecast under today's"
+  git checkout -q main
+  printf '# weather-cli\n\nThe forecast in your terminal, from Open-Meteo.\n\n    python main.py Berlin\n' > README.md
+  commit 100 "README: how to run it"
+  t=$(( $(date +%s) - 90 * 3600 ))
+  GIT_AUTHOR_DATE="@$t" GIT_COMMITTER_DATE="@$t" git merge -q --no-ff feature/hourly -m "Merge branch 'feature/hourly'"
+  git remote add origin https://github.com/demo/weather-cli.git
+  git update-ref refs/remotes/origin/main HEAD
+  git update-ref refs/remotes/origin/feature/hourly feature/hourly
+  git branch -q --set-upstream-to=origin/main
+  git checkout -q -b fix/units
+  printf 'UNITS = {"metric": "°C", "imperial": "°F"}\n' > src/units.py
+  commit 60 "Units: Celsius or Fahrenheit"
+  git checkout -q main
+  printf 'def colour(temp):\n    return "blue" if temp < 5 else "yellow" if temp < 25 else "red"\n' > src/colour.py
+  commit 30 "Colour temperatures by how warm they are"
+  printf '.venv/\n__pycache__/\n' > .gitignore
+  commit 5 "Ignore the virtualenv and caches"
+  printf '\ndef wind(city):\n    return requests.get(API, params={"city": city, "current": "wind_speed_10m"}, timeout=10).json()\n' >> src/forecast.py
+  git stash push -q -m "wind speed, half done"
+  printf '# weather-cli\n\nThe forecast in your terminal, from Open-Meteo.\n\n    python main.py Berlin\n    python main.py Berlin --hourly\n' > README.md
+  git add README.md
+  printf 'import requests\n\nAPI = "https://api.open-meteo.com/v1/forecast"\n\ndef today(city, units="metric"):\n    r = requests.get(API, params={"city": city, "temperature_unit": units}, timeout=10)\n    r.raise_for_status()\n    return r.json()["current"]\n\ndef hourly(city, hours=12):\n    r = requests.get(API, params={"city": city, "hourly": "temperature_2m"}, timeout=10)\n    return r.json()["hourly"]["temperature_2m"][:hours]\n' > src/forecast.py
+  printf 'def alert(temp):\n    if temp > 30:\n        return "Heat warning"\n' > src/alerts.py
+)
 
 # radio: the station scripts/store-previews.sh seeds, playing a track. The tile checks the player
 # with `kill -0 $(cat pid)`, and pid 0 is the checking shell's own process group, so it reads

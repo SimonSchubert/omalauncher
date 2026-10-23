@@ -1,0 +1,69 @@
+app "ntfy" {
+  // Push messages through ntfy.sh, with no account: send to a topic from here, and read what anything
+  // sent to it today, a script or cron job on your computer included (curl -d "build done" ntfy.sh/<topic>).
+  // The ntfy app for Android gets the same topic as notifications. Topics are public: anyone who knows
+  // the name can read and send, so the one this starts with is random. Shows an app with two views
+  // (back and onBack), a source whose URL takes a state, and post with a JSON body and its answer.
+  meta { description: "Send and read push messages on an ntfy.sh topic, from here or from scripts anywhere"; version: "1.0"; license: "MIT"; category: "productivity"; owl: 12 }
+  title: view == "topic" ? "topic" : topic
+  back: view != ""
+  onBack: view = ""
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 34V22a12 12 0 0 1 24 0v12l3 4H9z"/>
+    <path d="M20 42a4 4 0 0 0 8 0"/>
+  </svg>"""
+
+  state topic = "omalauncher-${random(100000000)}" persist
+  state view = ""
+  // post's answer: {ok, code, out}. Starts at 0 so the first answer counts as a change.
+  state sent = 0
+  state problem = ""
+  // What this app sent, from ntfy's answers: the fetch that follows a post can come too soon to list it.
+  state mine = []
+
+  source now = clock every 1m
+  // Each line is one JSON event; poll=1 answers at once instead of keeping the connection open.
+  source feed = http("https://ntfy.sh/${enc(topic)}/json?poll=1&since=24h") every 1m timeout 10s
+  let fetched = lines(feed ?? "").map(l => parseJson(l)).filter(m => m.event == "message")
+  let ids = fetched.map(m => m.id)
+  let messages = mine.filter(m => m.topic == topic && !contains(ids, m.id)) + reverse(fetched)
+
+  on sent {
+    problem = value.ok ? "" : "couldn't send (${value.code})"
+    if value.ok { mine = [value.out] + mine.take(20) }
+  }
+
+  Column {
+    gap: 10
+    padding: [12, 0]
+    if view == "topic" {
+      Text { text: "Messages go to whoever knows the topic's name, so pick one that's hard to guess."; style: muted }
+      Input { text: topic; placeholder: "topic"; focus: true; onSubmit: { topic = trim(value) == "" ? topic : trim(value); view = "" } }
+      Text { text: "send from a terminal"; style: label }
+      Text { text: "curl -d \"hi\" ntfy.sh/${topic}"; font: mono; style: small; onTap: copy("curl -d \"hi\" ntfy.sh/${topic}") }
+      Text { text: "tap to copy"; style: muted }
+    } else {
+      // A map body goes as JSON, to ntfy's one URL for every topic, so the server stays fixed.
+      Input { placeholder: "send to ${topic}…"; clear: true; onSubmit: sent = post("https://ntfy.sh/", {topic: topic, message: value}) }
+      if problem != "" { Text { text: problem; color: red; style: small } }
+      Row {
+        Text { text: feed == null ? "loading…" : "${len(messages)} today"; style: muted; weight: 1 }
+        Text { text: "change topic"; color: accent; style: small; onTap: view = "topic" }
+      }
+      Column {
+        scroll: true
+        weight: 1
+        gap: 8
+        if feed != null && len(messages) == 0 { Text { text: "Nothing on this topic today. Send something above."; style: muted } }
+        for m in messages {
+          Column {
+            gap: 2
+            if m.title != null { Text { text: m.title; bold: true } }
+            Text { text: m.message }
+            Text { text: fmtAgo(m.time, now); style: muted }
+          }
+        }
+      }
+    }
+  }
+}

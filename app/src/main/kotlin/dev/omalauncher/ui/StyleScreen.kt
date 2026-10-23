@@ -14,7 +14,14 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,6 +49,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -83,6 +92,8 @@ import dev.omalauncher.theme.ThemeDirs
 import dev.omalauncher.theme.ThemeDownload
 import dev.omalauncher.theme.ThemeStore
 import dev.omalauncher.theme.Toml
+import dev.omalauncher.widgets.WidgetEngine
+import dev.omalauncher.widgets.editWidgetCommand
 import java.io.File
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -100,6 +111,8 @@ fun StyleScreen(
     onDismiss: () -> Unit,
     /** Opens the community themes over this screen. */
     onBrowse: () -> Unit,
+    /** Opens the agent on keybar.owl. */
+    onAgent: (title: String, command: (bin: String) -> String) -> Unit,
 ) {
     val store = runtime.themes
     val scope = rememberCoroutineScope()
@@ -134,10 +147,17 @@ fun StyleScreen(
             Stepper("gaps in", style, Style.GAPS_IN)
             Stepper("gaps out", style, Style.GAPS_OUT)
             Stepper("border width", style, Style.TILE_BORDER_WIDTH)
+            NumberSlider("opacity", style, Style.TILE_OPACITY)
+            Flag("frosted glass", "on", "off", style, Style.TILE_FROST)
             WidgetPreview()
             Heading("screens")
             Stepper("gaps out", style, Style.SCREEN_GAPS_OUT)
             Stepper("border width", style, Style.SCREEN_BORDER_WIDTH)
+            // keybar.owl reads these as gapsOut and borderWidth.
+            Heading("terminal key bar")
+            KeybarOption(runtime, onAgent)
+            Stepper("gaps out", style, Style.KEYBAR_GAPS_OUT)
+            Stepper("border width", style, Style.KEYBAR_BORDER_WIDTH)
             // Both bars at once; style.toml can set them apart. Background is the band behind their icons.
             Heading("system bars")
             Flag("status bar", "shown", "hidden", style, Style.STATUS_BAR_SHOWN)
@@ -185,6 +205,81 @@ fun StyleScreen(
     }
 }
 
+/**
+ * The terminal key bar over the keyboard: keybar.owl, as stock, edited, broken or removed, with a dropdown to start the
+ * agent on it or put the stock keys back. Here because nothing else says the bar is a file of the user's; removed, the
+ * stock keys show, and back to stock is the way to have the file again.
+ */
+@Composable
+private fun KeybarOption(
+    runtime: Runtime,
+    onAgent: (title: String, command: (bin: String) -> String) -> Unit,
+) {
+    val spec = runtime.widgets.specs.firstOrNull { it.file.name == WidgetEngine.KEYBAR }
+    val file = File(runtime.widgets.dir, WidgetEngine.KEYBAR)
+    val stockFile = File(runtime.widgets.dir, WidgetEngine.STOCK_KEYBAR)
+    // Whether it's still the bar as shipped; read again when the file reloads, which makes a new spec.
+    val stock = remember(spec) { spec != null && runCatching { spec.file.readBytes().contentEquals(stockFile.readBytes()) }.getOrDefault(false) }
+    val scope = rememberCoroutineScope()
+    var open by remember { mutableStateOf(false) }
+    var restoring by remember { mutableStateOf(false) }
+    val actions = listOfNotNull(KeybarAction.Edit.takeIf { spec != null }, KeybarAction.Stock.takeIf { !stock })
+
+    fun restore() {
+        // The widgets folder is watched: the new file reloads the bar.
+        scope.launch(Dispatchers.IO) { runCatching { stockFile.copyTo(file, overwrite = true) } }
+    }
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        OptionLabel("keys")
+        Box(Modifier.weight(1f, fill = false)) {
+            Row(
+                Modifier
+                    .frame(1.dp, Palette.border, radius = 12.dp)
+                    .clickable { open = !open }
+                    .padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(
+                    when {
+                        spec == null -> "removed"
+                        spec.program == null -> "has errors"
+                        stock -> "stock"
+                        else -> "edited"
+                    },
+                    style = Mono.copy(color = if (spec != null && spec.program == null) Palette.red else Palette.foreground),
+                )
+                Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 6.dp))
+            }
+            if (open) {
+                ChoicePopup(actions, null, BelowAnchorStart, onDismiss = { open = false }, onPick = { action ->
+                    when (action) {
+                        KeybarAction.Edit -> spec?.let { onAgent("Edit ${it.name}") { bin -> editWidgetCommand(bin, it) } }
+                        // Nothing of the user's to replace.
+                        KeybarAction.Stock -> if (spec == null) restore() else restoring = true
+                    }
+                }, label = { it.label })
+            }
+        }
+    }
+    OptionHint(if (spec == null) "${file.name} is gone, so the stock keys show" else file.name)
+    if (restoring) {
+        ConfirmDialog(
+            "back to the stock keys?",
+            "Your keybar.owl is replaced with the one this launcher ships.",
+            "replace",
+            onDismiss = { restoring = false },
+        ) {
+            restoring = false
+            restore()
+        }
+    }
+}
+
+private enum class KeybarAction(val label: String) {
+    Edit("edit with agent"),
+    Stock("back to stock"),
+}
+
 /** The installed themes in a row, starting at the current one; browse has Omarchy's whole catalog. */
 @Composable
 private fun ThemeSection(
@@ -196,8 +291,8 @@ private fun ThemeSection(
     val scope = rememberCoroutineScope()
     val current = store.current
     Heading("theme") {
-        BracketAction("browse", Palette.accent, onBrowse)
-        BracketAction("install", Palette.accent, onInstall)
+        BracketAction("browse", Palette.accent, onClick = onBrowse)
+        BracketAction("install", Palette.accent, onClick = onInstall)
     }
     InstallStatus(store)
     if (!store.complete) {
@@ -628,24 +723,96 @@ private fun Stepper(
     fun set(v: Double) = style.update { it.with(all) { s -> v.coerceIn(s.range) } }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         OptionLabel(label)
+        // Keys at the end of the range go on to the other step, and from reset as it goes, to a step.
+        val minus = remember { FocusRequester() }
+        val plus = remember { FocusRequester() }
         Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             val down = value > setting.range.start
             val up = value < setting.range.endInclusive
             BasicText(
                 "−",
-                Modifier.clickable(enabled = down) { set(ceil(value - 1)) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier
+                    .focusRequester(minus)
+                    .passesKeys(plus)
+                    .clickable(enabled = down) { set(ceil(value - 1)) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 style = Mono.copy(color = if (down) Palette.foreground else Palette.muted),
             )
             BasicText(Toml.format(value) + " dp", Modifier.widthIn(min = 64.dp), style = Mono.copy(textAlign = TextAlign.Center), softWrap = false)
             BasicText(
                 "+",
-                Modifier.clickable(enabled = up) { set(floor(value + 1)) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                Modifier
+                    .focusRequester(plus)
+                    .passesKeys(minus)
+                    .clickable(enabled = up) { set(floor(value + 1)) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 style = Mono.copy(color = if (up) Palette.foreground else Palette.muted),
             )
         }
-        if (all.any { style.style[it] != it.default }) BracketAction("reset", Palette.muted) { style.update { it.with(all) { s -> s.default } } }
+        if (all.any { style.style[it] != it.default }) {
+            BracketAction("reset", Palette.muted, Modifier.passesKeys(minus, plus)) { style.update { it.with(all) { s -> s.default } } }
+        }
     }
     if (style.style.common(all) == null) OptionHint("they differ in style.toml; a step sets them all", Modifier.padding(bottom = 4.dp))
+}
+
+/**
+ * A [Style] number dragged or tapped across its range in steps of 0.01, applied as it moves
+ * (style.toml is saved once it settles).
+ */
+@Composable
+private fun NumberSlider(
+    label: String,
+    style: StyleStore,
+    setting: Setting.Number,
+) {
+    val value = style.style[setting]
+    val range = setting.range
+    fun set(
+        x: Float,
+        width: Int,
+    ) {
+        val f = (x / width.coerceAtLeast(1)).coerceIn(0f, 1f)
+        val v = Math.round((range.start + f * (range.endInclusive - range.start)) * 100) / 100.0
+        style.update { it.with(setting, v) }
+    }
+    val accent = Palette.accent
+    val track = Palette.surface
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        OptionLabel(label)
+        Spacer(
+            Modifier
+                .weight(1f)
+                .height(40.dp)
+                // Keys step it, a twentieth of its range or with Shift a hundredth.
+                .keyStepped(vertical = false) { by, fine ->
+                    val span = range.endInclusive - range.start
+                    val v = Math.round((value + by * span / (if (fine) 100 else 20)).coerceIn(range.start, range.endInclusive) * 100) / 100.0
+                    // At the end, the arrow goes on, to reset.
+                    if (v == value) return@keyStepped false
+                    style.update { it.with(setting, v) }
+                    true
+                }.pointerInput(setting) { detectTapGestures { set(it.x, size.width) } }
+                .pointerInput(setting) {
+                    detectHorizontalDragGestures { change, _ ->
+                        change.consume()
+                        set(change.position.x, size.width)
+                    }
+                }.drawBehind {
+                    val f = ((value - range.start) / (range.endInclusive - range.start)).toFloat().coerceIn(0f, 1f)
+                    val line = 4.dp.toPx()
+                    val thumbW = 10.dp.toPx()
+                    val thumbH = 20.dp.toPx()
+                    val cy = size.height / 2
+                    drawRect(track, Offset(0f, cy - line / 2), Size(size.width, line))
+                    drawRect(accent, Offset(0f, cy - line / 2), Size(size.width * f, line))
+                    drawRoundRect(accent, Offset((size.width - thumbW) * f, cy - thumbH / 2), Size(thumbW, thumbH), CornerRadius(3.dp.toPx() * LauncherStyle.cornerScale))
+                },
+        )
+        BasicText(Toml.format(value), Modifier.widthIn(min = 56.dp).padding(start = 12.dp), style = Mono.copy(textAlign = TextAlign.End), softWrap = false)
+        // Always there, so the slider doesn't narrow under the finger as it leaves the default.
+        BracketAction("reset", Palette.muted) { style.update { it.with(setting, setting.default) } }
+    }
 }
 
 /** [Style] flags as a choice of two, [on] first, set together. */
@@ -747,9 +914,9 @@ private fun DownloadPrompt(
             is ThemeDownload.Running -> BasicText("downloading… ${state.megabytes} MB", style = Mono.copy(color = Palette.accent))
             is ThemeDownload.Failed -> {
                 BasicText("failed: ${state.message}", style = Mono.copy(color = Palette.red))
-                BracketAction("retry", Palette.accent, onDownload)
+                BracketAction("retry", Palette.accent, onClick = onDownload)
             }
-            ThemeDownload.Idle -> BracketAction("download themes", Palette.accent, onDownload)
+            ThemeDownload.Idle -> BracketAction("download themes", Palette.accent, onClick = onDownload)
         }
     }
 }
@@ -767,7 +934,8 @@ private fun ThemeCard(
             .frame(2.dp, if (selected) Palette.accent else Palette.border, bg, radius = 12.dp)
             .clickable(onClick = onClick),
     ) {
-        Thumbnail(theme.preview, selected = false, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f), onClick = onClick)
+        // The card takes the tap, so keys stop on it once rather than on it and its picture.
+        Thumbnail(theme.preview, selected = false, modifier = Modifier.fillMaxWidth().aspectRatio(16f / 10f), onClick = null)
         Row(Modifier.padding(6.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicText(theme.title, Modifier.weight(1f), style = Mono.copy(color = theme.colors["foreground"].toColor(), fontSize = TextSize.Small), maxLines = 1)
             for (key in listOf("accent", "red", "green", "yellow")) {
@@ -782,7 +950,8 @@ private fun Thumbnail(
     file: File,
     selected: Boolean,
     modifier: Modifier,
-    onClick: () -> Unit,
+    /** Null when what holds it takes the tap. */
+    onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)? = null,
 ) {
     val haptics = LocalHapticFeedback.current
@@ -792,15 +961,21 @@ private fun Thumbnail(
     Box(
         modifier
             .frame(2.dp, if (selected) Palette.accent else Color.Transparent, Palette.surface, radius = 12.dp)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick =
-                    onLongClick?.let {
-                        {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            it()
-                        }
-                    },
+            .then(
+                if (onClick == null) {
+                    Modifier
+                } else {
+                    Modifier.then(onLongClick?.let { Modifier.menuLongPresses(it) } ?: Modifier).combinedClickable(
+                        onClick = onClick,
+                        onLongClick =
+                            onLongClick?.let {
+                                {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    it()
+                                }
+                            },
+                    )
+                },
             ),
     ) {
         image?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }

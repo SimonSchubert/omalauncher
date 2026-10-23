@@ -20,7 +20,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.theme.Style
+import dev.omalauncher.ui.KeyIndicated
+import dev.omalauncher.ui.keyPressed
+import dev.omalauncher.ui.keysFocused
+import dev.omalauncher.ui.keysStartAgain
+import dev.omalauncher.ui.movesFocus
+import dev.omalauncher.ui.panelOf
 import dev.omalauncher.ui.LauncherStyle
+import dev.omalauncher.ui.SystemBarsEffect
 import dev.omalauncher.ui.applySystemBars
 import dev.omalauncher.ui.showStatusBar
 import dev.omalauncher.ui.LauncherRoot
@@ -35,12 +42,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // While a backup or device transfer runs, the process has a plain Application and no runtime;
+        // Home starts this activity in it anyway. Close until the process restarts as itself.
+        if (application !is App) {
+            finish()
+            return
+        }
         applySystemBars(this, Palette.isLight)
         runtime.start()
         state.onSettings = { page, homePage -> runtime.openSettings(page, homePage) }
         setContent {
-            LauncherRoot(runtime, state)
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@MainActivity, Palette.isLight) }
+            KeyIndicated { LauncherRoot(runtime, state) }
+            SystemBarsEffect(this@MainActivity)
             // A face whose statusBar is false takes the status bar's room too.
             val fullScreen by remember { derivedStateOf { state.fullScreen && runtime.widgets.openScreen == null } }
             val statusBar = LauncherStyle.style[Style.STATUS_BAR_SHOWN] && !fullScreen
@@ -100,6 +113,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        away = false
         runtime.wm.focus(null)
         removeStaleWindowTasks()
         // Made the default home app (or no longer it) while away: only then does Android show us pinned shortcuts.
@@ -119,10 +133,15 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Whether the launcher was out of sight since it was last in front: Home then only brings it back. */
+    private var away = false
+
     /** Pressing Home while already home closes the menu, like other launchers. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         state.close()
+        // The swipe-down panel only for a Home pressed on home: coming back from an app opened from it keeps it.
+        if (!away) state.closePull()
         state.closeScreens()
         runtime.widgets.openScreen = null
         state.editing = null
@@ -131,12 +150,21 @@ class MainActivity : ComponentActivity() {
     }
 
     // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
-    /** Launcher shortcuts (Super+key), then typing into a terminal tile that has the keyboard. Back stays the launcher's. */
+    /**
+     * Launcher shortcuts (Super+key), then typing into a terminal tile that has the keyboard. Back stays the launcher's,
+     * and so does Esc that nothing else took ([escapeAsBack]): it closes the drawer, a panel or a widget's screen.
+     */
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) keyPressed(window.decorView)
         if (event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN && shortcut(event.keyCode)) return true
         if (event.keyCode != KeyEvent.KEYCODE_BACK && runtime.terminals.active != null && runtime.keyboard.handle(event)) return true
-        return super.dispatchKeyEvent(event)
+        // Nothing in the window has the keys (yet, or since a tap), so an arrow has nowhere to move from: it starts in the
+        // open panel, or at home's first tile. One a tap opened starts it too, though the keys are still behind it.
+        if (movesFocus(event.keyCode) && event.action == KeyEvent.ACTION_DOWN) {
+            if (keysStartAgain(window.decorView) || !keysFocused(window.decorView) && state.focusHome()) return true
+        }
+        return super.dispatchKeyEvent(event) || escapeAsBack(event)
     }
 
     /** Widgets only refresh while the home screen is visible. */
@@ -146,8 +174,15 @@ class MainActivity : ComponentActivity() {
         runtime.screenStarted()
     }
 
+    /** A terminal tile's keys held as home goes, like Super, would stay down for it: Android sends their lift elsewhere. */
+    override fun onPause() {
+        super.onPause()
+        runtime.keyboard.releaseHeld()
+    }
+
     override fun onStop() {
         super.onStop()
+        away = true
         state.closeNow()
         // An app was just opened from home: it moves to the front of the strip now, out of sight.
         runtime.usage.settle()
@@ -157,8 +192,19 @@ class MainActivity : ComponentActivity() {
 
     private fun shortcut(keyCode: Int): Boolean {
         when (keyCode) {
-            KeyEvent.KEYCODE_ENTER -> runtime.terminal(null, "Terminal")
-            KeyEvent.KEYCODE_SPACE -> state.toggle()
+            // Lets go of the terminal tile that has the keys, as Back or a tap outside does, where Esc itself is its own.
+            KeyEvent.KEYCODE_ESCAPE -> if (runtime.terminals.active != null) runtime.terminals.deactivate() else return false
+            // Super+D and Super+T, as Android keeps Omarchy's Super+Space (the Assistant on a Pixel) and Super+Enter (Home)
+            // for itself; those stay for phones that pass them on.
+            KeyEvent.KEYCODE_D, KeyEvent.KEYCODE_SPACE -> state.toggle()
+            KeyEvent.KEYCODE_T, KeyEvent.KEYCODE_ENTER -> runtime.terminal(null, "Terminal")
+            // The panel swiping down opens, and closed again: it comes from above, as the drawer from the bar.
+            KeyEvent.KEYCODE_DPAD_DOWN ->
+                if (state.pulled != null) {
+                    state.closePull()
+                } else {
+                    state.openPull(runtime.panelOf(runtime.gestures.swipeDown) ?: return false)
+                }
             KeyEvent.KEYCODE_A -> state.promptRequest = PromptRequest.Type
             in KeyEvent.KEYCODE_1..KeyEvent.KEYCODE_9 -> state.requestedPage = keyCode - KeyEvent.KEYCODE_0
             else -> return false

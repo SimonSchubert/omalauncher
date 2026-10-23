@@ -70,7 +70,7 @@ data class Lst(
 ) : Value {
     override val truthy get() = items.isNotEmpty()
 
-    override fun toString() = items.joinToString(", ", "[", "]")
+    override fun toString() = StringBuilder().also { appendText(this, it) }.toString()
 }
 
 data class Obj(
@@ -78,7 +78,48 @@ data class Obj(
 ) : Value {
     override val truthy get() = fields.isNotEmpty()
 
-    override fun toString() = fields.entries.joinToString(", ", "{", "}") { "${it.key}: ${it.value}" }
+    override fun toString() = StringBuilder().also { appendText(this, it) }.toString()
+}
+
+/**
+ * The most text one value may hold, in characters. Doubling a text or a list of lists in a reduce takes a few
+ * steps of the budget and gigabytes of memory: a widget's value mustn't take the launcher down with an OutOfMemoryError.
+ */
+const val MAX_TEXT = 4 shl 20
+
+/** Throws when text of [length] characters would be over [MAX_TEXT]. */
+fun checkText(length: Int) {
+    if (length > MAX_TEXT) throw WidgetError("text over ${MAX_TEXT shr 20}M characters")
+}
+
+/** A list's or map's text, "[1, 2]" and "{a: 1}", stopping at [MAX_TEXT]: a list of itself repeated is small but its text isn't. */
+private fun appendText(
+    v: Value,
+    out: StringBuilder,
+) {
+    when (v) {
+        is Lst -> {
+            out.append('[')
+            v.items.forEachIndexed { i, x ->
+                if (i > 0) out.append(", ")
+                appendText(x, out)
+            }
+            out.append(']')
+        }
+        is Obj -> {
+            out.append('{')
+            var first = true
+            for ((k, x) in v.fields) {
+                if (!first) out.append(", ")
+                first = false
+                out.append(k).append(": ")
+                appendText(x, out)
+            }
+            out.append('}')
+        }
+        else -> out.append(v.toString())
+    }
+    checkText(out.length)
 }
 
 /** A gradient for fills: linear from (x0,y0) to (x1,y1), or radial around (x0,y0) with radius x1. */

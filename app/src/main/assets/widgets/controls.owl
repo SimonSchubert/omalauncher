@@ -1,0 +1,414 @@
+panel "controls" {
+  // A control center for swiping down on home: the phone's switches, the volume, what's playing, the next alarm and
+  // the notifications. Pick it in settings › gestures, or set gestures.swipe-down = "controls.owl" in style.toml.
+  // Like the drawer it's yours to change: ask your agent to edit it.
+  meta { description: "Swipe down for the phone's switches, volume, media, the next alarm and your notifications"; version: "1.0"; license: "MIT"; category: "system"; owl: 13 }
+  asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
+  source m = android.modes
+  source v = android.volume
+  source md = android.media
+  source al = android.alarm
+  // For the dot on the settings button while system updates wait, as the drawer shows it.
+  source d = android.drawer
+  source n = android.notifications
+  source now = clock every 30s
+
+  // How much the panel covers home: 1 solid, 0 clear. Its sections have a background of their own, so they stay readable.
+  opacity: 0.97
+
+  // The notification being answered, by key: its reply field shows under it.
+  state replying = ""
+  // The notification being swiped, by key, and how far; and the one let go of to dismiss, hidden until it's gone.
+  state dragging = ""
+  state dragX = 0
+  state swiped = ""
+  // The toggle whose popup a long-press opened: dnd lists its levels, torch has a brightness slider.
+  state menu = ""
+  // When what "snooze 1h" snoozed comes back, for the header to say; unsnooze brings them back sooner.
+  state snoozedUntil = 0 persist
+
+  let wide = screenWidth ?? 400
+  at snoozedUntil { snoozedUntil = 0 }
+  // Whole minutes, rounded up: now ticks every 30 s, so seconds would lag.
+  let snoozeLeft = ceil((snoozedUntil - now) / 60)
+  // Only switches a tap flips right here. Android lets a launcher read wifi, bluetooth, airplane mode and the rest but
+  // not switch them, and a tap that only opens Android's own panel for one isn't a switch.
+  let toggles = [
+      {name: "torch", on: m.torch == true, sub: m.torch == null ? "none" : (m.torch ? (m.torchLevel != null ? "${m.torchLevel}%" : "on") : "off"), act: m.torch == null ? null : "torch"},
+      {name: "dnd", on: m.dnd == true, sub: m.dndAllows == "all" ? "off" : (m.dndAllows == "none" ? "silence" : m.dndAllows), act: "dnd"},
+      {name: "sound", on: !v.muted, sub: v.muted ? "muted" : "${v.level}%", act: "sound"}
+    ]
+  // What long-pressing dnd offers, by what android.modes' dndAllows says gets through; dnd(...) takes the same words.
+  let dndLevels = [
+      {level: "all", name: "off", about: "everything gets through"},
+      {level: "priority", name: "priority only", about: "only the calls, messages and apps your Do Not Disturb settings let through, and alarms"},
+      {level: "alarms", name: "alarms only", about: "alarms, and sound from what's playing; calls and messages stay quiet"},
+      {level: "none", name: "total silence", about: "nothing, alarms included"}
+    ]
+  let clearable = count(n.items ?? [], i => i.clearable)
+  // What's playing, as the now playing widget shows it: art, the app with a live equalizer and drawn buttons.
+  // Drawn, not glyphs: the launcher's icon font only carries weather symbols. Play/pause is a solid disc with the
+  // glyph in the background color.
+  component Control(kind, big = false) {
+    Box {
+      size: big ? 44 : 36
+      onTap: { haptic(); media(kind) }
+      Canvas {
+        let cx = width / 2
+        let cy = height / 2
+        let d = min(width, height)
+        if kind == "toggle" {
+          circle(cx, cy, d / 2, fill: foreground)
+          if md.playing == true {
+            rect(cx - d * 0.15, cy - d * 0.18, d * 0.11, d * 0.36, radius: d * 0.03, fill: background)
+            rect(cx + d * 0.04, cy - d * 0.18, d * 0.11, d * 0.36, radius: d * 0.03, fill: background)
+          } else {
+            // The triangle's centroid sits right of its box: nudge it so it looks centered.
+            path([[cx - d * 0.12, cy - d * 0.2], [cx + d * 0.21, cy], [cx - d * 0.12, cy + d * 0.2]], closed: true, fill: background)
+          }
+        } else {
+          let dir = kind == "next" ? 1 : -1
+          path([[cx - d * 0.19 * dir, cy - d * 0.2], [cx + d * 0.1 * dir, cy], [cx - d * 0.19 * dir, cy + d * 0.2]], closed: true, fill: foreground)
+          rect(dir > 0 ? cx + d * 0.1 : cx - d * 0.18, cy - d * 0.2, d * 0.08, d * 0.4, radius: d * 0.03, fill: foreground)
+        }
+      }
+    }
+  }
+
+  // A small equalizer that only exists (and only animates) while something plays.
+  component Bars() {
+    Canvas {
+      width: 14
+      height: 12
+      for i in range(3) {
+        let h = 3 + (sin(time * (5 + i * 1.7) + i * 2) * 0.5 + 0.5) * (height - 3)
+        rect(i * 5, height - h, 3, h, radius: 1, color: accent)
+      }
+    }
+  }
+
+  component Art(src, d) {
+    Box {
+      size: d
+      radius: 8 * corners
+      clip: true
+      align: center
+      onTap: media("open")
+      if src != null {
+        Image { src: src; fit: cover; fill: true }
+      } else {
+        // Gradients only fill inside a Canvas, not as a background.
+        Canvas {
+          rect(0, 0, width, height, fill: linear(0, 0, width, height, [alpha(accent, 0.55), alpha(magenta, 0.35)]))
+          text("♪", width / 2, height / 2, size: d * 0.45, align: center, color: alpha(foreground, 0.85))
+        }
+      }
+    }
+  }
+
+  Column {
+    fill: true
+    gap: 12
+    padding: 16
+    scroll: true
+
+    Row {
+      fill: width
+      align: center
+      Text { text: "control"; fontSize: 28; color: accent; weight: 1 }
+      // The drawer's settings button: settings › system updates lists what the dot counts.
+      Box {
+        size: 44
+        radius: 22 * corners
+        background: surface
+        align: center
+        onTap: launcher("settings")
+        Image { src: gear; size: 22; tint: accent; label: "settings" }
+        Box { visible: d.updates > 0; align: topEnd; size: 44; padding: 8; Box { size: 8; radius: 4; background: red } }
+      }
+    }
+
+    Column {
+      fill: width
+      gap: 8
+      padding: [14, 12]
+      background: surface
+      radius: 8 * corners
+      Text { text: "toggles"; style: label }
+      // Under the toggles, as wide as the card's content.
+      Popup {
+        visible: menu == "torch"
+        onDismiss: menu = ""
+        width: wide - 56
+        gap: 8
+        padding: [12, 10]
+        Text { text: "torch brightness"; style: label }
+        if m.torchLevel != null {
+          // Dragging turns it on at that brightness; a tap on torch then switches it on and off at it.
+          Row {
+            fill: width
+            align: center
+            gap: 4
+            Text { text: "["; color: accent }
+            Slider { value: m.torchLevel; min: 5; max: 100; step: 5; live: true; color: accent; track: background; weight: 1; onChange: torch(value) }
+            Text { text: "]"; color: accent }
+            Text { text: "${m.torchLevel}%"; color: orange; width: 48; align: end }
+          }
+          Text { text: "tap torch to switch it on and off at this brightness"; style: small; color: muted }
+        } else {
+          Text { text: "this phone's torch has one brightness"; style: small; color: muted }
+        }
+      }
+      Popup {
+        visible: menu == "dnd"
+        onDismiss: menu = ""
+        width: wide - 56
+        gap: 0
+        padding: [0, 2]
+        Text { text: "do not disturb"; style: label; padding: [12, 8, 12, 4] }
+        for l in dndLevels {
+          Row {
+            fill: width
+            gap: 10
+            align: top
+            padding: [12, 8]
+            onTap: { haptic(); menu = ""; dnd(l.level) }
+            Text { text: m.dndAllows == l.level ? "●" : "○"; color: m.dndAllows == l.level ? green : muted }
+            Column {
+              gap: 2
+              weight: 1
+              Text { text: l.name; color: m.dndAllows == l.level ? green : foreground }
+              Text { text: l.about; style: small; color: muted }
+            }
+          }
+        }
+      }
+      Row {
+        fill: width
+        gap: 0
+        for t in toggles {
+          Row {
+            weight: 1
+            gap: 8
+            align: top
+            padding: [0, 4]
+            onTap: {
+              haptic()
+              if t.act == "torch" {
+                torch("toggle")
+              } else if t.act == "dnd" {
+                dnd("toggle")
+              } else if t.act == "sound" {
+                volume("toggle")
+              }
+            }
+            onLongPress: {
+              if t.act == "torch" || t.act == "dnd" {
+                haptic()
+                menu = t.act
+              }
+            }
+            Text { text: t.on ? "●" : "○"; color: t.on ? green : muted }
+            Column {
+              gap: 0
+              weight: 1
+              Text { text: t.name; color: t.on ? green : foreground; maxLines: 1 }
+              Text { text: t.sub; style: small; color: muted; maxLines: 1 }
+            }
+          }
+        }
+      }
+    }
+
+    Column {
+      fill: width
+      gap: 8
+      padding: [14, 12]
+      background: surface
+      radius: 8 * corners
+      Text { text: "levels"; style: label }
+      Row {
+        fill: width
+        align: center
+        gap: 4
+        Text { text: "volume"; width: 72 }
+        Text { text: "["; color: accent }
+        Slider { value: v.muted ? 0 : v.level; step: 100 / (v.steps ?? 15); live: true; color: accent; track: background; weight: 1; onChange: volume(value) }
+        Text { text: "]"; color: accent }
+        Text { text: v.muted ? "♪ off" : "♪ on"; color: orange; width: 56; align: end; onTap: volume("toggle") }
+      }
+    }
+
+    // Only while something plays or is paused in an app; without notification access there's nothing to show either.
+    Column {
+      visible: md.available == true && (md.title ?? "") != ""
+      fill: width
+      gap: 8
+      padding: [14, 12]
+      background: surface
+      radius: 8 * corners
+      Text { text: "media"; style: label }
+      Row {
+        fill: width
+        align: center
+        gap: 8
+        Art { src: md.art; d: 56 }
+        Column {
+          gap: 2
+          weight: 1
+          onTap: media("open")
+          Row {
+            align: center
+            gap: 6
+            if md.playing == true {
+              Bars { }
+            }
+            Text { text: lower(md.app ?? ""); style: label; color: md.playing == true ? accent : muted; maxLines: 1; weight: 1 }
+          }
+          Text { text: md.title; bold: true; maxLines: 1 }
+          Text { text: md.artist ?? ""; style: small; color: muted; maxLines: 1 }
+        }
+        Control { kind: "previous" }
+        Control { kind: "toggle"; big: true }
+        Control { kind: "next" }
+      }
+    }
+
+    Column {
+      visible: al.set == true
+      fill: width
+      gap: 8
+      padding: [14, 12]
+      background: surface
+      radius: 8 * corners
+      Text { text: "next alarm"; style: label }
+      Row {
+        fill: width
+        onTap: { if al.app != null { androidApp(al.app) } }
+        Text { text: fmtTime(al.time, "EEE HH:mm"); weight: 1 }
+        Text { text: "in " + fmtDuration(al.time - now); color: muted }
+      }
+    }
+
+    if !n.available {
+      Spacer { height: 1; fill: width; background: border }
+      // Without access, notification(...) opens the setting that grants it.
+      Text { text: "[ allow notification access ]"; color: accent; onTap: notification("open", "") }
+    } else if (n.count ?? 0) > 0 || snoozedUntil > now {
+      Spacer { height: 1; fill: width; background: border }
+      Row {
+        fill: width
+        align: center
+        Text { text: "notifications"; fontSize: 22; color: accent; weight: 1 }
+        // Hidden for an hour, then back: Android shows each again when its time is up. One that comes in meanwhile shows.
+        if snoozedUntil > now {
+          Text { text: "back in " + (snoozeLeft >= 60 ? "1h" : "${snoozeLeft}m") + " "; color: muted }
+          Text { text: "[ unsnooze ]"; color: accent; onTap: { haptic(); notification("unsnoozeAll"); snoozedUntil = 0 } }
+        } else {
+          Text {
+            text: "[ snooze 1h ]"
+            color: clearable > 0 ? accent : muted
+            onTap: {
+              if clearable > 0 {
+                notification("snoozeAll", 3600)
+                snoozedUntil = now + 3600
+              }
+            }
+          }
+        }
+      }
+    }
+
+    for item in n.items ?? [] key item.key {
+      // Swiped sideways it follows the finger and fades; let go past a third of the screen, or flicked, it's dismissed,
+      // else it springs back. Sideways only, so the panel still scrolls under a finger that lands on a notification.
+      Column {
+        fill: width
+        gap: 8
+        visible: item.key != swiped
+        offset: [dragging == item.key ? dragX : 0, 0]
+        animate offset: spring(0.8, 400)
+        opacity: dragging == item.key ? max(0.2, 1 - abs(dragX) / wide) : 1
+        drag: horizontal
+        onDrag: {
+          if item.clearable {
+            dragging = item.key
+            dragX = dragX + dx
+          }
+        }
+        onDragEnd: {
+          if dragging == item.key && (abs(dragX) > wide / 3 || abs(vx) > 1000 && sign(vx) == sign(dragX)) {
+            swiped = item.key
+            notification("dismiss", item.key)
+          }
+          dragging = ""
+          dragX = 0
+        }
+        // Tapped anywhere it opens, and keys stop on it once. Held, or Menu on it, dismisses it, as a swipe does.
+        Row {
+          fill: width
+          gap: 10
+          align: top
+          onTap: notification("open", item.key)
+          onLongPress: {
+            if item.clearable {
+              swiped = item.key
+              notification("dismiss", item.key)
+            }
+          }
+          Text { text: lower(item.app); color: muted; width: 84; maxLines: 1 }
+          Text {
+            spans: [{text: item.title, color: foreground}, item.text != "" ? "  " : "", {text: item.text, color: muted}]
+            maxLines: 2
+            weight: 1
+          }
+          Text { text: fmtAgo(item.time, now); style: small; color: muted; width: 36; align: end }
+        }
+        // Its buttons, as the shade shows them: one that takes text opens a field for the answer.
+        if len(item.actions) > 0 {
+          Row {
+            fill: width
+            gap: 4
+            padding: [94, 0, 0, 0]
+            for a, i in item.actions {
+              Text {
+                text: "[ ${lower(a.title)} ]"
+                style: small
+                color: accent
+                maxLines: 1
+                onTap: {
+                  if a.reply {
+                    replying = replying == item.key ? "" : item.key
+                  } else {
+                    notification("action", item.key, i)
+                  }
+                }
+              }
+            }
+          }
+        }
+        if replying == item.key {
+          Input {
+            fill: width
+            padding: [94, 0, 0, 0]
+            placeholder: "reply to ${item.title}"
+            focus: true
+            clear: true
+            onSubmit: {
+              notification("reply", item.key, value)
+              replying = ""
+            }
+          }
+        }
+      }
+    }
+
+    if clearable > 0 {
+      Row {
+        fill: width
+        Spacer { weight: 1 }
+        Text { text: "[ clear ]"; color: accent; onTap: notification("clear") }
+      }
+    }
+  }
+}
