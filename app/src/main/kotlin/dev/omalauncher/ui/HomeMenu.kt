@@ -24,6 +24,11 @@ import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.newOwlCommand
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.text.style.TextOverflow
 
 @Composable
 internal fun EditBar(content: @Composable () -> Unit) {
@@ -113,13 +118,37 @@ fun HomeMenu(
                 },
             )
         }
+        if (runtime.wm.appWindows.isNotEmpty()) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
+                BasicText("running windows", style = Mono.copy(fontSize = TextSize.Item))
+                BasicText(
+                    "Return to an existing window, not a new app launch.",
+                    style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+                )
+            }
+            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(max = 240.dp)) {
+                items(runtime.wm.appWindows) { window ->
+                    val handle = runtime.wm.handleOf(window) ?: return@items
+                    val name = runtime.displayName(window.appId, window.title)
+                    val number = handle.substringAfterLast('-')
+                    val title = window.title.takeIf { it.isNotEmpty() && it != name }
+                    MenuItem(
+                        label = "#$number · $name",
+                        detail = title,
+                        clickLabel = "Return to $name${title?.let { ", $it" } ?: ""}, window $number",
+                    ) {
+                        if (runtime.openWindow(window)) state.homeMenuOpen = false
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
 private fun Menu(
     onDismiss: () -> Unit,
-    content: @Composable () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(
         Modifier
@@ -144,12 +173,31 @@ private fun Menu(
 @Composable
 private fun MenuItem(
     label: String,
+    detail: String? = null,
+    clickLabel: String? = null,
     onClick: () -> Unit,
 ) {
     Box(
         Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClickLabel = clickLabel, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) { BasicText(label, style = Mono.copy(fontSize = TextSize.Item)) }
+    ) {
+        Column {
+            BasicText(
+                label,
+                style = Mono.copy(fontSize = TextSize.Item),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (detail != null) {
+                BasicText(
+                    detail,
+                    style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
 }

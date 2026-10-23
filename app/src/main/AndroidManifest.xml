@@ -93,7 +93,7 @@
             android:theme="@style/Theme.Omalauncher.Window"
             android:autoRemoveFromRecents="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
-            android:documentLaunchMode="always"
+            android:documentLaunchMode="intoExisting"
             android:exported="false"
             android:resizeableActivity="true"
             android:windowSoftInputMode="adjustResize|stateAlwaysHidden" />

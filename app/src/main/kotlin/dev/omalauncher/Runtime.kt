@@ -68,6 +68,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.WeakHashMap
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
@@ -172,24 +173,7 @@ class Runtime(
         // A terminal shown again after the text size changed catches up, with foot's own zoom keys.
         wm.created = { window -> if (followsTerminalFont(window.appId)) terminalFont.track(window) }
         wm.focusGained = { window -> wm.zoom(window, terminalFont.catchUp(window)) }
-        wm.openAppWindow = { handle ->
-            // Recents uses the activity's manifest label, not the task description's; see the aliases in the manifest.
-            val window = wm.windowByHandle(handle)
-            val name = window?.let { displayName(it.appId, it.title) }
-            val activity =
-                when (name) {
-                    "Terminal" -> "TerminalWindow"
-                    "btop" -> "BtopWindow"
-                    else -> agentOf(window?.appId.orEmpty(), name)?.windowAlias ?: "LinuxWindowActivity"
-                }
-            InstantActivity.startInstantly(
-                context,
-                Intent()
-                    .setClassName(context, "dev.omalauncher.$activity")
-                    .setData(Uri.parse("omarchy://window/$handle"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
-            )
-        }
+        wm.openAppWindow = { handle -> wm.windowByHandle(handle)?.let { openWindowActivity(it, handle) } }
     }
 
     /** The launcher first (it never waits for Linux), then Linux if it's installed or an install was started. */
@@ -557,19 +541,51 @@ class Runtime(
         // all share the app_id org.quickshell, so their window title, which is their name, decides.
         wm.appWindows
             .firstOrNull { (it.appId.isNotEmpty() && app.matches(it.appId)) || it.title.equals(app.name, ignoreCase = true) }
-            ?.let { if (bringToFront(it)) return }
+            ?.let { if (openWindow(it)) return }
         launch(app.exec)
     }
 
-    /** Moves [window]'s Android task to the front; false if it has none (yet). */
-    private fun bringToFront(window: XdgToplevel): Boolean {
+    /** Foregrounds or reattaches the same live, non-embedded window. Main thread only. */
+    fun openWindow(window: XdgToplevel): Boolean {
+        if (window !in wm.appWindows) return false
         val handle = wm.handleOf(window) ?: return false
+        if (wm.windowByHandle(handle) !== window) return false
         val task =
             context.getSystemService(ActivityManager::class.java).appTasks.firstOrNull {
-                runCatching { it.taskInfo?.baseIntent?.data?.lastPathSegment }.getOrNull() == handle
-            } ?: return false
-        // The task may have gone since it was listed.
-        return runCatching { task.moveToFront() }.isSuccess
+                val data = runCatching { it.taskInfo?.baseIntent?.data }.getOrNull()
+                data?.scheme == "omarchy" && data.host == "window" && data.path == "/$handle"
+            }
+        // A task can disappear between enumeration and moveToFront; keep the compositor window.
+        if (task != null && runCatching { task.moveToFront() }.isSuccess) return true
+        if (window !in wm.appWindows || wm.windowByHandle(handle) !== window) return false
+        openWindowActivity(window, handle)
+        return true
+    }
+
+    // Document task matching includes the component, so a retitle must not change its alias.
+    private val windowActivities = WeakHashMap<XdgToplevel, String>()
+
+    private fun openWindowActivity(
+        window: XdgToplevel,
+        handle: String,
+    ) {
+        // Recents uses the activity's manifest label, not the task description's; see the aliases in the manifest.
+        val activity =
+            windowActivities.getOrPut(window) {
+                val name = displayName(window.appId, window.title)
+                when (name) {
+                    "Terminal" -> "TerminalWindow"
+                    "btop" -> "BtopWindow"
+                    else -> agentOf(window.appId, name)?.windowAlias ?: "LinuxWindowActivity"
+                }
+            }
+        InstantActivity.startInstantly(
+            context,
+            Intent()
+                .setClassName(context, "dev.omalauncher.$activity")
+                .setData(Uri.parse("omarchy://window/$handle"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT),
+        )
     }
 
     /** The name to show for a Linux window: launch name, then .desktop entry, then its title. */
