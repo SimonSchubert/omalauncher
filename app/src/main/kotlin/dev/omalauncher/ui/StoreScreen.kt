@@ -153,7 +153,7 @@ fun StoreScreen(
                                 showDetail(detail, pane)
                             } else {
                                 Box(pane, contentAlignment = Alignment.Center) {
-                                    BasicText("pick ${if (kind == OwlKind.App) "an app" else "a ${kind.word}"} to see what it installs and runs", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                                    BasicText(UiText.t(if (kind == OwlKind.App) "pick an app to see what it installs and runs" else "pick a %s to see what it installs and runs", UiText.t(kind.word)), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                                 }
                             }
                         }
@@ -252,12 +252,12 @@ private fun StoreList(
                 .let { l -> if (filter.tab == NEW) l.sortedByDescending { it.added } else l }
         val updates = installed.count { market.hasUpdate(it) }
 
-        SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = "search ${market.entries.size} $noun")
+        SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = UiText.t("search %s %s", market.entries.size, UiText.t(noun)))
         Spacer(Modifier.height(8.dp))
         // Scrolls under the panel's padding, up to its frame or, side by side, the divider.
         Row(Modifier.bleed(PanelPadding).horizontalScroll(rememberScrollState()).padding(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((name, n) in tabs) {
-                val label = if (name == INSTALLED && updates > 0) "$name $n · $updates↑" else "$name $n"
+                val label = if (name == INSTALLED && updates > 0) "${UiText.t(name)} $n · $updates↑" else "${UiText.t(name)} $n"
                 Chip(label, selected = filter.tab == name) { filter.tab = name }
             }
         }
@@ -270,9 +270,9 @@ private fun StoreList(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (market.kind == OwlKind.Widget && filter.tab == ALL && q.isEmpty()) {
-                item(key = "builtin", span = { GridItemSpan(maxLineSpan) }) { Caption("built in") }
+                item(key = "builtin", span = { GridItemSpan(maxLineSpan) }) { Caption(UiText.t("built in")) }
                 item(key = "terminal") {
-                    BuiltInEntry("terminal", "6x4 · a shell", added = false, page = page) {
+                    BuiltInEntry("terminal", UiText.t("6x4 · a shell"), added = false, page = page) {
                         scope.launch {
                             engine.addTerminalWidget(page)
                             onDismiss()
@@ -282,7 +282,7 @@ private fun StoreList(
                 items(agents, key = { "agent:" + it.bin }) { agent ->
                     BuiltInEntry(
                         agent.name,
-                        "6x6 · runs ${agent.command}",
+                        UiText.t("6x6 · runs %s", agent.command),
                         added = engine.hasAgentWidget(agent),
                         page = page,
                     ) {
@@ -295,13 +295,13 @@ private fun StoreList(
             }
             item(key = "catalog", span = { GridItemSpan(maxLineSpan) }) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Caption("reviewed $noun from github.com/${Market.REPO}")
+                    Caption(UiText.t("reviewed %s from github.com/%s", UiText.t(noun), Market.REPO))
                     when {
                         market.loading && market.entries.isEmpty() -> BasicText("loading…", style = Mono.copy(color = Palette.muted))
                         market.error != null && market.entries.isEmpty() -> BasicText(market.error.orEmpty(), style = Mono.copy(color = Palette.red))
-                        market.entries.isEmpty() -> BasicText("no $noun yet", style = Mono.copy(color = Palette.muted))
-                        shown.isEmpty() && q.isEmpty() && filter.tab == NEW -> BasicText("no new $noun", style = Mono.copy(color = Palette.muted))
-                        shown.isEmpty() -> BasicText("nothing matches \"${filter.query.trim()}\"", style = Mono.copy(color = Palette.muted))
+                        market.entries.isEmpty() -> BasicText(UiText.t("no %s yet", UiText.t(noun)), style = Mono.copy(color = Palette.muted))
+                        shown.isEmpty() && q.isEmpty() && filter.tab == NEW -> BasicText(UiText.t("no new %s", UiText.t(noun)), style = Mono.copy(color = Palette.muted))
+                        shown.isEmpty() -> BasicText(UiText.t("nothing matches \"%s\"", filter.query.trim()), style = Mono.copy(color = Palette.muted))
                     }
                 }
             }
@@ -325,7 +325,7 @@ private val ScreenHeight = 320.dp
 private const val PHONE_RATIO = 0.45f
 
 @Composable
-private fun Caption(text: String) = BasicText(text, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+private fun Caption(text: String) = BasicText(UiText.t(text), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
 
 @Composable
 private fun Chip(
@@ -364,9 +364,9 @@ private fun BuiltInEntry(
         BasicText(name, style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
         BasicText(details, style = small, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (added) {
-            BasicText("✓ on home", style = small.copy(color = Palette.green), maxLines = 1)
+            BasicText(UiText.t("✓ on home"), style = small.copy(color = Palette.green), maxLines = 1)
         } else {
-            BasicText("tap to add to page $page", style = small, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            BasicText(UiText.t("tap to add to page %s", page), style = small, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -452,9 +452,9 @@ private fun Card(
         val (status, color) =
             when {
                 busy != null -> busy to Palette.accent
-                update -> "update available" to Palette.accent
-                installed -> "✓ installed" to Palette.green
-                !e.supported -> "needs a newer launcher" to Palette.red
+                update -> UiText.t("update available") to Palette.accent
+                installed -> UiText.t("✓ installed") to Palette.green
+                !e.supported -> UiText.t("needs a newer launcher") to Palette.red
                 !linux && e.needsLinux -> "needs linux" to Palette.muted
                 else -> "${e.category ?: OTHER}${e.size?.let { " · ${it.first}x${it.second}" } ?: ""}" to Palette.muted
             }
@@ -555,17 +555,17 @@ private fun Detail(
         Spacer(Modifier.height(4.dp))
         when {
             busy != null -> BasicText(busy, style = Mono.copy(color = Palette.accent))
-            !e.supported -> BasicText("needs a newer launcher (owl ${e.owl}); update the launcher to install it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
+            !e.supported -> BasicText(UiText.t("needs a newer launcher (owl %s); update the launcher to install it", e.owl), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
             // Settings leaves an edited one alone; here it's updated knowing what goes.
             update && market.edited(e) ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     BasicText(
-                        if (installed?.sha256 == null) "it may have your changes, and updating replaces them" else "you changed it, and updating replaces your changes",
+                        if (installed?.sha256 == null) UiText.t("it may have your changes, and updating replaces them") else UiText.t("you changed it, and updating replaces your changes"),
                         style = Mono.copy(color = Palette.red, fontSize = TextSize.Small),
                     )
-                    BracketAction("update anyway ${installed?.version} → ${e.version}", Palette.accent, Modifier.passesKeys(), onInstall)
+                    BracketAction(UiText.t("update anyway %s → %s", installed?.version, e.version), Palette.accent, Modifier.passesKeys(), onInstall)
                 }
-            update -> BracketAction("update ${installed?.version} → ${e.version}", Palette.accent, Modifier.passesKeys(), onInstall)
+            update -> BracketAction(UiText.t("update %s → %s", installed?.version, e.version), Palette.accent, Modifier.passesKeys(), onInstall)
             // An app opens from here, unless it waits for Linux.
             installed != null && market.kind == OwlKind.App && (linux || !e.needsLinux) ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -577,8 +577,8 @@ private fun Detail(
             else ->
                 BracketAction(
                     when (market.kind) {
-                        OwlKind.Widget -> "add to page $page"
-                        OwlKind.Face -> "add as a face"
+                        OwlKind.Widget -> UiText.t("add to page %s", page)
+                        OwlKind.Face -> UiText.t("add as a face")
                         OwlKind.App, OwlKind.Panel, OwlKind.Keybar -> "install"
                     },
                     Palette.accent,
@@ -593,7 +593,7 @@ private fun Detail(
         Spacer(Modifier.height(4.dp))
         InstallDisclosure(e.requires, e.commands) {
             if (market.changedSinceApproval(e)) {
-                BasicText("its commands or packages changed since the version you approved", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
+                BasicText(UiText.t("its commands or packages changed since the version you approved"), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
             }
         }
     }
@@ -603,14 +603,16 @@ private fun Detail(
 @Composable
 internal fun AddedMark(kind: OwlKind) =
     BasicText(
-        when (kind) {
-            OwlKind.Widget -> "✓ on your home screen"
-            OwlKind.Face -> "✓ left of your first page"
-            OwlKind.App -> "✓ in your app drawer"
-            OwlKind.Panel -> "✓ in gesture settings"
-            // Shown only as keybar.owl, the file's name in the widgets folder.
-            OwlKind.Keybar -> "✓ in your widgets folder"
-        },
+        UiText.t(
+            when (kind) {
+                OwlKind.Widget -> "✓ on your home screen"
+                OwlKind.Face -> "✓ left of your first page"
+                OwlKind.App -> "✓ in your app drawer"
+                OwlKind.Panel -> "✓ in gesture settings"
+                // Shown only as keybar.owl, the file's name in the widgets folder.
+                OwlKind.Keybar -> "✓ in your widgets folder"
+            },
+        ),
         style = Mono.copy(color = Palette.green),
     )
 
@@ -619,9 +621,9 @@ internal fun AddedMark(kind: OwlKind) =
 internal fun NeedsLinuxNote(app: Boolean) =
     BasicText(
         if (app) {
-            "needs Linux: it runs commands in Arch, so it shows in the app drawer once you install Linux in settings"
+            UiText.t("needs Linux: it runs commands in Arch, so it shows in the app drawer once you install Linux in settings")
         } else {
-            "needs Linux: it runs commands in Arch, so it waits as a placeholder until you install Linux in settings"
+            UiText.t("needs Linux: it runs commands in Arch, so it waits as a placeholder until you install Linux in settings")
         },
         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
     )
@@ -636,12 +638,12 @@ internal fun InstallDisclosure(
     commands: List<String>,
     notice: @Composable () -> Unit = {},
 ) {
-    val packages = requires.entries.joinToString("; ") { (m, l) -> "$m: ${l.joinToString(", ")}" }.ifEmpty { "none" }
+    val packages = requires.entries.joinToString("; ") { (m, l) -> "$m: ${l.joinToString(", ")}" }.ifEmpty { UiText.t("none") }
     // A stop for keys, at the end of a page that may have nothing else to scroll it there.
     Column(Modifier.keyScrolled(around = true), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        BasicText("installs packages: $packages", style = Mono.copy(fontSize = TextSize.Small))
+        BasicText(UiText.t("installs packages: %s", packages), style = Mono.copy(fontSize = TextSize.Small))
         notice()
-        BasicText(if (commands.isEmpty()) "runs no commands" else "runs these commands in Arch:", style = Mono.copy(fontSize = TextSize.Small))
+        BasicText(if (commands.isEmpty()) UiText.t("runs no commands") else UiText.t("runs these commands in Arch:"), style = Mono.copy(fontSize = TextSize.Small))
     }
     for (c in commands) CodeBlock(c.trimEnd())
 }

@@ -154,7 +154,7 @@ fun LicensesScreen(onDismiss: () -> Unit) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 BasicText(
-                    "Omalauncher ${BuildConfig.VERSION_NAME} · © 2026 Simon Schubert\n\nIt includes the open source software below.",
+                    UiText.t("Omalauncher %s · © 2026 Simon Schubert\n\nIt includes the open source software below.", BuildConfig.VERSION_NAME),
                     style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
                 )
@@ -167,7 +167,7 @@ fun LicensesScreen(onDismiss: () -> Unit) {
                     Row(Modifier.clickable { open = if (expanded) null else c.name }, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             BasicText(c.name, style = Mono.copy(fontSize = TextSize.Item))
-                            BasicText("${c.license} · ${c.use}", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                            BasicText("${c.license} · ${UiText.t(c.use)}", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                         }
                         Symbol(if (expanded) Glyph.ChevronDown else Glyph.ChevronRight, Palette.accent, fontSize = TextSize.Title)
                     }

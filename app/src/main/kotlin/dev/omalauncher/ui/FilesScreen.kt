@@ -125,7 +125,7 @@ fun FilesScreen(
             try {
                 FileProvider.getUriForFile(context, context.packageName + ".files", file)
             } catch (e: IllegalArgumentException) {
-                return toast("can't hand ${file.name} to other apps")
+                return toast(UiText.t("can't hand %s to other apps", file.name))
             }
         val mime = mimeOf(file.name) ?: "*/*"
         val intent =
@@ -137,7 +137,7 @@ fun FilesScreen(
         try {
             context.startActivity(Intent.createChooser(intent, file.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: ActivityNotFoundException) {
-            toast("no app can open ${file.name}")
+            toast(UiText.t("no app can open %s", file.name))
         }
     }
 
@@ -151,7 +151,7 @@ fun FilesScreen(
         try {
             fs.host(entry.path).also { if (!it.exists()) throw IOException("it leads to nothing") }
         } catch (e: IOException) {
-            toast("can't open ${entry.name}: ${e.message}")
+            toast(UiText.t("can't open %s: %s", entry.name, e.message))
             null
         }
 
@@ -196,7 +196,7 @@ fun FilesScreen(
             },
             title = {
                 when {
-                    selected.isNotEmpty() -> PanelTitle("${selected.size} selected")
+                    selected.isNotEmpty() -> PanelTitle(UiText.t("%s selected", selected.size))
                     q != null -> {
                         val focus = remember { FocusRequester() }
                         LaunchedEffect(Unit) { focus.requestFocus() }
@@ -211,7 +211,7 @@ fun FilesScreen(
                             modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
                             decorationBox = { inner ->
                                 Box {
-                                    if (q.isEmpty()) BasicText("filter this folder", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
+                                    if (q.isEmpty()) BasicText(UiText.t("filter this folder"), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
                                     inner()
                                 }
                             },
@@ -257,7 +257,7 @@ fun FilesScreen(
                     shown == null -> {}
                     shown.isEmpty() ->
                         BasicText(
-                            if (query.isNullOrBlank()) "empty folder" else "nothing matches",
+                            if (query.isNullOrBlank()) UiText.t("empty folder") else UiText.t("nothing matches"),
                             Modifier.align(Alignment.Center),
                             style = Mono.copy(color = Palette.muted),
                         )
@@ -357,8 +357,8 @@ fun FilesScreen(
                 operate { fs.rename(d.entry.path, name) }
             }
         is FileDialog.Delete -> {
-            val what = if (d.paths.size == 1) d.paths[0].substringAfterLast('/') else "${d.paths.size} items"
-            ConfirmDialog("delete $what?", "This can't be undone.", "delete", onDismiss = { dialog = null }) {
+            val what = if (d.paths.size == 1) UiText.t("delete %s?", d.paths[0].substringAfterLast('/')) else UiText.t("delete %s items?", d.paths.size)
+            ConfirmDialog(what, "This can't be undone.", "delete", onDismiss = { dialog = null }) {
                 dialog = null
                 operate { d.paths.forEach(fs::delete) }
             }

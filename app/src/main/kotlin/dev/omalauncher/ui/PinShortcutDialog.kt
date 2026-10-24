@@ -35,7 +35,7 @@ internal fun PinShortcutDialog(
 ) {
     val icon by produceState<ImageBitmap?>(null) { value = withContext(Dispatchers.IO) { loadIcon() } }
     DialogFrame(onDismiss) {
-        BasicText("add to home screen?", style = Mono.copy(fontSize = TextSize.Title))
+        BasicText(UiText.t("add to home screen?"), style = Mono.copy(fontSize = TextSize.Title))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             icon?.let { Image(it, label, Modifier.size(52.dp)) }
                 ?: IconBadge(52.dp, Palette.background) {
@@ -43,7 +43,7 @@ internal fun PinShortcutDialog(
                 }
             Column {
                 BasicText(label, style = Mono.copy(fontSize = TextSize.Large), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                from?.let { BasicText("from $it", style = Mono.copy(color = Palette.muted), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                from?.let { BasicText(UiText.t("from %s", it), style = Mono.copy(color = Palette.muted), maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

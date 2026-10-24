@@ -325,9 +325,9 @@ internal fun PromptBar(
                         if (shown.isEmpty()) {
                             val hint =
                                 when {
-                                    listening -> "listening…"
-                                    !linux || agent == null -> "open an app…"
-                                    else -> "open an app or ask ${agent.bin}…"
+                                    listening -> UiText.t("listening…")
+                                    !linux || agent == null -> UiText.t("open an app…")
+                                    else -> UiText.t("open an app or ask %s…", agent.bin)
                                 }
                             BasicText(hint, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Item), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
@@ -336,7 +336,7 @@ internal fun PromptBar(
                     },
                 )
                 // The drawer says what its Enter does, with its `enter`.
-                val enter = drawer()?.enterHint() ?: "⏎ ask"
+                val enter = drawer()?.enterHint() ?: UiText.t("⏎ ask")
                 if (text.isNotBlank() && !listening && enter.isNotEmpty()) {
                     // Says what Enter does, so opening an app instead of asking is never a surprise.
                     Box(
@@ -492,7 +492,7 @@ private fun AgentName(
             .padding(start = 10.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BasicText(agent?.bin ?: "agent", style = Mono.copy(color = if (agent == null) Palette.muted else Palette.accent))
+        BasicText(agent?.bin ?: UiText.t("agent"), style = Mono.copy(color = if (agent == null) Palette.muted else Palette.accent))
         Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 4.dp))
     }
 }
@@ -525,7 +525,7 @@ private fun AgentsMenu(
                     onDismiss()
                     onManage()
                 }.padding(horizontal = 10.dp, vertical = 10.dp),
-        ) { BasicText("  manage agents…", style = Mono.copy(color = Palette.muted)) }
+        ) { BasicText(UiText.t("  manage agents…"), style = Mono.copy(color = Palette.muted)) }
     }
 }
 

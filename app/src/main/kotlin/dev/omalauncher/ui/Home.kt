@@ -491,16 +491,18 @@ private fun FaceInvite(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            BasicText("a face of your own", style = Mono.copy(color = Palette.accent))
+            BasicText(UiText.t("a face of your own"), style = Mono.copy(color = Palette.accent))
             // The theme's own text color: muted is too faint on some themes' card.
             BasicText(
-                "This page is yours to fill with a face: a feed, a dashboard, a start page, a game. Say what you want and " +
-                    "${agent ?: "an agent"} builds it here, full screen.",
+                UiText.t(
+                    "This page is yours to fill with a face: a feed, a dashboard, a start page, a game. Say what you want and %s builds it here, full screen.",
+                    agent?.lowercase() ?: UiText.t("an agent"),
+                ),
                 style = Mono,
             )
             // Pulled left by the buttons' own padding, so the first bracket lines up with the text.
             Column(Modifier.offset(x = (-8).dp)) {
-                BracketAction("create with ${agent?.lowercase() ?: "an agent"}", Palette.accent, onClick = onCreate)
+                BracketAction(UiText.t("create with %s", agent?.lowercase() ?: UiText.t("an agent")), Palette.accent, onClick = onCreate)
                 BracketAction("browse store", Palette.accent, onClick = onBrowse)
             }
         }

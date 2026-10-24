@@ -76,9 +76,9 @@ internal fun WidgetTile(
         } else if (instance != null && needs.isNotEmpty()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 BasicText(spec.name, style = Mono.copy(color = Palette.muted))
-                BasicText("needs ${needs.joinToString(", ")}", style = Mono)
+                BasicText(UiText.t("needs %s", needs.joinToString(", ")), style = Mono)
                 when (install) {
-                    WidgetEngine.Install.Running -> BasicText("installing…", style = Mono.copy(color = Palette.accent))
+                    WidgetEngine.Install.Running -> BasicText(UiText.t("installing…"), style = Mono.copy(color = Palette.accent))
                     is WidgetEngine.Install.Failed -> {
                         BasicText(install.log.lines().lastOrNull { it.isNotBlank() }.orEmpty(), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small), maxLines = 2)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -117,9 +117,9 @@ private fun LinuxPlaceholder(
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         BasicText(name, style = Mono.copy(color = Palette.muted), maxLines = 1)
         Spacer(Modifier.weight(1f))
-        BasicText("needs Linux", style = Mono.copy(color = Palette.accent))
+        BasicText(UiText.t("needs Linux"), style = Mono.copy(color = Palette.accent))
         BasicText(
-            "runs commands in the optional Arch Linux",
+            UiText.t("runs commands in the optional Arch Linux"),
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -135,7 +135,7 @@ private fun TileButton(
     onClick: () -> Unit,
 ) {
     BasicText(
-        label,
+        UiText.t(label),
         Modifier
             .frame(1.dp, color, radius = 8.dp)
             .clickable(onClick = onClick)

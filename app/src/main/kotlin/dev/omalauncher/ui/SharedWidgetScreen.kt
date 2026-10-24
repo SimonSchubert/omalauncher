@@ -58,30 +58,30 @@ fun SharedWidgetScreen(
     // An app goes in the drawer rather than on a page, and a face left of page 1; known from its first word, even before it compiles.
     val kind = result?.getOrNull()?.let { OwlKind.of(it.text) } ?: OwlKind.Widget
     val app = kind == OwlKind.App
-    OverlayPanel("shared ${kind.word}", onDismiss, contentWidth = ReadingWidth) {
+    OverlayPanel(UiText.t("shared %s", UiText.t(kind.word)), onDismiss, contentWidth = ReadingWidth) {
         val result = result
         if (result == null) {
-            if (Share.pasteId(link) != null) BasicText("fetching it from ${Paste.HOST}…", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Body))
+            if (Share.pasteId(link) != null) BasicText(UiText.t("fetching it from %s…", Paste.HOST), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Body))
             return@OverlayPanel
         }
         val shared = result.getOrNull()
         if (shared == null) {
-            val why = (result.exceptionOrNull() as? ShareError)?.message ?: "it can't be read"
-            BasicText("This link doesn't hold a widget: $why.", style = Mono.copy(color = Palette.red, fontSize = TextSize.Body))
+            val why = (result.exceptionOrNull() as? ShareError)?.message ?: UiText.t("it can't be read")
+            BasicText(UiText.t("This link doesn't hold a widget: %s.", why), style = Mono.copy(color = Palette.red, fontSize = TextSize.Body))
             return@OverlayPanel
         }
         val p = shared.program
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            BasicText(shared.name.ifEmpty { if (app) "an app" else "a widget" }, style = Mono.copy(fontSize = TextSize.Title))
+            BasicText(shared.name.ifEmpty { if (app) UiText.t("an app") else UiText.t("a widget") }, style = Mono.copy(fontSize = TextSize.Title))
             if (p != null) {
                 val size = p.size?.let { " · ${it.first}x${it.second}" } ?: ""
                 val version = shared.version.takeIf { it.isNotEmpty() }?.let { " · v$it" } ?: ""
-                BasicText("shared with you$version$size · ${"%.1f".format(shared.text.toByteArray(Charsets.UTF_8).size / 1024.0)} KB", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                BasicText(UiText.t("shared with you%s%s · %s KB", version, size, "%.1f".format(shared.text.toByteArray(Charsets.UTF_8).size / 1024.0)), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                 if (shared.description.isNotEmpty()) BasicText(shared.description, style = Mono.copy(fontSize = TextSize.Body))
             }
             Spacer(Modifier.height(4.dp))
             BasicText(
-                "Only add it if you trust whoever sent it. It runs the commands below in Arch as you, with your files and the network.",
+                UiText.t("Only add it if you trust whoever sent it. It runs the commands below in Arch as you, with your files and the network."),
                 Modifier.fillMaxWidth().background(Palette.red.copy(alpha = 0.12f)).padding(8.dp),
                 style = Mono.copy(color = Palette.red, fontSize = TextSize.Small),
             )
@@ -89,13 +89,13 @@ fun SharedWidgetScreen(
             when {
                 shared.error != null -> BasicText(shared.error.orEmpty(), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
                 p != null && p.level > Compiler.LEVEL ->
-                    BasicText("needs a newer launcher (owl ${p.level}); update the launcher to add it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
+                    BasicText(UiText.t("needs a newer launcher (owl %s); update the launcher to add it", p.level), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
                 else -> {
                     val same = engine.sharedWidgetIsSame(shared)
                     when (same) {
                         true -> AddedMark(kind)
                         false ->
-                            BracketAction("replace the ${shared.name} shared before", Palette.accent) {
+                            BracketAction(UiText.t("replace the %s shared before", shared.name), Palette.accent) {
                                 scope.launch {
                                     engine.addSharedWidget(shared, page)
                                     onDismiss()
@@ -104,11 +104,11 @@ fun SharedWidgetScreen(
                         null ->
                             BracketAction(
                                 when (kind) {
-                                    OwlKind.App -> "add to app drawer"
-                                    OwlKind.Face -> "add as a face"
-                                    OwlKind.Widget -> "add to page $page"
-                                    OwlKind.Panel -> "add to gesture panels"
-                                    OwlKind.Keybar -> "add to your widgets folder"
+                                    OwlKind.App -> UiText.t("add to app drawer")
+                                    OwlKind.Face -> UiText.t("add as a face")
+                                    OwlKind.Widget -> UiText.t("add to page %s", page)
+                                    OwlKind.Panel -> UiText.t("add to gesture panels")
+                                    OwlKind.Keybar -> UiText.t("add to your widgets folder")
                                 },
                                 Palette.accent,
                             ) {
@@ -130,7 +130,7 @@ fun SharedWidgetScreen(
 
             Spacer(Modifier.height(4.dp))
             BasicText(
-                if (showSource) "hide the file" else "show the whole file",
+                UiText.t(if (showSource) "hide the file" else "show the whole file"),
                 Modifier.clickable { showSource = !showSource }.padding(vertical = 6.dp),
                 style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
             )
@@ -138,7 +138,7 @@ fun SharedWidgetScreen(
                 CodeBlock(shared.text)
             }
             BasicText(
-                "review with agent",
+                UiText.t("review with agent"),
                 Modifier.clickable { scope.launch { onReview(engine.saveForReview(shared)) } }.padding(vertical = 6.dp),
                 style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
             )

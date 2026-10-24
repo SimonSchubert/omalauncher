@@ -42,7 +42,7 @@ internal fun EditAction(
     onClick: () -> Unit,
 ) {
     Box(Modifier.clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp)) {
-        BasicText(label, style = Mono.copy(color = color, fontSize = TextSize.Body))
+        BasicText(UiText.t(label), style = Mono.copy(color = color, fontSize = TextSize.Body))
     }
 }
 
@@ -59,7 +59,7 @@ fun HomeMenu(
     if (!state.homeMenuOpen) return
     val engine = runtime.widgets
     val agent = runtime.agents.default
-    val agentName = agent?.name?.lowercase() ?: "an agent"
+    val agentName = agent?.name?.lowercase() ?: UiText.t("an agent")
     // These need Linux; without it they open its install sheet.
     val linux = runtime.bootstrap.state.collectAsState().value == LinuxState.Installed
     val scope = rememberCoroutineScope()
@@ -75,7 +75,7 @@ fun HomeMenu(
         // Settings at the top right, as in the drawer.
         Row(Modifier.fillMaxWidth()) {
             Column(Modifier.weight(1f).padding(start = 12.dp, end = 4.dp, top = 10.dp)) {
-                BasicText("create with $agentName", style = Mono.copy(fontSize = TextSize.Item))
+                BasicText(UiText.t("create with %s", agentName), style = Mono.copy(fontSize = TextSize.Item))
                 // Pulled left by the buttons' own padding, so the first bracket lines up with the label.
                 Row(Modifier.offset(x = (-8).dp)) {
                     val kinds: List<Pair<String, (String) -> String>> =
@@ -151,5 +151,5 @@ private fun MenuItem(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
-    ) { BasicText(label, style = Mono.copy(fontSize = TextSize.Item)) }
+    ) { BasicText(UiText.t(label), style = Mono.copy(fontSize = TextSize.Item)) }
 }

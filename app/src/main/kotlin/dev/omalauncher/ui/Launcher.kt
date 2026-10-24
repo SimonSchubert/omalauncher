@@ -279,10 +279,10 @@ private fun FileErrors(files: List<Pair<String, List<String>>>) {
                         .clickable { hidden = hidden + errors.map { "$name: $it" } }
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    BasicText("$name: ${if (errors.size == 1) "1 problem" else "${errors.size} problems"}", style = Mono.copy(color = Palette.red))
+                    BasicText("$name: " + (if (errors.size == 1) UiText.t("1 problem") else UiText.t("%s problems", errors.size)), style = Mono.copy(color = Palette.red))
                     for (line in errors.take(MAX_ERRORS)) BasicText(line, style = Mono.copy(fontSize = TextSize.Small))
-                    val more = if (errors.size > MAX_ERRORS) "${errors.size - MAX_ERRORS} more in errors.txt · " else ""
-                    BasicText("${more}tap to hide", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                    val more = if (errors.size > MAX_ERRORS) UiText.t("%s more in errors.txt · ", errors.size - MAX_ERRORS) else ""
+                    BasicText("$more" + UiText.t("tap to hide"), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                 }
             }
         }

@@ -76,7 +76,7 @@ fun FolderTile(
     BoxWithConstraints(
         modifier
             .tileFrame(focused)
-            .clearAndSetSemantics { contentDescription = folder.name?.let { "$it folder" } ?: "folder" }
+            .clearAndSetSemantics { contentDescription = folder.name?.let { UiText.t("%s folder", it) } ?: UiText.t("folder") }
             .pointerInput(folder.key) { detectTapGestures(onTap = { onTap() }) }
             .padding(4.dp),
     ) {
@@ -239,7 +239,7 @@ internal fun FolderPanel(
                 )
             } else {
                 BasicText(
-                    folder.name ?: "tap to name",
+                    folder.name ?: UiText.t("tap to name"),
                     style = if (folder.name == null) style.copy(color = Palette.muted) else style,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

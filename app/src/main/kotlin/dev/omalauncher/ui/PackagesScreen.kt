@@ -52,18 +52,17 @@ fun PackagesScreen(
     OverlayPanel("packages", onDismiss, contentWidth = ReadingWidth) {
         SearchField(query, onChange = { query = it }, onGo = {}, placeholder = "search packages")
         BasicText(
-            "Arch Linux ARM packages via pacman, and the AUR via yay. Installing also updates the system, so it can take a while. " +
-                "AUR packages are user-submitted and built on the device: check their PKGBUILD on aur.archlinux.org first.",
+            UiText.t("Arch Linux ARM packages via pacman, and the AUR via yay. Installing also updates the system, so it can take a while. AUR packages are user-submitted and built on the device: check their PKGBUILD on aur.archlinux.org first."),
             Modifier.padding(vertical = 8.dp),
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )
         val list = loaded?.second.orEmpty()
         val status =
             when {
-                searching -> if (query.isBlank()) "loading…" else "searching…"
-                query.isBlank() -> "installed (${list.size})"
-                list.isEmpty() -> "no packages match"
-                else -> "${list.size} results"
+                searching -> if (query.isBlank()) UiText.t("loading…") else UiText.t("searching…")
+                query.isBlank() -> UiText.t("installed (%s)", list.size)
+                list.isEmpty() -> UiText.t("no packages match")
+                else -> UiText.t("%s results", list.size)
             }
         BasicText(status, Modifier.padding(bottom = 6.dp), style = Mono.copy(color = Palette.muted))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -113,7 +112,7 @@ private fun PackageRow(
             val confirm = remember { FocusRequester() }
             when {
                 state is JobState.Working -> BasicText("${state.action}…", style = Mono.copy(color = Palette.accent))
-                pkg.installed && core -> BasicText("required", Modifier.padding(horizontal = 8.dp), style = Mono.copy(color = Palette.muted))
+                pkg.installed && core -> BasicText(UiText.t("required"), Modifier.padding(horizontal = 8.dp), style = Mono.copy(color = Palette.muted))
                 pkg.installed && confirming -> BracketAction("confirm", Palette.red, Modifier.focusRequester(confirm).passesKeys(), onRemove)
                 pkg.installed -> BracketAction("remove", Palette.red, Modifier.takesPassedKeys().passesKeys(confirm)) { confirming = true }
                 else -> BracketAction("install", Palette.accent, Modifier.takesPassedKeys().passesKeys(), onInstall)

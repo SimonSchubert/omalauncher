@@ -142,7 +142,7 @@ fun PanelFrame(
 
 /** A panel's title, in the accent color. */
 @Composable
-fun PanelTitle(text: String) = BasicText(text, style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title), maxLines = 1, overflow = TextOverflow.Ellipsis)
+fun PanelTitle(text: String) = BasicText(UiText.t(text), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title), maxLines = 1, overflow = TextOverflow.Ellipsis)
 
 /** The way back to the screen under an [OverlayPanel], for one opened from another (a settings page from settings); null for one on its own. */
 val LocalPanelBack = compositionLocalOf<(() -> Unit)?> { null }
@@ -171,7 +171,7 @@ fun PanelIcon(
     onClick: () -> Unit,
 ) {
     Box(Modifier.clip(CircleShape).clickable(onClick = onClick).padding(6.dp)) {
-        Image(icon, description, Modifier.size(20.dp).rotate(rotation), colorFilter = ColorFilter.tint(Palette.muted))
+        Image(icon, UiText.t(description), Modifier.size(20.dp).rotate(rotation), colorFilter = ColorFilter.tint(Palette.muted))
     }
 }
 
@@ -287,7 +287,7 @@ fun <T> ChoicePopup(
 fun SectionLabel(
     text: String,
     modifier: Modifier = Modifier,
-) = BasicText(text, modifier.padding(top = 12.dp, bottom = 4.dp), style = Mono.copy(color = Palette.muted))
+) = BasicText(UiText.t(text), modifier.padding(top = 12.dp, bottom = 4.dp), style = Mono.copy(color = Palette.muted))
 
 /** A [Glyph] from the launcher's Nerd Font subset, sized like text. */
 @Composable
@@ -307,7 +307,7 @@ fun BracketAction(
     onClick: () -> Unit,
 ) {
     Box(modifier.clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 6.dp)) {
-        BasicText("[ $label ]", style = Mono.copy(color = color))
+        BasicText("[ ${UiText.t(label)} ]", style = Mono.copy(color = color))
     }
 }
 
@@ -319,7 +319,7 @@ fun JobLog(
     val log =
         when (state) {
             is JobState.Working -> state.log
-            is JobState.Failed -> listOf("failed:") + state.log
+            is JobState.Failed -> listOf(UiText.t("failed:")) + state.log
             JobState.Idle -> return
         }
     if (log.isEmpty()) return
@@ -349,7 +349,7 @@ fun MenuItems(
         top()
         for ((label, action) in items) {
             BasicText(
-                label,
+                UiText.t(label),
                 Modifier
                     .fillMaxWidth()
                     .clickable {
