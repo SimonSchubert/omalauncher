@@ -16,10 +16,25 @@ import java.util.Locale
  *
  * This is a first step: moving the text into Android's string resources
  * (`values/strings.xml` and `values-ja/strings.xml`) is what the platform
- * wants, and lets the app's language be chosen apart from the phone's. Until
- * then the phone's language decides, and only Japanese is here.
+ * wants. Until then the style menu's language option decides, and only
+ * Japanese is here.
  */
 object UiText {
+    /**
+     * An explicit choice from the style menu: "ja", "en", or null to follow the phone.
+     * [Runtime] sets it from `Style.LANGUAGE` at start and whenever that setting changes.
+     */
+    @Volatile
+    private var override: String? = null
+
+    fun setLanguage(value: String) {
+        override = when (value) {
+            "japanese" -> "ja"
+            "english" -> "en"
+            else -> null
+        }
+    }
+
     private val japanese =
         mapOf(
             // The prompt bar and its agent.
@@ -41,6 +56,8 @@ object UiText {
                 "このページは自由に使えます。フィード、ダッシュボード、スタートページ、ゲームなど、フェイスを置けます。欲しいものを伝えれば %s が全画面で作ります。",
             // Settings, its rows and statuses.
             "style" to "スタイル",
+            "language" to "言語",
+            "follow the phone" to "端末の設定に従う",
             "pages" to "ページ",
             "gestures" to "ジェスチャー",
             "linux" to "Linux",
@@ -472,7 +489,12 @@ object UiText {
 
     /** [english] in Japanese on a Japanese phone, with [args] filled into its `%s`s; otherwise as it is. */
     fun t(english: String, vararg args: Any?): String {
-        val text = if (Locale.getDefault().language == "ja") japanese[english] ?: english else english
+        val speakJapanese = when (override) {
+            "ja" -> true
+            "en" -> false
+            else -> Locale.getDefault().language == "ja"
+        }
+        val text = if (speakJapanese) japanese[english] ?: english else english
         return if (args.isEmpty()) text else text.format(*args)
     }
 }

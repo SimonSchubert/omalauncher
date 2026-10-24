@@ -122,6 +122,8 @@ fun StyleScreen(
     val linux by runtime.bootstrap.state.collectAsState()
     OverlayPanel("style", onDismiss) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
+            Heading("language")
+            LanguageOption(runtime.style)
             ThemeSection(
                 store,
                 onBrowse = onBrowse,
@@ -645,6 +647,39 @@ private fun Heading(
     Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         BasicText(UiText.t(text), Modifier.weight(1f), style = Mono.copy(color = Palette.accent), softWrap = false)
         actions()
+    }
+}
+
+/** The language of the launcher's own screens; auto follows the phone. */
+@Composable
+private fun LanguageOption(style: StyleStore) {
+    val choices = listOf("auto", "english", "japanese")
+    val label: (String) -> String = {
+        when (it) {
+            "english" -> "English"
+            "japanese" -> "日本語"
+            else -> UiText.t("follow the phone")
+        }
+    }
+    var open by remember { mutableStateOf(false) }
+    val selected = style.style[Style.LANGUAGE]
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        OptionLabel("language")
+        Box(Modifier.weight(1f, fill = false)) {
+            Row(
+                Modifier
+                    .frame(1.dp, Palette.border, radius = 12.dp)
+                    .clickable { open = !open }
+                    .padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(label(selected), Modifier.weight(1f, fill = false), style = Mono.copy(color = Palette.foreground), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 6.dp))
+            }
+            if (open) {
+                ChoicePopup(choices, selected, BelowAnchorStart, onDismiss = { open = false }, onPick = { picked -> style.update { s -> s.with(Style.LANGUAGE, picked) } }, label = label)
+            }
+        }
     }
 }
 

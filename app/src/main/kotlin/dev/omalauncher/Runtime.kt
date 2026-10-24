@@ -43,6 +43,7 @@ import dev.omalauncher.ui.Gestures
 import dev.omalauncher.ui.KeyboardBridge
 import dev.omalauncher.ui.SettingsPage
 import dev.omalauncher.ui.TerminalTiles
+import dev.omalauncher.ui.UiText
 import dev.omalauncher.ui.WindowManager
 import dev.omalauncher.ui.bitmapMask
 import dev.omalauncher.ui.Palette
@@ -155,6 +156,11 @@ class Runtime(
         }
         scope.launch {
             snapshotFlow { style.style[Style.FONT] }.drop(1).collect { launcherFont.apply() }
+        }
+        // The language of the launcher's own screens; applied now and whenever it changes.
+        UiText.setLanguage(style.style[Style.LANGUAGE])
+        scope.launch {
+            snapshotFlow { style.style[Style.LANGUAGE] }.drop(1).collect { UiText.setLanguage(it) }
         }
         // The recent strip's and home's pinned apps.
         androidApps.iconsFirst = {
