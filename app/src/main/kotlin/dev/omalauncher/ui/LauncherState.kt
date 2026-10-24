@@ -120,7 +120,19 @@ class LauncherState {
     ) = composeScope?.launch { drawer.animateTo(target, spring(stiffness = stiffness)) }
         ?: scope.launch { drawer.snapTo(target) }
 
-    fun open() = animate(1f, Spring.StiffnessMediumLow)
+    /**
+     * Whether the drawer was last opened by swiping up, rather than by a tap, a key or a widget: the prompt bar
+     * leaves the keyboard down then if style.toml's gestures.swipe-up-keyboard says so.
+     */
+    var swipedOpen = false
+        private set
+
+    fun open() {
+        swipedOpen = false
+        expand()
+    }
+
+    private fun expand() = animate(1f, Spring.StiffnessMediumLow)
 
     fun close() = animate(0f, Spring.StiffnessMedium)
 
@@ -148,6 +160,7 @@ class LauncherState {
 
     fun dragBy(fraction: Float) = scope.launch {
         if (fraction != 0f) lastDragUp = fraction > 0
+        if (fraction > 0f && drawer.value == 0f) swipedOpen = true
         drawer.snapTo((drawer.value + fraction).coerceIn(0f, 1f)) }
 
     /** The swipe-down panel: 0 = up out of sight, 1 = down. Follows the finger while dragging, like [drawer]. */
@@ -202,11 +215,11 @@ class LauncherState {
     /** Settles after a drag; [velocity] is in px/s, negative = upwards. */
     fun settle(velocity: Float) {
         when {
-            velocity < -800f -> open()
+            velocity < -800f -> expand()
             velocity > 800f -> close()
             // Compose sometimes reports 0 velocity for the first gesture after resuming.
-            velocity == 0f && drawer.value > 0.05f -> if (lastDragUp) open() else close()
-            drawer.value > 0.2f -> open()
+            velocity == 0f && drawer.value > 0.05f -> if (lastDragUp) expand() else close()
+            drawer.value > 0.2f -> expand()
             else -> close()
         }
     }

@@ -11,6 +11,7 @@ is picked in settings › gestures, or in style.toml as the panel's file name (s
 ```toml
 [gestures]
 swipe-up = "my-drawer.owl"     # drawer.owl by default; "none" leaves the swipe to tapping the bar
+swipe-up-keyboard = false      # the keyboard stays down after swiping up, until the bar is tapped
 swipe-down = "controls.owl"    # "none" nothing
 ```
 

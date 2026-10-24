@@ -140,6 +140,7 @@ fun StyleScreen(
             Flag("recent apps", "shown", "hidden", style, Style.RECENT_APPS)
             CountOption("columns", Style.COLUMNS, style)
             Flag("pages", "one", "auto", style, Style.FORCE_SINGLE_PAGE)
+            Flag("keyboard on swipe up", "shown", "hidden", style, Style.SWIPE_UP_KEYBOARD)
             NumberOption("corners", Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
             HomePreview(runtime)
             // Like Hyprland's gaps_in, gaps_out and border_size; the colors are in style.toml.
