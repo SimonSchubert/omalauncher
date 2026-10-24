@@ -165,10 +165,11 @@ internal object GpuDrivers {
         probeId = "DRIVER_ID_MESA_PANVK",
         label = "Mali",
         packages = basePackages,
-        // PanVK-kbase 0.1.0 rc2, the glibc build. Tested upstream on a Pixel 9a (Mali-G715).
-        url = "https://github.com/zenithblue-oss/panvk-kbase-android/releases/download/panvk-kbase-v0.1.0-rc2/libvulkan_panfrost-glibc-aarch64.so",
+        // PanVK-kbase 0.1.0 rc3, the glibc build. RC2 had no Mali-G78 row (Pixel 6, 6a), so
+        // it did not load there; RC3 adds v9 (G57 to G78) next to v10-v13. RC4 has no glibc build.
+        url = "https://github.com/zenithblue-oss/panvk-kbase-android/releases/download/panvk-kbase-v0.1.0-rc3/libvulkan_panfrost-glibc-aarch64.so",
         payload = DriverPayload.RawLibrary(
-            sha256 = "0b8eaf709cd3559acec72b6fcf3acc24bcdb016bdc998adfedca6ff8eb60c820",
+            sha256 = "43d4783f664f21843b2fb2d5a3fdf4646fadb942e42d320ccb0e7449bd8e352f",
         ),
         driverPath = "/usr/local/lib64/libvulkan_panfrost.so",
         icdPath = "/usr/local/share/vulkan/icd.d/panfrost_icd.aarch64.json",
@@ -200,8 +201,14 @@ internal object GpuDrivers {
 
     /** Pacman for Mesa and the loader, then the pinned blob unless that exact file is already there. */
     fun installScript(driver: GpuDriver): String {
-        return pacmanInstall(driver.packages) + " && " + fetch(driver) + " && " + mesaZinkScript()
+        return pacmanInstall(driver.packages) + " && " + updateScript(driver)
     }
+
+    /**
+     * The pinned blob and the patched Mesa, without pacman: for a guest that
+     * already has the packages but an older pin of the driver.
+     */
+    fun updateScript(driver: GpuDriver): String = fetch(driver) + " && " + mesaZinkScript()
 
     /**
      * Unpacks the patched libEGL and zink next to each other. The stamp names
