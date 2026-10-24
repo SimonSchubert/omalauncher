@@ -1,0 +1,443 @@
+#!/usr/bin/env python3
+"""Content-addressed, incremental backups of OmaLauncher configuration."""
+
+import hashlib
+import json
+import os
+import signal
+import shutil
+import sys
+import time
+import fcntl
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+
+HOME = Path.home()
+BACKUP = HOME / ".local/share/omalauncher-backups"
+RESTORE_MARKER = BACKUP / "restore-in-progress"
+ROOTS = [
+    HOME / ".config/omalauncher",
+    HOME / ".config/autostart/omalauncher-backup.desktop",
+    HOME / ".config/systemd/user/omalauncher-backup.service",
+    HOME / ".local/bin/omalauncher-backup",
+    HOME / ".local/share/omalauncher",
+    HOME / ".local/state/omalauncher",
+]
+BACKUP_MANAGER_PATHS = {
+    HOME / ".config/autostart/omalauncher-backup.desktop",
+    HOME / ".config/systemd/user/omalauncher-backup.service",
+    HOME / ".local/bin/omalauncher-backup",
+}
+POLL_SECONDS = 1
+DEBOUNCE_SECONDS = 2
+running = True
+DEFAULT_SETTINGS = {"auto": True, "keep": 50}
+
+
+def stop(_signum, _frame):
+    global running
+    running = False
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def read_settings():
+    path = BACKUP / "settings.json"
+    try:
+        data = json.loads(path.read_text())
+        keep = int(data.get("keep", DEFAULT_SETTINGS["keep"]))
+        return {"auto": bool(data.get("auto", True)), "keep": max(1, min(10000, keep))}
+    except (OSError, ValueError, TypeError):
+        return DEFAULT_SETTINGS.copy()
+
+
+def write_settings(settings):
+    BACKUP.mkdir(parents=True, exist_ok=True)
+    path = BACKUP / "settings.json"
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(settings, sort_keys=True) + "\n")
+    os.replace(tmp, path)
+
+
+def prune_snapshots():
+    keep = read_settings()["keep"]
+    paths = snapshot_files()
+    for path in paths[:-keep]:
+        path.unlink(missing_ok=True)
+    used = set()
+    for path in snapshot_files():
+        try:
+            entries = json.loads(path.read_text())["entries"]
+            used.update(entry["sha256"] for entry in entries.values() if entry.get("type") == "file")
+        except (OSError, ValueError, KeyError):
+            continue
+    objects = BACKUP / "objects"
+    if objects.exists():
+        for blob in objects.glob("*/*"):
+            if blob.is_file() and blob.name not in used:
+                blob.unlink()
+        for directory in objects.iterdir():
+            if directory.is_dir() and not any(directory.iterdir()):
+                directory.rmdir()
+
+
+def scan():
+    """Return a stable description and the file bodies needed for new blobs."""
+    entries, bodies = {}, {}
+    for root in ROOTS:
+        if not root.exists() and not root.is_symlink():
+            continue
+        root_key = str(root)
+        if root.is_symlink():
+            st = root.lstat()
+            entries[root_key] = {"type": "link", "target": os.readlink(root), "mode": st.st_mode & 0o7777}
+            continue
+        if root.is_file():
+            st = root.stat()
+            try:
+                data = root.read_bytes()
+                after = root.stat()
+            except OSError:
+                continue
+            if st.st_size == after.st_size and st.st_mtime_ns == after.st_mtime_ns:
+                sha = digest(data)
+                entries[root_key] = {"type": "file", "sha256": sha, "size": len(data),
+                                     "mode": st.st_mode & 0o7777, "mtime_ns": st.st_mtime_ns}
+                bodies[sha] = data
+            continue
+        entries[root_key] = {"type": "dir", "mode": root.stat().st_mode & 0o7777}
+        for parent, dirs, files in os.walk(root, followlinks=False):
+            parent = Path(parent)
+            dirs[:] = sorted(dirs)
+            for name in list(dirs):
+                path = parent / name
+                rel = str(path.relative_to(HOME))
+                st = path.lstat()
+                if path.is_symlink():
+                    entries[rel] = {"type": "link", "target": os.readlink(path), "mode": st.st_mode & 0o7777}
+                    dirs.remove(name)
+                else:
+                    entries[rel] = {"type": "dir", "mode": st.st_mode & 0o7777}
+            for name in sorted(files):
+                path = parent / name
+                rel = str(path.relative_to(HOME))
+                st = path.lstat()
+                if path.is_symlink():
+                    entries[rel] = {"type": "link", "target": os.readlink(path), "mode": st.st_mode & 0o7777}
+                    continue
+                try:
+                    data = path.read_bytes()
+                    after = path.stat()
+                except (FileNotFoundError, PermissionError, OSError):
+                    continue
+                # Ignore a file that changed while being read; the next scan retries it.
+                if st.st_size != after.st_size or st.st_mtime_ns != after.st_mtime_ns:
+                    continue
+                sha = digest(data)
+                entries[rel] = {"type": "file", "sha256": sha, "size": len(data),
+                                "mode": st.st_mode & 0o7777, "mtime_ns": st.st_mtime_ns}
+                bodies[sha] = data
+    return entries, bodies
+
+
+def save_snapshot(entries, bodies, prune=True):
+    objects = BACKUP / "objects"
+    snapshots = BACKUP / "snapshots"
+    objects.mkdir(parents=True, exist_ok=True)
+    snapshots.mkdir(parents=True, exist_ok=True)
+    for sha, data in bodies.items():
+        dest = objects / sha[:2] / sha
+        if dest.exists():
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name(dest.name + f".tmp-{os.getpid()}")
+        tmp.write_bytes(data)
+        os.replace(tmp, dest)
+    now = datetime.now().astimezone()
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    prefix = now.strftime("%Y-%m-%d-%Hh%M")
+    # The suffix counts every snapshot, so names remain unique even within one minute.
+    all_nums = []
+    for p in snapshots.glob("*.json"):
+        match = re.search(r"-(\d+)$", p.stem)
+        if match:
+            all_nums.append(int(match.group(1)))
+    name = f"{prefix}-{max(all_nums, default=0) + 1}"
+    dest = snapshots / f"{name}.json"
+    if not dest.exists():
+        tmp = dest.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps({"created_utc": stamp, "entries": entries}, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
+        os.replace(tmp, dest)
+        print(f"Saved {name}: {len(entries)} entries", flush=True)
+        if prune:
+            prune_snapshots()
+
+
+def latest_entries():
+    paths = snapshot_files()
+    if not paths:
+        return None
+
+
+def snapshot_files():
+    paths = list((BACKUP / "snapshots").glob("*.json")) if (BACKUP / "snapshots").exists() else []
+    def timestamp(path):
+        try:
+            return json.loads(path.read_text()).get("created_utc", "")
+        except (OSError, ValueError):
+            return ""
+    return sorted(paths, key=lambda p: (timestamp(p), p.name))
+
+
+def migrate_snapshot_names():
+    paths = snapshot_files()
+    legacy = [p for p in paths if not re.fullmatch(r"\d{4}-\d{2}-\d{2}-\d{2}h\d{2}-\d+", p.stem)]
+    if not legacy:
+        return
+    numbered = []
+    for index, path in enumerate(paths, 1):
+        try:
+            created = json.loads(path.read_text())["created_utc"]
+            moment = datetime.strptime(created, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc).astimezone()
+        except (OSError, ValueError, KeyError):
+            continue
+        name = f"{moment.strftime('%Y-%m-%d-%Hh%M')}-{index}.json"
+        numbered.append((path, path.with_name(name)))
+    for source, target in numbered:
+        if source != target and not target.exists():
+            source.rename(target)
+    try:
+        return json.loads(paths[-1].read_text())["entries"]
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def backup_once(prune=True):
+    entries, bodies = scan()
+    if entries:
+        save_snapshot(entries, bodies, prune=prune)
+
+
+def snapshot_path(snapshot_id):
+    if not snapshot_id or Path(snapshot_id).name != snapshot_id:
+        raise ValueError("Invalid snapshot id")
+    path = BACKUP / "snapshots" / f"{snapshot_id}.json"
+    if not path.is_file():
+        # A running app can briefly hold an older id while its list source refreshes.
+        # Resolve the former timestamp-hash ids to the renamed snapshot by timestamp.
+        legacy = re.match(r"^(\d{8}T\d{6}Z)-", snapshot_id)
+        if legacy:
+            legacy_time = legacy.group(1)
+            for candidate in snapshot_files():
+                try:
+                    if json.loads(candidate.read_text()).get("created_utc") == legacy_time:
+                        return candidate
+                except (OSError, ValueError):
+                    continue
+        raise ValueError(f"Snapshot not found: {snapshot_id}")
+    return path
+
+
+def load_snapshot(snapshot_id):
+    obj = json.loads(snapshot_path(snapshot_id).read_text())
+    entries = obj["entries"]
+    allowed = [p for p in ROOTS]
+    for key, entry in entries.items():
+        target = Path(key) if key.startswith("/") else HOME / key
+        if not any(target == root or root in target.parents for root in allowed):
+            raise ValueError(f"Snapshot contains a path outside OmaLauncher directories: {key}")
+        if entry.get("type") == "file":
+            blob = BACKUP / "objects" / entry["sha256"][:2] / entry["sha256"]
+            if not blob.is_file() or digest(blob.read_bytes()) != entry["sha256"]:
+                raise ValueError(f"Missing or damaged backup object for {key}")
+    return entries
+
+
+def target_for(key):
+    return Path(key) if key.startswith("/") else HOME / key
+
+
+def write_file(path, entry):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    # Refuse to follow an unexpected symlink outside HOME during a selective restore.
+    resolved_parent = path.parent.resolve()
+    try:
+        resolved_parent.relative_to(HOME.resolve())
+    except ValueError:
+        raise ValueError(f"Refusing to write outside home directory: {path}")
+    blob = BACKUP / "objects" / entry["sha256"][:2] / entry["sha256"]
+    tmp = path.with_name(path.name + f".restore-{os.getpid()}")
+    shutil.copyfile(blob, tmp)
+    os.chmod(tmp, entry.get("mode", 0o600))
+    os.replace(tmp, path)
+    if entry.get("mtime_ns"):
+        os.utime(path, ns=(entry["mtime_ns"], entry["mtime_ns"]))
+
+
+def restore(snapshot_id, paths=None, restore_all=False):
+    entries = load_snapshot(snapshot_id)  # Validate the entire snapshot before changing anything.
+    if restore_all:
+        backup_once(prune=False)  # Keep selected blobs until restore finishes, even with retention set to 1.
+        RESTORE_MARKER.parent.mkdir(parents=True, exist_ok=True)
+        RESTORE_MARKER.write_text(snapshot_id)
+        try:
+            for root in ROOTS:
+                if root in BACKUP_MANAGER_PATHS and str(root) not in entries:
+                    continue
+                if root.is_symlink() or root.is_file():
+                    root.unlink()
+                elif root.exists():
+                    shutil.rmtree(root)
+            dirs = [(key, entry) for key, entry in entries.items() if entry.get("type") == "dir"]
+            for key, entry in sorted(dirs, key=lambda item: len(target_for(item[0]).parts)):
+                path = target_for(key)
+                path.mkdir(parents=True, exist_ok=True)
+                os.chmod(path, 0o700)  # Keep directories writable until their contents are restored.
+            for key, entry in entries.items():
+                if entry.get("type") == "link":
+                    path = target_for(key)
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    if path.exists() or path.is_symlink():
+                        if path.is_dir() and not path.is_symlink():
+                            shutil.rmtree(path)
+                        else:
+                            path.unlink()
+                    os.symlink(entry["target"], path)
+                elif entry.get("type") == "file":
+                    write_file(target_for(key), entry)
+            for key, entry in sorted(dirs, key=lambda item: len(target_for(item[0]).parts), reverse=True):
+                path = target_for(key)
+                os.chmod(path, entry.get("mode", 0o700))
+        finally:
+            RESTORE_MARKER.unlink(missing_ok=True)
+            prune_snapshots()
+        print(f"Restored full snapshot {snapshot_id}; pre-restore snapshot saved.")
+        return
+
+    if not paths:
+        raise ValueError("Select at least one file, or pass --all")
+    selected = []
+    for key in paths:
+        entry = entries.get(key)
+        if entry is None or entry.get("type") != "file":
+            raise ValueError(f"Not a backed-up regular file in this snapshot: {key}")
+        selected.append((key, entry))
+    backup_once(prune=False)
+    try:
+        for key, entry in selected:
+            write_file(target_for(key), entry)
+    finally:
+        prune_snapshots()
+    print(f"Restored {len(selected)} selected file(s) from {snapshot_id}; pre-restore snapshot saved.")
+
+
+def watch():
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    BACKUP.mkdir(parents=True, exist_ok=True)
+    lock = (BACKUP / "watcher.lock").open("w")
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("Backup watcher already running", flush=True)
+        return
+    previous = latest_entries()
+    if previous is None and read_settings()["auto"]:
+        backup_once()
+        previous = latest_entries()
+    candidate, candidate_since = None, None
+    while running:
+        time.sleep(POLL_SECONDS)
+        if RESTORE_MARKER.exists():
+            candidate, candidate_since = None, None
+            continue
+        if not read_settings()["auto"]:
+            candidate, candidate_since = None, None
+            continue
+        entries, bodies = scan()
+        if entries == previous:
+            candidate, candidate_since = None, None
+            continue
+        if entries != candidate:
+            candidate, candidate_since = entries, time.monotonic()
+            continue
+        if time.monotonic() - candidate_since >= DEBOUNCE_SECONDS:
+            save_snapshot(entries, bodies)
+            previous = entries
+            candidate, candidate_since = None, None
+
+
+def main():
+    command = sys.argv[1] if len(sys.argv) > 1 else "watch"
+    if command == "watch":
+        watch()
+    elif command == "backup":
+        backup_once()
+    elif command == "settings":
+        print(json.dumps(read_settings()))
+    elif command == "set-auto" and len(sys.argv) == 3:
+        value = sys.argv[2].lower()
+        if value not in {"on", "off", "true", "false"}:
+            raise ValueError("set-auto accepts on or off")
+        settings = read_settings()
+        settings["auto"] = value in {"on", "true"}
+        write_settings(settings)
+        print(f"Automatic backups {'enabled' if settings['auto'] else 'disabled'}")
+    elif command == "set-keep" and len(sys.argv) == 3:
+        try:
+            keep = int(sys.argv[2])
+        except ValueError:
+            raise ValueError("Retention must be a whole number from 1 to 10000")
+        if not 1 <= keep <= 10000:
+            raise ValueError("Retention must be from 1 to 10000 snapshots")
+        settings = read_settings()
+        settings["keep"] = keep
+        write_settings(settings)
+        prune_snapshots()
+        print(f"Keeping at most {keep} snapshots")
+    elif command == "list":
+        paths = snapshot_files()
+        if len(sys.argv) > 2 and sys.argv[2] == "--json":
+            result = []
+            for p in paths:
+                try:
+                    obj = json.loads(p.read_text())
+                    result.append({"id": p.stem, "created": obj["created_utc"], "files": sum(e.get("type") == "file" for e in obj["entries"].values())})
+                except (OSError, ValueError, KeyError):
+                    continue
+            print(json.dumps(result, ensure_ascii=False))
+            return 0
+        for p in paths:
+            try:
+                obj = json.loads(p.read_text())
+                print(f"{p.stem}\t{obj['created_utc']}\t{len(obj['entries'])} entries")
+            except (OSError, ValueError, KeyError):
+                print(f"{p.stem}\t(unreadable)")
+    elif command == "files" and len(sys.argv) == 3:
+        entries = load_snapshot(sys.argv[2])
+        result = [{"path": key, "size": entry["size"]} for key, entry in sorted(entries.items()) if entry.get("type") == "file"]
+        print(json.dumps(result, ensure_ascii=False))
+    elif command == "restore" and len(sys.argv) >= 3:
+        snapshot_id = sys.argv[2]
+        if len(sys.argv) == 4 and sys.argv[3] == "--all":
+            restore(snapshot_id, restore_all=True)
+        elif len(sys.argv) == 5 and sys.argv[3] == "--paths-json":
+            paths = json.loads(sys.argv[4])
+            if not isinstance(paths, list) or not all(isinstance(p, str) for p in paths):
+                raise ValueError("--paths-json must be a JSON list of file paths")
+            restore(snapshot_id, paths=paths)
+        else:
+            print("Usage: omalauncher-backup restore SNAPSHOT --all | --paths-json JSON_LIST", file=sys.stderr)
+            return 2
+    else:
+        print("Usage: omalauncher-backup [watch|backup|settings|set-auto on|off|set-keep N|list [--json]|files SNAPSHOT|restore SNAPSHOT --all|--paths-json JSON_LIST]", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    migrate_snapshot_names()
+    raise SystemExit(main())

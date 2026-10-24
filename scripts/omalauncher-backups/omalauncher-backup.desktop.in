@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=OmaLauncher automatic backups
+Comment=Keep incremental snapshots of OmaLauncher configuration
+Exec="@HOME@/.local/bin/omalauncher-backup" watch
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

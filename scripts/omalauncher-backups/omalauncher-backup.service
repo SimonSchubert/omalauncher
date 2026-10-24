@@ -1,0 +1,12 @@
+[Unit]
+Description=Incremental automatic backups of OmaLauncher configuration
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/omalauncher-backup watch
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

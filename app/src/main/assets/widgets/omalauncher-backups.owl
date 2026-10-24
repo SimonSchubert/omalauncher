@@ -1,0 +1,87 @@
+app "Sauvegardes OmaLauncher" {
+  meta { owl: 12; description: "Sauvegardes automatiques et restauration complète ou sélective de la configuration OmaLauncher"; version: "1.2"; license: "MIT"; category: "productivity" }
+  requires { pacman: ["python"] }
+  title: "Sauvegardes"
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M24 7a17 17 0 1 1-15 9"/><path d="M8 7v10h10M24 15v10l7 4"/></svg>"""
+
+  state snapshotChoice = ""
+  state selectedFiles = []
+  state confirmRestore = ""
+  state keepDraft = "50"
+  source snapshots = cmd("~/.local/bin/omalauncher-backup list --json") every 5s json
+  source files = cmd(snapshotChoice == "" ? "printf '[]'" : "~/.local/bin/omalauncher-backup files ${sh(snapshotChoice)}") every 5s json
+  source settings = cmd("~/.local/bin/omalauncher-backup settings") every 5s json
+  on settings first { keepDraft = str(value.keep) }
+
+  Column {
+    scroll: true
+    gap: 12
+    padding: [12, 0]
+
+    Text { text: settings.auto ? "Sauvegarde automatique" : "Sauvegarde manuelle"; style: title; color: accent }
+    Text { text: "Les changements stables sont sauvegardés après quelques secondes. Les fichiers inchangés ne sont stockés qu’une fois."; style: body; color: muted }
+    Row {
+      gap: 10
+      align: center
+      Text { text: settings.auto ? "Sauvegardes auto : activées" : "Sauvegardes auto : désactivées"; style: label; color: settings.auto ? green : red; weight: 1 }
+      Button { text: settings.auto ? "Désactiver" : "Activer"; color: settings.auto ? red : green; onTap: run("~/.local/bin/omalauncher-backup set-auto ${settings.auto ? "off" : "on"}") }
+    }
+    Row {
+      gap: 8
+      align: center
+      Text { text: "Garder au maximum"; style: label; color: accent }
+      Input { text: keepDraft; placeholder: "50"; width: 100; onChange: keepDraft = value; onSubmit: run("~/.local/bin/omalauncher-backup set-keep ${sh(trim(value))}") }
+      Text { text: "instantanés (1–10000)"; style: small; color: muted }
+    }
+    Button { text: "Sauvegarder maintenant"; color: accent; onTap: run("~/.local/bin/omalauncher-backup backup") }
+    Text { text: "Dossier : ~/.local/share/omalauncher-backups"; style: small; color: muted }
+    Text { text: "Historique (${len(snapshots)}) · toucher pour choisir"; style: label; color: accent }
+    if len(snapshots) == 0 {
+      Text { text: "Aucune sauvegarde trouvée"; style: body; color: muted }
+    } else {
+      for snap in reverse(snapshots) key snap.id {
+        Button {
+          text: "${snapshotChoice == snap.id ? "● " : "○ "}${snap.id} · ${snap.files} fichiers"
+          color: snapshotChoice == snap.id ? accent : muted
+          onTap: { snapshotChoice = snap.id; selectedFiles = []; confirmRestore = "" }
+        }
+      }
+    }
+    if snapshotChoice != "" {
+      Text { text: "Snapshot sélectionné · ${len(files)} fichiers"; style: label; color: accent }
+      Text { text: "Choisis un ou plusieurs fichiers à restaurer individuellement :"; style: small; color: muted }
+      for f in files key f.path {
+        Text {
+          text: "${contains(selectedFiles, f.path) ? "☑" : "□"} ${f.path} · ${fmtBytes(f.size)}"
+          style: small
+          color: contains(selectedFiles, f.path) ? accent : foreground
+          onTap: selectedFiles = contains(selectedFiles, f.path) ? selectedFiles.filter(p => p != f.path) : selectedFiles + [f.path]
+        }
+      }
+      Row {
+        gap: 8
+        Button { text: "Restaurer la sélection (${len(selectedFiles)})"; color: accent; onTap: { if len(selectedFiles) > 0 { confirmRestore = "selected" } } }
+        Button { text: "Tout restaurer"; color: red; onTap: confirmRestore = "all" }
+      }
+      if confirmRestore != "" {
+        Text { text: confirmRestore == "all" ? "Confirmer la restauration complète ? Les fichiers actuels seront remplacés." : "Confirmer la restauration des ${len(selectedFiles)} fichier(s) sélectionné(s) ?"; style: body; color: red }
+        Row {
+          gap: 8
+          Button {
+            text: "Confirmer"
+            color: red
+            onTap: {
+              if confirmRestore == "all" {
+                run("~/.local/bin/omalauncher-backup restore ${sh(snapshotChoice)} --all")
+              } else {
+                run("~/.local/bin/omalauncher-backup restore ${sh(snapshotChoice)} --paths-json ${sh(toJson(selectedFiles))}")
+              }
+              confirmRestore = ""
+            }
+          }
+          Button { text: "Annuler"; color: muted; onTap: confirmRestore = "" }
+        }
+      }
+    }
+  }
+}
