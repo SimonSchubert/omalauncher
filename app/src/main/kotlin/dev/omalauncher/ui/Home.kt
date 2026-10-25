@@ -105,8 +105,9 @@ fun HomeScreen(
     val per = if (showsTwoPages(windowSize())) 2 else 1
     val pageNumbers =
         engine.pages
-            .let { listOf(minOf(it.first(), FACE_PAGE + 1) - 1) + it }
-            .let { if (engine.itemsOn(it.last()).isEmpty()) it else it + (it.last() + 1) }
+            .let { if (LauncherStyle.sparePages) listOf(minOf(it.first(), FACE_PAGE + 1) - 1) + it else it }
+            .let { it.ifEmpty { listOf(1) } }
+            .let { if (!LauncherStyle.sparePages || engine.itemsOn(it.last()).isEmpty()) it else it + (it.last() + 1) }
     // Only faces on screen, or the empty one waiting left of them: they get it whole, the bar's room too (see
     // LauncherState.faceShowing), and the status bar's while all of them say statusBar: false.
     fun faceOn(page: Int?) = page?.let { engine.layout.owner(engine.itemsOn(it)) as? WidgetItem }?.takeIf { it.isFace }
