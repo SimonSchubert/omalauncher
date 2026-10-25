@@ -57,7 +57,7 @@ fun LinuxDashboard(
     onSharedCleared: () -> Unit,
 ) {
     val context = LocalContext.current
-    val section by remember { mutableStateOf(DashboardSection.Overview) }
+    var section: DashboardSection by remember { mutableStateOf(DashboardSection.Overview) }
     val state by runtime.sessionState.collectAsState()
 
     Column(Modifier.fillMaxSize().background(Palette.background)) {
@@ -91,7 +91,6 @@ fun LinuxDashboard(
                 .height(52.dp)
                 .background(Palette.surface),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
         ) {
             for (s in DashboardSection.values()) {
                 val selected = section == s
@@ -169,6 +168,7 @@ private fun OverviewScreen(runtime: Runtime) {
                         LinuxSessionState.Running -> "running"
                         LinuxSessionState.Stopping -> "stopping"
                         is LinuxSessionState.Failed -> "failed"
+                        else -> "unknown"
                     },
                     style = Mono.copy(fontSize = TextSize.Title, color = Palette.foreground),
                 )
@@ -222,8 +222,7 @@ private fun QuickAction(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+            ) {
         icon?.let { ImageVectorItem(icon = it, selected = false) }
         Spacer(Modifier.width(8.dp))
         BasicText(label, style = Mono.copy(color = Palette.foreground))
@@ -263,7 +262,7 @@ private fun TerminalSection(runtime: Runtime) {
 fun LinuxAppsScreen(runtime: Runtime) {
     val apps = runtime.linuxApps.apps
     val listed = runtime.linuxApps.listed
-    var query by remember { mutableStateOf("") }
+    var query: String by remember { mutableStateOf("") }
     val filtered = if (query.isEmpty()) apps else apps.filter { it.name.lowercase().contains(query.lowercase()) }
 
     Column(
@@ -307,7 +306,6 @@ private fun AppRow(app: LinuxApp, runtime: Runtime) {
             .fillMaxWidth()
             .clickable(onClick = { runtime.launch(app) })
             .padding(vertical = 6.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
         app.icon?.let { icon ->
             val file = runtime.proot.hostFile(icon)
@@ -357,7 +355,7 @@ private fun WidgetRow(spec: WidgetSpec, runtime: Runtime) {
             .fillMaxWidth()
             .clickable(onClick = { runtime.widgets.tap(spec) })
             .padding(vertical = 6.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        
     ) {
         Box(Modifier.size(32.dp).clip(CircleShape).background(Palette.surface), contentAlignment = Alignment.Center) {
             BasicText(spec.name.first().uppercase(), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Item))
@@ -477,7 +475,7 @@ private fun SharedWidgetNotice(
             .padding(10.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row {
             Column(Modifier.weight(1f)) {
                 BasicText("shared widget", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Item))
                 BasicText(link.take(60), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small), maxLines = 2)

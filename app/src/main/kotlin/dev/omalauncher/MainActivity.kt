@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
     private val runtime get() = (application as App).runtime
 
     /** A widget link opened from a browser or QR code, waiting to be read and added. */
-    private var shared by mutableStateOf<String?>(null)
+    private val shared = mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
         applySystemBars(this, Palette.isLight)
         runtime.start()
         setContent {
-            LinuxDashboard(runtime, sharedWidget = shared, onSharedCleared = { shared = null })
+            LinuxDashboard(runtime, sharedWidget = shared.value, onSharedCleared = { shared.value = null })
             SystemBarsEffect(this)
         }
         handleDebugExec(intent)
@@ -65,6 +65,6 @@ class MainActivity : ComponentActivity() {
             intent.getStringExtra("widget")
                 ?: intent.data?.takeIf { it.host == Share.HOST && it.path.orEmpty().startsWith(Share.PATH) }?.toString()
                 ?: return
-        shared = link
+        shared.value = link
     }
 }
