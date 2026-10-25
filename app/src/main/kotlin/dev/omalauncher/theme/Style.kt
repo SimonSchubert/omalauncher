@@ -211,6 +211,12 @@ class Style(
                 "none",
                 "What swiping down on home opens: \"none\" nothing, or a panel's file name in ~/.config/omalauncher/widgets (\"my-panel.owl\"); one that's gone or doesn't compile opens nothing.",
             )
+        val DRAWER_KEYBOARD =
+            Setting.Flag(
+                "gestures.keyboard",
+                true,
+                "Whether the keyboard comes up as the drawer opens, so search is ready; false leaves it down until the prompt bar is tapped or something is typed. A panel's own keyboard: line (owl 14) wins over this for that panel.",
+            )
     }
 
     /** A system bar's band on home; [name] is its section in the file. */
@@ -251,7 +257,7 @@ object StyleFile {
         with(Style) {
             listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, KEYBAR_GAPS_OUT, KEYBAR_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
-                listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, SWIPE_UP, SWIPE_DOWN)
+                listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, SWIPE_UP, SWIPE_DOWN, DRAWER_KEYBOARD)
         }
 
     private val byKey = ALL.associateBy { it.key }

@@ -60,6 +60,11 @@ class Gestures(
         get() = LauncherStyle.style[Style.SWIPE_DOWN]
         set(choice) = style.update { it.with(Style.SWIPE_DOWN, choice) }
 
+    /** Whether opening the drawer raises the keyboard, unless the panel says otherwise. On by default. Saved as it's set. */
+    var drawerKeyboard: Boolean
+        get() = LauncherStyle.style[Style.DRAWER_KEYBOARD]
+        set(choice) = style.update { it.with(Style.DRAWER_KEYBOARD, choice) }
+
     init {
         // Launchers before style.toml kept swipe up in preferences; moved over once, and left there for a downgrade.
         val prefs = LauncherData.prefs(context)
@@ -250,8 +255,13 @@ fun GesturesScreen(
         Spacer(Modifier.height(8.dp))
         GestureRow("swipe down", listOf(Gestures.NONE to "nothing") + panels, gestures.swipeDown) { gestures.swipeDown = it }
         EditPanel(runtime, gestures.swipeDown, onAgent)
+        Spacer(Modifier.height(8.dp))
+        GestureRow("keyboard on open", listOf("true" to "raised", "false" to "down"), gestures.drawerKeyboard.toString()) {
+            gestures.drawerKeyboard = it.toBoolean()
+        }
         BasicText(
-            "panels are owl files, the drawer among them: edit them like widgets, or create one with your agent from home's menu. " +
+            "down keeps the keyboard away as the drawer opens: tap the bar, or start typing, to bring it up. a panel's own keyboard: line wins\n\n" +
+                "panels are owl files, the drawer among them: edit them like widgets, or create one with your agent from home's menu. " +
                 "with nothing on swipe up, tapping the bar still opens the drawer",
             Modifier.padding(top = 12.dp, start = 14.dp, end = 14.dp),
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),

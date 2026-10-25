@@ -27,7 +27,8 @@ boxes inside it is fine.
 
 As it opens a panel, the launcher raises the keyboard, so search is ready; that's the stock drawer's. `keyboard: false`
 (owl 14) keeps it down as a panel opens, for a drawer where the list matters more: a tap on the bar, or the first thing
-typed in it, raises the keyboard again. On a panel from the top, which has no bar, it changes nothing.
+typed in it, raises the keyboard again. On a panel from the top, which has no bar, it changes nothing. A panel without the
+line follows settings › gestures › keyboard on open (`gestures.keyboard` in style.toml, raised by default); the line wins.
 
 ```owl
 panel "my drawer" {

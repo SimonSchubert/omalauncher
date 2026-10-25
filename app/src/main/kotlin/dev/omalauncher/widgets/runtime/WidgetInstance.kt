@@ -948,8 +948,8 @@ class WidgetInstance(
     /** How much the backdrop behind a panel covers home, from its `opacity`: near-opaque without one, as home's widgets showing through make a drawer's icons hard to read. */
     fun panelOpacity(): Float = program.opacity?.let { eval(it, root, "opacity").num()?.toFloat()?.coerceIn(0f, 1f) } ?: 0.97f
 
-    /** Whether the launcher raises the keyboard as this panel opens, from its `keyboard:` line; true without one. */
-    fun panelKeyboard(): Boolean = program.keyboard?.let { eval(it, root, "keyboard").truthy } ?: true
+    /** Whether the panel's `keyboard:` line has the launcher raise the keyboard as it opens; null without one, and settings decide. */
+    fun panelKeyboard(): Boolean? = program.keyboard?.let { eval(it, root, "keyboard").truthy }
 
     /** Runs a panel's onSubmit with [text] as `value`; false when it has none, and Enter does what the bar does. */
     fun submit(text: String): Boolean {
