@@ -1,4 +1,4 @@
-OmaLauncher Backups 1.2
+OmaLauncher Backups 1.3
 =======================
 
 Install
@@ -21,7 +21,9 @@ Features
 - Stores file contents by hash, so unchanged files are shared between snapshots.
 - Starts with automatic backups enabled and retains the newest 50 snapshots.
 - The app lets you pause/resume automatic backups, set the retention limit,
-  create a manual snapshot, and restore either selected files or a whole snapshot.
+  and create a manual snapshot. Select a snapshot to restore it fully, open the
+  file list only when choosing a partial restore, or delete the snapshot after
+  confirmation.
 - Before any restore it saves the current files as a recovery snapshot.
 
 The backup folder is ~/.local/share/omalauncher-backups. The app and watcher

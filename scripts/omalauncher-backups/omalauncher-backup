@@ -241,6 +241,13 @@ def snapshot_path(snapshot_id):
     return path
 
 
+def delete_snapshot(snapshot_id):
+    path = snapshot_path(snapshot_id)
+    path.unlink()
+    prune_snapshots()
+    print(f"Deleted snapshot {snapshot_id}.")
+
+
 def load_snapshot(snapshot_id):
     obj = json.loads(snapshot_path(snapshot_id).read_text())
     entries = obj["entries"]
@@ -398,6 +405,8 @@ def main():
         write_settings(settings)
         prune_snapshots()
         print(f"Keeping at most {keep} snapshots")
+    elif command == "delete" and len(sys.argv) == 3:
+        delete_snapshot(sys.argv[2])
     elif command == "list":
         paths = snapshot_files()
         if len(sys.argv) > 2 and sys.argv[2] == "--json":
@@ -433,7 +442,7 @@ def main():
             print("Usage: omalauncher-backup restore SNAPSHOT --all | --paths-json JSON_LIST", file=sys.stderr)
             return 2
     else:
-        print("Usage: omalauncher-backup [watch|backup|settings|set-auto on|off|set-keep N|list [--json]|files SNAPSHOT|restore SNAPSHOT --all|--paths-json JSON_LIST]", file=sys.stderr)
+        print("Usage: omalauncher-backup [watch|backup|settings|set-auto on|off|set-keep N|list [--json]|files SNAPSHOT|delete SNAPSHOT|restore SNAPSHOT --all|--paths-json JSON_LIST]", file=sys.stderr)
         return 2
     return 0
 
