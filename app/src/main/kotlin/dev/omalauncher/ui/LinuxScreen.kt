@@ -62,7 +62,7 @@ fun LinuxScreen(
                 LinuxState.NotInstalled -> InstallOffer(runtime)
                 is LinuxState.Installing, is LinuxState.Failed -> LinuxProgress(s, runtime.bootstrap.chosenAgents, runtime::retryLinux, runtime::cancelLinux.takeIf { runtime.bootstrap.cancellable })
                 LinuxState.Installed -> Installed(runtime)
-                LinuxState.Removing -> BasicText("removing linux…", style = Mono.copy(color = Palette.accent))
+                LinuxState.Removing -> BasicText(UiText.t("removing linux…"), style = Mono.copy(color = Palette.accent))
             }
         }
     }
@@ -92,15 +92,15 @@ fun rememberLinuxInstall(runtime: Runtime): (List<String>) -> Unit {
 private fun InstallOffer(runtime: Runtime) {
     var picked by rememberSaveable { mutableStateOf(listOf(AGENTS.first().bin)) }
     val install = rememberLinuxInstall(runtime)
-    BasicText("arch linux, optional", style = Mono.copy(fontSize = TextSize.Large))
+    BasicText(UiText.t("arch linux, optional"), style = Mono.copy(fontSize = TextSize.Large))
     Spacer(Modifier.height(8.dp))
     BasicText(
-        "Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download and 3 GB of space; installs in the background.",
+        UiText.t("Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download and 3 GB of space; installs in the background."),
         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
     )
     Spacer(Modifier.height(16.dp))
     // Above the agent list, so it's in reach without scrolling.
-    PrimaryButton(if (picked.isEmpty()) "install linux" else "install linux and ${picked.size} agent${if (picked.size == 1) "" else "s"}", Modifier.takesPassedKeys().passesKeys()) {
+    PrimaryButton(if (picked.isEmpty()) "install linux" else UiText.t(if (picked.size == 1) "install linux and %s agent" else "install linux and %s agents", picked.size), Modifier.takesPassedKeys().passesKeys()) {
         install(picked)
     }
     Spacer(Modifier.height(24.dp))
@@ -119,7 +119,7 @@ private fun Installed(runtime: Runtime) {
         Column(Modifier.weight(1f)) {
             BasicText("arch linux", style = Mono.copy(fontSize = TextSize.Item))
             BasicText(
-                "installed · " + (size?.let(::formatSize) ?: "measuring…"),
+                UiText.t("installed · %s", size?.let(::formatSize) ?: UiText.t("measuring…")),
                 style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
         }
@@ -139,10 +139,9 @@ private fun Installed(runtime: Runtime) {
             Modifier.card(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            BasicText("remove linux?", style = Mono.copy(color = Palette.red))
+            BasicText(UiText.t("remove linux?"), style = Mono.copy(color = Palette.red))
             BasicText(
-                "Deletes Linux apps, coding agents, packages and everything in /root, like Downloads. " +
-                    "Themes, wallpapers, widgets and your home screen stay.",
+                UiText.t("Deletes Linux apps, coding agents, packages and everything in /root, like Downloads. Themes, wallpapers, widgets and your home screen stay."),
                 style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
             Row {
@@ -161,16 +160,16 @@ private fun GpuRow(runtime: Runtime) {
     val status =
         when {
             state is JobState.Working -> "${state.action}…"
-            gpu.active -> "on · ${gpu.device ?: "GPU"} · for apps opened from now on"
-            gpu.wanted && state is JobState.Failed -> "off: the GPU failed its check after a system update"
-            gpu.wanted -> "on · waiting for its check"
-            state is JobState.Failed -> "the GPU failed its check; apps stay in software"
-            else -> "experimental · ${gpu.driverLabel} · faster OpenGL and Vulkan apps and games; terminal apps don't change"
+            gpu.active -> UiText.t("on · %s · for apps opened from now on", gpu.device ?: "GPU")
+            gpu.wanted && state is JobState.Failed -> UiText.t("off: the GPU failed its check after a system update")
+            gpu.wanted -> UiText.t("on · waiting for its check")
+            state is JobState.Failed -> UiText.t("the GPU failed its check; apps stay in software")
+            else -> UiText.t("experimental · %s · faster OpenGL and Vulkan apps and games; terminal apps don't change", gpu.driverLabel)
         }
     Column(Modifier.card()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                BasicText("gpu acceleration", style = Mono.copy(fontSize = TextSize.Item))
+                BasicText(UiText.t("gpu acceleration"), style = Mono.copy(fontSize = TextSize.Item))
                 BasicText(
                     status,
                     style = Mono.copy(color = if (gpu.active) Palette.green else Palette.muted, fontSize = TextSize.Small),

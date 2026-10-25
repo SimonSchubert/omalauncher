@@ -139,11 +139,12 @@ private fun Welcome(
     Appear(0) {
         Column {
             Spacer(Modifier.height(10.dp))
-            BasicText("omarchy on your home screen", style = Mono.copy(fontSize = TextSize.Large))
+            BasicText(UiText.t("omarchy on your home screen"), style = Mono.copy(fontSize = TextSize.Large))
             Spacer(Modifier.height(10.dp))
             BasicText(
-                "Omarchy's themes and wallpapers, your Android apps, and home-screen widgets. Arch Linux adds " +
-                    "terminal apps and coding agents, now or later in settings.",
+                UiText.t(
+                    "Omarchy's themes and wallpapers, your Android apps, and home-screen widgets. Arch Linux adds terminal apps and coding agents, now or later in settings.",
+                ),
                 style = Mono.copy(color = Subtle, lineHeight = 20.sp),
             )
         }
@@ -184,7 +185,7 @@ internal fun AgentPicker(
     Column {
         Label("coding agents")
         BasicText(
-            "Pick any to install with Linux. You can add or remove them later in settings.",
+            UiText.t("Pick any to install with Linux. You can add or remove them later in settings."),
             Modifier.padding(top = 4.dp, bottom = 14.dp),
             style = Mono.copy(color = Subtle, fontSize = TextSize.Small),
         )
@@ -204,10 +205,9 @@ private fun StartButton(
         PrimaryButton(if (linux) "start and set up linux" else "start", Modifier.passesKeys(), onStart)
         BasicText(
             if (linux) {
-                "Linux downloads about 1 GB, so Wi-Fi is best, and takes 3 GB of space. It installs in the " +
-                    "background in 10 to 20 minutes; the home screen is ready right away."
+                UiText.t("Linux downloads about 1 GB, so Wi-Fi is best, and takes 3 GB of space. It installs in the background in 10 to 20 minutes; the home screen is ready right away.")
             } else {
-                "Downloads the theme's wallpaper now and Omarchy's other themes (about 70 MB) in the background."
+                UiText.t("Downloads the theme's wallpaper now and Omarchy's other themes (about 70 MB) in the background.")
             },
             Modifier.padding(top = 10.dp).fillMaxWidth(),
             style = Mono.copy(color = Subtle, fontSize = TextSize.Small, lineHeight = 16.sp),
@@ -225,7 +225,7 @@ private fun ThemeDownloadProgress(
 ) {
     Spacer(Modifier.height(10.dp))
     BasicText(
-        if (error != null) "the theme didn't download" else "getting $theme",
+        if (error != null) UiText.t("the theme didn't download") else UiText.t("getting %s", theme),
         style = Mono.copy(fontSize = TextSize.Large, color = if (error != null) Palette.red else Palette.foreground),
     )
     Spacer(Modifier.height(28.dp))
@@ -239,12 +239,12 @@ private fun ThemeDownloadProgress(
         Spacer(Modifier.height(28.dp))
         PrimaryButton("try again", Modifier.takesPassedKeys().passesKeys(), onRetry)
         BasicText(
-            "continue without wallpapers",
+            UiText.t("continue without wallpapers"),
             Modifier.padding(top = 16.dp).clickable(onClick = onSkip),
             style = Mono.copy(color = Palette.accent, fontSize = TextSize.Body),
         )
         BasicText(
-            "The theme's colors apply anyway. The launcher tries again later, or download them in settings › style.",
+            UiText.t("The theme's colors apply anyway. The launcher tries again later, or download them in settings › style."),
             Modifier.padding(top = 6.dp),
             style = Mono.copy(color = Subtle, fontSize = TextSize.Small, lineHeight = 16.sp),
         )
@@ -269,8 +269,8 @@ private fun Choice(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            BasicText(title, style = Mono.copy(fontSize = TextSize.Body, color = if (on) Palette.foreground else Palette.foreground.copy(alpha = 0.8f)))
-            BasicText(description, style = Mono.copy(color = Subtle, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            BasicText(UiText.t(title), style = Mono.copy(fontSize = TextSize.Body, color = if (on) Palette.foreground else Palette.foreground.copy(alpha = 0.8f)))
+            BasicText(UiText.t(description), style = Mono.copy(color = Subtle, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(12.dp))
         Check(on)
@@ -302,7 +302,7 @@ internal fun PrimaryButton(
             .padding(vertical = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(label, style = Mono.copy(color = Palette.background, fontSize = TextSize.Item, fontWeight = FontWeight.Bold))
+        BasicText(UiText.t(label), style = Mono.copy(color = Palette.background, fontSize = TextSize.Item, fontWeight = FontWeight.Bold))
     }
 }
 
@@ -320,7 +320,7 @@ internal fun LinuxProgress(
     val current = working?.stage ?: failed?.stage ?: Stage.Download
     val log = working?.log ?: failed?.log.orEmpty()
     BasicText(
-        if (failed != null) "setup stopped" else "setting up linux",
+        if (failed != null) UiText.t("setup stopped") else UiText.t("setting up linux"),
         style = Mono.copy(fontSize = TextSize.Large, color = if (failed != null) Palette.red else Palette.foreground),
     )
     Spacer(Modifier.height(24.dp))
@@ -335,7 +335,7 @@ internal fun LinuxProgress(
                     else -> StageStatus.Running
                 }
             StageRow(
-                label = if (stage == Stage.Agents) "install ${agents.joinToString { it.name }}" else stage.label,
+                label = if (stage == Stage.Agents) UiText.t("install %s", agents.joinToString { it.name }) else stage.label,
                 status = status,
                 detail = working?.takeIf { stage == current }?.step ?: failed?.takeIf { stage == current }?.message,
                 progress = working?.takeIf { stage == current }?.progress,
@@ -354,7 +354,7 @@ internal fun LinuxProgress(
     LogTail(log, expandedByDefault = failed != null)
     if (failed == null) {
         BasicText(
-            "You can close this and use the launcher; setup keeps going in the background.",
+            UiText.t("You can close this and use the launcher; setup keeps going in the background."),
             Modifier.padding(top = 16.dp),
             style = Mono.copy(color = Subtle, fontSize = TextSize.Small),
         )
@@ -381,7 +381,7 @@ private fun StageRow(
         }
         Column(Modifier.weight(1f)) {
             BasicText(
-                label,
+                UiText.t(label),
                 style =
                     Mono.copy(
                         fontSize = TextSize.Body,
@@ -444,7 +444,7 @@ private fun LogTail(
         Row {
             Label("output")
             Spacer(Modifier.weight(1f))
-            BasicText(if (expanded) "less" else "more", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small))
+            BasicText(if (expanded) UiText.t("less") else UiText.t("more"), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small))
         }
         Spacer(Modifier.height(6.dp))
         for (line in log.takeLast(if (expanded) 40 else 3)) {
@@ -546,7 +546,7 @@ private fun BrowseSwatch(onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(10.dp),
     ) {
-        BasicText("more themes ›", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        BasicText(UiText.t("more themes ›"), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             repeat(5) { Box(Modifier.size(width = 14.dp, height = 6.dp).background(Palette.border)) }
@@ -556,7 +556,7 @@ private fun BrowseSwatch(onClick: () -> Unit) {
 
 @Composable
 internal fun Label(text: String) {
-    BasicText(text.uppercase(), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small, letterSpacing = 1.5.sp))
+    BasicText(UiText.t(text).uppercase(), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small, letterSpacing = 1.5.sp))
 }
 
 /** Fades and slides content in, [index] steps after the screen appears; its space is kept from the start. */

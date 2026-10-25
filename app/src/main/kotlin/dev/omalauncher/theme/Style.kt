@@ -196,6 +196,7 @@ class Style(
         const val SYSTEM_FONT = "system"
 
         val FONT = Setting.Text("font", SYSTEM_FONT, "The font family of the launcher's text and widgets: \"system\" is Android's monospace; fc-list :spacing=100 lists those Linux has.")
+        val LANGUAGE = Setting.Text("language", "auto", "The language of the launcher's own screens: \"auto\" follows the phone's language; \"english\" and \"japanese\" pick one.")
         val TERMINAL_FONT = Setting.Text("terminal.font", "JetBrains Mono", "The terminals' font family; fc-list :spacing=100 lists those installed.")
         val TERMINAL_TEXT = Setting.Number("terminal.text", 12.0, 6.0..32.0, "The terminals' em size in dp, before Android's font size: 10 smaller, 12 default, 14 larger.")
 
@@ -249,7 +250,7 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, FONT, LANGUAGE, APP_TILES, RECENT_APPS, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, KEYBAR_GAPS_OUT, KEYBAR_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
                 listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, SWIPE_UP, SWIPE_DOWN)
         }

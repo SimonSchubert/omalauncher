@@ -436,7 +436,7 @@ internal fun SearchField(
                 .padding(horizontal = 18.dp, vertical = 12.dp),
         decorationBox = { inner ->
             Box {
-                if (query.isEmpty()) BasicText(placeholder, style = style.copy(color = Palette.muted))
+                if (query.isEmpty()) BasicText(UiText.t(placeholder), style = style.copy(color = Palette.muted))
                 inner()
             }
         },

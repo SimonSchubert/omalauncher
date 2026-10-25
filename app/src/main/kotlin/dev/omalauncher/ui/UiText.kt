@@ -1,0 +1,500 @@
+package dev.omalauncher.ui
+
+import java.util.Locale
+
+/**
+ * Japanese for the launcher's own screens.
+ *
+ * The app's text is written in English at the place it's drawn, so this keeps
+ * the English as the key and swaps in Japanese when the phone speaks it. A
+ * line that isn't in the map stays English, which means a screen never breaks
+ * over a missing translation, and new text shows up untranslated until it's
+ * added here.
+ *
+ * [t] takes the same `%s` placeholders as [String.format] for the few labels
+ * that carry something else, like an agent's name or a count.
+ *
+ * This is a first step: moving the text into Android's string resources
+ * (`values/strings.xml` and `values-ja/strings.xml`) is what the platform
+ * wants. Until then the style menu's language option decides, and only
+ * Japanese is here.
+ */
+object UiText {
+    /**
+     * An explicit choice from the style menu: "ja", "en", or null to follow the phone.
+     * [Runtime] sets it from `Style.LANGUAGE` at start and whenever that setting changes.
+     */
+    @Volatile
+    private var override: String? = null
+
+    fun setLanguage(value: String) {
+        override = when (value) {
+            "japanese" -> "ja"
+            "english" -> "en"
+            else -> null
+        }
+    }
+
+    private val japanese =
+        mapOf(
+            // The prompt bar and its agent.
+            "listening…" to "聞き取り中…",
+            "open an app…" to "アプリを開く…",
+            "open an app or ask %s…" to "%s に頼むか、アプリを開く…",
+            "⏎ ask" to "⏎ 頼む",
+            "agent" to "エージェント",
+            "  manage agents…" to "  エージェントを管理…",
+            // Home's long-press menu.
+            "create with %s" to "%sで作る",
+            "an agent" to "エージェント",
+            "widget" to "ウィジェット",
+            "app" to "アプリ",
+            "panel" to "パネル",
+            "browse store" to "ストアを見る",
+            "a face of your own" to "自分のフェイス",
+            "This page is yours to fill with a face: a feed, a dashboard, a start page, a game. Say what you want and %s builds it here, full screen." to
+                "このページは自由に使えます。フィード、ダッシュボード、スタートページ、ゲームなど、フェイスを置けます。欲しいものを伝えれば %s が全画面で作ります。",
+            // Settings, its rows and statuses.
+            "style" to "スタイル",
+            "language" to "言語",
+            "follow the phone" to "端末の設定に従う",
+            "pages" to "ページ",
+            "gestures" to "ジェスチャー",
+            "linux" to "Linux",
+            "coding agents" to "コーディングエージェント",
+            "packages" to "パッケージ",
+            "local network" to "ローカルネットワーク",
+            "android settings" to "Android の設定",
+            "licenses" to "ライセンス",
+            "installed · remove" to "インストール済み · 削除",
+            "installing" to "インストール中",
+            "setup stopped · retry" to "セットアップ中断 · 再試行",
+            "removing…" to "削除中…",
+            "not installed · install Arch Linux for terminal apps and agents" to
+                "未インストール · ターミナルアプリとエージェントには Arch Linux をインストール",
+            "theme, background, home screen" to "テーマ、背景、ホーム画面",
+            "1 page" to "1 ページ",
+            "%s pages" to "%s ページ",
+            " · arrange, edit, remove" to " · 並べ替え、編集、削除",
+            "up: %s · down: %s" to "上: %s · 下: %s",
+            "nothing" to "なし",
+            "default: %s" to "既定: %s",
+            "install Claude Code, OpenCode, …" to "Claude Code、OpenCode などを入れる",
+            "needs linux" to "Linux が必要",
+            "install Linux apps and tools with pacman and the AUR" to "pacman と AUR で Linux アプリとツールを入れる",
+            "let widgets and linux reach your printer, home assistant, …" to
+                "ウィジェットと Linux からプリンターや Home Assistant などに接続できるようにする",
+            "the phone's system settings" to "端末のシステム設定",
+            "open source software in Omalauncher" to "Omalauncher のオープンソースソフトウェア",
+            // Updates.
+            "system updates" to "システムの更新",
+            "widgets" to "ウィジェット",
+            "updating the system: %s…" to "システムを更新中: %s…",
+            "a system update didn't finish" to "システムの更新が完了しませんでした",
+            "updating…" to "更新中…",
+            "checking…" to "確認中…",
+            "not checked yet" to "まだ確認していません",
+            "up to date · checked %s" to "最新 · 確認: %s",
+            "couldn't reach the store" to "ストアに接続できませんでした",
+            "+%s more" to "ほか %s 件",
+            "just now" to "たった今",
+            "%sm ago" to "%s分前",
+            "%sh ago" to "%s時間前",
+            "%sd ago" to "%s日前",
+            // Buttons.
+            "update" to "更新",
+            "update anyway %s → %s" to "上書き更新 %s → %s",
+            "it may have your changes, and updating replaces them" to "変更が含まれている可能性があり、更新で置き換えられます",
+            "you changed it, and updating replaces your changes" to "変更されているため、更新であなたの編集は置き換えられます",
+            "edited, so not updated here: %s · updating one in the store replaces your changes" to "編集されているためここでは更新されません: %s · ストアで更新するとあなたの編集は置き換わります",
+            "check" to "確認",
+            "retry" to "再試行",
+            "reset" to "リセット",
+            "browse" to "見る",
+            "install" to "インストール",
+            "remove" to "削除",
+            "edit" to "編集",
+            "share" to "共有",
+            "replace" to "置き換える",
+            "cancel" to "キャンセル",
+            "update all" to "すべて更新",
+            "download themes" to "テーマをダウンロード",
+            // First run: the welcome, its choices and Linux's stages.
+            "omarchy on your home screen" to "ホーム画面に Omarchy",
+            "Omarchy's themes and wallpapers, your Android apps, and home-screen widgets. Arch Linux adds terminal apps and coding agents, now or later in settings." to
+                "Omarchy のテーマと壁紙、Android アプリ、ホーム画面のウィジェット。Arch Linux を入れるとターミナルアプリとコーディングエージェントも使えます（今でも、あとで設定からでも）。",
+            "also set up Arch Linux" to "Arch Linux もセットアップする",
+            "terminal apps, agents, pacman · ~1 GB download, 3 GB space" to
+                "ターミナルアプリ、エージェント、pacman · 約 1 GB のダウンロード、3 GB の空き",
+            "Pick any to install with Linux. You can add or remove them later in settings." to
+                "Linux と一緒に入れるものを選べます。あとで設定から追加・削除できます。",
+            "start" to "はじめる",
+            "start and set up linux" to "Linux もセットアップして開始",
+            "Linux downloads about 1 GB, so Wi-Fi is best, and takes 3 GB of space. It installs in the background in 10 to 20 minutes; the home screen is ready right away." to
+                "Linux は約 1 GB をダウンロードするので Wi-Fi がおすすめで、3 GB の空きが必要です。バックグラウンドで 10〜20 分かけて入り、ホーム画面はすぐに使えます。",
+            "Downloads the theme's wallpaper now and Omarchy's other themes (about 70 MB) in the background." to
+                "テーマの壁紙を今、Omarchy の他のテーマ（約 70 MB）をバックグラウンドでダウンロードします。",
+            "the theme didn't download" to "テーマをダウンロードできませんでした",
+            "getting %s" to "%s を取得中",
+            "download its wallpaper" to "壁紙をダウンロード",
+            "try again" to "もう一度試す",
+            "continue without wallpapers" to "壁紙なしで続ける",
+            "The theme's colors apply anyway. The launcher tries again later, or download them in settings › style." to
+                "テーマの色はそのまま使えます。あとで再試行するか、設定 › スタイル からダウンロードできます。",
+            "setting up linux" to "Linux をセットアップ中",
+            "setup stopped" to "セットアップ中断",
+            "install %s" to "%s をインストール",
+            "cancel install" to "インストールを中止",
+            "You can close this and use the launcher; setup keeps going in the background." to
+                "閉じてもランチャーは使えます。セットアップはバックグラウンドで続きます。",
+            "more themes ›" to "その他のテーマ ›",
+            "output" to "出力",
+            "less" to "閉じる",
+            "more" to "もっと見る",
+            // Linux's setup stages, as the checklist and the settings row show them.
+            "download arch linux" to "Arch Linux をダウンロード",
+            "unpack the system" to "システムを展開",
+            "configure pacman" to "pacman を設定",
+            "install omarchy's apps" to "Omarchy のアプリをインストール",
+            "install coding agents" to "コーディングエージェントをインストール",
+            // The style screen.
+            "home screen" to "ホーム画面",
+            "screens" to "画面",
+            "terminal key bar" to "ターミナルキーバー",
+            "system bars" to "システムバー",
+            "launcher & widgets" to "ランチャーとウィジェット",
+            "theme" to "テーマ",
+            "background" to "背景",
+            "terminal" to "ターミナル",
+            "icons" to "アイコン",
+            "monochrome" to "モノクロ",
+            "colored" to "カラー",
+            "home apps" to "ホームのアプリ",
+            "boxed" to "枠あり",
+            "icon only" to "アイコンのみ",
+            "recent apps" to "最近のアプリ",
+            "shown" to "表示",
+            "hidden" to "非表示",
+            "columns" to "列",
+            "one" to "1",
+            "auto" to "自動",
+            "corners" to "角",
+            "edge" to "角なし",
+            "soft" to "少し丸い",
+            "round" to "丸い",
+            "gaps in" to "内側の余白",
+            "gaps out" to "外側の余白",
+            "border width" to "枠線の太さ",
+            "opacity" to "不透明度",
+            "frosted glass" to "すりガラス",
+            "on" to "オン",
+            "off" to "オフ",
+            "status bar" to "ステータスバー",
+            "keys" to "キー",
+            "font" to "フォント",
+            "text" to "文字",
+            "smaller" to "小",
+            "default" to "標準",
+            "larger" to "大",
+            "preview" to "プレビュー",
+            "system default" to "システム既定",
+            "removed" to "削除済み",
+            "has errors" to "エラーあり",
+            "stock" to "標準",
+            "edited" to "編集済み",
+            "they differ" to "値が異なる",
+            "they differ in style.toml; a step sets them all" to "style.toml で値が異なります。段階を変えるとすべて揃います",
+            "custom: %s, from style.toml" to "カスタム: %s（style.toml）",
+            "edit with agent" to "エージェントで編集",
+            "back to stock" to "標準に戻す",
+            "%s is gone, so the stock keys show" to "%s がないため、標準のキーを表示しています",
+            "back to the stock keys?" to "標準のキーに戻しますか？",
+            "Your keybar.owl is replaced with the one this launcher ships." to
+                "keybar.owl はこのランチャー標準のものに置き換わります。",
+            "your own theme" to "自分のテーマ",
+            "[ + image ]" to "[ + 画像 ]",
+            "✓ android wallpaper & system colors follow the theme (system colors update after the screen turns off)" to
+                "✓ Android の壁紙とシステムカラーがテーマに従います（画面を消すと更新されます）",
+            "[ use as android wallpaper + system colors ]" to "[ Android の壁紙とシステムカラーに使う ]",
+            "remove background?" to "背景を削除しますか？",
+            "It's deleted from the phone and from Linux." to "端末と Linux から削除されます。",
+            "install theme" to "テーマをインストール",
+            "A theme's GitHub repo. It replaces an installed theme of the same name." to
+                "テーマの GitHub リポジトリ。同じ名前のテーマは置き換わります。",
+            "remove %s?" to "%s を削除しますか？",
+            "Your changes to it go; Omarchy's version stays." to "加えた変更は失われ、Omarchy の版に戻ります。",
+            "more settings, like border and bar colors: ~/%s/defaults.toml" to
+                "枠線やバーの色など、その他の設定: ~/%s/defaults.toml",
+            "terminals opened from now on · more with pacman, like ttf-cascadia-code" to
+                "今後開くターミナルに適用 · pacman で追加できます（例: ttf-cascadia-code）",
+            "%s pt · %s columns in portrait" to "%s pt · 縦向きで %s 列",
+            "Omarchy's other themes are downloading from github.com/omacom/omarchy (~70 MB)." to
+                "Omarchy の他のテーマを github.com/omacom/omarchy からダウンロード中です（約 70 MB）。",
+            "Omarchy's themes aren't installed yet. They're downloaded from github.com/omacom/omarchy (~70 MB)." to
+                "Omarchy のテーマはまだ入っていません。github.com/omacom/omarchy からダウンロードします（約 70 MB）。",
+            "downloading… %s MB" to "ダウンロード中… %s MB",
+            "failed: %s" to "失敗: %s",
+            "installing %s… %s MB" to "%s をインストール中… %s MB",
+            "install failed: %s" to "インストール失敗: %s",
+            // Home's error banner.
+            "1 problem" to "1 件の問題",
+            "%s problems" to "%s 件の問題",
+            "%s more in errors.txt · " to "ほか %s 件は errors.txt · ",
+            "tap to hide" to "タップで隠す",
+            "add to home screen?" to "ホーム画面に追加しますか？",
+            "from %s" to "%s から",
+            "add" to "追加",
+            // Guest jobs, under what started them.
+            "failed:" to "失敗:",
+            // Pages screen.
+            "Home's pages, left to right. Drag one by ≡ to move it, or with keys pick ≡ up with Enter and move it with the arrows. Home opens on the first with tiles; faces before it sit left of it." to
+                "ホームのページを左から右へ並べます。≡ をドラッグで、または ≡ を Enter で掴んで矢印で動かします。ホームはタイルのある最初のページで開き、その前にあるフェイスは左側に並びます。",
+            "remove this page?" to "このページを削除しますか？",
+            "Its file goes to .removed/ in the widgets folder." to "そのファイルはウィジェットフォルダの .removed/ に移動します。",
+            "%s. Its widgets go to .removed/ in the widgets folder; its apps come off home and stay installed." to
+                "%s。ウィジェットはウィジェットフォルダの .removed/ に移動し、アプリはホームから外れますがインストールは残ります。",
+            "1 app" to "アプリ 1 個",
+            "%s apps" to "アプリ %s 個",
+            "empty" to "空",
+            "doesn't compile" to "コンパイルできません",
+            "face" to "フェイス",
+            "home" to "ホーム",
+            // Gestures, and the home banner about panels that don't compile.
+            "the stock drawer" to "標準のドロワー",
+            "the drawer shows %s" to "ドロワーは %s を表示",
+            "swiping down opens nothing" to "下にスワイプしても何も開きません",
+            "%s until it's fixed: %s" to "修正されるまで %s: %s",
+            "the terminal key bar is the stock one until it's fixed: %s" to "修正されるまでターミナルキーバーは標準のものです: %s",
+            "%s (has errors)" to "%s（エラーあり）",
+            "%s (missing)" to "%s（見つかりません）",
+            "swipe up" to "上にスワイプ",
+            "swipe down" to "下にスワイプ",
+            "panels are owl files, the drawer among them: edit them like widgets, or create one with your agent from home's menu. with nothing on swipe up, tapping the bar still opens the drawer" to
+                "パネルは owl ファイルで、ドロワーもその一つです。ウィジェットと同じように編集するか、ホームのメニューからエージェントで作れます。上にスワイプを「なし」にしても、バーをタップすればドロワーは開きます。",
+            "[ edit ]" to "[ 編集 ]",
+            // Coding agents screen.
+            "open" to "開く",
+            "Installed with mise, like Omarchy. Logins open in your browser; paste keys with the keyboard's clipboard." to
+                "Omarchy と同じく mise でインストールします。ログインはブラウザで開きます。キーの貼り付けはキーボードのクリップボードで。",
+            // Linux screen.
+            "removing linux…" to "Linux を削除中…",
+            "arch linux, optional" to "Arch Linux（任意）",
+            "Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download and 3 GB of space; installs in the background." to
+                "Linux アプリ、ターミナルウィジェット、コーディングエージェント、pacman、Files が使えるようになります。約 1 GB のダウンロードと 3 GB の空きが必要で、バックグラウンドでインストールされます。",
+            "install linux" to "Linux をインストール",
+            "install linux and %s agent" to "Linux とエージェント %s 個もインストール",
+            "install linux and %s agents" to "Linux とエージェント %s 個もインストール",
+            "installed · %s" to "インストール済み · %s",
+            "measuring…" to "計算中…",
+            "remove linux" to "Linux を削除",
+            "remove linux?" to "Linux を削除しますか？",
+            "Deletes Linux apps, coding agents, packages and everything in /root, like Downloads. Themes, wallpapers, widgets and your home screen stay." to
+                "Linux アプリ、コーディングエージェント、パッケージ、Downloads など /root 内のすべてが削除されます。テーマ、壁紙、ウィジェット、ホーム画面はそのまま残ります。",
+            "gpu acceleration" to "GPU アクセラレーション",
+            "on · %s · for apps opened from now on" to "オン · %s · 今後開くアプリに適用",
+            "off: the GPU failed its check after a system update" to "オフ: システム更新後に GPU のチェックが失敗しました",
+            "on · waiting for its check" to "オン · チェック待ち",
+            "the GPU failed its check; apps stay in software" to "GPU のチェックが失敗したため、アプリはソフトウェア描画のままです",
+            "experimental · %s · faster OpenGL and Vulkan apps and games; terminal apps don't change" to
+                "試験的 · %s · OpenGL と Vulkan のアプリやゲームが高速になります。ターミナルアプリは変わりません",
+            "turn on" to "オンにする",
+            "turn off" to "オフにする",
+            // Packages screen.
+            "search packages" to "パッケージを検索",
+            "Arch Linux ARM packages via pacman, and the AUR via yay. Installing also updates the system, so it can take a while. AUR packages are user-submitted and built on the device: check their PKGBUILD on aur.archlinux.org first." to
+                "Arch Linux ARM のパッケージは pacman で、AUR は yay で扱えます。インストール時にシステムの更新も行うため、時間がかかることがあります。AUR のパッケージはユーザー投稿でこの端末でビルドされるため、まず aur.archlinux.org で PKGBUILD を確認してください。",
+            "loading…" to "読み込み中…",
+            "searching…" to "検索中…",
+            "installed (%s)" to "インストール済み (%s)",
+            "no packages match" to "該当するパッケージはありません",
+            "%s results" to "%s 件の結果",
+            "required" to "必須",
+            "confirm" to "確定",
+            // Files: rows, selection and the paste bar.
+            "1 item" to "1 件",
+            "%s items" to "%s 件",
+            "folder" to "フォルダ",
+            "copy" to "コピー",
+            "cut" to "切り取り",
+            "delete" to "削除",
+            "select all" to "すべて選択",
+            "rename" to "名前変更",
+            "open with…" to "アプリで開く…",
+            "move here" to "ここへ移動",
+            "paste here" to "ここへ貼り付け",
+            "%s selected" to "%s 件選択中",
+            "filter this folder" to "このフォルダを絞り込み",
+            "search" to "検索",
+            "new file" to "新規ファイル",
+            "new folder" to "新規フォルダ",
+            "hide hidden files" to "隠しファイルを非表示",
+            "show hidden files" to "隠しファイルを表示",
+            "open terminal here" to "ここでターミナルを開く",
+            "empty folder" to "空のフォルダ",
+            "nothing matches" to "一致するものはありません",
+            "can't hand %s to other apps" to "%s を他のアプリに渡せません",
+            "no app can open %s" to "%s を開けるアプリがありません",
+            "can't open %s: %s" to "%s を開けません: %s",
+            "failed" to "失敗",
+            "delete %s?" to "%s を削除しますか？",
+            "delete %s items?" to "%s 件を削除しますか？",
+            "This can't be undone." to "この操作は取り消せません。",
+            "create" to "作成",
+            // The editor.
+            "editor" to "エディタ",
+            "can't read %s: %s" to "%s を読めません: %s",
+            "can't save %s: %s" to "%s を保存できません: %s",
+            "not found" to "見つかりません",
+            "find in file" to "ファイル内を検索",
+            "find" to "検索",
+            "previous match" to "前の一致",
+            "next match" to "次の一致",
+            "save" to "保存",
+            "don't wrap lines" to "行を折り返さない",
+            "wrap lines" to "行を折り返す",
+            "show in files" to "Files で表示",
+            "open in micro" to "micro で開く",
+            "save %s?" to "%s を保存しますか？",
+            "You have changes that aren't saved yet." to "保存されていない変更があります。",
+            "discard" to "破棄",
+            "new" to "新規",
+            "recent" to "最近",
+            "Files you edit show up here." to "編集したファイルはここに表示されます。",
+            "a path in Linux" to "Linux 内のパス",
+            // The store.
+            "all" to "すべて",
+            "installed" to "インストール済み",
+            "pick an app to see what it installs and runs" to "アプリを選ぶと、インストールされるものと実行するコマンドが表示されます",
+            "pick a %s to see what it installs and runs" to "%sを選ぶと、インストールされるものと実行するコマンドが表示されます",
+            "search %s %s" to "%2\$s（%1\$s 件）を検索",
+            "built in" to "内蔵",
+            "6x4 · a shell" to "6x4 · シェル",
+            "6x6 · runs %s" to "6x6 · %s を実行",
+            "reviewed %s from github.com/%s" to "%2\$s で審査された%1\$s",
+            "no %s yet" to "%sはまだありません",
+            "no new %s" to "新しい%sはありません",
+            "nothing matches \"%s\"" to "「%s」に一致するものはありません",
+            "✓ on home" to "✓ ホームに追加済み",
+            "tap to add to page %s" to "タップでページ %s に追加",
+            "update available" to "更新があります",
+            "✓ installed" to "✓ インストール済み",
+            "needs a newer launcher" to "より新しいランチャーが必要です",
+            "needs a newer launcher (owl %s); update the launcher to install it" to "より新しいランチャーが必要です（owl %s）。ランチャーを更新してからインストールしてください",
+            "update %s → %s" to "%s → %s に更新",
+            "add to page %s" to "ページ %s に追加",
+            "add as a face" to "フェイスとして追加",
+            "✓ on your home screen" to "✓ ホーム画面にあります",
+            "✓ left of your first page" to "✓ 最初のページの左にあります",
+            "✓ in your app drawer" to "✓ アプリドロワーにあります",
+            "✓ in gesture settings" to "✓ ジェスチャー設定にあります",
+            "✓ in your widgets folder" to "✓ ウィジェットフォルダにあります",
+            "needs Linux: it runs commands in Arch, so it shows in the app drawer once you install Linux in settings" to
+                "Linux が必要です: Arch でコマンドを実行するため、設定で Linux をインストールするとアプリドロワーに表示されます",
+            "needs Linux: it runs commands in Arch, so it waits as a placeholder until you install Linux in settings" to
+                "Linux が必要です: Arch でコマンドを実行するため、設定で Linux をインストールするまでプレースホルダーとして表示されます",
+            "none" to "なし",
+            "installs packages: %s" to "インストールするパッケージ: %s",
+            "runs no commands" to "コマンドを実行しません",
+            "runs these commands in Arch:" to "Arch で次のコマンドを実行します:",
+            "its commands or packages changed since the version you approved" to "承認したバージョンから、コマンドまたはパッケージが変更されています",
+            // Plural nouns the store builds its sentences from (singulars are defined above).
+            "faces" to "フェイス",
+            "apps" to "アプリ",
+            "panels" to "パネル",
+            "keybar" to "キーバー",
+            "keybars" to "キーバー",
+            // Sharing a widget: QR, links, and the store.
+            "share %s" to "%s を共有",
+            "hide the file" to "ファイルを隠す",
+            "show the whole file" to "ファイル全体を表示",
+            "check for secrets with agent" to "エージェントで秘密情報を確認",
+            "can't read %s" to "%s を読めません",
+            "%s is over %s KB, more than a launcher takes" to "%s は %s KB を超えていて、ランチャーが読み込めるサイズを超えています",
+            "uploading…" to "アップロード中…",
+            "get QR code" to "QRコードを取得",
+            "something went wrong" to "何かうまくいきませんでした",
+            "uploads it, public, to %s for %s days" to "%s に公開でアップロードし、%s 日間保持されます",
+            "Or send the link: permanent, the whole widget is in it." to "リンクで送る方法もあります：永久に有効で、ウィジェット全体が含まれます。",
+            "Too big to send as a link: the QR code is the way to share it." to "リンクで送るには大きすぎます：QRコードで共有してください。",
+            "Links to %s, gone in %s days. The link below is permanent." to "%s へのリンクは %s 日で消えます。下のリンクは永久に有効です。",
+            "Links to %s, gone in %s days." to "%s へのリンクは %s 日で消えます。",
+            "Permanent: the whole widget is in the image." to "永久に有効：ウィジェット全体が画像に含まれています。",
+            "share QR code" to "QRコードを共有",
+            "share link" to "リンクを共有",
+            "copied" to "コピーしました",
+            "copy link" to "リンクをコピー",
+            "in the store" to "ストアに公開",
+            "An issue on github.com/%s; once reviewed, anyone can install it." to "github.com/%s の Issue として登録され、審査を通ると誰でもインストールできます。",
+            "Or a pull request from your agent, which can add a preview too:" to "エージェントによるプルリクエストでも投稿できます（プレビューも追加できます）：",
+            "create pull request with agent" to "エージェントでプルリクエストを作成",
+            "open GitHub issue" to "GitHub Issue を開く",
+            "no browser to open %s" to "%s を開くブラウザがありません",
+            "uploads it, public, to %s for review" to "%s に公開でアップロードし、審査にかけます",
+            "✗ couldn't upload: %s" to "✗ アップロードできませんでした: %s",
+            "website" to "ウェブサイト",
+            "source code" to "ソースコード",
+            "Omalauncher %s · © 2026 Simon Schubert\n\nIt includes the open source software below." to
+                "Omalauncher %s · © 2026 Simon Schubert\n\n以下のオープンソースソフトウェアを含みます。",
+            // What bundled components do (the licenses screen).
+            "runs the optional Linux system" to "任意の Linux システムを実行します",
+            "memory allocator used by PRoot" to "PRoot が使うメモリ確保器",
+            "shared memory for PRoot" to "PRoot 用の共有メモリ",
+            "OpenGL on Adreno GPUs in the optional Linux system" to "任意の Linux システムでの Adreno GPU の OpenGL",
+            "protocol files bundled with Mesa" to "Mesa に同梱のプロトコルファイル",
+            "theme colors bundled for first run" to "初回起動用の同テーマカラー",
+            "symbol font" to "シンボルフォント",
+            "weather glyphs in the symbol font" to "シンボルフォント内の天気グリフ",
+            "glyphs in the symbol font" to "シンボルフォント内のグリフ",
+            "user interface" to "ユーザーインターフェース",
+            "activity, Compose and other AndroidX libraries" to "Activity、Compose など AndroidX ライブラリ",
+            "language runtime" to "言語ランタイム",
+            "unpacks downloads" to "ダウンロードの解凍",
+            "draws SVG icons" to "SVG アイコンの描画",
+            "draws the QR codes widgets are shared with" to "ウィジェット共有の QRコード生成",
+            "reads and writes JSON" to "JSON の読み書き",
+            // Receiving a shared widget.
+            "shared %s" to "共有された%s",
+            "fetching it from %s…" to "%s から取得中…",
+            "it can't be read" to "読み込めません",
+            "This link doesn't hold a widget: %s." to "このリンクにウィジェットが含まれていません: %s。",
+            "an app" to "アプリ",
+            "a widget" to "ウィジェット",
+            "shared with you%s%s · %s KB" to "あなたに共有されました%s%s · %s KB",
+            "Only add it if you trust whoever sent it. It runs the commands below in Arch as you, with your files and the network." to
+                "追加するのは、送ってくれた人を信じられる場合だけにしてください。以下のコマンドが Arch 上であなたとして実行され、ファイルとネットワークを使います。",
+            "needs a newer launcher (owl %s); update the launcher to add it" to "より新しいランチャーが必要です（owl %s）。ランチャーを更新してから追加してください",
+            "replace the %s shared before" to "以前共有された%sを置き換え",
+            "add to app drawer" to "アプリドロワーに追加",
+            "add to gesture panels" to "ジェスチャーパネルに追加",
+            "add to your widgets folder" to "ウィジェットフォルダに追加",
+            "review with agent" to "エージェントでチェック",
+            // Widget tiles waiting on Linux.
+            "needs %s" to "%s が必要",
+            "installing…" to "インストール中…",
+            "needs Linux" to "Linux が必要",
+            "runs commands in the optional Arch Linux" to "任意の Arch Linux 上でコマンドを実行します",
+            "fix with agent" to "エージェントで修正",
+            // Terminal tiles in home widgets.
+            "starting…" to "起動中…",
+            "exited · tap to restart" to "終了 · タップで再起動",
+            // Folder tiles.
+            "%s folder" to "%s フォルダ",
+            "tap to name" to "タップして名前を入力",
+            // The app drawer's long-press menu.
+            "add to home" to "ホームに追加",
+            "app info" to "アプリ情報",
+            // The theme catalog's search.
+            "search %s themes" to "テーマ（%s 件）を検索",
+        )
+
+    /** [english] in Japanese on a Japanese phone, with [args] filled into its `%s`s; otherwise as it is. */
+    fun t(english: String, vararg args: Any?): String {
+        val speakJapanese = when (override) {
+            "ja" -> true
+            "en" -> false
+            else -> Locale.getDefault().language == "ja"
+        }
+        val text = if (speakJapanese) japanese[english] ?: english else english
+        return if (args.isEmpty()) text else text.format(*args)
+    }
+}

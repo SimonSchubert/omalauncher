@@ -95,7 +95,7 @@ fun ShareWidgetScreen(
 
     // Keys on get QR code go on to share it, which takes its place once it's uploaded.
     val shareCode = remember { FocusRequester() }
-    OverlayPanel("share $name", onDismiss, contentWidth = ReadingWidth) {
+    OverlayPanel(UiText.t("share %s", name), onDismiss, contentWidth = ReadingWidth) {
         val prepared = prepared ?: return@OverlayPanel
         val text = prepared.text
         val link = prepared.link
@@ -113,8 +113,8 @@ fun ShareWidgetScreen(
                 }
             }
             when {
-                text == null -> BasicText("can't read ${file.name}", style = Mono.copy(color = Palette.red, fontSize = TextSize.Body))
-                link == null -> BasicText("${file.name} is over ${Review.MAX_BYTES / 1024} KB, more than a launcher takes", style = Mono.copy(color = Palette.red, fontSize = TextSize.Body))
+                text == null -> BasicText(UiText.t("can't read %s", file.name), style = Mono.copy(color = Palette.red, fontSize = TextSize.Body))
+                link == null -> BasicText(UiText.t("%s is over %s KB, more than a launcher takes", file.name, Review.MAX_BYTES / 1024), style = Mono.copy(color = Palette.red, fontSize = TextSize.Body))
                 else -> {
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         val square = Modifier.widthIn(max = 360.dp).fillMaxWidth().aspectRatio(1f)
@@ -142,11 +142,11 @@ fun ShareWidgetScreen(
                                                 val id = withContext(Dispatchers.IO) { Paste.upload(Share.minify(text), userAgent()) }
                                                 withContext(Dispatchers.Default) { qrCode(Share.pasteLink(id)) }
                                             }.onSuccess { pasted = it }
-                                                .onFailure { uploadError = (it as? ShareError)?.message ?: "something went wrong" }
+                                                .onFailure { uploadError = (it as? ShareError)?.message ?: UiText.t("something went wrong") }
                                             uploading = false
                                         }
                                     }
-                                    BasicText("uploads it, public, to ${Paste.HOST} for ${Paste.DAYS} days", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                                    BasicText(UiText.t("uploads it, public, to %s for %s days", Paste.HOST, Paste.DAYS), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                                     uploadError?.let { BasicText("✗ $it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
                                 }
                             }
@@ -155,11 +155,11 @@ fun ShareWidgetScreen(
                     val sendable = link.length <= MAX_SENT_LINK
                     BasicText(
                         when {
-                            code == null && sendable -> "Or send the link: permanent, the whole widget is in it."
-                            code == null -> "Too big to send as a link: the QR code is the way to share it."
-                            pasted != null && sendable -> "Links to ${Paste.HOST}, gone in ${Paste.DAYS} days. The link below is permanent."
-                            pasted != null -> "Links to ${Paste.HOST}, gone in ${Paste.DAYS} days."
-                            else -> "Permanent: the whole widget is in the image."
+                            code == null && sendable -> UiText.t("Or send the link: permanent, the whole widget is in it.")
+                            code == null -> UiText.t("Too big to send as a link: the QR code is the way to share it.")
+                            pasted != null && sendable -> UiText.t("Links to %s, gone in %s days. The link below is permanent.", Paste.HOST, Paste.DAYS)
+                            pasted != null -> UiText.t("Links to %s, gone in %s days.", Paste.HOST, Paste.DAYS)
+                            else -> UiText.t("Permanent: the whole widget is in the image.")
                         },
                         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                         modifier = Modifier.fillMaxWidth(),
@@ -177,13 +177,13 @@ fun ShareWidgetScreen(
                                             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     // The chooser's preview reads the image through the clip.
                                     send.clipData = ClipData.newRawUri("$name QR code", uri)
-                                    context.startActivity(Intent.createChooser(send, "Share $name").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                    context.startActivity(Intent.createChooser(send, UiText.t("share %s", name)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                                 }
                             }
                         }
                         if (sendable) BracketAction("share link", Palette.accent) {
                             val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, link).putExtra(Intent.EXTRA_SUBJECT, "$name widget")
-                            context.startActivity(Intent.createChooser(send, "Share $name").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            context.startActivity(Intent.createChooser(send, UiText.t("share %s", name)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         }
                         if (sendable) BracketAction(if (copied) "copied" else "copy link", Palette.foreground) {
                             context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("$name widget", link))
@@ -199,13 +199,13 @@ fun ShareWidgetScreen(
 
             if (onPublish != null) {
                 Spacer(Modifier.height(16.dp))
-                BasicText("in the store", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
+                BasicText(UiText.t("in the store"), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title))
                 BasicText(
-                    "An issue on github.com/${Market.REPO}; once reviewed, anyone can install it.",
+                    UiText.t("An issue on github.com/%s; once reviewed, anyone can install it.", Market.REPO),
                     style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                 )
                 if (text != null) StoreIssue(spec, text)
-                BasicText("Or a pull request from your agent, which can add a preview too:", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                BasicText(UiText.t("Or a pull request from your agent, which can add a preview too:"), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                 BracketAction("create pull request with agent", Palette.accent, onClick = onPublish)
             }
         }
@@ -269,13 +269,13 @@ private fun StoreIssue(
             runCatching { withContext(Dispatchers.IO) { Paste.upload(text, userAgent(), Paste.STORE_DAYS) } }
                 .onSuccess { id ->
                     val url = Submit.issueUrl(Market.REPO, spec.name, Catalog.metaText(spec.program?.meta?.get("description")).orEmpty(), id, spec.kind)
-                    if (!context.openUrl(url)) error = "no browser to open $url"
-                }.onFailure { error = (it as? ShareError)?.message ?: "something went wrong" }
+                    if (!context.openUrl(url)) error = UiText.t("no browser to open %s", url)
+                }.onFailure { error = (it as? ShareError)?.message ?: UiText.t("something went wrong") }
             uploading = false
         }
     }
-    BasicText("uploads it, public, to ${Paste.HOST} for review", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
-    error?.let { BasicText("✗ couldn't upload: $it", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
+    BasicText(UiText.t("uploads it, public, to %s for review", Paste.HOST), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+    error?.let { BasicText(UiText.t("✗ couldn't upload: %s", it), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
 }
 
 /** How the launcher names itself to [Paste]'s host, which asks clients to. */

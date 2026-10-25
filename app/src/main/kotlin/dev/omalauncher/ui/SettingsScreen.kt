@@ -69,35 +69,36 @@ fun SettingsScreen(
     OverlayPanel("settings", onDismiss, contentWidth = ReadingWidth) {
         val linuxStatus =
             when (val l = linux) {
-                LinuxState.Installed -> "installed · remove"
-                is LinuxState.Installing -> "installing" + (l.progress?.let { " ${(it * 100).toInt()}%" } ?: "") + " · ${l.stage.label}"
-                is LinuxState.Failed -> "setup stopped · retry"
-                LinuxState.Removing -> "removing…"
-                else -> "not installed · install Arch Linux for terminal apps and agents"
+                LinuxState.Installed -> UiText.t("installed · remove")
+                is LinuxState.Installing -> UiText.t("installing") + (l.progress?.let { " ${(it * 100).toInt()}%" } ?: "") + " · " + UiText.t(l.stage.label)
+                is LinuxState.Failed -> UiText.t("setup stopped · retry")
+                LinuxState.Removing -> UiText.t("removing…")
+                else -> UiText.t("not installed · install Arch Linux for terminal apps and agents")
             }
+        val pageCount = runtime.widgets.pages.size
         val rows =
             listOfNotNull(
-                Triple("style", runtime.themes.current?.title ?: "theme, background, home screen", onStyle),
-                Triple("pages", runtime.widgets.pages.size.let { if (it == 1) "1 page" else "$it pages" } + " · arrange, edit, remove", onPages),
-                Triple("gestures", "up: ${runtime.gestureLabel(runtime.gestures.swipeUp)} · down: ${runtime.gestureLabel(runtime.gestures.swipeDown)}", onGestures),
+                Triple("style", runtime.themes.current?.title ?: UiText.t("theme, background, home screen"), onStyle),
+                Triple("pages", (if (pageCount == 1) UiText.t("1 page") else UiText.t("%s pages", pageCount)) + UiText.t(" · arrange, edit, remove"), onPages),
+                Triple("gestures", UiText.t("up: %s · down: %s", runtime.gestureLabel(runtime.gestures.swipeUp), runtime.gestureLabel(runtime.gestures.swipeDown)), onGestures),
                 Triple("linux", linuxStatus, onLinux),
                 if (installed) {
-                    Triple("coding agents", runtime.agents.default?.let { "default: ${it.name}" } ?: "install Claude Code, OpenCode, …", onAgents)
+                    Triple("coding agents", runtime.agents.default?.let { UiText.t("default: %s", it.name) } ?: UiText.t("install Claude Code, OpenCode, …"), onAgents)
                 } else {
-                    Triple("coding agents", "needs linux", onLinux)
+                    Triple("coding agents", UiText.t("needs linux"), onLinux)
                 },
-                Triple("packages", if (installed) "install Linux apps and tools with pacman and the AUR" else "needs linux", if (installed) onPackages else onLinux),
+                Triple("packages", UiText.t(if (installed) "install Linux apps and tools with pacman and the AUR" else "needs linux"), if (installed) onPackages else onLinux),
                 if (localNetworkMissing) {
-                    Triple("local network", "let widgets and linux reach your printer, home assistant, …") {
+                    Triple("local network", UiText.t("let widgets and linux reach your printer, home assistant, …")) {
                         askLocalNetwork.launch(LocalNetwork.PERMISSION)
                     }
                 } else {
                     null
                 },
-                Triple("android settings", "the phone's system settings") {
+                Triple("android settings", UiText.t("the phone's system settings")) {
                     context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 },
-                Triple("licenses", "open source software in Omalauncher", onLicenses),
+                Triple("licenses", UiText.t("open source software in Omalauncher"), onLicenses),
             )
         UpdatesBox(runtime, installed)
         if (installed) SetupUpdates(runtime)
@@ -114,8 +115,8 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        BasicText(title, style = Mono.copy(fontSize = TextSize.Item))
-                        BasicText(subtitle, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                        BasicText(UiText.t(title), style = Mono.copy(fontSize = TextSize.Item))
+                        BasicText(UiText.t(subtitle), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                     }
                     Symbol(Glyph.ChevronRight, Palette.accent, fontSize = TextSize.Title)
                 }
@@ -136,7 +137,7 @@ private fun SetupUpdates(runtime: Runtime) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BasicText(
-                if (working != null) "updating the system: ${working.action.lowercase()}…" else "a system update didn't finish",
+                if (working != null) UiText.t("updating the system: %s…", working.action.lowercase()) else UiText.t("a system update didn't finish"),
                 Modifier.weight(1f),
                 style = Mono.copy(color = if (failed != null) Palette.red else Palette.accent),
             )
@@ -176,7 +177,7 @@ private fun UpdatesBox(
         Modifier.padding(bottom = 8.dp).card(),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            BasicText(if (linux) "system updates" else "widgets", Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item))
+            BasicText(UiText.t(if (linux) "system updates" else "widgets"), Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item))
             when {
                 busy -> {}
                 // With one section pending, its own "update" is the same thing.
@@ -195,7 +196,7 @@ private fun UpdatesBox(
             }
         }
         if (linux) LinuxUpdatesRows(runtime)
-        if (linux && widgets) BasicText("widgets", Modifier.padding(top = 8.dp), style = Mono.copy(fontSize = TextSize.Item))
+        if (linux && widgets) BasicText(UiText.t("widgets"), Modifier.padding(top = 8.dp), style = Mono.copy(fontSize = TextSize.Item))
         if (widgets) WidgetUpdatesRows(engine, markets, ready, held)
     }
 }
@@ -209,11 +210,11 @@ private fun LinuxUpdatesRows(runtime: Runtime) {
     val working = job is JobState.Working
     val lines =
         when {
-            working -> listOf("updating…")
-            updates.checking -> listOf("checking…")
-            pending == null -> listOf("not checked yet")
+            working -> listOf(UiText.t("updating…"))
+            updates.checking -> listOf(UiText.t("checking…"))
+            pending == null -> listOf(UiText.t("not checked yet"))
             pending.error != null -> listOf(pending.error)
-            pending.count == 0 -> listOf("up to date · checked ${ago(pending.checkedAt)}")
+            pending.count == 0 -> listOf(UiText.t("up to date · checked %s", ago(pending.checkedAt)))
             // The agents first: they're what most people are waiting for.
             else -> pending.tools.map { "${it.name} ${it.current} → ${it.latest}" } + pending.packages
         }
@@ -236,17 +237,17 @@ private fun WidgetUpdatesRows(
     val checking = markets.any { it.loading }
     val lines =
         when {
-            engine.updating -> listOf("updating…")
-            checking -> listOf("checking…")
+            engine.updating -> listOf(UiText.t("updating…"))
+            checking -> listOf(UiText.t("checking…"))
             ready.isNotEmpty() || held.isNotEmpty() -> ready.map { (m, e) -> "${e.name} ${m.installedVersion(e)?.version} → ${e.version}" }
-            markets.any { it.error != null } -> listOf("couldn't reach the store")
-            markets.any { it.refreshedAt == 0L } -> listOf("not checked yet")
-            else -> listOf("up to date · checked ${ago(markets.minOf { it.refreshedAt })}")
+            markets.any { it.error != null } -> listOf(UiText.t("couldn't reach the store"))
+            markets.any { it.refreshedAt == 0L } -> listOf(UiText.t("not checked yet"))
+            else -> listOf(UiText.t("up to date · checked %s", ago(markets.minOf { it.refreshedAt })))
         }
     UpdateLines(lines, ready.isNotEmpty() && !engine.updating && !checking, engine::updateAll)
     if (!engine.updating && !checking && held.isNotEmpty()) {
         val names = held.joinToString { (m, e) -> "${e.name} ${m.installedVersion(e)?.version} → ${e.version}" }
-        BasicText("edited, so not updated here: $names · updating one in the store replaces your changes", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        BasicText(UiText.t("edited, so not updated here: %s · updating one in the store replaces your changes", names), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
     }
     engine.updateError?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small), maxLines = 3) }
 }
@@ -261,13 +262,13 @@ private fun UpdateLines(
     ready: Boolean,
     onUpdate: () -> Unit,
 ) {
-    val shown = if (lines.size > MAX_LINES) lines.take(MAX_LINES - 1) + "+${lines.size - MAX_LINES + 1} more" else lines
+    val shown = if (lines.size > MAX_LINES) lines.take(MAX_LINES - 1) + UiText.t("+%s more", lines.size - MAX_LINES + 1) else lines
     val style = Mono.copy(color = if (ready) Palette.accent else Palette.muted, fontSize = TextSize.Small)
     Row {
         Column(Modifier.weight(1f).padding(top = 4.dp)) {
             for (line in shown) BasicText(line, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (ready) BracketAction("update", Palette.accent, onClick = onUpdate)
+        if (ready) BracketAction(UiText.t("update"), Palette.accent, onClick = onUpdate)
     }
 }
 
@@ -277,9 +278,9 @@ private const val MAX_LINES = 10
 private fun ago(millis: Long): String {
     val minutes = (System.currentTimeMillis() - millis) / 60_000
     return when {
-        minutes < 1 -> "just now"
-        minutes < 60 -> "${minutes}m ago"
-        minutes < 48 * 60 -> "${minutes / 60}h ago"
-        else -> "${minutes / (24 * 60)}d ago"
+        minutes < 1 -> UiText.t("just now")
+        minutes < 60 -> UiText.t("%sm ago", minutes)
+        minutes < 48 * 60 -> UiText.t("%sh ago", minutes / 60)
+        else -> UiText.t("%sd ago", minutes / (24 * 60))
     }
 }

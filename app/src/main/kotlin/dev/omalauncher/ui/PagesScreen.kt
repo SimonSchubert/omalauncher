@@ -93,7 +93,7 @@ internal fun PagesScreen(
     }
     OverlayPanel("pages", onDismiss, contentWidth = ReadingWidth) {
         BasicText(
-            "Home's pages, left to right. Drag one by ≡ to move it, or with keys pick ≡ up with Enter and move it with the arrows. Home opens on the first with tiles; faces before it sit left of it.",
+            UiText.t("Home's pages, left to right. Drag one by ≡ to move it, or with keys pick ≡ up with Enter and move it with the arrows. Home opens on the first with tiles; faces before it sit left of it."),
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )
         Spacer(Modifier.height(12.dp))
@@ -102,7 +102,7 @@ internal fun PagesScreen(
         if (!engine.loaded) {
             // Home starts the engine; settings opened without it (after the process died) has to, or this would wait forever.
             LaunchedEffect(Unit) { runtime.start() }
-            BasicText("loading…", style = Mono.copy(color = Palette.muted))
+            BasicText(UiText.t("loading…"), style = Mono.copy(color = Palette.muted))
             return@OverlayPanel
         }
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(RowGap)) {
@@ -203,11 +203,11 @@ internal fun PagesScreen(
         val items = engine.itemsOn(page)
         val owner = engine.layout.owner(items) as? WidgetItem
         ConfirmDialog(
-            if (owner != null) "remove ${owner.spec.name}?" else "remove this page?",
+            if (owner != null) UiText.t("remove %s?", owner.spec.name) else UiText.t("remove this page?"),
             if (owner != null) {
                 "Its file goes to .removed/ in the widgets folder."
             } else {
-                "${pageContents(items)}. Its widgets go to .removed/ in the widgets folder; its apps come off home and stay installed."
+                UiText.t("%s. Its widgets go to .removed/ in the widgets folder; its apps come off home and stay installed.", pageContents(items))
             },
             "remove",
             onDismiss = { removing = null },
@@ -224,7 +224,7 @@ private val RowGap = 8.dp
 private fun pageContents(items: List<HomeItem>): String {
     val widgets = items.filterIsInstance<WidgetItem>().map { it.spec.name }
     val apps = items.size - widgets.size
-    return (widgets + listOfNotNull(apps.takeIf { it > 0 }?.let { if (it == 1) "1 app" else "$it apps" })).joinToString(", ").ifEmpty { "empty" }
+    return (widgets + listOfNotNull(apps.takeIf { it > 0 }?.let { if (it == 1) UiText.t("1 app") else UiText.t("%s apps", it) })).joinToString(", ").ifEmpty { UiText.t("empty") }
 }
 
 /** One page: a face by its name, a page of tiles by what's on it. */
@@ -260,12 +260,14 @@ private fun PageRow(
             Row(verticalAlignment = Alignment.Top) {
                 BasicText(spec?.name ?: pageContents(items), Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item), maxLines = 2, overflow = TextOverflow.Ellipsis)
                 BasicText(
-                    when {
-                        spec?.error != null -> "doesn't compile"
-                        spec != null -> "face"
-                        page == 1 -> "home"
-                        else -> ""
-                    },
+                    UiText.t(
+                        when {
+                            spec?.error != null -> "doesn't compile"
+                            spec != null -> "face"
+                            page == 1 -> "home"
+                            else -> ""
+                        },
+                    ),
                     style = Mono.copy(color = if (spec?.error != null) Palette.red else Palette.muted, fontSize = TextSize.Small),
                 )
             }

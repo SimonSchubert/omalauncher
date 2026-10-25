@@ -128,7 +128,7 @@ internal fun FileRow(
             )
             val detail =
                 if (entry.isDir) {
-                    entry.children?.let { if (it == 1) "1 item" else "$it items" } ?: "folder"
+                    entry.children?.let { if (it == 1) UiText.t("1 item") else UiText.t("%s items", it) } ?: UiText.t("folder")
                 } else {
                     Formatter.formatShortFileSize(context, entry.size) + " · " + formatDate(context, entry.modified)
                 }
@@ -190,7 +190,7 @@ internal fun PasteBar(
     BottomBar(modifier) {
         BasicText(
             // The button says whether they're copied or moved.
-            if (count == 1) "1 item" else "$count items",
+            if (count == 1) UiText.t("1 item") else UiText.t("%s items", count),
             Modifier.weight(1f).padding(start = 6.dp),
             style = Mono.copy(color = Palette.muted),
             maxLines = 1,

@@ -120,7 +120,7 @@ fun EditorScreen(
         null ->
             loaded?.exceptionOrNull()?.let { error ->
                 LaunchedEffect(error) {
-                    Toast.makeText(context, "can't read ${path.substringAfterLast('/')}: ${error.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, UiText.t("can't read %s: %s", path.substringAfterLast('/'), error.message), Toast.LENGTH_LONG).show()
                     onExit()
                 }
             }
@@ -171,7 +171,7 @@ private fun EditorBody(
                 }.exceptionOrNull()
             }
         if (error != null) {
-            toast("can't save $name: ${error.message}")
+            toast(UiText.t("can't save %s: %s", name, error.message))
             return false
         }
         saved = text
@@ -197,7 +197,7 @@ private fun EditorBody(
         val hit = findMatch(state.text, q, from, backward)
         if (hit == null) {
             match = null
-            if (q.isNotEmpty()) toast("not found")
+            if (q.isNotEmpty()) toast(UiText.t("not found"))
             return
         }
         match = TextRange(hit, hit + q.length).also { state.edit { selection = it } }
@@ -240,7 +240,7 @@ private fun EditorBody(
                         modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
                         decorationBox = { inner ->
                             Box {
-                                if (q.isEmpty()) BasicText("find in file", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
+                                if (q.isEmpty()) BasicText(UiText.t("find in file"), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
                                 inner()
                             }
                         },
@@ -333,8 +333,8 @@ private fun EditorBody(
         // Keys start on save: Enter right away shouldn't throw the changes away.
         val saveFocus = remember { FocusRequester() }
         DialogFrame(onDismiss = { confirmClose = false }, start = saveFocus) {
-            BasicText("save $name?", style = Mono.copy(fontSize = TextSize.Title))
-            BasicText("You have changes that aren't saved yet.", style = Mono.copy(color = Palette.muted))
+            BasicText(UiText.t("save %s?", name), style = Mono.copy(fontSize = TextSize.Title))
+            BasicText(UiText.t("You have changes that aren't saved yet."), style = Mono.copy(color = Palette.muted))
             // Cancel is a tap outside or back; three actions don't fit a phone's dialog.
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 BracketAction("discard", Palette.red) {
@@ -538,7 +538,7 @@ fun EditorHome(
         ) {
             SectionLabel("recent")
             if (recent.isEmpty()) {
-                BasicText("Files you edit show up here.", Modifier.padding(vertical = 8.dp), style = Mono.copy(color = Palette.muted))
+                BasicText(UiText.t("Files you edit show up here."), Modifier.padding(vertical = 8.dp), style = Mono.copy(color = Palette.muted))
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(recent) { path ->

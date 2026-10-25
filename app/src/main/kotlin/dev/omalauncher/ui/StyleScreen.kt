@@ -122,6 +122,8 @@ fun StyleScreen(
     val linux by runtime.bootstrap.state.collectAsState()
     OverlayPanel("style", onDismiss) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
+            Heading("language")
+            LanguageOption(runtime.style)
             ThemeSection(
                 store,
                 onBrowse = onBrowse,
@@ -167,12 +169,12 @@ fun StyleScreen(
                 // Linux's fonts, which the terminal section lists.
                 Heading("launcher & widgets")
                 val fonts = listOf(Style.SYSTEM_FONT) + runtime.terminalFont.families
-                FontOption(fonts, style.style[Style.FONT], label = { if (it == Style.SYSTEM_FONT) "system default" else it }) { family ->
+                FontOption(fonts, style.style[Style.FONT], label = { if (it == Style.SYSTEM_FONT) UiText.t("system default") else it }) { family ->
                     style.update { it.with(Style.FONT, family) }
                 }
                 TerminalSection(runtime.terminalFont, runtime.launcherFont, style)
                 BasicText(
-                    "more settings, like border and bar colors: ~/${StyleStore.GUEST_DIR}/defaults.toml",
+                    UiText.t("more settings, like border and bar colors: ~/%s/defaults.toml", StyleStore.GUEST_DIR),
                     Modifier.padding(top = 20.dp),
                     style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                 )
@@ -193,7 +195,7 @@ fun StyleScreen(
         removing?.let { theme ->
             val builtIn = theme.dirs.size > 1
             ConfirmDialog(
-                "remove ${theme.title.lowercase()}?",
+                UiText.t("remove %s?", theme.title.lowercase()),
                 if (builtIn) "Your changes to it go; Omarchy's version stays." else "It's deleted from the phone and from Linux.",
                 "remove",
                 onDismiss = { removing = null },
@@ -241,10 +243,10 @@ private fun KeybarOption(
             ) {
                 BasicText(
                     when {
-                        spec == null -> "removed"
-                        spec.program == null -> "has errors"
-                        stock -> "stock"
-                        else -> "edited"
+                        spec == null -> UiText.t("removed")
+                        spec.program == null -> UiText.t("has errors")
+                        stock -> UiText.t("stock")
+                        else -> UiText.t("edited")
                     },
                     style = Mono.copy(color = if (spec != null && spec.program == null) Palette.red else Palette.foreground),
                 )
@@ -257,11 +259,11 @@ private fun KeybarOption(
                         // Nothing of the user's to replace.
                         KeybarAction.Stock -> if (spec == null) restore() else restoring = true
                     }
-                }, label = { it.label })
+                }, label = { UiText.t(it.label) })
             }
         }
     }
-    OptionHint(if (spec == null) "${file.name} is gone, so the stock keys show" else file.name)
+    OptionHint(if (spec == null) UiText.t("%s is gone, so the stock keys show", file.name) else file.name)
     if (restoring) {
         ConfirmDialog(
             "back to the stock keys?",
@@ -317,7 +319,7 @@ private fun ThemeSection(
         val source = remember(current) { ThemeDirs.sourceOf(current) }
         Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicText(
-                source?.label ?: "your own theme",
+                source?.label ?: UiText.t("your own theme"),
                 Modifier.weight(1f),
                 style = Mono.copy(color = Palette.muted),
                 softWrap = false,
@@ -366,7 +368,7 @@ private fun BackgroundSection(
                     .clickable { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 contentAlignment = Alignment.Center,
             ) {
-                BasicText("[ + image ]", style = Mono.copy(color = Palette.accent))
+                BasicText(UiText.t("[ + image ]"), style = Mono.copy(color = Palette.accent))
             }
         }
     }
@@ -381,11 +383,11 @@ private fun BackgroundSection(
         if (store.liveWallpaperActive) {
             // SystemUI defers live-wallpaper color changes until the screen turns off.
             BasicText(
-                "✓ android wallpaper & system colors follow the theme (system colors update after the screen turns off)",
+                UiText.t("✓ android wallpaper & system colors follow the theme (system colors update after the screen turns off)"),
                 style = Mono.copy(color = Palette.green),
             )
         } else {
-            BasicText("[ use as android wallpaper + system colors ]", style = Mono.copy(color = Palette.accent))
+            BasicText(UiText.t("[ use as android wallpaper + system colors ]"), style = Mono.copy(color = Palette.accent))
         }
     }
     removing?.let { file ->
@@ -419,7 +421,7 @@ private fun TerminalSection(
     // In portrait, where columns run short; landscape has plenty.
     val metrics = LocalContext.current.resources.displayMetrics
     val columns = font.columns(minOf(metrics.widthPixels, metrics.heightPixels))
-    OptionHint("${TerminalFont.format(font.size).removeSuffix(".0")} pt · $columns columns in portrait", Modifier.padding(top = 2.dp))
+    OptionHint(UiText.t("%s pt · %s columns in portrait", TerminalFont.format(font.size).removeSuffix(".0"), columns), Modifier.padding(top = 2.dp))
     TerminalPreview(font, launcherFont)
 }
 
@@ -577,7 +579,7 @@ private fun PreviewScreen(content: @Composable ColumnScope.() -> Unit) {
 
 /** Over a preview, so it isn't mistaken for controls. */
 @Composable
-private fun PreviewLabel() = BasicText("preview", Modifier.padding(top = 12.dp, bottom = 4.dp), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+private fun PreviewLabel() = BasicText(UiText.t("preview"), Modifier.padding(top = 12.dp, bottom = 4.dp), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
 
 /** A stretch of [PREVIEW] in theme colors (foreground and none without them), maybe bold or italic. */
 private class Run(
@@ -643,8 +645,41 @@ private fun Heading(
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        BasicText(text, Modifier.weight(1f), style = Mono.copy(color = Palette.accent), softWrap = false)
+        BasicText(UiText.t(text), Modifier.weight(1f), style = Mono.copy(color = Palette.accent), softWrap = false)
         actions()
+    }
+}
+
+/** The language of the launcher's own screens; auto follows the phone. */
+@Composable
+private fun LanguageOption(style: StyleStore) {
+    val choices = listOf("auto", "english", "japanese")
+    val label: (String) -> String = {
+        when (it) {
+            "english" -> "English"
+            "japanese" -> "日本語"
+            else -> UiText.t("follow the phone")
+        }
+    }
+    var open by remember { mutableStateOf(false) }
+    val selected = style.style[Style.LANGUAGE]
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        OptionLabel("language")
+        Box(Modifier.weight(1f, fill = false)) {
+            Row(
+                Modifier
+                    .frame(1.dp, Palette.border, radius = 12.dp)
+                    .clickable { open = !open }
+                    .padding(start = 14.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(label(selected), Modifier.weight(1f, fill = false), style = Mono.copy(color = Palette.foreground), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 6.dp))
+            }
+            if (open) {
+                ChoicePopup(choices, selected, BelowAnchorStart, onDismiss = { open = false }, onPick = { picked -> style.update { s -> s.with(Style.LANGUAGE, picked) } }, label = label)
+            }
+        }
     }
 }
 
@@ -698,14 +733,14 @@ private val LabelWidth = 104.dp
 private fun OptionLabel(
     text: String,
     modifier: Modifier = Modifier,
-) = BasicText(text, modifier.width(LabelWidth).padding(end = 8.dp), style = Mono.copy(color = Palette.muted))
+) = BasicText(UiText.t(text), modifier.width(LabelWidth).padding(end = 8.dp), style = Mono.copy(color = Palette.muted))
 
 /** A note under an option, lined up with its control. */
 @Composable
 private fun OptionHint(
     text: String,
     modifier: Modifier = Modifier,
-) = BasicText(text, modifier.padding(start = LabelWidth), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+) = BasicText(UiText.t(text), modifier.padding(start = LabelWidth), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
 
 /**
  * [Style] numbers stepped together by 1 within their range, from the first one's value; a value set
@@ -879,7 +914,7 @@ private fun StyleOption(
                 options.forEachIndexed { i, option ->
                     val active = i == selected
                     BasicText(
-                        option,
+                        UiText.t(option),
                         Modifier
                             .background(if (active) Palette.accent else Color.Transparent)
                             .clickable { onSelect(i) }
@@ -891,7 +926,7 @@ private fun StyleOption(
             }
         }
     }
-    if (selected < 0 && custom != null) OptionHint("custom: $custom, from style.toml", Modifier.padding(bottom = 4.dp))
+    if (selected < 0 && custom != null) OptionHint(UiText.t("custom: %s, from style.toml", UiText.t(custom)), Modifier.padding(bottom = 4.dp))
 }
 
 @Composable
@@ -904,16 +939,16 @@ private fun DownloadPrompt(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         BasicText(
             if (partial) {
-                "Omarchy's other themes are downloading from github.com/omacom/omarchy (~70 MB)."
+                UiText.t("Omarchy's other themes are downloading from github.com/omacom/omarchy (~70 MB).")
             } else {
-                "Omarchy's themes aren't installed yet. They're downloaded from github.com/omacom/omarchy (~70 MB)."
+                UiText.t("Omarchy's themes aren't installed yet. They're downloaded from github.com/omacom/omarchy (~70 MB).")
             },
             style = Mono,
         )
         when (state) {
-            is ThemeDownload.Running -> BasicText("downloading… ${state.megabytes} MB", style = Mono.copy(color = Palette.accent))
+            is ThemeDownload.Running -> BasicText(UiText.t("downloading… %s MB", state.megabytes), style = Mono.copy(color = Palette.accent))
             is ThemeDownload.Failed -> {
-                BasicText("failed: ${state.message}", style = Mono.copy(color = Palette.red))
+                BasicText(UiText.t("failed: %s", state.message), style = Mono.copy(color = Palette.red))
                 BracketAction("retry", Palette.accent, onClick = onDownload)
             }
             ThemeDownload.Idle -> BracketAction("download themes", Palette.accent, onClick = onDownload)

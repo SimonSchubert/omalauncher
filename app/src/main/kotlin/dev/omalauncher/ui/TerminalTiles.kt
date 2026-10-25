@@ -325,7 +325,7 @@ fun TerminalView(
                         .pointerInput(term) { detectTapGestures { term.start() } },
                     contentAlignment = Alignment.Center,
                 ) {
-                    BasicText(if (term.running) "starting…" else "exited · tap to restart", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                    BasicText(UiText.t(if (term.running) "starting…" else "exited · tap to restart"), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                 }
             active -> {
                 // Over the TextureView, which Compose's pointer input doesn't reach.

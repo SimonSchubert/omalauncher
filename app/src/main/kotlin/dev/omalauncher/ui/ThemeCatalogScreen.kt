@@ -79,7 +79,7 @@ fun ThemeCatalogScreen(
     ) {
         val q = query.trim().lowercase()
         val shown = catalog.entries.filter { q.isEmpty() || q in it.title.lowercase() || q in it.repo.label.lowercase() }
-        SearchField(query, { query = it }, onGo = { keyboard?.hide() }, placeholder = "search ${catalog.entries.size} themes")
+        SearchField(query, { query = it }, onGo = { keyboard?.hide() }, placeholder = UiText.t("search %s themes", catalog.entries.size))
         Spacer(Modifier.height(8.dp))
         LazyVerticalGrid(
             columns = GridCells.Adaptive(150.dp),
@@ -180,8 +180,8 @@ private fun CatalogCard(
 @Composable
 internal fun InstallStatus(store: ThemeStore) {
     when (val state = store.installing) {
-        is ThemeInstall.Running -> BasicText("installing ${state.name}… ${state.megabytes} MB", style = Mono.copy(color = Palette.accent))
-        is ThemeInstall.Failed -> BasicText("install failed: ${state.message}", Modifier.clickable { store.clearInstallError() }, style = Mono.copy(color = Palette.red))
+        is ThemeInstall.Running -> BasicText(UiText.t("installing %s… %s MB", state.name, state.megabytes), style = Mono.copy(color = Palette.accent))
+        is ThemeInstall.Failed -> BasicText(UiText.t("install failed: %s", state.message), Modifier.clickable { store.clearInstallError() }, style = Mono.copy(color = Palette.red))
         ThemeInstall.Idle -> {}
     }
 }

@@ -85,8 +85,8 @@ internal fun TextDialog(
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     DialogFrame(onDismiss) {
-        BasicText(title, style = Mono.copy(fontSize = TextSize.Title))
-        hint?.let { BasicText(it, style = Mono.copy(color = Palette.muted)) }
+        BasicText(UiText.t(title), style = Mono.copy(fontSize = TextSize.Title))
+        hint?.let { BasicText(UiText.t(it), style = Mono.copy(color = Palette.muted)) }
         BasicTextField(
             value = field,
             onValueChange = { field = it },
@@ -121,8 +121,8 @@ internal fun ConfirmDialog(
     onConfirm: () -> Unit,
 ) {
     DialogFrame(onDismiss) {
-        BasicText(title, style = Mono.copy(fontSize = TextSize.Title))
-        BasicText(message, style = Mono.copy(color = Palette.muted))
+        BasicText(UiText.t(title), style = Mono.copy(fontSize = TextSize.Title))
+        BasicText(UiText.t(message), style = Mono.copy(color = Palette.muted))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             BracketAction("cancel", Palette.muted, onClick = onDismiss)
             BracketAction(confirm, confirmColor, onClick = onConfirm)
