@@ -2,15 +2,9 @@
 
 How Omalauncher is put together, for anyone working on it.
 
-An Android home-screen launcher that runs Arch Linux ARM under proot and acts
-as its Wayland compositor. The home screen (widgets, pinned apps, the bar
-and its app list) is Jetpack Compose; every Linux window opens as its own Android task,
-so it gets a Recents card and behaves like a separate app.
+An Omarchy-inspired Linux environment application for Android that runs Arch Linux ARM under proot and acts as its Wayland compositor. The Linux environment dashboard (overview, applications, terminal, widgets, files, themes, settings) is Jetpack Compose; every Linux window opens as its own Android task, so it gets a Recents card and behaves like a separate app.
 
-Linux is optional. Without it the launcher still has Omarchy's themes and
-wallpapers, Android apps from the bar and the widgets that don't run commands.
-Everything else is offered as an install from settings › linux and wherever
-it appears: Linux apps, terminal widgets, coding agents, pacman and Files.
+Linux is optional. Without it the app still has Omarchy's themes and wallpapers and the widgets that don't run commands. Everything else is offered as an install from settings › linux.
 Widgets that need Linux (`Program.needsLinux`: cmd/stream sources, `Terminal`,
 run/terminal/app actions, `requires`) show as placeholders in their cells until
 it's installed. Removing Linux deletes `files/arch` only.
@@ -32,7 +26,7 @@ touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
   (or, for a widget's `Terminal`, into a TextureView in the tile)
 - `linux/`: proot, the rootfs setup and its update steps, pacman, coding
   agents, and the bridges to Android (audio, URLs, /proc)
-- `ui/`: the Compose home screen, the bar and its app list, settings and Files
+- `ui/`: the Compose dashboard (overview, applications, terminal, widgets, files, themes, settings), and the Linux window, Files and editor screens
 - `widgets/`: the widget engine; the language itself is in the `owl` module.
   A widget's state and sources live in its `WidgetInstance`, which runs while
   its page or a neighbour is on screen, but the pager composes only the

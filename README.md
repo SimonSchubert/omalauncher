@@ -1,9 +1,6 @@
 # Omalauncher
 
-An Android home screen with the look of [Omarchy](https://omarchy.org), and an
-optional Arch Linux ARM system next to your phone apps. Omalauncher runs the
-system under proot, without root, and is its Wayland compositor: every Linux
-window opens as its own Android task, with its own card in Recents.
+An Omarchy-inspired Linux environment for Android, with an optional Arch Linux ARM system running under proot, without root. Omalauncher is the system's Wayland compositor: every Linux window opens as its own Android task, with its own card in Recents. It is a regular application opened from your existing launcher; it does not replace your Android home screen.
 
 <a href="https://play.google.com/store/apps/details?id=dev.omalauncher"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"></a>
 
@@ -16,10 +13,7 @@ window opens as its own Android task, with its own card in Recents.
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04.png" width="24%" alt="Screenshot">
 </p>
 
-- **Themes**: all 22 Omarchy themes, with their wallpapers, applied to the
-  launcher and to the Linux apps, plus the community themes from
-  [omarchy.org/themes](https://omarchy.org/themes/), or your own in
-  `~/.config/omarchy/themes`
+- **Themes**: all 22 Omarchy themes, with their wallpapers, applied to the app and to the Linux apps, plus the community themes from [omarchy.org/themes](https://omarchy.org/themes/), or your own in `~/.config/omarchy/themes`
 - **Widgets** written in OWL, a small declarative language you can edit on the
   phone, plus a [widget store](https://github.com/SimonSchubert/omarchy-widgets)
 - **Linux, optional**: pacman and the AUR, Linux apps in their own windows,
@@ -28,47 +22,24 @@ window opens as its own Android task, with its own card in Recents.
   Copilot, opencode and others, which open in a terminal
 - No account, no ads, no tracking
 
-Needs an arm64 phone with Android 10 or newer. Without Linux, the launcher still
-has the themes, wallpapers, Android apps and the widgets that don't run commands.
+Needs an arm64 phone with Android 10 or newer. Without Linux, the app still has
+the themes, wallpapers and the widgets that don't run commands.
 
 ## Using it
 
-The bar: the one input at the bottom of the home screen opens apps and asks
-coding agents. Focusing it opens the list of Linux and Android apps; typing
-narrows the list, and Enter opens the highlighted app or sends the text to the
-agent. Short queries that name an app open it, sentences go to the agent; Tab
-and the arrow keys move the highlight. Tap the agent's name to pick another
-installed one; the choice is saved in `~/.config/omalauncher/agent`. Hold the mic to talk and release to send, or tap it to dictate
-into the field. Speech is recognized by Android (on the device when the phone
-supports it), so only text reaches Linux.
+Open Omalauncher from your app drawer like any other app; your existing Android home screen is untouched. The dashboard has seven sections:
 
-The app drawer is a widget too, `drawer.owl` in the widgets folder, so an
-agent can rewrite it. Here Grok sorts it into folders:
+- **Overview**: the Linux environment state (not installed, stopped, starting, running, stopping, failed), start and stop controls, and quick actions.
+- **Linux Applications**: installed `.desktop` applications, searchable, each launchable in its own window.
+- **Terminal**: a `foot` terminal in the guest, in its own Android task.
+- **Widgets**: your OWL widgets, with compile errors and Linux-needed flags shown.
+- **Files**: the guest filesystem, in its own task.
+- **Themes**: Omarchy themes and wallpapers, applied to the app and the guest.
+- **Settings**: Linux install/removal, updates, agents, packages, GPU acceleration and diagnostics.
 
-<img src="art/drawer-folders.webp" width="360" alt="Grok rewrites drawer.owl, and the app drawer opens sorted into folders">
+Start Linux from **Overview › start** (or **Settings › Linux**). The first start downloads and unpacks Arch Linux ARM (~830 MB download, ~3 GB space) and installs Omarchy's packages. Once running, Linux apps, terminal widgets and coding agents work. Stopping Linux keeps it installed; removing deletes the rootfs only, leaving themes, widgets and your home screen data intact.
 
-Touch input in Linux windows: tap is a left click, long press is a right
-click, drag scrolls; apps with touch support (foot, GTK) get real touch.
-Hardware keyboard shortcuts: Super+D (the drawer), Super+T (terminal),
-Super+Down (the swipe-down panel), Super+1..9 (home pages) on the home screen;
-Super+W (close) in Linux windows. Android keeps Super on its own, Super+Space,
-Super+A and Super+Enter for itself, so Omarchy's Super+Space and Super+Enter
-can't be used.
-Super+Esc leaves a Linux window or a terminal tile without closing it, since
-Esc itself is theirs; a gamepad's B (Back) does too, as its buttons stay the
-launcher's. On home, in the app drawer, panels and
-widgets, the arrows or Tab (a gamepad's D-pad) move between tiles and what
-takes taps, past the first or last tile to the next page; Enter (A) opens it
-and Menu or holding Enter long-presses it, which selects a home tile for
-editing. Right goes into a widget's own buttons, Left back out to its tile.
-Up from the bar goes back to the tiles, or into the open drawer.
-Enter on a terminal tile goes into it, and Enter there types into it, or
-restarts it once it has exited. Esc (B) closes the drawer, a panel or a
-widget's screen, like Back. Long text, like a license or a file being
-shared, takes the arrows until it has all been shown, Page Up and Page Down a
-screenful. On the pages screen, Enter picks a page up by its ≡ and the arrows
-move it, until Enter or Esc puts it down. Menu on a notification in the
-swipe-down panel dismisses it.
+Linux windows keep working as before: tap is a left click, long press a right click, drag scrolls; Super+W closes a window, Super+Esc leaves one. Touch, hardware keyboard and Back navigation behave as in a desktop.
 
 ## Building
 

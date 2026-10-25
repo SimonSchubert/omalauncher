@@ -65,7 +65,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -90,7 +92,7 @@ class Runtime(
     val linuxApps = LinuxAppCatalog(context, proot)
     val androidApps = AndroidAppCatalog(context)
     val usage = AppUsage(context)
-    val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
+    val themes = ThemeStore(context, proot, style, isLinux = { isRunning }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
     private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit)
     val agents = AgentStore(proot, onChanged = ::syncGuest)
@@ -134,8 +136,15 @@ class Runtime(
     var launcherReady by mutableStateOf(prefs.getBoolean(SETUP_DONE, false) || bootstrap.wanted)
         private set
 
-    /** Linux is installed and its services run: guest commands (like the update check) can go. */
-    private var linux = false
+    /** The optional Linux environment's session: whether it is installed and whether it is running. */
+    private val _session = MutableStateFlow<LinuxSessionState>(LinuxSessionState.Stopped)
+    val sessionState = _session.asStateFlow()
+
+    /** Whether the Wayland server and bridges are up: guest commands work. */
+    val isRunning get() = _session.value == LinuxSessionState.Running
+
+    /** Whether Linux is installed on disk, whatever its session. */
+    val isInstalled get() = bootstrap.isInstalled
 
     /** The Linux install and removal; one at a time. */
     private var linuxJob: Job? = null
@@ -237,11 +246,12 @@ class Runtime(
                 withContext(Dispatchers.IO) { proot.killAll() }
                 install?.join()
                 bootstrap.remove()
+                _session.value = LinuxSessionState.NotInstalled
                 setService(false)
             }
     }
 
-    /** Runs [work] with the foreground service up, so it goes on outside the app; then starts Linux if it's installed. */
+    /** Runs [work] (install or update) with the foreground service up; once done, Linux is installed but not running. */
     private fun runLinux(work: suspend () -> Unit) {
         if (linuxJob?.isActive == true) return
         linuxJob =
@@ -254,50 +264,64 @@ class Runtime(
                     }
                 }
                 work()
-                if (bootstrap.isInstalled) onLinuxReady() else setService(false)
+                if (bootstrap.isInstalled) {
+                    _session.value = LinuxSessionState.Stopped
+                } else {
+                    setService(false)
+                }
             }
     }
 
     /**
-     * Deletes Linux: its apps, agents, packages and home. Themes, widgets and
-     * the home screen stay; widgets that need Linux turn back into placeholders.
+     * Starts the Linux environment: prepares the guest, brings up the Wayland server, proc shim,
+     * open bridge and audio, then finishes the start (fonts, apps, themes, widgets, updates).
+     * Fails fast if Linux is not installed.
      */
-    fun removeLinux() {
-        if (!bootstrap.isInstalled || linuxJob?.isActive == true) return
+    fun startLinux() {
+        if (!isInstalled) {
+            _session.value = LinuxSessionState.Failed("Linux is not installed; install it from settings › Linux first")
+            return
+        }
+        if (_session.value == LinuxSessionState.Running || linuxJob?.isActive == true) return
         linuxJob =
             scope.launch {
-                linux = false
-                launcherFont.forget()
-                widgets.linuxChanged(false)
-                audio.stop()
-                withContext(Dispatchers.IO) { proot.killAll() }
-                bootstrap.remove()
-                withContext(Dispatchers.IO) {
-                    updates.forget()
-                    agents.load()
+                _session.value = LinuxSessionState.Starting
+                try {
+                    withContext(Dispatchers.IO) {
+                        if (!prepared) {
+                            proot.prepare()
+                            prepared = true
+                        }
+                    }
+                    startServices()
+                    _session.value = LinuxSessionState.Running
+                    postStart()
+                } catch (e: Throwable) {
+                    Log.e(TAG, "failed to start Linux", e)
+                    _session.value = LinuxSessionState.Failed(e.message ?: e.toString())
                 }
-                gpu.turnOff()
-                linuxApps.clear()
+            }
+    }
+
+    /**
+     * Stops the Linux environment: kills guest processes, shuts down services, and leaves Linux
+     * installed but stopped. Themes, widgets and user data stay.
+     */
+    fun stopLinux() {
+        if (_session.value != LinuxSessionState.Running || linuxJob?.isActive == true) return
+        linuxJob =
+            scope.launch {
+                _session.value = LinuxSessionState.Stopping
+                withContext(Dispatchers.IO) { proot.killAll() }
+                servicesStarted = false
+                audio.stop()
+                _session.value = LinuxSessionState.Stopped
                 setService(false)
             }
     }
 
-    /** The foreground service keeps the process, and with it Linux, alive; only while Linux is installed or installing. */
-    private fun setService(on: Boolean) {
-        // Android 12+ refuses a foreground service started from the background; the work then goes on without it.
-        runCatching { LinuxService.set(context, on) }.onFailure { Log.w(TAG, "cannot start the service", it) }
-    }
-
-    /** Guest configs follow the theme and the installed agents; only while there is a guest. */
-    private fun syncGuest() {
-        if (linux) provisioner.sync()
-    }
-
-    /** Whether the bridges and the Wayland server are up; they run until the process ends, even if Linux is removed. */
-    private var servicesStarted = false
-
-    private suspend fun onLinuxReady() {
-        if (linux) return
+    /** Brings up the Wayland server, proc shim, open bridge and audio: the guest can run. */
+    private suspend fun startServices() {
         if (!servicesStarted) {
             servicesStarted = true
             updateOutput()
@@ -319,40 +343,79 @@ class Runtime(
             // Linux installed again: its new home has no foot-font.ini yet.
             terminalFont.write()
         }
-        linux = true
-        // A font picked from Linux that wasn't remembered at start (or was installed since) loads now.
+        withContext(Dispatchers.IO) {
+            audio.start()
+            synchronized(server) { server.input.setKeymap(proot.keymap.path) }
+        }
+    }
+
+    /** Finishes a start: fonts, apps, themes, provisioner, widgets and updates. */
+    private fun postStart() {
         scope.launch { launcherFont.apply() }
-        // The recent apps strip on home lists Linux apps before the app list is ever opened.
         scope.launch { refreshApps() }
-        // Themes picked without Linux are written into the guest now.
         themes.renderGuest()
         withContext(Dispatchers.IO) {
             provisioner.sync()
-            audio.start()
-            synchronized(server) { server.input.setKeymap(proot.keymap.path) }
             agents.load()
         }
         widgets.linuxChanged(true)
         refreshApps()
         withContext(Dispatchers.IO) { updates.load() }
         scope.launch {
-            // Update steps that need the network; the home screen doesn't wait for them.
             bootstrap.runBacklog()
             updates.check()
         }
-        // Apps render in software until the GPU passed its check on this system build.
         scope.launch { gpu.recheck() }
     }
 
+    /**
+     * Deletes Linux: its apps, agents, packages and home. Themes, widgets and
+     * the home screen stay; widgets that need Linux turn back into placeholders.
+     */
+    fun removeLinux() {
+        if (!bootstrap.isInstalled || linuxJob?.isActive == true) return
+        linuxJob =
+            scope.launch {
+                _session.value = LinuxSessionState.Stopped
+                launcherFont.forget()
+                widgets.linuxChanged(false)
+                audio.stop()
+                withContext(Dispatchers.IO) { proot.killAll() }
+                bootstrap.remove()
+                _session.value = LinuxSessionState.NotInstalled
+                withContext(Dispatchers.IO) {
+                    updates.forget()
+                    agents.load()
+                }
+                gpu.turnOff()
+                linuxApps.clear()
+                setService(false)
+            }
+    }
+
+    /** The foreground service keeps the process, and with it Linux, alive; only while Linux is installed or installing. */
+    private fun setService(on: Boolean) {
+        // Android 12+ refuses a foreground service started from the background; the work then goes on without it.
+        runCatching { LinuxService.set(context, on) }.onFailure { Log.w(TAG, "cannot start the service", it) }
+    }
+
+    /** Guest configs follow the theme and the installed agents; only while there is a guest. */
+    private fun syncGuest() {
+        if (isRunning) provisioner.sync()
+    }
+
+    /** Whether the bridges and the Wayland server are up; they run until the process ends, even if Linux is removed. */
+    private var servicesStarted = false
+
     /** Turns GPU acceleration on (installing and checking the driver) or off, for Linux apps started from then on. */
     fun setGpu(on: Boolean) {
-        if (!linux) return
+        if (!isRunning) return
         if (on) scope.launch { gpu.turnOn() } else gpu.turnOff()
     }
 
     /** Checks for updates now, on the runtime's scope: leaving settings doesn't cancel it. */
     fun checkUpdates() {
-        if (linux) scope.launch { updates.check(force = true) }
+        if (isRunning) scope.launch { updates.check(force = true) }
     }
 
     /** Runs every pending update (packages and agents); the drawer then lists what changed. */
@@ -392,7 +455,7 @@ class Runtime(
 
     /** Re-runs update steps that failed, e.g. offline; see [Bootstrap.updates]. */
     fun retryUpdates() {
-        if (linux) scope.launch { bootstrap.runBacklog() }
+        if (isRunning) scope.launch { bootstrap.runBacklog() }
     }
 
     /**
@@ -404,7 +467,7 @@ class Runtime(
     fun screenStarted() {
         if (screens++ == 0) proot.procShim.setActive(true)
         // Only checks when the last check is hours old; see SystemUpdates.
-        if (linux) scope.launch { updates.check() }
+        if (isRunning) scope.launch { updates.check() }
     }
 
     fun screenStopped() {
@@ -417,7 +480,7 @@ class Runtime(
 
     /** Rescans .desktop entries; see [LinuxAppCatalog.refresh]. */
     suspend fun refreshApps() {
-        if (linux) linuxApps.refresh()
+        if (isRunning) linuxApps.refresh()
     }
 
     /** A pinned app's icon as the drawer shows it, or its silhouette; null until loaded, or if it has none. */
@@ -525,7 +588,7 @@ class Runtime(
         name: String,
         agent: Agent? = null,
     ) {
-        if (!linux) {
+        if (!isRunning) {
             openSettings(SettingsPage.Linux)
             return
         }
@@ -627,7 +690,7 @@ class Runtime(
         command: String,
         onExit: () -> Unit = {},
     ) {
-        if (!linux) {
+        if (!isRunning) {
             openSettings(SettingsPage.Linux)
             onExit()
             return

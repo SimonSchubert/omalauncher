@@ -19,10 +19,6 @@
         android:required="false" />
 
     <queries>
-        <intent>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent>
         <!-- Lets settings("output") see whether the phone's System UI has Android's output switcher. -->
         <intent>
             <action android:name="com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG" />
@@ -46,44 +42,25 @@
         android:theme="@style/Theme.Omalauncher"
         android:usesCleartextTraffic="true">
 
+        <!-- The main screen: a regular activity opened from the app drawer, not the Android home screen. -->
         <activity
             android:name=".MainActivity"
-            android:clearTaskOnLaunch="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
-            android:excludeFromRecents="true"
             android:exported="true"
-            android:launchMode="singleTask"
+            android:launchMode="singleTop"
             android:resizeableActivity="true"
-            android:stateNotNeeded="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <!-- A widget shared as a link or QR code: https://simonschubert.github.io/omarchy-widgets/w#owl1.<data> (widgets/market/Share.kt). -->
-            <intent-filter android:autoVerify="true">
+            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="simonschubert.github.io" android:pathPrefix="/omarchy-widgets/w" />
-            </intent-filter>
-        </activity>
-
-        <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
-             websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
-             gone once left. Not exported: the system starts it, and other apps have no reason to. -->
-        <activity
-            android:name=".PinShortcutActivity"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:noHistory="true"
-            android:taskAffinity=""
-            android:theme="@style/Theme.Omalauncher.Dialog">
-            <intent-filter>
-                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
             </intent-filter>
         </activity>
 
@@ -258,30 +235,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-
-        <service
-            android:name=".theme.OmarchyWallpaperService"
-            android:exported="true"
-            android:label="@string/wallpaper_label"
-            android:permission="android.permission.BIND_WALLPAPER">
-            <intent-filter>
-                <action android:name="android.service.wallpaper.WallpaperService" />
-            </intent-filter>
-            <meta-data
-                android:name="android.service.wallpaper"
-                android:resource="@xml/wallpaper" />
-        </service>
-
-        <!-- Notification access lets widgets show and control what's playing (android.media) and list notifications (android.notifications). -->
-        <service
-            android:name=".widgets.runtime.MediaListener"
-            android:exported="true"
-            android:label="Omalauncher widgets"
-            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-            <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService" />
-            </intent-filter>
-        </service>
 
         <service
             android:name=".LinuxService"
