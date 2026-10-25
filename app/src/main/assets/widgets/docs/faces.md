@@ -31,6 +31,9 @@ face "morning" {
   left. Home opens on page 1, and an empty page always waits left of the leftmost one, inviting a new
   face there: only faces go left of page 1, never tiles. One whose place is taken goes to that empty
   page instead. A face can also take a page right of page 1 (`page: 3`) if no tiles are there.
+  `home.edge-pages = false` in style.toml hides the empty pages at both ends of home, this one and the one after
+  the last page of tiles (which still comes while a tile is carried, to drop it on); a face added from the store
+  still goes left of the leftmost page.
 - **The screen.** It fills the whole screen: the recent apps strip and the bar slide away with the tile
   pages (swipe up for the app drawer, which brings the bar back). The status bar stays, over the face,
   and the nodes keep clear of it; `statusBar: false` hides it while the face shows (a swipe down from the

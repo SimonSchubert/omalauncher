@@ -101,12 +101,17 @@ fun HomeScreen(
     // while they hold something, so it becomes a real page once used and a new empty one follows.
     // Left of page 1 the same, for faces: like a stock launcher's feed, but the user's own. An empty one waits left of
     // the leftmost, page 0 at first, then -1, -2, ... as they fill.
+    // With home.edge-pages off, neither shows; the one after the last comes back while a tile is carried, to drop it on.
+    // Not the one left of page 1: adding a page before the one on screen would shift the pager under the finger.
     // Unfolded, tile pages show in pairs and a face across both halves: the pager counts slots (see slotsOf).
     val per = if (showsTwoPages(windowSize())) 2 else 1
     val pageNumbers =
-        engine.pages
-            .let { listOf(minOf(it.first(), FACE_PAGE + 1) - 1) + it }
-            .let { if (engine.itemsOn(it.last()).isEmpty()) it else it + (it.last() + 1) }
+        pagerPages(
+            engine.pages,
+            lastEmpty = engine.itemsOn(engine.pages.last()).isEmpty(),
+            facePage = LauncherStyle.edgePages,
+            tilePage = LauncherStyle.edgePages || arrange.carry != null,
+        )
     // Only faces on screen, or the empty one waiting left of them: they get it whole, the bar's room too (see
     // LauncherState.faceShowing), and the status bar's while all of them say statusBar: false.
     fun faceOn(page: Int?) = page?.let { engine.layout.owner(engine.itemsOn(it)) as? WidgetItem }?.takeIf { it.isFace }
@@ -505,6 +510,21 @@ private fun FaceInvite(
             }
         }
     }
+}
+
+/**
+ * Home's page numbers as the pager has them: [pages], with the empty page waiting left of the leftmost for a new face
+ * when [facePage], and one after the last when [tilePage], for tiles, unless that one is empty already ([lastEmpty]).
+ * Neither (home.edge-pages off, no tile carried) leaves only [pages], so home ends at its own first and last page.
+ */
+internal fun pagerPages(
+    pages: List<Int>,
+    lastEmpty: Boolean,
+    facePage: Boolean,
+    tilePage: Boolean,
+): List<Int> {
+    val withFace = if (facePage) listOf(minOf(pages.first(), FACE_PAGE + 1) - 1) + pages else pages
+    return if (!tilePage || lastEmpty) withFace else withFace + (withFace.last() + 1)
 }
 
 /**
