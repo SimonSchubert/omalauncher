@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -26,13 +25,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
+import dev.omalauncher.LinuxSessionState
 import dev.omalauncher.linux.LinuxApp
-import dev.omalauncher.linux.LinuxSessionState
 import dev.omalauncher.widgets.OwlKind
+import dev.omalauncher.widgets.WidgetSpec
 
 /** The dashboard's top-level sections. */
 enum class DashboardSection(
@@ -185,16 +186,16 @@ private fun OverviewScreen(runtime: Runtime) {
             BracketAction(
                 "start",
                 if (startEnabled) Palette.green else Palette.muted,
-                Modifier.clickable(enabled = startEnabled, onClick = {
+                onClick = {
                     if (state == LinuxSessionState.NotInstalled) {
                         runtime.openSettings(dev.omalauncher.ui.SettingsPage.Linux)
                     } else {
                         runtime.startLinux()
                     }
-                }),
+                },
             )
             if (state == LinuxSessionState.Running) {
-                BracketAction("stop", Palette.red, Modifier.clickable(onClick = runtime::stopLinux))
+                BracketAction("stop", Palette.red, onClick = runtime::stopLinux)
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -251,9 +252,9 @@ private fun TerminalSection(runtime: Runtime) {
             }
         }
         Spacer(Modifier.height(16.dp))
-        BracketAction("open terminal", Palette.accent, Modifier.clickable(onClick = {
+        BracketAction("open terminal", Palette.accent, onClick = {
             runtime.terminal(null, "Terminal")
-        }))
+        })
     }
 }
 
@@ -284,10 +285,6 @@ fun LinuxAppsScreen(runtime: Runtime) {
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
                 textStyle = Mono.copy(color = Palette.foreground),
-                placeholder = {
-                    BasicText("search applications", style = Mono.copy(color = Palette.muted))
-                },
-                decorationBox = {},
             )
         }
         Spacer(Modifier.height(12.dp))
@@ -404,9 +401,9 @@ private fun FilesSection(runtime: Runtime, context: android.content.Context) {
             }
         }
         Spacer(Modifier.height(16.dp))
-        BracketAction("open files", Palette.accent, Modifier.clickable(onClick = {
+        BracketAction("open files", Palette.accent, onClick = {
             runtime.openFiles()
-        }))
+        })
     }
 }
 
@@ -432,9 +429,9 @@ private fun ThemesSection(runtime: Runtime, context: android.content.Context) {
             }
         }
         Spacer(Modifier.height(16.dp))
-        BracketAction("open themes", Palette.accent, Modifier.clickable(onClick = {
+        BracketAction("open themes", Palette.accent, onClick = {
             runtime.openSettings(dev.omalauncher.ui.SettingsPage.Themes)
-        }))
+        })
     }
 }
 
@@ -460,9 +457,9 @@ private fun SettingsSection(runtime: Runtime, context: android.content.Context) 
             }
         }
         Spacer(Modifier.height(16.dp))
-        BracketAction("open settings", Palette.accent, Modifier.clickable(onClick = {
+        BracketAction("open settings", Palette.accent, onClick = {
             runtime.openSettings(dev.omalauncher.ui.SettingsPage.Settings)
-        }))
+        })
     }
 }
 
@@ -486,8 +483,8 @@ private fun SharedWidgetNotice(
                 BasicText(link.take(60), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small), maxLines = 2)
             }
             Row {
-                BracketAction("add", Palette.accent, Modifier.clickable(onClick = onAdd))
-                BracketAction("dismiss", Palette.muted, Modifier.clickable(onClick = onDismiss))
+                BracketAction("add", Palette.accent, onClick = onAdd)
+                BracketAction("dismiss", Palette.muted, onClick = onDismiss)
             }
         }
     }

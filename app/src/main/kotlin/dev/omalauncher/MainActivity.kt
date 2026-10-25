@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
     private val runtime get() = (application as App).runtime
 
     /** A widget link opened from a browser or QR code, waiting to be read and added. */
-    private val shared by mutableStateOf<String?>(null)
+    private var shared by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
