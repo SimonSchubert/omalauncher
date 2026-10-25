@@ -68,6 +68,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
@@ -301,7 +302,9 @@ class Runtime(
         if (!servicesStarted) {
             servicesStarted = true
             updateOutput()
-            synchronized(server) { server.selection.system = AndroidClipboard(context, server::clipboardChanged) }
+            // Copied images go in /tmp, which empties when the launcher restarts.
+            val clipboard = AndroidClipboard(context, File(proot.tmpDir, "clipboard"), "/tmp/clipboard", server::clipboardChanged)
+            synchronized(server) { server.selection.system = clipboard }
             context.registerComponentCallbacks(
                 object : ComponentCallbacks {
                     override fun onConfigurationChanged(newConfig: Configuration) = updateOutput()

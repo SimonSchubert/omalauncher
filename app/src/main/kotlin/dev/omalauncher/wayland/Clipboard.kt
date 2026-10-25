@@ -5,7 +5,9 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import android.webkit.MimeTypeMap
 import dev.omalauncher.readUpTo
+import java.io.File
 import java.io.IOException
 import kotlin.concurrent.thread
 
@@ -253,9 +255,18 @@ class DataOffer(
     }
 }
 
-/** Android's clipboard; [onChange] runs on the main thread when another app (or we) copy. */
+/** The largest copied image saved for a paste; a bigger one pastes as its content:// link, as before. */
+private const val MAX_IMAGE_BYTES = 32 * 1024 * 1024
+
+/**
+ * Android's clipboard; [onChange] runs on the main thread when another app (or we) copy. A copied image (a
+ * screenshot's "copy", an image copied in the browser) pastes as the path of a copy of it in [imageDir], which
+ * Linux sees as [guestImageDir]: terminal agents like Claude Code attach an image whose path is pasted.
+ */
 class AndroidClipboard(
     private val context: Context,
+    private val imageDir: File,
+    private val guestImageDir: String,
     onChange: () -> Unit,
 ) : SystemClipboard {
     private val manager = context.getSystemService(ClipboardManager::class.java)
@@ -264,12 +275,35 @@ class AndroidClipboard(
         manager.addPrimaryClipChangedListener { onChange() }
     }
 
-    override fun text(): String? =
-        manager.primaryClip
-            ?.takeIf { it.itemCount > 0 }
-            ?.getItemAt(0)
-            ?.coerceToText(context)
-            ?.toString()
+    override fun text(): String? {
+        val item = manager.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0) ?: return null
+        return imagePath(item) ?: item.coerceToText(context)?.toString()
+    }
+
+    /** [item]'s image saved in [imageDir], once per copy, as Linux sees it; null when it isn't an image or can't be read. */
+    private fun imagePath(item: ClipData.Item): String? {
+        val uri = item.uri ?: return null
+        val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull() ?: manager.primaryClipDescription?.getMimeType(0)
+        if (mime == null || !mime.startsWith("image/")) return null
+        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "png"
+        val file = File(imageDir, "clipboard-${stamp()}.$ext")
+        if (!file.exists()) {
+            val bytes =
+                try {
+                    context.contentResolver.openInputStream(uri)?.use { it.readUpTo(MAX_IMAGE_BYTES + 1) }
+                } catch (e: Exception) {
+                    Log.w(TAG, "reading the copied image failed", e)
+                    null
+                } ?: return null
+            if (bytes.isEmpty() || bytes.size > MAX_IMAGE_BYTES) return null
+            // Written beside it and renamed, so a paste racing this one never finds half a file.
+            imageDir.mkdirs()
+            val part = File(imageDir, file.name + ".part")
+            part.writeBytes(bytes)
+            if (!part.renameTo(file)) return null
+        }
+        return "$guestImageDir/${file.name}"
+    }
 
     override fun setText(text: String) = manager.setPrimaryClip(ClipData.newPlainText("Linux", text))
 
