@@ -31,7 +31,8 @@ import org.json.JSONObject
  * GitHub Pages, widgets in index.json, faces in faces.json and apps in apps.json. Installs
  * are checked against the catalog's SHA-256, land on the current page (a face left of page
  * 1, an app in the drawer), and remember which version and commands were approved, so an
- * update that changes them asks again.
+ * update that changes them asks again. A face with several pages installs them side by side;
+ * each stays the user's to remove, and an update replaces only the ones still there.
  */
 class Market(
     private val engine: WidgetEngine,
@@ -62,6 +63,17 @@ class Market(
         val requires: Map<String, List<String>>,
         /** The installed file's SHA-256, to tell it from one the user edited; null in records kept before it was. */
         val sha256: String? = null,
+        /** A face's other pages, from page 2 on; none in records kept before faces had pages. */
+        val pages: List<PageFile> = emptyList(),
+    ) {
+        /** Every page's file: [file] (page 1), then [pages]'. */
+        val files get() = listOf(PageFile(file, sha256)) + pages
+    }
+
+    /** One installed page of a face, and its SHA-256 as installed. */
+    data class PageFile(
+        val file: String,
+        val sha256: String?,
     )
 
     var entries by mutableStateOf<List<CatalogEntry>>(emptyList())
@@ -108,10 +120,26 @@ class Market(
         if (System.currentTimeMillis() - refreshedAt >= STALE_MS) refresh()
     }
 
-    fun fileFor(e: CatalogEntry) = (if (kind == OwlKind.Widget) "market-" else "market-${kind.word}-") + "${e.author}-${e.id.substringAfter('/')}.owl"
+    /** Page [n]'s file: a face's later pages add `.2`, … which no name can end with, so they never take another's file. */
+    fun fileFor(
+        e: CatalogEntry,
+        n: Int = 1,
+    ) = (if (kind == OwlKind.Widget) "market-" else "market-${kind.word}-") + "${e.author}-${e.id.substringAfter('/')}" + (if (n > 1) ".$n" else "") + ".owl"
 
-    /** Installed, and its file is still there (removing the tile moves the file away). */
-    fun installedVersion(e: CatalogEntry): Installed? = installed[e.id]?.takeIf { File(engine.dir, it.file).exists() }
+    /** Installed, and one of its files is still there (removing the tile moves the file away). */
+    fun installedVersion(e: CatalogEntry): Installed? = installed[e.id]?.takeIf { i -> i.files.any { File(engine.dir, it.file).exists() } }
+
+    /** Each of [e]'s pages' files, from page 1: the installed one, or where a new one goes. */
+    private fun pageFiles(e: CatalogEntry): List<String> {
+        val i = installed[e.id]
+        return (1..1 + e.pages.size).map { n -> i?.files?.getOrNull(n - 1)?.file ?: fileFor(e, n) }
+    }
+
+    /**
+     * How many of an installed face's pages aren't on home: removed there, or added by the version installed. Only "add
+     * pages" brings them, never an update; 0 for one that isn't installed.
+     */
+    fun missingPages(e: CatalogEntry): Int = if (installedVersion(e) == null) 0 else pageFiles(e).count { !File(engine.dir, it).exists() }
 
     /** A newer version this launcher can run. */
     fun hasUpdate(e: CatalogEntry) = e.supported && installedVersion(e)?.let { Catalog.compareVersions(e.version, it.version) > 0 } == true
@@ -128,46 +156,109 @@ class Market(
      */
     fun edited(e: CatalogEntry): Boolean {
         val i = installedVersion(e) ?: return false
-        val sha = i.sha256 ?: return true
-        val file = File(engine.dir, i.file)
+        // A face is edited when any page still there is; one removed on home has nothing to lose.
+        return i.files.any { page -> File(engine.dir, page.file).exists() && edited(page) }
+    }
+
+    private fun edited(page: PageFile): Boolean {
+        val sha = page.sha256 ?: return true
+        val file = File(engine.dir, page.file)
         val stamp = file.length() to file.lastModified()
-        editedFiles[i.file]?.takeIf { it.first == stamp }?.let { return it.second }
+        editedFiles[page.file]?.takeIf { it.first == stamp }?.let { return it.second }
         val edited = runCatching { Review.sha256(file.readBytes()) != sha }.getOrDefault(true)
-        editedFiles[i.file] = stamp to edited
+        editedFiles[page.file] = stamp to edited
         return edited
     }
 
     /** An update runs different commands or needs other packages than what the user approved. */
     fun changedSinceApproval(e: CatalogEntry) = installedVersion(e)?.let { it.commands != e.commands || it.requires != e.requires } == true
 
-    /** Downloads, verifies and installs [e] on [page]; its packages install right after. Returns an error, or null. */
+    /**
+     * Downloads, verifies and installs [e] on [page], or updates it: an update replaces only the pages still on home. Its
+     * packages install right after. Returns an error, or null.
+     */
     suspend fun install(
         e: CatalogEntry,
         page: Int,
     ): String? {
-        busy[e.id] = "installing…"
+        val update = installedVersion(e) != null
+        return put(e, page, if (update) "updating…" else "installing…") { exists -> !update || exists }
+    }
+
+    /** Adds an installed face's [missingPages] at the installed version, leaving the pages still on home as they are. */
+    suspend fun addPages(e: CatalogEntry): String? = put(e, 0, "adding pages…") { exists -> !exists }
+
+    /** Downloads every page [which] picks (by whether its file exists), checks them all, then writes them. */
+    private suspend fun put(
+        e: CatalogEntry,
+        page: Int,
+        status: String,
+        which: (Boolean) -> Boolean,
+    ): String? {
+        busy[e.id] = status
         try {
-            val bytes = withContext(Dispatchers.IO) { httpGet(BASE + e.path) }
-            if (Review.sha256(bytes) != e.sha256) return "the download doesn't match the reviewed version; try again later"
-            val name = installedVersion(e)?.file ?: fileFor(e)
-            withContext(Dispatchers.IO) {
-                // An update keeps its page; a new install goes where the user is. Apps go in the drawer, on no page, and a face
-                // left of page 1, to the empty one waiting there.
-                if (installedVersion(e) == null) {
-                    if (kind == OwlKind.Widget) engine.setPage(name, page)
-                    if (kind == OwlKind.Face) engine.setPage(name, engine.newFacePage())
+            val names = pageFiles(e)
+            val exists = withContext(Dispatchers.IO) { names.map { File(engine.dir, it).exists() } }
+            val paths = listOf(e.path to e.sha256) + e.pages.map { it.path to it.sha256 }
+            val picked = names.indices.filter { which(exists[it]) }
+            // All of them or none: a face whose second page failed to download would be half there.
+            val bytes =
+                withContext(Dispatchers.IO) {
+                    picked.associateWith { n -> httpGet(BASE + paths[n].first) }
                 }
-                engine.installDependenciesWhenLoaded(name)
-                File(engine.dir, name).writeBytes(bytes)
+            if (bytes.any { (n, b) -> Review.sha256(b) != paths[n].second }) return "the download doesn't match the reviewed version; try again later"
+            // A page on home keeps its place; a new one goes where the user is. Apps go in the drawer, on no page, and a face's
+            // pages left of page 1, side by side from the empty page waiting there leftwards, page 1 leftmost. A face's pages
+            // added back take the ones still there along, so they stay in order. Their pages are all picked first: home
+            // doesn't know one is taken until its file loads.
+            val fresh = picked.filter { !exists[it] }
+            if (kind == OwlKind.Widget) for (n in fresh) engine.setPage(names[n], page)
+            if (kind == OwlKind.Face && fresh.isNotEmpty()) {
+                val placed = names.indices.filter { exists[it] || it in picked }
+                val left = engine.newFacePage() - placed.size + 1
+                for ((k, n) in placed.withIndex()) engine.placeOnPage(names[n], left + k)
             }
-            installed[e.id] = Installed(e.id, name, e.version, e.commands, e.requires, e.sha256)
-            save()
+            val written = ArrayList<Int>()
+            try {
+                withContext(Dispatchers.IO) {
+                    for (n in picked) {
+                        engine.installDependenciesWhenLoaded(names[n])
+                        File(engine.dir, names[n]).writeBytes(bytes.getValue(n))
+                        written += n
+                    }
+                }
+            } finally {
+                // What got written is recorded even when the rest failed, so it's still the store's to update.
+                if (written.isNotEmpty()) record(e, names, written)
+            }
             return null
         } catch (x: Exception) {
             return "install failed: ${x.message ?: x}"
         } finally {
             busy.remove(e.id)
         }
+    }
+
+    /**
+     * Records [e] as installed after the pages [written] were: each of those with the catalog's hash, the others as they
+     * were recorded (a page kept on home may be edited), or with the catalog's when they never were. The version and approval are [e]'s:
+     * an update and an add both leave every page there at it.
+     */
+    private fun record(
+        e: CatalogEntry,
+        names: List<String>,
+        written: List<Int>,
+    ) {
+        val old = installed[e.id]?.files
+        val hashes = listOf(e.sha256) + e.pages.map { it.sha256 }
+        val files =
+            names.mapIndexed { n, name ->
+                // A kept page's null hash stays null: installed before hashes were kept, it may be edited.
+                val kept = old?.getOrNull(n)?.takeIf { it.file == name }
+                PageFile(name, if (n in written || kept == null) hashes[n] else kept.sha256)
+            }
+        installed[e.id] = Installed(e.id, files[0].file, e.version, e.commands, e.requires, files[0].sha256, files.drop(1))
+        save()
     }
 
     /** [e]'s preview drawn in [theme] when the store has one, else its default preview. */
@@ -257,6 +348,10 @@ class Market(
                     commands = f.optJSONArray("commands")?.strings().orEmpty(),
                     requires = f.optJSONObject("requires")?.let { r -> r.keys().asSequence().associateWith { r.optJSONArray(it)?.strings().orEmpty() } }.orEmpty(),
                     sha256 = f.optString("sha256").ifEmpty { null },
+                    pages =
+                        f.optJSONArray("pages")?.let { a ->
+                            (0 until a.length()).mapNotNull { a.optJSONObject(it) }.map { p -> PageFile(p.getString("file"), p.optString("sha256").ifEmpty { null }) }
+                        }.orEmpty(),
                 )
             },
         )
@@ -272,7 +367,12 @@ class Market(
                     .put("version", i.version)
                     .put("commands", JSONArray(i.commands))
                     .put("requires", JSONObject(i.requires.mapValues { JSONArray(it.value) } as Map<*, *>))
-                    .apply { i.sha256?.let { put("sha256", it) } },
+                    .apply { i.sha256?.let { put("sha256", it) } }
+                    .apply {
+                        if (i.pages.isNotEmpty()) {
+                            put("pages", JSONArray(i.pages.map { p -> JSONObject().put("file", p.file).apply { p.sha256?.let { put("sha256", it) } } }))
+                        }
+                    },
             )
         }
         runCatching { Versioned.writeFile(record, VERSION, data) }

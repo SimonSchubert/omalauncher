@@ -47,7 +47,7 @@ internal val KINDS: Map<String, Kind> =
 internal val COMMON =
     setOf(
         "width", "height", "size", "fill", "weight", "padding", "background", "border", "borderColor",
-        "radius", "opacity", "rotation", "scale", "offset", "clip", "visible", "frost", "repeats", "drag",
+        "radius", "opacity", "rotation", "scale", "offset", "clip", "visible", "frost", "repeats", "drag", "ripple",
     )
 
 internal val ANIMATABLE = setOf("opacity", "rotation", "scale", "offset", "value", "color", "background")
@@ -147,6 +147,11 @@ internal val SINCE =
         listOf("tileOpacity", "tileFrost").associateWith { 13 } +
         // owl 14: whether the launcher raises the keyboard as a panel opens.
         listOf(PANEL_KEYBOARD).associateWith { 14 }
+        // owl 14: a face whose nodes run on under the status bar and the camera cutout, which screenTop, screenLeft and
+        // screenRight measure.
+        mapOf(FACE_EDGE to 14, "screenLeft" to 14, "screenRight" to 14) +
+        // owl 14: no ripple under the finger, for a node that shows its press itself.
+        mapOf("ripple" to 14)
 
 /** `animate offset: ...`, named like this in [SINCE]. */
 internal const val ANIMATE_OFFSET = "animate offset"
@@ -187,6 +192,8 @@ internal const val QUERY = "query"
 internal const val GRADIENT_BACKGROUND = "a gradient background"
 
 internal const val APP_STATUS_BAR = "an app's statusBar"
+
+internal const val FACE_EDGE = "a face's edge"
 
 internal const val FONT_FILE = "a font of its own"
 
@@ -287,7 +294,7 @@ internal val ACTION_WORDS =
     )
 
 /** The tile's size, readable anywhere a declaration of the same name doesn't shadow it. */
-internal val TILE = setOf("cols", "rows", "tileWidth", "tileHeight", "screenWidth", "screenHeight", "screenInset", "screenTop", "corners", "gapsIn", "gapsOut", "borderWidth", "tileOpacity", "tileFrost")
+internal val TILE = setOf("cols", "rows", "tileWidth", "tileHeight", "screenWidth", "screenHeight", "screenInset", "screenTop", "screenLeft", "screenRight", "corners", "gapsIn", "gapsOut", "borderWidth", "tileOpacity", "tileFrost")
 
 /** Builtins that always give a number (or null, which reads as …). */
 internal val NUMBERS = setOf("int", "round", "floor", "ceil", "abs", "fixed", "len", "count", "sum", "min", "max", "clamp")
@@ -295,4 +302,4 @@ internal val NUMBERS = setOf("int", "round", "floor", "ceil", "abs", "fixed", "l
 internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding", "background")
 
 /** A face has no tile's size; it says where it goes and whether the status bar stays over it. */
-internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar")
+internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge")

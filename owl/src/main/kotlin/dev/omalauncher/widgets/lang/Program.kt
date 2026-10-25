@@ -349,7 +349,7 @@ class Program(
     /** An app's `back`: while true, the frame shows a back chevron and Back runs [onBack] instead of closing it. */
     val back: Ev? = null,
     val onBack: Action? = null,
-    /** An app's `edge`: its view runs on under the navigation bar, which `screenInset` measures. */
+    /** An app's `edge`: its view runs on under the navigation bar, which `screenInset` measures. A face's: its nodes run on under the status bar and a camera cutout, which `screenTop`, `screenLeft` and `screenRight` measure. */
     val edge: Boolean = false,
     /** A panel's `onSubmit`: Enter in the prompt bar while it's open, with what's typed as `value`. */
     val onSubmit: Action? = null,

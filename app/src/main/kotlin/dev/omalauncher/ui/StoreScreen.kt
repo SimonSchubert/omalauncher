@@ -137,6 +137,7 @@ fun StoreScreen(
                                 if (message == null && market.kind == OwlKind.Widget) onDismiss()
                             }
                         },
+                        onAddPages = { scope.launch { message = market.addPages(e) } },
                     )
                 }
                 val list = @Composable { modifier: Modifier ->
@@ -176,7 +177,7 @@ private fun KindToggle(
     kinds: List<OwlKind>,
     onPick: (OwlKind) -> Unit,
 ) {
-    Row(Modifier.padding(end = 4.dp).frame(1.dp, Palette.border, radius = 14.dp).clip(RoundedCornerShape(14.dp))) {
+    Row(Modifier.padding(end = 4.dp).frame(1.dp, Palette.border, radius = 14.dp)) {
         for (k in kinds) {
             val label = "${k.word}s"
             val on = k == kind
@@ -456,7 +457,7 @@ private fun Card(
                 installed -> "✓ installed" to Palette.green
                 !e.supported -> "needs a newer launcher" to Palette.red
                 !linux && e.needsLinux -> "needs linux" to Palette.muted
-                else -> "${e.category ?: OTHER}${e.size?.let { " · ${it.first}x${it.second}" } ?: ""}" to Palette.muted
+                else -> "${e.category ?: OTHER}${e.size?.let { " · ${it.first}x${it.second}" } ?: pagesText(e)}" to Palette.muted
             }
         // An app's icon goes before its name and status, as in the drawer; widgets have none.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -516,6 +517,7 @@ private fun Detail(
     modifier: Modifier,
     onOpen: () -> Unit,
     onInstall: () -> Unit,
+    onAddPages: () -> Unit,
 ) = key(e.id) {
     val installed = market.installedVersion(e)
     val update = market.hasUpdate(e)
@@ -547,7 +549,7 @@ private fun Detail(
                     BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Title))
                     if (e.new) NewBadge()
                 }
-                val size = e.size?.let { " · ${it.first}x${it.second}" } ?: ""
+                val size = e.size?.let { " · ${it.first}x${it.second}" } ?: pagesText(e)
                 BasicText("${e.category ?: OTHER} · ${e.author} · v${e.version} · ${e.license}$size", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
         }
@@ -572,6 +574,14 @@ private fun Detail(
                     AddedMark(market.kind)
                     Spacer(Modifier.width(8.dp))
                     BracketAction("open", Palette.accent, Modifier.takesPassedKeys(), onOpen)
+                }
+            // A face's page removed on home, or one its version added, comes back only from here.
+            installed != null && market.missingPages(e) > 0 ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AddedMark(market.kind)
+                    Spacer(Modifier.width(8.dp))
+                    val n = market.missingPages(e)
+                    BracketAction(if (n == 1) "add its missing page" else "add its $n missing pages", Palette.accent, Modifier.passesKeys(), onAddPages)
                 }
             installed != null -> AddedMark(market.kind)
             else ->
@@ -598,6 +608,9 @@ private fun Detail(
         }
     }
 }
+
+/** " · 2 pages" for a face with several, else nothing. */
+private fun pagesText(e: CatalogEntry) = if (e.pages.isEmpty()) "" else " · ${1 + e.pages.size} pages"
 
 /** Where an added widget, face, app or panel went. */
 @Composable

@@ -240,6 +240,61 @@ class MarketTest {
         assertTrue(Review("widgets/simon/disk/widget.owl", good).entry(null).screensFor("nord").isEmpty())
     }
 
+    private val face =
+        """
+        face "manga" {
+          meta { owl: 10; description: "A manga page for home"; version: "1.0"; license: "MIT"; category: "fun" }
+          requires { pacman: ["coreutils"] }
+          source up = cmd('uptime') every 60s
+          Text { text: up }
+        }
+        """.trimIndent()
+
+    // A later page needs no meta of its own but what it runs and needs; face.owl's describes the face.
+    private val page2 =
+        """
+        face "boulevard" {
+          meta { owl: 13 }
+          requires { pacman: ["coreutils", "curl"] }
+          source up = cmd('uptime') every 60s
+          source q = cmd('curl -s https://example.com/q') every 60s
+          Text { text: up + q }
+        }
+        """.trimIndent()
+
+    @Test fun aFacesOtherPagesAreReviewedWithoutMeta() {
+        val r = Review("faces/simon/manga/page-2.owl", page2)
+        assertEquals(emptyList<String>(), r.errors)
+        assertEquals("simon/manga", r.id)
+        assertEquals(2, r.page)
+        assertEquals(1, Review("faces/simon/manga/face.owl", face).page)
+        assertTrue(r.markdown().startsWith("### ✅ `simon/manga`, page 2"))
+        for (bad in listOf("faces/simon/manga/page-1.owl", "faces/simon/manga/page-02.owl", "widgets/simon/disk/page-2.owl", "apps/simon/notes/page-2.owl")) {
+            assertTrue(bad, Review(bad, page2).errors.any { it.contains("page-2.owl, page-3.owl") })
+        }
+        // Changing one is still flagged for what it runs; its version is face.owl's business.
+        val changed = Review("faces/simon/manga/page-2.owl", page2.replace("/q", "/r"), previous = page2)
+        assertEquals(emptyList<String>(), changed.errors)
+        assertTrue(changed.warnings.any { it.contains("asked again") })
+    }
+
+    @Test fun aFacesPagesShareOneApprovalAndRoundTrip() {
+        val page = Review("faces/simon/manga/page-2.owl", page2)
+        val e = Review("faces/simon/manga/face.owl", face).entry("faces/simon/manga/preview.png", pages = listOf(page))
+        assertEquals(listOf(FacePage("faces/simon/manga/page-2.owl", page.sha256)), e.pages)
+        assertEquals(mapOf("pacman" to listOf("coreutils", "curl")), e.requires)
+        assertEquals(listOf("uptime", "curl -s https://example.com/q"), e.commands)
+        // Pages at owl 13 still need 14: launchers before it would install page 1 alone.
+        assertEquals(Review.PAGES_LEVEL, e.owl)
+        assertEquals(10, Review("faces/simon/manga/face.owl", face).entry(null).owl)
+        assertEquals("A manga page for home", e.description)
+        val json = Catalog.write(listOf(e), "now", "faces")
+        assertEquals(listOf(e), Catalog.parse(json, "faces"))
+        // Half a face is left out; one from before pages has none.
+        assertTrue(Catalog.parse(json.replace("\"sha256\": \"${page.sha256}\"", "\"sha\": \"x\""), "faces").isEmpty())
+        assertTrue(Review("faces/simon/manga/face.owl", face).entry(null).let { Catalog.parse(Catalog.write(listOf(it), "now", "faces"), "faces").single().pages.isEmpty() })
+    }
+
     @Test fun aNewerCatalogFormatAsksForAnUpdate() {
         val e = assertThrows(WidgetError::class.java) { Catalog.parse("{\"format\": ${Catalog.FORMAT + 1}, \"widgets\": []}") }
         assertTrue(e.message!!.contains("newer launcher"))

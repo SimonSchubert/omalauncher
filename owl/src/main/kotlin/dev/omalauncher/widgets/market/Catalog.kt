@@ -49,6 +49,11 @@ data class CatalogEntry(
     val iconFile: String? = null,
     /** An app's other screens after its preview, drawn in each Omarchy theme, by theme name (paths relative to the catalog). */
     val screens: Map<String, List<String>> = emptyMap(),
+    /**
+     * A face's other pages, from page 2 on, installed beside [path] to its right; their pictures are its [screens].
+     * [requires], [commands] and [owl] cover them too. Launchers from before pages install only [path].
+     */
+    val pages: List<FacePage> = emptyList(),
 ) {
     /** The preview drawn in [theme], or the default one. */
     fun previewFor(theme: String?) = themePreviews[theme] ?: preview
@@ -64,6 +69,12 @@ data class CatalogEntry(
      */
     val needsLinux get() = requires.isNotEmpty() || commands.any { c -> NO_LINUX.none { c.startsWith(it) } && !c.startsWith(Compiler.IF_LINUX) }
 }
+
+/** One of a face's other pages: its file relative to the catalog, and the file's SHA-256 the launcher checks. */
+data class FacePage(
+    val path: String,
+    val sha256: String,
+)
 
 /** What a store item's listed commands start with when they don't run in Linux; see [CatalogEntry.needsLinux]. */
 private val NO_LINUX = listOf("http GET ", "http POST ", "image GET ", "sound GET ", "font GET ", "read Android ", "read installed Android apps", "read the recently opened apps")
@@ -116,6 +127,12 @@ object Catalog {
         // Both name the installed file (Market.fileFor), so only what Review lets into the store.
         val id = s("id")?.takeIf { it.matches(ID) } ?: return null
         val author = s("author")?.takeIf { it == id.substringBefore('/') } ?: return null
+        // Half a face is no face: one with a page that can't be read is left out.
+        val pages =
+            (f["pages"] as? Lst)?.items.orEmpty().map { v ->
+                val p = (v as? Obj)?.fields ?: return null
+                FacePage((p["path"] as? Str)?.v ?: return null, (p["sha256"] as? Str)?.v ?: return null)
+            }
         return CatalogEntry(
             id = id,
             name = s("name") ?: return null,
@@ -139,6 +156,7 @@ object Catalog {
             screens =
                 (f["screens"] as? Obj)?.fields.orEmpty().mapValues { (_, v) -> (v as? Lst)?.items.orEmpty().mapNotNull { (it as? Str)?.v } }
                     .filterValues { it.isNotEmpty() },
+            pages = pages,
         )
     }
 
@@ -198,6 +216,11 @@ object Catalog {
                 sb.append(",\n      \"screens\": {")
                 sb.append(e.screens.entries.joinToString(",") { (t, l) -> "\n        ${q(t)}: [${l.joinToString(", ") { q(it) }}]" })
                 sb.append("\n      }")
+            }
+            if (e.pages.isNotEmpty()) {
+                sb.append(",\n      \"pages\": [")
+                sb.append(e.pages.joinToString(",") { "\n        {\"path\": ${q(it.path)}, \"sha256\": ${q(it.sha256)}}" })
+                sb.append("\n      ]")
             }
             sb.append("\n    }")
         }

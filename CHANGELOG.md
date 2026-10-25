@@ -4,6 +4,21 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 0.13.0 (versionCode 24) – 2026-10-25
+
+- Faces can draw to the screen's edge: owl 14's `edge: true` runs a face under the
+  status bar, and in landscape under a camera cutout or navigation bar at the side;
+  `screenTop`, `screenLeft` and `screenRight` say how much those cover. Other faces
+  now keep clear of a navigation bar at the side, which they ran under.
+- A store face can have several pages, installed side by side. Each page stays
+  yours to remove; an update replaces only the pages still on home, and the face's
+  store page adds a removed one back. Publishing a face lets your agent add your
+  other faces as its pages.
+- Owl 14's `ripple: false` leaves out the ripple on a node that shows its press
+  itself.
+- Fixes: a face's bottom jumped after every reload or data update; the store's
+  widgets/faces/apps toggle stayed round with square corners.
+
 ## 0.12.2 (versionCode 23) – 2026-10-25
 
 - A store update no longer throws away changes made to a widget, app or face:

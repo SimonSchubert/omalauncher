@@ -376,13 +376,19 @@ class WidgetEngine(
         page: Int,
     ) {
         when (item) {
-            is WidgetItem -> {
-                setPage(item.key, page)
-                val i = specs.indexOfFirst { it.file.name == item.key }
-                if (i >= 0) specs[i] = specs[i].onPage(page)
-            }
+            is WidgetItem -> placeOnPage(item.key, page)
             is Shortcut, is Folder -> shortcuts.move(item.key, page)
         }
+    }
+
+    /** Puts the widget or face in [fileName] on [page], loaded already or not. */
+    fun placeOnPage(
+        fileName: String,
+        page: Int,
+    ) {
+        setPage(fileName, page)
+        val i = specs.indexOfFirst { it.file.name == fileName }
+        if (i >= 0) specs[i] = specs[i].onPage(page)
     }
 
     private fun agentWidgetFile(agent: Agent) = "$AGENT_PREFIX${agent.bin}.owl"
@@ -399,7 +405,7 @@ class WidgetEngine(
     fun isOwnWidget(spec: WidgetSpec): Boolean {
         val name = spec.file.name
         return name !in bundledFiles && !isAgentWidget(spec) && !name.startsWith(TERMINAL_PREFIX) && !name.startsWith(Shared.FILE_PREFIX) &&
-            markets.none { m -> m.installed.values.any { it.file == name } }
+            markets.none { m -> m.installed.values.any { i -> i.files.any { it.file == name } } }
     }
 
     /** [agent]'s terminal tile is on the home screen. */

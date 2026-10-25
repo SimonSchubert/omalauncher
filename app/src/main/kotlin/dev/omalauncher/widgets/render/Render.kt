@@ -897,9 +897,10 @@ private fun handlers(
     val haptics = LocalHapticFeedback.current
     val claim = LocalLongPressClaim.current
     if (tap != null || long != null) {
-        // A ripple where it's pressed, except on a widget's tile and in a key bar.
+        // A ripple where it's pressed, except on a widget's tile and in a key bar, and on a node with `ripple: false` (owl
+        // 14) that shows its press itself.
         val presses = remember { MutableInteractionSource() }
-        val ripple = LocalRipple.current
+        val ripple = LocalRipple.current && p.observe("ripple")?.truthy != false
         if (ripple) m = m.ripple(presses, p.float("radius", if (el.kind == "Button" || p.has("border")) 8f * LauncherStyle.cornerScale else 0f))
         m =
             m.pointerInput(el, p.env, long != null, ripple) {

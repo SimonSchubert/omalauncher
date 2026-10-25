@@ -36,7 +36,12 @@ face "morning" {
   and the nodes keep clear of it; `statusBar: false` hides it while the face shows (a swipe down from the
   top brings it back for a moment), and they keep clear of a camera cutout only. The background runs
   under both. `statusBar` can be any expression, and the bar comes and goes as it changes: `statusBar: !playing`
-  keeps it while a game waits and hides it while one runs.
+  keeps it while a game waits and hides it while one runs. With `edge: true` (owl 14) the nodes run on under the status bar too, and in landscape
+  under a camera cutout or a navigation bar at the side, as a photo or a drawing should: `screenTop` is how much of the
+  top the status bar covers (or a cutout, while it's hidden), and `screenLeft` and `screenRight` how much of each side a
+  cutout or navigation bar covers, in dp, so pad what has to stay readable by them,
+  `padding: [screenLeft + 12, screenTop + 8, screenRight + 12, 0]`. Only a face with `edge` has them. `edge` is `true` or
+  `false`, not an expression.
 - **The navigation bar.** The face runs on under it, like an app with `edge: true`: `screenInset` is how
   much of its bottom the navigation bar covers, in dp, so end it with `Spacer { height: screenInset }` or
   pad buttons along the bottom by it. While one of its `Input`s has the keyboard, `screenInset` is what the keyboard
