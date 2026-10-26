@@ -351,16 +351,17 @@ class Runtime(
 
     /** Finishes a start: fonts, apps, themes, provisioner, widgets and updates. */
     private fun postStart() {
-        scope.launch { launcherFont.apply() }
-        scope.launch { refreshApps() }
-        themes.renderGuest()
-        withContext(Dispatchers.IO) {
-            provisioner.sync()
-            agents.load()
+        scope.launch {
+            launcherFont.apply()
+            themes.renderGuest()
+            withContext(Dispatchers.IO) {
+                provisioner.sync()
+                agents.load()
+            }
+            widgets.linuxChanged(true)
+            refreshApps()
+            withContext(Dispatchers.IO) { updates.load() }
         }
-        widgets.linuxChanged(true)
-        refreshApps()
-        withContext(Dispatchers.IO) { updates.load() }
         scope.launch {
             bootstrap.runBacklog()
             updates.check()

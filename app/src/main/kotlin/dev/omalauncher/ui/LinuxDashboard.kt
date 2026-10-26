@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
 import dev.omalauncher.LinuxSessionState
 import dev.omalauncher.linux.LinuxApp
-import dev.omalauncher.widgets.OwlKind
+import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.WidgetSpec
 
 /** The dashboard's top-level sections. */
@@ -144,7 +145,7 @@ private fun ImageVectorItem(
 /** Overview: environment state, start and stop controls, and quick actions. */
 @Composable
 private fun OverviewScreen(runtime: Runtime) {
-    val state by runtime.sessionState.collectAsState()
+    val state = runtime.sessionState.collectAsState().value
     Column(
         Modifier
             .fillMaxSize()
@@ -159,7 +160,7 @@ private fun OverviewScreen(runtime: Runtime) {
                 .frame(2.dp, Palette.accent, Palette.surface, radius = 12.dp)
                 .padding(14.dp),
         ) {
-            Column(verticalAlignment = Alignment.CenterVertically) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 BasicText(
                     when (state) {
                         LinuxSessionState.NotInstalled -> "not installed"
