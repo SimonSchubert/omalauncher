@@ -6,6 +6,10 @@ import android.content.Context
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import dev.omalauncher.readUpTo
+import android.webkit.MimeTypeMap
+import androidx.core.content.FileProvider
+import java.io.InputStream
+import java.io.File
 import java.io.IOException
 import kotlin.concurrent.thread
 
@@ -17,11 +21,29 @@ private val TEXT_MIMES = listOf("text/plain;charset=utf-8", "UTF8_STRING", "text
 /** Android's clipboard limit is a binder transaction; larger copies stay inside Linux. */
 private const val MAX_MIRROR_BYTES = 512 * 1024
 
+/** An image copied in Linux goes to Android as a file (the clip only holds its uri), up to this size. */
+private const val MAX_IMAGE_BYTES = 32 * 1024 * 1024
+
+/** Image types a copy in Linux is offered to Android as, most preferred first. */
+private val IMAGE_MIMES = listOf("image/png", "image/jpeg", "image/webp", "image/gif", "image/bmp")
+
 /** The system clipboard the Wayland selection is mirrored to. */
 interface SystemClipboard {
     fun text(): String?
 
     fun setText(text: String)
+
+    /** The type of an image on the clipboard (copied in an Android app), or null. */
+    fun imageType(): String? = null
+
+    /** Opens the clipboard's image for reading; null if there's none or it can't be read. */
+    fun openImage(): InputStream? = null
+
+    /** Puts an image copied in Linux on the clipboard. */
+    fun setImage(
+        bytes: ByteArray,
+        mime: String,
+    ) {}
 
     /** Changes whenever the clip does, whoever set it. */
     fun stamp(): Long
@@ -91,7 +113,8 @@ class Selection(
         val mimes =
             when {
                 src != null -> src.mimes.toList()
-                system != null -> TEXT_MIMES
+                // An image copied in Android is offered as that image; anything else as text.
+                system != null -> system?.imageType()?.let { listOf(it) } ?: TEXT_MIMES
                 else -> null
             }
         for (d in devices) {
@@ -106,10 +129,10 @@ class Selection(
         }
     }
 
-    /** Reads [source]'s text and puts it on Android's clipboard. */
+    /** Reads [source]'s text, or else its image, and puts it on Android's clipboard. */
     private fun mirror(source: DataSource) {
         val system = system ?: return
-        val mime = TEXT_MIMES.firstOrNull { it in source.mimes } ?: return
+        val mime = TEXT_MIMES.firstOrNull { it in source.mimes } ?: return mirrorImage(source, system)
         val (read, write) = ParcelFileDescriptor.createPipe()
         source.send(source.event(1).string(mime).fd(write.detachFd(), close = true))
         thread(name = "wl-clip-read", isDaemon = true) {
@@ -129,11 +152,43 @@ class Selection(
         }
     }
 
-    /** Writes Android's clipboard text to [fd] for a paste, then closes it. */
-    fun paste(fd: Int) {
+    /** An image copied in Linux (and no text): read in full, then handed to Android as a file. */
+    private fun mirrorImage(
+        source: DataSource,
+        system: SystemClipboard,
+    ) {
+        val mime = IMAGE_MIMES.firstOrNull { it in source.mimes } ?: return
+        val (read, write) = ParcelFileDescriptor.createPipe()
+        source.send(source.event(1).string(mime).fd(write.detachFd(), close = true))
+        thread(name = "wl-clip-image", isDaemon = true) {
+            val bytes =
+                try {
+                    ParcelFileDescriptor.AutoCloseInputStream(read).use { it.readUpTo(MAX_IMAGE_BYTES + 1) }
+                } catch (e: IOException) {
+                    Log.w(TAG, "reading the image failed", e)
+                    return@thread
+                }
+            if (bytes.isEmpty() || bytes.size > MAX_IMAGE_BYTES) return@thread
+            synchronized(server) {
+                if (this.source !== source) return@thread
+                runCatching { system.setImage(bytes, mime) }.onFailure { Log.w(TAG, "can't put the image on the clipboard", it) }
+                stamp = system.stamp()
+            }
+        }
+    }
+
+    /** Writes Android's clipboard to [fd] for a paste of [mime] (its image, or its text), then closes it. */
+    fun paste(
+        mime: String?,
+        fd: Int,
+    ) {
         val system = system
         thread(name = "wl-clip-write", isDaemon = true) {
             ParcelFileDescriptor.AutoCloseOutputStream(ParcelFileDescriptor.adoptFd(fd)).use { out ->
+                if (mime != null && mime.startsWith("image/")) {
+                    runCatching { system?.openImage()?.use { it.copyTo(out) } }
+                    return@thread
+                }
                 val text = runCatching { system?.text() }.getOrNull() ?: return@thread
                 // The client may stop reading early (EPIPE): nothing to do about it.
                 runCatching { out.write(text.toByteArray()) }
@@ -243,7 +298,7 @@ class DataOffer(
                 val fd = args.fd()
                 if (fd < 0) return
                 when {
-                    source == null -> selection.paste(fd)
+                    source == null -> selection.paste(mime, fd)
                     source.cancelled -> Native.close(fd)
                     else -> source.send(source.event(1).string(mime).fd(fd, close = true))
                 }
@@ -272,6 +327,27 @@ class AndroidClipboard(
             ?.toString()
 
     override fun setText(text: String) = manager.setPrimaryClip(ClipData.newPlainText("Linux", text))
+
+    override fun imageType(): String? {
+        val d = manager.primaryClipDescription ?: return null
+        return (0 until d.mimeTypeCount).map(d::getMimeType).firstOrNull { it.startsWith("image/") && it != "image/*" }
+            ?: if (d.hasMimeType("image/*")) "image/png" else null
+    }
+
+    override fun openImage(): InputStream? = manager.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.uri?.let { context.contentResolver.openInputStream(it) }
+
+    /** One file, replaced by each copy: the clip holds its uri, which the app pasting it is let read. */
+    override fun setImage(
+        bytes: ByteArray,
+        mime: String,
+    ) {
+        val dir = File(context.cacheDir, "share").apply { mkdirs() }
+        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "png"
+        dir.listFiles { f -> f.name.startsWith("clipboard.") }?.forEach { it.delete() }
+        val file = File(dir, "clipboard.$ext").apply { writeBytes(bytes) }
+        val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)
+        manager.setPrimaryClip(ClipData.newUri(context.contentResolver, "Linux", uri))
+    }
 
     override fun stamp() = manager.primaryClipDescription?.timestamp ?: 0L
 }
