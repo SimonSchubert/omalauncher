@@ -1,0 +1,1 @@
+The launcher is now a standalone Omarchy Linux environment app, reached from any Android launcher: a dashboard for the Linux session (install, start/stop, status), the guest's Linux applications, a terminal, OWL widgets, files, themes and settings. Existing launcher users keep their Linux, widgets, themes and data.
