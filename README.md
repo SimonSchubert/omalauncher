@@ -2,7 +2,7 @@
 
 An Omarchy-inspired Linux environment for Android, with an optional Arch Linux ARM system running under proot, without root. Omalauncher is the system's Wayland compositor: every Linux window opens as its own Android task, with its own card in Recents. It is a regular application opened from your existing launcher; it does not replace your Android home screen.
 
-<a href="https://play.google.com/store/apps/details?id=dev.omalauncher"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"></a>
+<a href="https://play.google.com/store/apps/details?id=dev.omadroid"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"></a>
 
 ![The home screen in twelve Omarchy themes, each with different widgets](art/collage.png)
 
@@ -47,14 +47,14 @@ Linux windows keep working as before: tap is a left click, long press a right cl
 ./scripts/fetch-proot.sh          # Termux's proot -> app/src/main/jniLibs (needs bsdtar)
 ./gradlew :app:installDebug
 # optional: skip the 830 MB download on the device
-adb push ArchLinuxARM-aarch64-latest.tar.gz /sdcard/Android/data/dev.omalauncher/files/
+adb push ArchLinuxARM-aarch64-latest.tar.gz /sdcard/Android/data/dev.omadroid/files/
 ```
 
 Tests: `./gradlew :owl:test :app:testDebugUnitTest`. `./gradlew :owl:owlJar`
 builds `owl/build/cli/owl.jar`, the checker the widget store's CI runs.
 
 In debug builds you can launch guest commands with
-`adb shell am start -n dev.omalauncher/.MainActivity --es exec foot`.
+`adb shell am start -n dev.omadroid/.MainActivity --es exec foot`.
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the compositor, rendering, GPU
   acceleration, and how updates reach existing installs

@@ -1,2 +1,2 @@
-package_name("dev.omalauncher")
+package_name("dev.omadroid")
 json_key_file("fastlane/play-store-key.json")

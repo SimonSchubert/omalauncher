@@ -19,7 +19,7 @@ STORE="${1:-$HERE/../../omarchy-widgets}"
 shift || true
 export ANDROID_SERIAL="${ANDROID_SERIAL:-emulator-5562}"
 OUT="$HERE/../store/screenshots/raw"
-PKG=dev.omalauncher
+PKG=dev.omadroid
 DATA=/data/data/$PKG
 BACKUP=cache/store-backup.tar
 SIZE=1080x1670

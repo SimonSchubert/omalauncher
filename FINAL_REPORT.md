@@ -104,7 +104,7 @@ Transformed Omalauncher from an Android home-screen launcher into a standalone O
 - `README.md` — identity, features, usage docs.
 - `app/build.gradle.kts` — version 0.12.2/23 → 1.0.0/24.
 - `app/src/main/AndroidManifest.xml` — removed HOME/category/services; regular app entry.
-- `app/src/main/kotlin/dev/omalauncher/MainActivity.kt` — dashboard host; home-role logic removed.
-- `app/src/main/kotlin/dev/omalauncher/Runtime.kt` — Linux session start/stop lifecycle.
-- `app/src/main/kotlin/dev/omalauncher/ui/LinuxDashboard.kt` — new dashboard + sections.
+- `app/src/main/kotlin/dev/omadroid/MainActivity.kt` — dashboard host; home-role logic removed.
+- `app/src/main/kotlin/dev/omadroid/Runtime.kt` — Linux session start/stop lifecycle.
+- `app/src/main/kotlin/dev/omadroid/ui/LinuxDashboard.kt` — new dashboard + sections.
 - `docs/ARCHITECTURE.md` — architecture description updated.

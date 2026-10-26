@@ -5,7 +5,7 @@
 # Uses the commit the app pins (ThemeStore.OMARCHY_REF): the names must match its files.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-ref=$(sed -n 's/.*const val OMARCHY_REF = "\([0-9a-f]*\)".*/\1/p' app/src/main/kotlin/dev/omalauncher/theme/ThemeStore.kt)
+ref=$(sed -n 's/.*const val OMARCHY_REF = "\([0-9a-f]*\)".*/\1/p' app/src/main/kotlin/dev/omadroid/theme/ThemeStore.kt)
 [ -n "$ref" ] || { echo "OMARCHY_REF not found" >&2; exit 1; }
 out=app/src/main/assets/themes
 backgrounds=app/src/main/assets/theme-backgrounds.txt
