@@ -1842,4 +1842,28 @@ class LangTest {
         slider.handlers["onChange"]!!.run(Env.root(host), listOf(Num(70.0)))
         assertEquals(Num(70.0), host.slots[0])
     }
+
+    @Test fun mediaSessionNeedsOwl16AndIsReviewedAsGuestAccess() {
+        val body = "onTap: mediaSession({title: \"Song\", playing: true, commands: {play: \"player play\"}})\n Text { text: 1 }"
+        assertTrue(compileError("widget {\n meta { owl: 15 }\n $body }").contains("needs owl 16"))
+        val p = Compiler.compile("widget {\n meta { owl: 16 }\n $body }")
+        assertTrue(p.needsLinux)
+        assertEquals(listOf("publish a Linux player's media controls to Android", "player play"), p.commands)
+    }
+
+    @Test fun mediaSessionReviewsCommandsAndRejectsOpaqueMaps() {
+        val p = Compiler.compile("""widget {
+            meta { owl: 16 }
+            onTap: mediaSession({commands: {pause: "player pause", seek: "player seek"}})
+            Text { text: 1 }
+        }""")
+        assertTrue("player pause" in p.commands)
+        assertTrue("player seek" in p.commands)
+        assertTrue(compileError("""widget {
+            meta { owl: 16 }
+            state player = {}
+            onTap: mediaSession(player)
+            Text { text: 1 }
+        }""").contains("inline player map"))
+    }
 }

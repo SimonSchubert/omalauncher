@@ -151,7 +151,9 @@ internal val SINCE =
         // owl 14: no ripple under the finger, for a node that shows its press itself.
         mapOf("ripple" to 14) +
         // owl 15: a drawer that leaves the keyboard down as it opens.
-        mapOf(PANEL_KEYBOARD to 15)
+        mapOf(PANEL_KEYBOARD to 15) +
+        // owl 16: a Linux player publishes an Android media session and its controls.
+        mapOf("mediaSession" to 16)
 
 /** `animate offset: ...`, named like this in [SINCE]. */
 internal const val ANIMATE_OFFSET = "animate offset"

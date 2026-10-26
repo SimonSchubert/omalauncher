@@ -3,12 +3,14 @@ package dev.omalauncher
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import dev.omalauncher.linux.LinuxState
+import dev.omalauncher.linux.LinuxMedia
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,8 +38,10 @@ class LinuxService : Service() {
     ): Int {
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Linux session", NotificationManager.IMPORTANCE_LOW))
-        val state = (application as App).runtime.bootstrap.state
-        startForeground(1, notification(state.value), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        val runtime = (application as App).runtime
+        intent?.action?.removePrefix(MEDIA_ACTION_PREFIX)?.takeIf { intent.action?.startsWith(MEDIA_ACTION_PREFIX) == true }?.let(runtime.linuxMedia::control)
+        val state = runtime.bootstrap.state
+        startForeground(1, notification(state.value, runtime.linuxMedia.state.value), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         pending = (pending - 1).coerceAtLeast(0)
         // Stopped before it got here (see [set]): now it may go, unless a later start still has to come here too.
         if (!wanted) {
@@ -47,8 +51,9 @@ class LinuxService : Service() {
         if (watch == null) {
             watch =
                 scope.launch {
-                    state.map(::text).distinctUntilChanged().collect { nm.notify(1, build(it)) }
+                    state.map(::text).distinctUntilChanged().collect { nm.notify(1, build(it, runtime.linuxMedia.state.value)) }
                 }
+            scope.launch { runtime.linuxMedia.state.collect { nm.notify(1, build(text(state.value), it)) } }
         }
         // Not restarted after the process dies: Linux only comes back with the launcher (Runtime.start),
         // and Android 12+ may refuse startForeground() in a restart from the background.
@@ -60,7 +65,10 @@ class LinuxService : Service() {
         super.onDestroy()
     }
 
-    private fun notification(state: LinuxState) = build(text(state))
+    private fun notification(
+        state: LinuxState,
+        media: LinuxMedia.Published?,
+    ) = build(text(state), media)
 
     private fun text(state: LinuxState): String =
         when (state) {
@@ -70,17 +78,40 @@ class LinuxService : Service() {
             else -> "Linux session running"
         }
 
-    private fun build(text: String): Notification =
-        Notification
+    private fun build(
+        text: String,
+        media: LinuxMedia.Published? = null,
+    ): Notification {
+        val builder =
+            Notification
             .Builder(this, CHANNEL)
-            .setContentTitle(text)
+            .setContentTitle(media?.title?.takeIf { it.isNotBlank() } ?: text)
+            .setContentText(media?.artist?.takeIf { it.isNotBlank() })
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .build()
+        if (media == null) return builder.build()
+        val compact = ArrayList<Int>()
+        fun action(command: String, icon: Int, title: String) {
+            if (command !in media.commands) return
+            val intent = Intent(this, LinuxService::class.java).setAction(MEDIA_ACTION_PREFIX + command)
+            val pending = PendingIntent.getService(this, command.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            compact += compact.size
+            builder.addAction(Notification.Action.Builder(icon, title, pending).build())
+        }
+        action("previous", android.R.drawable.ic_media_previous, "Previous")
+        action(if (media.playing) "pause" else "play", if (media.playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (media.playing) "Pause" else "Play")
+        action("next", android.R.drawable.ic_media_next, "Next")
+        builder
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setStyle(Notification.MediaStyle().setMediaSession((application as App).runtime.linuxMedia.token).setShowActionsInCompactView(*compact.take(3).toIntArray()))
+        return builder.build()
+    }
 
     companion object {
         private const val CHANNEL = "session"
+        private const val MEDIA_ACTION_PREFIX = "dev.omalauncher.media."
 
         // Main thread only, like onStartCommand.
         private var wanted = false

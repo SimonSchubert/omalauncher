@@ -25,6 +25,7 @@ import dev.omalauncher.linux.EDIT_COMMAND
 import dev.omalauncher.linux.FILES_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
+import dev.omalauncher.linux.LinuxMedia
 import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
@@ -92,6 +93,7 @@ class Runtime(
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
+    val linuxMedia = LinuxMedia(context, proot)
     private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit)
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
@@ -270,6 +272,7 @@ class Runtime(
                 launcherFont.forget()
                 widgets.linuxChanged(false)
                 audio.stop()
+                linuxMedia.publish(dev.omalauncher.widgets.lang.Null)
                 withContext(Dispatchers.IO) { proot.killAll() }
                 bootstrap.remove()
                 withContext(Dispatchers.IO) {

@@ -592,6 +592,8 @@ class WidgetServices(
         args: List<Value>,
         done: () -> Unit,
     ) {
+        // Null is meaningful here: it removes a previously published player.
+        if (name == "mediaSession") return runtime.linuxMedia.publish(args.firstOrNull() ?: Null)
         // A value still loading (…) would otherwise open, copy or run the text "null".
         if (args.firstOrNull() == Null) return
         val arg = args.firstOrNull()?.toString().orEmpty()
