@@ -4,6 +4,26 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 1.0.1 (versionCode 25) – 2026-10-26
+
+- The app is Omadroid: label, themes, UI text, store listing and docs, under the
+  package `dev.omadroid`. A package change can't update the old install, so this
+  one starts fresh: its Linux system, widgets and settings stay in the old app.
+- The guest follows the name: `~/.config/omadroid` for widgets, style and home,
+  `/usr/local/omadroid-mesa` and `/usr/local/share/omadroid` for the patched
+  Mesa, `omadroid-` icons, and the launcher's own state and temp files.
+- A guest from before the rename has its `~/.config/omalauncher` moved over once,
+  and a GPU install clears the old Mesa bundle.
+- The source is budi-imam-prasetyo/omadroid; the license sources, the agent note
+  in Linux and the what's-new widget link there.
+
+## 1.0.0 (versionCode 24) – 2026-10-26
+
+- The launcher is a standalone Omarchy Linux environment app, opened from any
+  Android launcher: a dashboard for the Linux session (install, start and stop,
+  status), the guest's Linux applications, a terminal, OWL widgets, files,
+  themes and settings.
+
 ## 0.12.2 (versionCode 23) – 2026-10-25
 
 - A store update no longer throws away changes made to a widget, app or face:

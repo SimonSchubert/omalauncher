@@ -21,8 +21,8 @@ android {
         applicationId = "dev.omadroid"
         minSdk = 29
         targetSdk = 37
-        versionCode = 24
-        versionName = "1.0.0"
+        versionCode = 25
+        versionName = "1.0.1"
         ndk { abiFilters += "arm64-v8a" }
     }
 

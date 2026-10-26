@@ -1,0 +1,1 @@
+Omalauncher is now Omadroid: new name, new package, same launcher with the Arch Linux environment. Because the package changed it installs as a separate app, so the old install's Linux system, widgets and settings stay behind in the old app. Inside Linux the launcher's files follow the name too: ~/.config/omadroid and /usr/local/omadroid-mesa.
