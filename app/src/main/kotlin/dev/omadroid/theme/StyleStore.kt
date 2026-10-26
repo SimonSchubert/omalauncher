@@ -12,7 +12,7 @@ import java.io.File
 
 /**
  * The launcher's [Style], kept in [StyleFile] in the launcher's data, which
- * Linux sees as ~/.config/omalauncher/style/style.toml. The Style menu changes
+ * Linux sees as ~/.config/omadroid/style/style.toml. The Style menu changes
  * it through [update]; an agent or the user editing the file changes it too,
  * and [onExternalChange] hears about that. What couldn't be read goes into
  * errors.txt next to it. Main thread.
@@ -114,7 +114,7 @@ class StyleStore(
         const val ERRORS = "errors.txt"
 
         /** Where Linux sees [FILE] and the rest, relative to the guest home. */
-        const val GUEST_DIR = ".config/omalauncher/style"
+        const val GUEST_DIR = ".config/omadroid/style"
 
         /**
          * Launchers before style.toml kept these in SharedPreferences, under the

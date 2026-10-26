@@ -33,9 +33,9 @@ object Submit {
                 if (description.isNotBlank()) appendLine().appendLine("> $description")
                 appendLine()
                 appendLine("- file: https://${Paste.HOST}/$pasteId.txt (gone after ${Paste.STORE_DAYS} days)")
-                appendLine("- open in Omalauncher: ${Share.pasteLink(pasteId)}")
+                appendLine("- open in Omadroid: ${Share.pasteLink(pasteId)}")
                 appendLine()
-                append("Sent from Omalauncher.")
+                append("Sent from Omadroid.")
             }
         return "https://github.com/$repo/issues/new?title=${encode("Add ${kind.word}: $name")}&body=${encode(body)}"
     }

@@ -1,8 +1,8 @@
-# Omalauncher → Omarchy Linux Environment for Android
+# Omadroid → Omarchy Linux Environment for Android
 
 ## Implementation Summary
 
-Transformed Omalauncher from an Android home-screen launcher into a standalone Omarchy Linux environment application. The app is now a regular activity opened from the user's existing Android launcher; it no longer requires or requests the default home role. The Arch Linux ARM/proot integration, OWL widget engine, Omarchy themes, wallpapers, coding-agent terminals, and Linux application management are all retained, now reached through a dedicated Linux environment dashboard instead of launcher screens.
+Transformed Omadroid from an Android home-screen launcher into a standalone Omarchy Linux environment application. The app is now a regular activity opened from the user's existing Android launcher; it no longer requires or requests the default home role. The Arch Linux ARM/proot integration, OWL widget engine, Omarchy themes, wallpapers, coding-agent terminals, and Linux application management are all retained, now reached through a dedicated Linux environment dashboard instead of launcher screens.
 
 ## Architecture Changes
 

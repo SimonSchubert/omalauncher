@@ -1,6 +1,6 @@
 # Architecture
 
-How Omalauncher is put together, for anyone working on it.
+How Omadroid is put together, for anyone working on it.
 
 An Omarchy-inspired Linux environment application for Android that runs Arch Linux ARM under proot and acts as its Wayland compositor. The Linux environment dashboard (overview, applications, terminal, widgets, files, themes, settings) is Jetpack Compose; every Linux window opens as its own Android task, so it gets a Recents card and behaves like a separate app.
 
@@ -12,7 +12,7 @@ it's installed. Removing Linux deletes `files/arch` only.
 Launcher data that the guest also uses lives outside the rootfs and is bound
 into it by proot (`LauncherData.kt`), so installing or removing Linux never
 touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
-`~/.config/omalauncher/widgets`.
+`~/.config/omadroid/widgets`.
 
 ## Source layout
 

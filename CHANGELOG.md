@@ -110,7 +110,7 @@ Dates are when the build was uploaded to Play.
   `query`, `enter`, `onSubmit` and `onKey`; `android.drawer`, `appAction`,
   `workApps`, `shortcuts()`, `rank` and `strongMatch` for the drawer's apps, search
   and menus. The Kotlin drawer is gone.
-- Home's layout is a file: ~/.config/omalauncher/home/layout.toml lists home's
+- Home's layout is a file: ~/.config/omadroid/home/layout.toml lists home's
   pages in order and where every widget, app and folder sits. Moving things on the
   phone rewrites it, and an agent (or you) can edit it to move, resize, pin or
   reorder; problems show on home and in errors.txt next to it. A widget's `page:`,
@@ -230,7 +230,7 @@ Dates are when the build was uploaded to Play.
 
 ## 0.7.0 (versionCode 12) – 2026-10-13
 
-- The style lives in `~/.config/omalauncher/style/style.toml`, which you or an agent can edit
+- The style lives in `~/.config/omadroid/style/style.toml`, which you or an agent can edit
   from Linux; changes show within a second, and settings it can't read show in a banner.
   `defaults.toml` next to it lists every setting. Your earlier style carries over.
 - New style settings, like Hyprland's: gaps between widgets and to the edges, border widths

@@ -170,7 +170,7 @@ shot_linux() {
   adb push "$ff" /data/local/tmp/store-ff.sh >/dev/null
   rm "$ff"
   app "cp /data/local/tmp/store-ff.sh files/widgets/.store-ff.sh"
-  adb shell am start -n $PKG/.MainActivity --es exec "'foot bash /root/.config/omalauncher/widgets/.store-ff.sh'" >/dev/null
+  adb shell am start -n $PKG/.MainActivity --es exec "'foot bash /root/.config/omadroid/widgets/.store-ff.sh'" >/dev/null
   sleep 10
 }
 shot_style() {

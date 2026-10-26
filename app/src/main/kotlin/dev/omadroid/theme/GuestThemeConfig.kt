@@ -174,7 +174,7 @@ class GuestThemeConfig(
         val BTOP =
             """
             #!/bin/sh
-            # omalauncher: btop with fewer boxes in a narrow terminal (see GuestThemeConfig.kt)
+            # omadroid: btop with fewer boxes in a narrow terminal (see GuestThemeConfig.kt)
             [ ${'$'}# -eq 0 ] || exec /usr/bin/btop "${'$'}@"
             cols=${'$'}(stty size 2>/dev/null | cut -d' ' -f2)
             cols=${'$'}{cols:-80}

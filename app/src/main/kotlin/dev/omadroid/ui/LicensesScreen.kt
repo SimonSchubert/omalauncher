@@ -52,7 +52,7 @@ private val COMPONENTS =
             "PRoot",
             "runs the optional Linux system",
             "gpl-2.0",
-            "Copyright (C) 2015 STMicroelectronics. Built from Termux's 5.1.107.96 with omalauncher's patches; the binary's libtalloc.so.2 dependency is renamed to libtalloc.so.",
+            "Copyright (C) 2015 STMicroelectronics. Built from Termux's 5.1.107.96 with Omadroid's patches; the binary's libtalloc.so.2 dependency is renamed to libtalloc.so.",
             "https://proot-me.github.io",
             source = "https://github.com/SimonSchubert/omalauncher/tree/main/patches/proot",
         ),
@@ -76,7 +76,7 @@ private val COMPONENTS =
             "Mesa",
             "OpenGL on Adreno GPUs in the optional Linux system",
             "mit",
-            "Copyright (C) 1999-2007 Brian Paul and the Mesa contributors. Mesa 26.2.4 with omalauncher's " +
+            "Copyright (C) 1999-2007 Brian Paul and the Mesa contributors. Mesa 26.2.4 with Omadroid's " +
                 "zink patch. Most files are MIT; the rest are under the permissive licenses in Mesa's licenses/ directory.",
             "https://mesa3d.org",
             source = "https://github.com/SimonSchubert/omalauncher/tree/main/scripts/mesa",
@@ -154,7 +154,7 @@ fun LicensesScreen(onDismiss: () -> Unit) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item {
                 BasicText(
-                    "Omalauncher ${BuildConfig.VERSION_NAME} · © 2026 Simon Schubert\n\nIt includes the open source software below.",
+                    "Omadroid ${BuildConfig.VERSION_NAME} · © 2026 Simon Schubert\n\nIt includes the open source software below.",
                     style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
                 )

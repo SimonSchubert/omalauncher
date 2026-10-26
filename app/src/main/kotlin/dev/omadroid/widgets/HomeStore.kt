@@ -9,7 +9,7 @@ import dev.omadroid.upgrade.SyncedFile
 import java.io.File
 
 /**
- * Home's layout as layout.toml ([HomeFile]), which Linux sees as ~/.config/omalauncher/home/layout.toml: every
+ * Home's layout as layout.toml ([HomeFile]), which Linux sees as ~/.config/omadroid/home/layout.toml: every
  * change on the phone writes it, and an agent or the user editing it moves home. [WidgetLayout] and [Shortcuts] stay
  * what home draws from, and keep their own saved copies for a launcher before this file; the file wins when they
  * differ. Nothing is written or read before the widgets first load, as until then widget pages aren't known. Main thread.
@@ -301,7 +301,7 @@ class HomeStore(
         const val ERRORS = "errors.txt"
 
         /** Where Linux sees [FILE], relative to the guest home. */
-        const val GUEST_DIR = ".config/omalauncher/home"
+        const val GUEST_DIR = ".config/omadroid/home"
 
         private const val WRITTEN = "home_layout_written"
         private const val MISSING = " isn't in widgets/; left out"

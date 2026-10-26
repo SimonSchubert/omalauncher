@@ -36,7 +36,7 @@
       <path fill="#414868" d="M60,30h14a4,4 0 0 1 4,4v14a4,4 0 0 1 -4,4h-14a4,4 0 0 1 -4,-4v-14a4,4 0 0 1 4,-4z"/>
       <path fill="url(#violet)" d="M60,56h14a4,4 0 0 1 4,4v14a4,4 0 0 1 -4,4h-14a4,4 0 0 1 -4,-4v-14a4,4 0 0 1 4,-4z"/>
   </g>
-  <text x="440" y="222" font-family="JetBrains Mono" font-weight="800" font-size="68" fill="#C0CAF5" letter-spacing="-1">omalauncher</text>
+  <text x="440" y="222" font-family="JetBrains Mono" font-weight="800" font-size="68" fill="#C0CAF5" letter-spacing="-1">omadroid</text>
   <rect x="444" y="246" width="96" height="6" rx="3" fill="url(#wm)"/>
   <text x="442" y="306" font-family="JetBrains Mono" font-size="27" fill="#A9B1D6">Arch Linux on your home screen.</text>
   <text x="442" y="346" font-family="JetBrains Mono" font-size="27" fill="#565F89">Tiled. Themed. Terminal-first.</text>

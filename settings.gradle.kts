@@ -1,4 +1,4 @@
-rootProject.name = "Omalauncher"
+rootProject.name = "Omadroid"
 
 pluginManagement {
     repositories {

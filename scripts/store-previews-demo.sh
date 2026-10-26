@@ -47,7 +47,7 @@ devlogsver=~/.local/share/oma-devlogs/store-version
 devlogsbin=~/.local/bin/oma-devlogs
 devlogserrors=~/.local/share/oma-devlogs/system_errors.py
 flashcards=~/.local/share/omalauncher/flashcards/flashcards.json
-scripts=~/.config/omalauncher/scripts
+scripts=~/.config/omadroid/scripts
 layout=~/.local/share/omalauncher-layout
 layoutlog=~/.cache/owl-layout.log
 radio=~/.cache/owl-radio
@@ -574,7 +574,7 @@ aside "$layoutlog"
 (
   cd "$layout" && git init -q -b main && git config user.name demo && git config user.email demo@localhost
   printf '%s\n' owl-layout install.sh README.md 'packages-*.txt' > .gitignore
-  set -- ~/.config/omalauncher/widgets/*.owl
+  set -- ~/.config/omadroid/widgets/*.owl
   commit() {
     local t=$(( $(date +%s) - $1 * 3600 ))
     git add -A
@@ -582,8 +582,8 @@ aside "$layoutlog"
   }
   cp -p "$1" widgets/; commit 150
   cp -p "$@" widgets/; commit 98
-  cp -p ~/.config/omalauncher/style/style.toml style/ 2>/dev/null; commit 75
-  cp -p ~/.config/omalauncher/agent . 2>/dev/null; commit 2
+  cp -p ~/.config/omadroid/style/style.toml style/ 2>/dev/null; commit 75
+  cp -p ~/.config/omadroid/agent . 2>/dev/null; commit 2
   git remote add origin https://github.com/demo/omalauncher-layout.git
   git update-ref refs/remotes/origin/main HEAD
 )
@@ -715,12 +715,12 @@ row() { printf '\033[1;36m%-16s%s\033[0m%s\n' "$1" "$2" "${3:+: $3}"; }
 printf '\033[1;36m%-16s\033[1mroot\033[0m@\033[1;36mlocalhost\033[0m\n' '      /\'
 printf '\033[1;36m%-16s\033[0m--------------\n' '     /  \'
 row '    /\   \' OS 'Arch Linux ARM aarch64'
-row '   /      \' Host 'Omalauncher (Android 15)'
+row '   /      \' Host 'Omadroid (Android 15)'
 row '  /   ,,   \' Kernel 'Linux 6.1.99-android14'
 row ' /   |  |  -\' Uptime '3 days, 4 hours'
 row "/_-''    ''-_\\" Packages '418 (pacman)'
 row '' Shell 'bash 5.3.3'
-row '' Terminal 'omalauncher'
+row '' Terminal 'omadroid'
 row '' CPU '8 cores @ 2.80 GHz'
 row '' Memory '3.14 GiB / 7.47 GiB (42%)'
 row '' 'Disk (/)' '9.84 GiB / 52.3 GiB (19%)'

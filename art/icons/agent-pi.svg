@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
-  <!-- Pi: a blocky π in the colors of pi.dev's mark, drawn for Omalauncher -->
+  <!-- Pi: a blocky π in the colors of pi.dev's mark, drawn for Omadroid -->
   <rect width="256" height="256" rx="56" fill="#1B1B1F"/>
   <g shape-rendering="crispEdges">
     <path fill="#F09082" d="M44 60H212V84H44Z"/>

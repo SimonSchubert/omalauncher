@@ -71,14 +71,14 @@ class OpenBridge(
             Managed.text(File(bin, "xdg-open"), Policy.Owned, executable = true) {
                 """
                 #!/bin/sh
-                # omalauncher: opens URLs in the Android browser (see OpenBridge.kt)
+                # omadroid: opens URLs in the Android browser (see OpenBridge.kt)
                 timeout 2 sh -c 'printf "%s\n" "${'$'}1" > $guestFifo' sh "${'$'}1"
                 """.trimIndent() + "\n"
             },
             Managed.text(File(bin, FILES_COMMAND), Policy.Owned, executable = true) {
                 """
                 #!/bin/sh
-                # omalauncher: opens the launcher's Files app, at a folder if given (see OpenBridge.kt)
+                # omadroid: opens the launcher's Files app, at a folder if given (see OpenBridge.kt)
                 dir=${'$'}(realpath -- "${'$'}{1:-.}" 2>/dev/null) || dir=${'$'}PWD
                 [ -d "${'$'}dir" ] || dir=${'$'}(dirname -- "${'$'}dir")
                 timeout 2 sh -c 'printf "%s\n" "${'$'}1" > $guestFifo' sh "$FILES_PREFIX${'$'}dir"
@@ -87,7 +87,7 @@ class OpenBridge(
             Managed.text(File(bin, EDIT_COMMAND), Policy.Owned, executable = true) {
                 """
                 #!/bin/sh
-                # omalauncher: $EDIT_COMMAND, Linux's ${'$'}EDITOR: edits a file in the launcher's editor and waits
+                # omadroid: $EDIT_COMMAND, Linux's ${'$'}EDITOR: edits a file in the launcher's editor and waits
                 # until it's closed. micro gets anything else (options, several files, a folder), files the
                 # editor can't take (big, binary), and everything while the launcher doesn't answer (see OpenBridge.kt).
                 [ ${'$'}# -eq 1 ] && [ ! -d "${'$'}1" ] || exec micro "${'$'}@"

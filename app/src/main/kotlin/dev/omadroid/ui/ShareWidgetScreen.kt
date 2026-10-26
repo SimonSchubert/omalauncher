@@ -279,7 +279,7 @@ private fun StoreIssue(
 }
 
 /** How the launcher names itself to [Paste]'s host, which asks clients to. */
-internal fun userAgent() = "Omalauncher/${BuildConfig.VERSION_NAME} (Android; +https://play.google.com/store/apps/details?id=dev.omadroid)"
+internal fun userAgent() = "Omadroid/${BuildConfig.VERSION_NAME} (Android; +https://play.google.com/store/apps/details?id=dev.omadroid)"
 
 /** [code] as a PNG in the cache, 8 pixels a module, for other apps to read through the FileProvider. */
 private fun qrImage(

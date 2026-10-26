@@ -1,6 +1,6 @@
 # Third-party material
 
-The MIT license in [LICENSE](LICENSE) covers Omalauncher's own code and artwork.
+The MIT license in [LICENSE](LICENSE) covers Omadroid's own code and artwork.
 It does not cover the files below, which stay under their owners' terms.
 
 ## Coding agent logos
@@ -20,7 +20,7 @@ agent in the launcher, which is not affiliated with or endorsed by any of them.
 | `agent-agy` | Antigravity | Google | [@lobehub/icons](https://github.com/lobehub/lobe-icons) (MIT) |
 | `agent-grok` | Grok | xAI | @lobehub/icons (MIT) |
 | `agent-opencode` | opencode | opencode | @lobehub/icons (MIT) |
-| `agent-pi` | Pi | pi.dev | drawn for Omalauncher, a π in the colors of Pi's mark |
+| `agent-pi` | Pi | pi.dev | drawn for Omadroid, a π in the colors of Pi's mark |
 | `agent-crush` | Crush | Charm | redrawn from Charm's logo |
 | `agent-omp` | Oh My Pi | can1357 | [oh-my-pi](https://github.com/can1357/oh-my-pi)'s icon (MIT) |
 | `agent-ori` | OpenRouter | OpenRouter | @lobehub/icons (MIT) |
@@ -40,7 +40,7 @@ agent in the launcher, which is not affiliated with or endorsed by any of them.
 
 `app/src/main/assets/themes/*.toml` and `app/src/main/assets/theme-backgrounds.txt`
 come from [Omarchy](https://github.com/omacom/omarchy), MIT, Copyright (c) David Heinemeier Hansson.
-Omalauncher is not affiliated with Omarchy.
+Omadroid is not affiliated with Omarchy.
 
 ## Mesa
 

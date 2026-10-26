@@ -203,13 +203,13 @@ class Style(
             Setting.Text(
                 "gestures.swipe-up",
                 "drawer.owl",
-                "The app drawer, which swiping up opens: a panel's file name in ~/.config/omalauncher/widgets, by default drawer.owl; \"none\" leaves only tapping the bar to open drawer.owl. One that's gone or doesn't compile falls back to drawer.owl, then to .stock-drawer.owl, the drawer as it ships.",
+                "The app drawer, which swiping up opens: a panel's file name in ~/.config/omadroid/widgets, by default drawer.owl; \"none\" leaves only tapping the bar to open drawer.owl. One that's gone or doesn't compile falls back to drawer.owl, then to .stock-drawer.owl, the drawer as it ships.",
             )
         val SWIPE_DOWN =
             Setting.Text(
                 "gestures.swipe-down",
                 "none",
-                "What swiping down on home opens: \"none\" nothing, or a panel's file name in ~/.config/omalauncher/widgets (\"my-panel.owl\"); one that's gone or doesn't compile opens nothing.",
+                "What swiping down on home opens: \"none\" nothing, or a panel's file name in ~/.config/omadroid/widgets (\"my-panel.owl\"); one that's gone or doesn't compile opens nothing.",
             )
     }
 

@@ -1,6 +1,6 @@
-# Omalauncher
+# Omadroid
 
-An Omarchy-inspired Linux environment for Android, with an optional Arch Linux ARM system running under proot, without root. Omalauncher is the system's Wayland compositor: every Linux window opens as its own Android task, with its own card in Recents. It is a regular application opened from your existing launcher; it does not replace your Android home screen.
+An Omarchy-inspired Linux environment for Android, with an optional Arch Linux ARM system running under proot, without root. Omadroid is the system's Wayland compositor: every Linux window opens as its own Android task, with its own card in Recents. It is a regular application opened from your existing launcher; it does not replace your Android home screen.
 
 <a href="https://play.google.com/store/apps/details?id=dev.omadroid"><img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80"></a>
 
@@ -27,7 +27,7 @@ the themes, wallpapers and the widgets that don't run commands.
 
 ## Using it
 
-Open Omalauncher from your app drawer like any other app; your existing Android home screen is untouched. The dashboard has seven sections:
+Open Omadroid from your app drawer like any other app; your existing Android home screen is untouched. The dashboard has seven sections:
 
 - **Overview**: the Linux environment state (not installed, stopped, starting, running, stopping, failed), start and stop controls, and quick actions.
 - **Linux Applications**: installed `.desktop` applications, searchable, each launchable in its own window.
@@ -73,12 +73,12 @@ In debug builds you can launch guest commands with
 
 ## License
 
-MIT, see [LICENSE](LICENSE), for Omalauncher's own code and artwork. The
+MIT, see [LICENSE](LICENSE), for Omadroid's own code and artwork. The
 coding agents' logos, the symbol font and Omarchy's theme colors are not
 covered; [THIRD_PARTY.md](THIRD_PARTY.md) lists them with their sources and
 licenses. The app also ships proot, talloc and libandroid-shmem (GPL-2.0,
 LGPL-3.0 and BSD-3-Clause, prebuilt by Termux), listed in the app under
 settings › licenses.
 
-Omalauncher is an independent project and is not affiliated with or endorsed
+Omadroid is an independent project and is not affiliated with or endorsed
 by Omarchy, Arch Linux, or the makers of the coding agents it installs.

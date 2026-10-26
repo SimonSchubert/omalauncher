@@ -22,7 +22,7 @@ class Proot(
     /** The guest user's home, /root, and the launcher's places in it. */
     val home = File(rootfs, "root")
     val applications = File(home, ".local/share/applications")
-    val launcherConfig = File(home, ".config/omalauncher")
+    val launcherConfig = File(home, ".config/omadroid")
 
     /**
      * A listable stand-in for /sys: apps may only read /sys/devices/system/cpu,
@@ -43,9 +43,9 @@ class Proot(
     private val dataBinds =
         listOf(
             "$GUEST_HOME/.local/share/omarchy" to LauncherData.omarchyDir(context),
-            "$GUEST_HOME/.config/omalauncher/widgets" to LauncherData.widgetsDir(context),
-            "$GUEST_HOME/.config/omalauncher/style" to LauncherData.styleDir(context),
-            "$GUEST_HOME/.config/omalauncher/home" to LauncherData.homeDir(context),
+            "$GUEST_HOME/.config/omadroid/widgets" to LauncherData.widgetsDir(context),
+            "$GUEST_HOME/.config/omadroid/style" to LauncherData.styleDir(context),
+            "$GUEST_HOME/.config/omadroid/home" to LauncherData.homeDir(context),
             "$GUEST_HOME/.config/omarchy/themes" to LauncherData.userThemesDir(context),
             "$GUEST_HOME/.config/omarchy/backgrounds" to LauncherData.userBackgroundsDir(context),
         )
@@ -95,11 +95,29 @@ class Proot(
     }
 
     /**
+     * A guest that ran while the app was Omalauncher keeps its scripts and preferred agent in
+     * ~/.config/omalauncher; move them into ~/.config/omadroid once, so the rename isn't a loss.
+     * Widgets, style and home are bound from the app rather than kept in the rootfs, so they're
+     * already where the guest looks. Runs before [prepare] makes the new mount points.
+     */
+    private fun migrateConfig() {
+        val old = File(home, ".config/omalauncher")
+        if (!rootfs.isDirectory || !old.isDirectory) return
+        val new = File(home, ".config/omadroid").apply { mkdirs() }
+        for (child in old.listFiles().orEmpty()) {
+            if (!File(new, child.name).exists()) child.renameTo(File(new, child.name))
+        }
+        // Only when everything moved: a file left behind stays put, to copy by hand rather than be lost.
+        if (old.list()?.isEmpty() == true) old.delete()
+    }
+
+    /**
      * Resets what only lives as long as our process (guest processes die with
      * it): /tmp, the runtime dir, a stale pacman lock. Writes the host-side
      * stand-ins every guest command needs. Call once, before any guest runs.
      */
     fun prepare() {
+        migrateConfig()
         for (dir in listOf(tmpDir, runtimeDir)) {
             LauncherData.deleteTree(dir)
             dir.mkdirs()

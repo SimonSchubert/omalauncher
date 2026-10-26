@@ -76,7 +76,7 @@ class WidgetSpec(
 fun List<WidgetSpec>.app(file: String) = firstOrNull { it.file.name == file && it.kind == OwlKind.App }
 
 /**
- * Loads widgets (`*.owl`) from [dir], ~/.config/omalauncher/widgets in the guest,
+ * Loads widgets (`*.owl`) from [dir], ~/.config/omadroid/widgets in the guest,
  * reloads files as they change, and runs each widget's sources while its
  * page is on screen. Commands run inside the guest, never with Android
  * permissions.
@@ -1054,10 +1054,10 @@ class WidgetEngine(
         private const val AGENT_PREFIX = "agent-"
 
         /** The widgets dir, relative to the guest home. */
-        const val GUEST_DIR = ".config/omalauncher/widgets"
+        const val GUEST_DIR = ".config/omadroid/widgets"
 
         private const val AGENT_POINTER =
-            "# omalauncher\n\nThis Arch system runs inside an Android launcher, omalauncher; its source is at " +
+            "# omadroid\n\nThis Arch system runs inside an Android launcher, omadroid; its source is at " +
                 "https://github.com/SimonSchubert/omalauncher, should you need to understand how the launcher works. " +
                 "Home-screen widgets are `.owl` files in " +
                 "~/$GUEST_DIR, written in a small declarative language documented in README.md there (and docs/ next to it); so are apps for the " +

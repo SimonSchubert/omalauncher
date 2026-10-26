@@ -28,13 +28,13 @@ object LauncherData {
     /** The user's extra backgrounds, per theme. The guest sees ~/.config/omarchy/backgrounds. */
     fun userBackgroundsDir(context: Context) = File(context.filesDir, "backgrounds")
 
-    /** Widget files. The guest sees ~/.config/omalauncher/widgets. */
+    /** Widget files. The guest sees ~/.config/omadroid/widgets. */
     fun widgetsDir(context: Context) = File(context.filesDir, "widgets")
 
-    /** style.toml and its defaults; see [dev.omadroid.theme.StyleStore]. The guest sees ~/.config/omalauncher/style. */
+    /** style.toml and its defaults; see [dev.omadroid.theme.StyleStore]. The guest sees ~/.config/omadroid/style. */
     fun styleDir(context: Context) = File(context.filesDir, "style")
 
-    /** layout.toml, where home's tiles and pages are; see [dev.omadroid.widgets.HomeStore]. The guest sees ~/.config/omalauncher/home. */
+    /** layout.toml, where home's tiles and pages are; see [dev.omadroid.widgets.HomeStore]. The guest sees ~/.config/omadroid/home. */
     fun homeDir(context: Context) = File(context.filesDir, "home")
 
     /** Settings that belong to no one store: setup, gestures, the GPU, the home role. Keys carry their owner's prefix. */

@@ -11,7 +11,7 @@ the same way. Save a file and it appears within a second. Then run `owl-check <f
 ```
 $ owl-check 50-memory.owl
 50-memory.owl: compiles
-  preview: ~/.config/omalauncher/widgets/.preview/50-memory.owl.png (3x4 cells, 528x712 px, with live data); look at it to check the layout
+  preview: ~/.config/omadroid/widgets/.preview/50-memory.owl.png (3x4 cells, 528x712 px, with live data); look at it to check the layout
 ```
 
 A widget with a `screen { }` (docs/screens.md) gets a second picture, of the screen as it opens. An
@@ -27,7 +27,7 @@ can't see the phone. Terminal tiles aren't previewed. Errors also go to
 Widgets sit on a grid of roughly square cells, 6 columns by default (a phone
 has about 12 rows), bordered like Omarchy windows and colored by the current
 Omarchy theme. Users move and resize them on the phone; where everything is
-lives in ~/.config/omalauncher/home/layout.toml, which you can edit too (see
+lives in ~/.config/omadroid/home/layout.toml, which you can edit too (see
 docs/home.md).
 
 ```owl

@@ -71,7 +71,7 @@ jobs:
       - name: Checksum
         id: apk
         run: |
-          apk="omalauncher-${{ steps.version.outputs.name }}.apk"
+          apk="omadroid-${{ steps.version.outputs.name }}.apk"
           cp app/build/outputs/apk/release/app-release.apk "$apk"
           sha256sum "$apk" > SHA256SUMS
           echo "file=$apk" >> "$GITHUB_OUTPUT"

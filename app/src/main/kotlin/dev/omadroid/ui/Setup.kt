@@ -124,7 +124,7 @@ private fun Wordmark() {
         }
     }
     Spacer(Modifier.height(20.dp))
-    BasicText("◆ omalauncher", style = Mono.copy(color = Palette.accent, fontSize = 28.sp, fontWeight = FontWeight.Bold))
+    BasicText("◆ omadroid", style = Mono.copy(color = Palette.accent, fontSize = 28.sp, fontWeight = FontWeight.Bold))
 }
 
 @Composable

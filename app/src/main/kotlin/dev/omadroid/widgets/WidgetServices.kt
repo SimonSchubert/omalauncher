@@ -668,7 +668,7 @@ class WidgetServices(
                     val connection = openHttp(target.toString(), timeoutSeconds * 1000, timeoutSeconds * 1000)
                     try {
                         connection.instanceFollowRedirects = false
-                        connection.setRequestProperty("User-Agent", "omalauncher-widgets")
+                        connection.setRequestProperty("User-Agent", "omadroid-widgets")
                         if (origin(target) == origin(URL(url))) headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
                         connection.requestMethod = sendMethod
                         // A DELETE usually has no body, and some servers refuse one.
@@ -746,7 +746,7 @@ class WidgetServices(
     private fun download(url: String): ByteArray? {
         val connection = openHttp(url, readTimeout = 20_000)
         try {
-            connection.setRequestProperty("User-Agent", "omalauncher-widgets")
+            connection.setRequestProperty("User-Agent", "omadroid-widgets")
             if (connection.responseCode !in 200..299) return null
             return connection.inputStream.use { it.readUpTo(MAX_FILE_BYTES + 1) }.takeIf { it.size <= MAX_FILE_BYTES }
         } finally {

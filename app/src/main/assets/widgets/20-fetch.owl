@@ -140,7 +140,7 @@ widget "fetch" {
           gap: 6
           weight: 1
           Text { text: "${user}@${host}"; fontSize: 18; font: mono; bold: true; color: accent; maxLines: 1 }
-          Text { text: "omalauncher ${sys.launcher} · ${lower(sys.theme ?? "default")}"; style: small; color: muted; maxLines: 1 }
+          Text { text: "omadroid ${sys.launcher} · ${lower(sys.theme ?? "default")}"; style: small; color: muted; maxLines: 1 }
           Palette { box: 18 }
         }
       }

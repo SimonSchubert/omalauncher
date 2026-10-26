@@ -4,7 +4,7 @@ Part of the widget docs: README.md, one folder up, comes first, and paths here a
 
 ## Home's layout
 
-`~/.config/omalauncher/home/layout.toml` is home as it is: its pages left to
+`~/.config/omadroid/home/layout.toml` is home as it is: its pages left to
 right, and where each tile sits. Moving things on the phone rewrites it, and
 home follows your edits within a second. A widget's `page:`, `order:` and
 `size:` only place it the first time; after that, move it here.

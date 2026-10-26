@@ -1,9 +1,9 @@
 #!/bin/bash
-# omalauncher: sets a state of a running home-screen widget, or refreshes it,
+# omadroid: sets a state of a running home-screen widget, or refreshes it,
 # from scripts, cron jobs and hooks (see WidgetEngine.kt receive()). Drops a
 # request into the widgets' .inbox and waits for the launcher's answer.
 set -u
-dir="$HOME/.config/omalauncher/widgets"
+dir="$HOME/.config/omadroid/widgets"
 
 usage() {
   cat >&2 <<USAGE

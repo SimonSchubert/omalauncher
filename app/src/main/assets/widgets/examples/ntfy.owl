@@ -13,7 +13,7 @@ app "ntfy" {
     <path d="M20 42a4 4 0 0 0 8 0"/>
   </svg>"""
 
-  state topic = "omalauncher-${random(100000000)}" persist
+  state topic = "omadroid-${random(100000000)}" persist
   state view = ""
   // post's answer: {ok, code, out}. Starts at 0 so the first answer counts as a change.
   state sent = 0

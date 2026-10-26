@@ -6,11 +6,11 @@ widget "scripts" {
 
   requires { pacman: ["jq"] }
 
-  // Every file in ~/.config/omalauncher/scripts is a row showing the first line it prints.
+  // Every file in ~/.config/omadroid/scripts is a row showing the first line it prints.
   // A line of JSON like {"text": "3 failing", "color": "red"} sets the text and its color.
   // Scripts run side by side, 5 s each at most; tap a row to run one in a terminal.
   source rows = cmd("""
-    d=~/.config/omalauncher/scripts
+    d=~/.config/omadroid/scripts
     if [ ! -d "$d" ]; then
       mkdir -p "$d"
       printf '#!/bin/sh\n# Every script in this folder is a row on the scripts widget.\necho "$(df -h --output=avail / | tail -1 | tr -d " ") free"\n' > "$d/disk.sh"
@@ -32,13 +32,13 @@ widget "scripts" {
     rm -rf "$t"
   """) every 30s json timeout 20s
 
-  onTap: terminal("cd ~/.config/omalauncher/scripts && ls", "scripts")
+  onTap: terminal("cd ~/.config/omadroid/scripts && ls", "scripts")
 
   Column {
     gap: 4
     Text { text: "scripts"; style: muted }
     if rows != null && len(rows) == 0 {
-      Text { text: "put scripts in ~/.config/omalauncher/scripts"; style: small; color: muted }
+      Text { text: "put scripts in ~/.config/omadroid/scripts"; style: small; color: muted }
     }
     Column {
       scroll: true

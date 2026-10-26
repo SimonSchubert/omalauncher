@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** A widget link (see [Share]): from a browser, or the store page's "open in Omalauncher" button. */
+    /** A widget link (see [Share]): from a browser, or the store page's "open in Omadroid" button. */
     private fun handleSharedWidget(intent: Intent) {
         if (intent.action != Intent.ACTION_VIEW) return
         val link =
