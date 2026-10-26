@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import android.os.SystemClock
 import dev.omalauncher.widgets.lang.Bool
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
@@ -17,6 +18,14 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+/** Advance the last published position when controls outlive the publisher's polling. */
+internal fun mediaPositionMs(position: Long, duration: Long, playing: Boolean, elapsed: Long): Long {
+    val start = position.coerceAtLeast(0)
+    val advance = if (playing) elapsed.coerceIn(0, Long.MAX_VALUE - start) else 0
+    val result = start + advance
+    return if (duration > 0) result.coerceAtMost(duration) else result
+}
 
 /** A Linux player's Android media session, published by an OWL app. */
 class LinuxMedia(
@@ -36,6 +45,7 @@ class LinuxMedia(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val session = MediaSession(context, "Linux media")
     private val mutable = MutableStateFlow<Published?>(null)
+    private var updatedAtMs = 0L
     val state = mutable.asStateFlow()
     val token: MediaSession.Token get() = session.sessionToken
 
@@ -91,7 +101,8 @@ class LinuxMedia(
     fun control(name: String) = control(name, null)
 
     private fun control(name: String, argument: Double?) {
-        val item = mutable.value ?: return
+        val published = mutable.value ?: return
+        val item = published.copy(positionMs = mediaPositionMs(published.positionMs, published.durationMs, published.playing, SystemClock.elapsedRealtime() - updatedAtMs))
         val base = item.commands[name] ?: return
         // Seek's number is generated here, never copied from the command, and is therefore one safe shell word.
         val command = if (argument == null) base else "$base ${argument.toString()}"
@@ -109,6 +120,7 @@ class LinuxMedia(
     }
 
     private fun updatePlayback(item: Published) {
+        updatedAtMs = SystemClock.elapsedRealtime()
         var actions = 0L
         if ("play" in item.commands) actions = actions or PlaybackState.ACTION_PLAY
         if ("pause" in item.commands) actions = actions or PlaybackState.ACTION_PAUSE
@@ -119,7 +131,7 @@ class LinuxMedia(
         session.setPlaybackState(
             PlaybackState.Builder()
                 .setActions(actions)
-                .setState(if (item.playing) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED, item.positionMs, if (item.playing) 1f else 0f)
+                .setState(if (item.playing) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED, item.positionMs, if (item.playing) 1f else 0f, updatedAtMs)
                 .build(),
         )
     }
