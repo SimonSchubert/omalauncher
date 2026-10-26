@@ -1,8 +1,10 @@
 package dev.omalauncher.ui
 
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isPrimaryPressed
@@ -63,9 +65,20 @@ private suspend fun PointerInputScope.handlePointer(
         change.consume()
         if (!wm.onPress(window, hit) || hit == null) continue
 
+        // The launcher's bar over a floating window: dragging it moves the window, as the pointer does.
+        if (hit.decoration != null) {
+            if (hit.onClose) {
+                wm.click(hit, BTN_LEFT)
+            } else {
+                dragBar(wm, window, change)
+            }
+            continue
+        }
+
         // Clients with wl_touch (foot, GTK) get real touch: foot turns hold-and-drag into selection.
         if (wm.wantsTouch(hit.surface)) {
             val id = change.id.value.toInt()
+            wm.dragTo(window, start.x, start.y)
             wm.touchDown(hit, id)
             var moved = false
             var tapped = false
@@ -80,10 +93,12 @@ private suspend fun PointerInputScope.handlePointer(
                 }
                 c.consume()
                 if ((c.position - start).getDistance() > touchSlop) moved = true
+                wm.dragTo(window, c.position.x, c.position.y)
                 val d = (c.position - start) / hit.scale
-                wm.touchMotion(id, hit.x + d.x, hit.y + d.y)
+                wm.touchMotion(id, hit.x + d.x, hit.y + d.y, window.hitTest(c.position.x, c.position.y))
             }
             wm.touchUp(id)
+            wm.endDrag()
             if (tapped && wm.onTextCursorRow(hit)) onCursorTap()
             continue
         }
@@ -131,6 +146,23 @@ private suspend fun PointerInputScope.handlePointer(
     }
 }
 
+/** A finger on the launcher's bar: the window follows it until it lifts, through the same path as the pointer. */
+private suspend fun AwaitPointerEventScope.dragBar(
+    wm: WindowManager,
+    window: XdgToplevel,
+    first: PointerInputChange,
+) {
+    wm.pointerAt(window, first.position.x, first.position.y)
+    wm.pointerButton(BTN_LEFT, true)
+    while (true) {
+        val c = awaitPointerEvent().changes.firstOrNull { it.id == first.id } ?: break
+        if (c.isConsumed || !c.pressed) break
+        c.consume()
+        wm.pointerAt(window, c.position.x, c.position.y)
+    }
+    wm.pointerButton(BTN_LEFT, false)
+}
+
 private fun handleMouse(
     wm: WindowManager,
     window: XdgToplevel,
@@ -157,8 +189,8 @@ private fun handleMouse(
             (if (event.buttons.isTertiaryPressed) 4 else 0)
     val pressed = buttons and previousButtons.inv()
     if (pressed != 0 && !wm.onPress(window, hit)) return buttons
-    // Keep the grab on the pressed surface while dragging.
-    if (previousButtons == 0 || wm.server.input.pointerFocus == hit?.surface) wm.pointerMove(hit)
+    // While a button is held, the surface it was pressed on keeps getting the pointer.
+    wm.pointerAt(window, change.position.x, change.position.y)
     for ((bit, code) in BUTTONS) {
         if (pressed and bit != 0) wm.pointerButton(code, true)
         if (previousButtons and bit != 0 && buttons and bit == 0) wm.pointerButton(code, false)

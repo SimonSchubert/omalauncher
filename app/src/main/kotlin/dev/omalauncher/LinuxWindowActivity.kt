@@ -69,7 +69,8 @@ class LinuxWindowActivity : InstantActivity() {
         this.window = window
         setInstantContent {
             AppWindow(runtime, window)
-            BackHandler { backInstantly() }
+            // A dialog over the app closes first, as Escape would close it on a desktop.
+            BackHandler { if (!runtime.wm.closeTopChild(window)) backInstantly() }
             LaunchedEffect(window) {
                 snapshotFlow { window in runtime.wm.appWindows }.first { !it }
                 closeInstantly()
@@ -198,6 +199,12 @@ private fun AppWindow(
                 // Over the SurfaceView, which Compose's pointer input doesn't reach.
                 // A tap on the prompt line brings the keyboard back, as the ⌨ button does.
                 Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window) { sink?.takeUnless { it.showing }?.show() })
+                // Floating windows that left decorating to us get the renderer's bar to move them by, and a ✕.
+                val barColors = intArrayOf(Palette.surface.toArgb(), Palette.foreground.toArgb(), Palette.muted.toArgb())
+                LaunchedEffect(density, barColors.toList()) {
+                    runtime.wm.decorationHeight = with(density) { 30.dp.roundToPx() }
+                    runtime.wm.decorationColors = barColors
+                }
                 Box(
                     Modifier
                         .align(Alignment.BottomEnd)

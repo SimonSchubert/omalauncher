@@ -157,6 +157,10 @@ class Surface(
 
     var role: SurfaceRole? = null
 
+    /** Given a server-side decoration through KDE's protocol (GTK3 asks that way); see XdgToplevel.serverDecorated. */
+    @Volatile
+    var kdeDecorated = false
+
     /** Set once the client destroyed it; input and drawing skip it from then on. */
     @Volatile
     var destroyed = false

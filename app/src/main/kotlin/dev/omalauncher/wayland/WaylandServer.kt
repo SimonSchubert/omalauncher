@@ -27,6 +27,15 @@ interface WindowManagerHooks {
     fun toplevelCreated(toplevel: XdgToplevel)
 
     fun toplevelDestroyed(toplevel: XdgToplevel)
+
+    /** [toplevel]'s title bar is being dragged (xdg_toplevel.move): a floating window follows the drag. */
+    fun moveRequested(toplevel: XdgToplevel) {}
+
+    /** The height of the launcher's bar over a floating window, in view pixels: room is left above for it. */
+    val decorationHeight: Int get() = 0
+
+    /** The bar's colors, as ARGB: background, title, close button. */
+    val decorationColors: IntArray get() = intArrayOf(0xFF24283B.toInt(), 0xFFC0CAF5.toInt(), 0xFF565F89.toInt())
 }
 
 /**
@@ -51,6 +60,7 @@ class WaylandServer(
             Global("zxdg_decoration_manager_v1", 1, ::DecorationManager),
             Global("zwp_text_input_manager_v3", 1, ::TextInputManager),
             Global("org_kde_kwin_server_decoration_manager", 1, ::ServerDecorationManager),
+            Global("xdg_toplevel_drag_manager_v1", 1, ::ToplevelDragManager),
         )
 
     val clients = mutableListOf<Client>()
