@@ -12,6 +12,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,10 +40,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.ui.ExtraKeys
+import dev.omalauncher.ui.GamePad
+import dev.omalauncher.ui.GamePadState
 import dev.omalauncher.ui.KeyboardSink
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
@@ -161,6 +165,9 @@ private fun AppWindow(
     window: XdgToplevel,
 ) {
     var sink by remember { mutableStateOf<KeyboardSink?>(null) }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("launcher", Context.MODE_PRIVATE) }
+    val gamePad = remember(window.appId) { GamePadState(prefs, window.appId) }
     var surfaceView by remember { mutableStateOf<WindowSurfaceView?>(null) }
     // Shows wherever the window has yet to draw, as when it grows; the terminal's own background, not a lighter one.
     val background = Palette.background.toArgb()
@@ -198,16 +205,32 @@ private fun AppWindow(
                 // Over the SurfaceView, which Compose's pointer input doesn't reach.
                 // A tap on the prompt line brings the keyboard back, as the ⌨ button does.
                 Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window) { sink?.takeUnless { it.showing }?.show() })
-                Box(
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(12.dp)
-                        .size(40.dp)
-                        .background(Palette.overlay, CircleShape)
-                        .clickable { sink?.toggle() },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    BasicText("⌨", style = Mono.copy(color = Palette.foreground))
+                GamePad(gamePad, onKey = { code, down ->
+                    if (runtime.wm.focused !== window) runtime.wm.focus(window)
+                    runtime.wm.server.postInput { key(code, down) }
+                })
+                // Out of the pad's way while it shows: its A and B sit where these do.
+                Column(Modifier.align(if (gamePad.on) Alignment.TopEnd else Alignment.BottomEnd).padding(12.dp)) {
+                    Box(
+                        Modifier
+                            .padding(bottom = 12.dp)
+                            .size(40.dp)
+                            .background(Palette.overlay, CircleShape)
+                            .border(1.5.dp, if (gamePad.on) Palette.accent else Palette.overlay, CircleShape)
+                            .clickable { gamePad.toggle() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        BasicText("\u271A", style = Mono.copy(color = if (gamePad.on) Palette.accent else Palette.foreground))
+                    }
+                    Box(
+                        Modifier
+                            .size(40.dp)
+                            .background(Palette.overlay, CircleShape)
+                            .clickable { sink?.toggle() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        BasicText("⌨", style = Mono.copy(color = Palette.foreground))
+                    }
                 }
             }
             // Below the window rather than over it, so the window shrinks and nothing hides behind the keys; only over a
