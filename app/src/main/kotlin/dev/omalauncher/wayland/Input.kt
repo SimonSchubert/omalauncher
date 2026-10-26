@@ -31,6 +31,54 @@ class Input(
         private set
 
     private val pressedKeys = linkedSetOf<Int>()
+
+    /** Pointer buttons held now: a drag started while one is down is driven by the pointer. */
+    private val heldButtons = HashSet<Int>()
+
+    /** What's under the pointer, and under each finger, as last reported: where a drag starts over. */
+    private var pointerUnder: SurfaceHit? = null
+    private val touchUnder = HashMap<Int, SurfaceHit?>()
+
+    /** The drag and drop under way, if any; see [Drag]. */
+    var drag: Drag? = null
+        private set
+
+    /** Where the drag is in its window's view, in pixels: its icon is drawn there. Set from the UI thread. */
+    @Volatile
+    var dragPoint: Pair<Float, Float>? = null
+
+    /**
+     * start_drag from [client]: driven by the button or finger held on [origin], if one is. The pointer leaves
+     * its surface for the drag's length; nothing held means nothing to drive it, and the drag is cancelled.
+     */
+    fun startDrag(
+        client: Client,
+        source: DataSource?,
+        origin: Surface?,
+        icon: Surface?,
+    ) {
+        val touchId = touchFocus.entries.firstOrNull { it.value === origin }?.key
+        if (drag != null || origin == null || (heldButtons.isEmpty() && touchId == null)) {
+            source?.cancel()
+            return
+        }
+        val byPointer = heldButtons.isNotEmpty()
+        pointerFocus?.let { old ->
+            pointersOf(old.client).forEach {
+                it.send(it.event(1).uint(server.nextSerial()).obj(old.id))
+                it.frame()
+            }
+        }
+        pointerFocus = null
+        val d = Drag(server, client, source, icon, if (byPointer) null else touchId, server.toplevelOf(origin))
+        drag = d
+        source?.attached?.let { (top, _) -> top.dragSource = source }
+        d.motion(if (byPointer) pointerUnder else touchUnder[touchId])
+    }
+
+    fun dragEnded(d: Drag) {
+        if (drag === d) drag = null
+    }
     private var depressedMods = 0
     private var lockedMods = 0
 
@@ -166,12 +214,19 @@ class Input(
             else -> 0
         }
 
-    /** Moves the pointer to surface-local ([x], [y]) on [surface], or off all surfaces. */
+    /**
+     * Moves the pointer to surface-local ([x], [y]) on [surface], or off all surfaces. [under] is what's under
+     * it, which differs from [surface] while a held button keeps it on the surface it was pressed on: a drag
+     * and drop goes by what's under.
+     */
     fun pointerMotion(
         surface: Surface?,
         x: Float,
         y: Float,
+        under: SurfaceHit? = surface?.let { SurfaceHit(it, x, y) },
     ) {
+        pointerUnder = under
+        drag?.takeIf { it.touchId == null }?.let { return it.motion(under) }
         // Hit testing ran on the UI thread; the surface may have gone since.
         if (surface?.destroyed == true) return pointerMotion(null, 0f, 0f)
         if (surface !== pointerFocus) {
@@ -202,6 +257,12 @@ class Input(
         button: Int,
         pressed: Boolean,
     ) {
+        if (pressed) heldButtons += button else heldButtons -= button
+        // A pointer drag drops when its last button lets go; the target hears about it, not as a button.
+        drag?.takeIf { it.touchId == null }?.let {
+            if (heldButtons.isEmpty()) it.drop()
+            return
+        }
         val s = pointerFocus ?: return
         val serial = server.nextSerial()
         val time = now()
@@ -268,7 +329,10 @@ class Input(
         id: Int,
         x: Float,
         y: Float,
+        under: SurfaceHit? = null,
     ) {
+        touchUnder[id] = under
+        drag?.takeIf { it.touchId == id }?.let { return it.motion(under) }
         val surface = touchFocus[id] ?: return
         val time = now()
         touchesOf(surface.client).forEach {
@@ -278,6 +342,8 @@ class Input(
     }
 
     fun touchUp(id: Int) {
+        touchUnder.remove(id)
+        drag?.takeIf { it.touchId == id }?.drop()
         val surface = touchFocus.remove(id) ?: return
         val serial = server.nextSerial()
         val time = now()
@@ -288,6 +354,8 @@ class Input(
     }
 
     fun surfaceDestroyed(surface: Surface) {
+        if (pointerUnder?.surface === surface) pointerUnder = null
+        touchUnder.entries.removeAll { it.value?.surface === surface }
         if (pointerFocus === surface) pointerFocus = null
         if (keyboardFocus === surface) keyboardFocus = null
         touchFocus.values.removeAll { it === surface }

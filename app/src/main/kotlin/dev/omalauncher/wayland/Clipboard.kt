@@ -178,6 +178,13 @@ class DataSource(
     var cancelled = false
         private set
 
+    /** The drag-and-drop actions it allows (set_actions); copy for clients older than version 3. */
+    var actions = 1
+        private set
+
+    /** The toplevel a drag of it carries along, and that toplevel's offset from the pointer (xdg_toplevel_drag). */
+    var attached: Pair<XdgToplevel, Pair<Int, Int>>? = null
+
     override fun request(
         opcode: Int,
         args: Args,
@@ -185,6 +192,7 @@ class DataSource(
         when (opcode) {
             0 -> args.string()?.let { mimes += it }
             1 -> destroy()
+            2 -> actions = args.uint()
         }
     }
 
@@ -197,6 +205,7 @@ class DataSource(
     override fun onDestroy() {
         cancelled = true
         client.server.selection.sourceDestroyed(this)
+        client.server.input.drag?.takeIf { it.source === this }?.cancel()
     }
 }
 
@@ -212,8 +221,12 @@ class DataDevice(
         args: Args,
     ) {
         when (opcode) {
-            // Drag and drop isn't supported: end the drag before it starts.
-            0 -> client.get<DataSource>(args.obj())?.cancel()
+            0 -> { // start_drag: source (none for a drag inside the client), origin, icon, serial
+                val source = args.obj().takeIf { it != 0 }?.let { client.get<DataSource>(it) ?: return }
+                val origin = client.get<Surface>(args.obj())
+                val icon = args.obj().takeIf { it != 0 }?.let { client.get<Surface>(it) }
+                client.server.input.startDrag(client, source, origin, icon)
+            }
             1 -> {
                 val source = args.obj().takeIf { it != 0 }?.let { client.get<DataSource>(it) ?: return }
                 client.server.selection.set(source)
@@ -230,14 +243,33 @@ class DataOffer(
     version: Int,
     private val source: DataSource?,
     private val selection: Selection,
+    /** Set for an offer made to a drag-and-drop target, rather than for the selection. */
+    private val drag: Drag? = null,
 ) : Resource(client, id, version) {
     override val iface = "wl_data_offer"
+
+    /** Dropped on: the target reads it and says when it's done (finish). */
+    var dropped = false
+    private var finished = false
 
     override fun request(
         opcode: Int,
         args: Args,
     ) {
         when (opcode) {
+            0 -> { // accept: the type the target would take, or none
+                args.uint()
+                val mime = args.string()
+                if (drag == null || dropped) return
+                drag.accepted = mime
+                source?.send(source.event(0).string(mime))
+            }
+            3 -> finish()
+            4 -> { // set_actions
+                val dnd = args.uint()
+                val preferred = args.uint()
+                if (drag != null && !dropped) drag.negotiate(this, dnd, preferred)
+            }
             1 -> {
                 val mime = args.string()
                 val fd = args.fd()
@@ -250,6 +282,18 @@ class DataOffer(
             }
             2 -> destroy()
         }
+    }
+
+    /** The target is done with a drop: the source can drop its data (dnd_finished). */
+    private fun finish() {
+        if (!dropped || finished) return
+        finished = true
+        source?.takeIf { it.version >= 3 && !it.cancelled }?.let { it.send(it.event(4)) }
+    }
+
+    // A target older than version 3 never says finish: it's done once it lets the offer go.
+    override fun onDestroy() {
+        if (dropped && version < 3) finish()
     }
 }
 
