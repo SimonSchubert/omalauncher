@@ -159,7 +159,7 @@ class TerminalFont(
 
     companion object {
         /** foot.ini's include; the launcher owns this file and rewrites it. */
-        const val PATH = "~/.local/state/omalauncher/foot-font.ini"
+        const val PATH = "~/.local/state/omadroid/foot-font.ini"
 
         /** omarchy-font-list's: one family per monospace font file. */
         private const val LIST_FAMILIES = "fc-list :spacing=100 -f '%{family[0]}\\n'"

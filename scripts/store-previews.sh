@@ -123,7 +123,7 @@ seed() {
     # A Berlin station picked; the demo script makes it look like it's playing.
     radio) json='{"cc":"DE","ccName":"Germany","station":{"id":"9f899cb2-8dd7-11e8-aa66-52543be04c81","name":"Radioeins","url":"http://d131.rndfnk.com/ard/rbb/radioeins/live/mp3/128/stream.mp3","tags":"","kbps":128,"cc":"DE"}}' ;;
     # A photo already set; the demo script downloads it.
-    photo) json='{"activePhoto":"~/.cache/omalauncher-photos/downloads/photo_demo.jpg"}' ;;
+    photo) json='{"activePhoto":"~/.cache/omadroid-photos/downloads/photo_demo.jpg"}' ;;
     # A week in, with daily goals: today part way to all three, with its taps there to undo.
     vice-tracker)
       json=$(python3 -c '

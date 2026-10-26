@@ -64,7 +64,7 @@ uses a patched Mesa 26.2.4 libEGL (`scripts/mesa/0001-egl-wayland-keep-zink-on-s
 the compositor only offers `wl_shm`, stock Mesa clears zink after the Wayland
 DRM path fails, and the shm buffer stays black while frames still count.
 `MESA_LOADER_DRIVER_OVERRIDE=zink` keeps zink set so kopper presents through
-Vulkan WSI. The patched libraries live under `/usr/local/omalauncher-mesa`,
+Vulkan WSI. The patched libraries live under `/usr/local/omadroid-mesa`,
 off the default linker path. Frames still arrive as wl_shm buffers
 (`MESA_VK_WSI_DEBUG=sw`), so the compositor is the same either way.
 

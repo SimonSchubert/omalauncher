@@ -20,7 +20,7 @@ private val KEEP_PATHS =
 class OmarchyRelease(
     val dir: File,
 ) {
-    private val marker = File(dir, ".omalauncher-ref")
+    private val marker = File(dir, ".omadroid-ref")
 
     fun isCurrent() = runCatching { marker.readText().trim() }.getOrNull() == ThemeStore.OMARCHY_REF
 

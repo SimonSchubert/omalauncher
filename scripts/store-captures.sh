@@ -7,7 +7,7 @@
 # itself out for that and nothing is cropped or squashed. System UI demo mode keeps the clock and icons tidy.
 #
 # Needs a debug build (run-as, the `theme` and `exec` extras) with Linux and the coding agents in RECENT installed,
-# on an emulator with Google Play so the Play Store is there to show: the Omalauncher_Play AVD, which needs no root.
+# on an emulator with Google Play so the Play Store is there to show: the Omadroid_Play AVD, which needs no root.
 # The launcher's widgets, home layout, pinned apps, recent apps and theme are backed up first and put back
 # afterwards, as are the display size and demo mode.
 #

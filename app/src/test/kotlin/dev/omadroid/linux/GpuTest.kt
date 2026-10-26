@@ -75,7 +75,7 @@ class GpuTest {
         val script = GpuDrivers.installScript(driver)
         assertTrue(script.contains("libvulkan_panfrost-glibc-aarch64.so"))
         assertTrue(script.contains("0b8eaf709cd3559acec72b6fcf3acc24bcdb016bdc998adfedca6ff8eb60c820  /usr/local/lib64/libvulkan_panfrost.so"))
-        assertTrue(script.contains("0b8eaf709cd3559acec72b6fcf3acc24bcdb016bdc998adfedca6ff8eb60c820  /tmp/omalauncher-gpu.so"))
+        assertTrue(script.contains("0b8eaf709cd3559acec72b6fcf3acc24bcdb016bdc998adfedca6ff8eb60c820  /tmp/omadroid-gpu.so"))
         assertTrue(script.contains("\"api_version\":\"1.4.363\""))
         assertTrue(script.contains("> '/usr/local/share/vulkan/icd.d/panfrost_icd.aarch64.json'"))
         assertTrue(trapCoversCurl(script))
@@ -95,17 +95,17 @@ class GpuTest {
         // Stock Mesa drops zink on the shm path and shows black windows; Mali uses the patched bundle too.
         assertTrue(probe.contains("export MESA_LOADER_DRIVER_OVERRIDE='zink';"))
         assertTrue(probe.contains("export __EGL_VENDOR_LIBRARY_FILENAMES='/usr/local/share/glvnd/egl_vendor.d/50_mesa.json';"))
-        assertTrue(script.contains("tar -xJf '/usr/local/share/omalauncher/mesa-zink.tar.xz' -C / &&"))
+        assertTrue(script.contains("tar -xJf '/usr/local/share/omadroid/mesa-zink.tar.xz' -C / &&"))
     }
 
     @Test fun turnipScriptPinsTheKgslPackageAndTheExtractedLibrary() {
         val driver = GpuDrivers.of(GpuKind.TURNIP)
         val script = GpuDrivers.installScript(driver)
         assertTrue(script.contains("turnip-26.3.0-devel-20260824/vulkan-freedreno-1-26.3.0-1-aarch64.pkg.tar.xz"))
-        assertTrue(script.contains("9824514d7180402d936f83f4ad422f338b7df31ff2804eab8a0badb13ee44a77  /tmp/omalauncher-gpu.pkg.tar.xz"))
+        assertTrue(script.contains("9824514d7180402d936f83f4ad422f338b7df31ff2804eab8a0badb13ee44a77  /tmp/omadroid-gpu.pkg.tar.xz"))
         assertTrue(script.contains("d7e22a8be00e94482a0bfc7b769f4c7c9b03573532f3257c42242d1502e9f69f  /usr/local/lib64/libvulkan_freedreno.so"))
-        assertTrue(script.contains("d7e22a8be00e94482a0bfc7b769f4c7c9b03573532f3257c42242d1502e9f69f  /tmp/omalauncher-gpu-extract/usr/lib/libvulkan_freedreno.so"))
-        assertTrue(script.contains("tar -xJf /tmp/omalauncher-gpu.pkg.tar.xz -C /tmp/omalauncher-gpu-extract usr/lib/libvulkan_freedreno.so"))
+        assertTrue(script.contains("d7e22a8be00e94482a0bfc7b769f4c7c9b03573532f3257c42242d1502e9f69f  /tmp/omadroid-gpu-extract/usr/lib/libvulkan_freedreno.so"))
+        assertTrue(script.contains("tar -xJf /tmp/omadroid-gpu.pkg.tar.xz -C /tmp/omadroid-gpu-extract usr/lib/libvulkan_freedreno.so"))
         assertTrue(script.contains("'spirv-tools'"))
         assertTrue(script.contains("'xcb-util-keysyms'"))
         assertTrue(script.contains("\"api_version\":\"1.4.359\""))
@@ -121,24 +121,26 @@ class GpuTest {
         assertTrue(probe.contains("unset LIBGL_ALWAYS_SOFTWARE VK_ICD_FILENAMES VK_DRIVER_FILES"))
         assertTrue(probe.contains("export MESA_LOADER_DRIVER_OVERRIDE='zink';"))
         assertTrue(probe.contains("export GALLIUM_DRIVER='zink';"))
-        assertTrue(probe.contains("export LIBGL_DRIVERS_PATH='/usr/local/omalauncher-mesa/lib/dri';"))
+        assertTrue(probe.contains("export LIBGL_DRIVERS_PATH='/usr/local/omadroid-mesa/lib/dri';"))
         assertTrue(probe.contains("export __EGL_VENDOR_LIBRARY_FILENAMES='/usr/local/share/glvnd/egl_vendor.d/50_mesa.json';"))
-        val extractAt = script.indexOf("tar -xJf '/usr/local/share/omalauncher/mesa-zink.tar.xz' -C / &&")
-        val tarHashAt = script.indexOf("2f9a58343997e972bd2c82bb78c6a30fbbda342ac3e0df4ad148732ced541f93")
+        val extractAt = script.indexOf("tar -xJf '/usr/local/share/omadroid/mesa-zink.tar.xz' -C / &&")
+        val tarHashAt = script.indexOf("ebaeb8180e1c13a7bbace6d187869930a174ea5da46e9cf45ac1b06ba4544482")
         assertTrue(tarHashAt >= 0 && extractAt > tarHashAt)
         assertFalse(script.contains("--absolute-names"))
-        assertTrue(script.contains("! grep -Ev '^usr/local/omalauncher-mesa/'"))
-        assertTrue(script.contains("/usr/local/omalauncher-mesa/lib/libEGL_mesa.so"))
+        assertTrue(script.contains("! grep -Ev '^usr/local/omadroid-mesa/'"))
+        assertTrue(script.contains("/usr/local/omadroid-mesa/lib/libEGL_mesa.so"))
         assertTrue(script.contains("bf9ea007f4babd55c86cfe87e8fd7b0cfa47e78fc34aa89b72fa60c7b84837e9"))
         // A rebuilt bundle can keep libEGL, so the skip is on the archive's stamp, written after the extract.
-        assertTrue(script.contains("{ grep -qx '2f9a58343997e972bd2c82bb78c6a30fbbda342ac3e0df4ad148732ced541f93' '/usr/local/omalauncher-mesa/bundle.sha256'"))
-        assertTrue(script.indexOf("> '/usr/local/omalauncher-mesa/bundle.sha256'") > extractAt)
+        assertTrue(script.contains("{ grep -qx 'ebaeb8180e1c13a7bbace6d187869930a174ea5da46e9cf45ac1b06ba4544482' '/usr/local/omadroid-mesa/bundle.sha256'"))
+        assertTrue(script.indexOf("> '/usr/local/omadroid-mesa/bundle.sha256'") > extractAt)
+        // An install that predates the rename keeps a copy under the old names.
+        assertTrue(script.contains("rm -rf /usr/local/share/omalauncher /usr/local/omalauncher-mesa"))
         assertEquals("Adreno", driver.label)
     }
 
     /** The trap is registered before curl, so a failed hash still deletes the temp files. */
     private fun trapCoversCurl(script: String): Boolean {
-        val trap = script.indexOf("trap 'rm -rf /tmp/omalauncher-gpu.so /tmp/omalauncher-gpu.pkg.tar.xz /tmp/omalauncher-gpu-extract' EXIT")
+        val trap = script.indexOf("trap 'rm -rf /tmp/omadroid-gpu.so /tmp/omadroid-gpu.pkg.tar.xz /tmp/omadroid-gpu-extract' EXIT")
         val curl = script.indexOf("curl -fL")
         return trap >= 0 && curl > trap
     }

@@ -67,7 +67,7 @@ jobs:
         run: ./gradlew :owl:test :app:testDebugUnitTest :app:assembleRelease
 
       # Checksum and provenance, so a sideloaded APK can be checked against what CI built:
-      # sha256sum -c SHA256SUMS, or gh attestation verify <apk> -R SimonSchubert/omalauncher.
+      # sha256sum -c SHA256SUMS, or gh attestation verify <apk> -R "$GITHUB_REPOSITORY".
       - name: Checksum
         id: apk
         run: |

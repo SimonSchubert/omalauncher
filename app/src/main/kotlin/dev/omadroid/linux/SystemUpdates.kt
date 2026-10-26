@@ -161,7 +161,7 @@ class SystemUpdates(
          */
         val CHECK_SCRIPT =
             """
-            t=/tmp/omalauncher-updates
+            t=/tmp/omadroid-updates
             mkdir -p "${'$'}t"
             ln -sfn /var/lib/pacman/local "${'$'}t/local"
             if pacman -Sy --dbpath "${'$'}t" --logfile /dev/null >/dev/null 2>&1; then

@@ -112,7 +112,7 @@ internal class Previews(
         val dm = context.getSystemService(DisplayManager::class.java)
         val dpi = context.resources.displayMetrics.densityDpi
         // Private (no flags): only this app draws on it, and it needs no permission.
-        val display = dm.createVirtualDisplay("omalauncher-preview", widthPx, heightPx, dpi, reader.surface, 0)
+        val display = dm.createVirtualDisplay("omadroid-preview", widthPx, heightPx, dpi, reader.surface, 0)
         val owner = Owner()
         var presentation: Presentation? = null
         try {

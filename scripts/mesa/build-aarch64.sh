@@ -105,7 +105,7 @@ if ! pkg-config --exists 'wayland-egl-backend >= 3'; then
 fi
 rm -rf /build
 meson setup /build \\
-  --prefix=/usr/local/omalauncher-mesa \\
+  --prefix=/usr/local/omadroid-mesa \\
   --libdir=lib \\
   -Dbuildtype=release \\
   -Db_ndebug=true \\
@@ -129,9 +129,9 @@ ninja -C /build -j4
 rm -rf /dest
 DESTDIR=/dest ninja -C /build install
 find /dest -type f \\( -name '*.so' -o -name '*.so.*' \\) -exec strip --strip-unneeded {} +
-tar -C /dest -cJf /mesa-zink.tar.xz usr/local/omalauncher-mesa
+tar -C /dest -cJf /mesa-zink.tar.xz usr/local/omadroid-mesa
 sha256sum /mesa-zink.tar.xz
-sha256sum /dest/usr/local/omalauncher-mesa/lib/libEGL_mesa.so
+sha256sum /dest/usr/local/omadroid-mesa/lib/libEGL_mesa.so
 EOF
 chmod +x "$ROOT/build-inner.sh"
 

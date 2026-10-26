@@ -10,7 +10,7 @@ import java.io.File
  * art/icons by scripts/make-icons.sh). Prefixed so a package's own icon of the
  * same name, which the drawer would find first, can't shadow it.
  */
-fun bundledIcon(name: String) = "omalauncher-$name"
+fun bundledIcon(name: String) = "omadroid-$name"
 
 /** The launcher's icons in the guest's hicolor theme, where the drawer looks up Icon= names. */
 fun bundledIcons(

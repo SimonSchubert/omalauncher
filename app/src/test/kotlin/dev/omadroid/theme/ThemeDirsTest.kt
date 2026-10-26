@@ -96,7 +96,7 @@ class ThemeDirsTest {
     @Test fun olderThemeGetsColorsFromAlacritty() {
         val normal = listOf("black", "red", "green", "yellow", "blue", "magenta", "cyan", "white").joinToString("\n") { "$it = \"#102030\"" }
         write("user/old/alacritty.toml", "[colors.primary]\nbackground = \"#0a0b0c\"\n[colors.normal]\n$normal\n")
-        write("user/old/.omalauncher-source", "https://github.com/a/omarchy-old-theme\n")
+        write("user/old/.omadroid-source", "https://github.com/a/omarchy-old-theme\n")
         val theme = dirs.load("old")!!
         assertEquals("#0a0b0c", theme.colors["background"])
         assertTrue("alacritty.toml" !in theme.guestFiles())

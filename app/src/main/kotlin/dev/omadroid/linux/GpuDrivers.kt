@@ -44,7 +44,7 @@ internal data class GpuDriver(
     val apiVersion: String,
     /**
      * How OpenGL finds this GPU: zink, through the patched libEGL under
-     * /usr/local/omalauncher-mesa. Stock Mesa clears Zink when Wayland DRM
+     * /usr/local/omadroid-mesa. Stock Mesa clears Zink when Wayland DRM
      * init fails, then the shm buffer stays black; that happens on every GPU
      * here, Mali included. The override keeps Zink set. The two paths select
      * the patched libEGL and its matching zink, not Arch's.
@@ -52,7 +52,7 @@ internal data class GpuDriver(
     val openGlEnv: List<String> = listOf(
         "MESA_LOADER_DRIVER_OVERRIDE=zink",
         "GALLIUM_DRIVER=zink",
-        "LIBGL_DRIVERS_PATH=/usr/local/omalauncher-mesa/lib/dri",
+        "LIBGL_DRIVERS_PATH=/usr/local/omadroid-mesa/lib/dri",
         "__EGL_VENDOR_LIBRARY_FILENAMES=/usr/local/share/glvnd/egl_vendor.d/50_mesa.json",
     ),
 ) {
@@ -147,18 +147,18 @@ internal object GpuDrivers {
      * The tar is staged into the guest from the APK before [installScript] runs.
      * Not on the default linker path, so software mode keeps Arch's Mesa.
      */
-    const val MESA_ZINK_BUNDLE = "/usr/local/share/omalauncher/mesa-zink.tar.xz"
-    const val MESA_ZINK_LIB = "/usr/local/omalauncher-mesa/lib/libEGL_mesa.so"
+    const val MESA_ZINK_BUNDLE = "/usr/local/share/omadroid/mesa-zink.tar.xz"
+    const val MESA_ZINK_LIB = "/usr/local/omadroid-mesa/lib/libEGL_mesa.so"
     const val MESA_EGL_JSON = "/usr/local/share/glvnd/egl_vendor.d/50_mesa.json"
     /** Whole archive, checked before any extract. */
-    const val MESA_ZINK_TAR_SHA256 = "2f9a58343997e972bd2c82bb78c6a30fbbda342ac3e0df4ad148732ced541f93"
+    const val MESA_ZINK_TAR_SHA256 = "ebaeb8180e1c13a7bbace6d187869930a174ea5da46e9cf45ac1b06ba4544482"
     /** libEGL_mesa.so after extract. sha256sum follows the symlink. */
     const val MESA_ZINK_LIB_SHA256 = "bf9ea007f4babd55c86cfe87e8fd7b0cfa47e78fc34aa89b72fa60c7b84837e9"
     /**
      * The archive's sha256, written after a good extract. Zink lives in
      * libgallium, so a rebuilt bundle can keep the same libEGL; this changes anyway.
      */
-    const val MESA_ZINK_STAMP = "/usr/local/omalauncher-mesa/bundle.sha256"
+    const val MESA_ZINK_STAMP = "/usr/local/omadroid-mesa/bundle.sha256"
 
     private val mali = GpuDriver(
         kind = GpuKind.MALI,
@@ -210,7 +210,7 @@ internal object GpuDrivers {
     fun mesaZinkScript(): String {
         val json = """{"file_format_version":"1.0.0","ICD":{"library_path":"$MESA_ZINK_LIB"}}"""
         val bundle = shellQuote(MESA_ZINK_BUNDLE)
-        val list = shellQuote("/tmp/omalauncher-mesa.list")
+        val list = shellQuote("/tmp/omadroid-mesa.list")
         val tarOk = "echo '$MESA_ZINK_TAR_SHA256  $MESA_ZINK_BUNDLE' | sha256sum -c -"
         val libOk = "echo '$MESA_ZINK_LIB_SHA256  $MESA_ZINK_LIB' | sha256sum -c -"
         val stamp = shellQuote(MESA_ZINK_STAMP)
@@ -221,14 +221,16 @@ internal object GpuDrivers {
         // does not pass.
         val members =
             "tar -tJf $bundle > $list && " +
-                "! grep -Ev '^usr/local/omalauncher-mesa/' $list && " +
+                "! grep -Ev '^usr/local/omadroid-mesa/' $list && " +
                 "! grep -E '(^/|\\.\\.)' $list"
         val unpack =
             "$tarOk && $members && tar -xJf $bundle -C / && $libOk && rm -f $list && " +
                 "echo '$MESA_ZINK_TAR_SHA256' > $stamp"
         return "{ grep -qx '$MESA_ZINK_TAR_SHA256' $stamp 2>/dev/null || { $unpack; }; } && rm -f $list && " +
             "mkdir -p ${shellQuote(MESA_EGL_JSON.substringBeforeLast('/'))} && " +
-            "printf '%s\\n' ${shellQuote(json)} > ${shellQuote(MESA_EGL_JSON)}"
+            "printf '%s\\n' ${shellQuote(json)} > ${shellQuote(MESA_EGL_JSON)} && " +
+            // An install from when the app was Omalauncher keeps the bundle under the old paths.
+            "rm -rf /usr/local/share/omalauncher /usr/local/omalauncher-mesa"
     }
 
     /**
@@ -278,7 +280,7 @@ internal object GpuDrivers {
      * in the guest.
      */
     private fun rawDownload(driver: GpuDriver, payload: DriverPayload.RawLibrary): String {
-        val tmp = "/tmp/omalauncher-gpu.so"
+        val tmp = "/tmp/omadroid-gpu.so"
         val body = """
             curl -fL --retry 3 -o $tmp ${driver.url} &&
             echo '${payload.sha256}  $tmp' | sha256sum -c - &&
@@ -289,8 +291,8 @@ internal object GpuDrivers {
 
     private fun packageDownload(driver: GpuDriver, payload: DriverPayload.ArchPackage): String {
         requireSafeMember(payload.member)
-        val pkg = "/tmp/omalauncher-gpu.pkg.tar.xz"
-        val dir = "/tmp/omalauncher-gpu-extract"
+        val pkg = "/tmp/omadroid-gpu.pkg.tar.xz"
+        val dir = "/tmp/omadroid-gpu-extract"
         val body = """
             curl -fL --retry 3 -o $pkg ${driver.url} &&
             echo '${payload.packageSha256}  $pkg' | sha256sum -c - &&
@@ -303,7 +305,7 @@ internal object GpuDrivers {
     }
 
     private fun guarded(body: String): String =
-        "{ trap 'rm -rf /tmp/omalauncher-gpu.so /tmp/omalauncher-gpu.pkg.tar.xz /tmp/omalauncher-gpu-extract' EXIT; $body; }"
+        "{ trap 'rm -rf /tmp/omadroid-gpu.so /tmp/omadroid-gpu.pkg.tar.xz /tmp/omadroid-gpu-extract' EXIT; $body; }"
 
     /** A package member is a relative path. It is a constant today; this refuses a later edit that is not. */
     private fun requireSafeMember(member: String) {

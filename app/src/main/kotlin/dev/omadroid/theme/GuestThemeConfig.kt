@@ -181,7 +181,7 @@ class GuestThemeConfig(
             [ "${'$'}cols" -ge 80 ] && exec /usr/bin/btop
             [ "${'$'}cols" -ge 60 ] && exec /usr/bin/btop -p 1
             conf=${'$'}{XDG_CONFIG_HOME:-${'$'}HOME/.config}/btop/btop.conf
-            narrow=/tmp/omalauncher-btop-narrow.conf
+            narrow=/tmp/omadroid-btop-narrow.conf
             { grep -v -e '^shown_boxes' -e '^presets' "${'$'}conf" 2>/dev/null; echo 'shown_boxes = "proc"'; echo 'presets = "proc:0:default"'; } > "${'$'}narrow"
             exec /usr/bin/btop -c "${'$'}narrow"
             """.trimIndent() + "\n"

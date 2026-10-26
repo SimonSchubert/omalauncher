@@ -149,10 +149,10 @@ class ThemeDirs(
             theme.own?.let { runCatching { File(it, SOURCE_MARKER).readText() }.getOrNull() }?.let(ThemeRepo::parse)
 
         /** Written by the launcher into a theme it installed, with the URL it came from. */
-        const val SOURCE_MARKER = ".omalauncher-source"
+        const val SOURCE_MARKER = ".omadroid-source"
 
         /** Written by the launcher into a theme it installed from the catalog: the theme's screenshot on omarchy.org. */
-        const val CATALOG_PREVIEW = ".omalauncher-preview"
+        const val CATALOG_PREVIEW = ".omadroid-preview"
 
         /**
          * Whether a user's theme came from someone else's repo: cloned with

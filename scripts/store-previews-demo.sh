@@ -46,17 +46,17 @@ pptstatus=~/.cache/ppt/status.json
 devlogsver=~/.local/share/oma-devlogs/store-version
 devlogsbin=~/.local/bin/oma-devlogs
 devlogserrors=~/.local/share/oma-devlogs/system_errors.py
-flashcards=~/.local/share/omalauncher/flashcards/flashcards.json
+flashcards=~/.local/share/omadroid/flashcards/flashcards.json
 scripts=~/.config/omadroid/scripts
-layout=~/.local/share/omalauncher-layout
+layout=~/.local/share/omadroid-layout
 layoutlog=~/.cache/owl-layout.log
 radio=~/.cache/owl-radio
-photo=~/.cache/omalauncher-photos/downloads/photo_demo.jpg
-gameboy=~/.local/state/omalauncher/gameboy/screen.json
-neondl=~/.cache/omalauncher-neondl
+photo=~/.cache/omadroid-photos/downloads/photo_demo.jpg
+gameboy=~/.local/state/omadroid/gameboy/screen.json
+neondl=~/.cache/omadroid-neondl
 privspace=~/.cache/private-space.json
-speedtest=~/.local/share/omalauncher/speedtest/status.json
-bridge=~/.local/share/omalauncher/share-bridge/status.json
+speedtest=~/.local/share/omadroid/speedtest/status.json
+bridge=~/.local/share/omadroid/share-bridge/status.json
 nostr=~/.cache/nostr-inbox/009ce97e22b376c406740f9b842f780ca2e92c2093a5f11d12f43f6150d8e6a1
 omagit=~/projects/weather-cli
 
@@ -325,7 +325,7 @@ chmod +x /usr/local/bin/pgrep
 aside "$photoprism"
 echo '{"url": "https://photos.example.com", "username": "demo", "token": "demo", "preview": "public", "scope": "all", "album": ""}' > "$photoprism"
 mkdir -p ~/.cache/photoprism-random
-/usr/bin/curl -sf -A "omalauncher-store-previews" -o ~/.cache/photoprism-random/demo.jpg \
+/usr/bin/curl -sf -A "omadroid-store-previews" -o ~/.cache/photoprism-random/demo.jpg \
   "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Moraine_Lake_17092005.jpg/960px-Moraine_Lake_17092005.jpg"
 cat > /usr/local/bin/python <<'EOF'
 #!/bin/sh
@@ -584,11 +584,11 @@ aside "$layoutlog"
   cp -p "$@" widgets/; commit 98
   cp -p ~/.config/omadroid/style/style.toml style/ 2>/dev/null; commit 75
   cp -p ~/.config/omadroid/agent . 2>/dev/null; commit 2
-  git remote add origin https://github.com/demo/omalauncher-layout.git
+  git remote add origin https://github.com/demo/omadroid-layout.git
   git update-ref refs/remotes/origin/main HEAD
 )
 t=$(( $(date +%s) - 7200 ))
-printf '%s saved: %s\n%s uploaded to demo/omalauncher-layout\n' "$(date -d "@$t" +%H:%M:%S)" "$(git -C "$layout" log -1 --format=%s)" \
+printf '%s saved: %s\n%s uploaded to demo/omadroid-layout\n' "$(date -d "@$t" +%H:%M:%S)" "$(git -C "$layout" log -1 --format=%s)" \
   "$(date -d "@$((t + 6))" +%H:%M:%S)" > "$layoutlog"
 
 # shafiqimtiaz's omagit: a small project with a week of history, a feature branch merged back,
@@ -652,7 +652,7 @@ echo "ICY-META: StreamTitle='Parcels - Tieduprightnow';" > "$radio/now"
 # zyanmd's photo: a picture already set (scripts/store-previews.sh seeds the path), Avalanche
 # Lake in Glacier National Park (public domain, Wikimedia Commons).
 aside "$photo"
-/usr/bin/curl -sf -A "omalauncher-store-previews" -o "$photo" \
+/usr/bin/curl -sf -A "omadroid-store-previews" -o "$photo" \
   "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Avalanche_Lake%2C_Glacier_National_Park.jpg/960px-Avalanche_Lake%2C_Glacier_National_Park.jpg"
 
 # gb-widget: a game saved mid-level, a made-up platformer frame in the handheld's four shades,
