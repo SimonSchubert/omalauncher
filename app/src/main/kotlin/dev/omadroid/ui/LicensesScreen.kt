@@ -54,7 +54,7 @@ private val COMPONENTS =
             "gpl-2.0",
             "Copyright (C) 2015 STMicroelectronics. Built from Termux's 5.1.107.96 with Omadroid's patches; the binary's libtalloc.so.2 dependency is renamed to libtalloc.so.",
             "https://proot-me.github.io",
-            source = "https://github.com/SimonSchubert/omalauncher/tree/main/patches/proot",
+            source = "https://github.com/budi-imam-prasetyo/omadroid/tree/main/patches/proot",
         ),
         Component(
             "talloc",
@@ -79,7 +79,7 @@ private val COMPONENTS =
             "Copyright (C) 1999-2007 Brian Paul and the Mesa contributors. Mesa 26.2.4 with Omadroid's " +
                 "zink patch. Most files are MIT; the rest are under the permissive licenses in Mesa's licenses/ directory.",
             "https://mesa3d.org",
-            source = "https://github.com/SimonSchubert/omalauncher/tree/main/scripts/mesa",
+            source = "https://github.com/budi-imam-prasetyo/omadroid/tree/main/scripts/mesa",
         ),
         Component(
             "wayland-protocols",

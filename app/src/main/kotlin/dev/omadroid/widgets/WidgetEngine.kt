@@ -1058,7 +1058,7 @@ class WidgetEngine(
 
         private const val AGENT_POINTER =
             "# omadroid\n\nThis Arch system runs inside an Android launcher, omadroid; its source is at " +
-                "https://github.com/SimonSchubert/omalauncher, should you need to understand how the launcher works. " +
+                "https://github.com/budi-imam-prasetyo/omadroid, should you need to understand how the launcher works. " +
                 "Home-screen widgets are `.owl` files in " +
                 "~/$GUEST_DIR, written in a small declarative language documented in README.md there (and docs/ next to it); so are apps for the " +
                 "app drawer (`app \"name\" { }`) and panels that swiping up or down on home opens (`panel \"name\" { }`, picked with " +

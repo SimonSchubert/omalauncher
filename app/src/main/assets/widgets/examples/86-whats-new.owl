@@ -5,7 +5,7 @@ widget "what's new" {
   minSize: 2x2
   meta { description: "What's new in the launcher, from its changelog on GitHub. Tap it for every release"; version: "1.0"; license: "MIT"; category: "news"; owl: 5 }
 
-  source log = http("https://raw.githubusercontent.com/SimonSchubert/omalauncher/main/CHANGELOG.md") every 6h timeout 10s status
+  source log = http("https://raw.githubusercontent.com/budi-imam-prasetyo/omadroid/main/CHANGELOG.md") every 6h timeout 10s status
   source sys = android.system every 1h
 
   // Each "## 0.5.0 (versionCode 10) – 2026-10-11" section, with its "- " items.
@@ -71,7 +71,7 @@ widget "what's new" {
         }
         Row {
           justify: end
-          Button { text: "open on github ↗"; color: muted; onTap: url("https://github.com/SimonSchubert/omalauncher/blob/main/CHANGELOG.md") }
+          Button { text: "open on github ↗"; color: muted; onTap: url("https://github.com/budi-imam-prasetyo/omadroid/blob/main/CHANGELOG.md") }
         }
       }
     }
