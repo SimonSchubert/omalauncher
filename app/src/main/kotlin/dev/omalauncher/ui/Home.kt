@@ -160,6 +160,8 @@ fun HomeScreen(
                 "linux" -> state.show(SettingsPage.Linux)
                 "drawer" -> state.open()
                 "settings" -> state.show()
+                // "page:0": turns home to that page, a face left of page 1 too, as Super+1…9 does.
+                else -> action.removePrefix("page:").takeIf { it != action }?.toIntOrNull()?.let { state.requestedPage = it }
             }
         }
     }

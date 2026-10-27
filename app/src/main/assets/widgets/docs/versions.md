@@ -32,4 +32,4 @@ file only this phone runs, `owl: 12` is fine; for the store, a lower level reach
   Only a brightness written out, `torch(40)`, asks for owl 13; `torch(value)` from a Slider can't be told from on and off when the file is
   checked, so a file that dims the torch should say `owl: 13` itself, as older launchers do nothing with a number
 - **14**: a face's `edge`, with `screenTop`, `screenLeft` and `screenRight` in a face, and `ripple`
-- **15**: a panel's `keyboard`
+- **15**: a panel's `keyboard`, and `launcher("page:N")`, which older launchers ignore

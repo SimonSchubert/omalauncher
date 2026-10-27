@@ -11,6 +11,8 @@ Dates are when the build was uploaded to Play.
 - A drawer can leave the keyboard down as it opens, for scrolling the apps rather
   than searching them: owl 15's `keyboard: false` in `drawer.owl`. Tapping the
   bar brings it up.
+- A widget can turn home to another page: `launcher("page:0")` shows the face left of
+  page 1, as Super+1…9 does for pages 1 to 9, so a tile can lead to the face that shows more of it.
 
 ## 0.13.0 (versionCode 24) – 2026-10-25
 
