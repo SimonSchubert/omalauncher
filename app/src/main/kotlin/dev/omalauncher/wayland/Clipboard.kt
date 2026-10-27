@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import android.os.ParcelFileDescriptor
+import android.os.PersistableBundle
 import android.util.Log
 import android.webkit.MimeTypeMap
 import dev.omalauncher.readUpTo
@@ -12,6 +13,7 @@ import java.io.File
 import java.io.IOException
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import kotlin.concurrent.thread
 
 private const val TAG = "wl.clipboard"
@@ -24,12 +26,16 @@ private const val MAX_MIRROR_BYTES = 512 * 1024
 
 /** The system clipboard the Wayland selection is mirrored to. */
 interface SystemClipboard {
+    /** The owner distinguishes our mirrored copy from another copy in the same millisecond. */
+    data class Stamp(val timestamp: Long, val owner: String? = null)
+
     fun text(): String?
 
-    fun setText(text: String)
+    /** Returns this write's stamp, or null if another copy already replaced it or it can't be read. */
+    fun setText(text: String): Stamp?
 
-    /** Changes whenever the clip does, whoever set it. */
-    fun stamp(): Long
+    /** Identity metadata from one Android clip description; null when no clip is accessible. */
+    fun stamp(): Stamp?
 }
 
 /**
@@ -50,14 +56,14 @@ class Selection(
     private var once: String? = null
 
     /** The system clip's [SystemClipboard.stamp] while [source] was current: a different one means Android copied since. */
-    private var stamp = 0L
+    private var stamp: SystemClipboard.Stamp? = null
 
     fun set(source: DataSource?) {
         if (source === this.source) return
         once = null
         this.source?.cancel()
         this.source = source
-        stamp = system?.stamp() ?: 0L
+        stamp = system?.stamp()
         if (source != null) mirror(source)
         offerToFocus()
     }
@@ -83,9 +89,10 @@ class Selection(
     /** Drops [source] if Android's clipboard changed since; returns whether the selection is unchanged. */
     private fun refresh(): Boolean {
         val src = source ?: return false
-        if (system?.stamp() == stamp) return true
+        val system = system ?: return true
+        if (system.stamp() == stamp) return true
         source = null
-        src.cancel()
+        src.cancel(supersededBySystem = true)
         return false
     }
 
@@ -151,9 +158,53 @@ class Selection(
             if (bytes.isEmpty() || bytes.size > MAX_MIRROR_BYTES) return@thread
             synchronized(server) {
                 if (this.source !== source) return@thread
-                system.setText(String(bytes, Charsets.UTF_8))
-                stamp = system.stamp()
+                // Reading the Linux source can take time. An Android copy made meanwhile
+                // must not be overwritten, even if its change callback hasn't reached us.
+                if (!runCatching { refresh() }.getOrDefault(false)) {
+                    source.cancel(supersededBySystem = true)
+                    this.source = null
+                    offerToFocus()
+                    return@thread
+                }
+                // Use only the stamp belonging to our write. A separate stamp() after
+                // setText() could adopt a newer Android copy as if it were this source's.
+                val written = runCatching { system.setText(String(bytes, Charsets.UTF_8)) }.getOrNull()
+                if (written == null) {
+                    source.cancel(supersededBySystem = true)
+                    this.source = null
+                    offerToFocus()
+                } else {
+                    stamp = written
+                }
             }
+        }
+    }
+
+    /**
+     * Receives an offer at paste time. Android can withhold clipboard callbacks while the
+     * launcher is in the background, and returning to the same terminal needn't change its
+     * Wayland focus. Revalidate even an existing Linux offer before asking its source.
+     */
+    fun receive(
+        offeredSource: DataSource?,
+        mime: String?,
+        fd: Int,
+    ) {
+        // We own fd now: if Android's service is unavailable, close it so the client
+        // sees EOF, rather than hanging or receiving an unverified old selection.
+        val previous = source
+        val unchanged = runCatching { refresh() }.getOrElse {
+            Native.close(fd)
+            return
+        }
+        if (previous != null && !unchanged) offerToFocus()
+        when {
+            offeredSource == null -> paste(fd)
+            !offeredSource.cancelled -> offeredSource.send(offeredSource.event(1).string(mime).fd(fd, close = true))
+            // The client may already have requested the old offer when we cancelled it.
+            // Fulfil that text paste from Android too; binary offers cannot become text.
+            source == null && offeredSource.supersededBySystem && mime in TEXT_MIMES -> paste(fd)
+            else -> Native.close(fd)
         }
     }
 
@@ -205,8 +256,12 @@ class DataSource(
 
     val mimes = LinkedHashSet<String>()
 
-    /** No longer the selection, or gone: offers made from it serve nothing. */
+    /** No longer the selection, or gone: never request more data from it. */
     var cancelled = false
+        private set
+
+    /** Old text offers may still be in flight when Android replaces this source. */
+    var supersededBySystem = false
         private set
 
     override fun request(
@@ -219,9 +274,10 @@ class DataSource(
         }
     }
 
-    fun cancel() {
+    fun cancel(supersededBySystem: Boolean = false) {
         if (cancelled) return
         cancelled = true
+        this.supersededBySystem = supersededBySystem
         send(event(2))
     }
 
@@ -274,14 +330,11 @@ class DataOffer(
                 val mime = args.string()
                 val fd = args.fd()
                 if (fd < 0) return
-                when {
-                    text != null -> {
-                        selection.paste(fd, text)
-                        selection.inserted()
-                    }
-                    source == null -> selection.paste(fd)
-                    source.cancelled -> Native.close(fd)
-                    else -> source.send(source.event(1).string(mime).fd(fd, close = true))
+                if (text != null) {
+                    selection.paste(fd, text)
+                    selection.inserted()
+                } else {
+                    selection.receive(source, mime, fd)
                 }
             }
             2 -> destroy()
@@ -338,7 +391,7 @@ class AndroidClipboard(
 ) : SystemClipboard {
     private val manager = context.getSystemService(ClipboardManager::class.java)
 
-    /** The clip [saved] was saved from, by [stamp]: pasting it again reuses the file. */
+    /** The clip [saved] was saved from, by its timestamp: pasting it again reuses the file. */
     private var savedStamp = 0L
     private var saved: File? = null
 
@@ -347,23 +400,37 @@ class AndroidClipboard(
     }
 
     override fun text(): String? {
-        val item = manager.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0) ?: return null
-        return imagePath(item) ?: item.coerceToText(context)?.toString()
+        val clip = manager.primaryClip?.takeIf { it.itemCount > 0 } ?: return null
+        val item = clip.getItemAt(0)
+        return imagePath(item, clip.description.timestamp) ?: item.coerceToText(context)?.toString()
     }
 
     /** Saves [item]'s image for Linux and returns its guest path; null if it's no image or can't be read. */
     @Synchronized
-    private fun imagePath(item: ClipData.Item): String? {
+    private fun imagePath(
+        item: ClipData.Item,
+        stamp: Long,
+    ): String? {
         val uri = item.uri ?: return null
         val mime = runCatching { context.contentResolver.getType(uri) }.getOrNull()?.takeIf { it.startsWith("image/") } ?: return null
-        val stamp = stamp()
         val file = saved?.takeIf { stamp == savedStamp && it.exists() } ?: images.save(uri, mime) ?: return null
         savedStamp = stamp
         saved = file
         return images.guestPath(file)
     }
 
-    override fun setText(text: String) = manager.setPrimaryClip(ClipData.newPlainText("Linux", text))
+    override fun setText(text: String): SystemClipboard.Stamp? {
+        val owner = UUID.randomUUID().toString()
+        val clip = ClipData.newPlainText("Linux", text)
+        clip.description.extras = PersistableBundle().apply { putString(OWNER_KEY, owner) }
+        manager.setPrimaryClip(clip)
+        return stamp()?.takeIf { it.owner == owner }
+    }
 
-    override fun stamp() = manager.primaryClipDescription?.timestamp ?: 0L
+    override fun stamp(): SystemClipboard.Stamp? =
+        manager.primaryClipDescription?.let { SystemClipboard.Stamp(it.timestamp, it.extras?.getString(OWNER_KEY)) }
+
+    private companion object {
+        const val OWNER_KEY = "dev.omalauncher.clipboard.owner"
+    }
 }
