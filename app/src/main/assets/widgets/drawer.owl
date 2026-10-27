@@ -19,8 +19,17 @@ panel "app drawer" {
   let cols = max(1, floor(((screenWidth ?? 400) - 24) / 76))
   let typed = trim(query)
   let searching = typed != ""
-  let mine = d.apps.filter(a => (tab == "work") == (a.profile == "work"))
-  let sections = tab == "work" ? [
+  // The private space's tab, unless Android's "hide when locked" is on and it's locked: then searching for it by name
+  // ("private", or Italian's "spazio privato") offers to unlock it, as stock launchers do.
+  let showPrivate = d.private != null && (!d.private.hidden || !d.private.locked)
+  let tabs = flatten([["personal"], d.work != null ? ["work"] : [], showPrivate ? ["private"] : []])
+  // Back to personal when the tab picked is gone: the work profile removed, or the private space hidden as it locks.
+  let shown = len(tabs.filter(t => t == tab)) > 0 ? tab : "personal"
+  let mine = d.apps.filter(a => ((a.profile == "work" || a.profile == "private") ? a.profile : "personal") == shown)
+  let asksPrivate = d.private != null && d.private.locked && len(typed) >= 3 && (startsWith("private", lower(typed)) || startsWith("spazio privato", lower(typed)) || startsWith("privato", lower(typed)))
+  let sections = shown == "private" ? [
+      {title: d.private.locked ? "private apps locked" : "private apps", apps: mine, private: true}
+    ] : shown == "work" ? [
       {title: "shortcuts", apps: mine.filter(a => a.kind == "shortcut")},
       {title: d.work.paused ? "work apps paused" : "work apps", apps: mine.filter(a => a.kind == "android"), work: true}
     ] : [
@@ -30,8 +39,8 @@ panel "app drawer" {
       {title: "android", apps: mine.filter(a => a.kind == "android")}
     ]
   // A title, then rows of cols apps. Without Linux, its section is an offer to install it.
-  let rows = flatten(sections.filter(s => len(s.apps) > 0 || s.work || (s.linux && !linux)).map(s => flatten([
-      [{key: "h:" + s.title, title: s.linux && !linux ? "linux apps" : s.title, work: s.work, offer: s.linux && !linux}],
+  let rows = flatten(sections.filter(s => len(s.apps) > 0 || s.work || s.private || (s.linux && !linux)).map(s => flatten([
+      [{key: "h:" + s.title, title: s.linux && !linux ? "linux apps" : s.title, work: s.work, private: s.private, offer: s.linux && !linux}],
       chunk(s.apps, cols).map((cells, r) => {key: s.title + ":" + r, cells: cells})
     ])))
   // Every profile's apps match while typing, best first; the list runs up from the bar, so the best sits right above it.
@@ -141,8 +150,8 @@ panel "app drawer" {
       padding: [0, 12, 0, 8]
       gap: 0
       // Typing searches every profile, so the tabs step aside.
-      for t in d.work != null && !searching ? ["personal", "work"] : [] {
-        Text { text: t; color: tab == t ? accent : muted; background: tab == t ? surface : transparent; radius: 18 * corners; padding: [14, 10]; onTap: tab = t }
+      for t in len(tabs) > 1 && !searching ? tabs : [] {
+        Text { text: t; color: shown == t ? accent : muted; background: shown == t ? surface : transparent; radius: 18 * corners; padding: [14, 10]; onTap: tab = t }
       }
       Spacer { weight: 1 }
       Box {
@@ -172,6 +181,9 @@ panel "app drawer" {
             padding: [8, 12, 0, 4]
             Text { text: row.title; color: muted; weight: 1 }
             Text { text: d.work.paused ? "[turn on]" : "[pause]"; visible: row.work == true; color: accent; onTap: workApps("toggle") }
+            // Unlocking asks for the screen lock; Android's own page holds the rest (its lock, hiding it, installing apps).
+            Text { text: "[settings]"; visible: row.private == true; color: accent; padding: [0, 0, 12, 0]; onTap: privateSpace("settings") }
+            Text { text: d.private.locked ? "[unlock]" : "[lock]"; visible: row.private == true; color: accent; onTap: privateSpace("toggle") }
             Text { text: d.linux == "installing" ? "[installing…]" : "[install linux]"; visible: row.offer == true; color: accent; onTap: launcher("linux") }
           }
         } else {
@@ -200,6 +212,15 @@ panel "app drawer" {
           for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
         }
       }
+    }
+    // A hidden, locked private space, searched for by name: the way to unlock it.
+    Row {
+      visible: asksPrivate
+      fill: width
+      padding: [8, 12, 0, 4]
+      onTap: privateSpace("unlock")
+      Text { text: "private apps locked"; color: muted; weight: 1; maxLines: 1 }
+      Text { text: "[unlock]"; color: accent }
     }
     // The one line above the bar that sends what's typed to the agent; outlined when that's what Enter does.
     Row {

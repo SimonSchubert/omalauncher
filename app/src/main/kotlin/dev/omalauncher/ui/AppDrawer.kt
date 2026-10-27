@@ -94,7 +94,7 @@ internal sealed interface AppHit {
         override val key get() = "a:" + app.key
         override val label get() = app.label
         override val spoken get() = app.spoken
-        override val alias get() = if (app.profile != null) "${app.label} ${if (app.clone) "clone" else "work"}" else null
+        override val alias get() = app.profile?.let { "${app.label} ${profileKind}" }
 
         override fun paused(runtime: Runtime) = runtime.androidApps.paused(app.profile)
     }
@@ -154,11 +154,11 @@ internal val AppHit.kind: String
             is AppHit.Shortcut -> "shortcut"
         }
 
-/** `work` or `clone` for an app or shortcut in a profile beside the launcher's own, else null. */
+/** `work`, `clone` or `private` (the private space) for an app or shortcut in a profile beside the launcher's own, else null. */
 internal val AppHit.profileKind: String?
     get() =
         when (this) {
-            is AppHit.Android -> app.profile?.let { if (app.clone) "clone" else "work" }
+            is AppHit.Android -> app.profile?.let { if (app.clone) "clone" else if (app.privateSpace) "private" else "work" }
             is AppHit.Shortcut -> shortcut.profile?.let { if (shortcut.clone) "clone" else "work" }
             else -> null
         }
@@ -171,7 +171,8 @@ internal fun AppHit.actionWords(): List<String> =
     when (this) {
         is AppHit.Linux -> listOf("pin")
         is AppHit.Owl -> listOf("pin", "edit", "share", "remove")
-        is AppHit.Android -> listOfNotNull("pin", "info", if (app.system) null else "uninstall")
+        // The private space's apps stay off home, as stock launchers keep them: a tile would show them while it's locked.
+        is AppHit.Android -> listOfNotNull(if (app.privateSpace) null else "pin", "info", if (app.system) null else "uninstall")
         is AppHit.Shortcut -> listOf("pin", "remove")
     }
 

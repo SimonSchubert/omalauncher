@@ -957,6 +957,12 @@ class LangTest {
         }
     }
 
+    @Test fun privateSpaceLocksAndUnlocks() {
+        Compiler.compile("widget {\n meta { owl: 11 }\n Text { text: 1; onTap: privateSpace(\"toggle\") }\n Text { text: 2; onTap: privateSpace(\"settings\") } }")
+        assertTrue(compileError("widget {\n meta { owl: 11 }\n Text { text: 1; onTap: privateSpace(\"open\") } }").contains("privateSpace takes lock, unlock, toggle, settings"))
+        assertTrue(compileError("widget {\n meta { owl: 10 }\n Text { text: 1; onTap: privateSpace(\"lock\") } }").contains("needs owl 11"))
+    }
+
     @Test fun drawerAppsAndTheirMenu() {
         val p =
             Compiler.compile(
