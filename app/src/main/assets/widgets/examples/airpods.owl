@@ -17,8 +17,9 @@ widget "airpods" {
   state lastCase = null persist
   on a first {
     if value.connected {
-      // Another pair: what the last one said is no use.
-      if last != null && (value.name != last.name || value.modelNumber != last.modelNumber) {
+      // Another pair: what the last one said is no use. By name, and by family once both are known: each bud has a
+      // model number of its own, and the model comes a moment after the link.
+      if last != null && (value.name != last.name || (value.model != null && last.model != null && value.model != last.model)) {
         lastLeft = null
         lastRight = null
         lastCase = null
@@ -58,7 +59,7 @@ widget "airpods" {
   let big = h >= 290
   // A battery cell's percent as large as the tile allows: a fifth of its height, and "100%" no wider than the cell.
   let cells = p.headset != null ? 1 : (slim ? 2 : 3)
-  let cellFont = clamp(min(h * 0.2, (w - 16 - 14 * (cells - 1)) / cells / 2.6), 16, 44)
+  let cellFont = clamp(min(h * 0.2, (w - 24 - 14 * (cells - 1)) / cells / 2.9), 14, 44)
 
   onTap: {
     if a.available {
