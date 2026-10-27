@@ -151,7 +151,9 @@ internal val SINCE =
         // owl 14: no ripple under the finger, for a node that shows its press itself.
         mapOf("ripple" to 14) +
         // owl 15: a drawer that leaves the keyboard down as it opens.
-        mapOf(PANEL_KEYBOARD to 15)
+        mapOf(PANEL_KEYBOARD to 15) +
+        // owl 15: AirPods, read and set over their own link, with the Bluetooth permission.
+        listOf("android.airpods", "airpods").associateWith { 15 }
 
 /** `animate offset: ...`, named like this in [SINCE]. */
 internal const val ANIMATE_OFFSET = "animate offset"
@@ -243,7 +245,7 @@ internal val HANDLER_KINDS = mapOf("onChange" to setOf("Slider", "Input"), "onSu
 internal val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 
 /** Data from the phone and the launcher; device is fixed, system and network are polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers")
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "airpods")
 
 /**
  * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the
@@ -255,6 +257,9 @@ internal class Words(
     val numbers: Boolean = false,
     val forms: Map<String, Pair<IntRange, String>> = emptyMap(),
 )
+
+/** AirPods' listening modes, as android.airpods' `mode` and `modes` name them. */
+internal val AIRPODS_MODES = setOf("off", "anc", "transparency", "adaptive")
 
 /** settings("...")'s pages. */
 internal val SETTINGS_PAGES = setOf("internet", "wifi", "bluetooth", "airplane", "data", "location", "cast", "nfc", "volume", "output", "sound", "dnd", "display", "dark", "battery", "notifications")
@@ -291,6 +296,16 @@ internal val ACTION_WORDS =
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
+        // A listening mode, the next one, or a setting: on and off ones turn over without a value.
+        "airpods" to
+            Words(
+                AIRPODS_MODES + setOf("next", "connect", "conversation", "oneBud", "earDetection", "adaptiveLevel"),
+                "airpods takes ${AIRPODS_MODES.joinToString()}, next, connect, conversation, oneBud, earDetection or adaptiveLevel",
+                forms =
+                    (AIRPODS_MODES + setOf("next", "connect")).associateWith { 1..1 to "airpods(\"$it\")" } +
+                        setOf("conversation", "oneBud", "earDetection").associateWith { 1..2 to "airpods(\"$it\"), or airpods(\"$it\", on)" } +
+                        ("adaptiveLevel" to (2..2 to "airpods(\"adaptiveLevel\", level)")),
+            ),
     )
 
 /** The tile's size, readable anywhere a declaration of the same name doesn't shadow it. */

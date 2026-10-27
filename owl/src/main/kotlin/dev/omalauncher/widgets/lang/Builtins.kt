@@ -87,7 +87,7 @@ object Builtins {
     val constants = mapOf("pi" to Num(PI), "transparent" to Col(null, 0))
 
     /** Handler-only calls; they reach [Host.act]. */
-    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..2, "notification" to 1..3, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "dnd" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2, "appAction" to 2..2, "workApps" to 1..1, "shortcuts" to 1..1, "pressKey" to 1..1, "typeText" to 1..1, "latch" to 1..2, "settings" to 1..1)
+    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..2, "notification" to 1..3, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "dnd" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2, "appAction" to 2..2, "workApps" to 1..1, "shortcuts" to 1..1, "pressKey" to 1..1, "typeText" to 1..1, "latch" to 1..2, "settings" to 1..1, "airpods" to 1..2)
 
     private fun lst(items: List<Value>) = Lst(capped(items))
 

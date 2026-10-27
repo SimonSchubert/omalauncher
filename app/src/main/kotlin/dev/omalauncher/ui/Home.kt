@@ -5,7 +5,14 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
+import android.app.Activity
 import android.app.WallpaperManager
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberUpdatedState
@@ -150,7 +157,27 @@ fun HomeScreen(
     LaunchedEffect(arrange.folder) {
         if (arrange.folder == null && engine.shortcuts.items.any { it.key == state.editing && it.folder != null }) state.editing = null
     }
+    // A permission a widget's action needs (airpods(...)'s Bluetooth), asked for over home. After two refusals Android
+    // stops showing the dialog; the switch is then in the app's own settings.
+    val context = LocalContext.current
+    var asking by remember { mutableStateOf<Pair<String, (Boolean) -> Unit>?>(null) }
+    val askPermission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val (permission, done) = asking ?: return@rememberLauncherForActivityResult
+            asking = null
+            done(granted)
+            if (!granted && (context as? Activity)?.shouldShowRequestPermissionRationale(permission) == false) {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+        }
     LaunchedEffect(engine) {
+        engine.askPermission = { permission, done ->
+            asking = permission to done
+            askPermission.launch(permission)
+        }
         engine.launcherAction = { action ->
             when (action) {
                 // "themes" from before the screen was style; widgets still send it.

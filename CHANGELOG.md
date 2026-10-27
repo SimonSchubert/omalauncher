@@ -11,6 +11,12 @@ Dates are when the build was uploaded to Play.
 - A drawer can leave the keyboard down as it opens, for scrolling the apps rather
   than searching them: owl 15's `keyboard: false` in `drawer.owl`. Tapping the
   bar brings it up.
+- Widgets can show and change AirPods: owl 15's `android.airpods` has each bud's and
+  the case's battery, which buds are in, the listening mode and the settings, read
+  over the AirPods' own link as Apple's devices do, and `airpods(...)` switches
+  noise cancellation, transparency and adaptive and turns Conversation Awareness
+  and the rest on and off; `examples/airpods.owl` shows them. It asks for the
+  Bluetooth permission the first time, and needs Android 17 (16 QPR3 on a Pixel).
 
 ## 0.13.0 (versionCode 24) – 2026-10-25
 

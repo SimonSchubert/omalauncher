@@ -131,6 +131,9 @@ class WidgetEngine(
     /** The home screen's view, for haptic(); set by the UI. */
     var view by services::view
 
+    /** Asks for a permission a widget's action needs, like airpods(...)'s Bluetooth; set by the UI. */
+    var askPermission by services::askPermission
+
     /** The store's widgets, and its apps. */
     val market = Market(this, OwlKind.Widget)
     val faceMarket = Market(this, OwlKind.Face)
