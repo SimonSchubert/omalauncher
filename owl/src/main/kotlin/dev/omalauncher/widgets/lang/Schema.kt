@@ -120,6 +120,8 @@ internal val SINCE =
         // apps and what their long-press menu does; long lists built as they scroll into view; the bar's search ranking;
         // an app that hides the status bar.
         listOf(PANEL_FILE, QUERY, "onKey", "android.drawer", "appAction", "workApps", "shortcuts", APP_STATUS_BAR).associateWith { 11 } +
+        // The private space's switch, which the drawer's tab for it uses, as workApps is the work profile's.
+        mapOf("privateSpace" to 11) +
         listOf("Column.lazy", "Grid.lazy", "Column.reverse", "Grid.reverse", "Image.label", "Text.minLines", "rank", "strongMatch", "chunk").associateWith { 11 } +
         // owl 12: how much of an app's top a camera cutout covers, once it hides the status bar.
         mapOf("screenTop" to 12) +
@@ -290,6 +292,7 @@ internal val ACTION_WORDS =
         "settings" to SETTINGS_PAGES.let { Words(it, "settings takes ${it.joinToString()}") },
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
+        "privateSpace" to setOf("lock", "unlock", "toggle", "settings").let { Words(it, "privateSpace takes ${it.joinToString()}") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
     )
 

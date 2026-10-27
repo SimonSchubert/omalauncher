@@ -266,11 +266,15 @@ class WidgetServices(
 
     override fun androidImage(src: String) = media.art(src)
 
-    /** "work" or "clone" for an app in a profile beside the launcher's own, as the drawer marks it; null for its own. */
+    /** "work", "clone" or "private" for an app in a profile beside the launcher's own, as the drawer marks it; null for its own. */
     private fun profileKind(user: UserHandle): String? {
         if (user == Process.myUserHandle()) return null
         val serial = context.getSystemService(UserManager::class.java).getSerialNumberForUser(user)
-        return if (runtime.androidApps.cloned(serial)) "clone" else "work"
+        return when {
+            runtime.androidApps.cloned(serial) -> "clone"
+            serial in runtime.androidApps.privateProfiles -> "private"
+            else -> "work"
+        }
     }
 
     /** Apps by package, in the drawer's order: a widget listing every app asks for each one's icon, and a scan per icon was O(n²). */
@@ -287,6 +291,7 @@ class WidgetServices(
             when (pkg.substringAfter('@', "")) {
                 "work" -> copies.firstOrNull { it.work }
                 "clone" -> copies.firstOrNull { it.clone }
+                "private" -> copies.firstOrNull { it.privateSpace }
                 "" -> copies.firstOrNull { it.profile == null } ?: copies.first()
                 else -> null
             } ?: return null
@@ -498,22 +503,24 @@ class WidgetServices(
         )
 
     /**
-     * The drawer for `source d = android.drawer`: `{apps, linux, monochrome, work, updates}`. `apps` is every app in the drawer's
+     * The drawer for `source d = android.drawer`: `{apps, linux, monochrome, work, private, updates}`. `apps` is every app in the drawer's
      * order (owl apps, Linux apps, shortcuts, Android apps, then the work profile's shortcuts and apps), each
-     * `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`:
+     * `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`, then the private space's apps while it's unlocked:
      * - `label` what screen readers say for it ("WhatsApp work"), for an Image's `label`; `profile` as in `android.apps`; `alias` what search matches besides the name ("WhatsApp work");
      * - `paused` for an app in a paused work profile; `actions` the words its long-press menu offers, for appAction(...);
      * - `hasIcon` whether `icon` draws anything yet; without, the drawer shows `initials` on a badge, as it does a
      *   silhouette when `monochrome`.
      * `linux` is "installed", "installing" or "missing"; `work` is `{paused}` while there's a work profile, else null;
+     * `private` is `{locked, hidden}` while there's a private space, else null;
      * `updates` counts the system updates waiting.
      */
     private fun drawer(): Value {
         val apps = runtime.androidApps
         val hits =
             runtime.widgets.apps().map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } +
-                apps.shortcuts.filter { !it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { !it.work }.map { AppHit.Android(it) } +
-                apps.shortcuts.filter { it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.work }.map { AppHit.Android(it) }
+                apps.shortcuts.filter { !it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { !it.work && !it.privateSpace }.map { AppHit.Android(it) } +
+                apps.shortcuts.filter { it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.work }.map { AppHit.Android(it) } +
+                apps.apps.filter { it.privateSpace }.map { AppHit.Android(it) }
         val list =
             hits.take(Builtins.MAX_LIST).map { hit ->
                 Obj(
@@ -536,7 +543,8 @@ class WidgetServices(
                 )
             }
         val work = if (apps.workProfiles.isEmpty()) Null else Obj(mapOf("paused" to bool(apps.workProfiles.any { apps.paused(it) })))
-        return Obj(mapOf("apps" to Lst(list), "linux" to Str(linuxWord(runtime.bootstrap.state.value)), "monochrome" to bool(LauncherStyle.monochromeIcons), "work" to work, "updates" to Num((runtime.updates.pending?.count ?: 0).toDouble())))
+        val privateSpace = if (apps.privateProfiles.isEmpty()) Null else Obj(mapOf("locked" to bool(apps.privateSpaceLocked), "hidden" to bool(apps.privateSpaceHidden)))
+        return Obj(mapOf("apps" to Lst(list), "linux" to Str(linuxWord(runtime.bootstrap.state.value)), "monochrome" to bool(LauncherStyle.monochromeIcons), "work" to work, "private" to privateSpace, "updates" to Num((runtime.updates.pending?.count ?: 0).toDouble())))
     }
 
     /** Android hides the battery from the guest (/sys/class/power_supply), so expose it here. */
@@ -633,6 +641,7 @@ class WidgetServices(
             "ask" -> ask(arg, args.getOrNull(1).textOrNull())
             "appAction" -> args.getOrNull(1)?.takeIf { it != Null }?.let { appAction(arg, it.toString()) }
             "workApps" -> workApps(arg)
+            "privateSpace" -> privateSpace(arg)
         }
         // Anything the action changed should show up without waiting for the next interval.
         scope.launch {
@@ -879,6 +888,18 @@ class WidgetServices(
                 else -> apps.workProfiles.none { apps.paused(it) }
             },
         )
+    }
+
+    /** privateSpace("lock"), ("unlock"), ("toggle") or ("settings"): the drawer's switch for the private space, and its page in settings. */
+    private fun privateSpace(word: String) {
+        val apps = runtime.androidApps
+        if (apps.privateProfiles.isEmpty()) return
+        when (word) {
+            "settings" -> apps.openPrivateSpaceSettings()
+            "lock" -> apps.lockPrivateSpace(true)
+            "unlock" -> apps.lockPrivateSpace(false)
+            else -> apps.lockPrivateSpace(!apps.privateSpaceLocked)
+        }
     }
 
     /**

@@ -11,6 +11,10 @@ Dates are when the build was uploaded to Play.
 - A drawer can leave the keyboard down as it opens, for scrolling the apps rather
   than searching them: owl 15's `keyboard: false` in `drawer.owl`. Tapping the
   bar brings it up.
+- Android 15's private space shows in the drawer while Oma is the default home app:
+  a `private` tab beside `personal` and `work`, with `[lock]`/`[unlock]` and
+  `[settings]`, and owl's new `privateSpace` handler. Its apps are hidden while it's
+  locked; with "hide when locked", searching "private" offers to unlock it.
 
 ## 0.13.0 (versionCode 24) – 2026-10-25
 

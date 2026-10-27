@@ -8,6 +8,7 @@ import android.content.IntentFilter
 import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherApps
 import android.content.pm.LauncherApps.ShortcutQuery
+import android.content.pm.LauncherUserInfo
 import android.content.pm.ShortcutInfo
 import android.net.Uri
 import android.graphics.Bitmap
@@ -54,15 +55,17 @@ data class AndroidApp(
     val system: Boolean = false,
     /** [user] is a clone profile, holding a second copy of an app the owner has too, rather than a work profile. */
     val clone: Boolean = false,
+    /** [user] is the private space (Android 15 on): listed only while it's unlocked, on a drawer tab of its own. */
+    val privateSpace: Boolean = false,
 ) {
     /** Stable across restarts and unique across profiles; icons, usage and pinned apps go by it. */
     val key get() = androidAppKey(component, profile)
 
-    /** What screen readers say: "Work WhatsApp" or "Clone WhatsApp" beside "WhatsApp". */
-    val spoken get() = spokenLabel(label, profile, clone)
+    /** What screen readers say: "Work WhatsApp", "Clone WhatsApp" or "Private WhatsApp" beside "WhatsApp". */
+    val spoken get() = spokenLabel(label, profile, clone, privateSpace)
 
-    /** In a work profile: neither the launcher's own nor a clone. */
-    val work get() = profile != null && !clone
+    /** In a work profile: neither the launcher's own, a clone nor the private space. */
+    val work get() = profile != null && !clone && !privateSpace
 }
 
 /** [label] as screen readers say it, worded as Android's own badged labels; [profile] and [clone] as in [AndroidApp]. */
@@ -70,9 +73,11 @@ fun spokenLabel(
     label: String,
     profile: Long?,
     clone: Boolean = false,
+    privateSpace: Boolean = false,
 ) = when {
     profile == null -> label
     clone -> "Clone $label"
+    privateSpace -> "Private $label"
     else -> "Work $label"
 }
 
@@ -161,7 +166,8 @@ fun pinnedIds(
  * LauncherApps callbacks, so the drawer never waits on PackageManager.
  * Labels arrive first; icons fill in behind them. Apps in a work profile are listed beside the
  * owner's with a briefcase on their icons, apps in a clone profile with the clone mark stock
- * launchers use. Private space stays hidden: listing it takes ACCESS_HIDDEN_PROFILES.
+ * launchers use. The private space (Android 15 on) shows only to the default home app, which ACCESS_HIDDEN_PROFILES
+ * lets list it: its apps, with a lock on their icons, while it's unlocked, and none while it's locked.
  */
 class AndroidAppCatalog(
     private val context: Context,
@@ -211,6 +217,27 @@ class AndroidAppCatalog(
     /** Serial numbers of the work profiles (Android allows one); the drawer gives their apps a tab of their own, even while there are none. */
     var workProfiles by mutableStateOf(emptySet<Long>())
         private set
+
+    /**
+     * Serial numbers of the private spaces (Android allows one), seen only by the default home app; locked while in
+     * [pausedProfiles]. The drawer gives it a tab of its own with a lock switch, and lists its apps only while it's unlocked.
+     */
+    var privateProfiles by mutableStateOf(emptySet<Long>())
+        private set
+
+    /** Whether there's a private space and it's locked. */
+    val privateSpaceLocked get() = privateProfiles.any { it in pausedProfiles }
+
+    /**
+     * Whether the private space asks to be hidden while it's locked (Settings › Private space › Hide when locked,
+     * Android 16 on): then the drawer shows its tab only once "private" is searched for, as stock launchers do.
+     */
+    val privateSpaceHidden: Boolean
+        get() {
+            if (Build.VERSION.SDK_INT < 36) return false
+            val user = privateProfiles.firstNotNullOfOrNull { userManager.getUserForSerialNumber(it) } ?: return false
+            return runCatching { launcherApps.getLauncherUserInfo(user)?.userConfig?.getBoolean(LauncherUserInfo.PRIVATE_SPACE_ENTRYPOINT_HIDDEN) }.getOrNull() == true
+        }
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val userManager = context.getSystemService(UserManager::class.java)
@@ -477,6 +504,27 @@ class AndroidAppCatalog(
         }
     }
 
+    /**
+     * Locks the private space or unlocks it, as stock launchers' lock button does. The system only lets the default
+     * launcher, while it's in front, and unlocking always asks for the screen lock (or the private space's own lock) first.
+     */
+    fun lockPrivateSpace(lock: Boolean) {
+        for (profile in privateProfiles) {
+            val user = userManager.getUserForSerialNumber(profile) ?: continue
+            runCatching { userManager.requestQuietModeEnabled(lock, user) }
+                .onFailure { Log.w(TAG, "cannot ${if (lock) "lock" else "unlock"} the private space", it) }
+        }
+    }
+
+    /** The private space's page in Settings (Android 16 on); false where there's none to open. */
+    fun openPrivateSpaceSettings(): Boolean {
+        if (Build.VERSION.SDK_INT < 36) return false
+        val sender = runCatching { launcherApps.privateSpaceSettingsIntent }.getOrNull() ?: return false
+        return runCatching { context.startIntentSender(sender, null, 0, 0, 0) }
+            .onFailure { Log.w(TAG, "cannot open private space settings", it) }
+            .isSuccess
+    }
+
     /** The system's App info page, as stock launchers open it. */
     fun openInfo(app: AndroidApp) {
         runCatching { launcherApps.startAppDetailsActivity(app.component, app.user, null, null) }
@@ -506,6 +554,7 @@ class AndroidAppCatalog(
                 var paused = emptySet<Long>()
                 var clones = emptySet<Long>()
                 var works = emptySet<Long>()
+                var privates = emptySet<Long>()
                 var canList = false
                 // With what to draw each icon from; null for those of a paused profile, kept as they were.
                 var made = emptyList<Pair<ShortcutInfo?, AndroidShortcut>>()
@@ -519,17 +568,23 @@ class AndroidAppCatalog(
                         profiles
                             .flatMap { user ->
                                 val profile = if (user == me) null else userManager.getSerialNumberForUser(user)
-                                val clone = profile != null && isClone(user)
+                                val type = if (profile == null) null else userType(user)
+                                val clone = type == UserManager.USER_TYPE_PROFILE_CLONE
+                                val isPrivate = type == UserManager.USER_TYPE_PROFILE_PRIVATE
                                 if (profile != null && userManager.isQuietModeEnabled(user)) paused += profile
                                 if (profile != null && clone) clones += profile
-                                if (profile != null && !clone) works += profile
+                                if (profile != null && isPrivate) privates += profile
+                                if (profile != null && !clone && !isPrivate) works += profile
+                                // A locked private space lists nothing, not even dimmed: what's in it stays out of sight and out of search.
+                                if (isPrivate && profile in paused) return@flatMap emptyList()
                                 // A paused profile's shortcuts can't be listed; they stay, dimmed like its apps, and opening one resumes it.
-                                if (canList) made += if (profile != null && profile in paused) listed.filter { it.profile == profile }.map { null to it } else pinnedShortcuts(user, profile, clone)
+                                // The private space's stay out, as they'd be left on home once it locks.
+                                if (canList && !isPrivate) made += if (profile != null && profile in paused) listed.filter { it.profile == profile }.map { null to it } else pinnedShortcuts(user, profile, clone)
                                 runCatching { launcherApps.getActivityList(null, user) }
                                     .onFailure { Log.w(TAG, "cannot list apps in $user", it) }
                                     .getOrDefault(emptyList())
                                     .filter { it.componentName.packageName != context.packageName }
-                                    .map { it to AndroidApp(it.label.toString(), it.componentName, user, profile, it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0, clone = clone) }
+                                    .map { it to AndroidApp(it.label.toString(), it.componentName, user, profile, it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0, clone = clone, privateSpace = isPrivate) }
                             }
                             // The same app in two profiles: the owner's one first.
                             .sortedWith(compareBy({ it.second.label.lowercase() }, { it.second.profile != null }))
@@ -538,6 +593,7 @@ class AndroidAppCatalog(
                 pausedProfiles = paused
                 cloneProfiles = clones
                 workProfiles = works
+                privateProfiles = privates
                 val list = infos.map { it.second }
                 if (list != apps.toList()) {
                     apps.clear()
@@ -634,17 +690,16 @@ class AndroidAppCatalog(
         d.setBounds(0, 0, iconPx, iconPx)
         d.draw(Canvas(bmp))
         var mask = iconMask(d, iconPx)
-        if (profile != null) mask = addBadge(bmp, mask, if (clone) cloneMark else briefcase)
+        if (profile != null) mask = addBadge(bmp, mask, if (clone) cloneMark else if (profile in privateProfiles) lock else briefcase)
         return bmp.asImageBitmap() to mask.asImageBitmap()
     }
 
     /**
-     * Whether [user] is a clone profile. Only Android 15 on tells a launcher a profile's kind;
-     * before, every profile beside ours counts as work.
+     * [user]'s kind, as UserManager's USER_TYPE_PROFILE_CLONE or USER_TYPE_PROFILE_PRIVATE. Only Android 15 on tells a
+     * launcher a profile's kind; before, null, and every profile beside ours counts as work.
      */
-    private fun isClone(user: UserHandle) =
-        Build.VERSION.SDK_INT >= 35 &&
-            runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull() == UserManager.USER_TYPE_PROFILE_CLONE
+    private fun userType(user: UserHandle) =
+        if (Build.VERSION.SDK_INT >= 35) runCatching { launcherApps.getLauncherUserInfo(user)?.userType }.getOrNull() else null
 
     /**
      * Marks an icon from another profile with [mark] (a briefcase, or the clone mark) in its corner, and its
@@ -709,6 +764,17 @@ class AndroidAppCatalog(
                     .apply { fillType = Path.FillType.EVEN_ODD }
             // Two paths in Launcher3, one here: the ring's even-odd fill must not cut into the disc.
             disc.apply { op(ring, Path.Op.UNION) }
+        }
+
+        /** Material's "lock" glyph, 24 units square, for the private space's apps as Launcher3 marks them. */
+        private val lock by lazy {
+            PathParser()
+                .parsePathString(
+                    "M18,8h-1V6c0,-2.76 -2.24,-5 -5,-5S7,3.24 7,6v2H6c-1.1,0 -2,0.9 -2,2v10c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V10" +
+                        "c0,-1.1 -0.9,-2 -2,-2zM12,17c-1.1,0 -2,-0.9 -2,-2s0.9,-2 2,-2s2,0.9 2,2s-0.9,2 -2,2zM15.1,8H8.9V6c0,-1.71 1.39,-3.1 3.1,-3.1" +
+                        "s3.1,1.39 3.1,3.1v2z",
+                ).toPath()
+                .asAndroidPath()
         }
 
         private const val BADGE_BACKGROUND = 0xFF3C4043.toInt()
