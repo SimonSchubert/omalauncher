@@ -53,8 +53,8 @@ drawing.
 
 ## GPU acceleration
 
-Opt-in, in settings › linux. The device node picks the driver. Mali (v10+:
-Pixel 7 and newer, recent MediaTek) uses the pinned PanVK-kbase driver on
+Opt-in, in settings › linux. The device node picks the driver. Mali (v9+:
+Pixel 6 and newer, recent MediaTek) uses the pinned PanVK-kbase driver on
 `/dev/mali0`, from zenithblue-oss/panvk-kbase-android. Adreno 6xx and newer
 use the pinned Turnip KGSL driver on `/dev/kgsl-3d0`, the Arch
 `vulkan-freedreno` package from lfdevs/mesa-for-android-container

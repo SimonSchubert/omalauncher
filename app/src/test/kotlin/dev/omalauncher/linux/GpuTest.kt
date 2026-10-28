@@ -73,9 +73,10 @@ class GpuTest {
     @Test fun maliScriptStaysThePinnedPanvkBlob() {
         val driver = GpuDrivers.of(GpuKind.MALI)
         val script = GpuDrivers.installScript(driver)
-        assertTrue(script.contains("libvulkan_panfrost-glibc-aarch64.so"))
-        assertTrue(script.contains("0b8eaf709cd3559acec72b6fcf3acc24bcdb016bdc998adfedca6ff8eb60c820  /usr/local/lib64/libvulkan_panfrost.so"))
-        assertTrue(script.contains("0b8eaf709cd3559acec72b6fcf3acc24bcdb016bdc998adfedca6ff8eb60c820  /tmp/omalauncher-gpu.so"))
+        // RC3 is the first pin with a Mali-G78 row (Pixel 6, 6a).
+        assertTrue(script.contains("panvk-kbase-v0.1.0-rc3/libvulkan_panfrost-glibc-aarch64.so"))
+        assertTrue(script.contains("43d4783f664f21843b2fb2d5a3fdf4646fadb942e42d320ccb0e7449bd8e352f  /usr/local/lib64/libvulkan_panfrost.so"))
+        assertTrue(script.contains("43d4783f664f21843b2fb2d5a3fdf4646fadb942e42d320ccb0e7449bd8e352f  /tmp/omalauncher-gpu.so"))
         assertTrue(script.contains("\"api_version\":\"1.4.363\""))
         assertTrue(script.contains("> '/usr/local/share/vulkan/icd.d/panfrost_icd.aarch64.json'"))
         assertTrue(trapCoversCurl(script))
@@ -96,6 +97,18 @@ class GpuTest {
         assertTrue(probe.contains("export MESA_LOADER_DRIVER_OVERRIDE='zink';"))
         assertTrue(probe.contains("export __EGL_VENDOR_LIBRARY_FILENAMES='/usr/local/share/glvnd/egl_vendor.d/50_mesa.json';"))
         assertTrue(script.contains("tar -xJf '/usr/local/share/omalauncher/mesa-zink.tar.xz' -C / &&"))
+    }
+
+    /** A guest with an older pin gets the new blob and Mesa on recheck, without a pacman upgrade. */
+    @Test fun updateScriptFetchesWithoutPacman() {
+        for (kind in GpuKind.entries) {
+            val driver = GpuDrivers.of(kind)
+            val update = GpuDrivers.updateScript(driver)
+            assertFalse(update.contains("pacman"))
+            assertTrue(update.contains("${driver.librarySha256}  ${driver.driverPath}"))
+            assertTrue(update.contains(GpuDrivers.MESA_ZINK_TAR_SHA256))
+            assertTrue(GpuDrivers.installScript(driver).endsWith(update))
+        }
     }
 
     @Test fun turnipScriptPinsTheKgslPackageAndTheExtractedLibrary() {

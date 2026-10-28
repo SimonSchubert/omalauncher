@@ -13,7 +13,7 @@ import java.io.FileNotFoundException
 
 /**
  * Opt-in GPU acceleration for Linux apps. The device node picks the driver:
- * PanVK-kbase on /dev/mali0 (Mali v10+: Pixel 7 and newer, recent MediaTek),
+ * PanVK-kbase on /dev/mali0 (Mali v9+: Pixel 6 and newer, recent MediaTek),
  * or Turnip on /dev/kgsl-3d0 when that node is an Adreno 6xx or newer.
  * OpenGL is zink on top of that Vulkan driver, through a patched libEGL that
  * keeps zink when the compositor only offers wl_shm. Frames still reach
@@ -74,7 +74,9 @@ class Gpu(
         // yet (Mali before it used the patched Mesa). The env names that Mesa.
         val mesaCurrent = runCatching { proot.hostFile(GpuDrivers.MESA_ZINK_STAMP).readText().trim() }
             .getOrNull() == GpuDrivers.MESA_ZINK_TAR_SHA256
-        if (mesaCurrent && prefs.getString(CHECKED_BUILD, null) == build) {
+        // The APK pins a newer driver than the one that passed (or none was recorded yet).
+        val driverCurrent = prefs.getString(DRIVER_SHA, null) == driver.librarySha256
+        if (driverCurrent && mesaCurrent && prefs.getString(CHECKED_BUILD, null) == build) {
             // An older install wrote Mali's manifest on pacman's path. The env now
             // names the /usr/local file, so that file has to exist before we activate.
             if (!proot.hostFile(driver.icdPath).isFile) {
@@ -88,13 +90,21 @@ class Gpu(
             return activate(driver)
         }
         // Install and check in one run: run() records the build as checked on success.
-        val ok = if (mesaCurrent) {
-            Log.i(TAG, "system changed since the last GPU check, checking again")
-            run("checking", GpuDrivers.probeScript(driver))
-        } else {
-            Log.i(TAG, "the patched Mesa changed, installing it and checking again")
-            stageMesaBundle()
-            run("installing", GpuDrivers.mesaZinkScript() + " && " + GpuDrivers.probeScript(driver))
+        val ok = when {
+            !driverCurrent -> {
+                Log.i(TAG, "the pinned driver changed, installing it and checking again")
+                stageMesaBundle()
+                run("installing", GpuDrivers.updateScript(driver) + " && " + GpuDrivers.probeScript(driver))
+            }
+            mesaCurrent -> {
+                Log.i(TAG, "system changed since the last GPU check, checking again")
+                run("checking", GpuDrivers.probeScript(driver))
+            }
+            else -> {
+                Log.i(TAG, "the patched Mesa changed, installing it and checking again")
+                stageMesaBundle()
+                run("installing", GpuDrivers.mesaZinkScript() + " && " + GpuDrivers.probeScript(driver))
+            }
         }
         if (ok) {
             activate(driver)
@@ -132,7 +142,7 @@ class Gpu(
      * it exists the Vulkan loader finds it with no env var set.
      */
     fun turnOff() {
-        prefs.edit().putBoolean(WANTED, false).remove(CHECKED_BUILD).apply()
+        prefs.edit().putBoolean(WANTED, false).remove(CHECKED_BUILD).remove(DRIVER_SHA).apply()
         wanted = false
         active = false
         state = JobState.Idle
@@ -169,7 +179,11 @@ class Gpu(
         input.use { src -> dest.outputStream().use { src.copyTo(it) } }
     }
 
-    /** Runs [script]; on success remembers the build it passed on and the GPU's name from vulkaninfo. */
+    /**
+     * Runs [script]; on success remembers the build it passed on, the GPU's name from vulkaninfo
+     * and the driver's hash. Every script that reaches here leaves the pinned library in place:
+     * [recheck] only skips the install when the recorded hash is already the pinned one.
+     */
     private suspend fun run(
         action: String,
         script: String,
@@ -180,7 +194,8 @@ class Gpu(
         Log.i(TAG, "$action: ${if (ok) "ok, $name" else "failed"}")
         if (ok) {
             device = name
-            prefs.edit().putString(CHECKED_BUILD, build).putString(DEVICE, name).apply()
+            prefs.edit().putString(CHECKED_BUILD, build).putString(DEVICE, name)
+                .putString(DRIVER_SHA, spec?.librarySha256).apply()
         }
         return ok
     }
@@ -190,6 +205,7 @@ class Gpu(
         private const val WANTED = "gpu_wanted"
         private const val CHECKED_BUILD = "gpu_checked_build"
         private const val DEVICE = "gpu_device"
+        private const val DRIVER_SHA = "gpu_driver_sha256"
 
         private val DEVICE_NAME = Regex("""deviceName\s*=\s*(.+)""")
     }
