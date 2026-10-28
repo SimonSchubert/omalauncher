@@ -67,7 +67,7 @@ private val PACKAGES =
     listOf(
         "foot", "ttf-dejavu", "btop", "fastfetch", "ttf-jetbrains-mono", "ttf-nerd-fonts-symbols-mono",
         "neovim", "starship", "eza", "bat", "fd", "ripgrep", "fzf", "zoxide", "tmux", "gum", "jq", "tealdeer",
-        "man-db", "less", "dua-cli", "inxi", "whois", "git", "bash-completion", "pulseaudio", "pulseaudio-alsa", "micro",
+        "man-db", "less", "dua-cli", "inxi", "whois", "git", "bash-completion", "pulseaudio", "pulseaudio-alsa", "dbus", "micro",
     )
 
 /** Omarchy's Winamp-style player; not in Arch's ARM repos, but upstream ships an arm64 build. */
@@ -204,6 +204,9 @@ class Bootstrap(
                 guest("pacman -Rdd --noconfirm linux-aarch64 \$(pacman -Qq | grep ^linux-firmware); true")
             },
             Step("packages-1", Stage.Packages, "Installing packages", network = true) { guest(pacmanInstall(PACKAGES, refresh = true)) },
+            // Existing installations ran packages-1 before the session bus was added.
+            Step("dbus-1", Stage.Packages, "Installing D-Bus", network = true,
+                isDone = { File(proot.rootfs, "usr/bin/dbus-daemon").isFile }) { guest(pacmanInstall(listOf("dbus"))) },
             Step("keymap-1", Stage.Packages, "Compiling keymap", network = false, isDone = { proot.keymap.exists() }) { compileKeymap() },
             Step("cliamp-$CLIAMP_VERSION", Stage.Packages, "Installing cliamp", network = true) { installCliamp() },
             // Omarchy's themes were a step here ("omarchy-<ref>") until Linux became optional; ThemeStore fetches them now.

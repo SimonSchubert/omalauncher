@@ -171,6 +171,7 @@ class Proot(
                 "EDITOR=$EDIT_COMMAND",
                 "VISUAL=$EDIT_COMMAND",
                 "XDG_RUNTIME_DIR=$GUEST_RUNTIME_DIR",
+                "DBUS_SESSION_BUS_ADDRESS=${SessionBus.ADDRESS}",
                 "WAYLAND_DISPLAY=${waylandSocket.name}",
                 "XDG_SESSION_TYPE=wayland",
                 "GDK_BACKEND=wayland",
