@@ -1279,6 +1279,25 @@ class Compiler private constructor(
                 // Uninstalling and removing take apps away: the reviewer sees which entries a widget uses.
                 if (call.name == "appAction") commands += "act on an app from the drawer's menu: " + ((args[0].const as? Str)?.v ?: "any of its entries")
                 if (call.name == "ask") commands += (args[0].const as? Str)?.v?.let { "ask the agent: $it" } ?: "ask the agent something built from widget values"
+                if (call.name == "mediaSession") {
+                    commands += "publish a Linux player's media controls to Android"
+                    guest = true
+                    // These commands run later, even after the publishing screen closes.
+                    // Review them with the same shell quoting checks as run(...).
+                    val player = call.args[0]
+                    if (args[0].const != Null) {
+                        val fields = (player as? Expr.MapLit)?.entries
+                            ?: fail("mediaSession takes null or an inline player map so its commands can be reviewed", player.pos)
+                        fields.firstOrNull { it.first == "commands" }?.second?.let { controls ->
+                            val entries = (controls as? Expr.MapLit)?.entries
+                                ?: fail("mediaSession commands must be an inline map", controls.pos)
+                            for ((name, command) in entries) {
+                                if (name !in setOf("play", "pause", "stop", "next", "previous", "seek")) fail("unknown mediaSession control '$name'", command.pos)
+                                listCommand(command, ex(command, scope), scope, "mediaSession $name")
+                            }
+                        }
+                    }
+                }
                 if (call.name in setOf("run", "terminal", "app")) {
                     listCommand(call.args[0], args[0], scope, "${call.name}(…)")
                     // A tap on terminal(...) or app(...) without Linux offers to install it; run(...) would fail unseen.
