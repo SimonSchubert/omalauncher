@@ -25,7 +25,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 16
+        const val LEVEL = 15
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -816,6 +816,7 @@ class Compiler private constructor(
                 if (e.name == "apps") commands += "read installed Android apps (names, packages and icons)"
                 if (e.name == "recent") commands += "read the recently opened apps"
                 if (e.name == "drawer") commands += "read the launcher's apps (names and icons)"
+                if (e.name == "speech") commands += "listen through the microphone after a tap, and read what you say"
                 Global.Source(d.name, "android.${e.name}", null, (every ?: 60.0).coerceAtLeast(1.0), false, 0)
             }
             else -> fail("a source is cmd(\"...\"), stream(\"...\"), http(\"...\"), file(\"...\"), clock, or android.${ANDROID.joinToString("/")}", e.pos)
@@ -873,7 +874,17 @@ class Compiler private constructor(
             }
         if (d.kind != "every" && expr.const != null) fail("${d.kind} needs a value that changes, like a state or a source", d.expr.pos)
         if (d.first) since(ON_FIRST, d.pos)
-        return Trigger(TriggerKind.of(d.kind), expr, handler(Handler(d.kind, d.stmts, d.pos), root, TRIGGER_PARAMS[d.kind].orEmpty()), d.pos, d.first)
+        val dictation = d.kind == "on" && (d.expr as? Expr.Member)?.let { m -> m.name == "final" && (m.e as? Expr.Name)?.name in speechSources } == true
+        return Trigger(TriggerKind.of(d.kind), expr, handler(Handler(d.kind, d.stmts, d.pos), root, TRIGGER_PARAMS[d.kind].orEmpty()), d.pos, d.first, dictation)
+    }
+
+    /** The names of the sources that read android.speech: speech(...) needs one, and `on said.final` may type. */
+    private val speechSources by lazy {
+        ast.body.decls
+            .filterIsInstance<Decl.Source>()
+            .filter { (it.expr as? Expr.Member)?.let { m -> m.name == "speech" && (m.e as? Expr.Name)?.name == "android" } == true }
+            .map { it.name }
+            .toSet()
     }
 
     private fun component(d: Decl.Component): Component {
@@ -1101,13 +1112,23 @@ class Compiler private constructor(
         scope: Scope,
     ): Ev = enumOrNull(p.name, p.value) ?: ex(p.value, scope)
 
+    /** The handler whose statements are compiling, like onTap; null outside one, as in a trigger. */
+    private var handlerName: String? = null
+
     private fun handler(
         h: Handler,
         scope: Scope,
         params: List<String> = HANDLER_PARAMS[h.name].orEmpty(),
     ): Action {
         val inner = Scope(scope, params)
-        val run = chancy { block(h.stmts, inner) }
+        val outer = handlerName
+        handlerName = h.name
+        val run =
+            try {
+                chancy { block(h.stmts, inner) }
+            } finally {
+                handlerName = outer
+            }
         return Action(params) { env, values ->
             val e = if (params.isEmpty()) env else env.child(*Array(params.size) { values.getOrElse(it) { Null } })
             // Handlers run from touch events: a failure is reported, never thrown into the UI.
@@ -1233,6 +1254,24 @@ class Compiler private constructor(
                     commands += "press keys in the Linux window you're typing in: " + ((args[0].const as? Str)?.v ?: "keys built from widget values")
                 }
                 if (call.name == "typeText") commands += "type into the Linux window you're typing in: " + ((args[0].const as? Str)?.v ?: "text built from widget values")
+                if (call.name == "pickImages") {
+                    // The picker would cover the node before the finger lifts: home then sees a long press under it.
+                    if (handlerName == "onPress" || handlerName == "onRelease") fail("pickImages() opens Android's photo picker over the widget, before the finger lifts: put it in onTap", call.pos)
+                    commands += "paste images you pick on Android into the Linux window you're typing in"
+                }
+                if (call.name == "speech") {
+                    // It hands what's heard to the source, not back to the handler.
+                    if (speechSources.isEmpty()) {
+                        fail("speech(...) needs a source to hear with: source said = android.speech, then said.text, or on said.final { ... }", call.pos)
+                    }
+                    // Starting may ask for the microphone, over the widget before the finger lifts: home then sees a long press.
+                    val word = (args[0].const as? Str)?.v
+                    if ((handlerName == "onPress" || handlerName == "onRelease") && word !in SPEECH_ANYWHERE) {
+                        fail("speech(\"${word ?: "…"}\") may ask for the microphone over the widget before the finger lifts: start it in onTap", call.pos)
+                    }
+                    // The microphone opens only for a touch, never on a timer or a fetched value.
+                    if (TriggerKind.entries.any { it.word == handlerName } && word != null && word !in SPEECH_ANYWHERE) fail("speech(\"$word\") works in onTap, not in a trigger; stop and cancel work anywhere", call.pos)
+                }
                 if (call.name == "latch") (args.getOrNull(1)?.const as? Str)?.v?.let { if (it !in KeyNames.hows) fail("latch's second value is ${KeyNames.hows.joinToString()}", call.args[1].pos) }
                 if (call.name == "screen" || call.name == "close") screenAction = screenAction ?: call.pos
                 if (call.name == "screen") openScreen = openScreen ?: call.pos
@@ -1631,6 +1670,7 @@ class Compiler private constructor(
         e: Expr.Call,
         s: Scope,
     ): Ev {
+        if (e.name == "speech") fail("speech(...) is an action and gives nothing back: tap with onTap: speech(\"toggle\"), and read what's heard from source said = android.speech", e.pos)
         if (e.name in Builtins.actions) fail("${e.name}(...) is an action; use it in a handler like onTap", e.pos)
         if (e.name in setOf("history", "prev")) fail("${e.name}(...) keeps samples over time, so it only works as: let x = ${e.name}(...)", e.pos)
         if (e.name in setOf("cmd", "stream", "http", "file")) fail("${e.name}(...) is a source: source x = ${e.name}(\"...\")", e.pos)

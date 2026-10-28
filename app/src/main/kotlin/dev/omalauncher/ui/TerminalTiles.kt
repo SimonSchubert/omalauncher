@@ -125,6 +125,20 @@ class TerminalTiles(
         keyboard?.show()
     }
 
+    /**
+     * Gives [window] the keyboard back once an Android screen that covered it is gone, like the photo picker: a tile's
+     * terminal takes it as a tap would, a Linux app's window as its activity resumes. False if the window is gone.
+     */
+    fun refocus(window: XdgToplevel): Boolean {
+        sessions.firstOrNull { it.window === window }?.let {
+            activate(it)
+            return true
+        }
+        if (window !in wm.appWindows) return false
+        if (wm.focused !== window) wm.focus(window)
+        return true
+    }
+
     fun deactivate() {
         if (active != null) {
             // Keys still down, like the Super of Super+Esc, would stay held for the terminal.

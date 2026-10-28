@@ -3,10 +3,12 @@ widget "today" {
   order: 1
   size: 3x3
   minSize: 3x2
-  meta { description: "The date and the weather where you are, by IP or a city you type. Tap it for the next 24 hours, three days, wind, UV, sun and moon"; version: "1.1"; license: "MIT"; category: "world"; owl: 9 }
+  meta { description: "The date and the weather where you are, by IP or a city you type. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.1"; license: "MIT"; category: "world"; owl: 9 }
 
   source now = clock every 1m
   state city = "" persist
+  // Blank follows the country. A tap on the degree letter stores C or F.
+  state unitChoice = "" persist
   // The city, percent-encoded so "/", "?", "&" or "#" in it can't break the URL. Empty means located by IP.
   let q = city.replace("%", "%25").replace("+", "%2B").replace("/", "%2F").replace("?", "%3F").replace("#", "%23").replace("&", "%26").replace("'", "%27").replace(" ", "+")
   // One request. Icons and °F countries match omarchy's weather panel.
@@ -14,7 +16,8 @@ widget "today" {
   let cur = wx.current_condition[0]
   let day = wx.weather[0]
   let area = wx.nearest_area[0]
-  let imperial = contains(["united states", "united states of america", "liberia", "myanmar", "burma"], lower(trim(area.country[0].value)))
+  let autoImperial = contains(["united states", "united states of america", "liberia", "myanmar", "burma"], lower(trim(area.country[0].value)))
+  let imperial = unitChoice == "F" ? true : unitChoice == "C" ? false : autoImperial
   let unit = imperial ? "F" : "C"
   let night = contains(cur.weatherIconUrl[0].value, "_night")
   // Clear or partly cloudy gets a warm sun or a cool moon; everything else stays neutral.
@@ -155,7 +158,13 @@ widget "today" {
           Column {
             gap: 0
             weight: 1
-            Text { text: "${get(cur, "temp_" + unit)}°${unit}"; fontSize: 44; color: cyan; maxLines: 1 }
+            Text {
+              text: "${get(cur, "temp_" + unit)}°${unit}"
+              fontSize: 44
+              color: cyan
+              maxLines: 1
+              onTap: unitChoice = unit == "C" ? "F" : "C"
+            }
             Text { text: lower(trim(cur.weatherDesc[0].value)); style: body; maxLines: 2 }
           }
         }

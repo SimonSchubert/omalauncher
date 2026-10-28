@@ -72,6 +72,9 @@ class WaylandServer(
     /** Called from the UI when Android's clipboard changed; see [Selection.systemChanged]. */
     fun clipboardChanged() = inputThread.execute { synchronized(this) { selection.systemChanged() } }
 
+    /** Offers [text] to the focused window's next paste, ahead of the clipboard; see [Selection.insert]. */
+    fun insertText(text: String) = inputThread.execute { synchronized(this) { selection.insert(text) } }
+
     private val serial = AtomicInteger(1)
     private var listenFd = -1
 

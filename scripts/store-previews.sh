@@ -171,6 +171,8 @@ print(json.dumps({"days": days, "entries": [{"date": today.isoformat(), "v": v, 
     islamic) json='{"city":"Makkah","method":"4"}' ;;
     # Most of a day measured, with a few lost pings, so the day's figures show.
     network) json=$(printf '{"todayKey":"%s","todaySamples":5140,"todayFails":6,"todaySum":107800}' "$(adb shell date +%F | tr -d '\r')") ;;
+    # A public profile with a long streak, so Duo shows a streak instead of asking for a username.
+    duolingo) json='{"user":"luis"}' ;;
     *) return 0 ;;
   esac
   printf '{"v":1,"savedAt":%s,"values":%s}' "$(date +%s)" "$json" > "$WORK/state.json"

@@ -908,6 +908,15 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 12 }\n source n = android.network\n Text { text: 1 } }").contains("android.network needs owl 13"))
     }
 
+    @Test fun androidPower() {
+        val p = Compiler.compile("widget {\n meta { owl: 15 }\n source p = android.power every 2s\n Text { text: p.current + \" mA \" + p.watts + \" W\" } }")
+        val s = p.globals.first() as Global.Source
+        assertEquals("android.power", s.kind)
+        assertEquals(2.0, s.every, 0.0)
+        assertTrue(!p.needsLinux)
+        assertTrue(compileError("widget {\n meta { owl: 14 }\n source p = android.power every 2s\n Text { text: 1 } }").contains("android.power needs owl 15"))
+    }
+
     @Test fun androidAlarmModesAndPhoneActions() {
         val p = Compiler.compile("widget {\n meta { owl: 7 }\n source a = android.alarm\n source m = android.modes\n Text { text: a.time; onTap: { torch(\"toggle\"); torch(!m.torch); share(\"hi\"); haptic() } } }")
         assertEquals(listOf("android.alarm", "android.modes"), p.globals.map { (it as Global.Source).kind })
@@ -1088,6 +1097,46 @@ class LangTest {
             assertTrue(compileError("widget {\n meta { owl: 11 }\n $old }").contains("needs owl 12"))
             Compiler.compile("widget {\n meta { owl: 12 }\n $old }")
         }
+    }
+
+    @Test fun photosPickedPasteIntoTheWindow() {
+        val p = Compiler.compile("keybar {\n meta { owl: 15 }\n Box { onTap: pickImages(); Text { text: 1 } } }")
+        assertEquals(listOf("paste images you pick on Android into the Linux window you're typing in"), p.commands)
+        val host = TestHost(p)
+        (p.screen!!.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("pickImages "), host.actions)
+        assertTrue(compileError("keybar {\n meta { owl: 14 }\n Box { onTap: pickImages(); Text { text: 1 } } }").contains("needs owl 15"))
+        assertTrue(compileError("keybar {\n meta { owl: 15 }\n Box { onTap: pickImages(\"a\"); Text { text: 1 } } }").isNotEmpty())
+        for (h in listOf("onPress", "onRelease")) {
+            assertTrue(compileError("keybar {\n meta { owl: 15 }\n Box { $h: pickImages(); Text { text: 1 } } }").contains("put it in onTap"))
+        }
+        // A handler inside another node's doesn't carry over: the outer one is onTap again after it.
+        Compiler.compile("keybar {\n meta { owl: 15 }\n Box { onPress: haptic(); onTap: pickImages(); Text { text: 1 } } }")
+    }
+
+    @Test fun speechDictatesIntoASource() {
+        val src = "widget {\n meta { owl: 15 }\n source said = android.speech\n on said.final { if value { typeText(value) } }\n Text { text: said.text; onTap: speech(\"toggle\") } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.speech", (p.globals.single() as Global.Source).kind)
+        assertEquals("listen through the microphone after a tap, and read what you say", p.commands.first())
+        val host = TestHost(p)
+        (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("speech toggle"), host.actions)
+        assertTrue(compileError(src.replace("owl: 15", "owl: 14")).contains("needs owl 15"))
+        assertTrue(compileError(src.replace("\"toggle\"", "\"listen\"")).contains("speech takes start, stop, toggle, cancel"))
+        // Nothing comes back from it: what's heard is the source's.
+        assertTrue(compileError(src.replace("text: said.text", "text: speech(\"start\")")).contains("gives nothing back"))
+        assertTrue(compileError("widget {\n meta { owl: 15 }\n Text { text: 1; onTap: speech(\"start\") } }").contains("source said = android.speech"))
+        // Starting may ask for the microphone: from a tap, not a press or a trigger. Stopping from anywhere.
+        for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("start it in onTap"))
+        Compiler.compile(src.replace("onTap: speech(\"toggle\")", "onTap: speech(\"start\"); onRelease: speech(\"stop\")"))
+        assertTrue(compileError(src.replace("typeText(value)", "speech(\"start\")")).contains("not in a trigger"))
+        Compiler.compile(src.replace("typeText(value)", "speech(\"stop\")"))
+        // Only on said.final may type what was heard: not said.text, though it ends with the same words.
+        assertTrue(p.triggers.single().dictation)
+        assertFalse(Compiler.compile(src.replace("on said.final", "on said.text")).triggers.single().dictation)
+        val other = "widget {\n meta { owl: 15 }\n source said = android.speech\n state final = \"\"\n on final { typeText(value) }\n Text { text: said.text; onTap: speech(\"toggle\") } }"
+        assertFalse(Compiler.compile(other).triggers.single().dictation)
     }
 
     @Test fun keyNamesAndCombos() {
@@ -1843,24 +1892,41 @@ class LangTest {
         assertEquals(Num(70.0), host.slots[0])
     }
 
-    @Test fun mediaSessionNeedsOwl16AndIsReviewedAsGuestAccess() {
+    @Test fun mediaSessionNeedsOwl15AndIsReviewedAsGuestAccess() {
         val body = "onTap: mediaSession({title: \"Song\", playing: true, commands: {play: \"player play\"}})\n Text { text: 1 }"
-        assertTrue(compileError("widget {\n meta { owl: 15 }\n $body }").contains("needs owl 16"))
-        val p = Compiler.compile("widget {\n meta { owl: 16 }\n $body }")
+        assertTrue(compileError("widget {\n meta { owl: 14 }\n $body }").contains("needs owl 15"))
+        val p = Compiler.compile("widget {\n meta { owl: 15 }\n $body }")
         assertTrue(p.needsLinux)
         assertEquals(listOf("publish a Linux player's media controls to Android", "player play"), p.commands)
     }
 
+    @Test fun mediaSessionCoexistsWithExistingOwl15ActionsAndSources() {
+        val p = Compiler.compile("""widget {
+            meta { owl: 15 }
+            source said = android.speech
+            source power = android.power every 2s
+            Text {
+                text: said.text + power.watts
+                onTap: { media("pause"); pickImages(); speech("toggle"); mediaSession(null) }
+            }
+        }""")
+        val host = TestHost(p)
+        val node = p.root.single() as WNode.Element
+        node.handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("media pause", "pickImages ", "speech toggle", "mediaSession null"), host.actions)
+        assertEquals(15, Compiler.LEVEL)
+    }
+
     @Test fun mediaSessionReviewsCommandsAndRejectsOpaqueMaps() {
         val p = Compiler.compile("""widget {
-            meta { owl: 16 }
+            meta { owl: 15 }
             onTap: mediaSession({commands: {pause: "player pause", seek: "player seek"}})
             Text { text: 1 }
         }""")
         assertTrue("player pause" in p.commands)
         assertTrue("player seek" in p.commands)
         assertTrue(compileError("""widget {
-            meta { owl: 16 }
+            meta { owl: 15 }
             state player = {}
             onTap: mediaSession(player)
             Text { text: 1 }

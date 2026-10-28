@@ -51,6 +51,7 @@ import dev.omalauncher.ui.decodeImageIcon
 import dev.omalauncher.ui.decodeSvgIcon
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.wayland.AndroidClipboard
+import dev.omalauncher.wayland.GuestImages
 import dev.omalauncher.wayland.OutputInfo
 import dev.omalauncher.wayland.WaylandServer
 import dev.omalauncher.wayland.XdgToplevel
@@ -59,6 +60,7 @@ import dev.omalauncher.widgets.WidgetEngine
 import dev.omalauncher.widgets.WidgetSpec
 import dev.omalauncher.widgets.app
 import dev.omalauncher.widgets.lang.Program
+import dev.omalauncher.widgets.runtime.Dictation
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,6 +71,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
@@ -82,7 +85,8 @@ class Runtime(
     val proot = Proot(context)
     val wm = WindowManager()
     val server = WaylandServer(proot.waylandSocket.path, wm).also { wm.server = it }
-    val keyboard = KeyboardBridge(wm)
+    private val guestImages = GuestImages(context, File(proot.tmpDir, "clipboard"), proot::guestPath)
+    val keyboard = KeyboardBridge(wm, guestImages)
     val terminals = TerminalTiles(this)
     val style = StyleStore(context)
     val terminalFont = TerminalFont(proot, style)
@@ -98,6 +102,9 @@ class Runtime(
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
+
+    /** Widgets' speech(...) and android.speech. */
+    val dictation = Dictation(context)
     val updates = SystemUpdates(proot, pacman, agents)
     val gpu = Gpu(context, proot, pacman)
 
@@ -304,7 +311,8 @@ class Runtime(
         if (!servicesStarted) {
             servicesStarted = true
             updateOutput()
-            synchronized(server) { server.selection.system = AndroidClipboard(context, server::clipboardChanged) }
+            val clipboard = AndroidClipboard(context, guestImages, server::clipboardChanged)
+            synchronized(server) { server.selection.system = clipboard }
             context.registerComponentCallbacks(
                 object : ComponentCallbacks {
                     override fun onConfigurationChanged(newConfig: Configuration) = updateOutput()

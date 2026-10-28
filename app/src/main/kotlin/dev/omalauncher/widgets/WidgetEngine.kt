@@ -632,7 +632,8 @@ class WidgetEngine(
                 )
             prev?.let(inst::adopt)
             instances[spec.file.name] = inst
-            inst.start(scope) { isLive(spec) }
+            // The spec as it is now, not as loaded: a move to another page (placeOnPage) replaces it without a reload.
+            inst.start(scope) { isLive(specs.firstOrNull { it.file.name == name } ?: spec) }
         }
         // A screen whose widget went away, stopped compiling or lost its screen { } closes.
         if (openScreen?.let { instances[it]?.program?.screen } == null) openScreen = null

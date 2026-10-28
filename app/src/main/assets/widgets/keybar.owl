@@ -3,17 +3,22 @@ keybar "terminal key bar" {
   // yours to change: ask your agent to edit them. .stock-keybar.owl next to it is this file as the launcher ships it, kept
   // up to date: compare the two to see what changed in a newer launcher. If this file is gone or doesn't compile, the
   // stock keys show instead.
-  meta { description: "The key bar over the keyboard while typing in a terminal: esc, tab, ctrl, alt, the arrows, copy and paste"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  meta { description: "The key bar over the keyboard while typing in a terminal: esc, tab, ctrl, alt, the arrows, copy, paste and photos"; version: "1.1"; license: "MIT"; category: "system"; owl: 15 }
   // The launcher's chevron; currentColor takes the tint.
   asset chevron = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNNy40MSwxNS40MUwxMiwxMC44M2w0LjU5LDQuNThMMTgsMTRsLTYsLTYgLTYsNnoiLz48L3N2Zz4="
+  // Material Design Icons' copy, paste and image, for the clipboard keys and the one that pastes photos.
+  asset copyIcon = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTksMjFIOFY3SDE5TTE5LDVIOEEyLDIgMCAwLDAgNiw3VjIxQTIsMiAwIDAsMCA4LDIzSDE5QTIsMiAwIDAsMCAyMSwyMVY3QTIsMiAwIDAsMCAxOSw1TTE2LDFINEEyLDIgMCAwLDAgMiwzVjE3SDRWM0gxNlYxWiIvPjwvc3ZnPg=="
+  asset pasteIcon = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTksMjBINVY0SDdWN0gxN1Y0SDE5TTEyLDJBMSwxIDAgMCwxIDEzLDNBMSwxIDAgMCwxIDEyLDRBMSwxIDAgMCwxIDExLDNBMSwxIDAgMCwxIDEyLDJNMTksMkgxNC44MkMxNC40LDAuODQgMTMuMywwIDEyLDBDMTAuNywwIDkuNiwwLjg0IDkuMTgsMkg1QTIsMiAwIDAsMCAzLDRWMjBBMiwyIDAgMCwwIDUsMjJIMTlBMiwyIDAgMCwwIDIxLDIwVjRBMiwyIDAgMCwwIDE5LDJaIi8+PC9zdmc+"
+  asset photo = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTksMTlINVY1SDE5TTE5LDNINUEyLDIgMCAwLDAgMyw1VjE5QTIsMiAwIDAsMCA1LDIxSDE5QTIsMiAwIDAsMCAyMSwxOVY1QTIsMiAwIDAsMCAxOSwzTTEzLjk2LDEyLjI5TDExLjIxLDE1LjgzTDkuMjUsMTMuNDdMNi41LDE3SDE3LjVMMTMuOTYsMTIuMjlaIi8+PC9zdmc+"
   // Whether ctrl, alt and shift are latched: "off", "once" (for the next key) or "locked".
   source kb = android.modifiers
   // The key under the finger, drawn pressed.
   state down = ""
 
   // Each key: what it shows, then what it sends, pressKey(...)'s names, or the modifier it latches. repeats: held, it
-  // sends again and again, like a keyboard's arrows; arrow: a chevron turned that many degrees instead of the label.
-  // Ctrl+Insert and Shift+Insert are the clipboard keys foot, GTK and Qt all know.
+  // sends again and again, like a keyboard's arrows; arrow: a chevron turned that many degrees instead of the label;
+  // icon: an asset shown instead of the label. Ctrl+Insert and Shift+Insert are the clipboard keys foot, GTK and Qt all
+  // know. images: Android's photo picker, whose picks paste as their paths in Linux, which opencode and Claude Code attach.
   let rows = [
     [
       {label: "esc", key: "esc"},
@@ -23,7 +28,8 @@ keybar "terminal key bar" {
       {label: "up", key: "up", repeats: true, arrow: 0},
       {label: "end", key: "end"},
       {label: "pgup", key: "pgup", repeats: true},
-      {label: "copy", key: "ctrl+insert"}
+      {label: "copy", key: "ctrl+insert", icon: copyIcon},
+      {label: "|", key: "|"}
     ],
     [
       {label: "tab", key: "tab"},
@@ -33,7 +39,8 @@ keybar "terminal key bar" {
       {label: "down", key: "down", repeats: true, arrow: 180},
       {label: "right", key: "right", repeats: true, arrow: 90},
       {label: "pgdn", key: "pgdn", repeats: true},
-      {label: "paste", key: "shift+insert"}
+      {label: "paste", key: "shift+insert", icon: pasteIcon},
+      {label: "photos", images: true, icon: photo}
     ]
   ]
 
@@ -55,9 +62,28 @@ keybar "terminal key bar" {
       onRelease: down = ""
       if k.arrow != null {
         Image { src: chevron; size: 20; rotation: k.arrow; tint: down == k.label ? background : foreground; label: k.label }
+      } else if k.icon != null {
+        Image { src: k.icon; size: 20; tint: down == k.label ? background : foreground; label: k.label }
       } else {
         Text { text: k.label; font: mono; fontSize: 14; maxLines: 1; align: center; color: down == k.label ? background : foreground }
       }
+    }
+  }
+
+  // The photo picker opens on a tap, not as the finger goes down: it covers the bar before the finger lifts.
+  component Images(k) {
+    Box {
+      fill: true
+      align: center
+      radius: 8 * corners
+      background: down == k.label ? accent : surface
+      onPress: {
+        down = k.label
+        haptic()
+      }
+      onRelease: down = ""
+      onTap: pickImages()
+      Image { src: k.icon; size: 20; tint: down == k.label ? background : foreground; label: k.label }
     }
   }
 
@@ -101,6 +127,8 @@ keybar "terminal key bar" {
               padding: 3
               if k.latch != null {
                 Latched { k: k }
+              } else if k.images ?? false {
+                Images { k: k }
               } else {
                 Plain { k: k }
               }

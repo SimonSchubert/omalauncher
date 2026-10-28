@@ -4,13 +4,40 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
-## Unreleased
+## 0.14.0 (versionCode 25) – 2026-10-27
 
 - Tapping a now-playing widget brings up the player's own screen, like a web app's
   window when one installed from a browser plays, rather than a new browser tab.
 - A drawer can leave the keyboard down as it opens, for scrolling the apps rather
   than searching them: owl 15's `keyboard: false` in `drawer.owl`. Tapping the
   bar brings it up.
+- Images go into a terminal as the path they're saved to in Linux's /tmp, which
+  opencode and Claude Code attach: tap a screenshot or copied image in Gboard's
+  clipboard suggestions, or paste an image copied on Android (Chrome's Copy image).
+  Copied text pastes as before. The terminal key bar's new photos key, beside paste, opens Android's
+  photo picker and pastes the photos picked the same way, several at once; above it, a `|` key. Owl 15's
+  `pickImages()` does it in a key bar of your own.
+- The today widget's weather screen switches between °C and °F when you tap the
+  temperature's °C or °F, and keeps the scale picked; until then it follows the country.
+- A widget can turn home to another page: `launcher("page:0")` shows the face left of
+  page 1, as Super+1…9 does for pages 1 to 9, so a tile can lead to the face that shows more of it.
+- Widgets can take dictation: owl 15's `speech("toggle")` turns the microphone on and off from a
+  tap, and `source said = android.speech` has what's heard, as you speak and once you're done, so a
+  widget can show it, run a command with it, or type it into a terminal with `on said.final`. The
+  phone recognizes the speech, as for the prompt bar, and only the text reaches the widget (#84).
+- Widgets can show how fast the phone charges: owl 15's `source p = android.power every 2s` has the
+  battery's current in mA, its watts, the mAh it holds, Android's time to full and what the charger
+  offers, the same units and sign on every phone (#226).
+- Home's empty pages at either end can be turned off in style.toml or the Style screen:
+  `home.empty-page-left = false` drops the one left of the leftmost page, and
+  `home.empty-page-right = false` the one after the last page of tiles (#202, #205).
+- GTK3 and wxWidgets apps (PrusaSlicer) leave out their own title bar and window buttons,
+  which only took space on a phone; apps with their own header bar keep it (#215).
+- A Linux window too big for the screen is drawn shrunk to fit, keeping its shape, instead of
+  running off the right and bottom edges, and touches map back to it (#218).
+- Fixes: a widget node with `clip: true` and a negative radius crashed home; a widget home
+  placed on another page, or one moved there, stopped updating two pages away until the
+  launcher restarted; a GTK app with a header bar kept asking how to decorate its window.
 
 ## 0.13.0 (versionCode 24) – 2026-10-25
 
