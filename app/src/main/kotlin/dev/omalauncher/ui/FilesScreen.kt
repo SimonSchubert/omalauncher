@@ -49,12 +49,18 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 
-/** A touch-first file manager for the guest filesystem, in the Omarchy theme. */
+/**
+ * A touch-first file manager for the guest filesystem, in the Omarchy theme.
+ * With [pick], it's a Linux app's file dialog: files are picked, not opened,
+ * and [onPicked] gets the guest paths; [onExit] is then a cancel.
+ */
 @Composable
 fun FilesScreen(
     runtime: Runtime,
     startPath: String,
     onExit: () -> Unit,
+    pick: FilePick? = null,
+    onPicked: (List<String>) -> Unit = {},
 ) {
     val context = LocalContext.current
     val fs = runtime.proot.guestFs
@@ -62,7 +68,9 @@ fun FilesScreen(
 
     var path by remember(startPath) { mutableStateOf(fs.normalize(startPath)) }
     val history = remember(startPath) { mutableStateListOf<String>() }
-    var showHidden by remember { mutableStateOf(true) }
+    // A dialog lists what an app's user usually wants: dotfiles stay out of the way, as in GTK's.
+    var showHidden by remember { mutableStateOf(pick == null) }
+    var saveName by remember { mutableStateOf(pick?.name.orEmpty()) }
     var query by remember { mutableStateOf<String?>(null) }
     val selected = remember { mutableStateListOf<String>() }
     var reload by remember { mutableIntStateOf(0) }
@@ -155,9 +163,33 @@ fun FilesScreen(
             null
         }
 
+    fun save() {
+        val target = path.trimEnd('/') + "/" + saveName.trim()
+        scope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { fs.host(target).exists() } }
+            result.fold(
+                onSuccess = { exists -> if (exists) dialog = FileDialog.Replace(target) else onPicked(listOf(target)) },
+                onFailure = { toast("can't save ${saveName.trim()}: ${it.message}") },
+            )
+        }
+    }
+
     fun open(entry: GuestEntry) {
         if (entry.isDir) return navigate(fs.resolve(entry.path))
         val file = hostFile(entry) ?: return
+        if (pick != null) {
+            when (pick.mode) {
+                FilePick.Mode.Open ->
+                    if (!pick.multiple) {
+                        onPicked(listOf(entry.path))
+                    } else if (!selected.remove(entry.path)) {
+                        selected += entry.path
+                    }
+                FilePick.Mode.Save -> saveName = entry.name
+                FilePick.Mode.Folder -> {}
+            }
+            return
+        }
         when {
             isImage(entry.name) -> viewing = file
             isText(entry.name, file) -> edit(entry)
@@ -217,6 +249,7 @@ fun FilesScreen(
                             },
                         )
                     }
+                    pick != null -> PanelTitle(pick.heading)
                     else ->
                         PanelTitle(
                             when (path) {
@@ -234,11 +267,11 @@ fun FilesScreen(
                         PanelIcon(Icons.More, "more") { menuOpen = true }
                         if (menuOpen) {
                             MenuPopup(
-                                listOf(
-                                    "new file" to { dialog = FileDialog.NewFile },
+                                listOfNotNull(
+                                    ("new file" to { dialog = FileDialog.NewFile }).takeIf { pick == null },
                                     "new folder" to { dialog = FileDialog.NewFolder },
                                     (if (showHidden) "hide hidden files" else "show hidden files") to { showHidden = !showHidden },
-                                    "open terminal here" to { runtime.terminal("cd ${shellQuote(path)} && exec bash", "Terminal") },
+                                    ("open terminal here" to { runtime.terminal("cd ${shellQuote(path)} && exec bash", "Terminal") }).takeIf { pick == null },
                                 ),
                                 onDismiss = { menuOpen = false },
                             )
@@ -270,13 +303,14 @@ fun FilesScreen(
                                     entry = entry,
                                     selected = entry.path in selected,
                                     onClick = {
-                                        if (selected.isEmpty()) {
+                                        if (selected.isEmpty() || pick != null) {
                                             open(entry)
                                         } else if (!selected.remove(entry.path)) {
                                             selected += entry.path
                                         }
                                     },
-                                    onLongClick = { if (entry.path !in selected) selected += entry.path },
+                                    // Picking, there's nothing to do with a selection but pick it.
+                                    onLongClick = { if (pick == null && entry.path !in selected) selected += entry.path },
                                 )
                             }
                         }
@@ -287,7 +321,13 @@ fun FilesScreen(
             val clip = FileClipboard.paths
             // Keys on a bar as it goes, after copy or cut, go to paste here, and after that to the list.
             val paste = remember { FocusRequester() }
-            if (selected.isNotEmpty()) {
+            if (pick != null) {
+                when (pick.mode) {
+                    FilePick.Mode.Open -> if (pick.multiple) PickFilesBar(selected.size) { onPicked(selected.toList()) }
+                    FilePick.Mode.Folder -> PickFolderBar(path) { onPicked(listOf(path)) }
+                    FilePick.Mode.Save -> SaveBar(saveName, onName = { saveName = it }, onSave = ::save)
+                }
+            } else if (selected.isNotEmpty()) {
                 val single = entries?.firstOrNull { it.path == selected.singleOrNull() }
                 // Sniffing a file for text reads it: off the main thread, once per selection.
                 val singleIsText by produceState(false, single?.path) {
@@ -356,6 +396,11 @@ fun FilesScreen(
                 dialog = null
                 operate { fs.rename(d.entry.path, name) }
             }
+        is FileDialog.Replace ->
+            ConfirmDialog("replace ${d.path.substringAfterLast('/')}?", "It's already there.", "replace", onDismiss = { dialog = null }) {
+                dialog = null
+                onPicked(listOf(d.path))
+            }
         is FileDialog.Delete -> {
             val what = if (d.paths.size == 1) d.paths[0].substringAfterLast('/') else "${d.paths.size} items"
             ConfirmDialog("delete $what?", "This can't be undone.", "delete", onDismiss = { dialog = null }) {
@@ -377,5 +422,9 @@ private sealed interface FileDialog {
 
     data class Delete(
         val paths: List<String>,
+    ) : FileDialog
+
+    data class Replace(
+        val path: String,
     ) : FileDialog
 }

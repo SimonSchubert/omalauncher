@@ -23,6 +23,10 @@ class OpenBridge(
     private val onOpenFiles: (String) -> Unit,
     /** A guest path to edit, and the host path of the FIFO that gets the reply once it's closed. */
     private val onEdit: (String, String) -> Unit,
+    /** A file dialog's request (FilePick.parse's fields), and the guest path of its reply FIFO, resolved again on reply. */
+    private val onPick: (List<String>, String) -> Unit,
+    /** Linux apps' notifications, from the guest's notification service. */
+    private val notifications: LinuxNotifications,
 ) {
     private val fifo = File(proot.runtimeDir, "open.fifo")
     private val guestFifo = "${Proot.GUEST_RUNTIME_DIR}/${fifo.name}"
@@ -56,6 +60,20 @@ class OpenBridge(
         if (url.startsWith(EDIT_PREFIX)) {
             val (reply, path) = url.removePrefix(EDIT_PREFIX).split(' ', limit = 2).takeIf { it.size == 2 } ?: return
             return onEdit(path, proot.guestFile(reply)?.path ?: return)
+        }
+        // Written by the guest's notification service: id, app, title, text, tab-separated and escaped.
+        if (url.startsWith(NOTIFY_PREFIX)) {
+            val f = url.removePrefix(NOTIFY_PREFIX).split('\t')
+            val id = f.getOrNull(0)?.toIntOrNull() ?: return
+            return notifications.post(id, LinuxNotifications.unescape(f.getOrElse(1) { "" }), LinuxNotifications.unescape(f.getOrElse(2) { "" }), LinuxNotifications.unescape(f.getOrElse(3) { "" }))
+        }
+        if (url.startsWith(NOTIFY_CLOSE_PREFIX)) return url.removePrefix(NOTIFY_CLOSE_PREFIX).toIntOrNull()?.let(notifications::close) ?: Unit
+        // Written by the file chooser portal: its reply FIFO, then the request, tab-separated.
+        if (url.startsWith(PICK_PREFIX)) {
+            val fields = url.removePrefix(PICK_PREFIX).split('\t')
+            val reply = fields.first().takeIf { it.startsWith(Proot.GUEST_RUNTIME_DIR + "/") && !it.contains("..") } ?: return
+            if (guestReplyFile(proot.guestFs, reply) == null) return
+            return onPick(fields.drop(1), reply)
         }
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
             Log.i(TAG, "ignoring non-URL $url")
@@ -112,5 +130,8 @@ class OpenBridge(
     private companion object {
         const val FILES_PREFIX = "omarchy-files:"
         const val EDIT_PREFIX = "omarchy-edit:"
+        const val PICK_PREFIX = "omarchy-pick:"
+        const val NOTIFY_PREFIX = "omarchy-notify:"
+        const val NOTIFY_CLOSE_PREFIX = "omarchy-notify-close:"
     }
 }

@@ -4,6 +4,8 @@ import android.util.Log
 import dev.omalauncher.sha256Hex
 import org.json.JSONObject
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermission
 
 /** How a launcher-written file treats the copy on disk. */
 enum class Policy {
@@ -25,6 +27,15 @@ class Managed(
     val executable: Boolean = false,
     val content: () -> ByteArray,
 ) {
+    internal var mode: Int? = null
+        private set
+
+    /** cupsd uses owner-only execute permission to identify privileged backends. */
+    fun withMode(value: Int) = apply {
+        require(value in 0..0x1ff)
+        mode = value
+    }
+
     companion object {
         fun text(
             file: File,
@@ -69,7 +80,8 @@ class ManagedFiles(
             try {
                 val bytes = m.content()
                 val sha = sha256Hex(bytes)
-                if (current != sha) writeAtomically(m.file, bytes, m.executable)
+                if (current != sha) writeAtomically(m.file, bytes, m.executable, m.mode)
+                else m.mode?.let { setMode(m.file, it) }
                 next[key] = sha
             } catch (e: Exception) {
                 // Keeps the old record: the next sync tries again, and nothing counts as removed.
@@ -112,6 +124,7 @@ fun writeAtomically(
     file: File,
     bytes: ByteArray,
     executable: Boolean = false,
+    mode: Int? = null,
 ) {
     file.parentFile?.mkdirs()
     val tmp = File(file.parentFile, ".${file.name}.tmp")
@@ -121,8 +134,19 @@ fun writeAtomically(
         it.fd.sync()
     }
     if (executable) tmp.setExecutable(true, false)
+    mode?.let { setMode(tmp, it) }
     if (!tmp.renameTo(file)) {
         tmp.delete()
         error("can't replace $file")
     }
+}
+
+private fun setMode(file: File, mode: Int) {
+    require(mode in 0..0x1ff)
+    val bits = listOf(
+        PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE,
+        PosixFilePermission.GROUP_READ, PosixFilePermission.GROUP_WRITE, PosixFilePermission.GROUP_EXECUTE,
+        PosixFilePermission.OTHERS_READ, PosixFilePermission.OTHERS_WRITE, PosixFilePermission.OTHERS_EXECUTE,
+    )
+    Files.setPosixFilePermissions(file.toPath(), bits.filterIndexed { i, _ -> mode and (1 shl (8 - i)) != 0 }.toSet())
 }

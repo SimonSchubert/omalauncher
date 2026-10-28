@@ -28,6 +28,14 @@ import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
+import dev.omalauncher.linux.SessionBus
+import dev.omalauncher.linux.GuestPortal
+import dev.omalauncher.linux.GuestPrinting
+import dev.omalauncher.linux.PortalAppearance
+import dev.omalauncher.linux.PortalAccessibility
+import dev.omalauncher.linux.PortalSystemStatus
+import dev.omalauncher.linux.AndroidPortals
+import dev.omalauncher.linux.LinuxNotifications
 import dev.omalauncher.linux.SystemUpdates
 import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.TerminalFont
@@ -68,7 +76,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -96,7 +107,13 @@ class Runtime(
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
-    private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit)
+    private val sessionBus = SessionBus(proot)
+    private val printing = GuestPrinting(context, proot)
+    private val systemStatus = PortalSystemStatus(context, proot.runtimeDir)
+    private val portalAccessibility = PortalAccessibility(context)
+    private val appearanceWrites = Mutex()
+    internal val portals = AndroidPortals(context, proot).apply { onOpenFiles = ::openFiles }
+    private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit, onPick = ::pick, notifications = LinuxNotifications(context))
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
@@ -117,6 +134,8 @@ class Runtime(
             listOf(
                 { defaultApps(proot.applications) },
                 { bundledIcons(context, proot.home) },
+                GuestPortal(context, proot)::managed,
+                printing::managed,
                 openBridge::managed,
                 pacman::managed,
                 agents::managed,
@@ -142,7 +161,7 @@ class Runtime(
         private set
 
     /** Linux is installed and its services run: guest commands (like the update check) can go. */
-    private var linux = false
+    private var linux by mutableStateOf(false)
 
     /** The Linux install and removal; one at a time. */
     private var linuxJob: Job? = null
@@ -151,6 +170,12 @@ class Runtime(
         // Saved, so removing Linux later doesn't bring the first-run screen back.
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
         themes.loadPalette()
+        scope.launch {
+            combine(
+                snapshotFlow { Triple(linux, Palette.isLight, Palette.accent.toArgb()) },
+                portalAccessibility.preferences,
+            ) { style, _ -> style.first }.collect { ready -> if (ready) updatePortalAppearance() }
+        }
         // An agent or the user edited style.toml; the rest of the style is read where it's drawn.
         style.onExternalChange = { old, new ->
             val changed = new.changed(old)
@@ -241,8 +266,13 @@ class Runtime(
         linuxJob =
             scope.launch {
                 install?.cancel()
+                stopPortalStatus()
+                sessionBus.stop()
+                printing.stop()
+                portals.stop()
                 withContext(Dispatchers.IO) { proot.killAll() }
                 install?.join()
+                stopPortalStatus()
                 bootstrap.remove()
                 setService(false)
             }
@@ -274,9 +304,13 @@ class Runtime(
         linuxJob =
             scope.launch {
                 linux = false
+                stopPortalStatus()
                 launcherFont.forget()
                 widgets.linuxChanged(false)
                 audio.stop()
+                sessionBus.stop()
+                printing.stop()
+                portals.stop()
                 withContext(Dispatchers.IO) { proot.killAll() }
                 bootstrap.remove()
                 withContext(Dispatchers.IO) {
@@ -289,10 +323,35 @@ class Runtime(
             }
     }
 
-    /** The foreground service keeps the process, and with it Linux, alive; only while Linux is installed or installing. */
+    /** Request foreground priority while Linux is installed/installing; not an unlimited lifetime guarantee. */
     private fun setService(on: Boolean) {
+        if (!on) {
+            stopPortalStatus()
+            printing.stop()
+            portals.stop()
+        }
         // Android 12+ refuses a foreground service started from the background; the work then goes on without it.
         runCatching { LinuxService.set(context, on) }.onFailure { Log.w(TAG, "cannot start the service", it) }
+    }
+
+    private fun stopPortalStatus() {
+        systemStatus.stop()
+        portalAccessibility.stop()
+    }
+
+    /** Serialize initial and reactive writes, reading the latest state after
+     * acquiring ownership so an older startup write cannot overwrite a change. */
+    private suspend fun updatePortalAppearance() {
+        appearanceWrites.withLock {
+            if (!linux) return@withLock
+            val light = Palette.isLight
+            val accent = Palette.accent.toArgb()
+            val preferences = portalAccessibility.preferences.value
+            withContext(Dispatchers.IO) {
+                runCatching { PortalAppearance.write(proot.runtimeDir, light, accent, preferences) }
+                    .onFailure { Log.w(TAG, "cannot update portal appearance", it) }
+            }
+        }
     }
 
     /** Guest configs follow the theme and the installed agents; only while there is a guest. */
@@ -327,6 +386,7 @@ class Runtime(
             // Linux installed again: its new home has no foot-font.ini yet.
             terminalFont.write()
         }
+        portalAccessibility.start()
         linux = true
         // A font picked from Linux that wasn't remembered at start (or was installed since) loads now.
         scope.launch { launcherFont.apply() }
@@ -336,6 +396,13 @@ class Runtime(
         themes.renderGuest()
         withContext(Dispatchers.IO) {
             provisioner.sync()
+        }
+        updatePortalAppearance()
+        withContext(Dispatchers.IO) {
+            systemStatus.start()
+            portals.start()
+            printing.start()
+            sessionBus.start()
             audio.start()
             synchronized(server) { server.input.setKeymap(proot.keymap.path) }
             agents.load()
@@ -612,6 +679,14 @@ class Runtime(
     /** Opens the owl app in file [name] in its own task; nothing if it isn't running (removed, or broken). */
     fun openOwlApp(name: String) {
         if (widgets.isApp(name)) InstantActivity.startInstantly(context, OwlAppActivity.intent(context, name))
+    }
+
+    /** Shows a Linux app's file dialog: the Files app picking, answering on [reply] (see [FilePickActivity]). */
+    fun pick(
+        request: List<String>,
+        reply: String,
+    ) {
+        InstantActivity.startInstantly(context, FilePickActivity.intent(context, request, reply))
     }
 
     /** Opens the Files app, at [path] (a guest path) if given. */

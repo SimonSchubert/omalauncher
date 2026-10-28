@@ -1,0 +1,20 @@
+# The launcher provides some things itself that packages depend on; this empty package tells pacman so.
+#  - bubblewrap: the launcher puts its own bwrap at /usr/bin/bwrap (bubblewrap can't sandbox under proot).
+#  - xdg-desktop-portal(-gtk): the launcher installs its portal (omalauncher-portal, built from this folder
+#    into the APK by scripts/guest-portal/build.sh) under /usr/local. The real one can't run under proot: it
+#    identifies callers through /proc/<pid>/root. gtk4 depends on it.
+# makepkg's fakeroot needs SysV IPC, which Android lacks: run makepkg as a user to the packaging step, then
+# finish that as root with FAKEROOTKEY=proot makepkg -F (proot already fakes root).
+pkgname=omalauncher-guest
+pkgver=1
+pkgrel=1
+pkgdesc="Tells pacman what omalauncher provides in Linux: bwrap and the desktop portal"
+arch=(any)
+license=(MIT)
+provides=(bubblewrap=0.13.1 xdg-desktop-portal xdg-desktop-portal-impl xdg-desktop-portal-gtk)
+conflicts=(bubblewrap xdg-desktop-portal xdg-desktop-portal-gtk)
+replaces=(omalauncher-bwrap omalauncher-portal)
+
+package() {
+  :
+}

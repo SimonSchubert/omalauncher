@@ -44,6 +44,7 @@ class LinuxService : Service() {
             if (pending == 0) stopSelf()
             return START_NOT_STICKY
         }
+        (application as App).runtime.portals.allowInhibitors()
         if (watch == null) {
             watch =
                 scope.launch {
@@ -56,6 +57,7 @@ class LinuxService : Service() {
     }
 
     override fun onDestroy() {
+        (application as App).runtime.portals.releaseInhibitors()
         scope.cancel()
         super.onDestroy()
     }

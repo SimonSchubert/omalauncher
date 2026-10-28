@@ -17,3 +17,5 @@ fastlane/README.md
 keystore.properties
 # captured by scripts/collage-captures.sh
 store/collage/raw/
+# host-side verification helpers
+__pycache__/

@@ -203,8 +203,8 @@ internal fun PasteBar(
 
 /** A surface row of [BracketAction]s under the list. */
 @Composable
-private fun BottomBar(
-    modifier: Modifier,
+internal fun BottomBar(
+    modifier: Modifier = Modifier,
     content: @Composable RowScope.() -> Unit,
 ) {
     Row(

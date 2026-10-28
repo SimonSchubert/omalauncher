@@ -91,6 +91,27 @@ class ManagedFilesTest {
         assertTrue(File(base, "run").canExecute())
     }
 
+    @Test fun ownerOnlyBackendModeIsPublishedAndRepaired() {
+        val backend = File(base, "backend")
+        val desired = Managed.text(backend, Policy.Owned, executable = true) { "backend fixture" }.withMode(0b111000000)
+        val ownerOnly = java.nio.file.attribute.PosixFilePermissions.fromString("rwx------")
+        files.sync(listOf(desired))
+        assertEquals(ownerOnly, java.nio.file.Files.getPosixFilePermissions(backend.toPath()))
+        java.nio.file.Files.setPosixFilePermissions(backend.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rwxr-xr-x"))
+        files.sync(listOf(desired))
+        assertEquals(ownerOnly, java.nio.file.Files.getPosixFilePermissions(backend.toPath()))
+        assertEquals("backend fixture", backend.readText())
+    }
+
+    @Test fun atomicReplacementAppliesModeBeforePublication() {
+        val backend = File(base, "atomic-backend")
+        writeAtomically(backend, "first".toByteArray(), executable = true, mode = 0b111000000)
+        writeAtomically(backend, "replacement".toByteArray(), executable = true, mode = 0b111000000)
+        assertEquals("replacement", backend.readText())
+        assertEquals(java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"), java.nio.file.Files.getPosixFilePermissions(backend.toPath()))
+        assertFalse(File(base, ".atomic-backend.tmp").exists())
+    }
+
     @Test fun aFailedWriteRemovesNothingAndRetries() {
         files.sync(listOf(seeded("a.conf", "v1"), seeded("b.conf", "x")))
         val broken = Managed(File(base, "a.conf"), Policy.Seeded) { error("asset missing") }
