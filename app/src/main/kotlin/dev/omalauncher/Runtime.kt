@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.linux.AGENTS
 import dev.omalauncher.linux.Agent
+import dev.omalauncher.linux.AgentDaemon
 import dev.omalauncher.linux.AgentStore
 import dev.omalauncher.linux.AudioBridge
 import dev.omalauncher.linux.Bootstrap
@@ -98,6 +99,7 @@ class Runtime(
     private val audio = AudioBridge(proot)
     private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit)
     val agents = AgentStore(proot, onChanged = ::syncGuest)
+    private val agentDaemon = AgentDaemon(proot, agents)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
 
@@ -277,6 +279,7 @@ class Runtime(
                 launcherFont.forget()
                 widgets.linuxChanged(false)
                 audio.stop()
+                agentDaemon.stop()
                 withContext(Dispatchers.IO) { proot.killAll() }
                 bootstrap.remove()
                 withContext(Dispatchers.IO) {
@@ -339,6 +342,7 @@ class Runtime(
             audio.start()
             synchronized(server) { server.input.setKeymap(proot.keymap.path) }
             agents.load()
+            agentDaemon.start()
         }
         widgets.linuxChanged(true)
         refreshApps()
