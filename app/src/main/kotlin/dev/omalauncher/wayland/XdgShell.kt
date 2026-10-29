@@ -230,8 +230,8 @@ class XdgToplevel(
         val states =
             buildList {
                 if (active) add(4) // activated
+                add(1) // maximized: ensures clients obey configured dimensions and adapt dynamically
                 if (version >= 2) addAll(listOf(5, 6, 7, 8)) // tiled on all edges
-                else add(1) // maximized: best "don't draw shadows" hint for v1 clients
             }
         send(event(0).int(width).int(height).ints(states.toIntArray()))
         xdg.sendConfigure()
