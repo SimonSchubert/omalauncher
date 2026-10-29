@@ -1,0 +1,389 @@
+widget "airpods" {
+  page: 1
+  order: 21
+  size: 6x2
+  minSize: 2x1
+
+  meta { owl: 17; description: "Your AirPods: each bud's and the case's battery, the listening mode and the settings, more of it the bigger the tile. Tap the mode to switch it, the tile for the rest."; version: "1.0"; license: "MIT"; category: "system" }
+
+  // Read over the AirPods' own link while the tile shows. Until the launcher may use Bluetooth, a tap asks for it.
+  source a = android.airpods
+
+  // What they said last while connected, kept across restarts: shown faded while they're away. And each battery as it
+  // was last, for one that goes, like the case as its lid shuts on a bud.
+  state last = null persist
+  state lastLeft = null persist
+  state lastRight = null persist
+  state lastCase = null persist
+  on a first {
+    if value.connected {
+      // Another pair: what the last one said is no use. By name, and by family once both are known: each bud has a
+      // model number of its own, and the model comes a moment after the link.
+      if last != null && (value.name != last.name || (value.model != null && last.model != null && value.model != last.model)) {
+        lastLeft = null
+        lastRight = null
+        lastCase = null
+      }
+      last = value
+      if value.left != null { lastLeft = value.left }
+      if value.right != null { lastRight = value.right }
+      if value.case != null { lastCase = value.case }
+    }
+  }
+
+  let p = a.connected ? a : last
+  let fade = a.connected ? 1 : 0.4
+  // Why it's faded, in place of the mode.
+  let away = !a.available ? "tap to allow" : "not connected"
+  let leftBat = a.left ?? lastLeft
+  let rightBat = a.right ?? lastRight
+  let caseBat = a.case ?? lastCase
+
+  let modeNames = {off: "off", anc: "noise cancellation", transparency: "transparency", adaptive: "adaptive"}
+  let modeShort = {off: "off", anc: "anc", transparency: "transp", adaptive: "adaptive"}
+  let leftDoing = a.left == null ? "" : (a.left.charging ? "charging" : (a.left.inEar ? "in ear" : (a.left.inCase ? "in case" : "out")))
+  let rightDoing = a.right == null ? "" : (a.right.charging ? "charging" : (a.right.inEar ? "in ear" : (a.right.inCase ? "in case" : "out")))
+  // The emptiest bud, for a tile with room for one number.
+  let lowest = min([leftBat, rightBat, p.headset].filter(b => b != null).map(b => b.level))
+  let hasSettings = p.conversation != null || p.oneBud != null || p.earDetection != null
+  // Text that matters less, readable still: the theme's muted is too faint on a tile over the wallpaper.
+  let dim = alpha(foreground, 0.65)
+
+  // What the tile has room for, by its size in dp; a cell is about 70 on a phone.
+  let w = tileWidth ?? 440
+  let h = tileHeight ?? 150
+  let oneRow = h < 110
+  let slim = w < 180
+  let narrow = w < 300
+  let tall = h >= 210
+  let big = h >= 290
+  // A battery cell's percent as large as the tile allows: a fifth of its height, and "100%" no wider than the cell.
+  let cells = p.headset != null ? 1 : (slim ? 2 : 3)
+  let cellFont = clamp(min(h * 0.2, (w - 24 - 14 * (cells - 1)) / cells / 2.9), 14, 44)
+
+  onTap: {
+    if a.available {
+      screen()
+    } else {
+      airpods("connect")
+    }
+  }
+
+  // The listening mode, a tap going on to the next; while they're away, why.
+  component ModeChip(short) {
+    if !a.connected {
+      Text { text: short && a.available ? "offline" : away; style: small; color: a.available ? dim : accent; maxLines: 1 }
+    } else if p.mode != null {
+      Text { text: get(modeShort, p.mode, p.mode); style: small; color: p.mode == "off" ? dim : accent; padding: [10, 4]; radius: 3 * corners; background: p.mode == "off" ? surface : alpha(accent, 0.2); onTap: { haptic(); airpods("next") } }
+    }
+  }
+
+  // The model, and the mode to switch where the tile has no row of them.
+  component Header(large, chip) {
+    Row {
+      fill: width
+      align: center
+      gap: 8
+      Text { text: p.model ?? p.name ?? "AirPods"; style: large ? "title" : "body"; maxLines: 1; weight: 1; opacity: fade }
+      // Conversation Awareness has turned the volume down.
+      if a.speaking && large { Text { text: "speaking"; style: small; color: yellow } }
+      if chip || !a.connected { ModeChip { short: !large } }
+    }
+  }
+
+  // A battery as a number: green while it charges, faded at its last while it's gone.
+  component Pct(name, b, large, gone) {
+    Text { spans: [{text: "${name} ", color: dim}, b == null ? "--" : "${b.level}%"]; style: large ? "body" : "small"; color: b != null && b.charging && !gone ? green : foreground; maxLines: 1; opacity: gone ? 0.4 : 1 }
+  }
+
+  // A battery standing up: what it is and what it's doing, the percent and a bar under it; faded at its last while it's
+  // gone.
+  component Cell(name, b, font, doing, gone) {
+    Column {
+      gap: 2
+      opacity: gone ? 0.4 : 1
+      Text { text: doing == "" ? name : "${name} · ${doing}"; style: small; color: dim; maxLines: 1 }
+      Text { text: b == null ? "--" : "${b.level}%"; fontSize: font; color: b == null ? dim : (b.charging && !gone ? green : foreground); maxLines: 1 }
+      Progress { value: b.level ?? 0; color: b == null ? alpha(foreground, 0.15) : (b.charging && !gone ? green : (b.level <= 20 ? red : foreground)); track: alpha(foreground, 0.15); fill: width; height: 3 }
+    }
+  }
+
+  component Cells(withCase, font, doing) {
+    Row {
+      fill: width
+      gap: 14
+      if p.headset != null {
+        Cell { name: "battery"; b: p.headset; font: font; doing: doing && p.headset.charging ? "charging" : ""; gone: false; weight: 1 }
+      } else {
+        Cell { name: "left"; b: leftBat; font: font; doing: doing ? leftDoing : ""; gone: a.connected && a.left == null; weight: 1 }
+        Cell { name: "right"; b: rightBat; font: font; doing: doing ? rightDoing : ""; gone: a.connected && a.right == null; weight: 1 }
+        if withCase { Cell { name: "case"; b: caseBat; font: font; doing: doing && a.case != null && a.case.charging ? "charging" : ""; gone: a.connected && a.case == null; weight: 1 } }
+      }
+    }
+  }
+
+  // A battery lying down, with room for what it's doing; faded at its last while it's gone.
+  component Battery(name, b, doing, gone) {
+    Row {
+      fill: width
+      gap: 10
+      align: center
+      opacity: gone ? 0.4 : 1
+      Text { text: name; color: dim; width: 48 }
+      Progress { value: b.level ?? 0; color: b == null ? alpha(foreground, 0.15) : (b.charging ? green : (b.level <= 20 ? red : foreground)); track: alpha(foreground, 0.15); height: 4; weight: 1 }
+      Text { text: b == null ? "--" : "${b.level}%"; width: 44; align: end }
+      Text { text: doing; style: small; color: b != null && b.charging ? green : dim; width: 64 }
+    }
+  }
+
+  component Batteries() {
+    Column {
+      fill: width
+      gap: 6
+      if p.headset != null {
+        Battery { name: "battery"; b: p.headset; doing: p.headset.charging ? "charging" : ""; gone: false }
+      } else {
+        Battery { name: "left"; b: leftBat; doing: leftDoing; gone: a.connected && a.left == null }
+        Battery { name: "right"; b: rightBat; doing: rightDoing; gone: a.connected && a.right == null }
+        Battery { name: "case"; b: caseBat; doing: a.case != null && a.case.charging ? "charging" : ""; gone: a.connected && a.case == null }
+      }
+    }
+  }
+
+  // The listening modes side by side, the one on lit up; a tap picks one. Sharing the row evenly where they fit in one.
+  component Modes(even) {
+    if even {
+      Row {
+        fill: width
+        gap: 6
+        for m in p.modes {
+          Text { text: get(modeShort, m, m); style: small; align: center; weight: 1; color: p.mode == m ? accent : dim; padding: [10, 5]; radius: 3 * corners; background: p.mode == m ? alpha(accent, 0.2) : surface; onTap: { haptic(); airpods(m) } }
+        }
+      }
+    } else {
+      Flow {
+        gap: 6
+        for m in p.modes {
+          Text { text: get(modeShort, m, m); style: small; color: p.mode == m ? accent : dim; padding: [10, 5]; radius: 3 * corners; background: p.mode == m ? alpha(accent, 0.2) : surface; onTap: { haptic(); airpods(m) } }
+        }
+      }
+    }
+  }
+
+  // How much noise adaptive lets in, turned around as Apple shows it: left less, right more. android.airpods counts how
+  // much it holds back.
+  component Adaptive() {
+    Column {
+      fill: width
+      gap: 0
+      Row {
+        fill: width
+        align: center
+        gap: 4
+        Text { text: "["; color: accent }
+        Slider { value: 100 - p.adaptiveLevel; step: 5; color: accent; track: background; weight: 1; onChange: airpods("adaptiveLevel", 100 - value) }
+        Text { text: "]"; color: accent }
+      }
+      Row {
+        fill: width
+        Text { text: "less noise"; style: small; color: dim; weight: 1 }
+        Text { text: "more noise"; style: small; color: dim }
+      }
+    }
+  }
+
+  // A setting as a chip, lit while it's on; a tap turns it over. As wide as the room it's given where it shares a row.
+  component Switch(name, lit, word, even) {
+    if even {
+      Text { spans: [lit ? "● " : "○ ", name]; style: small; align: center; fill: width; color: lit ? green : dim; padding: [10, 5]; radius: 3 * corners; background: lit ? alpha(green, 0.15) : surface; onTap: { haptic(); airpods(word) } }
+    } else {
+      Text { spans: [lit ? "● " : "○ ", name]; style: small; color: lit ? green : dim; padding: [10, 5]; radius: 3 * corners; background: lit ? alpha(green, 0.15) : surface; onTap: { haptic(); airpods(word) } }
+    }
+  }
+
+  component Switches(even) {
+    if even {
+      Row {
+        fill: width
+        gap: 6
+        if p.conversation != null { Switch { name: "conversation"; lit: p.conversation; word: "conversation"; even: true; weight: 1 } }
+        if p.oneBud != null { Switch { name: "one-bud anc"; lit: p.oneBud; word: "oneBud"; even: true; weight: 1 } }
+        if p.earDetection != null { Switch { name: "ear detection"; lit: p.earDetection; word: "earDetection"; even: true; weight: 1 } }
+      }
+    } else {
+      Flow {
+        gap: 6
+        if p.conversation != null { Switch { name: "conversation"; lit: p.conversation; word: "conversation"; even: false } }
+        if p.oneBud != null { Switch { name: "one-bud anc"; lit: p.oneBud; word: "oneBud"; even: false } }
+        if p.earDetection != null { Switch { name: "ear detection"; lit: p.earDetection; word: "earDetection"; even: false } }
+      }
+    }
+  }
+
+  // A setting as a row, with what it does: a tap turns it over.
+  component Toggle(name, about, lit, word) {
+    Row {
+      fill: width
+      gap: 10
+      align: top
+      padding: [0, 6]
+      onTap: { haptic(); airpods(word) }
+      Text { text: lit ? "●" : "○"; color: lit ? green : dim }
+      Column {
+        gap: 0
+        weight: 1
+        Text { text: name; color: lit ? green : foreground }
+        Text { text: about; style: small; color: dim }
+      }
+    }
+  }
+
+  if p == null {
+    // Never connected yet: nothing to show faded.
+    Column {
+      fill: true
+      gap: 2
+      justify: center
+      Text { text: "airpods"; style: label }
+      if !oneRow { Text { text: a.available ? "not connected" : "tap to let the launcher reach them"; color: dim; maxLines: 3 } }
+    }
+  } else if oneRow {
+    Row {
+      fill: true
+      align: center
+      gap: 12
+      if slim {
+        Text { text: lowest != null ? "${lowest}%" : "--"; style: title; weight: 1; opacity: fade }
+      } else {
+        if !narrow { Text { text: p.model ?? p.name ?? "AirPods"; maxLines: 1; weight: 1; opacity: fade } }
+        Row {
+          gap: 12
+          opacity: fade
+          if p.headset != null {
+            Pct { name: "max"; b: p.headset; large: true; gone: false }
+          } else {
+            Pct { name: "L"; b: leftBat; large: true; gone: a.connected && a.left == null }
+            Pct { name: "R"; b: rightBat; large: true; gone: a.connected && a.right == null }
+            if !narrow { Pct { name: "case"; b: caseBat; large: true; gone: a.connected && a.case == null } }
+          }
+        }
+        if narrow { Spacer { weight: 1 } }
+      }
+      ModeChip { short: slim || narrow }
+    }
+  } else {
+    // Spread over the whole tile, whatever its size: more of it shows the taller it is.
+    Column {
+      fill: true
+      gap: 8
+      justify: spaceBetween
+      Header { large: !slim; chip: !tall || len(p.modes) == 0 }
+      Cells { withCase: !slim; font: cellFont; doing: tall && !narrow; opacity: fade }
+      if slim && p.headset == null { Pct { name: "case"; b: caseBat; large: false; gone: a.connected && a.case == null; opacity: fade } }
+      if tall && len(p.modes) > 0 { Modes { even: !narrow; opacity: fade } }
+      if big && p.mode == "adaptive" && p.adaptiveLevel != null { Adaptive { opacity: fade } }
+      if big && hasSettings { Switches { even: !narrow; opacity: fade } }
+    }
+  }
+
+  screen {
+    title: p.name ?? "airpods"
+    Column {
+      fill: true
+      gap: 12
+      padding: 16
+      scroll: true
+
+      if !a.connected {
+        Column {
+          fill: width
+          gap: 8
+          padding: [14, 12]
+          background: surface
+          radius: 8 * corners
+          Text { text: a.available ? "not connected" : "the launcher may not use Bluetooth yet"; style: title }
+          Text { text: a.available ? "Connect them in Android's Bluetooth settings; they show here once they answer. Below is how they were last." : "Let it, and it talks to the AirPods connected to your phone, and to nothing else."; color: dim }
+          Row {
+            gap: 8
+            Button { text: a.available ? "try again" : "allow"; onTap: airpods("connect") }
+            Button { text: "bluetooth"; color: dim; onTap: settings("bluetooth") }
+          }
+        }
+      }
+
+      if p != null {
+        Column {
+          fill: width
+          gap: 12
+          opacity: fade
+          Row {
+            fill: width
+            align: center
+            Column {
+              gap: 0
+              weight: 1
+              Text { text: p.model ?? p.name ?? "AirPods"; fontSize: 28; color: accent }
+              Text { text: [p.model != null && p.name != p.model ? p.name : null, p.modelNumber].filter(s => s != null).join(" · "); style: small; color: dim }
+            }
+            if a.speaking { Text { text: "speaking"; color: yellow } }
+          }
+
+          Column {
+            fill: width
+            gap: 8
+            padding: [14, 12]
+            background: surface
+            radius: 8 * corners
+            Text { text: "battery"; style: label }
+            Batteries {}
+          }
+
+          if len(p.modes) > 0 {
+            Column {
+              fill: width
+              gap: 8
+              padding: [14, 12]
+              background: surface
+              radius: 8 * corners
+              Text { text: "listening mode"; style: label }
+              for m in p.modes {
+                Row {
+                  fill: width
+                  gap: 10
+                  align: center
+                  padding: [0, 6]
+                  onTap: { haptic(); airpods(m) }
+                  Text { text: p.mode == m ? "●" : "○"; color: p.mode == m ? green : dim }
+                  Text { text: get(modeNames, m, m); color: p.mode == m ? green : foreground; weight: 1 }
+                }
+              }
+              if p.mode == "adaptive" && p.adaptiveLevel != null { Adaptive {} }
+            }
+          }
+
+          if hasSettings {
+            Column {
+              fill: width
+              gap: 8
+              padding: [14, 12]
+              background: surface
+              radius: 8 * corners
+              Text { text: "settings"; style: label }
+              if p.conversation != null {
+                Toggle { name: "conversation awareness"; about: "lower the volume when you start talking"; lit: p.conversation; word: "conversation" }
+              }
+              if p.oneBud != null {
+                Toggle { name: "one-bud noise cancellation"; about: "keep noise cancellation on with one bud in"; lit: p.oneBud; word: "oneBud" }
+              }
+              if p.earDetection != null {
+                Toggle { name: "ear detection"; about: "pause when you take one out"; lit: p.earDetection; word: "earDetection" }
+              }
+            }
+          }
+        }
+      }
+
+      if a.connected { Button { text: "bluetooth"; color: dim; onTap: settings("bluetooth") } }
+    }
+  }
+}

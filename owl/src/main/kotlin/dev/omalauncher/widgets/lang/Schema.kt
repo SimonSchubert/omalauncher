@@ -159,7 +159,9 @@ internal val SINCE =
         // owl 15: the battery's current, charge and time to full, and the charger's, for a charging widget.
         mapOf("android.power" to 15) +
         // owl 16: texts per language, the phone's picked, and the language itself, for an API that takes it.
-        mapOf(STRINGS_DECL to 16, "lang" to 16)
+        mapOf(STRINGS_DECL to 16, "lang" to 16) +
+        // owl 17: AirPods, read and set over their own link, with the Bluetooth permission.
+        listOf("android.airpods", "airpods").associateWith { 17 }
 
 /** `strings { ... }`, named like this in [SINCE]. */
 internal const val STRINGS_DECL = "strings { }"
@@ -260,7 +262,7 @@ internal val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 val SPEECH_ANYWHERE = setOf("stop", "cancel")
 
 /** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech")
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "airpods")
 
 /**
  * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the
@@ -272,6 +274,9 @@ internal class Words(
     val numbers: Boolean = false,
     val forms: Map<String, Pair<IntRange, String>> = emptyMap(),
 )
+
+/** AirPods' listening modes, as android.airpods' `mode` and `modes` name them. */
+internal val AIRPODS_MODES = setOf("off", "anc", "transparency", "adaptive")
 
 /** settings("...")'s pages. */
 internal val SETTINGS_PAGES = setOf("internet", "wifi", "bluetooth", "airplane", "data", "location", "cast", "nfc", "volume", "output", "sound", "dnd", "display", "dark", "battery", "notifications")
@@ -309,6 +314,16 @@ internal val ACTION_WORDS =
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
         "speech" to setOf("start", "stop", "toggle", "cancel").let { Words(it, "speech takes ${it.joinToString()}; what's heard is in source x = android.speech") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
+        // A listening mode, the next one, or a setting: on and off ones turn over without a value.
+        "airpods" to
+            Words(
+                AIRPODS_MODES + setOf("next", "connect", "conversation", "oneBud", "earDetection", "adaptiveLevel"),
+                "airpods takes ${AIRPODS_MODES.joinToString()}, next, connect, conversation, oneBud, earDetection or adaptiveLevel",
+                forms =
+                    (AIRPODS_MODES + setOf("next", "connect")).associateWith { 1..1 to "airpods(\"$it\")" } +
+                        setOf("conversation", "oneBud", "earDetection").associateWith { 1..2 to "airpods(\"$it\"), or airpods(\"$it\", on)" } +
+                        ("adaptiveLevel" to (2..2 to "airpods(\"adaptiveLevel\", level)")),
+            ),
     )
 
 /** The tile's size, readable anywhere a declaration of the same name doesn't shadow it. */

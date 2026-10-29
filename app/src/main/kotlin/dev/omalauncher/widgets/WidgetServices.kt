@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -28,6 +29,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import dev.omalauncher.BuildConfig
 import android.os.Process
 import android.net.TrafficStats
@@ -78,6 +81,7 @@ import dev.omalauncher.ui.allApps
 import dev.omalauncher.ui.appIconOf
 import dev.omalauncher.ui.open
 import dev.omalauncher.ui.recentApps
+import dev.omalauncher.widgets.runtime.AirPods
 import dev.omalauncher.widgets.runtime.Alarm
 import dev.omalauncher.widgets.runtime.Media
 import dev.omalauncher.widgets.runtime.Modes
@@ -165,6 +169,7 @@ class WidgetServices(
     private val alarm = Alarm(context)
     private val modes = Modes(context)
     private val sim = Sim(context)
+    private val airpods = AirPods(context, scope)
     private val panels = SystemPanels(context)
 
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
@@ -175,6 +180,9 @@ class WidgetServices(
 
     /** The home screen's view, for haptic(): View haptics follow the user's touch feedback setting and need no permission; set by the UI. */
     var view: View? = null
+
+    /** Asks for a runtime permission over home, then says whether it was granted; set by the UI. */
+    var askPermission: ((String, (Boolean) -> Unit) -> Unit)? = null
 
     private val recent = HashMap<String, Pair<Long, Deferred<ShellResult>>>()
 
@@ -211,6 +219,7 @@ class WidgetServices(
             "alarm" -> alarm.value()
             "modes" -> modes.value()
             "sim" -> sim.value()
+            "airpods" -> airpods.value()
             "apps" -> apps()
             "agents" -> agents()
             "recent" -> recent()
@@ -233,6 +242,7 @@ class WidgetServices(
             "alarm" -> alarm.updates()
             "modes" -> modes.updates()
             "sim" -> sim.updates()
+            "airpods" -> airpods.updates()
             // Both read Compose state: the app list and its usage, the installed agents and the one picked.
             "apps" -> snapshotFlow { apps() }
             "agents" -> snapshotFlow { agents() }
@@ -667,6 +677,13 @@ class WidgetServices(
             "copy" -> copy(arg)
             "notify" -> notify(arg, args.getOrNull(1).textOrNull())
             "torch" -> modes.torch(args[0])
+            // The first one asks for Bluetooth: only with home in front, never over another app from a trigger.
+            "airpods" ->
+                when {
+                    airpods.granted -> airpods.control(arg, args.getOrNull(1))
+                    view?.findViewTreeLifecycleOwner()?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED) == true ->
+                        askPermission?.invoke(Manifest.permission.BLUETOOTH_CONNECT) { if (it) airpods.connect() }
+                }
             // Notification access lets the launcher switch it; without it, the setting that grants it. Granted but not
             // bound yet: Android's own DND setting this time, while the listener binds again for the next tap.
             "dnd" ->

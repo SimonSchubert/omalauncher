@@ -4,6 +4,15 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- Widgets can show and change AirPods: owl 17's `android.airpods` has each bud's and
+  the case's battery, which buds are in, the listening mode and the settings, read
+  over the AirPods' own link as Apple's devices do, and `airpods(...)` switches
+  noise cancellation, transparency and adaptive and turns Conversation Awareness
+  and the rest on and off; `examples/airpods.owl` shows them. It asks for the
+  Bluetooth permission the first time, and needs Android 17 (16 QPR3 on a Pixel).
+
 ## 0.15.0 (versionCode 26) – unreleased
 
 - The launcher speaks Indonesian: with the phone set to Indonesian, all of its text, the

@@ -23,6 +23,7 @@ Your home screen layout, widgets, theme settings and, if you install it, the Lin
 - Notification access (optional): lets media widgets show and control what is currently playing, and lets widgets you add show your notifications (app name, title and text), open, dismiss or snooze them, use their buttons (such as "Mark as read"), send a reply you type to the app that posted one, and show or switch Do Not Disturb. A reply goes only to that app, which handles it as if you had replied from the notification. Notifications are read on your device, only when a widget on your home screen asks for them, and are not stored or sent to us. A widget you add could send what it shows to a service it contacts; each widget's page in the widget store shows what it runs and which addresses it contacts.
 - Uninstalling apps: used only when you choose to uninstall an app from the app drawer. Android asks you to confirm every uninstall.
 - Internet: used to download the content listed in section 4.
+- Nearby devices / Bluetooth (optional): lets widgets you add show your AirPods' battery levels, listening mode and settings, and change them. The App asks for it only when a widget first tries to, and then talks only to AirPods connected to your phone, over Bluetooth. Nothing it reads leaves your device or is stored. A widget you add could send what it shows to a service it contacts; each widget's page in the widget store shows what it runs and which addresses it contacts.
 - Local network (optional, Android 17 and newer): lets widgets you add and the Linux environment reach devices on your own network, such as a printer, a home server or Home Assistant. The App asks for it only when you turn it on in its settings. The App itself does not scan your network or contact devices on it.
 
 4. Third-Party Services
@@ -60,13 +61,13 @@ The App is not intended for children under 13 years of age. We do not knowingly 
 
 As the developer is based in Berlin, Germany, we comply with the General Data Protection Regulation (GDPR) where applicable:
 - Local storage: all data the App stores stays on your device and is under your control.
-- Permissions: microphone, notification and local network access are optional and require your explicit consent.
+- Permissions: microphone, notification, Bluetooth and local network access are optional and require your explicit consent.
 - Third-party requests: requests to the services in section 4 are made only to provide the features you use.
 
 7. Your Rights
 
 You can:
-- Revoke microphone, notification and local network access at any time in your device settings.
+- Revoke microphone, notification, Bluetooth and local network access at any time in your device settings.
 - Remove Linux and its files in the App's settings.
 - Remove widgets from your home screen.
 - Choose not to share widgets through dpaste.com; pastes expire on their own after 7 days or one year.
