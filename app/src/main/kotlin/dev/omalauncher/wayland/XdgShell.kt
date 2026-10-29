@@ -192,11 +192,46 @@ class XdgToplevel(
 
     private var configuredWidth = -1
     private var configuredHeight = -1
-    private var configuredActive = false
+    var configuredActive = false
+        private set
 
-    /** Draws this window and its popups while it's on screen; set by its activity. */
+    /** The window this one belongs to (a dialog's, a torn-off toolbar's), as the client says with set_parent. */
     @Volatile
-    var renderer: WindowRenderer? = null
+    var parent: XdgToplevel? = null
+        private set
+
+    /**
+     * Shown inside [parent]'s task, over it, rather than in a task of its own; see WindowManager. Children
+     * hosted by this window, oldest first: changed and read with the server locked.
+     */
+    @Volatile
+    var host: XdgToplevel? = null
+    val children = ArrayList<XdgToplevel>()
+
+    /** A hosted window as wide or as tall as its host's view: it fills it, as a window of its own would. */
+    @Volatile
+    var fullscreen = false
+
+    /** [fullscreen] only because the keyboard took the room it'd have floated in: it floats again once it closes. */
+    @Volatile
+    var fullscreenForKeyboard = false
+
+    /** Where a floating hosted window's geometry sits in its host's view, in pixels; null until first placed. */
+    @Volatile
+    var position: Pair<Float, Float>? = null
+
+    @Volatile
+    private var ownRenderer: WindowRenderer? = null
+
+    /** Draws this window and its popups while it's on screen; set by its activity. A hosted window is drawn by its host's. */
+    var renderer: WindowRenderer?
+        get() = ownRenderer ?: host?.renderer
+        set(value) {
+            ownRenderer = value
+        }
+
+    /** The last configured size, in logical pixels; -1 before the first. */
+    val configuredSize get() = configuredWidth to configuredHeight
 
     val surface get() = xdg.surface
 
@@ -206,9 +241,10 @@ class XdgToplevel(
     ) {
         when (opcode) {
             0 -> destroy()
+            1 -> parent = client.get<XdgToplevel>(args.obj())?.takeIf { it !== this }
             2 -> title = args.string().orEmpty()
             3 -> appId = args.string().orEmpty()
-            else -> Unit // move/resize/maximize/etc.: every window fills its Android task
+            else -> Unit // move/resize/maximize/etc.: a window fills its Android task, or floats over its parent
         }
     }
 
