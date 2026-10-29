@@ -19,6 +19,7 @@ data class Layer(
     /** Window pixels per logical pixel: the output scale, less when the window is shrunk to fit (see [fitScale]). */
     val scale: Float,
     val inPopup: Boolean,
+    val hittable: Boolean = true,
 )
 
 /** Hit-test result: a surface and a point in its local logical coordinates. */
@@ -95,6 +96,14 @@ class WindowRenderer(
     @Volatile
     var scene: List<Layer> = emptyList()
         private set
+
+    /** Where the touchpad mode's cursor is, in view pixels; null when it's off. The app's cursor image is drawn there. */
+    @Volatile
+    var cursorAt: Pair<Float, Float>? = null
+        set(value) {
+            field = value
+            requestFrame()
+        }
 
     /** Draws into [surface] of [w] x [h] pixels from now on (the view's surface was created or resized). */
     fun attach(
@@ -212,6 +221,14 @@ class WindowRenderer(
             val pg = popup.xdg.effectiveGeometry
             addTree(layers, popup.surface, origin.first - pg.x * scale, origin.second - pg.y * scale, scale, inPopup = true)
         }
+        // The app's own cursor (a text beam, a resize arrow) at the touchpad's, its hotspot on the point.
+        val cursor = server.input.cursor
+        val cursorAt = cursorAt
+        val cursorSurface = cursor?.surface
+        if (cursorSurface != null && cursorAt != null && cursor.client === window.client && !cursorSurface.destroyed) {
+            val cursorScale = server.output.scale.toFloat()
+            addTree(layers, cursorSurface, cursorAt.first - cursor.hotspotX * cursorScale, cursorAt.second - cursor.hotspotY * cursorScale, cursorScale, inPopup = false, hittable = false)
+        }
         return layers
     }
 
@@ -222,15 +239,16 @@ class WindowRenderer(
         y: Float,
         scale: Float,
         inPopup: Boolean,
+        hittable: Boolean = true,
     ) {
-        for (sub in surface.children) if (sub.below) addTree(layers, sub.surface, x + sub.x * scale, y + sub.y * scale, scale, inPopup)
+        for (sub in surface.children) if (sub.below) addTree(layers, sub.surface, x + sub.x * scale, y + sub.y * scale, scale, inPopup, hittable)
         // Buffer pixels to window pixels: 1:1 when the client renders at our scale. The size of the pixels drawn: a
         // commit of a new size (a window resizing) has them only once they're copied, and till then the old ones would stretch.
         val store = surface.store
         val w = ((store?.width ?: surface.bufferWidth) * scale / surface.bufferScale).roundToInt()
         val h = ((store?.height ?: surface.bufferHeight) * scale / surface.bufferScale).roundToInt()
-        layers += Layer(surface, store, x.roundToInt(), y.roundToInt(), w, h, scale, inPopup)
-        for (sub in surface.children) if (!sub.below) addTree(layers, sub.surface, x + sub.x * scale, y + sub.y * scale, scale, inPopup)
+        layers += Layer(surface, store, x.roundToInt(), y.roundToInt(), w, h, scale, inPopup, hittable)
+        for (sub in surface.children) if (!sub.below) addTree(layers, sub.surface, x + sub.x * scale, y + sub.y * scale, scale, inPopup, hittable)
     }
 
     /** Window-pixel position of [xdg]'s window geometry; popups slide back on screen instead of a full constraint solver. */
@@ -260,7 +278,7 @@ class WindowRenderer(
     ): SurfaceHit? {
         val layers = scene
         for (l in layers.asReversed()) {
-            if (l.store == null || l.surface.destroyed || x < l.x || y < l.y || x >= l.x + l.width || y >= l.y + l.height) continue
+            if (!l.hittable || l.store == null || l.surface.destroyed || x < l.x || y < l.y || x >= l.x + l.width || y >= l.y + l.height) continue
             val lx = (x - l.x) / l.scale
             val ly = (y - l.y) / l.scale
             if (!l.surface.takesInput(lx, ly)) continue
