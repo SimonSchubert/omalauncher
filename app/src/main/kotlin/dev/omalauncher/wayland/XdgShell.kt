@@ -153,13 +153,17 @@ class XdgSurface(
         pendingGeometry?.let { geometry = it }
         if (!initialCommitDone) {
             initialCommitDone = true
-            toplevel?.let { client.server.windowManager.toplevelCreated(it) }
+            toplevel?.let {
+                val out = client.server.output
+                it.configure(out.widthPx / out.scale, out.heightPx / out.scale, active = true)
+            }
             popup?.configure()
-            return
+            if (!surface.hasContent) return
         }
         val hasContent = surface.hasContent
         if (hasContent && !mapped) {
             mapped = true
+            toplevel?.let { client.server.windowManager.toplevelCreated(it) }
             popup?.let { client.server.popups += it }
         } else if (!hasContent && mapped) {
             // Unmapped by attaching a null buffer; the client must start over.

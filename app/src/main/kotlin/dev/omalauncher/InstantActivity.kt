@@ -10,7 +10,9 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
+import android.hardware.display.DisplayManager
 import android.os.Build
+import android.view.Display
 import android.view.KeyEvent
 import android.window.SplashScreen
 import androidx.activity.ComponentActivity
@@ -116,6 +118,11 @@ abstract class InstantActivity : ComponentActivity() {
         setTaskDescription(description)
     }
 
+    override fun onResume() {
+        super.onResume()
+        updateActiveDisplay(this)
+    }
+
     /** Back from Recents after [backInstantly]: solid again, so what's behind it can stop drawing. */
     override fun onRestart() {
         super.onRestart()
@@ -129,13 +136,40 @@ abstract class InstantActivity : ComponentActivity() {
     companion object {
         private const val SEE_THROUGH_MS = 80L
 
+        /** Display where the launcher or a window was most recently resumed (e.g. a Samsung DeX display). */
+        @Volatile
+        var activeDisplayId: Int = Display.DEFAULT_DISPLAY
+
+        fun updateActiveDisplay(activity: ComponentActivity) {
+            val disp =
+                if (Build.VERSION.SDK_INT >= 30) {
+                    runCatching { activity.display }.getOrNull()
+                } else {
+                    @Suppress("DEPRECATION")
+                    activity.windowManager.defaultDisplay
+                }
+            if (disp != null) activeDisplayId = disp.displayId
+        }
+
         /** Starts one of the launcher's own screens in its own task: no open-an-app animation, and no splash with the launcher's icon. */
         fun startInstantly(
             context: Context,
             intent: Intent,
         ) {
-            val options = if (Build.VERSION.SDK_INT >= 33) ActivityOptions.makeBasic().setSplashScreenStyle(SplashScreen.SPLASH_SCREEN_STYLE_SOLID_COLOR).toBundle() else null
-            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION), options)
+            val opts = ActivityOptions.makeBasic()
+            if (Build.VERSION.SDK_INT >= 33) {
+                opts.setSplashScreenStyle(SplashScreen.SPLASH_SCREEN_STYLE_SOLID_COLOR)
+            }
+            val targetDisplay = activeDisplayId
+            if (targetDisplay != Display.DEFAULT_DISPLAY) {
+                val dm = context.getSystemService(DisplayManager::class.java)
+                if (dm?.getDisplay(targetDisplay) != null) {
+                    opts.launchDisplayId = targetDisplay
+                } else {
+                    activeDisplayId = Display.DEFAULT_DISPLAY
+                }
+            }
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION), opts.toBundle())
         }
     }
 }

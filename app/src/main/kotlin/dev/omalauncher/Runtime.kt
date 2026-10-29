@@ -378,15 +378,15 @@ class Runtime(
      */
     private fun updateOutput() {
         val metrics = context.resources.displayMetrics
-        val mmPerPx = 25.4f / metrics.xdpi
         val scale = outputScale()
+        val mmPerLogicalPx = 25.4f / 96f
         server.updateOutput(
             OutputInfo(
                 metrics.widthPixels,
                 metrics.heightPixels,
                 scale,
-                (metrics.widthPixels * mmPerPx).toInt(),
-                (metrics.heightPixels * mmPerPx).toInt(),
+                ((metrics.widthPixels / scale) * mmPerLogicalPx).toInt(),
+                ((metrics.heightPixels / scale) * mmPerLogicalPx).toInt(),
             ),
         )
         terminalFont.update(metrics.density, context.resources.configuration.fontScale, scale, metrics.widthPixels)

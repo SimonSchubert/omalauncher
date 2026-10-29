@@ -119,6 +119,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        InstantActivity.updateActiveDisplay(this)
         away = false
         runtime.wm.focus(null)
         runtime.keyboard.imagePicker = imagePicker
