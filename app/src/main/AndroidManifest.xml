@@ -237,6 +237,31 @@
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Android Open with / Share: copy received files into the guest, then choose a Linux app. -->
+        <activity
+            android:name=".OpenInLinuxActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:icon="@drawable/files"
+            android:label="Open in Linux"
+            android:resizeableActivity="true"
+            android:taskAffinity="${applicationId}.openin"
+            android:theme="@style/Theme.Omalauncher.Window">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+
         <!-- One task per file, named after it; launched with the file in the intent's data. -->
         <activity
             android:name=".EditorActivity"
