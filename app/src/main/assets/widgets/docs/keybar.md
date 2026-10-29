@@ -44,6 +44,8 @@ it goes down, again as it repeats, and lets it go as it lifts. A key acts as the
 as `onTap` does, and `repeats: true` keeps an arrow going while it's held. `pressKey(...)`, `typeText(...)` and
 `latch(...)` reach the Linux window being typed in, and work in any owl 12 file, as do `onPress`, `onRelease` and
 `android.modifiers`.
+`pickImages()` (owl 15) is the stock bar's photos key: Android's photo picker, whose photos paste into the window as
+paths an agent attaches. It goes in `onTap`, not `onPress`: the picker would cover the bar before the finger lifts.
 `latch` is how the stock bar's ctrl and alt work: a tap holds one for the next key, from the bar or the keyboard, a
 long press until it's tapped again, and `android.modifiers` tells the key how to look meanwhile. Closing the keyboard
 lets every latch go. `owl-check keybar.owl` draws the bar at the bottom of a phone's screen.

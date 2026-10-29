@@ -1,10 +1,12 @@
 package dev.omalauncher.linux
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.R
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +19,7 @@ import java.nio.file.LinkOption
 data class Agent(
     val bin: String,
     val name: String,
-    val description: String,
+    @StringRes val description: Int,
     /** mise package spec. */
     val pkg: String,
     /** What starts it without a prompt, when that's more than [bin]. */
@@ -32,26 +34,26 @@ data class Agent(
 /** Omarchy's agent list (omarchy-default-agent), limited to ones mise can install on arm64. */
 val AGENTS =
     listOf(
-        Agent("claude", "Claude Code", "Anthropic's coding agent", "claude"),
+        Agent("claude", "Claude Code", R.string.linux_agent_claude, "claude"),
         // mise installs OpenCode 2 from npm (@opencode/cli).
-        Agent("opencode", "OpenCode", "Open source agent, any model provider", "opencode", node = true),
-        Agent("codex", "Codex", "OpenAI's coding agent", "codex"),
-        Agent("grok", "Grok", "xAI's coding agent", "npm:@xai-official/grok"),
-        Agent("copilot", "GitHub Copilot", "GitHub's coding agent", "copilot"),
-        Agent("crush", "Crush", "Charm's agent for the terminal", "crush"),
-        Agent("cursor-agent", "Cursor CLI", "Cursor's agent for the terminal", "cursor-agent"),
-        Agent("agy", "Antigravity", "Google's Gemini coding agent", "antigravity-cli"),
-        Agent("pi", "Pi", "Minimal, extensible coding agent", "pi"),
-        Agent("omp", "Oh My Pi", "Pi with tools and plugins built in", "github:can1357/oh-my-pi"),
-        Agent("ori", "Ori", "OpenRouter's coding agent", "github:OpenRouterLabs/ori-releases", command = "ori code"),
+        Agent("opencode", "OpenCode", R.string.linux_agent_opencode, "opencode", node = true),
+        Agent("codex", "Codex", R.string.linux_agent_codex, "codex"),
+        Agent("grok", "Grok", R.string.linux_agent_grok, "npm:@xai-official/grok"),
+        Agent("copilot", "GitHub Copilot", R.string.linux_agent_copilot, "copilot"),
+        Agent("crush", "Crush", R.string.linux_agent_crush, "crush"),
+        Agent("cursor-agent", "Cursor CLI", R.string.linux_agent_cursor, "cursor-agent"),
+        Agent("agy", "Antigravity", R.string.linux_agent_antigravity, "antigravity-cli"),
+        Agent("pi", "Pi", R.string.linux_agent_pi, "pi"),
+        Agent("omp", "Oh My Pi", R.string.linux_agent_omp, "github:can1357/oh-my-pi"),
+        Agent("ori", "Ori", R.string.linux_agent_ori, "github:OpenRouterLabs/ori-releases", command = "ori code"),
         Agent(
             "muse",
             "Muse Code",
-            "Meta's coding agent",
+            R.string.linux_agent_muse,
             // Meta's launcher fetches and updates the native binary for this platform.
             "http:muse[url=https://api.meta.ai/muse-launcher.sh,bin=muse,version_list_url=https://api.meta.ai/muse-code/channels/muse-stable,version_json_path=.version]",
         ),
-        Agent("kimi", "Kimi", "Moonshot AI's coding agent", "npm:@moonshot-ai/kimi-code"),
+        Agent("kimi", "Kimi", R.string.linux_agent_kimi, "npm:@moonshot-ai/kimi-code"),
     )
 
 /**
@@ -156,7 +158,7 @@ class AgentStore(
     }
 
     suspend fun install(agent: Agent) =
-        run(agent, "installing") { installScript(agent) }.also { ok -> if (ok) onInstalled(agent) }
+        run(agent, R.string.linux_job_installing) { installScript(agent) }.also { ok -> if (ok) onInstalled(agent) }
 
     /** Installs [agent] with mise, bootstrapping mise itself if needed. */
     fun installScript(agent: Agent) =
@@ -173,7 +175,7 @@ class AgentStore(
     }
 
     suspend fun remove(agent: Agent) =
-        run(agent, "removing") { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
+        run(agent, R.string.linux_job_removing) { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
             .also {
                 refresh()
                 onChanged()
@@ -209,11 +211,11 @@ class AgentStore(
 
     private suspend fun run(
         agent: Agent,
-        action: String,
+        @StringRes action: Int,
         script: () -> String,
     ): Boolean {
         val (ok, _) = proot.trackedJob(action, withContext(Dispatchers.IO) { script() }) { states[agent.bin] = it }
-        Log.i("agents", "$action ${agent.bin}: ${if (ok) "ok" else "failed"}")
+        Log.i("agents", "${agent.bin}: ${if (ok) "ok" else "failed"}")
         return ok
     }
 }

@@ -1,6 +1,8 @@
 package dev.omalauncher.widgets
 
+import android.content.ComponentCallbacks
 import android.content.Context
+import android.content.res.Configuration
 import android.os.FileObserver
 import android.util.Log
 import androidx.compose.runtime.derivedStateOf
@@ -31,6 +33,7 @@ import dev.omalauncher.widgets.lang.Json
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.lang.Source
+import dev.omalauncher.widgets.lang.phoneLanguage
 import dev.omalauncher.widgets.market.Review
 import dev.omalauncher.widgets.market.Shared
 import dev.omalauncher.widgets.runtime.WidgetInstance
@@ -514,6 +517,9 @@ class WidgetEngine(
     /** Signals a change in [dir], true for a file written there; conflated, so a burst of writes reloads once. */
     private val changes = Channel<Boolean>(Channel.CONFLATED)
 
+    /** The language the widgets were compiled for, which strings { } picks: the phone's at the last reload. */
+    private var language = phoneLanguage()
+
     @Suppress("unused") // Held so it isn't collected, which would stop the events.
     private var observer: FileObserver? = null
 
@@ -578,6 +584,17 @@ class WidgetEngine(
                 snapshotFlow { loaded }.first { it }
                 snapshotFlow { runtime.style.style[Style.COLUMNS] }.collect { layout.regrid(it, pages.map(::itemsOn)) }
             }
+            // A new phone language: files with strings { } or lang() compile anew for it.
+            context.registerComponentCallbacks(
+                object : ComponentCallbacks {
+                    override fun onConfigurationChanged(newConfig: Configuration) {
+                        if (phoneLanguage() != language) changes.trySend(false)
+                    }
+
+                    @Deprecated("Deprecated in Java")
+                    override fun onLowMemory() = Unit
+                },
+            )
             changes.trySend(false)
             for (written in changes) {
                 // Editors write in several steps (truncate, write, rename); let them finish. Only then: home waits on the
@@ -592,11 +609,14 @@ class WidgetEngine(
     private fun widgetFiles() = dir.listFiles { f -> (!f.name.startsWith(".") || f.name == STOCK_DRAWER || f.name == STOCK_KEYBAR) && f.extension == "owl" }.orEmpty().sortedBy { it.name }
 
     private suspend fun reload(files: List<File>) {
+        // Compiled for another language, a file's texts would stay in it.
+        val relanguaged = phoneLanguage() != language
+        language = phoneLanguage()
         val old = specs.associateBy { it.file.name }
         // Each file on its own thread: at startup every one compiles, and home waits for them all.
         val parsed =
             withContext(Dispatchers.IO) {
-                files.map { f -> async { old[f.name]?.takeIf { it.stamp == f.lastModified() } ?: compile(f, old[f.name]) } }.awaitAll()
+                files.map { f -> async { old[f.name]?.takeIf { !relanguaged && it.stamp == f.lastModified() } ?: compile(f, old[f.name]) } }.awaitAll()
             }
         val changed = parsed.filter { old[it.file.name] !== it }.map { it.file.name }
         specs.clear()
@@ -635,7 +655,8 @@ class WidgetEngine(
                 )
             prev?.let(inst::adopt)
             instances[spec.file.name] = inst
-            inst.start(scope) { isLive(spec) }
+            // The spec as it is now, not as loaded: a move to another page (placeOnPage) replaces it without a reload.
+            inst.start(scope) { isLive(specs.firstOrNull { it.file.name == name } ?: spec) }
         }
         // A screen whose widget went away, stopped compiling or lost its screen { } closes.
         if (openScreen?.let { instances[it]?.program?.screen } == null) openScreen = null

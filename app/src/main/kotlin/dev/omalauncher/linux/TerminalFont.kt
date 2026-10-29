@@ -1,10 +1,12 @@
 package dev.omalauncher.linux
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.R
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.wayland.XdgToplevel
@@ -233,14 +235,14 @@ class TerminalFont(
 enum class TerminalText(
     /** What launchers before style.toml saved. */
     val id: String,
-    val label: String,
+    @StringRes val label: Int,
     val em: Float,
 ) {
-    Smaller("smaller", "smaller", 10f),
+    Smaller("smaller", R.string.style_text_smaller, 10f),
 
     /** The launcher's 12sp minimum: ~55 columns on a phone in portrait. */
-    Default("default", "default", 12f),
-    Larger("larger", "larger", 14f),
+    Default("default", R.string.style_text_default, 12f),
+    Larger("larger", R.string.style_text_larger, 14f),
     ;
 
     companion object {

@@ -1,9 +1,11 @@
 package dev.omalauncher.linux
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.R
 import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapObjects
 import dev.omalauncher.upgrade.strings
@@ -34,7 +36,7 @@ data class PendingUpdates(
     val packages: List<String>,
     val tools: List<ToolUpdate>,
     val checkedAt: Long,
-    val error: String? = null,
+    @StringRes val error: Int? = null,
 ) {
     val count get() = packages.size + tools.size
 }
@@ -107,7 +109,7 @@ class SystemUpdates(
         val now = System.currentTimeMillis()
         if (code != 0 || "#pacman-error" in text) {
             Log.w(TAG, "check failed ($code): ${text.takeLast(300)}")
-            return PendingUpdates(pending?.packages.orEmpty(), pending?.tools.orEmpty(), pending?.checkedAt ?: 0L, error = "couldn't reach the mirrors")
+            return PendingUpdates(pending?.packages.orEmpty(), pending?.tools.orEmpty(), pending?.checkedAt ?: 0L, error = R.string.linux_updates_unreachable)
         }
         val packages =
             text
@@ -144,7 +146,7 @@ class SystemUpdates(
     /** Upgrades everything: a full pacman sync, then mise's tools. Returns whether it worked. */
     suspend fun updateAll(): Boolean {
         if (job is JobState.Working) return false
-        val (ok, _) = proot.trackedJob("updating", UPDATE_SCRIPT, pacman.lock) { job = it }
+        val (ok, _) = proot.trackedJob(R.string.linux_job_updating, UPDATE_SCRIPT, pacman.lock) { job = it }
         // Agents may have changed, and what's left to update is worth knowing either way.
         withContext(Dispatchers.IO) { agents.load() }
         check(force = true)

@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Linux setup, updates and the session (linux/, ui/Setup.kt, ui/LinuxScreen.kt, LinuxService.kt), the packages
+     screen (packages_) and the licenses screen (licenses_). -->
+<resources>
+    <!-- The phases of a fresh install, as the setup screen lists them. -->
+    <string name="linux_stage_download">download arch linux</string>
+    <string name="linux_stage_extract">unpack the system</string>
+    <string name="linux_stage_configure">configure pacman</string>
+    <string name="linux_stage_packages">install omarchy\'s apps</string>
+    <string name="linux_stage_agents">install coding agents</string>
+    <!-- The last phase when coding agents were picked. %1$s: their names, comma-separated (Claude Code, Codex). -->
+    <string name="linux_stage_agents_named">install %1$s</string>
+
+    <!-- What setup is doing right now, under its phase on the setup screen. Settings shows these lowercased while an
+         update of an installed system runs them ("updating the system: installing packages…"). -->
+    <string name="linux_step_download">Downloading Arch Linux ARM</string>
+    <string name="linux_step_configure">Configuring the system</string>
+    <string name="linux_step_forks">Checking that programs can start</string>
+    <string name="linux_step_keyring">Initializing pacman keyring</string>
+    <string name="linux_step_no_kernel">Removing kernel packages</string>
+    <string name="linux_step_packages">Installing packages</string>
+    <string name="linux_step_keymap">Compiling keymap</string>
+    <!-- cliamp is a music player's name. -->
+    <string name="linux_step_cliamp">Installing cliamp</string>
+    <!-- %1$s: a coding agent's name. -->
+    <string name="linux_step_agent">Installing %1$s</string>
+    <!-- Download progress in megabytes: %1$d done of %2$d. -->
+    <string name="linux_step_downloaded">%1$d of %2$d MB</string>
+    <!-- Download progress in megabytes when the total isn't known. -->
+    <string name="linux_step_downloaded_unknown">%1$d MB</string>
+    <!-- Unpacking the system has just begun. -->
+    <string name="linux_step_extract_start">Starting</string>
+    <!-- Unpacking progress: how many files are unpacked so far. -->
+    <plurals name="linux_step_extracted">
+        <item quantity="one">%d file</item>
+        <item quantity="other">%d files</item>
+    </plurals>
+
+    <!-- Lines setup adds to the output it shows. %1$s: the error (technical, English). %2$d of %3$d: the attempt. -->
+    <string name="linux_log_retrying">%1$s; trying again (%2$d of %3$d)</string>
+    <!-- %1$s: the step (Installing cliamp), %2$s: the error (technical, English). -->
+    <string name="linux_log_step_failed">%1$s failed: %2$s; retry in settings</string>
+    <!-- %1$s: a coding agent's name. -->
+    <string name="linux_log_agent_failed">%1$s didn\'t install; try again in settings › coding agents</string>
+
+    <!-- Why setup stopped, in red under the phase. %1$s and %2$s: sizes like "3.0 GB". -->
+    <string name="linux_error_no_space">not enough space: Linux needs %1$s free, the phone has %2$s; free some up, then try again</string>
+    <!-- %1$s: a size like "3.0 GB". -->
+    <string name="linux_error_out_of_space">the phone ran out of space; Linux needs about %1$s free; free some up, then try again</string>
+    <!-- %1$d: the HTTP status code. -->
+    <string name="linux_error_http">download failed: HTTP %1$d</string>
+    <string name="linux_error_cut_short">the download was cut short; retry to continue it</string>
+    <string name="linux_error_move_download">can\'t move the download into place</string>
+    <!-- %1$d: the exit code. -->
+    <string name="linux_error_cant_run">Linux can\'t run commands here (exit %1$d)</string>
+    <string name="linux_error_kernel">this phone\'s kernel stops Linux programs from starting other programs, so setup can\'t go on. custom ROMs with a 4.14 kernel need kernel commit 05b289263772 from their maintainer; see github issue #105</string>
+    <!-- %1$s: the start of a shell command, %2$d: its exit code. -->
+    <string name="linux_error_command">`%1$s` failed (exit %2$d)</string>
+    <!-- %1$s: the version expected, like v2.3.0. -->
+    <string name="linux_error_cliamp_mismatch">cliamp download doesn\'t match %1$s</string>
+    <!-- %1$s: a file path. -->
+    <string name="linux_error_cant_replace">can\'t replace %1$s</string>
+
+    <!-- What a job in the guest is doing, shown as "installing…" on its row. -->
+    <string name="linux_job_installing">installing</string>
+    <string name="linux_job_removing">removing</string>
+    <!-- An AUR package is compiled on the phone. -->
+    <string name="linux_job_building">building</string>
+    <string name="linux_job_updating">updating</string>
+    <!-- Waiting for another package job to finish. -->
+    <string name="linux_job_waiting">waiting</string>
+    <!-- The GPU driver being tested. -->
+    <string name="linux_job_checking">checking</string>
+    <!-- A running job on its row. %1$s: one of the job words above. -->
+    <string name="linux_job_working">%1$s…</string>
+
+    <!-- A system update check that failed, in settings' updates box. -->
+    <string name="linux_updates_unreachable">couldn\'t reach the mirrors</string>
+
+    <!-- One line under each coding agent's name in the agent lists. -->
+    <string name="linux_agent_claude">Anthropic\'s coding agent</string>
+    <string name="linux_agent_opencode">Open source agent, any model provider</string>
+    <string name="linux_agent_codex">OpenAI\'s coding agent</string>
+    <string name="linux_agent_grok">xAI\'s coding agent</string>
+    <string name="linux_agent_copilot">GitHub\'s coding agent</string>
+    <string name="linux_agent_crush">Charm\'s agent for the terminal</string>
+    <string name="linux_agent_cursor">Cursor\'s agent for the terminal</string>
+    <string name="linux_agent_antigravity">Google\'s Gemini coding agent</string>
+    <string name="linux_agent_pi">Minimal, extensible coding agent</string>
+    <string name="linux_agent_omp">Pi with tools and plugins built in</string>
+    <string name="linux_agent_ori">OpenRouter\'s coding agent</string>
+    <string name="linux_agent_muse">Meta\'s coding agent</string>
+    <string name="linux_agent_kimi">Moonshot AI\'s coding agent</string>
+
+    <!-- The first-run screen. -->
+    <string name="linux_welcome_title">omarchy on your home screen</string>
+    <string name="linux_welcome_body">Omarchy\'s themes and wallpapers, your Android apps, and home-screen widgets. Arch Linux adds terminal apps and coding agents, now or later in settings.</string>
+    <!-- A section heading, shown in capitals. -->
+    <string name="linux_welcome_linux">linux</string>
+    <string name="linux_welcome_choice">also set up Arch Linux</string>
+    <string name="linux_welcome_choice_detail">terminal apps, agents, pacman · ~1 GB download, 3 GB space</string>
+    <string name="linux_welcome_start">start</string>
+    <string name="linux_welcome_start_linux">start and set up linux</string>
+    <string name="linux_welcome_start_hint">Downloads the theme\'s wallpaper now and Omarchy\'s other themes (about 70 MB) in the background.</string>
+    <string name="linux_welcome_start_linux_hint">Linux downloads about 1 GB, so Wi-Fi is best, and takes 3 GB of space. It installs in the background in 10 to 20 minutes; the home screen is ready right away.</string>
+    <!-- %1$s: the theme's name, lowercased. -->
+    <string name="linux_welcome_getting">getting %1$s</string>
+    <string name="linux_welcome_theme_failed">the theme didn\'t download</string>
+    <string name="linux_welcome_wallpaper">download its wallpaper</string>
+    <string name="linux_welcome_skip">continue without wallpapers</string>
+    <string name="linux_welcome_skip_hint">The theme\'s colors apply anyway. The launcher tries again later, or download them in settings › style.</string>
+
+    <!-- A section heading, shown in capitals. -->
+    <string name="linux_agents_label">coding agents</string>
+    <string name="linux_agents_hint">Pick any to install with Linux. You can add or remove them later in settings.</string>
+    <!-- A section heading over the theme swatches, shown in capitals. -->
+    <string name="linux_theme_label">theme</string>
+    <!-- The last tile of the theme swatches; opens the community themes. -->
+    <string name="linux_more_themes">more themes ›</string>
+
+    <!-- The install's checklist (setup and settings › linux). -->
+    <string name="linux_progress_title">setting up linux</string>
+    <string name="linux_progress_stopped">setup stopped</string>
+    <string name="linux_try_again">try again</string>
+    <string name="linux_cancel_install">cancel install</string>
+    <string name="linux_progress_background">You can close this and use the launcher; setup keeps going in the background.</string>
+    <!-- A heading over setup's command output, shown in capitals. -->
+    <string name="linux_output">output</string>
+    <string name="linux_output_less">less</string>
+    <string name="linux_output_more">more</string>
+
+    <!-- Settings › linux. -->
+    <string name="linux_title">linux</string>
+    <string name="linux_removing">removing linux…</string>
+    <string name="linux_offer_title">arch linux, optional</string>
+    <string name="linux_offer_body">Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download and 3 GB of space; installs in the background.</string>
+    <string name="linux_install">install linux</string>
+    <plurals name="linux_install_with_agents">
+        <item quantity="one">install linux and %d agent</item>
+        <item quantity="other">install linux and %d agents</item>
+    </plurals>
+    <string name="linux_arch">arch linux</string>
+    <!-- %1$s: the size on disk, like 2.1 GB, or "measuring…". -->
+    <string name="linux_installed_size">installed · %1$s</string>
+    <string name="linux_measuring">measuring…</string>
+    <string name="linux_remove">remove linux</string>
+    <string name="linux_remove_ask">remove linux?</string>
+    <string name="linux_remove_body">Deletes Linux apps, coding agents, packages and everything in /root, like Downloads. Themes, wallpapers, widgets and your home screen stay.</string>
+    <string name="linux_remove_confirm">remove</string>
+    <string name="linux_cancel">cancel</string>
+    <string name="linux_gpu_title">gpu acceleration</string>
+    <!-- %1$s: the GPU's name, like Mali-G715 MC7. -->
+    <string name="linux_gpu_on">on · %1$s · for apps opened from now on</string>
+    <string name="linux_gpu_off_failed">off: the GPU failed its check after a system update</string>
+    <string name="linux_gpu_waiting">on · waiting for its check</string>
+    <string name="linux_gpu_failed">the GPU failed its check; apps stay in software</string>
+    <!-- %1$s: the driver family, Mali or Adreno. -->
+    <string name="linux_gpu_offer">experimental · %1$s · faster OpenGL and Vulkan apps and games; terminal apps don\'t change</string>
+    <string name="linux_retry">retry</string>
+    <string name="linux_gpu_turn_off">turn off</string>
+    <string name="linux_gpu_turn_on">turn on</string>
+
+    <!-- The ongoing notification while Linux runs. -->
+    <string name="linux_notification_channel">Linux session</string>
+    <!-- %1$s: the install's phase (download arch linux). -->
+    <string name="linux_notification_installing">Installing Linux · %1$s</string>
+    <!-- %1$d: percent done, %2$s: the install's phase (download arch linux). -->
+    <string name="linux_notification_installing_percent">Installing Linux · %1$d%% · %2$s</string>
+    <string name="linux_notification_failed">Linux setup stopped · open settings › linux to retry</string>
+    <string name="linux_notification_removing">Removing Linux</string>
+    <string name="linux_notification_running">Linux session running</string>
+
+    <!-- Settings › packages. -->
+    <string name="packages_title">packages</string>
+    <string name="packages_search">search packages</string>
+    <string name="packages_intro">Arch Linux ARM packages via pacman, and the AUR via yay. Installing also updates the system, so it can take a while. AUR packages are user-submitted and built on the device: check their PKGBUILD on aur.archlinux.org first.</string>
+    <string name="packages_loading">loading…</string>
+    <string name="packages_searching">searching…</string>
+    <!-- %1$d: how many packages are installed. -->
+    <string name="packages_installed">installed (%1$d)</string>
+    <string name="packages_none">no packages match</string>
+    <!-- Search results. English keeps "1 results" as the app always showed it. -->
+    <plurals name="packages_results">
+        <item quantity="one">%d results</item>
+        <item quantity="other">%d results</item>
+    </plurals>
+    <!-- In place of remove, for packages the launcher needs. -->
+    <string name="packages_required">required</string>
+    <!-- A second tap to remove a package. -->
+    <string name="packages_confirm">confirm</string>
+    <string name="packages_remove">remove</string>
+    <string name="packages_install">install</string>
+
+    <!-- Settings › licenses. -->
+    <string name="licenses_title">licenses</string>
+    <!-- %1$s: the app's version. -->
+    <string name="licenses_header">Omalauncher %1$s · © 2026 Simon Schubert\n\nIt includes the open source software below.</string>
+    <string name="licenses_website">website</string>
+    <string name="licenses_source">source code</string>
+    <!-- What each open source component does in the app, after its license. -->
+    <string name="licenses_use_proot">runs the optional Linux system</string>
+    <string name="licenses_use_talloc">memory allocator used by PRoot</string>
+    <string name="licenses_use_shmem">shared memory for PRoot</string>
+    <string name="licenses_use_mesa">OpenGL on Adreno GPUs in the optional Linux system</string>
+    <string name="licenses_use_wayland">protocol files bundled with Mesa</string>
+    <string name="licenses_use_omarchy">theme colors bundled for first run</string>
+    <string name="licenses_use_nerd_fonts">symbol font</string>
+    <string name="licenses_use_weather_icons">weather glyphs in the symbol font</string>
+    <string name="licenses_use_mdi">glyphs in the symbol font</string>
+    <string name="licenses_use_compose">user interface</string>
+    <string name="licenses_use_jetpack">activity, Compose and other AndroidX libraries</string>
+    <string name="licenses_use_kotlin">language runtime</string>
+    <string name="licenses_use_commons_compress">unpacks downloads</string>
+    <string name="licenses_use_androidsvg">draws SVG icons</string>
+    <string name="licenses_use_zxing">draws the QR codes widgets are shared with</string>
+    <string name="licenses_use_json">reads and writes JSON</string>
+</resources>

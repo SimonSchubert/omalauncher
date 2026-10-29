@@ -96,7 +96,7 @@
 
         <activity
             android:name=".LinuxWindowActivity"
-            android:label="Linux"
+            android:label="@string/activity_linux"
             android:theme="@style/Theme.Omalauncher.Window"
             android:autoRemoveFromRecents="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
@@ -109,7 +109,7 @@
         <activity-alias
             android:name=".TerminalWindow"
             android:exported="false"
-            android:label="Terminal"
+            android:label="@string/activity_terminal"
             android:targetActivity=".LinuxWindowActivity" />
 
         <activity-alias
@@ -216,7 +216,7 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:documentLaunchMode="intoExisting"
             android:exported="false"
-            android:label="App"
+            android:label="@string/activity_app"
             android:resizeableActivity="true"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
@@ -226,7 +226,7 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:exported="false"
             android:icon="@drawable/files"
-            android:label="Files"
+            android:label="@string/activity_files"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:taskAffinity="${applicationId}.files"
@@ -237,7 +237,7 @@
             android:name=".SettingsActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:exported="false"
-            android:label="Settings"
+            android:label="@string/activity_settings"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:taskAffinity="${applicationId}.settings"
@@ -251,7 +251,7 @@
             android:documentLaunchMode="intoExisting"
             android:exported="false"
             android:icon="@drawable/editor"
-            android:label="Editor"
+            android:label="@string/editor_title"
             android:resizeableActivity="true"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
@@ -283,7 +283,7 @@
         <service
             android:name=".widgets.runtime.MediaListener"
             android:exported="true"
-            android:label="Omalauncher widgets"
+            android:label="@string/notification_listener"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />

@@ -14,10 +14,10 @@ class Parser private constructor(
     companion object {
         fun parse(src: String): WidgetAst = Parser(src, Lexer(src).run()).widget()
 
-        /** Declarations written as a block: `meta { ... }`, `requires { ... }`. */
-        private val BLOCK_DECLS = setOf("meta", "requires")
+        /** Declarations written as a block: `meta { ... }`, `requires { ... }`, `strings { en { ... } }`. */
+        private val BLOCK_DECLS = setOf("meta", "requires", "strings")
 
-        private val DECLS = setOf("source", "state", "let", "asset", "component", "meta", "requires")
+        private val DECLS = setOf("source", "state", "let", "asset", "component", "meta", "requires", "strings")
 
         /** Statements that run on a timer or a change, not a touch: `when cond { ... }`. */
         val TRIGGERS = TriggerKind.entries.mapTo(HashSet()) { it.word }
@@ -187,8 +187,36 @@ class Parser private constructor(
         return Item.For(name, index, list, key, b, pos)
     }
 
+    /** `strings { en { feels: "feels" } id { feels: "terasa" } }`: a set of texts per language. */
+    private fun strings(kw: Token): Decl.Strings {
+        punct("{")
+        val sets = ArrayList<Pair<String, List<Prop>>>()
+        while (!t.isP("}")) {
+            if (accept(";") || accept(",")) continue
+            val first = t
+            val language = ident("language, like en")
+            if (!Regex("[a-z]{2,3}").matches(language)) fail("a language is its code in lowercase, like en, id or pt", first)
+            if (sets.any { it.first == language }) fail("strings has $language twice", first)
+            punct("{")
+            val fields = ArrayList<Prop>()
+            while (!t.isP("}")) {
+                if (accept(";") || accept(",")) continue
+                val at = t
+                val name = ident("string name")
+                if (fields.any { it.name == name }) fail("$language has $name twice", at)
+                punct(":")
+                fields += Prop(name, expr(), at.pos)
+            }
+            punct("}")
+            sets += language to fields
+        }
+        punct("}")
+        return Decl.Strings(sets, kw.pos)
+    }
+
     private fun decl(): Decl {
         val kw = next()
+        if (kw.text == "strings") return strings(kw)
         if (kw.text in BLOCK_DECLS) {
             punct("{")
             val fields = ArrayList<Prop>()

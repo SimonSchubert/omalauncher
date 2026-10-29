@@ -1,5 +1,5 @@
 widget "owl" {
-  meta { owl: 3; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.0"; license: "MIT"; category: "fun" }
+  meta { owl: 16; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.1"; license: "MIT"; category: "fun" }
   page: 2
   order: 1
   size: 3x3
@@ -10,6 +10,22 @@ widget "owl" {
   // whether music is playing, and the phone's battery. Everything comes from
   // Android, so it works without Linux. A tap does whatever it needs most: hatch
   // the egg, feed it, or pet it.
+
+  // What it says under the owl, in the phone's language where it has a set; short: for a 2-column tile, which fits
+  // about 16 letters. ago takes minutes or hours as the unit's letter.
+  strings {
+    en {
+      eggShort: "tap to hatch"; egg: "an egg · tap to hatch"; hungryShort: "tap to feed"; hungry: "hungry · tap to feed"
+      music: "music"; minutes: n => "${n}m"; hours: n => "${n}h"
+      day: d => "day ${d}"; tiredShort: b => "tired · ${b}%"; tired: b => "tired · battery ${b}%"; fed: t => "fed ${t} ago"
+    }
+    id {
+      eggShort: "ketuk: tetaskan"; egg: "telur · ketuk: tetaskan"; hungryShort: "beri makan"; hungry: "lapar · ketuk: beri makan"
+      music: "musik"; minutes: n => "${n}m"; hours: n => "${n}j"
+      day: d => "hari ${d}"; tiredShort: b => "lelah · ${b}%"; tired: b => "lelah · baterai ${b}%"; fed: t => "makan ${t} lalu"
+    }
+  }
+
   source now = clock every 1s
   source bat = android.battery
   source m = android.media
@@ -31,7 +47,7 @@ widget "owl" {
   let tired = bat != null && bat.level < 20 && !bat.charging
   let mood = !hatched ? "egg" : asleep ? "asleep" : hungry ? "hungry" : dancing ? "dancing" : tired ? "tired" : "content"
   let day = floor((now - born) / 86400) + 1
-  let ago = now - fed < 3600 ? "${max(floor((now - fed) / 60), 1)}m" : "${floor((now - fed) / 3600)}h"
+  let ago = now - fed < 3600 ? str.minutes(max(floor((now - fed) / 60), 1)) : str.hours(floor((now - fed) / 3600))
 
   // Sprites: one letter per art pixel, "." is empty, colored by a palette.
   let owlArt = [
@@ -259,18 +275,18 @@ widget "owl" {
       maxLines: 1
       // A 2-column tile fits about 16 letters.
       text: cols != null && cols < 3 ?
-        (mood == "egg" ? "tap to hatch"
-        : mood == "asleep" ? "zzz · day ${day}"
-        : mood == "hungry" ? "tap to feed"
-        : mood == "dancing" ? "♪ ${lower(m.title ?? "music")}"
-        : mood == "tired" ? "tired · ${bat.level}%"
-        : "day ${day} · ♥︎${pets}")
-        : mood == "egg" ? "an egg · tap to hatch"
-        : mood == "asleep" ? "zzz · day ${day}"
-        : mood == "hungry" ? "hungry · tap to feed"
-        : mood == "dancing" ? "♪ ${lower(m.title ?? "music")}"
-        : mood == "tired" ? "tired · battery ${bat.level}%"
-        : "day ${day} · fed ${ago} ago · ♥︎${pets}"
+        (mood == "egg" ? str.eggShort
+        : mood == "asleep" ? "zzz · ${str.day(day)}"
+        : mood == "hungry" ? str.hungryShort
+        : mood == "dancing" ? "♪ ${lower(m.title ?? str.music)}"
+        : mood == "tired" ? str.tiredShort(bat.level)
+        : "${str.day(day)} · ♥︎${pets}")
+        : mood == "egg" ? str.egg
+        : mood == "asleep" ? "zzz · ${str.day(day)}"
+        : mood == "hungry" ? str.hungry
+        : mood == "dancing" ? "♪ ${lower(m.title ?? str.music)}"
+        : mood == "tired" ? str.tired(bat.level)
+        : "${str.day(day)} · ${str.fed(ago)} · ♥︎${pets}"
     }
   }
 }

@@ -237,6 +237,17 @@ sealed interface Decl {
         override val name get() = kind
     }
 
+    /**
+     * `strings { en { feels: "feels" } id { feels: "terasa" } }` (owl 16): the texts a person reads, per language,
+     * read as `str.feels`; the phone's language picks the set, and en fills in what it lacks.
+     */
+    class Strings(
+        val sets: List<Pair<String, List<Prop>>>,
+        override val pos: Int,
+    ) : Decl {
+        override val name get() = STRINGS
+    }
+
     /** `requires { pacman: ["jq"] }`: packages per package manager. */
     class Requires(
         val fields: List<Prop>,
@@ -245,6 +256,9 @@ sealed interface Decl {
         override val name get() = "requires"
     }
 }
+
+/** The name a widget reads its [Decl.Strings] by: `str.feels`. */
+const val STRINGS = "str"
 
 class WidgetAst(
     val name: String?,

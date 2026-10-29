@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="style_title">gaya</string>
+
+    <string name="style_home_screen">layar beranda</string>
+    <string name="style_widgets">widget</string>
+    <string name="style_screens">layar</string>
+    <string name="style_keybar">bilah tombol terminal</string>
+    <string name="style_system_bars">bilah sistem</string>
+    <string name="style_launcher_widgets">launcher &amp; widget</string>
+    <string name="style_theme">tema</string>
+    <string name="style_background">latar belakang</string>
+    <string name="style_terminal">terminal</string>
+
+    <string name="style_icons">ikon</string>
+    <string name="style_monochrome">monokrom</string>
+    <string name="style_colored">berwarna</string>
+    <string name="style_home_apps">aplikasi beranda</string>
+    <string name="style_boxed">dalam kotak</string>
+    <string name="style_icon_only">ikon saja</string>
+    <string name="style_recent_apps">aplikasi terbaru</string>
+    <string name="style_shown">tampil</string>
+    <string name="style_hidden">tersembunyi</string>
+    <string name="style_empty_page_left">halaman kosong kiri</string>
+    <string name="style_empty_page_right">halaman kosong kanan</string>
+    <string name="style_columns">kolom</string>
+    <string name="style_pages">halaman</string>
+    <string name="style_pages_one">satu</string>
+    <string name="style_pages_auto">otomatis</string>
+    <string name="style_corners">sudut</string>
+    <string name="style_corners_edge">tajam</string>
+    <string name="style_corners_soft">lembut</string>
+    <string name="style_corners_round">bulat</string>
+    <string name="style_gaps_in">jarak dalam</string>
+    <string name="style_gaps_out">jarak luar</string>
+    <string name="style_border_width">tebal bingkai</string>
+    <string name="style_opacity">opasitas</string>
+    <string name="style_frosted_glass">kaca buram</string>
+    <string name="style_on">aktif</string>
+    <string name="style_off">nonaktif</string>
+    <string name="style_status_bar">bilah status</string>
+    <string name="style_bars_background">latar belakang</string>
+    <string name="style_font">font</string>
+    <string name="style_system_font">default sistem</string>
+    <string name="style_text">teks</string>
+    <string name="style_text_smaller">lebih kecil</string>
+    <string name="style_text_default">default</string>
+    <string name="style_text_larger">lebih besar</string>
+    <string name="style_preview">pratinjau</string>
+    <string name="style_preview_app">aplikasi</string>
+    <string name="style_reset">reset</string>
+    <string name="style_differ_step">nilainya berbeda di style.toml; satu langkah menyamakan semuanya</string>
+    <string name="style_differ">berbeda</string>
+    <string name="style_custom">kustom: %1$s, dari style.toml</string>
+    <string name="style_more_settings">pengaturan lain, seperti warna bingkai dan bilah: %1$s</string>
+
+    <string name="style_keys">tombol</string>
+    <string name="style_keybar_removed">dihapus</string>
+    <string name="style_keybar_errors">ada error</string>
+    <string name="style_keybar_stock">bawaan</string>
+    <string name="style_keybar_edited">diedit</string>
+    <string name="style_keybar_edit">edit dengan agen</string>
+    <string name="style_keybar_back_to_stock">kembali ke bawaan</string>
+    <string name="style_keybar_gone">%1$s hilang, jadi tombol bawaan yang tampil</string>
+    <string name="style_keybar_restore_title">kembali ke tombol bawaan?</string>
+    <string name="style_keybar_restore_message">keybar.owl milikmu diganti dengan bawaan launcher ini.</string>
+    <string name="style_replace">ganti</string>
+
+    <string name="style_browse">jelajahi</string>
+    <string name="style_install">pasang</string>
+    <string name="style_install_theme">pasang tema</string>
+    <string name="style_install_hint">Repo GitHub sebuah tema. Tema ini menggantikan tema terpasang dengan nama yang sama.</string>
+    <string name="style_own_theme">tema buatanmu</string>
+    <string name="style_update">perbarui</string>
+    <string name="style_remove">hapus</string>
+    <string name="style_remove_theme_title">hapus %1$s?</string>
+    <string name="style_remove_theme_builtin">Perubahan yang kamu buat akan hilang; versi Omarchy tetap ada.</string>
+    <string name="style_remove_deleted">Tema dihapus dari ponsel dan dari Linux.</string>
+    <string name="style_themes_downloading">Tema Omarchy lainnya sedang diunduh dari github.com/omacom/omarchy (~70 MB).</string>
+    <string name="style_themes_not_installed">Tema Omarchy belum terpasang. Tema diunduh dari github.com/omacom/omarchy (~70 MB).</string>
+    <string name="style_downloading">mengunduh… %1$d MB</string>
+    <string name="style_failed">gagal: %1$s</string>
+    <string name="style_retry">coba lagi</string>
+    <string name="style_download_themes">unduh tema</string>
+
+    <string name="style_add_image">+ gambar</string>
+    <string name="style_wallpaper_active">✓ wallpaper android &amp; warna sistem mengikuti tema (warna sistem diperbarui setelah layar mati)</string>
+    <string name="style_wallpaper_use">jadikan wallpaper android + warna sistem</string>
+    <string name="style_remove_background_title">hapus latar belakang?</string>
+
+    <string name="style_terminal_hint">untuk terminal yang dibuka mulai sekarang · lebih banyak lewat pacman, misalnya ttf-cascadia-code</string>
+    <plurals name="style_terminal_size">
+        <item quantity="other">%1$s pt · %2$d kolom saat potret</item>
+    </plurals>
+
+    <string name="pages_title">halaman</string>
+    <string name="pages_intro">Halaman beranda, dari kiri ke kanan. Seret lewat ≡ untuk memindahkannya, atau dengan keyboard angkat ≡ dengan Enter lalu pindahkan dengan tombol panah. Beranda terbuka di halaman pertama yang berisi widget atau aplikasi; face sebelumnya berada di sebelah kirinya.</string>
+    <string name="pages_loading">memuat…</string>
+    <string name="pages_remove_named">hapus %1$s?</string>
+    <string name="pages_remove_page">hapus halaman ini?</string>
+    <string name="pages_remove_face_message">File-nya dipindahkan ke .removed/ di folder widget.</string>
+    <string name="pages_remove_tiles_message">%1$s. Widget-nya dipindahkan ke .removed/ di folder widget; aplikasinya hilang dari beranda tapi tetap terpasang.</string>
+    <string name="pages_remove">hapus</string>
+    <plurals name="pages_apps">
+        <item quantity="other">%1$d aplikasi</item>
+    </plurals>
+    <string name="pages_empty">kosong</string>
+    <string name="pages_doesnt_compile">tidak bisa dikompilasi</string>
+    <string name="pages_face">face</string>
+    <string name="pages_home">beranda</string>
+    <string name="pages_edit">edit</string>
+    <string name="pages_share">bagikan</string>
+
+    <string name="gestures_title">gestur</string>
+    <string name="gestures_swipe_up">geser ke atas</string>
+    <string name="gestures_swipe_down">geser ke bawah</string>
+    <string name="gestures_nothing">tidak ada</string>
+    <string name="gestures_has_errors">%1$s (ada error)</string>
+    <string name="gestures_missing">%1$s (hilang)</string>
+    <string name="gestures_edit">edit</string>
+    <string name="gestures_hint">panel adalah file owl, termasuk laci aplikasi: edit seperti widget, atau buat baru dengan agenmu dari menu beranda. jika geser ke atas diatur ke tidak ada, mengetuk bilah tetap membuka laci aplikasi</string>
+    <string name="gestures_stock_drawer">laci aplikasi bawaan</string>
+    <string name="gestures_drawer_shows">laci aplikasi: %1$s</string>
+    <string name="gestures_swipe_down_nothing">geser ke bawah tidak membuka apa pun</string>
+    <string name="gestures_until_fixed">%1$s sampai diperbaiki: %2$s</string>
+    <string name="gestures_keybar_until_fixed">bilah tombol terminal memakai bawaan sampai diperbaiki: %1$s</string>
+
+    <string name="agents_title">agen coding</string>
+    <string name="agents_intro">Dipasang dengan mise, seperti di Omarchy. Login terbuka di browser; tempel kunci API lewat papan klip keyboard.</string>
+    <string name="agents_open">buka</string>
+    <string name="agents_remove">hapus</string>
+    <string name="agents_install">pasang</string>
+</resources>

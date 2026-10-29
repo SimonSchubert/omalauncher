@@ -29,8 +29,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
+import dev.omalauncher.R
 import dev.omalauncher.linux.AGENTS
 import dev.omalauncher.linux.JobState
 import dev.omalauncher.linux.LinuxState
@@ -55,14 +58,14 @@ fun LinuxScreen(
     onDismiss: () -> Unit,
 ) {
     val state by runtime.bootstrap.state.collectAsState()
-    OverlayPanel("linux", onDismiss, contentWidth = ReadingWidth) {
+    OverlayPanel(stringResource(R.string.linux_title), onDismiss, contentWidth = ReadingWidth) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 4.dp)) {
             when (val s = state) {
                 LinuxState.Checking -> {}
                 LinuxState.NotInstalled -> InstallOffer(runtime)
                 is LinuxState.Installing, is LinuxState.Failed -> LinuxProgress(s, runtime.bootstrap.chosenAgents, runtime::retryLinux, runtime::cancelLinux.takeIf { runtime.bootstrap.cancellable })
                 LinuxState.Installed -> Installed(runtime)
-                LinuxState.Removing -> BasicText("removing linux…", style = Mono.copy(color = Palette.accent))
+                LinuxState.Removing -> BasicText(stringResource(R.string.linux_removing), style = Mono.copy(color = Palette.accent))
             }
         }
     }
@@ -92,15 +95,15 @@ fun rememberLinuxInstall(runtime: Runtime): (List<String>) -> Unit {
 private fun InstallOffer(runtime: Runtime) {
     var picked by rememberSaveable { mutableStateOf(listOf(AGENTS.first().bin)) }
     val install = rememberLinuxInstall(runtime)
-    BasicText("arch linux, optional", style = Mono.copy(fontSize = TextSize.Large))
+    BasicText(stringResource(R.string.linux_offer_title), style = Mono.copy(fontSize = TextSize.Large))
     Spacer(Modifier.height(8.dp))
     BasicText(
-        "Linux apps, terminal widgets, coding agents, pacman and Files. About 1 GB to download and 3 GB of space; installs in the background.",
+        stringResource(R.string.linux_offer_body),
         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
     )
     Spacer(Modifier.height(16.dp))
     // Above the agent list, so it's in reach without scrolling.
-    PrimaryButton(if (picked.isEmpty()) "install linux" else "install linux and ${picked.size} agent${if (picked.size == 1) "" else "s"}", Modifier.takesPassedKeys().passesKeys()) {
+    PrimaryButton(if (picked.isEmpty()) stringResource(R.string.linux_install) else pluralStringResource(R.plurals.linux_install_with_agents, picked.size, picked.size), Modifier.takesPassedKeys().passesKeys()) {
         install(picked)
     }
     Spacer(Modifier.height(24.dp))
@@ -117,9 +120,9 @@ private fun Installed(runtime: Runtime) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            BasicText("arch linux", style = Mono.copy(fontSize = TextSize.Item))
+            BasicText(stringResource(R.string.linux_arch), style = Mono.copy(fontSize = TextSize.Item))
             BasicText(
-                "installed · " + (size?.let(::formatSize) ?: "measuring…"),
+                stringResource(R.string.linux_installed_size, size?.let(::formatSize) ?: stringResource(R.string.linux_measuring)),
                 style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
         }
@@ -133,21 +136,20 @@ private fun Installed(runtime: Runtime) {
     val ask = remember { FocusRequester() }
     val cancel = remember { FocusRequester() }
     if (!confirm) {
-        BracketAction("remove linux", Palette.red, Modifier.focusRequester(ask).passesKeys(cancel)) { confirm = true }
+        BracketAction(stringResource(R.string.linux_remove), Palette.red, Modifier.focusRequester(ask).passesKeys(cancel)) { confirm = true }
     } else {
         Column(
             Modifier.card(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            BasicText("remove linux?", style = Mono.copy(color = Palette.red))
+            BasicText(stringResource(R.string.linux_remove_ask), style = Mono.copy(color = Palette.red))
             BasicText(
-                "Deletes Linux apps, coding agents, packages and everything in /root, like Downloads. " +
-                    "Themes, wallpapers, widgets and your home screen stay.",
+                stringResource(R.string.linux_remove_body),
                 style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             )
             Row {
-                BracketAction("remove", Palette.red, Modifier.passesKeys(), runtime::removeLinux)
-                BracketAction("cancel", Palette.muted, Modifier.focusRequester(cancel).passesKeys(ask)) { confirm = false }
+                BracketAction(stringResource(R.string.linux_remove_confirm), Palette.red, Modifier.passesKeys(), runtime::removeLinux)
+                BracketAction(stringResource(R.string.linux_cancel), Palette.muted, Modifier.focusRequester(cancel).passesKeys(ask)) { confirm = false }
             }
         }
     }
@@ -160,17 +162,17 @@ private fun GpuRow(runtime: Runtime) {
     val state = gpu.state
     val status =
         when {
-            state is JobState.Working -> "${state.action}…"
-            gpu.active -> "on · ${gpu.device ?: "GPU"} · for apps opened from now on"
-            gpu.wanted && state is JobState.Failed -> "off: the GPU failed its check after a system update"
-            gpu.wanted -> "on · waiting for its check"
-            state is JobState.Failed -> "the GPU failed its check; apps stay in software"
-            else -> "experimental · ${gpu.driverLabel} · faster OpenGL and Vulkan apps and games; terminal apps don't change"
+            state is JobState.Working -> stringResource(R.string.linux_job_working, stringResource(state.action))
+            gpu.active -> stringResource(R.string.linux_gpu_on, gpu.device ?: "GPU")
+            gpu.wanted && state is JobState.Failed -> stringResource(R.string.linux_gpu_off_failed)
+            gpu.wanted -> stringResource(R.string.linux_gpu_waiting)
+            state is JobState.Failed -> stringResource(R.string.linux_gpu_failed)
+            else -> stringResource(R.string.linux_gpu_offer, gpu.driverLabel)
         }
     Column(Modifier.card()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                BasicText("gpu acceleration", style = Mono.copy(fontSize = TextSize.Item))
+                BasicText(stringResource(R.string.linux_gpu_title), style = Mono.copy(fontSize = TextSize.Item))
                 BasicText(
                     status,
                     style = Mono.copy(color = if (gpu.active) Palette.green else Palette.muted, fontSize = TextSize.Small),
@@ -181,10 +183,10 @@ private fun GpuRow(runtime: Runtime) {
             when {
                 state is JobState.Working -> {}
                 gpu.wanted -> {
-                    if (state is JobState.Failed) BracketAction("retry", Palette.accent, passed) { runtime.setGpu(true) }
-                    BracketAction("turn off", Palette.red, passed) { runtime.setGpu(false) }
+                    if (state is JobState.Failed) BracketAction(stringResource(R.string.linux_retry), Palette.accent, passed) { runtime.setGpu(true) }
+                    BracketAction(stringResource(R.string.linux_gpu_turn_off), Palette.red, passed) { runtime.setGpu(false) }
                 }
-                else -> BracketAction("turn on", Palette.accent, passed) { runtime.setGpu(true) }
+                else -> BracketAction(stringResource(R.string.linux_gpu_turn_on), Palette.accent, passed) { runtime.setGpu(true) }
             }
         }
         JobLog(state)

@@ -152,8 +152,19 @@ internal val SINCE =
         mapOf("ripple" to 14) +
         // owl 15: a drawer that leaves the keyboard down as it opens.
         mapOf(PANEL_KEYBOARD to 15) +
-        // owl 15: AirPods, read and set over their own link, with the Bluetooth permission.
-        listOf("android.airpods", "airpods").associateWith { 15 }
+        // owl 15: photos picked on Android pasted into the Linux window being typed in, as paths agents attach.
+        mapOf("pickImages" to 15) +
+        // owl 15: dictation, what the user says on a tap becoming text the widget reads.
+        listOf("android.speech", "speech").associateWith { 15 } +
+        // owl 15: the battery's current, charge and time to full, and the charger's, for a charging widget.
+        mapOf("android.power" to 15) +
+        // owl 16: texts per language, the phone's picked, and the language itself, for an API that takes it.
+        mapOf(STRINGS_DECL to 16, "lang" to 16) +
+        // owl 17: AirPods, read and set over their own link, with the Bluetooth permission.
+        listOf("android.airpods", "airpods").associateWith { 17 }
+
+/** `strings { ... }`, named like this in [SINCE]. */
+internal const val STRINGS_DECL = "strings { }"
 
 /** `animate offset: ...`, named like this in [SINCE]. */
 internal const val ANIMATE_OFFSET = "animate offset"
@@ -244,8 +255,14 @@ internal val HANDLER_KINDS = mapOf("onChange" to setOf("Slider", "Input"), "onSu
 /** What triggers bind in their statements. */
 internal val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 
-/** Data from the phone and the launcher; device is fixed, system and network are polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "airpods")
+/**
+ * speech(...)'s words that work from anywhere, a trigger or a press too: they only turn the microphone off. The others
+ * may turn it on, and with it ask for the microphone, so only from onTap; the compiler and WidgetInstance both check.
+ */
+val SPEECH_ANYWHERE = setOf("stop", "cancel")
+
+/** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "airpods")
 
 /**
  * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the
@@ -295,6 +312,7 @@ internal val ACTION_WORDS =
         "settings" to SETTINGS_PAGES.let { Words(it, "settings takes ${it.joinToString()}") },
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
+        "speech" to setOf("start", "stop", "toggle", "cancel").let { Words(it, "speech takes ${it.joinToString()}; what's heard is in source x = android.speech") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
         // A listening mode, the next one, or a setting: on and off ones turn over without a value.
         "airpods" to

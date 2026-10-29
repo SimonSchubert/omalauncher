@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">pengaturan</string>
+
+    <string name="settings_style">gaya</string>
+    <string name="settings_style_subtitle">tema, latar belakang, layar beranda</string>
+    <string name="settings_pages">halaman</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="other">%1$d halaman · susun, edit, hapus</item>
+    </plurals>
+    <string name="settings_gestures">gestur</string>
+    <string name="settings_gestures_subtitle">atas: %1$s · bawah: %2$s</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">terpasang · hapus</string>
+    <string name="settings_linux_installing_percent">memasang %1$d%% · %2$s</string>
+    <string name="settings_linux_installing">memasang · %1$s</string>
+    <string name="settings_linux_failed">penyiapan berhenti · coba lagi</string>
+    <string name="settings_linux_removing">menghapus…</string>
+    <string name="settings_linux_not_installed">belum terpasang · pasang Arch Linux untuk aplikasi terminal dan agen</string>
+    <string name="settings_agents">agen coding</string>
+    <string name="settings_agents_default">default: %1$s</string>
+    <string name="settings_agents_install">pasang Claude Code, OpenCode, …</string>
+    <string name="settings_needs_linux">perlu linux</string>
+    <string name="settings_packages">paket</string>
+    <string name="settings_packages_subtitle">pasang aplikasi dan alat Linux dengan pacman dan AUR</string>
+    <string name="settings_local_network">jaringan lokal</string>
+    <string name="settings_local_network_subtitle">izinkan widget dan linux mengakses printer, home assistant, …</string>
+    <string name="settings_android">pengaturan android</string>
+    <string name="settings_android_subtitle">pengaturan sistem ponsel</string>
+    <string name="settings_licenses">lisensi</string>
+    <string name="settings_licenses_subtitle">perangkat lunak open source di Omalauncher</string>
+
+    <string name="settings_system_updating">memperbarui sistem: %1$s…</string>
+    <string name="settings_system_update_failed">pembaruan sistem tidak selesai</string>
+    <string name="settings_retry">coba lagi</string>
+    <string name="settings_system_updates">pembaruan sistem</string>
+    <string name="settings_widget_updates">widget</string>
+    <string name="settings_update_all">perbarui semua</string>
+    <string name="settings_check">periksa</string>
+    <string name="settings_update">perbarui</string>
+    <string name="settings_updating">memperbarui…</string>
+    <string name="settings_checking">memeriksa…</string>
+    <string name="settings_not_checked">belum diperiksa</string>
+    <string name="settings_up_to_date">terbaru · diperiksa %1$s</string>
+    <string name="settings_store_unreachable">tidak dapat terhubung ke toko</string>
+    <string name="settings_updates_held">sudah diedit, jadi tidak diperbarui di sini: %1$s · memperbarui di toko akan menimpa perubahanmu</string>
+    <string name="settings_more_lines">+%1$d lagi</string>
+    <string name="settings_just_now">baru saja</string>
+    <string name="settings_minutes_ago">%1$d mnt lalu</string>
+    <string name="settings_hours_ago">%1$d jam lalu</string>
+    <string name="settings_days_ago">%1$d hr lalu</string>
+</resources>

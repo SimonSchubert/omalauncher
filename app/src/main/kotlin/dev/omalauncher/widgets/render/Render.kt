@@ -832,7 +832,8 @@ private fun common(
         val rotation = p.float("rotation", 0f)
         val scale = p.float("scale", 1f)
         val clip = p.observe("clip")?.truthy == true
-        val radius = p.observe("radius")?.num() ?: 0.0
+        // A shape with a negative or NaN corner throws when it's laid out, which took home down (Play, 0.13.0).
+        val radius = p.observe("radius")?.num()?.takeIf { it > 0 }?.coerceAtMost(MAX_DP) ?: 0.0
         m =
             m.graphicsLayer {
                 alpha = opacity().coerceIn(0f, 1f)

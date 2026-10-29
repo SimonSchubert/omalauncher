@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The style menu (ui/StyleScreen.kt), settings' pages, gestures and coding agents screens. -->
+<resources>
+    <string name="style_title">style</string>
+
+    <!-- Section headings. -->
+    <string name="style_home_screen">home screen</string>
+    <string name="style_widgets">widgets</string>
+    <string name="style_screens">screens</string>
+    <string name="style_keybar">terminal key bar</string>
+    <string name="style_system_bars">system bars</string>
+    <!-- The font of the launcher and its widgets. -->
+    <string name="style_launcher_widgets">launcher &amp; widgets</string>
+    <string name="style_theme">theme</string>
+    <string name="style_background">background</string>
+    <string name="style_terminal">terminal</string>
+
+    <!-- Option names and their choices, in a narrow column beside the choices. -->
+    <string name="style_icons">icons</string>
+    <string name="style_monochrome">monochrome</string>
+    <string name="style_colored">colored</string>
+    <string name="style_home_apps">home apps</string>
+    <string name="style_boxed">boxed</string>
+    <string name="style_icon_only">icon only</string>
+    <string name="style_recent_apps">recent apps</string>
+    <string name="style_shown">shown</string>
+    <string name="style_hidden">hidden</string>
+    <string name="style_empty_page_left">empty page left</string>
+    <string name="style_empty_page_right">empty page right</string>
+    <string name="style_columns">columns</string>
+    <!-- Whether home is one page, or as many as its apps take. -->
+    <string name="style_pages">pages</string>
+    <string name="style_pages_one">one</string>
+    <string name="style_pages_auto">auto</string>
+    <string name="style_corners">corners</string>
+    <string name="style_corners_edge">edge</string>
+    <string name="style_corners_soft">soft</string>
+    <string name="style_corners_round">round</string>
+    <!-- Like Hyprland's gaps_in and gaps_out: space between tiles, and from them to the screen's edges. -->
+    <string name="style_gaps_in">gaps in</string>
+    <string name="style_gaps_out">gaps out</string>
+    <string name="style_border_width">border width</string>
+    <string name="style_opacity">opacity</string>
+    <string name="style_frosted_glass">frosted glass</string>
+    <string name="style_on">on</string>
+    <string name="style_off">off</string>
+    <string name="style_status_bar">status bar</string>
+    <!-- The band behind the system bars' icons. -->
+    <string name="style_bars_background">background</string>
+    <string name="style_font">font</string>
+    <string name="style_system_font">system default</string>
+    <!-- The terminal's text size. -->
+    <string name="style_text">text</string>
+    <string name="style_text_smaller">smaller</string>
+    <string name="style_text_default">default</string>
+    <string name="style_text_larger">larger</string>
+    <string name="style_preview">preview</string>
+    <!-- Stands in for an app's name in the home screen preview. -->
+    <string name="style_preview_app">app</string>
+    <string name="style_reset">reset</string>
+    <!-- Under an option that sets several settings at once, which style.toml set to different values. -->
+    <string name="style_differ_step">they differ in style.toml; a step sets them all</string>
+    <string name="style_differ">they differ</string>
+    <!-- %1$s is the value from style.toml, like "0.7" or "they differ". -->
+    <string name="style_custom">custom: %1$s, from style.toml</string>
+    <!-- %1$s is a file path. -->
+    <string name="style_more_settings">more settings, like border and bar colors: %1$s</string>
+
+    <!-- The terminal key bar's file, keybar.owl. -->
+    <string name="style_keys">keys</string>
+    <string name="style_keybar_removed">removed</string>
+    <string name="style_keybar_errors">has errors</string>
+    <string name="style_keybar_stock">stock</string>
+    <string name="style_keybar_edited">edited</string>
+    <string name="style_keybar_edit">edit with agent</string>
+    <string name="style_keybar_back_to_stock">back to stock</string>
+    <!-- %1$s is the file name, keybar.owl. -->
+    <string name="style_keybar_gone">%1$s is gone, so the stock keys show</string>
+    <string name="style_keybar_restore_title">back to the stock keys?</string>
+    <string name="style_keybar_restore_message">Your keybar.owl is replaced with the one this launcher ships.</string>
+    <string name="style_replace">replace</string>
+
+    <!-- Themes. -->
+    <string name="style_browse">browse</string>
+    <string name="style_install">install</string>
+    <string name="style_install_theme">install theme</string>
+    <string name="style_install_hint">A theme\'s GitHub repo. It replaces an installed theme of the same name.</string>
+    <!-- A theme the user installed from no known repo. -->
+    <string name="style_own_theme">your own theme</string>
+    <string name="style_update">update</string>
+    <string name="style_remove">remove</string>
+    <!-- %1$s is the theme's name. -->
+    <string name="style_remove_theme_title">remove %1$s?</string>
+    <string name="style_remove_theme_builtin">Your changes to it go; Omarchy\'s version stays.</string>
+    <string name="style_remove_deleted">It\'s deleted from the phone and from Linux.</string>
+    <string name="style_themes_downloading">Omarchy\'s other themes are downloading from github.com/omacom/omarchy (~70 MB).</string>
+    <string name="style_themes_not_installed">Omarchy\'s themes aren\'t installed yet. They\'re downloaded from github.com/omacom/omarchy (~70 MB).</string>
+    <string name="style_downloading">downloading… %1$d MB</string>
+    <!-- %1$s is the error. -->
+    <string name="style_failed">failed: %1$s</string>
+    <string name="style_retry">retry</string>
+    <string name="style_download_themes">download themes</string>
+
+    <!-- Backgrounds. -->
+    <string name="style_add_image">+ image</string>
+    <string name="style_wallpaper_active">✓ android wallpaper &amp; system colors follow the theme (system colors update after the screen turns off)</string>
+    <string name="style_wallpaper_use">use as android wallpaper + system colors</string>
+    <string name="style_remove_background_title">remove background?</string>
+
+    <string name="style_terminal_hint">terminals opened from now on · more with pacman, like ttf-cascadia-code</string>
+    <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->
+    <plurals name="style_terminal_size">
+        <item quantity="one">%1$s pt · %2$d column in portrait</item>
+        <item quantity="other">%1$s pt · %2$d columns in portrait</item>
+    </plurals>
+
+    <!-- Settings › pages (ui/PagesScreen.kt). -->
+    <string name="pages_title">pages</string>
+    <string name="pages_intro">Home\'s pages, left to right. Drag one by ≡ to move it, or with keys pick ≡ up with Enter and move it with the arrows. Home opens on the first with tiles; faces before it sit left of it.</string>
+    <string name="pages_loading">loading…</string>
+    <!-- %1$s is a face's name. -->
+    <string name="pages_remove_named">remove %1$s?</string>
+    <string name="pages_remove_page">remove this page?</string>
+    <string name="pages_remove_face_message">Its file goes to .removed/ in the widgets folder.</string>
+    <!-- %1$s is what's on the page, like "Weather, Clock, 3 apps". -->
+    <string name="pages_remove_tiles_message">%1$s. Its widgets go to .removed/ in the widgets folder; its apps come off home and stay installed.</string>
+    <string name="pages_remove">remove</string>
+    <!-- How many apps are on a page, after the names of its widgets. -->
+    <plurals name="pages_apps">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <!-- A page with nothing on it. -->
+    <string name="pages_empty">empty</string>
+    <!-- Beside a page's name: what it is. -->
+    <string name="pages_doesnt_compile">doesn\'t compile</string>
+    <string name="pages_face">face</string>
+    <string name="pages_home">home</string>
+    <string name="pages_edit">edit</string>
+    <string name="pages_share">share</string>
+
+    <!-- Settings › gestures (ui/Gestures.kt). -->
+    <string name="gestures_title">gestures</string>
+    <string name="gestures_swipe_up">swipe up</string>
+    <string name="gestures_swipe_down">swipe down</string>
+    <!-- What a swipe opens when it opens no panel. -->
+    <string name="gestures_nothing">nothing</string>
+    <!-- %1$s is a panel's name. -->
+    <string name="gestures_has_errors">%1$s (has errors)</string>
+    <!-- %1$s is the file name of a panel that is gone. -->
+    <string name="gestures_missing">%1$s (missing)</string>
+    <string name="gestures_edit">edit</string>
+    <string name="gestures_hint">panels are owl files, the drawer among them: edit them like widgets, or create one with your agent from home\'s menu. with nothing on swipe up, tapping the bar still opens the drawer</string>
+    <!-- Home's error banner, for a panel that doesn't compile. -->
+    <string name="gestures_stock_drawer">the stock drawer</string>
+    <!-- %1$s is a panel's name, "the stock drawer" or "nothing". -->
+    <string name="gestures_drawer_shows">the drawer shows %1$s</string>
+    <string name="gestures_swipe_down_nothing">swiping down opens nothing</string>
+    <!-- %1$s is what happens meanwhile, like "the drawer shows the stock drawer"; %2$s the widget language's error, in English. -->
+    <string name="gestures_until_fixed">%1$s until it\'s fixed: %2$s</string>
+    <!-- %1$s is the widget language's error, in English. -->
+    <string name="gestures_keybar_until_fixed">the terminal key bar is the stock one until it\'s fixed: %1$s</string>
+
+    <!-- Settings › coding agents (ui/AgentsScreen.kt). -->
+    <string name="agents_title">coding agents</string>
+    <string name="agents_intro">Installed with mise, like Omarchy. Logins open in your browser; paste keys with the keyboard\'s clipboard.</string>
+    <string name="agents_open">open</string>
+    <string name="agents_remove">remove</string>
+    <string name="agents_install">install</string>
+</resources>

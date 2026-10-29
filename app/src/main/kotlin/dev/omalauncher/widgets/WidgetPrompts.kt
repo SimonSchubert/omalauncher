@@ -98,7 +98,8 @@ fun publishWidgetCommand(
         "Publish my $what $file to the store at https://github.com/${Market.REPO}. " +
             "Use the GitHub CLI: install github-cli with pacman and run gh auth login if needed. Read the repo's README for the rules, " +
             "then fork it and add $place. Its meta needs a description, a version and a license (ask me which license; " +
-            "suggest MIT), and it should declare its packages in requires. Leave out anything personal: tokens, paths to my files, my " +
+            "suggest MIT), and it should declare its packages in requires. If the text people read is in one language only, ask me whether to put it in " +
+            "strings { } with an English set and that language's, as docs/declarations.md says under Text in more languages. Leave out anything personal: tokens, paths to my files, my " +
             "location. Show me the final file before pushing, then open the pull request, titled \"Add ${spec.kind.word}: ${spec.name}\", and give me " +
             "its link. If I'd rather not fork, or the pull request can't be opened, open an issue there instead with the same title and the " +
             "$what's file in a code block, and give me its link."

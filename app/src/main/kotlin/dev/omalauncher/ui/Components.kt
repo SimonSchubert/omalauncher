@@ -45,11 +45,15 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import dev.omalauncher.R
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
@@ -190,7 +194,7 @@ fun RefreshButton(
             } else {
                 Modifier
             }
-        Image(Icons.Refresh, if (loading) "refreshing" else "refresh", Modifier.size(20.dp).then(turn), colorFilter = ColorFilter.tint(if (loading) Palette.accent else Palette.muted))
+        Image(Icons.Refresh, stringResource(if (loading) R.string.home_refreshing else R.string.home_refresh), Modifier.size(20.dp).then(turn), colorFilter = ColorFilter.tint(if (loading) Palette.accent else Palette.muted))
     }
 }
 
@@ -311,6 +315,40 @@ fun BracketAction(
     }
 }
 
+/**
+ * [content] with [actions] at its end, or under it once beside it would leave [content] narrower than its longest
+ * word: at a large Android font size, buttons beside a name squeeze it to a letter a line.
+ */
+@Composable
+fun ActionsRow(
+    modifier: Modifier = Modifier,
+    actions: @Composable RowScope.() -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Layout(
+        contents = listOf(content, { Row(verticalAlignment = Alignment.CenterVertically, content = actions) }),
+        modifier = modifier,
+    ) { (contentPart, actionsPart), constraints ->
+        val width = constraints.maxWidth
+        val buttons = actionsPart.first().measure(Constraints(maxWidth = width))
+        val text = contentPart.first()
+        if (width - buttons.width >= text.minIntrinsicWidth(Constraints.Infinity)) {
+            val placed = text.measure(Constraints.fixedWidth(width - buttons.width))
+            val height = maxOf(placed.height, buttons.height)
+            layout(width, height) {
+                placed.place(0, (height - placed.height) / 2)
+                buttons.place(width - buttons.width, (height - buttons.height) / 2)
+            }
+        } else {
+            val placed = text.measure(Constraints.fixedWidth(width))
+            layout(width, placed.height + buttons.height) {
+                placed.place(0, 0)
+                buttons.place(width - buttons.width, placed.height)
+            }
+        }
+    }
+}
+
 /** The last lines a guest job printed, red once it failed; nothing while idle. */
 @Composable
 fun JobLog(
@@ -319,7 +357,7 @@ fun JobLog(
     val log =
         when (state) {
             is JobState.Working -> state.log
-            is JobState.Failed -> listOf("failed:") + state.log
+            is JobState.Failed -> listOf(stringResource(R.string.home_job_failed)) + state.log
             JobState.Idle -> return
         }
     if (log.isEmpty()) return

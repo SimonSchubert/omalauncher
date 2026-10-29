@@ -57,6 +57,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.drawText
@@ -66,6 +67,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.GuestFs
 import dev.omalauncher.linux.shellQuote
@@ -120,7 +122,7 @@ fun EditorScreen(
         null ->
             loaded?.exceptionOrNull()?.let { error ->
                 LaunchedEffect(error) {
-                    Toast.makeText(context, "can't read ${path.substringAfterLast('/')}: ${error.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.editor_cant_read, path.substringAfterLast('/'), error.message), Toast.LENGTH_LONG).show()
                     onExit()
                 }
             }
@@ -171,7 +173,7 @@ private fun EditorBody(
                 }.exceptionOrNull()
             }
         if (error != null) {
-            toast("can't save $name: ${error.message}")
+            toast(context.getString(R.string.editor_cant_save, name, error.message))
             return false
         }
         saved = text
@@ -197,7 +199,7 @@ private fun EditorBody(
         val hit = findMatch(state.text, q, from, backward)
         if (hit == null) {
             match = null
-            if (q.isNotEmpty()) toast("not found")
+            if (q.isNotEmpty()) toast(context.getString(R.string.editor_not_found))
             return
         }
         match = TextRange(hit, hit + q.length).also { state.edit { selection = it } }
@@ -240,33 +242,33 @@ private fun EditorBody(
                         modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
                         decorationBox = { inner ->
                             Box {
-                                if (q.isEmpty()) BasicText("find in file", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
+                                if (q.isEmpty()) BasicText(stringResource(R.string.editor_find_hint), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
                                 inner()
                             }
                         },
                     )
                 } else {
-                    PanelTitle(if (dirty) "$name *" else name)
+                    PanelTitle(if (dirty) stringResource(R.string.editor_title_unsaved, name) else name)
                 }
             },
             actions = {
                 if (q != null) {
-                    PanelIcon(Icons.Chevron, "previous match") { find(backward = true) }
-                    PanelIcon(Icons.Chevron, "next match", rotation = 180f) { find() }
+                    PanelIcon(Icons.Chevron, stringResource(R.string.editor_previous_match)) { find(backward = true) }
+                    PanelIcon(Icons.Chevron, stringResource(R.string.editor_next_match), rotation = 180f) { find() }
                 } else {
-                    if (dirty) BracketAction("save", Palette.accent) { scope.launch { save() } }
-                    PanelIcon(Icons.Search, "find") { query = "" }
+                    if (dirty) BracketAction(stringResource(R.string.editor_save), Palette.accent) { scope.launch { save() } }
+                    PanelIcon(Icons.Search, stringResource(R.string.editor_find)) { query = "" }
                     Box {
-                        PanelIcon(Icons.More, "more") { menuOpen = true }
+                        PanelIcon(Icons.More, stringResource(R.string.files_more)) { menuOpen = true }
                         if (menuOpen) {
                             MenuPopup(
                                 listOf(
-                                    (if (wrap) "don't wrap lines" else "wrap lines") to {
+                                    stringResource(if (wrap) R.string.editor_no_wrap else R.string.editor_wrap) to {
                                         wrap = !wrap
                                         prefs.wrap = wrap
                                     },
-                                    "show in files" to { runtime.openFiles(fs.parent(path)) },
-                                    "open in micro" to {
+                                    stringResource(R.string.editor_show_in_files) to { runtime.openFiles(fs.parent(path)) },
+                                    stringResource(R.string.editor_open_in_micro) to {
                                         scope.launch {
                                             if (!dirty || save()) {
                                                 runtime.terminal("micro ${shellQuote(path)}", name)
@@ -333,16 +335,16 @@ private fun EditorBody(
         // Keys start on save: Enter right away shouldn't throw the changes away.
         val saveFocus = remember { FocusRequester() }
         DialogFrame(onDismiss = { confirmClose = false }, start = saveFocus) {
-            BasicText("save $name?", style = Mono.copy(fontSize = TextSize.Title))
-            BasicText("You have changes that aren't saved yet.", style = Mono.copy(color = Palette.muted))
+            BasicText(stringResource(R.string.editor_save_confirm, name), style = Mono.copy(fontSize = TextSize.Title))
+            BasicText(stringResource(R.string.editor_save_confirm_message), style = Mono.copy(color = Palette.muted))
             // Cancel is a tap outside or back; three actions don't fit a phone's dialog.
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                BracketAction("discard", Palette.red) {
+                BracketAction(stringResource(R.string.editor_discard), Palette.red) {
                     confirmClose = false
                     onExit()
                 }
                 Box(Modifier.focusRequester(saveFocus)) {
-                    BracketAction("save", Palette.accent) {
+                    BracketAction(stringResource(R.string.editor_save), Palette.accent) {
                         confirmClose = false
                         scope.launch { if (save()) onExit() }
                     }
@@ -462,13 +464,13 @@ private fun EditorKeys(
                 while (content < text.length && (text[content] == ' ' || text[content] == '\t')) content++
                 moveTo(if (at == content) start else content)
             },
-            EditorKey("left", Icons.Chevron, -90f, repeats = true) {
+            EditorKey(stringResource(R.string.editor_key_left), Icons.Chevron, -90f, repeats = true) {
                 val sel = state.selection
                 if (!sel.collapsed) moveTo(sel.min) else moveTo(sel.start - if (sel.start >= 2 && state.text[sel.start - 1].isLowSurrogate()) 2 else 1)
             },
-            EditorKey("up", Icons.Chevron, 0f, repeats = true) { vertical(down = false) },
-            EditorKey("down", Icons.Chevron, 180f, repeats = true) { vertical(down = true) },
-            EditorKey("right", Icons.Chevron, 90f, repeats = true) {
+            EditorKey(stringResource(R.string.editor_key_up), Icons.Chevron, 0f, repeats = true) { vertical(down = false) },
+            EditorKey(stringResource(R.string.editor_key_down), Icons.Chevron, 180f, repeats = true) { vertical(down = true) },
+            EditorKey(stringResource(R.string.editor_key_right), Icons.Chevron, 90f, repeats = true) {
                 val sel = state.selection
                 if (!sel.collapsed) moveTo(sel.max) else moveTo(sel.end + if (sel.end < state.text.length && state.text[sel.end].isHighSurrogate()) 2 else 1)
             },
@@ -477,11 +479,11 @@ private fun EditorKeys(
                 val at = state.selection.end
                 moveTo(text.indexOf('\n', at).let { if (it < 0) text.length else it })
             },
-            EditorKey("undo", Icons.Undo, repeats = true) {
+            EditorKey(stringResource(R.string.editor_key_undo), Icons.Undo, repeats = true) {
                 state.undoState.undo()
                 onMoved()
             },
-            EditorKey("redo", Icons.Redo, repeats = true) {
+            EditorKey(stringResource(R.string.editor_key_redo), Icons.Redo, repeats = true) {
                 state.undoState.redo()
                 onMoved()
             },
@@ -526,19 +528,19 @@ fun EditorHome(
             onClose = onExit,
             modifier = Modifier.holdsKeys(start = close),
             closeFocus = close,
-            title = { PanelTitle("editor") },
+            title = { PanelTitle(stringResource(R.string.editor_home_title)) },
             actions = {
-                BracketAction("new", Palette.accent) { newFile = true }
-                BracketAction("browse", Palette.muted) {
+                BracketAction(stringResource(R.string.editor_new), Palette.accent) { newFile = true }
+                BracketAction(stringResource(R.string.editor_browse), Palette.muted) {
                     runtime.openFiles()
                     onExit()
                 }
             },
             contentWidth = ReadingWidth,
         ) {
-            SectionLabel("recent")
+            SectionLabel(stringResource(R.string.editor_recent))
             if (recent.isEmpty()) {
-                BasicText("Files you edit show up here.", Modifier.padding(vertical = 8.dp), style = Mono.copy(color = Palette.muted))
+                BasicText(stringResource(R.string.editor_recent_empty), Modifier.padding(vertical = 8.dp), style = Mono.copy(color = Palette.muted))
             }
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(recent) { path ->
@@ -568,7 +570,13 @@ fun EditorHome(
     }
 
     if (newFile) {
-        TextDialog("new file", "/root/", "create", hint = "a path in Linux", onDismiss = { newFile = false }) { path ->
+        TextDialog(
+            stringResource(R.string.files_new_file),
+            "/root/",
+            stringResource(R.string.files_create),
+            hint = stringResource(R.string.editor_new_file_hint),
+            onDismiss = { newFile = false },
+        ) { path ->
             newFile = false
             if (path.endsWith('/')) return@TextDialog
             open(fs.normalize(if (path.startsWith('/')) path else "/root/$path"))

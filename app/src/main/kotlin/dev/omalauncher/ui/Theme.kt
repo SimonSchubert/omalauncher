@@ -1,6 +1,7 @@
 package dev.omalauncher.ui
 
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -195,12 +196,12 @@ object LauncherStyle {
 enum class Corners(
     /** What launchers before style.toml saved. */
     val id: String,
-    val label: String,
+    @StringRes val label: Int,
     val scale: Float,
 ) {
-    Edge("edge", "edge", 0f),
-    Soft("soft", "soft", 0.5f),
-    Round("round", "round", 1f),
+    Edge("edge", R.string.style_corners_edge, 0f),
+    Soft("soft", R.string.style_corners_soft, 0.5f),
+    Round("round", R.string.style_corners_round, 1f),
     ;
 
     companion object {

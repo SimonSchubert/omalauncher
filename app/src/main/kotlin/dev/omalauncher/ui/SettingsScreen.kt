@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -11,13 +12,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.focus.FocusRequester
@@ -26,9 +28,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.LocalNetwork
+import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.JobState
 import dev.omalauncher.linux.LinuxState
@@ -66,56 +71,85 @@ fun SettingsScreen(
                 )
             }
         }
-    OverlayPanel("settings", onDismiss, contentWidth = ReadingWidth) {
+    OverlayPanel(stringResource(R.string.settings_title), onDismiss, contentWidth = ReadingWidth) {
         val linuxStatus =
             when (val l = linux) {
-                LinuxState.Installed -> "installed · remove"
-                is LinuxState.Installing -> "installing" + (l.progress?.let { " ${(it * 100).toInt()}%" } ?: "") + " · ${l.stage.label}"
-                is LinuxState.Failed -> "setup stopped · retry"
-                LinuxState.Removing -> "removing…"
-                else -> "not installed · install Arch Linux for terminal apps and agents"
+                LinuxState.Installed -> stringResource(R.string.settings_linux_installed)
+                is LinuxState.Installing ->
+                    l.progress?.let { stringResource(R.string.settings_linux_installing_percent, (it * 100).toInt(), stringResource(l.stage.label)) }
+                        ?: stringResource(R.string.settings_linux_installing, stringResource(l.stage.label))
+                is LinuxState.Failed -> stringResource(R.string.settings_linux_failed)
+                LinuxState.Removing -> stringResource(R.string.settings_linux_removing)
+                else -> stringResource(R.string.settings_linux_not_installed)
             }
+        val needsLinux = stringResource(R.string.settings_needs_linux)
         val rows =
             listOfNotNull(
-                Triple("style", runtime.themes.current?.title ?: "theme, background, home screen", onStyle),
-                Triple("pages", runtime.widgets.pages.size.let { if (it == 1) "1 page" else "$it pages" } + " · arrange, edit, remove", onPages),
-                Triple("gestures", "up: ${runtime.gestureLabel(runtime.gestures.swipeUp)} · down: ${runtime.gestureLabel(runtime.gestures.swipeDown)}", onGestures),
-                Triple("linux", linuxStatus, onLinux),
+                SettingsRow(R.string.settings_style, runtime.themes.current?.title ?: stringResource(R.string.settings_style_subtitle), onStyle),
+                SettingsRow(R.string.settings_pages, pluralStringResource(R.plurals.settings_pages_subtitle, runtime.widgets.pages.size, runtime.widgets.pages.size), onPages),
+                SettingsRow(
+                    R.string.settings_gestures,
+                    stringResource(R.string.settings_gestures_subtitle, runtime.gestureLabel(runtime.gestures.swipeUp), runtime.gestureLabel(runtime.gestures.swipeDown)),
+                    onGestures,
+                ),
+                SettingsRow(R.string.settings_linux, linuxStatus, onLinux),
                 if (installed) {
-                    Triple("coding agents", runtime.agents.default?.let { "default: ${it.name}" } ?: "install Claude Code, OpenCode, …", onAgents)
+                    SettingsRow(
+                        R.string.settings_agents,
+                        runtime.agents.default?.let { stringResource(R.string.settings_agents_default, it.name) } ?: stringResource(R.string.settings_agents_install),
+                        onAgents,
+                    )
                 } else {
-                    Triple("coding agents", "needs linux", onLinux)
+                    SettingsRow(R.string.settings_agents, needsLinux, onLinux)
                 },
-                Triple("packages", if (installed) "install Linux apps and tools with pacman and the AUR" else "needs linux", if (installed) onPackages else onLinux),
+                SettingsRow(R.string.settings_packages, if (installed) stringResource(R.string.settings_packages_subtitle) else needsLinux, if (installed) onPackages else onLinux),
                 if (localNetworkMissing) {
-                    Triple("local network", "let widgets and linux reach your printer, home assistant, …") {
+                    SettingsRow(R.string.settings_local_network, stringResource(R.string.settings_local_network_subtitle)) {
                         askLocalNetwork.launch(LocalNetwork.PERMISSION)
                     }
                 } else {
                     null
                 },
-                Triple("android settings", "the phone's system settings") {
+                SettingsRow(R.string.settings_android, stringResource(R.string.settings_android_subtitle)) {
                     context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 },
-                Triple("licenses", "open source software in Omalauncher", onLicenses),
+                SettingsRow(R.string.settings_licenses, stringResource(R.string.settings_licenses_subtitle), onLicenses),
             )
-        UpdatesBox(runtime, installed)
-        if (installed) SetupUpdates(runtime)
-        // The local network row goes once it's granted: keys on it go on to the next.
-        val next = remember { FocusRequester() }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(rows, key = { it.first }) { (title, subtitle, onClick) ->
+        // The updates scroll with the rows: at a large Android font size a long list of them would leave the rows a strip.
+        // Not lazy: scrolled out and back, the updates would check again.
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            UpdatesBox(runtime, installed)
+            if (installed) SetupUpdates(runtime)
+            SettingsRows(rows)
+        }
+    }
+}
+
+/** A row of the settings hub: [title] is its string, which also keys it. */
+private class SettingsRow(
+    @StringRes val title: Int,
+    val subtitle: String,
+    val onClick: () -> Unit,
+)
+
+@Composable
+private fun SettingsRows(rows: List<SettingsRow>) {
+    // The local network row goes once it's granted: keys on it go on to the next.
+    val next = remember { FocusRequester() }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (row in rows) {
+            key(row.title) {
                 Row(
-                    when (title) {
-                        "local network" -> Modifier.passesKeys(next)
-                        "android settings" -> Modifier.focusRequester(next)
+                    when (row.title) {
+                        R.string.settings_local_network -> Modifier.passesKeys(next)
+                        R.string.settings_android -> Modifier.focusRequester(next)
                         else -> Modifier
-                    }.card(onClick = onClick),
+                    }.card(onClick = row.onClick),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        BasicText(title, style = Mono.copy(fontSize = TextSize.Item))
-                        BasicText(subtitle, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                        BasicText(stringResource(row.title), style = Mono.copy(fontSize = TextSize.Item))
+                        BasicText(row.subtitle, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                     }
                     Symbol(Glyph.ChevronRight, Palette.accent, fontSize = TextSize.Title)
                 }
@@ -136,11 +170,11 @@ private fun SetupUpdates(runtime: Runtime) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BasicText(
-                if (working != null) "updating the system: ${working.action.lowercase()}…" else "a system update didn't finish",
+                if (working != null) stringResource(R.string.settings_system_updating, stringResource(working.action).lowercase()) else stringResource(R.string.settings_system_update_failed),
                 Modifier.weight(1f),
                 style = Mono.copy(color = if (failed != null) Palette.red else Palette.accent),
             )
-            if (failed != null) BracketAction("retry", Palette.accent, onClick = runtime::retryUpdates)
+            if (failed != null) BracketAction(stringResource(R.string.settings_retry), Palette.accent, onClick = runtime::retryUpdates)
         }
         JobLog(state)
     }
@@ -176,26 +210,26 @@ private fun UpdatesBox(
         Modifier.padding(bottom = 8.dp).card(),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            BasicText(if (linux) "system updates" else "widgets", Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item))
+            BasicText(stringResource(if (linux) R.string.settings_system_updates else R.string.settings_widget_updates), Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item))
             when {
                 busy -> {}
                 // With one section pending, its own "update" is the same thing.
                 linuxPending && ready.isNotEmpty() ->
-                    BracketAction("update all", Palette.accent) {
+                    BracketAction(stringResource(R.string.settings_update_all), Palette.accent) {
                         runtime.updateSystem()
                         engine.updateAll()
                     }
                 linuxPending || ready.isNotEmpty() -> {}
                 // Not a composition scope: this branch leaves composition as soon as checking starts, which would cancel the check.
                 else ->
-                    BracketAction("check", Palette.muted) {
+                    BracketAction(stringResource(R.string.settings_check), Palette.muted) {
                         runtime.checkUpdates()
                         engine.checkUpdates()
                     }
             }
         }
         if (linux) LinuxUpdatesRows(runtime)
-        if (linux && widgets) BasicText("widgets", Modifier.padding(top = 8.dp), style = Mono.copy(fontSize = TextSize.Item))
+        if (linux && widgets) BasicText(stringResource(R.string.settings_widget_updates), Modifier.padding(top = 8.dp), style = Mono.copy(fontSize = TextSize.Item))
         if (widgets) WidgetUpdatesRows(engine, markets, ready, held)
     }
 }
@@ -209,11 +243,11 @@ private fun LinuxUpdatesRows(runtime: Runtime) {
     val working = job is JobState.Working
     val lines =
         when {
-            working -> listOf("updating…")
-            updates.checking -> listOf("checking…")
-            pending == null -> listOf("not checked yet")
-            pending.error != null -> listOf(pending.error)
-            pending.count == 0 -> listOf("up to date · checked ${ago(pending.checkedAt)}")
+            working -> listOf(stringResource(R.string.settings_updating))
+            updates.checking -> listOf(stringResource(R.string.settings_checking))
+            pending == null -> listOf(stringResource(R.string.settings_not_checked))
+            pending.error != null -> listOf(stringResource(pending.error))
+            pending.count == 0 -> listOf(stringResource(R.string.settings_up_to_date, ago(pending.checkedAt)))
             // The agents first: they're what most people are waiting for.
             else -> pending.tools.map { "${it.name} ${it.current} → ${it.latest}" } + pending.packages
         }
@@ -236,17 +270,17 @@ private fun WidgetUpdatesRows(
     val checking = markets.any { it.loading }
     val lines =
         when {
-            engine.updating -> listOf("updating…")
-            checking -> listOf("checking…")
+            engine.updating -> listOf(stringResource(R.string.settings_updating))
+            checking -> listOf(stringResource(R.string.settings_checking))
             ready.isNotEmpty() || held.isNotEmpty() -> ready.map { (m, e) -> "${e.name} ${m.installedVersion(e)?.version} → ${e.version}" }
-            markets.any { it.error != null } -> listOf("couldn't reach the store")
-            markets.any { it.refreshedAt == 0L } -> listOf("not checked yet")
-            else -> listOf("up to date · checked ${ago(markets.minOf { it.refreshedAt })}")
+            markets.any { it.error != null } -> listOf(stringResource(R.string.settings_store_unreachable))
+            markets.any { it.refreshedAt == 0L } -> listOf(stringResource(R.string.settings_not_checked))
+            else -> listOf(stringResource(R.string.settings_up_to_date, ago(markets.minOf { it.refreshedAt })))
         }
     UpdateLines(lines, ready.isNotEmpty() && !engine.updating && !checking, engine::updateAll)
     if (!engine.updating && !checking && held.isNotEmpty()) {
         val names = held.joinToString { (m, e) -> "${e.name} ${m.installedVersion(e)?.version} → ${e.version}" }
-        BasicText("edited, so not updated here: $names · updating one in the store replaces your changes", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        BasicText(stringResource(R.string.settings_updates_held, names), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
     }
     engine.updateError?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small), maxLines = 3) }
 }
@@ -261,25 +295,26 @@ private fun UpdateLines(
     ready: Boolean,
     onUpdate: () -> Unit,
 ) {
-    val shown = if (lines.size > MAX_LINES) lines.take(MAX_LINES - 1) + "+${lines.size - MAX_LINES + 1} more" else lines
+    val shown = if (lines.size > MAX_LINES) lines.take(MAX_LINES - 1) + stringResource(R.string.settings_more_lines, lines.size - MAX_LINES + 1) else lines
     val style = Mono.copy(color = if (ready) Palette.accent else Palette.muted, fontSize = TextSize.Small)
     Row {
         Column(Modifier.weight(1f).padding(top = 4.dp)) {
             for (line in shown) BasicText(line, style = style, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        if (ready) BracketAction("update", Palette.accent, onClick = onUpdate)
+        if (ready) BracketAction(stringResource(R.string.settings_update), Palette.accent, onClick = onUpdate)
     }
 }
 
 /** Lines a section of the updates box lists before it says how many more there are. */
 private const val MAX_LINES = 10
 
+@Composable
 private fun ago(millis: Long): String {
     val minutes = (System.currentTimeMillis() - millis) / 60_000
     return when {
-        minutes < 1 -> "just now"
-        minutes < 60 -> "${minutes}m ago"
-        minutes < 48 * 60 -> "${minutes / 60}h ago"
-        else -> "${minutes / (24 * 60)}d ago"
+        minutes < 1 -> stringResource(R.string.settings_just_now)
+        minutes < 60 -> stringResource(R.string.settings_minutes_ago, minutes)
+        minutes < 48 * 60 -> stringResource(R.string.settings_hours_ago, minutes / 60)
+        else -> stringResource(R.string.settings_days_ago, minutes / (24 * 60))
     }
 }

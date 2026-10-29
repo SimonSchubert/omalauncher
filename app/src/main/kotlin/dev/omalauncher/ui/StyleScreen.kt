@@ -1,6 +1,7 @@
 package dev.omalauncher.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.annotation.StringRes
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -63,6 +64,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -79,6 +82,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
+import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.LinuxState
@@ -120,7 +124,7 @@ fun StyleScreen(
     var installOpen by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<OmarchyTheme?>(null) }
     val linux by runtime.bootstrap.state.collectAsState()
-    OverlayPanel("style", onDismiss) {
+    OverlayPanel(stringResource(R.string.style_title), onDismiss) {
         Column(Modifier.verticalScroll(rememberScrollState())) {
             ThemeSection(
                 store,
@@ -133,48 +137,49 @@ fun StyleScreen(
             )
             store.current?.let { BackgroundSection(store, it) }
             // Style choices don't depend on a theme, so they're offered before themes are downloaded too.
-            Heading("home screen")
+            Heading(R.string.style_home_screen)
             val style = runtime.style
-            Flag("icons", "monochrome", "colored", style, Style.MONOCHROME_ICONS)
-            Flag("home apps", "boxed", "icon only", style, Style.APP_TILES)
-            Flag("recent apps", "shown", "hidden", style, Style.RECENT_APPS)
-            Flag("empty page left", "shown", "hidden", style, Style.EMPTY_PAGE_LEFT)
-            Flag("empty page right", "shown", "hidden", style, Style.EMPTY_PAGE_RIGHT)
-            CountOption("columns", Style.COLUMNS, style)
-            Flag("pages", "one", "auto", style, Style.FORCE_SINGLE_PAGE)
-            NumberOption("corners", Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
+            Flag(R.string.style_icons, R.string.style_monochrome, R.string.style_colored, style, Style.MONOCHROME_ICONS)
+            Flag(R.string.style_home_apps, R.string.style_boxed, R.string.style_icon_only, style, Style.APP_TILES)
+            Flag(R.string.style_recent_apps, R.string.style_shown, R.string.style_hidden, style, Style.RECENT_APPS)
+            Flag(R.string.style_empty_page_left, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_LEFT)
+            Flag(R.string.style_empty_page_right, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_RIGHT)
+            CountOption(R.string.style_columns, Style.COLUMNS, style)
+            Flag(R.string.style_pages, R.string.style_pages_one, R.string.style_pages_auto, style, Style.FORCE_SINGLE_PAGE)
+            NumberOption(R.string.style_corners, Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
             HomePreview(runtime)
             // Like Hyprland's gaps_in, gaps_out and border_size; the colors are in style.toml.
-            Heading("widgets")
-            Stepper("gaps in", style, Style.GAPS_IN)
-            Stepper("gaps out", style, Style.GAPS_OUT)
-            Stepper("border width", style, Style.TILE_BORDER_WIDTH)
-            NumberSlider("opacity", style, Style.TILE_OPACITY)
-            Flag("frosted glass", "on", "off", style, Style.TILE_FROST)
+            Heading(R.string.style_widgets)
+            Stepper(R.string.style_gaps_in, style, Style.GAPS_IN)
+            Stepper(R.string.style_gaps_out, style, Style.GAPS_OUT)
+            Stepper(R.string.style_border_width, style, Style.TILE_BORDER_WIDTH)
+            NumberSlider(R.string.style_opacity, style, Style.TILE_OPACITY)
+            Flag(R.string.style_frosted_glass, R.string.style_on, R.string.style_off, style, Style.TILE_FROST)
             WidgetPreview()
-            Heading("screens")
-            Stepper("gaps out", style, Style.SCREEN_GAPS_OUT)
-            Stepper("border width", style, Style.SCREEN_BORDER_WIDTH)
+            Heading(R.string.style_screens)
+            Stepper(R.string.style_gaps_out, style, Style.SCREEN_GAPS_OUT)
+            Stepper(R.string.style_border_width, style, Style.SCREEN_BORDER_WIDTH)
             // keybar.owl reads these as gapsOut and borderWidth.
-            Heading("terminal key bar")
+            Heading(R.string.style_keybar)
             KeybarOption(runtime, onAgent)
-            Stepper("gaps out", style, Style.KEYBAR_GAPS_OUT)
-            Stepper("border width", style, Style.KEYBAR_BORDER_WIDTH)
+            Stepper(R.string.style_gaps_out, style, Style.KEYBAR_GAPS_OUT)
+            Stepper(R.string.style_border_width, style, Style.KEYBAR_BORDER_WIDTH)
             // Both bars at once; style.toml can set them apart. Background is the band behind their icons.
-            Heading("system bars")
-            Flag("status bar", "shown", "hidden", style, Style.STATUS_BAR_SHOWN)
-            Flag("background", "shown", "hidden", style, Style.STATUS_BAR.framed, Style.NAVIGATION_BAR.framed)
-            Stepper("border width", style, Style.STATUS_BAR.borderWidth, Style.NAVIGATION_BAR.borderWidth)
+            Heading(R.string.style_system_bars)
+            Flag(R.string.style_status_bar, R.string.style_shown, R.string.style_hidden, style, Style.STATUS_BAR_SHOWN)
+            Flag(R.string.style_bars_background, R.string.style_shown, R.string.style_hidden, style, Style.STATUS_BAR.framed, Style.NAVIGATION_BAR.framed)
+            Stepper(R.string.style_border_width, style, Style.STATUS_BAR.borderWidth, Style.NAVIGATION_BAR.borderWidth)
             if (linux == LinuxState.Installed) {
                 // Linux's fonts, which the terminal section lists.
-                Heading("launcher & widgets")
+                Heading(R.string.style_launcher_widgets)
                 val fonts = listOf(Style.SYSTEM_FONT) + runtime.terminalFont.families
-                FontOption(fonts, style.style[Style.FONT], label = { if (it == Style.SYSTEM_FONT) "system default" else it }) { family ->
+                val systemFont = stringResource(R.string.style_system_font)
+                FontOption(fonts, style.style[Style.FONT], label = { if (it == Style.SYSTEM_FONT) systemFont else it }) { family ->
                     style.update { it.with(Style.FONT, family) }
                 }
                 TerminalSection(runtime.terminalFont, runtime.launcherFont, style)
                 BasicText(
-                    "more settings, like border and bar colors: ~/${StyleStore.GUEST_DIR}/defaults.toml",
+                    stringResource(R.string.style_more_settings, "~/${StyleStore.GUEST_DIR}/defaults.toml"),
                     Modifier.padding(top = 20.dp),
                     style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                 )
@@ -182,10 +187,10 @@ fun StyleScreen(
         }
         if (installOpen) {
             TextDialog(
-                "install theme",
+                stringResource(R.string.style_install_theme),
                 "",
-                "install",
-                hint = "A theme's GitHub repo. It replaces an installed theme of the same name.",
+                stringResource(R.string.style_install),
+                hint = stringResource(R.string.style_install_hint),
                 onDismiss = { installOpen = false },
             ) { url ->
                 installOpen = false
@@ -195,9 +200,9 @@ fun StyleScreen(
         removing?.let { theme ->
             val builtIn = theme.dirs.size > 1
             ConfirmDialog(
-                "remove ${theme.title.lowercase()}?",
-                if (builtIn) "Your changes to it go; Omarchy's version stays." else "It's deleted from the phone and from Linux.",
-                "remove",
+                stringResource(R.string.style_remove_theme_title, theme.title.lowercase()),
+                stringResource(if (builtIn) R.string.style_remove_theme_builtin else R.string.style_remove_deleted),
+                stringResource(R.string.style_remove),
                 onDismiss = { removing = null },
             ) {
                 removing = null
@@ -232,7 +237,7 @@ private fun KeybarOption(
         scope.launch(Dispatchers.IO) { runCatching { stockFile.copyTo(file, overwrite = true) } }
     }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        OptionLabel("keys")
+        OptionLabel(stringResource(R.string.style_keys))
         Box(Modifier.weight(1f, fill = false)) {
             Row(
                 Modifier
@@ -242,33 +247,36 @@ private fun KeybarOption(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 BasicText(
-                    when {
-                        spec == null -> "removed"
-                        spec.program == null -> "has errors"
-                        stock -> "stock"
-                        else -> "edited"
-                    },
+                    stringResource(
+                        when {
+                            spec == null -> R.string.style_keybar_removed
+                            spec.program == null -> R.string.style_keybar_errors
+                            stock -> R.string.style_keybar_stock
+                            else -> R.string.style_keybar_edited
+                        },
+                    ),
                     style = Mono.copy(color = if (spec != null && spec.program == null) Palette.red else Palette.foreground),
                 )
                 Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 6.dp))
             }
             if (open) {
+                val labels = KeybarAction.entries.associateWith { stringResource(it.label) }
                 ChoicePopup(actions, null, BelowAnchorStart, onDismiss = { open = false }, onPick = { action ->
                     when (action) {
                         KeybarAction.Edit -> spec?.let { onAgent("Edit ${it.name}") { bin -> editWidgetCommand(bin, it) } }
                         // Nothing of the user's to replace.
                         KeybarAction.Stock -> if (spec == null) restore() else restoring = true
                     }
-                }, label = { it.label })
+                }, label = { labels.getValue(it) })
             }
         }
     }
-    OptionHint(if (spec == null) "${file.name} is gone, so the stock keys show" else file.name)
+    OptionHint(if (spec == null) stringResource(R.string.style_keybar_gone, file.name) else file.name)
     if (restoring) {
         ConfirmDialog(
-            "back to the stock keys?",
-            "Your keybar.owl is replaced with the one this launcher ships.",
-            "replace",
+            stringResource(R.string.style_keybar_restore_title),
+            stringResource(R.string.style_keybar_restore_message),
+            stringResource(R.string.style_replace),
             onDismiss = { restoring = false },
         ) {
             restoring = false
@@ -277,9 +285,9 @@ private fun KeybarOption(
     }
 }
 
-private enum class KeybarAction(val label: String) {
-    Edit("edit with agent"),
-    Stock("back to stock"),
+private enum class KeybarAction(@StringRes val label: Int) {
+    Edit(R.string.style_keybar_edit),
+    Stock(R.string.style_keybar_back_to_stock),
 }
 
 /** The installed themes in a row, starting at the current one; browse has Omarchy's whole catalog. */
@@ -292,9 +300,9 @@ private fun ThemeSection(
 ) {
     val scope = rememberCoroutineScope()
     val current = store.current
-    Heading("theme") {
-        BracketAction("browse", Palette.accent, onClick = onBrowse)
-        BracketAction("install", Palette.accent, onClick = onInstall)
+    Heading(R.string.style_theme) {
+        BracketAction(stringResource(R.string.style_browse), Palette.accent, onClick = onBrowse)
+        BracketAction(stringResource(R.string.style_install), Palette.accent, onClick = onInstall)
     }
     InstallStatus(store)
     if (!store.complete) {
@@ -319,14 +327,14 @@ private fun ThemeSection(
         val source = remember(current) { ThemeDirs.sourceOf(current) }
         Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             BasicText(
-                source?.label ?: "your own theme",
+                source?.label ?: stringResource(R.string.style_own_theme),
                 Modifier.weight(1f),
                 style = Mono.copy(color = Palette.muted),
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (source != null) BracketAction("update", Palette.accent) { scope.launch { store.update(current) } }
-            BracketAction("remove", Palette.red) { onRemove(current) }
+            if (source != null) BracketAction(stringResource(R.string.style_update), Palette.accent) { scope.launch { store.update(current) } }
+            BracketAction(stringResource(R.string.style_remove), Palette.red) { onRemove(current) }
         }
     }
 }
@@ -346,7 +354,7 @@ private fun BackgroundSection(
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch { store.addBackground(uri) }
     }
-    Heading("background")
+    Heading(R.string.style_background)
     LazyRow(Modifier.bleed(PanelPadding), contentPadding = PaddingValues(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(backgrounds, key = { it.path }) { file ->
             Thumbnail(
@@ -368,7 +376,7 @@ private fun BackgroundSection(
                     .clickable { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 contentAlignment = Alignment.Center,
             ) {
-                BasicText("[ + image ]", style = Mono.copy(color = Palette.accent))
+                BasicText("[ ${stringResource(R.string.style_add_image)} ]", style = Mono.copy(color = Palette.accent))
             }
         }
     }
@@ -383,18 +391,18 @@ private fun BackgroundSection(
         if (store.liveWallpaperActive) {
             // SystemUI defers live-wallpaper color changes until the screen turns off.
             BasicText(
-                "✓ android wallpaper & system colors follow the theme (system colors update after the screen turns off)",
+                stringResource(R.string.style_wallpaper_active),
                 style = Mono.copy(color = Palette.green),
             )
         } else {
-            BasicText("[ use as android wallpaper + system colors ]", style = Mono.copy(color = Palette.accent))
+            BasicText("[ ${stringResource(R.string.style_wallpaper_use)} ]", style = Mono.copy(color = Palette.accent))
         }
     }
     removing?.let { file ->
         ConfirmDialog(
-            "remove background?",
-            "It's deleted from the phone and from Linux.",
-            "remove",
+            stringResource(R.string.style_remove_background_title),
+            stringResource(R.string.style_remove_deleted),
+            stringResource(R.string.style_remove),
             onDismiss = { removing = null },
         ) {
             removing = null
@@ -414,14 +422,14 @@ private fun TerminalSection(
     style: StyleStore,
 ) {
     LaunchedEffect(Unit) { font.refreshFamilies() }
-    Heading("terminal")
+    Heading(R.string.style_terminal)
     FontOption(font.families, font.family) { family -> style.update { it.with(Style.TERMINAL_FONT, family) } }
-    OptionHint("terminals opened from now on · more with pacman, like ttf-cascadia-code", Modifier.padding(bottom = 4.dp))
-    NumberOption("text", TerminalText.entries.map { it.label to it.em.toDouble() }, Style.TERMINAL_TEXT, style, unit = " dp")
+    OptionHint(stringResource(R.string.style_terminal_hint), Modifier.padding(bottom = 4.dp))
+    NumberOption(R.string.style_text, TerminalText.entries.map { it.label to it.em.toDouble() }, Style.TERMINAL_TEXT, style, unit = " dp")
     // In portrait, where columns run short; landscape has plenty.
     val metrics = LocalContext.current.resources.displayMetrics
     val columns = font.columns(minOf(metrics.widthPixels, metrics.heightPixels))
-    OptionHint("${TerminalFont.format(font.size).removeSuffix(".0")} pt · $columns columns in portrait", Modifier.padding(top = 2.dp))
+    OptionHint(pluralStringResource(R.plurals.style_terminal_size, columns, TerminalFont.format(font.size).removeSuffix(".0"), columns), Modifier.padding(top = 2.dp))
     TerminalPreview(font, launcherFont)
 }
 
@@ -475,7 +483,7 @@ private fun HomePreview(runtime: Runtime) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(HomeGap)) {
             for (i in 0 until columns) {
                 val app = apps.getOrNull(i)
-                PreviewApp(app?.label ?: "app", app?.icons(runtime)?.let { if (mono) it.second else it.first }, Modifier.weight(1f).aspectRatio(1f))
+                PreviewApp(app?.label ?: stringResource(R.string.style_preview_app), app?.icons(runtime)?.let { if (mono) it.second else it.first }, Modifier.weight(1f).aspectRatio(1f))
             }
         }
         if (LauncherStyle.recentApps) {
@@ -564,7 +572,7 @@ private fun WidgetPreview() {
 @Composable
 private fun PreviewScreen(content: @Composable ColumnScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)) {
-        OptionLabel("preview")
+        OptionLabel(stringResource(R.string.style_preview))
         Column(
             Modifier
                 .weight(1f)
@@ -579,7 +587,7 @@ private fun PreviewScreen(content: @Composable ColumnScope.() -> Unit) {
 
 /** Over a preview, so it isn't mistaken for controls. */
 @Composable
-private fun PreviewLabel() = BasicText("preview", Modifier.padding(top = 12.dp, bottom = 4.dp), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+private fun PreviewLabel() = BasicText(stringResource(R.string.style_preview), Modifier.padding(top = 12.dp, bottom = 4.dp), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
 
 /** A stretch of [PREVIEW] in theme colors (foreground and none without them), maybe bold or italic. */
 private class Run(
@@ -641,12 +649,11 @@ private fun previewText(columns: Int) =
 /** A section's title, set apart from the muted labels of the options under it by the accent color, as the weather screen sets its sections apart; [actions] go at the far end. */
 @Composable
 private fun Heading(
-    text: String,
+    @StringRes text: Int,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
-    Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        BasicText(text, Modifier.weight(1f), style = Mono.copy(color = Palette.accent), softWrap = false)
-        actions()
+    ActionsRow(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 6.dp), actions) {
+        BasicText(stringResource(text), style = Mono.copy(color = Palette.accent), softWrap = false)
     }
 }
 
@@ -660,7 +667,7 @@ private fun FontOption(
 ) {
     var open by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        OptionLabel("font")
+        OptionLabel(stringResource(R.string.style_font))
         Box(Modifier.weight(1f, fill = false)) {
             Row(
                 Modifier
@@ -715,7 +722,7 @@ private fun OptionHint(
  */
 @Composable
 private fun Stepper(
-    label: String,
+    @StringRes label: Int,
     style: StyleStore,
     vararg settings: Setting.Number,
 ) {
@@ -724,7 +731,7 @@ private fun Stepper(
     val value = style.style[setting]
     fun set(v: Double) = style.update { it.with(all) { s -> v.coerceIn(s.range) } }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        OptionLabel(label)
+        OptionLabel(stringResource(label))
         // Keys at the end of the range go on to the other step, and from reset as it goes, to a step.
         val minus = remember { FocusRequester() }
         val plus = remember { FocusRequester() }
@@ -752,10 +759,10 @@ private fun Stepper(
             )
         }
         if (all.any { style.style[it] != it.default }) {
-            BracketAction("reset", Palette.muted, Modifier.passesKeys(minus, plus)) { style.update { it.with(all) { s -> s.default } } }
+            BracketAction(stringResource(R.string.style_reset), Palette.muted, Modifier.passesKeys(minus, plus)) { style.update { it.with(all) { s -> s.default } } }
         }
     }
-    if (style.style.common(all) == null) OptionHint("they differ in style.toml; a step sets them all", Modifier.padding(bottom = 4.dp))
+    if (style.style.common(all) == null) OptionHint(stringResource(R.string.style_differ_step), Modifier.padding(bottom = 4.dp))
 }
 
 /**
@@ -764,7 +771,7 @@ private fun Stepper(
  */
 @Composable
 private fun NumberSlider(
-    label: String,
+    @StringRes label: Int,
     style: StyleStore,
     setting: Setting.Number,
 ) {
@@ -781,7 +788,7 @@ private fun NumberSlider(
     val accent = Palette.accent
     val track = Palette.surface
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        OptionLabel(label)
+        OptionLabel(stringResource(label))
         Spacer(
             Modifier
                 .weight(1f)
@@ -813,16 +820,16 @@ private fun NumberSlider(
         )
         BasicText(Toml.format(value), Modifier.widthIn(min = 56.dp).padding(start = 12.dp), style = Mono.copy(textAlign = TextAlign.End), softWrap = false)
         // Always there, so the slider doesn't narrow under the finger as it leaves the default.
-        BracketAction("reset", Palette.muted) { style.update { it.with(setting, setting.default) } }
+        BracketAction(stringResource(R.string.style_reset), Palette.muted) { style.update { it.with(setting, setting.default) } }
     }
 }
 
 /** [Style] flags as a choice of two, [on] first, set together. */
 @Composable
 private fun Flag(
-    label: String,
-    on: String,
-    off: String,
+    @StringRes label: Int,
+    @StringRes on: Int,
+    @StringRes off: Int,
     style: StyleStore,
     vararg settings: Setting.Flag,
 ) {
@@ -833,27 +840,27 @@ private fun Flag(
             false -> 1
             null -> -1
         }
-    StyleOption(label, listOf(on, off), selected, "they differ") { i -> style.update { it.with(all) { i == 0 } } }
+    StyleOption(label, listOf(stringResource(on), stringResource(off)), selected, stringResource(R.string.style_differ)) { i -> style.update { it.with(all) { i == 0 } } }
 }
 
 /** A [Style] number as named [presets]; a value set in style.toml between them shows as custom. */
 @Composable
 private fun NumberOption(
-    label: String,
-    presets: List<Pair<String, Double>>,
+    @StringRes label: Int,
+    presets: List<Pair<Int, Double>>,
     setting: Setting.Number,
     style: StyleStore,
     unit: String = "",
 ) {
     val value = style.style[setting]
-    StyleOption(label, presets.map { it.first }, presets.indexOfFirst { it.second == value }, Toml.format(value) + unit) { i ->
+    StyleOption(label, presets.map { stringResource(it.first) }, presets.indexOfFirst { it.second == value }, Toml.format(value) + unit) { i ->
         style.update { it.with(setting, presets[i].second) }
     }
 }
 
 @Composable
 private fun CountOption(
-    label: String,
+    @StringRes label: Int,
     setting: Setting.Count,
     style: StyleStore,
 ) {
@@ -867,14 +874,14 @@ private fun CountOption(
  */
 @Composable
 private fun StyleOption(
-    label: String,
+    @StringRes label: Int,
     options: List<String>,
     selected: Int,
     custom: String? = null,
     onSelect: (Int) -> Unit,
 ) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        OptionLabel(label)
+        OptionLabel(stringResource(label))
         // At a large Android font size the options may not fit: they scroll rather than wrap.
         Box(Modifier.horizontalScroll(rememberScrollState())) {
             Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp)) {
@@ -893,7 +900,7 @@ private fun StyleOption(
             }
         }
     }
-    if (selected < 0 && custom != null) OptionHint("custom: $custom, from style.toml", Modifier.padding(bottom = 4.dp))
+    if (selected < 0 && custom != null) OptionHint(stringResource(R.string.style_custom, custom), Modifier.padding(bottom = 4.dp))
 }
 
 @Composable
@@ -905,20 +912,16 @@ private fun DownloadPrompt(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         BasicText(
-            if (partial) {
-                "Omarchy's other themes are downloading from github.com/omacom/omarchy (~70 MB)."
-            } else {
-                "Omarchy's themes aren't installed yet. They're downloaded from github.com/omacom/omarchy (~70 MB)."
-            },
+            stringResource(if (partial) R.string.style_themes_downloading else R.string.style_themes_not_installed),
             style = Mono,
         )
         when (state) {
-            is ThemeDownload.Running -> BasicText("downloading… ${state.megabytes} MB", style = Mono.copy(color = Palette.accent))
+            is ThemeDownload.Running -> BasicText(stringResource(R.string.style_downloading, state.megabytes), style = Mono.copy(color = Palette.accent))
             is ThemeDownload.Failed -> {
-                BasicText("failed: ${state.message}", style = Mono.copy(color = Palette.red))
-                BracketAction("retry", Palette.accent, onClick = onDownload)
+                BasicText(stringResource(R.string.style_failed, state.message), style = Mono.copy(color = Palette.red))
+                BracketAction(stringResource(R.string.style_retry), Palette.accent, onClick = onDownload)
             }
-            ThemeDownload.Idle -> BracketAction("download themes", Palette.accent, onClick = onDownload)
+            ThemeDownload.Idle -> BracketAction(stringResource(R.string.style_download_themes), Palette.accent, onClick = onDownload)
         }
     }
 }

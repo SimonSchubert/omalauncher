@@ -19,8 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
+import dev.omalauncher.R
 import dev.omalauncher.linux.JobState
 import dev.omalauncher.linux.Package
 import kotlinx.coroutines.delay
@@ -49,21 +52,20 @@ fun PackagesScreen(
         scope.launch { if (block()) runtime.refreshApps() }
     }
 
-    OverlayPanel("packages", onDismiss, contentWidth = ReadingWidth) {
-        SearchField(query, onChange = { query = it }, onGo = {}, placeholder = "search packages")
+    OverlayPanel(stringResource(R.string.packages_title), onDismiss, contentWidth = ReadingWidth) {
+        SearchField(query, onChange = { query = it }, onGo = {}, placeholder = stringResource(R.string.packages_search))
         BasicText(
-            "Arch Linux ARM packages via pacman, and the AUR via yay. Installing also updates the system, so it can take a while. " +
-                "AUR packages are user-submitted and built on the device: check their PKGBUILD on aur.archlinux.org first.",
+            stringResource(R.string.packages_intro),
             Modifier.padding(vertical = 8.dp),
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )
         val list = loaded?.second.orEmpty()
         val status =
             when {
-                searching -> if (query.isBlank()) "loading…" else "searching…"
-                query.isBlank() -> "installed (${list.size})"
-                list.isEmpty() -> "no packages match"
-                else -> "${list.size} results"
+                searching -> stringResource(if (query.isBlank()) R.string.packages_loading else R.string.packages_searching)
+                query.isBlank() -> stringResource(R.string.packages_installed, list.size)
+                list.isEmpty() -> stringResource(R.string.packages_none)
+                else -> pluralStringResource(R.plurals.packages_results, list.size, list.size)
             }
         BasicText(status, Modifier.padding(bottom = 6.dp), style = Mono.copy(color = Palette.muted))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -112,11 +114,11 @@ private fun PackageRow(
             // Keys stay on the row's button as it changes: remove to confirm, and through the job to what it ends with.
             val confirm = remember { FocusRequester() }
             when {
-                state is JobState.Working -> BasicText("${state.action}…", style = Mono.copy(color = Palette.accent))
-                pkg.installed && core -> BasicText("required", Modifier.padding(horizontal = 8.dp), style = Mono.copy(color = Palette.muted))
-                pkg.installed && confirming -> BracketAction("confirm", Palette.red, Modifier.focusRequester(confirm).passesKeys(), onRemove)
-                pkg.installed -> BracketAction("remove", Palette.red, Modifier.takesPassedKeys().passesKeys(confirm)) { confirming = true }
-                else -> BracketAction("install", Palette.accent, Modifier.takesPassedKeys().passesKeys(), onInstall)
+                state is JobState.Working -> BasicText(stringResource(R.string.linux_job_working, stringResource(state.action)), style = Mono.copy(color = Palette.accent))
+                pkg.installed && core -> BasicText(stringResource(R.string.packages_required), Modifier.padding(horizontal = 8.dp), style = Mono.copy(color = Palette.muted))
+                pkg.installed && confirming -> BracketAction(stringResource(R.string.packages_confirm), Palette.red, Modifier.focusRequester(confirm).passesKeys(), onRemove)
+                pkg.installed -> BracketAction(stringResource(R.string.packages_remove), Palette.red, Modifier.takesPassedKeys().passesKeys(confirm)) { confirming = true }
+                else -> BracketAction(stringResource(R.string.packages_install), Palette.accent, Modifier.takesPassedKeys().passesKeys(), onInstall)
             }
         }
         JobLog(state)

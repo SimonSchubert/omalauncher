@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The settings hub (ui/SettingsScreen.kt). -->
+<resources>
+    <string name="settings_title">settings</string>
+
+    <string name="settings_style">style</string>
+    <string name="settings_style_subtitle">theme, background, home screen</string>
+    <string name="settings_pages">pages</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="one">%1$d page · arrange, edit, remove</item>
+        <item quantity="other">%1$d pages · arrange, edit, remove</item>
+    </plurals>
+    <string name="settings_gestures">gestures</string>
+    <!-- What swiping up and down on home open: a panel's name, or nothing. -->
+    <string name="settings_gestures_subtitle">up: %1$s · down: %2$s</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">installed · remove</string>
+    <!-- %2$s is the setup stage, like "download arch linux". -->
+    <string name="settings_linux_installing_percent">installing %1$d%% · %2$s</string>
+    <string name="settings_linux_installing">installing · %1$s</string>
+    <string name="settings_linux_failed">setup stopped · retry</string>
+    <string name="settings_linux_removing">removing…</string>
+    <string name="settings_linux_not_installed">not installed · install Arch Linux for terminal apps and agents</string>
+    <string name="settings_agents">coding agents</string>
+    <string name="settings_agents_default">default: %1$s</string>
+    <string name="settings_agents_install">install Claude Code, OpenCode, …</string>
+    <string name="settings_needs_linux">needs linux</string>
+    <string name="settings_packages">packages</string>
+    <string name="settings_packages_subtitle">install Linux apps and tools with pacman and the AUR</string>
+    <string name="settings_local_network">local network</string>
+    <string name="settings_local_network_subtitle">let widgets and linux reach your printer, home assistant, …</string>
+    <string name="settings_android">android settings</string>
+    <string name="settings_android_subtitle">the phone\'s system settings</string>
+    <string name="settings_licenses">licenses</string>
+    <string name="settings_licenses_subtitle">open source software in Omalauncher</string>
+
+    <!-- %1$s is what the running update does, like "upgrading packages". -->
+    <string name="settings_system_updating">updating the system: %1$s…</string>
+    <string name="settings_system_update_failed">a system update didn\'t finish</string>
+    <string name="settings_retry">retry</string>
+    <string name="settings_system_updates">system updates</string>
+    <string name="settings_widget_updates">widgets</string>
+    <string name="settings_update_all">update all</string>
+    <string name="settings_check">check</string>
+    <string name="settings_update">update</string>
+    <string name="settings_updating">updating…</string>
+    <string name="settings_checking">checking…</string>
+    <string name="settings_not_checked">not checked yet</string>
+    <!-- %1$s is how long ago, like "5m ago". -->
+    <string name="settings_up_to_date">up to date · checked %1$s</string>
+    <string name="settings_store_unreachable">couldn\'t reach the store</string>
+    <!-- %1$s lists the edited widgets with their versions. -->
+    <string name="settings_updates_held">edited, so not updated here: %1$s · updating one in the store replaces your changes</string>
+    <!-- Below a list cut short: how many lines are left out. -->
+    <string name="settings_more_lines">+%1$d more</string>
+    <string name="settings_just_now">just now</string>
+    <string name="settings_minutes_ago">%1$dm ago</string>
+    <string name="settings_hours_ago">%1$dh ago</string>
+    <string name="settings_days_ago">%1$dd ago</string>
+</resources>

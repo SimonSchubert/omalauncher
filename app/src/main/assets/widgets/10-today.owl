@@ -3,10 +3,60 @@ widget "today" {
   order: 1
   size: 3x3
   minSize: 3x2
-  meta { description: "The date and the weather where you are, by IP or a city you type. Tap it for the next 24 hours, three days, wind, UV, sun and moon"; version: "1.1"; license: "MIT"; category: "world"; owl: 9 }
+  meta { description: "The date and the weather where you are, by IP or a city you type. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.2"; license: "MIT"; category: "world"; owl: 16 }
+
+  // What it says, in the phone's language where it has a set. wttr names the sky and the moon in English, and
+  // its own Indonesian misses newer conditions, so other languages name them from wttr's codes.
+  strings {
+    en {
+      title: "weather"; loading: "weather…"; offline: "weather offline"; city: "city · empty = auto"
+      feels: "feels"; humidity: "humidity"; rainToday: "rain today"; uv: "uv index"; pressure: "pressure"
+      visibility: "visibility"; next24: "next 24 hours"; now: "now"; days: "3 days"; today: "today"
+      sunrise: "sunrise"; sunset: "sunset"; moon: "moon"; kmh: "km/h"; yr: "open yr.no ↗"
+      sky: (code, desc) => lower(trim(desc))
+      wind: dir => "wind ${lower(dir)}"
+      uvLevel: uv => uv >= 8 ? "very high" : uv >= 6 ? "high" : uv >= 3 ? "moderate" : "low"
+      phase: (phase, lit) => "${lower(phase)} · ${lit}% lit"
+    }
+    id {
+      title: "cuaca"; loading: "cuaca…"; offline: "cuaca offline"; city: "kota · kosong = otomatis"
+      feels: "terasa"; humidity: "kelembapan"; rainToday: "hujan hari ini"; uv: "indeks uv"; pressure: "tekanan"
+      visibility: "jarak pandang"; next24: "24 jam ke depan"; now: "kini"; days: "3 hari"; today: "hari ini"
+      sunrise: "terbit"; sunset: "terbenam"; moon: "bulan"; kmh: "km/jam"; yr: "buka yr.no ↗"
+      sky: (code, desc) => get({
+        "113": "cerah", "116": "cerah berawan", "119": "berawan", "122": "mendung", "143": "kabut tipis",
+        "176": "hujan lokal", "179": "salju lokal", "182": "hujan salju lokal", "185": "gerimis beku lokal",
+        "200": "badai petir", "227": "salju tertiup angin", "230": "badai salju", "248": "kabut", "260": "kabut beku",
+        "263": "gerimis ringan lokal", "266": "gerimis ringan", "281": "gerimis beku", "284": "gerimis beku lebat",
+        "293": "hujan ringan lokal", "296": "hujan ringan", "299": "kadang hujan sedang", "302": "hujan sedang",
+        "305": "kadang hujan lebat", "308": "hujan lebat", "311": "hujan beku ringan", "314": "hujan beku lebat",
+        "317": "hujan salju ringan", "320": "hujan salju lebat", "323": "salju ringan lokal", "326": "salju ringan",
+        "329": "salju sedang lokal", "332": "salju sedang", "335": "salju lebat lokal", "338": "salju lebat",
+        "350": "butiran es", "353": "hujan ringan sesaat", "356": "hujan lebat sesaat", "359": "hujan deras",
+        "362": "hujan salju ringan sesaat", "365": "hujan salju lebat sesaat", "368": "salju ringan sesaat",
+        "371": "salju lebat sesaat", "374": "butiran es ringan", "377": "butiran es lebat",
+        "386": "hujan ringan berpetir", "389": "hujan lebat berpetir", "392": "salju ringan berpetir",
+        "395": "salju lebat berpetir"
+      }, code, lower(trim(desc)))
+      // Eight points: the sixteen's in-between ones go to the nearer of north, east, south and west.
+      wind: dir => "angin " + get({
+        "N": "utara", "NNE": "utara", "NE": "timur laut", "ENE": "timur", "E": "timur", "ESE": "timur",
+        "SE": "tenggara", "SSE": "selatan", "S": "selatan", "SSW": "selatan", "SW": "barat daya", "WSW": "barat",
+        "W": "barat", "WNW": "barat", "NW": "barat laut", "NNW": "utara"
+      }, dir, lower(dir))
+      uvLevel: uv => uv >= 8 ? "sangat tinggi" : uv >= 6 ? "tinggi" : uv >= 3 ? "sedang" : "rendah"
+      phase: (phase, lit) => get({
+        "New Moon": "bulan baru", "Waxing Crescent": "sabit awal", "First Quarter": "kuartir pertama",
+        "Waxing Gibbous": "cembung awal", "Full Moon": "purnama", "Waning Gibbous": "cembung akhir",
+        "Last Quarter": "kuartir akhir", "Waning Crescent": "sabit akhir"
+      }, phase, lower(phase)) + " · ${lit}% terang"
+    }
+  }
 
   source now = clock every 1m
   state city = "" persist
+  // Blank follows the country. A tap on the degree letter stores C or F.
+  state unitChoice = "" persist
   // The city, percent-encoded so "/", "?", "&" or "#" in it can't break the URL. Empty means located by IP.
   let q = city.replace("%", "%25").replace("+", "%2B").replace("/", "%2F").replace("?", "%3F").replace("#", "%23").replace("&", "%26").replace("'", "%27").replace(" ", "+")
   // One request. Icons and °F countries match omarchy's weather panel.
@@ -14,7 +64,8 @@ widget "today" {
   let cur = wx.current_condition[0]
   let day = wx.weather[0]
   let area = wx.nearest_area[0]
-  let imperial = contains(["united states", "united states of america", "liberia", "myanmar", "burma"], lower(trim(area.country[0].value)))
+  let autoImperial = contains(["united states", "united states of america", "liberia", "myanmar", "burma"], lower(trim(area.country[0].value)))
+  let imperial = unitChoice == "F" ? true : unitChoice == "C" ? false : autoImperial
   let unit = imperial ? "F" : "C"
   let night = contains(cur.weatherIconUrl[0].value, "_night")
   // Clear or partly cloudy gets a warm sun or a cool moon; everything else stays neutral.
@@ -89,11 +140,11 @@ widget "today" {
         Column {
           gap: 0
           weight: 1
-          Text { text: lower(trim(cur.weatherDesc[0].value)); style: small; align: end; maxLines: 1 }
+          Text { text: str.sky(cur.weatherCode, cur.weatherDesc[0].value); style: small; align: end; maxLines: 1 }
           Text { text: "↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}°"; style: small; color: muted; align: end; maxLines: 1; padding: [0, 0, 0, 5] }
         }
       }
-      Text { text: "feels ${get(cur, "FeelsLike" + unit)}° · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1 }
+      Text { text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1 }
       Spacer { weight: 1 }
       Spacer { height: 1; fill: width; background: alpha(muted, 0.25) }
       Spacer { height: 8 }
@@ -130,19 +181,19 @@ widget "today" {
         }
       }
     } else {
-      Text { text: wx == null ? "weather…" : "weather offline"; style: small; color: muted }
+      Text { text: wx == null ? str.loading : str.offline; style: small; color: muted }
     }
   }
 
   screen {
-    title: "weather"
+    title: str.title
     Input {
       text: city
-      placeholder: "city · empty = auto"
+      placeholder: str.city
       onSubmit: { city = trim(value); refresh() }
     }
     if cur == null {
-      Text { text: wx == null ? "weather…" : "weather offline"; style: body; color: muted }
+      Text { text: wx == null ? str.loading : str.offline; style: body; color: muted }
     } else {
       Column {
         scroll: true
@@ -155,12 +206,18 @@ widget "today" {
           Column {
             gap: 0
             weight: 1
-            Text { text: "${get(cur, "temp_" + unit)}°${unit}"; fontSize: 44; color: cyan; maxLines: 1 }
-            Text { text: lower(trim(cur.weatherDesc[0].value)); style: body; maxLines: 2 }
+            Text {
+              text: "${get(cur, "temp_" + unit)}°${unit}"
+              fontSize: 44
+              color: cyan
+              maxLines: 1
+              onTap: unitChoice = unit == "C" ? "F" : "C"
+            }
+            Text { text: str.sky(cur.weatherCode, cur.weatherDesc[0].value); style: body; maxLines: 2 }
           }
         }
         Text {
-          text: "feels ${get(cur, "FeelsLike" + unit)}° · ↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}° · ${lower(area.areaName[0].value)}, ${lower(area.country[0].value)}"
+          text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}° · ${lower(area.areaName[0].value)}, ${lower(area.country[0].value)}"
           style: small
           color: muted
         }
@@ -168,16 +225,16 @@ widget "today" {
         Grid {
           columns: 2
           gap: 8
-          Stat { glyph: ""; label: "wind ${lower(cur.winddir16Point)}"; value: imperial ? "${cur.windspeedMiles} mph" : "${cur.windspeedKmph} km/h"; tint: cyan }
-          Stat { glyph: ""; label: "humidity"; value: "${cur.humidity}%"; tint: blue }
-          Stat { glyph: ""; label: "rain today"; value: "${max(day.hourly.map(h => num(h.chanceofrain)))}% · ${imperial ? cur.precipInches + " in" : cur.precipMM + " mm"}"; tint: blue }
-          Stat { glyph: ""; label: "uv index"; value: "${uv} ${uv >= 8 ? "very high" : uv >= 6 ? "high" : uv >= 3 ? "moderate" : "low"}"; tint: uv >= 6 ? red : uv >= 3 ? yellow : green }
-          Stat { glyph: ""; label: "pressure"; value: imperial ? "${cur.pressureInches} inHg" : "${cur.pressure} hPa" }
-          Stat { glyph: ""; label: "visibility"; value: imperial ? "${cur.visibilityMiles} mi" : "${cur.visibility} km" }
+          Stat { glyph: ""; label: str.wind(cur.winddir16Point); value: imperial ? "${cur.windspeedMiles} mph" : "${cur.windspeedKmph} ${str.kmh}"; tint: cyan }
+          Stat { glyph: ""; label: str.humidity; value: "${cur.humidity}%"; tint: blue }
+          Stat { glyph: ""; label: str.rainToday; value: "${max(day.hourly.map(h => num(h.chanceofrain)))}% · ${imperial ? cur.precipInches + " in" : cur.precipMM + " mm"}"; tint: blue }
+          Stat { glyph: ""; label: str.uv; value: "${uv} ${str.uvLevel(uv)}"; tint: uv >= 6 ? red : uv >= 3 ? yellow : green }
+          Stat { glyph: ""; label: str.pressure; value: imperial ? "${cur.pressureInches} inHg" : "${cur.pressure} hPa" }
+          Stat { glyph: ""; label: str.visibility; value: imperial ? "${cur.visibilityMiles} mi" : "${cur.visibility} km" }
         }
         Rule { }
         // The next 24 hours: time, icon and rain chance per step, with the temperature curve under them.
-        Text { text: "next 24 hours"; style: label; color: accent }
+        Text { text: str.next24; style: label; color: accent }
         Column {
           gap: 4
           Row {
@@ -187,7 +244,7 @@ widget "today" {
                 gap: 2
                 weight: 1
                 align: center
-                Text { text: s.hr == hourNow - hourNow % 3 ? "now" : pad(s.hr % 24, 2, "0"); style: label; color: muted; align: center }
+                Text { text: s.hr == hourNow - hourNow % 3 ? str.now : pad(s.hr % 24, 2, "0"); style: label; color: muted; align: center }
                 Text { text: weatherIcon(s.code, s.hr % 24 < sunHours[0] || s.hr % 24 >= sunHours[1]); font: icon; fontSize: 20; align: center }
               }
             }
@@ -213,14 +270,14 @@ widget "today" {
         }
         Rule { }
         // Three days: icon, rain chance and the day's low to high on a shared scale.
-        Text { text: "3 days"; style: label; color: accent }
+        Text { text: str.days; style: label; color: accent }
         for d, i in wx.weather key d.date {
           let lo = num(get(d, "mintemp" + unit))
           let hi = num(get(d, "maxtemp" + unit))
           Row {
             gap: 8
             align: center
-            Text { text: d.date == fmtTime(now, "yyyy-MM-dd") ? "today" : lower(fmtTime(parseTime(d.date), "EEE")); style: body; width: 52; maxLines: 1 }
+            Text { text: d.date == fmtTime(now, "yyyy-MM-dd") ? str.today : lower(fmtTime(parseTime(d.date), "EEE")); style: body; width: 64; maxLines: 1 }
             Text { text: weatherIcon(d.hourly[4].weatherCode, false); font: icon; fontSize: 20; width: 26; align: center }
             Text { text: "${max(d.hourly.map(h => num(h.chanceofrain)))}%"; style: small; color: blue; width: 40; align: end; maxLines: 1 }
             Text { text: "${lo}°"; style: small; color: muted; width: 36; align: end; maxLines: 1 }
@@ -240,19 +297,19 @@ widget "today" {
         // Sun and moon.
         Row {
           gap: 8
-          Stat { glyph: ""; label: "sunrise"; value: sun[0]; tint: yellow; weight: 1 }
-          Stat { glyph: ""; label: "sunset"; value: sun[1]; tint: orange; weight: 1 }
+          Stat { glyph: ""; label: str.sunrise; value: sun[0]; tint: yellow; weight: 1 }
+          Stat { glyph: ""; label: str.sunset; value: sun[1]; tint: orange; weight: 1 }
         }
         Stat {
           glyph: get(moonIcons, day.astronomy[0].moon_phase, "")
-          label: "moon"
-          value: "${lower(day.astronomy[0].moon_phase)} · ${day.astronomy[0].moon_illumination}% lit"
+          label: str.moon
+          value: str.phase(day.astronomy[0].moon_phase, day.astronomy[0].moon_illumination)
           tint: foreground
         }
         // yr.no (Norwegian Meteorological Institute): ad-free and worldwide, opened at wttr's coordinates.
         Row {
           justify: end
-          Button { text: "open yr.no ↗"; color: muted; onTap: url("https://www.yr.no/en/forecast/daily-table/${area.latitude},${area.longitude}") }
+          Button { text: str.yr; color: muted; onTap: url("https://www.yr.no/en/forecast/daily-table/${area.latitude},${area.longitude}") }
         }
       }
     }

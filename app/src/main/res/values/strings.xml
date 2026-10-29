@@ -3,4 +3,12 @@
     <string name="app_name">Omalauncher</string>
     <string name="wallpaper_label">Omarchy</string>
     <string name="wallpaper_description">The current Omarchy theme background. System colors follow the theme.</string>
+    <!-- Names of the app's windows in Recents. -->
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">Terminal</string>
+    <string name="activity_app">App</string>
+    <string name="activity_files">Files</string>
+    <string name="activity_settings">Settings</string>
+    <!-- In Android's notification access settings. -->
+    <string name="notification_listener">Omalauncher widgets</string>
 </resources>

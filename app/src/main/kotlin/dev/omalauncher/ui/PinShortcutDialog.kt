@@ -14,8 +14,10 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.omalauncher.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -35,7 +37,7 @@ internal fun PinShortcutDialog(
 ) {
     val icon by produceState<ImageBitmap?>(null) { value = withContext(Dispatchers.IO) { loadIcon() } }
     DialogFrame(onDismiss) {
-        BasicText("add to home screen?", style = Mono.copy(fontSize = TextSize.Title))
+        BasicText(stringResource(R.string.store_pin_title), style = Mono.copy(fontSize = TextSize.Title))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             icon?.let { Image(it, label, Modifier.size(52.dp)) }
                 ?: IconBadge(52.dp, Palette.background) {
@@ -43,12 +45,12 @@ internal fun PinShortcutDialog(
                 }
             Column {
                 BasicText(label, style = Mono.copy(fontSize = TextSize.Large), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                from?.let { BasicText("from $it", style = Mono.copy(color = Palette.muted), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                from?.let { BasicText(stringResource(R.string.store_pin_from, it), style = Mono.copy(color = Palette.muted), maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            BracketAction("cancel", Palette.muted, onClick = onDismiss)
-            BracketAction("add", Palette.accent, onClick = onAdd)
+            BracketAction(stringResource(R.string.store_cancel), Palette.muted, onClick = onDismiss)
+            BracketAction(stringResource(R.string.store_add), Palette.accent, onClick = onAdd)
         }
     }
 }

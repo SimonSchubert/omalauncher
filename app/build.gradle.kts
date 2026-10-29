@@ -21,8 +21,8 @@ android {
         applicationId = "dev.omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 24
-        versionName = "0.13.0"
+        versionCode = 26
+        versionName = "0.15.0"
         ndk { abiFilters += "arm64-v8a" }
     }
 
@@ -55,6 +55,8 @@ android {
     }
 
     buildTypes {
+        // en-XA and ar-XB: text that stays plain English or left-to-right there isn't in res/ yet.
+        debug { isPseudoLocalesEnabled = true }
         release {
             // Shrinks the APK and drops what the app doesn't use, like the owl module's unused parts.
             isMinifyEnabled = true

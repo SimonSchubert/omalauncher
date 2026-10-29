@@ -324,6 +324,11 @@ class Trigger(
     val pos: Int,
     /** `on x first`: also for x's first value, with `old` null. */
     val first: Boolean = false,
+    /**
+     * `on said.final` for a `source said = android.speech`: runs as a dictation ends, with what was heard, and may
+     * type it with typeText and pressKey, which other triggers can't (see WidgetInstance).
+     */
+    val dictation: Boolean = false,
 )
 
 class Program(

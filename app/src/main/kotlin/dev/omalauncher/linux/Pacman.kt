@@ -2,8 +2,10 @@ package dev.omalauncher.linux
 
 import android.content.Context
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import dev.omalauncher.R
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import kotlinx.coroutines.Dispatchers
@@ -139,9 +141,9 @@ class Pacman(
     /** A full sync plus the package, like the bootstrap: never a partial upgrade. */
     suspend fun install(pkg: Package) =
         if (pkg.repo == AUR) {
-            run(pkg.name, "building", "/usr/local/lib/aur/install.sh ${shellQuote(pkg.name)}")
+            run(pkg.name, R.string.linux_job_building, "/usr/local/lib/aur/install.sh ${shellQuote(pkg.name)}")
         } else {
-            run(pkg.name, "installing", pacmanInstall(listOf(pkg.name)))
+            run(pkg.name, R.string.linux_job_installing, pacmanInstall(listOf(pkg.name)))
         }
 
     /**
@@ -160,7 +162,7 @@ class Pacman(
     }
 
     /** Removes the package and the dependencies nothing else needs. */
-    suspend fun remove(name: String) = run(name, "removing", "pacman -Rns --noconfirm ${shellQuote(name)}")
+    suspend fun remove(name: String) = run(name, R.string.linux_job_removing, "pacman -Rns --noconfirm ${shellQuote(name)}")
 
     /** Kept between searches: starting proot costs more than the search. */
     private val shell = GuestShell(proot)
@@ -173,11 +175,11 @@ class Pacman(
 
     private suspend fun run(
         name: String,
-        action: String,
+        @StringRes action: Int,
         script: String,
     ): Boolean {
         val (ok, _) = proot.trackedJob(action, script, lock) { if (it == JobState.Idle) states.remove(name) else states[name] = it }
-        Log.i(TAG, "$action $name: ${if (ok) "ok" else "failed"}")
+        Log.i(TAG, "${context.getString(action)} $name: ${if (ok) "ok" else "failed"}")
         revision.intValue++
         return ok
     }

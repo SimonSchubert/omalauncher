@@ -39,11 +39,13 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import dev.omalauncher.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -104,7 +106,7 @@ internal fun TextDialog(
                     .padding(horizontal = 14.dp, vertical = 12.dp),
         )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            BracketAction("cancel", Palette.muted, onClick = onDismiss)
+            BracketAction(stringResource(R.string.files_cancel), Palette.muted, onClick = onDismiss)
             BracketAction(confirm, Palette.accent) { if (text.isNotBlank()) onConfirm(text.trim()) }
         }
     }
@@ -124,7 +126,7 @@ internal fun ConfirmDialog(
         BasicText(title, style = Mono.copy(fontSize = TextSize.Title))
         BasicText(message, style = Mono.copy(color = Palette.muted))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            BracketAction("cancel", Palette.muted, onClick = onDismiss)
+            BracketAction(stringResource(R.string.files_cancel), Palette.muted, onClick = onDismiss)
             BracketAction(confirm, confirmColor, onClick = onConfirm)
         }
     }

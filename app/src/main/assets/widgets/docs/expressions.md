@@ -51,6 +51,9 @@ date that shouldn't move or change language. A zone is a name like `Europe/Berli
 `fmtAgo(t, now)` is how long ago `t` was, short: `now`, `5m`, `3h`, `2d`, `6w`, `1y`, or `in 10m` for a
 time still to come. Take `now` from a clock source (`source now = clock every 1m`), so it stays current.
 
+`lang()` is the phone's language as its code, `en`, `id`, `de`, for an API that takes one; text in more
+languages goes in `strings` (owl 16, see Text in more languages in docs/declarations.md).
+
 `fmtNum(x)` groups thousands the phone's way (`12,345` or `12.345`), rounded to whole numbers;
 `fmtNum(x, 2)` keeps two digits after the point. A map sets more: `fmtNum(x, {compact: true})` shortens
 to `950`, `1.5k`, `12k`, `3.4M`, `2.5B`, `1T` (one digit under 10, none above, unless `digits` says);

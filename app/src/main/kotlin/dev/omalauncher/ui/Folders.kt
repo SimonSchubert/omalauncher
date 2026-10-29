@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import dev.omalauncher.R
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import dev.omalauncher.widgets.Folder
@@ -73,10 +75,11 @@ fun FolderTile(
     modifier: Modifier,
     onTap: () -> Unit,
 ) {
+    val spoken = folder.name?.let { stringResource(R.string.home_folder_named, it) } ?: stringResource(R.string.home_folder)
     BoxWithConstraints(
         modifier
             .tileFrame(focused)
-            .clearAndSetSemantics { contentDescription = folder.name?.let { "$it folder" } ?: "folder" }
+            .clearAndSetSemantics { contentDescription = spoken }
             .pointerInput(folder.key) { detectTapGestures(onTap = { onTap() }) }
             .padding(4.dp),
     ) {
@@ -239,7 +242,7 @@ internal fun FolderPanel(
                 )
             } else {
                 BasicText(
-                    folder.name ?: "tap to name",
+                    folder.name ?: stringResource(R.string.home_folder_tap_to_name),
                     style = if (folder.name == null) style.copy(color = Palette.muted) else style,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

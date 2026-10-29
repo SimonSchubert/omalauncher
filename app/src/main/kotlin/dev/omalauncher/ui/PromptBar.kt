@@ -67,6 +67,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,6 +76,7 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.window.PopupPositionProvider
+import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.agentInvocation
@@ -326,9 +328,9 @@ internal fun PromptBar(
                         if (shown.isEmpty()) {
                             val hint =
                                 when {
-                                    listening -> "listening…"
-                                    !linux || agent == null -> "open an app…"
-                                    else -> "open an app or ask ${agent.bin}…"
+                                    listening -> stringResource(R.string.prompt_listening)
+                                    !linux || agent == null -> stringResource(R.string.prompt_hint_apps)
+                                    else -> stringResource(R.string.prompt_hint_ask, agent.bin)
                                 }
                             BasicText(hint, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Item), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
@@ -337,7 +339,7 @@ internal fun PromptBar(
                     },
                 )
                 // The drawer says what its Enter does, with its `enter`.
-                val enter = drawer()?.enterHint() ?: "⏎ ask"
+                val enter = drawer()?.enterHint() ?: stringResource(R.string.prompt_enter_ask)
                 if (text.isNotBlank() && !listening && enter.isNotEmpty()) {
                     // Says what Enter does, so opening an app instead of asking is never a surprise.
                     Box(
@@ -493,7 +495,7 @@ private fun AgentName(
             .padding(start = 10.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        BasicText(agent?.bin ?: "agent", style = Mono.copy(color = if (agent == null) Palette.muted else Palette.accent))
+        BasicText(agent?.bin ?: stringResource(R.string.prompt_agent), style = Mono.copy(color = if (agent == null) Palette.muted else Palette.accent))
         Symbol(if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.muted, Modifier.padding(start = 4.dp))
     }
 }
@@ -526,7 +528,7 @@ private fun AgentsMenu(
                     onDismiss()
                     onManage()
                 }.padding(horizontal = 10.dp, vertical = 10.dp),
-        ) { BasicText("  manage agents…", style = Mono.copy(color = Palette.muted)) }
+        ) { BasicText(stringResource(R.string.prompt_manage_agents), style = Mono.copy(color = Palette.muted)) }
     }
 }
 

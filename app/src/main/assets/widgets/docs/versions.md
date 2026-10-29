@@ -2,7 +2,7 @@
 
 Part of the widget docs: README.md, one folder up, comes first, and paths here are from the widgets folder.
 
-`meta { owl: N }` is the language version a file needs; this launcher has 15, and without `meta` it's 1. Declare
+`meta { owl: N }` is the language version a file needs; this launcher has 17, and without `meta` it's 1. Declare
 the highest level of what the file uses: using something from a later level than the file declares is an error,
 and a launcher older than the level says "update the launcher" instead of failing on what it doesn't know. For a
 file only this phone runs, `owl: 12` is fine; for the store, a lower level reaches older launchers too.
@@ -32,4 +32,6 @@ file only this phone runs, `owl: 12` is fine; for the store, a lower level reach
   Only a brightness written out, `torch(40)`, asks for owl 13; `torch(value)` from a Slider can't be told from on and off when the file is
   checked, so a file that dims the torch should say `owl: 13` itself, as older launchers do nothing with a number
 - **14**: a face's `edge`, with `screenTop`, `screenLeft` and `screenRight` in a face, and `ripple`
-- **15**: a panel's `keyboard`, `android.airpods` and `airpods`
+- **15**: a panel's `keyboard`, `pickImages`, `android.speech` and `speech`, `android.power`, and `launcher("page:N")`, which older launchers ignore
+- **16**: `strings { }` and `str`, and `lang()`
+- **17**: `android.airpods` and `airpods`

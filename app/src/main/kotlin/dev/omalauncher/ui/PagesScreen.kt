@@ -28,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -48,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.widgets.HomeItem
 import dev.omalauncher.widgets.WidgetItem
@@ -91,9 +94,9 @@ internal fun PagesScreen(
         engine.pages.getOrNull(i)?.let { handles[it]?.requestFocus() }
         follow = null
     }
-    OverlayPanel("pages", onDismiss, contentWidth = ReadingWidth) {
+    OverlayPanel(stringResource(R.string.pages_title), onDismiss, contentWidth = ReadingWidth) {
         BasicText(
-            "Home's pages, left to right. Drag one by ≡ to move it, or with keys pick ≡ up with Enter and move it with the arrows. Home opens on the first with tiles; faces before it sit left of it.",
+            stringResource(R.string.pages_intro),
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
         )
         Spacer(Modifier.height(12.dp))
@@ -102,7 +105,7 @@ internal fun PagesScreen(
         if (!engine.loaded) {
             // Home starts the engine; settings opened without it (after the process died) has to, or this would wait forever.
             LaunchedEffect(Unit) { runtime.start() }
-            BasicText("loading…", style = Mono.copy(color = Palette.muted))
+            BasicText(stringResource(R.string.pages_loading), style = Mono.copy(color = Palette.muted))
             return@OverlayPanel
         }
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(RowGap)) {
@@ -203,13 +206,13 @@ internal fun PagesScreen(
         val items = engine.itemsOn(page)
         val owner = engine.layout.owner(items) as? WidgetItem
         ConfirmDialog(
-            if (owner != null) "remove ${owner.spec.name}?" else "remove this page?",
+            if (owner != null) stringResource(R.string.pages_remove_named, owner.spec.name) else stringResource(R.string.pages_remove_page),
             if (owner != null) {
-                "Its file goes to .removed/ in the widgets folder."
+                stringResource(R.string.pages_remove_face_message)
             } else {
-                "${pageContents(items)}. Its widgets go to .removed/ in the widgets folder; its apps come off home and stay installed."
+                stringResource(R.string.pages_remove_tiles_message, pageContents(items))
             },
-            "remove",
+            stringResource(R.string.pages_remove),
             onDismiss = { removing = null },
         ) {
             removing = null
@@ -221,10 +224,12 @@ internal fun PagesScreen(
 private val RowGap = 8.dp
 
 /** What's on a page of tiles: its widgets by name, then how many apps. */
+@Composable
 private fun pageContents(items: List<HomeItem>): String {
     val widgets = items.filterIsInstance<WidgetItem>().map { it.spec.name }
     val apps = items.size - widgets.size
-    return (widgets + listOfNotNull(apps.takeIf { it > 0 }?.let { if (it == 1) "1 app" else "$it apps" })).joinToString(", ").ifEmpty { "empty" }
+    val appCount = if (apps > 0) pluralStringResource(R.plurals.pages_apps, apps, apps) else null
+    return (widgets + listOfNotNull(appCount)).joinToString(", ").ifEmpty { stringResource(R.string.pages_empty) }
 }
 
 /** One page: a face by its name, a page of tiles by what's on it. */
@@ -261,9 +266,9 @@ private fun PageRow(
                 BasicText(spec?.name ?: pageContents(items), Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item), maxLines = 2, overflow = TextOverflow.Ellipsis)
                 BasicText(
                     when {
-                        spec?.error != null -> "doesn't compile"
-                        spec != null -> "face"
-                        page == 1 -> "home"
+                        spec?.error != null -> stringResource(R.string.pages_doesnt_compile)
+                        spec != null -> stringResource(R.string.pages_face)
+                        page == 1 -> stringResource(R.string.pages_home)
                         else -> ""
                     },
                     style = Mono.copy(color = if (spec?.error != null) Palette.red else Palette.muted, fontSize = TextSize.Small),
@@ -272,10 +277,10 @@ private fun PageRow(
             // Pulled left by the buttons' own padding, so the first bracket lines up with the name.
             FlowRow(Modifier.offset(x = (-8).dp)) {
                 if (spec != null) {
-                    BracketAction("edit", Palette.accent) { onAgent("Edit ${spec.name}") { editWidgetCommand(it, spec) } }
-                    BracketAction("share", Palette.accent) { onShare(spec) }
+                    BracketAction(stringResource(R.string.pages_edit), Palette.accent) { onAgent("Edit ${spec.name}") { editWidgetCommand(it, spec) } }
+                    BracketAction(stringResource(R.string.pages_share), Palette.accent) { onShare(spec) }
                 }
-                BracketAction("remove", Palette.red, onClick = onRemove)
+                BracketAction(stringResource(R.string.pages_remove), Palette.red, onClick = onRemove)
             }
         }
     }

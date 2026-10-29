@@ -60,6 +60,9 @@ import dev.omalauncher.widgets.editWidgetCommand
 import dev.omalauncher.widgets.publishWidgetCommand
 import dev.omalauncher.widgets.reviewSharedWidgetCommand
 import dev.omalauncher.widgets.render.Backdrop
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import dev.omalauncher.R
 import dev.omalauncher.widgets.render.LocalBackdrop
 import dev.omalauncher.widgets.render.LocalHomeCovered
 import dev.omalauncher.widgets.render.LocalInputFocus
@@ -279,10 +282,13 @@ private fun FileErrors(files: List<Pair<String, List<String>>>) {
                         .clickable { hidden = hidden + errors.map { "$name: $it" } }
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    BasicText("$name: ${if (errors.size == 1) "1 problem" else "${errors.size} problems"}", style = Mono.copy(color = Palette.red))
+                    BasicText(pluralStringResource(R.plurals.home_file_problems, errors.size, name, errors.size), style = Mono.copy(color = Palette.red))
                     for (line in errors.take(MAX_ERRORS)) BasicText(line, style = Mono.copy(fontSize = TextSize.Small))
-                    val more = if (errors.size > MAX_ERRORS) "${errors.size - MAX_ERRORS} more in errors.txt · " else ""
-                    BasicText("${more}tap to hide", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                    val more = errors.size - MAX_ERRORS
+                    BasicText(
+                        if (more > 0) pluralStringResource(R.plurals.home_file_problems_more, more, more) else stringResource(R.string.home_file_problems_hide),
+                        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+                    )
                 }
             }
         }

@@ -6,6 +6,7 @@ import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.run
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
+import dev.omalauncher.upgrade.writeAtomically
 import java.io.File
 
 /**
@@ -37,6 +38,17 @@ class GuestThemeConfig(
             if (!out.exists()) out.writeText(Templates.render(tpl.readText(), colors))
         }
         symlink("${Proot.GUEST_HOME}/.local/state/omarchy/current/theme/btop.theme", File(home, ".config/btop/themes/current.theme"))
+        // Like omarchy-theme-set-claude and -pi; both agents reload the file, so running sessions recolor too.
+        // Claude Code's is there to pick in /theme once it has been run; Pi's is picked from the start (see managed()).
+        if (File(home, ".claude").isDirectory) copyTheme(File(themeDir, "claude.json"), ".claude/themes/omarchy.json")
+        copyTheme(File(themeDir, "pi.json"), ".pi/agent/themes/omarchy-system.json")
+    }
+
+    private fun copyTheme(
+        src: File,
+        to: String,
+    ) {
+        if (src.isFile) writeAtomically(File(home, to), src.readBytes())
     }
 
     /** Mirrors Omarchy's ~/.local/state/omarchy/current/background symlink. */
@@ -84,6 +96,11 @@ class GuestThemeConfig(
         copy("config/starship.toml", ".config/starship.toml")
         copy("config/lazygit/config.yml", ".config/lazygit/config.yml")
         copy("config/tmux/tmux.conf", ".config/tmux/tmux.conf")
+        // Pi in the theme render() copies, as Omarchy's install runs omarchy-theme-set-pi --activate, and OpenCode
+        // in its system theme, which takes the terminal's colors; OpenCode 2 reads it from tui.json, not opencode.json.
+        seed(".pi/agent/settings.json") { "{\n  \"theme\": \"omarchy-system\"\n}\n" }
+        seed(".config/opencode/opencode.json") { OPENCODE_JSON }
+        seed(".config/opencode/tui.json") { "{\n  \"theme\": \"system\"\n}\n" }
         if (theme != null) {
             val dark = !theme.isLight
             val accent = theme.colors["accent"] ?: theme.colors["blue"]
@@ -184,6 +201,16 @@ class GuestThemeConfig(
             narrow=/tmp/omalauncher-btop-narrow.conf
             { grep -v -e '^shown_boxes' -e '^presets' "${'$'}conf" 2>/dev/null; echo 'shown_boxes = "proc"'; echo 'presets = "proc:0:default"'; } > "${'$'}narrow"
             exec /usr/bin/btop -c "${'$'}narrow"
+            """.trimIndent() + "\n"
+
+        /** OpenCode's updates come through mise with the other agents, as on Omarchy. */
+        val OPENCODE_JSON =
+            """
+            {
+              "${'$'}schema": "https://opencode.ai/config.json",
+              "theme": "system",
+              "autoupdate": false
+            }
             """.trimIndent() + "\n"
 
         val BASHRC =

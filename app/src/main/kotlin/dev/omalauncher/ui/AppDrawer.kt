@@ -35,6 +35,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import dev.omalauncher.R
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -175,7 +177,15 @@ internal fun AppHit.actionWords(): List<String> =
         is AppHit.Shortcut -> listOf("pin", "remove")
     }
 
-private val ACTION_LABELS = mapOf("pin" to "add to home", "info" to "app info")
+private val ACTION_LABELS =
+    mapOf(
+        "pin" to R.string.drawer_action_pin,
+        "info" to R.string.drawer_action_info,
+        "uninstall" to R.string.drawer_action_uninstall,
+        "edit" to R.string.home_edit,
+        "share" to R.string.home_share,
+        "remove" to R.string.home_remove,
+    )
 
 /** Runs the menu entry [word], from the menu or a widget's `appAction(...)`; one the app's menu doesn't offer does nothing. */
 internal fun AppHit.act(
@@ -199,7 +209,9 @@ internal fun AppHit.act(
 }
 
 /** The long-press menu of an app cell, labeled as stock launchers label it. */
-private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>> = actionWords().map { word -> (ACTION_LABELS[word] ?: word) to { act(word, handlers) } }
+@Composable
+private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>> =
+    actionWords().map { word -> (ACTION_LABELS[word]?.let { stringResource(it) } ?: word) to { act(word, handlers) } }
 
 /** The app's icon and its silhouette, each null until loaded or if it has none. */
 internal fun AppHit.icons(runtime: Runtime): Pair<ImageBitmap?, ImageBitmap?> =
@@ -301,7 +313,7 @@ private fun StripCell(
     mask: ImageBitmap?,
     onClick: () -> Unit,
     /** Built when the menu opens: a fresh list of lambdas would keep the cell from skipping recomposition. */
-    actions: () -> List<Pair<String, () -> Unit>>,
+    actions: @Composable () -> List<Pair<String, () -> Unit>>,
     /** Also built when the menu opens. */
     shortcuts: () -> ShortcutMenu? = { null },
     /** As in [AppHit.spoken]. */
@@ -496,7 +508,7 @@ internal fun SettingsButton(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Image(Icons.Gear, "settings", Modifier.size(22.dp), colorFilter = ColorFilter.tint(Palette.accent))
+        Image(Icons.Gear, stringResource(R.string.home_settings), Modifier.size(22.dp), colorFilter = ColorFilter.tint(Palette.accent))
         // Updates are waiting: settings › system updates lists them.
         if ((runtime.updates.pending?.count ?: 0) > 0) {
             Box(

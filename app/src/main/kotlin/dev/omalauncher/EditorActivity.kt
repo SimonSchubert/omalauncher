@@ -30,7 +30,7 @@ class EditorActivity : InstantActivity() {
         val path = intent.data?.path?.takeIf { it.startsWith('/') }
         intent.getStringExtra(EXTRA_DONE)?.let(waiting::add)
         if (!runtime.bootstrap.wanted) return close()
-        val name = path?.substringAfterLast('/') ?: "Editor"
+        val name = path?.substringAfterLast('/') ?: getString(R.string.editor_title)
         setTaskDescription(ActivityManager.TaskDescription(name, null, Palette.background.toArgb()))
         setInstantContent {
             if (path == null) {

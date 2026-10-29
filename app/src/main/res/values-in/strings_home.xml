@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_edit">edit</string>
+    <string name="home_share">bagikan</string>
+    <string name="home_remove">hapus</string>
+
+    <string name="home_create_with">buat dengan %1$s</string>
+    <string name="home_create_with_an_agent">buat dengan agen</string>
+    <string name="home_browse_store">jelajahi toko</string>
+    <string name="home_create_widget">widget</string>
+    <string name="home_create_app">aplikasi</string>
+    <string name="home_create_panel">panel</string>
+
+    <string name="home_face_invite_title">face milikmu sendiri</string>
+    <string name="home_face_invite_text">Halaman ini bisa kamu isi dengan sebuah face: feed, dasbor, halaman awal, atau game. Sebutkan yang kamu mau dan %1$s membuatnya di sini, layar penuh.</string>
+    <string name="home_face_invite_text_no_agent">Halaman ini bisa kamu isi dengan sebuah face: feed, dasbor, halaman awal, atau game. Sebutkan yang kamu mau dan agen membuatnya di sini, layar penuh.</string>
+    <string name="home_widget_invite_title">ruang untuk widget</string>
+    <string name="home_widget_invite_text">Halaman ini masih kosong. Isi dengan widget: jam, cuaca, daftar tugas, agenmu yang sedang bekerja. Sebutkan yang kamu mau dan %1$s membuatnya.</string>
+    <string name="home_widget_invite_text_no_agent">Halaman ini masih kosong. Isi dengan widget: jam, cuaca, daftar tugas, agenmu yang sedang bekerja. Sebutkan yang kamu mau dan agen membuatnya.</string>
+
+    <string name="home_drop_here">lepas di sini</string>
+    <string name="home_drop_face_only">hanya face yang bisa ditaruh di sini</string>
+
+    <plurals name="home_file_problems">
+        <item quantity="other">%1$s: %2$d masalah</item>
+    </plurals>
+    <plurals name="home_file_problems_more">
+        <item quantity="other">%1$d lagi di errors.txt · ketuk untuk menyembunyikan</item>
+    </plurals>
+    <string name="home_file_problems_hide">ketuk untuk menyembunyikan</string>
+
+    <string name="home_widget_needs">perlu %1$s</string>
+    <string name="home_installing">memasang…</string>
+    <string name="home_install">pasang</string>
+    <string name="home_retry">coba lagi</string>
+    <string name="home_fix_with_agent">perbaiki dengan agen</string>
+    <string name="home_widget_needs_linux">perlu Linux</string>
+    <string name="home_widget_needs_linux_text">menjalankan perintah di Arch Linux opsional</string>
+
+    <string name="home_terminal_starting">memulai…</string>
+    <string name="home_terminal_exited">berhenti · ketuk untuk memulai ulang</string>
+
+    <string name="home_prompt_hint_agent">buka aplikasi atau tanya %1$s</string>
+    <string name="home_prompt_hint">buka aplikasi</string>
+    <string name="home_prompt_hint_short">aplikasi</string>
+
+    <string name="home_folder_named">folder %1$s</string>
+    <string name="home_folder">folder</string>
+    <string name="home_folder_tap_to_name">ketuk untuk memberi nama</string>
+
+    <string name="home_refresh">muat ulang</string>
+    <string name="home_refreshing">memuat ulang</string>
+    <string name="home_job_failed">gagal:</string>
+    <string name="home_settings">pengaturan</string>
+
+    <string name="home_linux_window">Linux</string>
+
+    <string name="drawer_action_pin">tambah ke beranda</string>
+    <string name="drawer_action_info">info aplikasi</string>
+    <string name="drawer_action_uninstall">copot</string>
+</resources>

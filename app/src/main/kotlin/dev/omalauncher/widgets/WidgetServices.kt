@@ -116,6 +116,8 @@ import java.io.File
 import java.io.IOException
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import dev.omalauncher.widgets.lang.textOrNull
 
 private const val MAX_HTTP_BYTES = 1 shl 20
@@ -207,6 +209,7 @@ class WidgetServices(
     override fun android(name: String): Value =
         when (name) {
             "battery" -> battery()
+            "power" -> power()
             "device" -> device()
             "system" -> system()
             "network" -> network()
@@ -275,6 +278,15 @@ class WidgetServices(
         }
 
     override fun androidImage(src: String) = media.art(src)
+
+    override fun speechUpdates(owner: Any) = runtime.dictation.updates(owner)
+
+    override fun speech(
+        owner: Any,
+        word: String,
+    ) = runtime.dictation.act(owner, word)
+
+    override fun heard(owner: Any) = runtime.dictation.heard(owner)
 
     /** "work" or "clone" for an app in a profile beside the launcher's own, as the drawer marks it; null for its own. */
     private fun profileKind(user: UserHandle): String? {
@@ -474,7 +486,7 @@ class WidgetServices(
                 mapOf(
                     "bin" to Str(a.bin),
                     "name" to Str(a.name),
-                    "description" to Str(a.description),
+                    "description" to Str(context.getString(a.description)),
                     "command" to Str(a.command),
                     "key" to Str(key),
                     "icon" to Str("icon:$key"),
@@ -593,6 +605,43 @@ class WidgetServices(
         )
     }
 
+    /**
+     * `source p = android.power every 2s`: the battery's current, charge and the charger, polled, as Android sends no
+     * broadcast when the current changes. Phones disagree on units and sign, so they're made the same here.
+     */
+    private fun power(): Value {
+        val manager = context.getSystemService(BatteryManager::class.java)
+        val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING
+        val onBattery = (intent?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) == 0
+        // Integer.MIN_VALUE where the phone doesn't say.
+        fun property(id: Int) = manager?.getIntProperty(id)?.takeIf { it != Int.MIN_VALUE }
+        // Most phones report µA and µAh, some (OnePlus) mA and mAh: with the screen on a phone draws over 20 mA, and a
+        // battery holds more than 20 mAh until it's all but empty, so a smaller number is already in milli.
+        fun milli(v: Int) = if (abs(v) < 20_000) v.toDouble() else v / 1000.0
+        // Into the battery is positive. Some phones say it the other way round, which the direction it must flow shows.
+        fun current(id: Int) =
+            property(id)?.let(::milli)?.let { if ((charging && it < 0) || (onBattery && it > 0)) -it else it }?.roundToInt()
+        val now = current(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+        val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)?.takeIf { it > 0 }?.let { it / 1000.0 }
+        // Hidden extras most phones fill in while plugged in, in µA and µV, and 0 otherwise.
+        fun charger(name: String) = intent?.getIntExtra(name, 0)?.takeIf { it > 0 && !onBattery }
+        val chargeTime = if (Build.VERSION.SDK_INT >= 28) manager?.computeChargeTimeRemaining()?.takeIf { it >= 0 } else null
+        fun num(v: Number?) = v?.let { Num(it.toDouble()) } ?: Null
+        return Obj(
+            mapOf(
+                "current" to num(now),
+                "currentAvg" to num(current(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)),
+                "watts" to num(if (now != null && voltage != null) Math.round(now * voltage / 10.0) / 100.0 else null),
+                "charge" to num(property(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)?.takeIf { it > 0 }?.let(::milli)?.roundToInt()),
+                "chargeTime" to num(chargeTime?.let { it / 1000 }),
+                "maxCurrent" to num(charger("max_charging_current")?.let { (it / 1000.0).roundToInt() }),
+                "maxVoltage" to num(charger("max_charging_voltage")?.let { Math.round(it / 100_000.0) / 10.0 }),
+            ),
+        )
+    }
+
     /** `source m = android.modifiers`: how the extra keys hold each modifier, `{ctrl, alt, shift}`, each "off", "once" or "locked". */
     private fun modifiers(): Value = Obj(runtime.keyboard.latches.mapValues { (_, m) -> Str(m.latch.name.lowercase()) })
 
@@ -611,13 +660,14 @@ class WidgetServices(
             "pressKey" -> return KeyNames.combo(arg)?.let(runtime.keyboard::press) ?: Unit
             "typeText" -> return runtime.keyboard.type(arg)
             "latch" -> return runtime.keyboard.latch(arg, args.getOrNull(1).textOrNull())
+            "pickImages" -> return runtime.keyboard.pickImages()
         }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.
             "terminal" -> runtime.terminal("$arg; exec bash", args.getOrNull(1)?.toString() ?: arg.substringBefore(' '))
             "app" -> runtime.launch(arg)
             // Any scheme an app handles: tel:, geo:, mailto:, ... One nothing handles mustn't crash the launcher.
-            "url" -> if (!context.openUrl(arg)) Toast.makeText(context, "no app opens $arg", Toast.LENGTH_SHORT).show()
+            "url" -> if (!context.openUrl(arg)) Toast.makeText(context, context.getString(R.string.widgets_no_app_opens, arg), Toast.LENGTH_SHORT).show()
             "launcher" -> launcherAction?.invoke(arg)
             "media" -> media.control(arg)
             "volume" -> volume.control(args[0], args.getOrNull(1).textOrNull())
@@ -917,7 +967,7 @@ class WidgetServices(
     private fun copy(text: String) {
         context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("widget", text))
         // Android 13+ confirms copies itself.
-        if (Build.VERSION.SDK_INT < 33) Toast.makeText(context, "copied", Toast.LENGTH_SHORT).show()
+        if (Build.VERSION.SDK_INT < 33) Toast.makeText(context, R.string.widgets_copied, Toast.LENGTH_SHORT).show()
     }
 
     /** share(text): Android's share sheet, to send the text to any app. */
@@ -938,7 +988,7 @@ class WidgetServices(
             Log.w("widgets", "notify: notifications are off for the launcher")
             return
         }
-        nm.createNotificationChannel(NotificationChannel(NOTIFY_CHANNEL, "Widgets", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(NOTIFY_CHANNEL, context.getString(R.string.widgets_notify_channel), NotificationManager.IMPORTANCE_DEFAULT))
         val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val n =
             Notification

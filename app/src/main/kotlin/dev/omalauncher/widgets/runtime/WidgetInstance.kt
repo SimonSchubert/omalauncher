@@ -45,6 +45,7 @@ import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.TRUE
 import dev.omalauncher.widgets.lang.FALSE
 import dev.omalauncher.widgets.lang.Program
+import dev.omalauncher.widgets.lang.SPEECH_ANYWHERE
 import dev.omalauncher.widgets.lang.Sprite
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.text
@@ -132,6 +133,18 @@ interface Services {
 
     /** Updates for Android data that changes on its own (battery, media); null means poll [android]. */
     fun androidUpdates(name: String): Flow<Value>? = null
+
+    /** android.speech for [owner], a widget: its own dictation, which stops as it stops collecting. See [Dictation]. */
+    fun speechUpdates(owner: Any): Flow<Value>? = null
+
+    /** speech("start"), "stop", "toggle" or "cancel" from [owner]. */
+    fun speech(
+        owner: Any,
+        word: String,
+    ) {}
+
+    /** The whole text of [owner]'s dictation that just ended, or null: what its `on said.final` may type. */
+    fun heard(owner: Any): String? = null
 
     /** An image Android holds, like album art: `Image { src: m.art }`. */
     fun androidImage(src: String): Bitmap? = null
@@ -529,10 +542,17 @@ class WidgetInstance(
         // An agent or an app opening on its own, from a timer or a fetched value, over whatever the user is doing: like
         // sound(...), a trigger does it only while the app or screen is open.
         if ((name == "ask" || name == "open") && inTrigger && !foreground()) return report("$name(...) in a trigger works only while the app or screen is open")
-        // Keys go to whatever window has the keyboard: only from a touch, never on a timer or a fetched value.
-        if ((name == "pressKey" || name == "typeText" || name == "latch") && inTrigger) return report("$name(...) works in handlers like onPress, not in a trigger")
-        // Names built from values, which the compiler couldn't check: say so rather than press nothing.
+        // Keys go to whatever window has the keyboard: only from a touch, never on a timer or a fetched value. Or from
+        // what the user just said, to this widget's dictation a tap started: on said.final { typeText(value) }.
+        if ((name == "pressKey" || name == "typeText" || name == "latch") && inTrigger && !byDictation) {
+            return report("$name(...) works in handlers like onPress, or in on said.final for what android.speech heard, not in another trigger")
+        }
+        if (name == "pickImages" && inTrigger) return report("pickImages() works in onTap, not in a trigger")
         val key = args.firstOrNull().textOrNull()
+        // The microphone, like the keys, only from a touch; stopping it from anywhere.
+        if (name == "speech" && inTrigger && key !in SPEECH_ANYWHERE) return report("speech(\"$key\") works in onTap, not in a trigger")
+        if (name == "speech") return key?.let { services.speech(this, it) } ?: Unit
+        // Names built from values, which the compiler couldn't check: say so rather than press nothing.
         if (name == "pressKey" && key != null && KeyNames.combo(key) == null) return report("pressKey(\"$key\") names no key; ${KeyNames.help}")
         if (name == "latch" && key != null && key !in KeyNames.latches) return report("latch(\"$key\"): latch takes ${KeyNames.latches.joinToString()}")
         val how = args.getOrNull(1).textOrNull()
@@ -713,7 +733,12 @@ class WidgetInstance(
                             snapshotFlow { linux() }.first { it }
                             continue
                         }
-                        val pushed = if (g.kind.startsWith("android.")) services.androidUpdates(g.kind.removePrefix("android.")) else null
+                        val pushed =
+                            when {
+                                g.kind == "android.speech" -> services.speechUpdates(this@WidgetInstance)
+                                g.kind.startsWith("android.") -> services.androidUpdates(g.kind.removePrefix("android."))
+                                else -> null
+                            }
                         if (pushed != null) {
                             // Listens while on screen, like a stream, instead of polling.
                             untilPaused(active, g) {
@@ -888,15 +913,21 @@ class WidgetInstance(
             RunLimit.Verdict.HELD -> return
         }
         inTrigger = true
+        // Only `on said.final`, marked so by the compiler, and only with the words this widget's dictation just heard.
+        byDictation = t.dictation && (values.firstOrNull() as? Str)?.v?.let { it == services.heard(this) } == true
         try {
             t.action.run(root, values)
         } finally {
             inTrigger = false
+            byDictation = false
         }
     }
 
     /** A trigger's statements are running, not a tap's; see [sound]. */
     private var inTrigger = false
+
+    /** An `on said.final` trigger ([Trigger.dictation]) is running for the text this widget's dictation just heard, which it may type. */
+    private var byDictation = false
 
     /** sound(...)s asked for so far: a clip still downloading doesn't play over a later one. */
     private var sounds = 0

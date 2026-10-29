@@ -4,12 +4,15 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
 import android.graphics.Rect
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import dev.omalauncher.R
 import dev.omalauncher.httpGet
 import dev.omalauncher.ui.decodeImageIcon
 import dev.omalauncher.ui.decodeSvgIcon
@@ -25,6 +28,12 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import org.json.JSONArray
 import org.json.JSONObject
+
+/** What the store says about an entry or the catalog: [text], with [arg] as its %1$s when it takes one. */
+data class StoreMessage(
+    @StringRes val text: Int,
+    val arg: String? = null,
+)
 
 /**
  * The marketplace for one [kind]: a reviewed catalog published from a GitHub repo to
@@ -80,13 +89,14 @@ class Market(
         private set
     var loading by mutableStateOf(false)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<StoreMessage?>(null)
         private set
 
     /** When the catalog last loaded; settings reloads it only when it's older than [STALE_MS]. */
     var refreshedAt = 0L
         private set
-    val busy = mutableStateMapOf<String, String>()
+    /** What's happening to an entry, by its id, while it is: a string resource. */
+    val busy = mutableStateMapOf<String, Int>()
     val installed = mutableStateMapOf<String, Installed>()
     private val previews = StoreImages(PREVIEW_BYTES)
     private val icons = HashMap<Pair<String, Int>, ImageBitmap?>()
@@ -109,7 +119,7 @@ class Market(
                 refreshedAt = System.currentTimeMillis()
                 return
             }
-            error = "couldn't load the store: ${e.message ?: e}"
+            error = StoreMessage(R.string.store_load_failed, e.message ?: e.toString())
         } finally {
             loading = false
         }
@@ -126,8 +136,12 @@ class Market(
         n: Int = 1,
     ) = (if (kind == OwlKind.Widget) "market-" else "market-${kind.word}-") + "${e.author}-${e.id.substringAfter('/')}" + (if (n > 1) ".$n" else "") + ".owl"
 
+    /** Bumped when [remove] moves files away, which no state shows, so the store's pages ask [installedVersion] again. */
+    private var removals by mutableIntStateOf(0)
+
     /** Installed, and one of its files is still there (removing the tile moves the file away). */
-    fun installedVersion(e: CatalogEntry): Installed? = installed[e.id]?.takeIf { i -> i.files.any { File(engine.dir, it.file).exists() } }
+    fun installedVersion(e: CatalogEntry): Installed? =
+        installed[e.id]?.takeIf { i -> removals >= 0 && i.files.any { File(engine.dir, it.file).exists() } }
 
     /** Each of [e]'s pages' files, from page 1: the installed one, or where a new one goes. */
     private fun pageFiles(e: CatalogEntry): List<String> {
@@ -170,6 +184,16 @@ class Market(
         return edited
     }
 
+    /**
+     * Takes [e] off home or out of the drawer, every page of a face: its files go to .removed/, as removing it there does.
+     * Its record stays, as it does then, so adding it again shows what changed since the version approved.
+     */
+    fun remove(e: CatalogEntry) {
+        val names = installedVersion(e)?.files?.map { it.file }?.toSet() ?: return
+        for (spec in engine.specs.filter { it.file.name in names }) engine.removeWidget(spec)
+        removals++
+    }
+
     /** An update runs different commands or needs other packages than what the user approved. */
     fun changedSinceApproval(e: CatalogEntry) = installedVersion(e)?.let { it.commands != e.commands || it.requires != e.requires } == true
 
@@ -180,21 +204,21 @@ class Market(
     suspend fun install(
         e: CatalogEntry,
         page: Int,
-    ): String? {
+    ): StoreMessage? {
         val update = installedVersion(e) != null
-        return put(e, page, if (update) "updating…" else "installing…") { exists -> !update || exists }
+        return put(e, page, if (update) R.string.store_updating else R.string.store_installing) { exists -> !update || exists }
     }
 
     /** Adds an installed face's [missingPages] at the installed version, leaving the pages still on home as they are. */
-    suspend fun addPages(e: CatalogEntry): String? = put(e, 0, "adding pages…") { exists -> !exists }
+    suspend fun addPages(e: CatalogEntry): StoreMessage? = put(e, 0, R.string.store_adding_pages) { exists -> !exists }
 
     /** Downloads every page [which] picks (by whether its file exists), checks them all, then writes them. */
     private suspend fun put(
         e: CatalogEntry,
         page: Int,
-        status: String,
+        @StringRes status: Int,
         which: (Boolean) -> Boolean,
-    ): String? {
+    ): StoreMessage? {
         busy[e.id] = status
         try {
             val names = pageFiles(e)
@@ -206,7 +230,7 @@ class Market(
                 withContext(Dispatchers.IO) {
                     picked.associateWith { n -> httpGet(BASE + paths[n].first) }
                 }
-            if (bytes.any { (n, b) -> Review.sha256(b) != paths[n].second }) return "the download doesn't match the reviewed version; try again later"
+            if (bytes.any { (n, b) -> Review.sha256(b) != paths[n].second }) return StoreMessage(R.string.store_download_mismatch)
             // A page on home keeps its place; a new one goes where the user is. Apps go in the drawer, on no page, and a face's
             // pages left of page 1, side by side from the empty page waiting there leftwards, page 1 leftmost. A face's pages
             // added back take the ones still there along, so they stay in order. Their pages are all picked first: home
@@ -233,7 +257,7 @@ class Market(
             }
             return null
         } catch (x: Exception) {
-            return "install failed: ${x.message ?: x}"
+            return StoreMessage(R.string.store_install_failed, x.message ?: x.toString())
         } finally {
             busy.remove(e.id)
         }

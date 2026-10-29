@@ -37,9 +37,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.GuestEntry
 import dev.omalauncher.linux.shellQuote
@@ -113,7 +116,7 @@ fun FilesScreen(
     fun operate(block: () -> Unit) {
         scope.launch {
             val error = withContext(Dispatchers.IO) { runCatching(block).exceptionOrNull() }
-            if (error != null) toast(error.message ?: "failed")
+            if (error != null) toast(error.message ?: context.getString(R.string.files_failed))
             selected.clear()
             reload++
         }
@@ -125,7 +128,7 @@ fun FilesScreen(
             try {
                 FileProvider.getUriForFile(context, context.packageName + ".files", file)
             } catch (e: IllegalArgumentException) {
-                return toast("can't hand ${file.name} to other apps")
+                return toast(context.getString(R.string.files_cant_hand_over, file.name))
             }
         val mime = mimeOf(file.name) ?: "*/*"
         val intent =
@@ -137,7 +140,7 @@ fun FilesScreen(
         try {
             context.startActivity(Intent.createChooser(intent, file.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: ActivityNotFoundException) {
-            toast("no app can open ${file.name}")
+            toast(context.getString(R.string.files_no_app, file.name))
         }
     }
 
@@ -149,9 +152,9 @@ fun FilesScreen(
      */
     fun hostFile(entry: GuestEntry): File? =
         try {
-            fs.host(entry.path).also { if (!it.exists()) throw IOException("it leads to nothing") }
+            fs.host(entry.path).also { if (!it.exists()) throw IOException(context.getString(R.string.files_leads_to_nothing)) }
         } catch (e: IOException) {
-            toast("can't open ${entry.name}: ${e.message}")
+            toast(context.getString(R.string.files_cant_open, entry.name, e.message))
             null
         }
 
@@ -196,7 +199,7 @@ fun FilesScreen(
             },
             title = {
                 when {
-                    selected.isNotEmpty() -> PanelTitle("${selected.size} selected")
+                    selected.isNotEmpty() -> PanelTitle(stringResource(R.string.files_selected, selected.size))
                     q != null -> {
                         val focus = remember { FocusRequester() }
                         LaunchedEffect(Unit) { focus.requestFocus() }
@@ -211,7 +214,7 @@ fun FilesScreen(
                             modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
                             decorationBox = { inner ->
                                 Box {
-                                    if (q.isEmpty()) BasicText("filter this folder", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
+                                    if (q.isEmpty()) BasicText(stringResource(R.string.files_filter_hint), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
                                     inner()
                                 }
                             },
@@ -221,7 +224,7 @@ fun FilesScreen(
                         PanelTitle(
                             when (path) {
                                 "/" -> "/"
-                                "/root" -> "home"
+                                "/root" -> stringResource(R.string.files_home)
                                 else -> path.substringAfterLast('/')
                             },
                         )
@@ -229,16 +232,16 @@ fun FilesScreen(
             },
             actions = {
                 if (selected.isEmpty() && q == null) {
-                    PanelIcon(Icons.Search, "search") { query = "" }
+                    PanelIcon(Icons.Search, stringResource(R.string.files_search)) { query = "" }
                     Box {
-                        PanelIcon(Icons.More, "more") { menuOpen = true }
+                        PanelIcon(Icons.More, stringResource(R.string.files_more)) { menuOpen = true }
                         if (menuOpen) {
                             MenuPopup(
                                 listOf(
-                                    "new file" to { dialog = FileDialog.NewFile },
-                                    "new folder" to { dialog = FileDialog.NewFolder },
-                                    (if (showHidden) "hide hidden files" else "show hidden files") to { showHidden = !showHidden },
-                                    "open terminal here" to { runtime.terminal("cd ${shellQuote(path)} && exec bash", "Terminal") },
+                                    stringResource(R.string.files_new_file) to { dialog = FileDialog.NewFile },
+                                    stringResource(R.string.files_new_folder) to { dialog = FileDialog.NewFolder },
+                                    stringResource(if (showHidden) R.string.files_hide_hidden else R.string.files_show_hidden) to { showHidden = !showHidden },
+                                    stringResource(R.string.files_open_terminal) to { runtime.terminal("cd ${shellQuote(path)} && exec bash", "Terminal") },
                                 ),
                                 onDismiss = { menuOpen = false },
                             )
@@ -257,7 +260,7 @@ fun FilesScreen(
                     shown == null -> {}
                     shown.isEmpty() ->
                         BasicText(
-                            if (query.isNullOrBlank()) "empty folder" else "nothing matches",
+                            stringResource(if (query.isNullOrBlank()) R.string.files_empty_folder else R.string.files_no_matches),
                             Modifier.align(Alignment.Center),
                             style = Mono.copy(color = Palette.muted),
                         )
@@ -337,28 +340,33 @@ fun FilesScreen(
     when (val d = dialog) {
         null -> {}
         FileDialog.NewFile ->
-            TextDialog("new file", "", "create", onDismiss = { dialog = null }) { name ->
+            TextDialog(stringResource(R.string.files_new_file), "", stringResource(R.string.files_create), onDismiss = { dialog = null }) { name ->
                 dialog = null
                 scope.launch {
                     val created = withContext(Dispatchers.IO) { runCatching { fs.createFile(path, name) } }
-                    created.exceptionOrNull()?.let { toast(it.message ?: "failed") }
+                    created.exceptionOrNull()?.let { toast(it.message ?: context.getString(R.string.files_failed)) }
                     reload++
                     created.getOrNull()?.let { runtime.edit(it) }
                 }
             }
         FileDialog.NewFolder ->
-            TextDialog("new folder", "", "create", onDismiss = { dialog = null }) { name ->
+            TextDialog(stringResource(R.string.files_new_folder), "", stringResource(R.string.files_create), onDismiss = { dialog = null }) { name ->
                 dialog = null
                 operate { fs.mkdir(path, name) }
             }
         is FileDialog.Rename ->
-            TextDialog("rename", d.entry.name, "rename", onDismiss = { dialog = null }) { name ->
+            TextDialog(stringResource(R.string.files_rename), d.entry.name, stringResource(R.string.files_rename), onDismiss = { dialog = null }) { name ->
                 dialog = null
                 operate { fs.rename(d.entry.path, name) }
             }
         is FileDialog.Delete -> {
-            val what = if (d.paths.size == 1) d.paths[0].substringAfterLast('/') else "${d.paths.size} items"
-            ConfirmDialog("delete $what?", "This can't be undone.", "delete", onDismiss = { dialog = null }) {
+            val title =
+                if (d.paths.size == 1) {
+                    stringResource(R.string.files_delete_one, d.paths[0].substringAfterLast('/'))
+                } else {
+                    pluralStringResource(R.plurals.files_delete_items, d.paths.size, d.paths.size)
+                }
+            ConfirmDialog(title, stringResource(R.string.files_delete_message), stringResource(R.string.files_delete), onDismiss = { dialog = null }) {
                 dialog = null
                 operate { d.paths.forEach(fs::delete) }
             }

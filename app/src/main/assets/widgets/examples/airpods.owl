@@ -4,7 +4,7 @@ widget "airpods" {
   size: 6x2
   minSize: 2x1
 
-  meta { owl: 15; description: "Your AirPods: each bud's and the case's battery, the listening mode and the settings, more of it the bigger the tile. Tap the mode to switch it, the tile for the rest."; version: "1.0"; license: "MIT"; category: "system" }
+  meta { owl: 17; description: "Your AirPods: each bud's and the case's battery, the listening mode and the settings, more of it the bigger the tile. Tap the mode to switch it, the tile for the rest."; version: "1.0"; license: "MIT"; category: "system" }
 
   // Read over the AirPods' own link while the tile shows. Until the launcher may use Bluetooth, a tap asks for it.
   source a = android.airpods

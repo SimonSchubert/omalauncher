@@ -1,5 +1,7 @@
 package dev.omalauncher.linux
 
+import androidx.annotation.StringRes
+import dev.omalauncher.R
 import dev.omalauncher.widgets.lang.shQuote
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -28,7 +30,7 @@ sealed interface JobState {
     data object Idle : JobState
 
     data class Working(
-        val action: String,
+        @StringRes val action: Int,
         val log: List<String>,
     ) : JobState
 
@@ -91,15 +93,15 @@ fun Proot.runJob(
 /**
  * Runs [script] as a job the UI shows: [publish] gets Working with the output
  * tail as it comes, then Idle or Failed. With [lock], it waits for it first
- * and shows "waiting" meanwhile. Returns success and the tail.
+ * and shows waiting meanwhile. Returns success and the tail.
  */
 suspend fun Proot.trackedJob(
-    action: String,
+    @StringRes action: Int,
     script: String,
     lock: Mutex? = null,
     publish: (JobState) -> Unit,
 ): Pair<Boolean, OutputTail> {
-    if (lock != null) publish(JobState.Working("waiting", emptyList()))
+    if (lock != null) publish(JobState.Working(R.string.linux_job_waiting, emptyList()))
     val job: suspend () -> Pair<Boolean, OutputTail> = {
         withContext(Dispatchers.IO) {
             publish(JobState.Working(action, emptyList()))

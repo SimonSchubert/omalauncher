@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.R
 import dev.omalauncher.httpGet
 import dev.omalauncher.upgrade.writeAtomically
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +33,7 @@ class ThemeCatalog(
         private set
     var loading by mutableStateOf(false)
         private set
-    var error by mutableStateOf<String?>(null)
+    var error by mutableStateOf<ThemeError?>(null)
         private set
 
     private val page get() = File(cacheDir, "theme-catalog.html")
@@ -48,12 +49,12 @@ class ThemeCatalog(
             val html = withContext(Dispatchers.IO) { String(httpGet(PAGE)) }
             val parsed = parse(html)
             // A redesign of the page would parse to nothing; keep what we had and say so.
-            check(parsed.isNotEmpty()) { "the page changed and can't be read" }
+            if (parsed.isEmpty()) throw ThemeFailure(R.string.store_theme_page_changed)
             entries = parsed
             withContext(Dispatchers.IO) { writeAtomically(page, html.toByteArray()) }
         } catch (e: Exception) {
             Log.w(TAG, "refresh failed", e)
-            error = "couldn't load omarchy.org/themes: ${e.message ?: e}"
+            error = if (e is ThemeFailure) ThemeError(e.reason) else ThemeError(null, e.message ?: e.toString())
         } finally {
             loading = false
         }

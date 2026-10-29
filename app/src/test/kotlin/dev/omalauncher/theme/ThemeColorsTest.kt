@@ -49,6 +49,13 @@ class ThemeColorsTest {
         assertEquals("#f7768e", ThemeColors.resolve(c)["red"])
     }
 
+    @Test fun themeTypeFollowsMode() {
+        assertEquals("dark", ThemeColors.resolve(mapOf("background" to "#1a1b26"))["theme_type"])
+        assertEquals("light", ThemeColors.resolve(mapOf("background" to "#1a1b26", "mode" to "light"))["theme_type"])
+        // The older key alone still sets the mode.
+        assertEquals("light", ThemeColors.resolve(mapOf("background" to "#1a1b26", "theme_type" to "light"))["mode"])
+    }
+
     @Test fun needsAllNormalColors() {
         assertNull(ThemeColors.fromAlacritty("[colors.normal]\nblack = \"#000000\"\n"))
     }

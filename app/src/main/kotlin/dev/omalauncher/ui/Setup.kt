@@ -47,6 +47,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import dev.omalauncher.R
 import dev.omalauncher.linux.AGENTS
 import dev.omalauncher.linux.Agent
 import androidx.compose.runtime.rememberCoroutineScope
@@ -139,11 +141,10 @@ private fun Welcome(
     Appear(0) {
         Column {
             Spacer(Modifier.height(10.dp))
-            BasicText("omarchy on your home screen", style = Mono.copy(fontSize = TextSize.Large))
+            BasicText(stringResource(R.string.linux_welcome_title), style = Mono.copy(fontSize = TextSize.Large))
             Spacer(Modifier.height(10.dp))
             BasicText(
-                "Omarchy's themes and wallpapers, your Android apps, and home-screen widgets. Arch Linux adds " +
-                    "terminal apps and coding agents, now or later in settings.",
+                stringResource(R.string.linux_welcome_body),
                 style = Mono.copy(color = Subtle, lineHeight = 20.sp),
             )
         }
@@ -164,9 +165,9 @@ private fun Welcome(
     Spacer(Modifier.height(32.dp))
     Appear(2) {
         Column {
-            Label("linux")
+            Label(stringResource(R.string.linux_welcome_linux))
             Spacer(Modifier.height(12.dp))
-            Choice("also set up Arch Linux", "terminal apps, agents, pacman · ~1 GB download, 3 GB space", linux, onToggleLinux)
+            Choice(stringResource(R.string.linux_welcome_choice), stringResource(R.string.linux_welcome_choice_detail), linux, onToggleLinux)
             if (linux) {
                 Spacer(Modifier.height(24.dp))
                 AgentPicker(picked, onToggle)
@@ -182,14 +183,14 @@ internal fun AgentPicker(
     onToggle: (String) -> Unit,
 ) {
     Column {
-        Label("coding agents")
+        Label(stringResource(R.string.linux_agents_label))
         BasicText(
-            "Pick any to install with Linux. You can add or remove them later in settings.",
+            stringResource(R.string.linux_agents_hint),
             Modifier.padding(top = 4.dp, bottom = 14.dp),
             style = Mono.copy(color = Subtle, fontSize = TextSize.Small),
         )
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (agent in AGENTS) Choice(agent.name, agent.description, agent.bin in picked) { onToggle(agent.bin) }
+            for (agent in AGENTS) Choice(agent.name, stringResource(agent.description), agent.bin in picked) { onToggle(agent.bin) }
         }
     }
 }
@@ -201,14 +202,9 @@ private fun StartButton(
 ) {
     Column {
         // Keys on it wait out the theme's download, for try again should it fail.
-        PrimaryButton(if (linux) "start and set up linux" else "start", Modifier.passesKeys(), onStart)
+        PrimaryButton(stringResource(if (linux) R.string.linux_welcome_start_linux else R.string.linux_welcome_start), Modifier.passesKeys(), onStart)
         BasicText(
-            if (linux) {
-                "Linux downloads about 1 GB, so Wi-Fi is best, and takes 3 GB of space. It installs in the " +
-                    "background in 10 to 20 minutes; the home screen is ready right away."
-            } else {
-                "Downloads the theme's wallpaper now and Omarchy's other themes (about 70 MB) in the background."
-            },
+            stringResource(if (linux) R.string.linux_welcome_start_linux_hint else R.string.linux_welcome_start_hint),
             Modifier.padding(top = 10.dp).fillMaxWidth(),
             style = Mono.copy(color = Subtle, fontSize = TextSize.Small, lineHeight = 16.sp),
         )
@@ -225,26 +221,26 @@ private fun ThemeDownloadProgress(
 ) {
     Spacer(Modifier.height(10.dp))
     BasicText(
-        if (error != null) "the theme didn't download" else "getting $theme",
+        if (error != null) stringResource(R.string.linux_welcome_theme_failed) else stringResource(R.string.linux_welcome_getting, theme),
         style = Mono.copy(fontSize = TextSize.Large, color = if (error != null) Palette.red else Palette.foreground),
     )
     Spacer(Modifier.height(28.dp))
     StageRow(
-        label = "download its wallpaper",
+        label = stringResource(R.string.linux_welcome_wallpaper),
         status = if (error != null) StageStatus.Failed else StageStatus.Running,
         detail = error,
         progress = null,
     )
     if (error != null) {
         Spacer(Modifier.height(28.dp))
-        PrimaryButton("try again", Modifier.takesPassedKeys().passesKeys(), onRetry)
+        PrimaryButton(stringResource(R.string.linux_try_again), Modifier.takesPassedKeys().passesKeys(), onRetry)
         BasicText(
-            "continue without wallpapers",
+            stringResource(R.string.linux_welcome_skip),
             Modifier.padding(top = 16.dp).clickable(onClick = onSkip),
             style = Mono.copy(color = Palette.accent, fontSize = TextSize.Body),
         )
         BasicText(
-            "The theme's colors apply anyway. The launcher tries again later, or download them in settings › style.",
+            stringResource(R.string.linux_welcome_skip_hint),
             Modifier.padding(top = 6.dp),
             style = Mono.copy(color = Subtle, fontSize = TextSize.Small, lineHeight = 16.sp),
         )
@@ -320,7 +316,7 @@ internal fun LinuxProgress(
     val current = working?.stage ?: failed?.stage ?: Stage.Download
     val log = working?.log ?: failed?.log.orEmpty()
     BasicText(
-        if (failed != null) "setup stopped" else "setting up linux",
+        stringResource(if (failed != null) R.string.linux_progress_stopped else R.string.linux_progress_title),
         style = Mono.copy(fontSize = TextSize.Large, color = if (failed != null) Palette.red else Palette.foreground),
     )
     Spacer(Modifier.height(24.dp))
@@ -335,7 +331,7 @@ internal fun LinuxProgress(
                     else -> StageStatus.Running
                 }
             StageRow(
-                label = if (stage == Stage.Agents) "install ${agents.joinToString { it.name }}" else stage.label,
+                label = if (stage == Stage.Agents) stringResource(R.string.linux_stage_agents_named, agents.joinToString { it.name }) else stringResource(stage.label),
                 status = status,
                 detail = working?.takeIf { stage == current }?.step ?: failed?.takeIf { stage == current }?.message,
                 progress = working?.takeIf { stage == current }?.progress,
@@ -344,17 +340,17 @@ internal fun LinuxProgress(
     }
     Spacer(Modifier.height(24.dp))
     if (failed != null) {
-        PrimaryButton("try again", Modifier.takesPassedKeys().passesKeys(), onRetry)
+        PrimaryButton(stringResource(R.string.linux_try_again), Modifier.takesPassedKeys().passesKeys(), onRetry)
         Spacer(Modifier.height(16.dp))
     }
     if (onCancel != null) {
-        BracketAction("cancel install", Palette.red, Modifier.takesPassedKeys().passesKeys(), onCancel)
+        BracketAction(stringResource(R.string.linux_cancel_install), Palette.red, Modifier.takesPassedKeys().passesKeys(), onCancel)
         Spacer(Modifier.height(16.dp))
     }
     LogTail(log, expandedByDefault = failed != null)
     if (failed == null) {
         BasicText(
-            "You can close this and use the launcher; setup keeps going in the background.",
+            stringResource(R.string.linux_progress_background),
             Modifier.padding(top = 16.dp),
             style = Mono.copy(color = Subtle, fontSize = TextSize.Small),
         )
@@ -442,9 +438,9 @@ private fun LogTail(
             .padding(12.dp),
     ) {
         Row {
-            Label("output")
+            Label(stringResource(R.string.linux_output))
             Spacer(Modifier.weight(1f))
-            BasicText(if (expanded) "less" else "more", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small))
+            BasicText(stringResource(if (expanded) R.string.linux_output_less else R.string.linux_output_more), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small))
         }
         Spacer(Modifier.height(6.dp))
         for (line in log.takeLast(if (expanded) 40 else 3)) {
@@ -474,7 +470,7 @@ internal fun ThemeStrip(
     if (list.isEmpty()) return
     Column {
         Row {
-            Label("theme")
+            Label(stringResource(R.string.linux_theme_label))
             Spacer(Modifier.weight(1f))
             BasicText(
                 list.firstOrNull { it.name == themes.picked }?.title?.lowercase().orEmpty(),
@@ -546,7 +542,7 @@ private fun BrowseSwatch(onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(10.dp),
     ) {
-        BasicText("more themes ›", style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        BasicText(stringResource(R.string.linux_more_themes), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
             repeat(5) { Box(Modifier.size(width = 14.dp, height = 6.dp).background(Palette.border)) }

@@ -19,9 +19,10 @@ Part of the widget docs: README.md, one folder up, comes first, and paths here a
 | `let p = prev(x)` | the previous value of `x`, for rates: `let rate = (bytes - p) / 5` |
 | `component Name(a, b = 1) { ... }` | a reusable node; use it as `Name { a: 1 }` |
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, or a font for `font: logo` (owl 10, see Fonts in docs/nodes.md), so the widget is one self-contained file |
+| `strings { en { title: "today" } id { title: "hari ini" } }` | the text a person reads, in more than one language: `str.title` is the phone's language's, or en's where it has none. See Text in more languages (owl 16) |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see docs/sharing.md) |
-| `meta { owl: 12 }` | the language version the file needs (this launcher has 15; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
+| `meta { owl: 12 }` | the language version the file needs (this launcher has 17; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see docs/screens.md (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
@@ -168,3 +169,35 @@ widget "kernel" {
 
 `optional` works on `cmd`, `stream` and `file`. Keep such a widget's commands to base tools
 (coreutils, grep, sed, awk, bash, pacman): `requires` makes a widget need Linux again.
+
+## Text in more languages
+
+A widget only its owner uses can simply be written in their language. One for the store, which people
+read in many languages, keeps the text a person reads in `strings` (owl 16): an `en { }` set with every
+text in English, and a set for each other language, named by its code (`id`, `de`, `pt`, `es`, ...).
+`str.name` is the text in the phone's language, and en's where that set lacks it or the phone's language
+has none:
+
+```owl
+widget "inbox" {
+  meta { owl: 16 }
+  source n = android.notifications
+  strings {
+    en { title: "inbox"; empty: "all quiet"; count: k => k == 1 ? "1 new" : "${k} new" }
+    id { title: "kotak masuk"; empty: "semua tenang"; count: k => "${k} baru" }
+  }
+  Column {
+    Text { text: str.title; color: muted }
+    Text { text: len(n) == 0 ? str.empty : str.count(len(n)) }
+  }
+}
+```
+
+- A text that takes values is an arrow function, called like one: `str.count(len(n))`. Plurals and word
+  order go in there, per language.
+- Every name in another set must be in en, taking as many values; a set that lacks some gets a warning,
+  and those show in English.
+- Only the text: names of things from APIs, commands and the phone (apps, songs, cities) stay as they come.
+  Dates and numbers follow the phone's language already, through `fmtTime` and `fmtNum`.
+- `lang()` is the phone's language code, for an API that takes one: `http("https://wttr.in/?lang=${lang()}")`.
+- A widget follows a change of the phone's language when it compiles anew, which the launcher does then.

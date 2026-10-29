@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_failed">gagal</string>
+    <string name="files_cant_hand_over">tidak dapat meneruskan %1$s ke aplikasi lain</string>
+    <string name="files_no_app">tidak ada aplikasi yang bisa membuka %1$s</string>
+    <string name="files_leads_to_nothing">tujuannya tidak ada</string>
+    <string name="files_cant_open">tidak dapat membuka %1$s: %2$s</string>
+    <string name="files_selected">%1$d dipilih</string>
+    <string name="files_filter_hint">saring folder ini</string>
+    <string name="files_home">home</string>
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">unduhan</string>
+    <string name="files_place_system">sistem</string>
+    <string name="files_search">cari</string>
+    <string name="files_more">lainnya</string>
+    <string name="files_new_file">file baru</string>
+    <string name="files_new_folder">folder baru</string>
+    <string name="files_hide_hidden">sembunyikan file tersembunyi</string>
+    <string name="files_show_hidden">tampilkan file tersembunyi</string>
+    <string name="files_open_terminal">buka terminal di sini</string>
+    <string name="files_empty_folder">folder kosong</string>
+    <string name="files_no_matches">tidak ada yang cocok</string>
+    <string name="files_create">buat</string>
+    <string name="files_rename">ganti nama</string>
+    <string name="files_delete_one">hapus %1$s?</string>
+    <plurals name="files_delete_items">
+        <item quantity="other">hapus %1$d item?</item>
+    </plurals>
+    <string name="files_delete_message">Tindakan ini tidak dapat dibatalkan.</string>
+    <string name="files_delete">hapus</string>
+    <plurals name="files_items">
+        <item quantity="other">%1$d item</item>
+    </plurals>
+    <string name="files_folder">folder</string>
+    <string name="files_copy">salin</string>
+    <string name="files_cut">potong</string>
+    <string name="files_select_all">pilih semua</string>
+    <string name="files_edit">edit</string>
+    <string name="files_open_with">buka dengan…</string>
+    <string name="files_share">bagikan</string>
+    <string name="files_cancel">batal</string>
+    <string name="files_move_here">pindahkan ke sini</string>
+    <string name="files_paste_here">tempel di sini</string>
+
+    <string name="editor_title">Editor</string>
+    <string name="editor_cant_read">tidak dapat membaca %1$s: %2$s</string>
+    <string name="editor_cant_save">tidak dapat menyimpan %1$s: %2$s</string>
+    <string name="editor_not_found">tidak ditemukan</string>
+    <string name="editor_find_hint">cari di file</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">hasil sebelumnya</string>
+    <string name="editor_next_match">hasil berikutnya</string>
+    <string name="editor_save">simpan</string>
+    <string name="editor_find">cari</string>
+    <string name="editor_no_wrap">jangan bungkus baris</string>
+    <string name="editor_wrap">bungkus baris</string>
+    <string name="editor_show_in_files">tampilkan di File</string>
+    <string name="editor_open_in_micro">buka di micro</string>
+    <string name="editor_save_confirm">simpan %1$s?</string>
+    <string name="editor_save_confirm_message">Ada perubahan yang belum disimpan.</string>
+    <string name="editor_discard">buang</string>
+    <string name="editor_key_left">kiri</string>
+    <string name="editor_key_up">atas</string>
+    <string name="editor_key_down">bawah</string>
+    <string name="editor_key_right">kanan</string>
+    <string name="editor_key_undo">urungkan</string>
+    <string name="editor_key_redo">ulangi</string>
+    <string name="editor_home_title">editor</string>
+    <string name="editor_new">baru</string>
+    <string name="editor_browse">jelajahi</string>
+    <string name="editor_recent">terbaru</string>
+    <string name="editor_recent_empty">File yang kamu edit muncul di sini.</string>
+    <string name="editor_new_file_hint">path di Linux</string>
+
+    <string name="prompt_listening">mendengarkan…</string>
+    <string name="prompt_hint_apps">buka aplikasi…</string>
+    <string name="prompt_hint_ask">buka aplikasi atau tanya %1$s…</string>
+    <string name="prompt_enter_ask">⏎ tanya</string>
+    <string name="prompt_agent">agen</string>
+    <string name="prompt_manage_agents">"  kelola agen…"</string>
+
+    <string name="prompt_speech_no_recognizer">tidak ada pengenal suara di ponsel ini</string>
+    <string name="prompt_speech_refused">pengenal suara ponsel tidak mengizinkan aplikasi lain memakainya</string>
+    <string name="prompt_speech_failed">pengenalan suara gagal (%1$d)</string>
+    <string name="prompt_speech_language">pengenalan suara tidak tersedia untuk bahasa ini</string>
+    <string name="prompt_speech_mic_permission">perlu izin mikrofon</string>
+    <string name="prompt_speech_network">pengenalan suara memerlukan koneksi jaringan</string>
+</resources>

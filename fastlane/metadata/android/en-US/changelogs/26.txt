@@ -1,0 +1,1 @@
+The launcher now speaks Indonesian, and widgets can carry their text in several languages, following the phone's. Coding agents take the Omarchy theme. Widgets, faces and apps can be removed from the store, and the empty last page invites a new widget. Large font sizes no longer squeeze buttons.

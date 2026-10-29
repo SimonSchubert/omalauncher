@@ -32,6 +32,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import dev.omalauncher.R
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.widgets.WidgetSpec
 import dev.omalauncher.widgets.lang.text
@@ -78,17 +80,17 @@ internal fun WidgetTile(
         } else if (instance != null && needs.isNotEmpty()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 BasicText(spec.name, style = Mono.copy(color = Palette.muted))
-                BasicText("needs ${needs.joinToString(", ")}", style = Mono)
+                BasicText(stringResource(R.string.home_widget_needs, needs.joinToString(", ")), style = Mono)
                 when (install) {
-                    WidgetEngine.Install.Running -> BasicText("installing…", style = Mono.copy(color = Palette.accent))
+                    WidgetEngine.Install.Running -> BasicText(stringResource(R.string.home_installing), style = Mono.copy(color = Palette.accent))
                     is WidgetEngine.Install.Failed -> {
                         BasicText(install.log.lines().lastOrNull { it.isNotBlank() }.orEmpty(), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small), maxLines = 2)
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            TileButton("retry", Palette.accent, onInstall)
-                            TileButton("fix with agent", Palette.muted) { onFix(install.log) }
+                            TileButton(stringResource(R.string.home_retry), Palette.accent, onInstall)
+                            TileButton(stringResource(R.string.home_fix_with_agent), Palette.muted) { onFix(install.log) }
                         }
                     }
-                    null -> TileButton("install", Palette.accent, onInstall)
+                    null -> TileButton(stringResource(R.string.home_install), Palette.accent, onInstall)
                 }
             }
         } else if (instance == null) {
@@ -123,14 +125,14 @@ private fun LinuxPlaceholder(
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         BasicText(name, style = Mono.copy(color = Palette.muted), maxLines = 1)
         Spacer(Modifier.weight(1f))
-        BasicText("needs Linux", style = Mono.copy(color = Palette.accent))
+        BasicText(stringResource(R.string.home_widget_needs_linux), style = Mono.copy(color = Palette.accent))
         BasicText(
-            "runs commands in the optional Arch Linux",
+            stringResource(R.string.home_widget_needs_linux_text),
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        TileButton(if (installing) "installing…" else "install", Palette.accent, onInstall)
+        TileButton(stringResource(if (installing) R.string.home_installing else R.string.home_install), Palette.accent, onInstall)
     }
 }
 

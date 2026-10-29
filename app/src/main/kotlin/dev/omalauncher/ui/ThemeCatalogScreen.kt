@@ -36,12 +36,15 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.omalauncher.R
 import dev.omalauncher.openUrl
 import dev.omalauncher.theme.CatalogTheme
 import dev.omalauncher.theme.ThemeCatalog
 import dev.omalauncher.theme.ThemeDirs
+import dev.omalauncher.theme.ThemeError
 import dev.omalauncher.theme.ThemeInstall
 import dev.omalauncher.theme.ThemeStore
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +74,7 @@ fun ThemeCatalogScreen(
             }
     }
     OverlayPanel(
-        "community themes",
+        stringResource(R.string.store_theme_title),
         onDismiss,
         actions = {
             RefreshButton(catalog.loading) { scope.launch { catalog.refresh() } }
@@ -79,7 +82,7 @@ fun ThemeCatalogScreen(
     ) {
         val q = query.trim().lowercase()
         val shown = catalog.entries.filter { q.isEmpty() || q in it.title.lowercase() || q in it.repo.label.lowercase() }
-        SearchField(query, { query = it }, onGo = { keyboard?.hide() }, placeholder = "search ${catalog.entries.size} themes")
+        SearchField(query, { query = it }, onGo = { keyboard?.hide() }, placeholder = stringResource(R.string.store_theme_search, catalog.entries.size))
         Spacer(Modifier.height(8.dp))
         LazyVerticalGrid(
             columns = GridCells.Adaptive(150.dp),
@@ -90,15 +93,15 @@ fun ThemeCatalogScreen(
             item(key = "header", span = { GridItemSpan(maxLineSpan) }) {
                 Column {
                     BasicText(
-                        "made by the community, listed on omarchy.org/themes · installed from GitHub",
+                        stringResource(R.string.store_theme_header),
                         Modifier.clickable { context.openUrl(ThemeCatalog.PAGE) },
                         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                     )
                     InstallStatus(store)
                     when {
-                        catalog.loading && catalog.entries.isEmpty() -> BasicText("loading…", style = Mono.copy(color = Palette.muted))
-                        catalog.error != null && catalog.entries.isEmpty() -> BasicText(catalog.error.orEmpty(), style = Mono.copy(color = Palette.red))
-                        catalog.entries.isNotEmpty() && shown.isEmpty() -> BasicText("nothing matches \"${query.trim()}\"", style = Mono.copy(color = Palette.muted))
+                        catalog.loading && catalog.entries.isEmpty() -> BasicText(stringResource(R.string.store_loading), style = Mono.copy(color = Palette.muted))
+                        catalog.error != null && catalog.entries.isEmpty() -> BasicText(catalog.error?.let { stringResource(R.string.store_theme_catalog_failed, it.text()) }.orEmpty(), style = Mono.copy(color = Palette.red))
+                        catalog.entries.isNotEmpty() && shown.isEmpty() -> BasicText(stringResource(R.string.store_no_match, query.trim()), style = Mono.copy(color = Palette.muted))
                     }
                 }
             }
@@ -110,9 +113,9 @@ fun ThemeCatalogScreen(
                     theme,
                     status =
                         when {
-                            running -> "installing…" to Palette.accent
-                            installedAs != null && installedAs == store.current?.name -> "✓ in use" to Palette.green
-                            installedAs != null -> "✓ installed" to Palette.green
+                            running -> stringResource(R.string.store_installing) to Palette.accent
+                            installedAs != null && installedAs == store.current?.name -> stringResource(R.string.store_theme_in_use) to Palette.green
+                            installedAs != null -> stringResource(R.string.store_installed) to Palette.green
                             else -> theme.repo.label.removePrefix("github.com/") to Palette.muted
                         },
                 ) {
@@ -128,16 +131,16 @@ fun ThemeCatalogScreen(
     confirming?.let { theme ->
         val name = theme.repo.themeName
         val existing = store.themes.firstOrNull { it.name == name }
-        val replaces =
+        val message =
             when {
-                existing == null -> ""
-                existing.own != null -> "\n\nIt replaces your ${existing.title}."
-                else -> "\n\nIt goes over Omarchy's ${existing.title}; removing it brings that back."
+                existing == null -> stringResource(R.string.store_theme_install_message, theme.repo.label)
+                existing.own != null -> stringResource(R.string.store_theme_install_message_replaces, theme.repo.label, existing.title)
+                else -> stringResource(R.string.store_theme_install_message_over, theme.repo.label, existing.title)
             }
         ConfirmDialog(
-            "install ${theme.title.lowercase()}?",
-            "From ${theme.repo.label}. Linux gets its colors and wallpapers, not its scripts or terminal configs.$replaces",
-            "install",
+            stringResource(R.string.store_theme_install_confirm, theme.title.lowercase()),
+            message,
+            stringResource(R.string.store_install),
             onDismiss = { confirming = null },
             confirmColor = Palette.accent,
         ) {
@@ -180,11 +183,15 @@ private fun CatalogCard(
 @Composable
 internal fun InstallStatus(store: ThemeStore) {
     when (val state = store.installing) {
-        is ThemeInstall.Running -> BasicText("installing ${state.name}… ${state.megabytes} MB", style = Mono.copy(color = Palette.accent))
-        is ThemeInstall.Failed -> BasicText("install failed: ${state.message}", Modifier.clickable { store.clearInstallError() }, style = Mono.copy(color = Palette.red))
+        is ThemeInstall.Running -> BasicText(stringResource(R.string.store_theme_installing, state.name, state.megabytes), style = Mono.copy(color = Palette.accent))
+        is ThemeInstall.Failed -> BasicText(stringResource(R.string.store_install_failed, state.error.text()), Modifier.clickable { store.clearInstallError() }, style = Mono.copy(color = Palette.red))
         ThemeInstall.Idle -> {}
     }
 }
+
+/** What [ThemeError] says, in words. */
+@Composable
+private fun ThemeError.text() = reason?.let { if (detail.isEmpty()) stringResource(it) else stringResource(it, detail) } ?: detail
 
 /** Picks up themes added or removed in Linux since the launcher started, when the calling screen opens. */
 @Composable

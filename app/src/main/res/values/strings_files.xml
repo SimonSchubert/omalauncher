@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files (ui/FilesScreen.kt, FilesChrome.kt, FileDialogs.kt), the editor (ui/EditorScreen.kt) and the prompt bar
+     with its speech input (ui/PromptBar.kt, ui/Speech.kt). -->
+<resources>
+    <!-- A file operation failed without saying why. -->
+    <string name="files_failed">failed</string>
+    <!-- %1$s is a file name. -->
+    <string name="files_cant_hand_over">can\'t hand %1$s to other apps</string>
+    <!-- %1$s is a file name. -->
+    <string name="files_no_app">no app can open %1$s</string>
+    <!-- Why a link can't be opened: its target doesn't exist. Shown as %2$s of files_cant_open. -->
+    <string name="files_leads_to_nothing">it leads to nothing</string>
+    <!-- %1$s is a file name, %2$s why it can't be opened. -->
+    <string name="files_cant_open">can\'t open %1$s: %2$s</string>
+    <!-- The title while files are selected. -->
+    <string name="files_selected">%1$d selected</string>
+    <string name="files_filter_hint">filter this folder</string>
+    <!-- The home folder, /root: the title there and a quick jump. -->
+    <string name="files_home">home</string>
+    <!-- Quick jumps to /root/.config, /root/Downloads and / -->
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">downloads</string>
+    <string name="files_place_system">system</string>
+    <string name="files_search">search</string>
+    <string name="files_more">more</string>
+    <string name="files_new_file">new file</string>
+    <string name="files_new_folder">new folder</string>
+    <string name="files_hide_hidden">hide hidden files</string>
+    <string name="files_show_hidden">show hidden files</string>
+    <string name="files_open_terminal">open terminal here</string>
+    <string name="files_empty_folder">empty folder</string>
+    <string name="files_no_matches">nothing matches</string>
+    <string name="files_create">create</string>
+    <string name="files_rename">rename</string>
+    <!-- %1$s is a file or folder name. -->
+    <string name="files_delete_one">delete %1$s?</string>
+    <plurals name="files_delete_items">
+        <item quantity="one">delete %1$d item?</item>
+        <item quantity="other">delete %1$d items?</item>
+    </plurals>
+    <string name="files_delete_message">This can\'t be undone.</string>
+    <string name="files_delete">delete</string>
+    <!-- How many items a folder holds, or how many are copied or cut. -->
+    <plurals name="files_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="other">%1$d items</item>
+    </plurals>
+    <!-- A folder whose contents can't be counted. -->
+    <string name="files_folder">folder</string>
+    <string name="files_copy">copy</string>
+    <string name="files_cut">cut</string>
+    <string name="files_select_all">select all</string>
+    <string name="files_edit">edit</string>
+    <string name="files_open_with">open with…</string>
+    <string name="files_share">share</string>
+    <string name="files_cancel">cancel</string>
+    <string name="files_move_here">move here</string>
+    <string name="files_paste_here">paste here</string>
+
+    <!-- The editor's name in Recents when it opens without a file. -->
+    <string name="editor_title">Editor</string>
+    <!-- %1$s is a file name, %2$s why it can't be read. -->
+    <string name="editor_cant_read">can\'t read %1$s: %2$s</string>
+    <!-- %1$s is a file name, %2$s why it can't be saved. -->
+    <string name="editor_cant_save">can\'t save %1$s: %2$s</string>
+    <!-- Searching in the file found nothing. -->
+    <string name="editor_not_found">not found</string>
+    <string name="editor_find_hint">find in file</string>
+    <!-- The title of a file with unsaved changes; %1$s is its name. -->
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">previous match</string>
+    <string name="editor_next_match">next match</string>
+    <string name="editor_save">save</string>
+    <string name="editor_find">find</string>
+    <string name="editor_no_wrap">don\'t wrap lines</string>
+    <string name="editor_wrap">wrap lines</string>
+    <string name="editor_show_in_files">show in files</string>
+    <!-- micro is a terminal text editor. -->
+    <string name="editor_open_in_micro">open in micro</string>
+    <!-- %1$s is a file name. -->
+    <string name="editor_save_confirm">save %1$s?</string>
+    <string name="editor_save_confirm_message">You have changes that aren\'t saved yet.</string>
+    <string name="editor_discard">discard</string>
+    <!-- Screen reader names of the editor's arrow, undo and redo keys. -->
+    <string name="editor_key_left">left</string>
+    <string name="editor_key_up">up</string>
+    <string name="editor_key_down">down</string>
+    <string name="editor_key_right">right</string>
+    <string name="editor_key_undo">undo</string>
+    <string name="editor_key_redo">redo</string>
+    <!-- The editor's own screen, with recent files. -->
+    <string name="editor_home_title">editor</string>
+    <string name="editor_new">new</string>
+    <string name="editor_browse">browse</string>
+    <string name="editor_recent">recent</string>
+    <string name="editor_recent_empty">Files you edit show up here.</string>
+    <string name="editor_new_file_hint">a path in Linux</string>
+
+    <string name="prompt_listening">listening…</string>
+    <string name="prompt_hint_apps">open an app…</string>
+    <!-- %1$s is a coding agent's command, like claude. -->
+    <string name="prompt_hint_ask">open an app or ask %1$s…</string>
+    <!-- Shown after typing: Enter sends the text to the coding agent. -->
+    <string name="prompt_enter_ask">⏎ ask</string>
+    <!-- In place of the coding agent's name when none is picked. -->
+    <string name="prompt_agent">agent</string>
+    <!-- The leading spaces line it up with the agents above it. -->
+    <string name="prompt_manage_agents">"  manage agents…"</string>
+
+    <!-- Speech input errors, in the prompt bar and to widgets. -->
+    <string name="prompt_speech_no_recognizer">no speech recognizer on this phone</string>
+    <string name="prompt_speech_refused">the phone\'s speech recognizer doesn\'t let other apps use it</string>
+    <!-- %1$d is the recognizer's error code. -->
+    <string name="prompt_speech_failed">speech recognition failed (%1$d)</string>
+    <string name="prompt_speech_language">speech isn\'t available in this language</string>
+    <string name="prompt_speech_mic_permission">microphone permission needed</string>
+    <string name="prompt_speech_network">speech recognition needs a network connection</string>
+</resources>
