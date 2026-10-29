@@ -33,6 +33,9 @@ class Proot(
     /** Stand-ins for /proc files Android hides from apps. */
     val procShim = ProcShim(File(filesDir, "proc"))
 
+    /** Every guest process's LANG: the phone's locale once [GuestLocale] made it, else C.UTF-8. */
+    @Volatile var lang: String = GuestLocale.FALLBACK
+
     /** How guest apps render OpenGL and Vulkan: in software, or on the GPU once [Gpu] turns it on. */
     @Volatile var graphicsEnv: List<String> = SOFTWARE_ENV
 
@@ -148,7 +151,7 @@ class Proot(
                 "/usr/bin/env", "-i",
                 "HOME=$GUEST_HOME",
                 "USER=root",
-                "LANG=C.UTF-8",
+                "LANG=$lang",
                 // Android's zone name (e.g. Europe/Berlin); the guest otherwise runs on UTC.
                 "TZ=${java.util.TimeZone.getDefault().id}",
                 "TERM=xterm-256color",

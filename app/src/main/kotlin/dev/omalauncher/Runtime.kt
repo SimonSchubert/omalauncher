@@ -28,6 +28,7 @@ import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
+import dev.omalauncher.linux.GuestLocale
 import dev.omalauncher.linux.SystemUpdates
 import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.TerminalFont
@@ -96,6 +97,7 @@ class Runtime(
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
+    private val guestLocale = GuestLocale(context, proot)
     private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit)
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
@@ -312,7 +314,11 @@ class Runtime(
             synchronized(server) { server.selection.system = clipboard }
             context.registerComponentCallbacks(
                 object : ComponentCallbacks {
-                    override fun onConfigurationChanged(newConfig: Configuration) = updateOutput()
+                    override fun onConfigurationChanged(newConfig: Configuration) {
+                        updateOutput()
+                        // The phone's language changed: Linux apps started from now on follow it.
+                        if (linux) scope.launch(Dispatchers.IO) { guestLocale.sync() }
+                    }
 
                     @Deprecated("Deprecated in Java")
                     override fun onLowMemory() = Unit
@@ -336,6 +342,7 @@ class Runtime(
         themes.renderGuest()
         withContext(Dispatchers.IO) {
             provisioner.sync()
+            guestLocale.sync()
             audio.start()
             synchronized(server) { server.input.setKeymap(proot.keymap.path) }
             agents.load()
