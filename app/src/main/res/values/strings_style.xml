@@ -163,7 +163,7 @@
 
     <!-- Settings › coding agents (ui/AgentsScreen.kt). -->
     <string name="agents_title">coding agents</string>
-    <string name="agents_intro">Installed with mise, like Omarchy. Logins open in your browser; paste keys with the keyboard\'s clipboard.</string>
+    <string name="agents_intro">Installed with mise, like Omarchy, or with the agent\'s own installer (Hermes). Logins open in your browser; paste keys with the keyboard\'s clipboard.</string>
     <string name="agents_open">open</string>
     <string name="agents_remove">remove</string>
     <string name="agents_install">install</string>
