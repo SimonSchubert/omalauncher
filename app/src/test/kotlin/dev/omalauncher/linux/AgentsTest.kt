@@ -36,6 +36,28 @@ class AgentsTest {
         assertEquals(output, 0, process.waitFor())
     }
 
+    /**
+     * Hermes takes its first prompt as `chat -q <prompt>`: a bare argument starts its TUI instead, and
+     * `-q` is what answers once and exits, which is what the bar and the widget engine read.
+     */
+    @Test fun hermesReceivesItsPromptThroughChatQuery() {
+        val prompt = "Explain \"it's quoted\"; \$(exit 17)\nand keep \$HOME literal."
+        val script = """
+            set -- ${agentInvocation("hermes", prompt)}
+            test "${'$'}#" -eq 4 &&
+            test "${'$'}1" = hermes &&
+            test "${'$'}2" = chat &&
+            test "${'$'}3" = -q &&
+            test "${'$'}4" = "${'$'}EXPECTED_PROMPT"
+        """.trimIndent()
+        val process = ProcessBuilder("sh", "-c", script)
+            .redirectErrorStream(true)
+            .apply { environment()["EXPECTED_PROMPT"] = prompt }
+            .start()
+        val output = process.inputStream.bufferedReader().use { it.readText() }
+        assertEquals(output, 0, process.waitFor())
+    }
+
     /** A prompt from a widget can't pass the agent an option: claude --settings=... would run its hooks. */
     @Test fun aPromptStartingWithADashIsNoOption() {
         val script = """
