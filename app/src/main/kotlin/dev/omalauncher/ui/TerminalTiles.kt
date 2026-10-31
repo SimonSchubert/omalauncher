@@ -270,12 +270,19 @@ class EmbeddedTerminal internal constructor(
         private set
 
     private var closed = false
+    private var started = false
 
     /** Where the tile is, in window pixels, as if the home screen weren't lifted. */
     internal var bounds = Rect.Zero
 
+    /** Paging a tile back into composition must not restart an exited terminal. */
+    internal fun autoStart() {
+        if (!started) start()
+    }
+
     fun start() {
         if (running || closed) return
+        started = true
         running = true
         tiles.launch(this) {
             main.post {
@@ -322,7 +329,7 @@ fun TerminalView(
     val tiles = term.tiles
     val window = term.window
     val active = tiles.active === term
-    LaunchedEffect(term) { term.start() }
+    LaunchedEffect(term) { term.autoStart() }
     // Keys that went into the terminal come back out to it as it lets the keyboard go, rather than to wherever
     // Android gives the window's focus.
     val back = remember { FocusRequester() }

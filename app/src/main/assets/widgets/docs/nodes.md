@@ -251,8 +251,9 @@ widget "shell" {
   outside it, Back or another page lets go. The ⌨ button toggles the soft keyboard,
   and a tap on the line with the terminal's cursor (its prompt) brings it back.
 - The terminal keeps running while its page is off screen. It ends when the widget
-  is removed or its file changes. When `command` exits, the tile offers a restart;
-  use `"btop; exec bash"` to fall back to a shell.
+  is removed or its file changes. When `command` exits, it stays stopped until you
+  tap the restart hint, even after leaving and returning to its page. Use
+  `"btop; exec bash"` to fall back to a shell.
 - `padding: 0` lets the terminal fill the tile's frame.
 - Its background is see-through: the tile's glass (`widgets.opacity` in style.toml), or a `background`
   behind it, shows where the program leaves the terminal's own. Cells a program colors, like a status line, stay solid.
