@@ -249,6 +249,18 @@
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- Linux's home in Android's file picker and Files app; only the system documents UI may bind (MANAGE_DOCUMENTS). -->
+        <provider
+            android:name=".linux.LinuxDocumentsProvider"
+            android:authorities="${applicationId}.linux"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"
