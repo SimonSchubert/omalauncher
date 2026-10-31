@@ -138,6 +138,8 @@ object LauncherStyle {
 
     /** The empty page after home's last, always (true) or only while a tile is carried (false). */
     val emptyPageRight get() = style[Style.EMPTY_PAGE_RIGHT]
+    /** That strip shows the apps pinned to it, in their order, instead of recent ones. */
+    val pinnedStrip get() = style[Style.PINNED_STRIP]
 
     /** Forces one home page even on a screen [SideRail]'s auto-detect would otherwise split in two. */
     val forceSinglePage get() = style[Style.FORCE_SINGLE_PAGE]

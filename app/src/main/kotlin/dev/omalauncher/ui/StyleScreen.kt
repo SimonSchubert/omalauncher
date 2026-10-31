@@ -144,6 +144,7 @@ fun StyleScreen(
             Flag(R.string.style_recent_apps, R.string.style_shown, R.string.style_hidden, style, Style.RECENT_APPS)
             Flag(R.string.style_empty_page_left, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_LEFT)
             Flag(R.string.style_empty_page_right, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_RIGHT)
+            if (LauncherStyle.recentApps) Flag(R.string.style_app_strip, R.string.style_pinned, R.string.style_recent, style, Style.PINNED_STRIP)
             CountOption(R.string.style_columns, Style.COLUMNS, style)
             Flag(R.string.style_pages, R.string.style_pages_one, R.string.style_pages_auto, style, Style.FORCE_SINGLE_PAGE)
             NumberOption(R.string.style_corners, Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
