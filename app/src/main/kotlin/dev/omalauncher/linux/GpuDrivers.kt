@@ -160,6 +160,15 @@ internal object GpuDrivers {
      */
     const val MESA_ZINK_STAMP = "/usr/local/omalauncher-mesa/bundle.sha256"
 
+    /** Where the bundle lives once unpacked: everything in the archive is under it. */
+    const val MESA_ZINK_DIR = "/usr/local/omalauncher-mesa"
+
+    /** The archive unpacks here first and moves into [MESA_ZINK_DIR] once it is whole and on disk. */
+    const val MESA_ZINK_STAGING = "/usr/local/.omalauncher-mesa-staging"
+
+    /** sha256 of every file in [MESA_ZINK_DIR], written at unpack; an install is trusted only while they match. */
+    const val MESA_ZINK_SUMS = "/usr/local/omalauncher-mesa/files.sha256"
+
     private val mali = GpuDriver(
         kind = GpuKind.MALI,
         probeId = "DRIVER_ID_MESA_PANVK",
@@ -206,13 +215,25 @@ internal object GpuDrivers {
     /**
      * Unpacks the patched libEGL and zink next to each other. The stamp names
      * the archive it came from, so a later APK that carries a new build replaces it.
+     *
+     * The archive unpacks into a staging directory first. Every file's sha256 goes
+     * into [MESA_ZINK_SUMS], everything is flushed to disk, and only then does the
+     * directory replace the live one and the stamp get written. A phone that crashes
+     * or reboots during an install loses whatever was still in the page cache: with
+     * the stamp written last, the next install unpacks again instead of trusting a
+     * torn libgallium. An existing install counts only when its files still match
+     * their sums, which also repairs one torn before the sums existed.
      */
     fun mesaZinkScript(): String {
         val json = """{"file_format_version":"1.0.0","ICD":{"library_path":"$MESA_ZINK_LIB"}}"""
         val bundle = shellQuote(MESA_ZINK_BUNDLE)
         val list = shellQuote("/tmp/omalauncher-mesa.list")
         val tarOk = "echo '$MESA_ZINK_TAR_SHA256  $MESA_ZINK_BUNDLE' | sha256sum -c -"
-        val libOk = "echo '$MESA_ZINK_LIB_SHA256  $MESA_ZINK_LIB' | sha256sum -c -"
+        val staging = shellQuote(MESA_ZINK_STAGING)
+        val staged = shellQuote(MESA_ZINK_STAGING + MESA_ZINK_DIR)
+        val dir = shellQuote(MESA_ZINK_DIR)
+        val sums = MESA_ZINK_SUMS.substringAfterLast('/')
+        val libOk = "echo '$MESA_ZINK_LIB_SHA256  $MESA_ZINK_STAGING$MESA_ZINK_LIB' | sha256sum -c -"
         val stamp = shellQuote(MESA_ZINK_STAMP)
         // Refuse a member that leaves the prefix or walks up. Then extract.
         // Arch's tar is GNU tar. It has no --no-absolute-names (that flag is
@@ -224,9 +245,13 @@ internal object GpuDrivers {
                 "! grep -Ev '^usr/local/omalauncher-mesa/' $list && " +
                 "! grep -E '(^/|\\.\\.)' $list"
         val unpack =
-            "$tarOk && $members && tar -xJf $bundle -C / && $libOk && rm -f $list && " +
-                "echo '$MESA_ZINK_TAR_SHA256' > $stamp"
-        return "{ grep -qx '$MESA_ZINK_TAR_SHA256' $stamp 2>/dev/null || { $unpack; }; } && rm -f $list && " +
+            "$tarOk && $members && rm -rf $staging && mkdir -p $staging && tar -xJf $bundle -C $staging && $libOk && " +
+                "( cd $staged && find . -type f ! -name $sums -exec sha256sum {} + > $sums ) && sync && " +
+                "rm -rf $dir && mv $staged $dir && rm -rf $staging && rm -f $list && " +
+                "echo '$MESA_ZINK_TAR_SHA256' > $stamp && sync"
+        val intact =
+            "grep -qx '$MESA_ZINK_TAR_SHA256' $stamp 2>/dev/null && ( cd $dir && sha256sum -c --quiet $sums >/dev/null 2>&1 )"
+        return "{ $intact || { $unpack; }; } && rm -f $list && " +
             "mkdir -p ${shellQuote(MESA_EGL_JSON.substringBeforeLast('/'))} && " +
             "printf '%s\\n' ${shellQuote(json)} > ${shellQuote(MESA_EGL_JSON)}"
     }

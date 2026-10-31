@@ -95,7 +95,7 @@ class GpuTest {
         // Stock Mesa drops zink on the shm path and shows black windows; Mali uses the patched bundle too.
         assertTrue(probe.contains("export MESA_LOADER_DRIVER_OVERRIDE='zink';"))
         assertTrue(probe.contains("export __EGL_VENDOR_LIBRARY_FILENAMES='/usr/local/share/glvnd/egl_vendor.d/50_mesa.json';"))
-        assertTrue(script.contains("tar -xJf '/usr/local/share/omalauncher/mesa-zink.tar.xz' -C / &&"))
+        assertTrue(script.contains("tar -xJf '/usr/local/share/omalauncher/mesa-zink.tar.xz' -C '/usr/local/.omalauncher-mesa-staging' &&"))
     }
 
     @Test fun turnipScriptPinsTheKgslPackageAndTheExtractedLibrary() {
@@ -123,7 +123,7 @@ class GpuTest {
         assertTrue(probe.contains("export GALLIUM_DRIVER='zink';"))
         assertTrue(probe.contains("export LIBGL_DRIVERS_PATH='/usr/local/omalauncher-mesa/lib/dri';"))
         assertTrue(probe.contains("export __EGL_VENDOR_LIBRARY_FILENAMES='/usr/local/share/glvnd/egl_vendor.d/50_mesa.json';"))
-        val extractAt = script.indexOf("tar -xJf '/usr/local/share/omalauncher/mesa-zink.tar.xz' -C / &&")
+        val extractAt = script.indexOf("tar -xJf '/usr/local/share/omalauncher/mesa-zink.tar.xz' -C '/usr/local/.omalauncher-mesa-staging' &&")
         val tarHashAt = script.indexOf("2f9a58343997e972bd2c82bb78c6a30fbbda342ac3e0df4ad148732ced541f93")
         assertTrue(tarHashAt >= 0 && extractAt > tarHashAt)
         assertFalse(script.contains("--absolute-names"))
@@ -134,6 +134,27 @@ class GpuTest {
         assertTrue(script.contains("{ grep -qx '2f9a58343997e972bd2c82bb78c6a30fbbda342ac3e0df4ad148732ced541f93' '/usr/local/omalauncher-mesa/bundle.sha256'"))
         assertTrue(script.indexOf("> '/usr/local/omalauncher-mesa/bundle.sha256'") > extractAt)
         assertEquals("Adreno", driver.label)
+    }
+
+    /**
+     * A crash mid-install loses what was still in the page cache. The bundle is checked
+     * and flushed in staging, swapped in, and only then stamped; a stamped install still
+     * has to match the sums written at unpack.
+     */
+    @Test
+    fun mesaBundleIsStampedOnlyOnceWholeAndOnDisk() {
+        val script = GpuDrivers.mesaZinkScript()
+        val extractAt = script.indexOf("tar -xJf '/usr/local/share/omalauncher/mesa-zink.tar.xz' -C '/usr/local/.omalauncher-mesa-staging'")
+        val libCheckAt = script.indexOf("bf9ea007f4babd55c86cfe87e8fd7b0cfa47e78fc34aa89b72fa60c7b84837e9  /usr/local/.omalauncher-mesa-staging/usr/local/omalauncher-mesa/lib/libEGL_mesa.so")
+        val sumsAt = script.indexOf("find . -type f ! -name files.sha256 -exec sha256sum {} + > files.sha256")
+        val firstSyncAt = script.indexOf("&& sync &&")
+        val swapAt = script.indexOf("mv '/usr/local/.omalauncher-mesa-staging/usr/local/omalauncher-mesa' '/usr/local/omalauncher-mesa'")
+        val stampAt = script.indexOf("> '/usr/local/omalauncher-mesa/bundle.sha256'")
+        assertTrue(extractAt in 0 until libCheckAt)
+        assertTrue(libCheckAt < sumsAt && sumsAt < firstSyncAt && firstSyncAt < swapAt && swapAt < stampAt)
+        assertTrue(script.contains("> '/usr/local/omalauncher-mesa/bundle.sha256' && sync"))
+        // The stamp alone isn't enough to skip the unpack: the files have to match their sums too.
+        assertTrue(script.contains("2>/dev/null && ( cd '/usr/local/omalauncher-mesa' && sha256sum -c --quiet files.sha256"))
     }
 
     /** The trap is registered before curl, so a failed hash still deletes the temp files. */
