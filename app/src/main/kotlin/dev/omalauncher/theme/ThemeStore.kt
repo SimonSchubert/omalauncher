@@ -20,6 +20,7 @@ import dev.omalauncher.R
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.decodeForScreen
+import dev.omalauncher.ui.decodeSampled
 import dev.omalauncher.upgrade.appStamp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -27,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -178,6 +180,18 @@ class ThemeStore(
             .onSuccess { Palette.apply(it) }
     }
 
+    /** Whether picking a theme or background also sets the static system and lock wallpaper. */
+    var staticWallpaperEnabled by mutableStateOf(prefs.getBoolean(STATIC_WALLPAPER, true))
+        private set
+
+    fun setStaticWallpaper(on: Boolean) {
+        staticWallpaperEnabled = on
+        prefs.edit().putBoolean(STATIC_WALLPAPER, on).apply()
+        if (on && !liveWallpaperActive && background != null) {
+            scope.launch { applyStaticWallpaper(background) }
+        }
+    }
+
     /** Whether our live wallpaper is the Android wallpaper; the launcher then shows it instead of drawing its own. */
     var liveWallpaperActive by mutableStateOf(false)
         private set
@@ -188,6 +202,33 @@ class ThemeStore(
     }
 
     private suspend fun decodeWallpaper(file: File?) = file?.let { withContext(Dispatchers.IO) { decodeForScreen(it, context)?.asImageBitmap() } }
+
+    /** Sets [file] as Android's static system and lock wallpaper, off the main thread. */
+    suspend fun applyStaticWallpaper(file: File?) {
+        // Leave the live wallpaper primary so we don't fight the active wallpaper service.
+        if (file == null || liveWallpaperActive) return
+        withContext(Dispatchers.IO) {
+            val wm = runCatching { WallpaperManager.getInstance(context) }.getOrNull() ?: return@withContext
+            if (runCatching { !wm.isWallpaperSupported || !wm.isSetWallpaperAllowed }.getOrDefault(false)) return@withContext
+            val screen = runCatching { context.resources?.displayMetrics }.getOrNull() ?: return@withContext
+            val bitmap = decodeSampled(file, screen.widthPixels, screen.heightPixels) ?: return@withContext
+            try {
+                wm.setBitmap(
+                    bitmap,
+                    null,
+                    true,
+                    WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK,
+                )
+            } catch (e: Exception) {
+                // Some OEMs fail when setting both flags; retry with FLAG_SYSTEM alone.
+                runCatching {
+                    if (!bitmap.isRecycled) wm.setBitmap(bitmap, null, true, WallpaperManager.FLAG_SYSTEM)
+                }.onFailure { Log.w(TAG, "failed to set static wallpaper", it) }
+            } finally {
+                bitmap.recycle()
+            }
+        }
+    }
 
     /** Opens Android's live wallpaper preview with our wallpaper preselected; apps can't set one silently. */
     fun liveWallpaperIntent(): Intent =
@@ -467,6 +508,7 @@ class ThemeStore(
         // With the live wallpaper active, the launcher is transparent and needs no copy of its own.
         wallpaper = if (liveWallpaperActive) null else decodeWallpaper(file)
         if (file != null && isLinux()) withContext(Dispatchers.IO) { guest.linkBackground(file) }
+        if (staticWallpaperEnabled) applyStaticWallpaper(file)
         changeListeners.forEach { it() }
     }
 
@@ -551,6 +593,7 @@ class ThemeStore(
 
         private const val RENDERED_BY = "rendered_by"
         private const val DEFAULT_THEME = "tokyo-night"
+        private const val STATIC_WALLPAPER = "static_wallpaper"
 
         /** Called on the main thread after the theme or background changes (the live wallpaper listens). */
         val changeListeners = CopyOnWriteArraySet<() -> Unit>()
