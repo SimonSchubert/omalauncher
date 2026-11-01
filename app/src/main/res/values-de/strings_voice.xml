@@ -15,6 +15,7 @@
     <string name="voice_type">schreiben</string>
     <string name="voice_no_agent">Sprechen redet mit Claude Code, Grok oder OpenCode in Linux. Installier einen davon, um loszulegen.</string>
     <string name="voice_agents">agenten</string>
+    <string name="voice_log_in">anmelden</string>
     <string name="voice_thinking">denkt nach</string>
     <plurals name="voice_steps">
         <item quantity="one">%1$d schritt</item>

@@ -15,6 +15,7 @@
     <string name="voice_type">打字</string>
     <string name="voice_no_agent">语音可与 Linux 中的 Claude Code、Grok 或 OpenCode 对话。安装其中一个即可开始。</string>
     <string name="voice_agents">代理</string>
+    <string name="voice_log_in">登录</string>
     <string name="voice_thinking">思考中</string>
     <plurals name="voice_steps">
         <item quantity="other">%1$d 步</item>

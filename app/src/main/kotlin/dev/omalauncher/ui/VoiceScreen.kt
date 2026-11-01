@@ -368,6 +368,15 @@ fun VoiceScreen(
                     val trouble = session.notice ?: speech.error
                     val silent = if (!typing) speaker.problem else null
                     (trouble ?: silent)?.let { BasicText(it, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), style = Mono.copy(color = if (trouble != null) Palette.red else Palette.muted, fontSize = TextSize.Small)) }
+                    // Not signed in: the agent in its own terminal, which walks through it.
+                    val agent = session.agent
+                    if (agent != null && session.notice != null && session.needsLogin) {
+                        BracketAction(stringResource(R.string.voice_log_in), Palette.accent, Modifier.padding(start = 8.dp)) {
+                            speech.cancel()
+                            session.loggingIn()
+                            runtime.terminal(agent.command, agent.name, agent)
+                        }
+                    }
 
                     val stoppable = session.busy || (!typing && speaker.speaking)
                     fun stop() {

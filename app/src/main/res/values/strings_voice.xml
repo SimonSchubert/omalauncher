@@ -21,6 +21,7 @@
     <string name="voice_type">type</string>
     <string name="voice_no_agent">Voice talks with Claude Code, Grok or OpenCode in Linux. Install one of them to talk.</string>
     <string name="voice_agents">agents</string>
+    <string name="voice_log_in">log in</string>
     <string name="voice_thinking">thinking</string>
     <plurals name="voice_steps">
         <item quantity="one">%1$d step</item>

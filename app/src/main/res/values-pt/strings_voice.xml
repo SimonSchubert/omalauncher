@@ -15,6 +15,7 @@
     <string name="voice_type">digitar</string>
     <string name="voice_no_agent">Voz conversa com Claude Code, Grok ou OpenCode no Linux. Instale um deles para conversar.</string>
     <string name="voice_agents">agentes</string>
+    <string name="voice_log_in">entrar</string>
     <string name="voice_thinking">pensando</string>
     <plurals name="voice_steps">
         <item quantity="one">%1$d passo</item>

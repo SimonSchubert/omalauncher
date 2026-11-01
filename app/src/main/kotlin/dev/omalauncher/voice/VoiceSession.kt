@@ -104,6 +104,15 @@ class VoiceSession(
     /** Something to tell the user, like an error; null when there's nothing. */
     var notice by mutableStateOf<String?>(null)
 
+    /** Whether [notice] says the agent isn't signed in ("Not logged in · Please run /login"), for a way to. */
+    val needsLogin get() = notice?.let(LOGIN::containsMatchIn) == true
+
+    /** Signing in, in the agent's own terminal: this one stops, so the next prompt starts it signed in. */
+    fun loggingIn() {
+        stopAgent()
+        notice = null
+    }
+
     /** When the task in progress started (ms), for the time shown. */
     var since by mutableLongStateOf(0L)
         private set
@@ -848,6 +857,9 @@ class VoiceSession(
 
     companion object {
         private const val TAG = "voice"
+
+        /** An agent's error that it isn't signed in: Claude's "Not logged in", Grok's "Authentication required". */
+        private val LOGIN = Regex("log ?in|sign ?in|authenticat|api key|credential", RegexOption.IGNORE_CASE)
 
         /** The agents that speak ACP, by bin, with what starts them as an ACP server on stdio. */
         private val ACP = mapOf("grok" to "grok agent stdio", "opencode" to "opencode acp")

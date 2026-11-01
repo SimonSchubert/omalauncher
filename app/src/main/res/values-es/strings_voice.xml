@@ -15,6 +15,7 @@
     <string name="voice_type">escribir</string>
     <string name="voice_no_agent">Voz habla con Claude Code, Grok u OpenCode en Linux. Instala uno de ellos para hablar.</string>
     <string name="voice_agents">agentes</string>
+    <string name="voice_log_in">iniciar sesión</string>
     <string name="voice_thinking">pensando</string>
     <plurals name="voice_steps">
         <item quantity="one">%1$d paso</item>

@@ -15,6 +15,7 @@
     <string name="voice_type">ketik</string>
     <string name="voice_no_agent">Suara bicara dengan Claude Code, Grok, atau OpenCode di Linux. Instal salah satunya untuk bicara.</string>
     <string name="voice_agents">agen</string>
+    <string name="voice_log_in">masuk</string>
     <string name="voice_thinking">berpikir</string>
     <plurals name="voice_steps">
         <item quantity="other">%1$d langkah</item>
