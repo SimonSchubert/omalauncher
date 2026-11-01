@@ -310,14 +310,14 @@ class VoiceSession(
 
     /**
      * [said] with what the agent should know first: that the user switched between typing and talking, and, for
-     * an ACP agent, which got [VOICE_PROMPT] only with its first prompt, a reminder to keep it short now and then.
+     * an agent that got [VOICE_PROMPT] only with its first prompt (ACP), a reminder to keep it short now and then.
      */
     private fun withNote(said: String): String {
         sent++
         val note =
             when {
                 typing != toldTyping -> if (typing) TYPING_NOTE else TALKING_NOTE
-                !typing && link !is ClaudeLink && sent % REMIND_EVERY == 0 -> VOICE_REMINDER
+                !typing && link?.instructed == false && sent % REMIND_EVERY == 0 -> VOICE_REMINDER
                 else -> null
             }
         toldTyping = typing
@@ -871,12 +871,17 @@ class VoiceSession(
         private val ACP_DIRS = mapOf("opencode" to "/root/${WidgetEngine.GUEST_DIR}")
 
         /** The agents with a link, by bin. */
-        val LINKS = ACP.keys + "claude"
+        val LINKS = ACP.keys + "claude" + "codex"
 
         fun linkFor(
             agent: Agent,
             write: (String) -> Unit,
-        ): AgentLink = ACP[agent.bin]?.let { AcpLink(write, it, ACP_DIRS[agent.bin] ?: AcpLink.HOME) } ?: ClaudeLink(write)
+        ): AgentLink =
+            when {
+                agent.bin == "codex" -> CodexLink(write)
+                agent.bin in ACP -> AcpLink(write, ACP.getValue(agent.bin), ACP_DIRS[agent.bin] ?: AcpLink.HOME)
+                else -> ClaudeLink(write)
+            }
 
         const val DEFAULT_RATE = 1.25f
         const val IDLE_STOP_MS = 10 * 60_000L

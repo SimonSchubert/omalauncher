@@ -122,6 +122,93 @@ class AgentLinkTest {
         assertEquals("session/new", written.last().getString("method"))
     }
 
+    @Test fun codexStreamsATurnAndAsks() {
+        val link = CodexLink(write)
+        link.open(null)
+        assertEquals("initialize", written.last().getString("method"))
+        assertFalse(written.last().has("jsonrpc"))
+        link.read("""{"id":1,"result":{"userAgent":"codex"}}""")
+        assertEquals("initialized", written[written.size - 2].getString("method"))
+        val start = written.last()
+        assertEquals("thread/start", start.getString("method"))
+        assertEquals("untrusted", start.getJSONObject("params").getString("approvalPolicy"))
+        assertEquals(VOICE_PROMPT, start.getJSONObject("params").getString("developerInstructions"))
+        // A prompt before the thread is there waits for it.
+        link.prompt("hi")
+        assertEquals("thread/start", written.last().getString("method"))
+        assertEquals(listOf(LinkEvent.Session("t1"), LinkEvent.Ready), link.read("""{"id":2,"result":{"thread":{"id":"t1"}}}"""))
+        val turn = written.last()
+        assertEquals("turn/start", turn.getString("method"))
+        assertEquals("hi", turn.getJSONObject("params").getJSONArray("input").getJSONObject(0).getString("text"))
+        link.read("""{"id":3,"result":{"turn":{"id":"u1","status":"inProgress"}}}""")
+
+        val events =
+            listOf(
+                """{"method":"item/agentMessage/delta","params":{"threadId":"t1","turnId":"u1","itemId":"m1","delta":"Looking."}}""",
+                """{"method":"item/started","params":{"threadId":"t1","turnId":"u1","item":{"type":"commandExecution","id":"c1","command":"/bin/bash -lc 'cat notes.md'","commandActions":[{"type":"read","command":"cat notes.md","name":"notes.md","path":"/root/notes.md"}]}}}""",
+                """{"method":"item/started","params":{"threadId":"t1","turnId":"u1","item":{"type":"reasoning","id":"r1"}}}""",
+                """{"method":"item/started","params":{"threadId":"t1","turnId":"u1","item":{"type":"commandExecution","id":"c2","command":"/bin/bash -lc 'rm -rf build && make'","commandActions":[{"type":"unknown","command":"rm -rf build && make"}]}}}""",
+                """{"id":0,"method":"item/commandExecution/requestApproval","params":{"threadId":"t1","turnId":"u1","itemId":"c2","command":"/bin/bash -lc 'rm -rf build && make'"}}""",
+                """{"method":"item/agentMessage/delta","params":{"threadId":"t1","turnId":"u1","itemId":"m2","delta":"Done."}}""",
+            ).flatMap(link::read)
+        assertEquals(
+            listOf(
+                LinkEvent.Text("Looking."),
+                LinkEvent.Working,
+                LinkEvent.Step(Act(Act.Verb.Read, "notes.md")),
+                LinkEvent.Working,
+                LinkEvent.Step(Act(Act.Verb.Run, "rm -rf build && make")),
+                LinkEvent.Ask("c0", Act(Act.Verb.Run, "rm -rf build && make"), "rm -rf build && make", Steps.alwaysKey("Bash", "rm -rf build && make")),
+                LinkEvent.Text("\n\nDone."),
+            ),
+            events,
+        )
+        assertFalse(link.answer("c0", allow = true, always = true, instead = null))
+        assertEquals(0, written.last().getInt("id"))
+        assertEquals("acceptForSession", written.last().getJSONObject("result").getString("decision"))
+        // Questions it can't take by voice are refused.
+        link.read("""{"id":1,"method":"item/tool/requestUserInput","params":{}}""")
+        assertEquals(-32601, written.last().getJSONObject("error").getInt("code"))
+
+        // A second prompt waits for the turn, which is then stopped.
+        link.prompt("again")
+        assertEquals("item/tool/requestUserInput isn't supported", written.last().getJSONObject("error").getString("message"))
+        link.cancel()
+        assertEquals("turn/interrupt", written.last().getString("method"))
+        assertEquals("u1", written.last().getJSONObject("params").getString("turnId"))
+        assertEquals(
+            listOf(LinkEvent.Done(cancelled = true)),
+            link.read("""{"method":"turn/completed","params":{"threadId":"t1","turn":{"id":"u1","status":"interrupted","error":null}}}"""),
+        )
+        // The stop dropped the waiting prompt.
+        assertEquals("turn/interrupt", written.last().getString("method"))
+    }
+
+    @Test fun codexFailsResumesAndRetries() {
+        val link = CodexLink(write)
+        link.open("old")
+        link.read("""{"id":1,"result":{}}""")
+        assertEquals("thread/resume", written.last().getString("method"))
+        assertEquals("old", written.last().getJSONObject("params").getString("threadId"))
+        assertEquals(listOf(LinkEvent.ResumeFailed), link.read("""{"id":2,"error":{"code":-32600,"message":"no rollout found"}}"""))
+        assertEquals("thread/start", written.last().getString("method"))
+        link.read("""{"id":3,"result":{"thread":{"id":"t2"}}}""")
+        link.prompt("hi")
+        link.read("""{"id":4,"result":{"turn":{"id":"u1"}}}""")
+        assertEquals(
+            listOf(LinkEvent.Retrying("stream disconnected")),
+            link.read("""{"method":"error","params":{"error":{"message":"stream disconnected"},"willRetry":true,"threadId":"t2","turnId":"u1"}}"""),
+        )
+        assertTrue(link.read("""{"method":"error","params":{"error":{"message":"401"},"willRetry":false,"threadId":"t2","turnId":"u1"}}""").isEmpty())
+        assertEquals(
+            listOf(LinkEvent.Done(error = "Not logged in")),
+            link.read("""{"method":"turn/completed","params":{"threadId":"t2","turn":{"id":"u1","status":"failed","error":{"message":"Not logged in"}}}}"""),
+        )
+        assertEquals("ls -la", CodexLink.unwrap("/bin/bash -lc 'ls -la'"))
+        assertEquals("echo \"a b\"", CodexLink.unwrap("bash -c 'echo \"a b\"'"))
+        assertEquals("git status", CodexLink.unwrap("git status"))
+    }
+
     @Test fun alwaysCoversEachProgram() {
         val always = setOf(Steps.alwaysKey("Bash", "cd ~/w && curl -s x | head -c 3; echo"))
         assertEquals(setOf("cd", "curl", "head", "echo"), Steps.programs("cd ~/w && curl -s x | head -c 3; echo"))
