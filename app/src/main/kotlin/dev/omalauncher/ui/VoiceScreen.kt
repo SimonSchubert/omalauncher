@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -107,6 +108,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.max as maxDp
+import androidx.compose.ui.unit.min as minDp
 import dev.omalauncher.AppLanguage
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
@@ -304,12 +307,20 @@ fun VoiceScreen(
                     val most = if (typing) 96f else 250f
                     val orb = (if (wide) min(min((maxHeight - CAPTION).value * 0.8f, maxWidth.value * 0.36f), most) else min(min(maxWidth.value * 0.62f, maxHeight.value * 0.42f), most)).dp
                     val unit = orb + CAPTION
+                    // The conversation no wider than reads well (a tablet), beside the orb in landscape, the two
+                    // centred together; its own 16dp padding is the gap to the orb and the edge.
+                    val list = minDp(maxWidth - if (wide) orb + 32.dp else 0.dp, CONVERSATION)
+                    val left = if (wide) maxDp(16.dp, (maxWidth - orb - 16.dp - list) / 2) else 0.dp
                     // In the middle until there's a conversation, then above it (beside it in landscape).
                     val orbTop by animateDpAsState(if (talking && !wide) 0.dp else ((maxHeight - unit) / 2).coerceAtLeast(0.dp), spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow), label = "orb")
-                    val orbStart by animateDpAsState(if (talking && wide) 16.dp else (maxWidth - orb) / 2, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow), label = "orbX")
+                    val orbStart by animateDpAsState(if (talking && wide) left else (maxWidth - orb) / 2, spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessLow), label = "orbX")
                     if (talking) {
                         LazyColumn(
-                            Modifier.fillMaxSize().padding(top = if (wide) 0.dp else unit, start = if (wide) orb + 32.dp else 0.dp),
+                            Modifier
+                                .fillMaxHeight()
+                                .padding(top = if (wide) 0.dp else unit)
+                                .then(if (wide) Modifier.offset(x = left + orb + 16.dp) else Modifier.align(Alignment.TopCenter))
+                                .width(list),
                             reverseLayout = true,
                             // At the bottom, by the controls, while it's short.
                             verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom),
@@ -605,6 +616,9 @@ private fun Pick(
 
 /** The status line's room under the orb. */
 private val CAPTION = 28.dp
+
+/** The conversation's widest, its 16dp padding in: 560dp of text, as the approval card, a readable line on a tablet. */
+private val CONVERSATION = 592.dp
 
 /** One of the approval card's three answers, all the same size: [filled] for the one most taps want. */
 @Composable
