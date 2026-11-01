@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognitionSupport
 import android.speech.RecognitionSupportCallback
@@ -53,7 +54,7 @@ class Speech(
     var error by mutableStateOf<String?>(null)
 
     private var recognizer: SpeechRecognizer? = null
-    private var onDevice = onDeviceAvailable(context)
+    private var onDevice = onDeviceAvailable(context) && !pickedOther(context)
     private var finished = ""
 
     /** The current segment's latest partial result, kept should the segment end without a final one. */
@@ -279,7 +280,8 @@ class Speech(
         level = 0f
         val done = onDone
         onDone = null
-        done?.invoke(text.trim())
+        // Whisper-based recognizers (Transcribro) hear silence as ". . . .": nothing said.
+        done?.invoke(text.trim().takeIf { it.any(Char::isLetterOrDigit) }.orEmpty())
     }
 
     private fun join(
@@ -426,6 +428,16 @@ class Speech(
             if (id == 0) return true
             val component = ComponentName.unflattenFromString(res.getString(id)) ?: return false
             return runCatching { context.packageManager.getServiceInfo(component, 0).isEnabled && context.packageManager.getApplicationInfo(component.packageName, 0).enabled }.getOrDefault(false)
+        }
+
+        /**
+         * Whether the phone's recognizer is one picked over Google's (Transcribro, Kõnele): that's used then, not Google's
+         * on-device one. Google's on-device one is only preferred to its own Speech Services, for the beeps.
+         */
+        private fun pickedOther(context: Context): Boolean {
+            val name = runCatching { Settings.Secure.getString(context.contentResolver, "voice_recognition_service") }.getOrNull()
+            val app = name?.let(ComponentName::unflattenFromString)?.packageName ?: return false
+            return !app.startsWith("com.google.")
         }
 
         /** SpeechRecognizer.ERROR_SERVER_DISCONNECTED, from API 31. */
