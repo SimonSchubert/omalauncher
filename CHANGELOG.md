@@ -4,6 +4,29 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 0.18.0 (versionCode 29) – 2026-11-01
+
+- Voice talks to Codex (over `codex app-server`), GitHub Copilot, Kimi and Cursor (over ACP)
+  too, besides Claude Code, Grok and OpenCode. Its agent list has every one of them, and
+  picking one that isn't installed installs it, with the install's log and a retry in place of
+  the conversation.
+- Voice has its own settings, from a gear in its top row: the language it listens and reads
+  replies in, the voice for that language and how fast replies are read (1.25x by default).
+  What Voice says itself is in that language too.
+- When the agent says it isn't signed in, Voice offers [ log in ], which opens the agent in a
+  terminal of its own.
+- Voice's orb is a lit disc in the theme's accent, rings leaving it as you speak and a comet
+  circling it while the agent works. On a tablet the conversation is centred and no wider
+  than 560dp.
+- Speech goes online for a language with no offline model, uses a recognizer picked over
+  Google's (such as Transcribro), skips a stand-in one (FUTO Voice Input) for the speech app's
+  own speak-now screen, and understands the three-letter languages Samsung's text-to-speech
+  names.
+- A job's log offers the whole log with a [ whole log ] button.
+- Fixes: a widget preview whose window the system refused to remove and listing apps when a
+  system call fails partway no longer crash the launcher; Voice brought back in a new process
+  finds the agents again.
+
 ## 0.17.0 (versionCode 28) – 2026-10-31
 
 - Voice: a spoken conversation with Claude Code, Grok or OpenCode as a launcher screen of its
