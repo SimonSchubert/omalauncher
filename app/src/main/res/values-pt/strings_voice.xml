@@ -13,7 +13,7 @@
     <string name="voice_no_speech">Voz precisa de reconhecimento de fala, e este telefone não tem. Instale um, como o Reconhecimento e síntese de voz do Google, e escolha-o nas configurações de entrada por voz do Android. Ou digite.</string>
     <string name="voice_input_settings">entrada por voz</string>
     <string name="voice_type">digitar</string>
-    <string name="voice_no_agent">Voz conversa com Claude Code, Grok ou OpenCode no Linux. Instale um deles para conversar.</string>
+    <string name="voice_no_agent">Voz conversa com um agente de programação no Linux. Instale um para conversar.</string>
     <string name="voice_agents">agentes</string>
     <string name="voice_log_in">entrar</string>
     <string name="voice_thinking">pensando</string>

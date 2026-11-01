@@ -13,7 +13,7 @@
     <string name="voice_no_speech">语音需要语音识别，但这部手机没有。请安装一个，例如 Google 的语音识别和合成，并在 Android 的语音输入设置中选择它。或者改为打字。</string>
     <string name="voice_input_settings">语音输入</string>
     <string name="voice_type">打字</string>
-    <string name="voice_no_agent">语音可与 Linux 中的 Claude Code、Grok 或 OpenCode 对话。安装其中一个即可开始。</string>
+    <string name="voice_no_agent">语音可与 Linux 中的编程智能体对话。安装一个即可开始。</string>
     <string name="voice_agents">代理</string>
     <string name="voice_log_in">登录</string>
     <string name="voice_thinking">思考中</string>

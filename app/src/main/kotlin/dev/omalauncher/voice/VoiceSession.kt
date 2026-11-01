@@ -13,13 +13,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.AppLanguage
 import dev.omalauncher.R
+import dev.omalauncher.linux.AGENTS
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.AgentStore
+import dev.omalauncher.linux.JobState
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.killTree
 import dev.omalauncher.ui.Speaker
 import dev.omalauncher.ui.Speech
 import dev.omalauncher.widgets.WidgetEngine
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -59,8 +63,37 @@ class VoiceSession(
     /** The agents that can talk: installed, and with a link. */
     val voiceAgents: List<Agent> get() = agents.installed.filter { it.bin in LINKS }
 
+    /** Every agent with a link, installed or not, in Omarchy's order: the ones to pick from, installed when picked. */
+    val linked: List<Agent> get() = AGENTS.filter { it.bin in LINKS }
+
     /** Whether [agent] can talk here: one with a link. */
     fun talksTo(agent: Agent?) = agent != null && agent.bin in LINKS
+
+    /** An agent picked that wasn't installed: installing, or failed to (its log in [installState]); null otherwise. */
+    var installing by mutableStateOf<Agent?>(null)
+        private set
+
+    val installState: JobState get() = installing?.let { agents.states[it.bin] } ?: JobState.Idle
+
+    private val scope = MainScope()
+
+    /** Installs [to], picked though it isn't there, and talks to it once it is (not while a task runs). */
+    fun install(to: Agent) {
+        installing = to
+        if (agents.states[to.bin] is JobState.Working) return
+        scope.launch {
+            if (!agents.install(to) || installing != to) return@launch
+            installing = null
+            if (agent == null) {
+                wanted = to
+                if (screens > 0) wake()
+            } else if (screens > 0) {
+                switchTo(to)
+            } else {
+                prefer(to)
+            }
+        }
+    }
 
     /**
      * Whether the AI bar's mic opens the voice screen for [agent]: it talks here, and the phone can hear the user.
@@ -373,6 +406,7 @@ class VoiceSession(
 
     /** Talks to [to] instead: the conversation so far is put aside and [to]'s comes back. */
     fun switchTo(to: Agent) {
+        installing = null
         if (to.bin == agent?.bin || busy) return
         stopAgent()
         load(to)

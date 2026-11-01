@@ -279,7 +279,7 @@ fun <T> ChoicePopup(
     onPick: (T) -> Unit,
     label: (T) -> String,
     minWidth: Dp = 180.dp,
-    sublabel: ((T) -> String)? = null,
+    sublabel: ((T) -> String?)? = null,
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
     Popup(popupPositionProvider = position, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
@@ -309,7 +309,7 @@ fun <T> ChoicePopup(
                     BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
                     Column(Modifier.weight(1f)) {
                         BasicText(label(option), style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
-                        sublabel?.let { BasicText(it(option), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small)) }
+                        sublabel?.invoke(option)?.let { BasicText(it, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small)) }
                     }
                 }
             }

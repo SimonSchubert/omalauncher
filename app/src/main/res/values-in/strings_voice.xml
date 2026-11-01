@@ -13,7 +13,7 @@
     <string name="voice_no_speech">Suara perlu pengenalan ucapan, dan ponsel ini tidak punya. Instal satu, seperti Pengenalan &amp; Sintesis Ucapan dari Google, lalu pilih di setelan input suara Android. Atau ketik saja.</string>
     <string name="voice_input_settings">input suara</string>
     <string name="voice_type">ketik</string>
-    <string name="voice_no_agent">Suara bicara dengan Claude Code, Grok, atau OpenCode di Linux. Instal salah satunya untuk bicara.</string>
+    <string name="voice_no_agent">Suara bicara dengan agen coding di Linux. Instal salah satunya untuk bicara.</string>
     <string name="voice_agents">agen</string>
     <string name="voice_log_in">masuk</string>
     <string name="voice_thinking">berpikir</string>

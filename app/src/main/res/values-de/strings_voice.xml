@@ -13,7 +13,7 @@
     <string name="voice_no_speech">Sprechen braucht eine Spracherkennung, und dieses Smartphone hat keine. Installier eine, etwa Googles „Spracherkennung und -synthese“, und wähl sie in Androids Spracheingabe-Einstellungen aus. Oder schreib stattdessen.</string>
     <string name="voice_input_settings">spracheingabe</string>
     <string name="voice_type">schreiben</string>
-    <string name="voice_no_agent">Sprechen redet mit Claude Code, Grok oder OpenCode in Linux. Installier einen davon, um loszulegen.</string>
+    <string name="voice_no_agent">Sprechen redet mit einem Coding-Agenten in Linux. Installier einen, um loszulegen.</string>
     <string name="voice_agents">agenten</string>
     <string name="voice_log_in">anmelden</string>
     <string name="voice_thinking">denkt nach</string>

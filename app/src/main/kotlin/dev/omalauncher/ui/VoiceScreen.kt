@@ -62,6 +62,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -112,6 +113,8 @@ import androidx.compose.ui.unit.max as maxDp
 import androidx.compose.ui.unit.min as minDp
 import dev.omalauncher.AppLanguage
 import dev.omalauncher.R
+import dev.omalauncher.linux.LinuxState
+import dev.omalauncher.linux.JobState
 import dev.omalauncher.Runtime
 import dev.omalauncher.voice.VoiceSession
 import dev.omalauncher.voice.VoiceSession.Phase
@@ -229,7 +232,10 @@ fun VoiceScreen(
             addAll(session.transcript.asReversed())
         }
     val talking = items.isNotEmpty()
-    val ready = session.agent != null && (canHear || typing)
+    // An agent picked that isn't installed yet has the screen: the one before (and its conversation) is left.
+    val installing = session.installing
+    val linux by runtime.bootstrap.state.collectAsState()
+    val ready = session.agent != null && installing == null && (canHear || typing)
     val yellow = Palette.named("yellow") ?: Palette.accent
     // Landscape: the orb at the side and the conversation next to it. Asked of the window, not of the space left:
     // the keyboard coming up mustn't turn a phone held upright into landscape.
@@ -238,10 +244,14 @@ fun VoiceScreen(
     Box(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding()) {
         Column(Modifier.fillMaxSize()) {
             // Who it talks to (a tap picks another), and what holds for the whole conversation.
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            // As high with the buttons as without them (an install, no agent): the name doesn't move.
+            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
-                    val many = session.voiceAgents.size > 1
-                    val name = session.agent?.name ?: stringResource(R.string.activity_voice)
+                    // With Linux there, every agent Voice talks to: picking one that isn't installed installs it.
+                    val options = if (linux == LinuxState.Installed) session.linked else session.voiceAgents
+                    val installed = session.voiceAgents
+                    val many = options.size > 1
+                    val name = (installing ?: session.agent)?.name ?: stringResource(R.string.activity_voice)
                     val pickable = many && !session.busy && !speech.listening
                     BasicText(
                         if (many) "$name ▾" else name,
@@ -255,17 +265,31 @@ fun VoiceScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                     if (picking) {
+                        val install = stringResource(R.string.agents_install)
+                        val installingNow = stringResource(R.string.linux_job_installing) + "…"
                         ChoicePopup(
-                            options = session.voiceAgents,
-                            selected = session.agent,
+                            options = options,
+                            selected = installing ?: session.agent,
                             position = BelowAnchorStart,
                             onDismiss = { picking = false },
                             onPick = {
                                 speaker.stop()
-                                session.switchTo(it)
+                                if (it in installed) {
+                                    session.switchTo(it)
+                                } else {
+                                    speech.cancel()
+                                    session.install(it)
+                                }
                             },
                             label = { it.name },
                             minWidth = 160.dp,
+                            sublabel = { agent ->
+                                when {
+                                    agent in installed -> null
+                                    runtime.agents.states[agent.bin] is JobState.Working -> installingNow
+                                    else -> install
+                                }
+                            },
                         )
                     }
                 }
@@ -294,7 +318,22 @@ fun VoiceScreen(
                 }
             }
 
-            if (!canHear && !typing && session.agent != null) {
+            if (installing != null) {
+                // Its install, in the middle, then a retry if it failed.
+                val state = session.installState
+                Column(
+                    Modifier.weight(1f).fillMaxWidth().padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) { VoiceIcon(Palette.muted) }
+                    Column(Modifier.widthIn(max = CONVERSATION)) {
+                        if (state is JobState.Working) BasicText("${stringResource(state.action)}…", style = Mono.copy(color = Palette.accent))
+                        JobLog(state)
+                        if (state is JobState.Failed) BracketAction(stringResource(R.string.home_retry), Palette.accent) { session.install(installing) }
+                    }
+                }
+            } else if (!canHear && !typing && session.agent != null) {
                 Missing(Modifier.weight(1f).fillMaxWidth(), stringResource(R.string.voice_no_speech), stringResource(R.string.voice_input_settings), stringResource(R.string.voice_type) to { switchTyping() }) {
                     val settings = Intent(Settings.ACTION_VOICE_INPUT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     runCatching { context.startActivity(settings) }.onFailure { context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }

@@ -19,7 +19,7 @@
     <string name="voice_input_settings">voice input</string>
     <!-- Switches from talking to typing. -->
     <string name="voice_type">type</string>
-    <string name="voice_no_agent">Voice talks with Claude Code, Grok or OpenCode in Linux. Install one of them to talk.</string>
+    <string name="voice_no_agent">Voice talks with a coding agent in Linux. Install one to talk.</string>
     <string name="voice_agents">agents</string>
     <string name="voice_log_in">log in</string>
     <string name="voice_thinking">thinking</string>
