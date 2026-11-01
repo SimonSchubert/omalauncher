@@ -216,7 +216,9 @@ class Speech(
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+            // Offline when it can: but Google's Speech Services, asked so, won't go online for a language whose
+            // offline model it hasn't downloaded (error 13), so not again for that one; see [Listener.onError].
+            .putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, key !in online)
             .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             // Google's recognizers otherwise beep as they start and as they stop hearing anything, and take the audio
             // focus to, pausing what plays: read by both the on-device one and Speech Services.
@@ -329,13 +331,21 @@ class Speech(
                     if (held) next() else finish()
                 }
                 // The phone's language-region (en-DE) may be unknown to a recognizer that can't say which it knows: the
-                // language's main region next, kept for later, then the other recognizer, whose languages are its own.
+                // language's main region next, kept for later. A language that's known but not downloaded (13), online
+                // next, kept for later too. Then the other recognizer, whose languages are its own. Not asking the
+                // on-device one to fetch its model: that's a system dialog over the screen, mid-sentence, for 60 MB.
                 SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> {
                     val main = mainRegion()
+                    val unavailable = code == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE
                     when {
                         language != main -> {
                             Log.i(TAG, "${language ?: "the default language"} isn't known, recognizing $main")
                             language = main
+                            next()
+                        }
+                        unavailable && !onDevice && key !in online -> {
+                            Log.i(TAG, "no offline model for $main, recognizing online")
+                            online += key
                             next()
                         }
                         onDevice && SpeechRecognizer.isRecognitionAvailable(context) -> {
@@ -343,6 +353,7 @@ class Speech(
                             onDevice = false
                             listen()
                         }
+                        unavailable -> fail(code, R.string.prompt_speech_not_downloaded)
                         else -> fail(code, R.string.prompt_speech_language)
                     }
                 }
@@ -436,6 +447,9 @@ class Speech(
 
         /** [language] for each kind of recognizer, on-device or not, and wanted language, once asked: the same for every Speech. */
         private val languages = HashMap<Pair<Boolean, String>, String?>()
+
+        /** Languages, for each kind of recognizer, that Speech Services has no offline model for: recognized online. */
+        private val online = HashSet<Pair<Boolean, String>>()
 
         /** The one started last: the phone has one microphone, and a second recognizer would get nothing. */
         private var active: Speech? = null

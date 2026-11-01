@@ -83,6 +83,7 @@
     <string name="prompt_speech_refused">pengenal suara ponsel tidak mengizinkan aplikasi lain memakainya</string>
     <string name="prompt_speech_failed">pengenalan suara gagal (%1$d)</string>
     <string name="prompt_speech_language">pengenalan suara tidak tersedia untuk bahasa ini</string>
+    <string name="prompt_speech_not_downloaded">pengenalan suara untuk bahasa ini belum diunduh di ponsel ini</string>
     <string name="prompt_speech_mic_permission">perlu izin mikrofon</string>
     <string name="prompt_speech_network">pengenalan suara memerlukan koneksi jaringan</string>
 </resources>

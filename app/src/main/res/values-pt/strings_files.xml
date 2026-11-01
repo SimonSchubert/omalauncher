@@ -87,6 +87,7 @@
     <string name="prompt_speech_refused">o reconhecimento de fala do telefone não deixa outros apps usá-lo</string>
     <string name="prompt_speech_failed">o reconhecimento de fala falhou (%1$d)</string>
     <string name="prompt_speech_language">a fala não está disponível neste idioma</string>
+    <string name="prompt_speech_not_downloaded">a fala deste idioma não foi baixada neste telefone</string>
     <string name="prompt_speech_mic_permission">é preciso a permissão do microfone</string>
     <string name="prompt_speech_network">o reconhecimento de fala precisa de conexão com a rede</string>
 </resources>

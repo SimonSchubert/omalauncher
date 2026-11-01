@@ -83,6 +83,7 @@
     <string name="prompt_speech_refused">手机的语音识别器不允许其他应用使用</string>
     <string name="prompt_speech_failed">语音识别失败（%1$d）</string>
     <string name="prompt_speech_language">这种语言无法使用语音输入</string>
+    <string name="prompt_speech_not_downloaded">这部手机还没有下载这种语言的语音输入</string>
     <string name="prompt_speech_mic_permission">需要麦克风权限</string>
     <string name="prompt_speech_network">语音识别需要网络连接</string>
 </resources>

@@ -85,6 +85,7 @@
     <string name="prompt_speech_refused">die spracherkennung des smartphones lässt andere apps nicht ran</string>
     <string name="prompt_speech_failed">spracherkennung hat nicht geklappt (%1$d)</string>
     <string name="prompt_speech_language">spracheingabe gibt\'s in dieser sprache nicht</string>
+    <string name="prompt_speech_not_downloaded">spracheingabe für diese sprache ist auf diesem telefon nicht geladen</string>
     <string name="prompt_speech_mic_permission">mikrofon-berechtigung fehlt</string>
     <string name="prompt_speech_network">spracherkennung braucht eine netzwerkverbindung</string>
 </resources>
