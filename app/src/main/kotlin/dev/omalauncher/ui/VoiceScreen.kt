@@ -686,8 +686,8 @@ private fun Orb(
         when {
             speech.listening -> Palette.green
             waiting -> Palette.red
-            // Not the accent: on themes where it's red, speaking would look like waiting for an OK.
-            speaking -> Palette.named("blue") ?: Palette.accent
+            // The theme's accent, unless it's the red of waiting for an OK or the green of listening.
+            speaking -> Palette.accent.takeIf { it != Palette.red && it != Palette.green } ?: Palette.named("blue") ?: Palette.accent
             session.busy -> yellow
             else -> Palette.muted
         },
