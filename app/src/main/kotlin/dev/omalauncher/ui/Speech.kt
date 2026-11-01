@@ -4,12 +4,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.res.Resources
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.speech.RecognitionListener
+import android.speech.RecognitionService
 import android.speech.RecognitionSupport
 import android.speech.RecognitionSupportCallback
 import android.speech.RecognizerIntent
@@ -21,6 +23,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.R
+import dev.omalauncher.SpeakNowActivity
 import java.util.Locale
 
 /**
@@ -96,12 +99,38 @@ class Speech(
         text = ""
         listening = true
         retried = false
-        listen()
+        if (!onDeviceAvailable && regularService(context) == null) speakNow() else listen()
+    }
+
+    /**
+     * The phone's speech app has no recognizer for other apps, only its own "speak now" screen (FUTO Voice Input):
+     * that, once, for what's said. Its screen has its own stop.
+     */
+    private fun speakNow() {
+        Log.i(TAG, "no recognizer service, opening the speak-now screen")
+        val me = this
+        speakingNow = { heard ->
+            if (active === me && listening) {
+                text = heard.orEmpty()
+                finish()
+            }
+        }
+        val open =
+            Intent(context, SpeakNowActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE, mainRegion())
+        runCatching { context.startActivity(open) }.onFailure {
+            speakingNow = null
+            error = context.getString(R.string.prompt_speech_no_recognizer)
+            finish()
+        }
     }
 
     /** Ends recognition now; the text so far goes to onDone. */
     fun stop() {
         held = false
+        // The speak-now screen is in front, with its own stop.
+        if (listening && recognizer == null && pending == null && speakingNow != null) return
         // Not listening yet, still asking for the languages: there's nothing to wait for.
         val r = recognizer?.takeIf { pending == null } ?: return finish()
         r.stopListening()
@@ -145,7 +174,7 @@ class Speech(
             if (Build.VERSION.SDK_INT >= 31 && onDevice && onDeviceAvailable) {
                 SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
             } else {
-                SpeechRecognizer.createSpeechRecognizer(context)
+                SpeechRecognizer.createSpeechRecognizer(context, regularService(context))
             }
         recognizer = r
         r.setRecognitionListener(Listener(r))
@@ -204,7 +233,7 @@ class Speech(
             call()
         } catch (e: SecurityException) {
             Log.w(TAG, "the speech recognizer refused", e)
-            if (onDevice && SpeechRecognizer.isRecognitionAvailable(context)) {
+            if (onDevice && regularService(context) != null) {
                 onDevice = false
                 return listen()
             }
@@ -350,7 +379,7 @@ class Speech(
                             online += key
                             next()
                         }
-                        onDevice && SpeechRecognizer.isRecognitionAvailable(context) -> {
+                        onDevice && regularService(context) != null -> {
                             Log.i(TAG, "no on-device model for $main, using the regular recognizer")
                             onDevice = false
                             listen()
@@ -414,7 +443,41 @@ class Speech(
         private const val TAG = "speech"
 
         /** Whether the phone has a speech recognizer at all: on-device, or the default one. */
-        fun available(context: Context) = onDeviceAvailable(context) || SpeechRecognizer.isRecognitionAvailable(context)
+        fun available(context: Context) = onDeviceAvailable(context) || regularService(context) != null || canSpeakNow(context)
+
+        /**
+         * The recognizer to listen with, other than Google's on-device one: the phone's pick, else any real one. Real
+         * ones say so with their android.speech meta-data; FUTO Voice Input has a stand-in without, that answers
+         * nothing, and Android makes it the phone's pick when it's the only one. Null for none.
+         */
+        private fun regularService(context: Context): ComponentName? {
+            val real =
+                runCatching { context.packageManager.queryIntentServices(Intent(RecognitionService.SERVICE_INTERFACE), PackageManager.GET_META_DATA) }
+                    .getOrDefault(emptyList())
+                    .mapNotNull { it.serviceInfo }
+                    .filter { it.metaData?.containsKey(RecognitionService.SERVICE_META_DATA) == true }
+                    .map { ComponentName(it.packageName, it.name) }
+            return picked(context)?.takeIf { it in real } ?: real.firstOrNull()
+        }
+
+        /** The recognizer picked in the phone's settings, if it can be read. */
+        private fun picked(context: Context) =
+            runCatching { Settings.Secure.getString(context.contentResolver, "voice_recognition_service") }
+                .getOrNull()
+                ?.let(ComponentName::unflattenFromString)
+
+        /** Whether a speech app has a "speak now" screen, for [speakNow]. */
+        private fun canSpeakNow(context: Context) =
+            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).resolveActivity(context.packageManager) != null
+
+        /** Hands what the speak-now screen heard, null for nothing, to the Speech that opened it. */
+        fun spoken(heard: String?) {
+            val deliver = speakingNow ?: return
+            speakingNow = null
+            deliver(heard)
+        }
+
+        private var speakingNow: ((String?) -> Unit)? = null
 
         /**
          * Whether the on-device recognizer is there. Android's own check only reads which one the system names, so
@@ -435,8 +498,7 @@ class Speech(
          * on-device one. Google's on-device one is only preferred to its own Speech Services, for the beeps.
          */
         private fun pickedOther(context: Context): Boolean {
-            val name = runCatching { Settings.Secure.getString(context.contentResolver, "voice_recognition_service") }.getOrNull()
-            val app = name?.let(ComponentName::unflattenFromString)?.packageName ?: return false
+            val app = regularService(context)?.packageName ?: return false
             return !app.startsWith("com.google.")
         }
 
