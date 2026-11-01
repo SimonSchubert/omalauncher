@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -34,6 +35,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -85,6 +87,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
@@ -122,9 +126,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.util.Locale
-import kotlin.math.PI
+import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sin
 
 /**
  * The voice screen: a spoken conversation with a coding agent ([VoiceSession]). It listens as it opens; a tap on
@@ -368,14 +371,16 @@ fun VoiceScreen(
                             items(items.size) { i -> Message(items[i]) { viewing = it } }
                         }
                     }
+                    val touch = remember { MutableInteractionSource() }
+                    val pressed by touch.collectIsPressedAsState()
                     Column(
                         Modifier
                             .offset { IntOffset(orbStart.roundToPx(), orbTop.roundToPx()) }
                             .width(orb)
-                            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, enabled = !typing) { talk() },
+                            .clickable(interactionSource = touch, indication = null, enabled = !typing) { talk() },
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Orb(session = session, speech = speech, speaking = speaker.speaking, modifier = Modifier.size(orb))
+                        Orb(session = session, speech = speech, speaking = speaker.speaking, pressed = pressed, modifier = Modifier.size(orb))
                         // Up into the orb's box: it's drawn smaller than its box until it listens, and the ring
                         // stays clear of this even then.
                         Box(Modifier.height(CAPTION).offset(y = -orb * 0.1f), contentAlignment = Alignment.TopCenter) {
@@ -717,6 +722,7 @@ private fun Orb(
     session: VoiceSession,
     speech: Speech,
     speaking: Boolean,
+    pressed: Boolean,
     modifier: Modifier,
 ) {
     val yellow = Palette.named("yellow") ?: Palette.accent
@@ -744,22 +750,52 @@ private fun Orb(
         spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
         label = "size",
     )
-    val loop = rememberInfiniteTransition(label = "orb")
-    val turn by loop.animateFloat(0f, 360f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "turn")
-    val breath by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "breath")
     val working = session.busy && !waiting
-    Canvas(modifier.graphicsLayer { scaleX = size; scaleY = size }) {
+    val active = speech.listening || speaking || session.busy || waiting
+    // Idle it's a hollow ring; anything going on fills it.
+    val fill by animateFloatAsState(if (active) 1f else 0f, tween(450), label = "fill")
+    // A finger on it: it gives a little and lights up at once, before the tap does anything.
+    val press by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium), label = "press")
+    val level by animateFloatAsState(if (speech.listening) speech.level else 0f, spring(stiffness = Spring.StiffnessMediumLow), label = "level")
+    val loop = rememberInfiniteTransition(label = "orb")
+    val turn by loop.animateFloat(0f, 360f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "turn")
+    val breath by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breath")
+    val ripple by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(2400, easing = LinearEasing)), label = "ripple")
+    Canvas(modifier.graphicsLayer { scaleX = size * (1f - 0.07f * press); scaleY = size * (1f - 0.07f * press) }) {
+        val fill = max(fill, 0.45f * press)
         val c = Offset(this.size.width / 2, this.size.height / 2)
         val r = min(this.size.width, this.size.height) / 2 - 10.dp.toPx()
-        val pulse = if (speaking) 1f + 0.04f * sin(breath * PI.toFloat()) else 1f
-        drawCircle(color.copy(alpha = 0.10f), r * pulse, c)
-        drawCircle(Brush.radialGradient(listOf(color.copy(alpha = 0.65f), color.copy(alpha = 0.18f)), c, r * 0.82f * pulse), r * 0.82f * pulse, c)
-        drawCircle(color.copy(alpha = 0.9f), r * 0.82f * pulse, c, style = Stroke(2.dp.toPx()))
+        val swell = if (speaking || waiting) breath else 0f
+        val core = r * 0.72f * (1f + 0.035f * swell)
+        // A soft light around it, brighter as it speaks or listens louder.
+        val glow = 0.06f + fill * (0.14f + 0.10f * swell + 0.16f * level) + 0.10f * press
+        drawCircle(Brush.radialGradient(0.55f to color.copy(alpha = glow), 1f to Color.Transparent, center = c, radius = r), r, c)
+        // Listening: rings leave the core and fade, stronger the louder you are.
+        if (speech.listening) {
+            for (k in 0..1) {
+                val p = (ripple + k * 0.5f) % 1f
+                val a = (1f - p) * (1f - p) * (0.25f + 0.55f * level)
+                drawCircle(color.copy(alpha = a), core + (r - core) * p, c, style = Stroke(1.5.dp.toPx()))
+            }
+        }
+        // The core: lit from the top, a touch deeper at the bottom.
+        drawCircle(
+            Brush.linearGradient(listOf(lerp(color, Color.White, 0.22f), color, lerp(color, Color.Black, 0.14f)), Offset(c.x - core * 0.5f, c.y - core), Offset(c.x + core * 0.5f, c.y + core)),
+            core, c, alpha = fill,
+        )
+        drawCircle(color.copy(alpha = 0.05f * (1f - fill)), core, c)
+        drawCircle(color.copy(alpha = 1f - fill), core, c, style = Stroke(1.5.dp.toPx()))
+        // Working: one comet circling just outside, its tail fading away.
         if (working) {
-            val box = Size(r * 2, r * 2)
-            val at = Offset(c.x - r, c.y - r)
-            drawArc(yellow, turn - 90f, 70f, false, at, box, style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
-            drawArc(yellow.copy(alpha = 0.45f), turn + 90f, 70f, false, at, box, style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+            val ring = r * 0.9f
+            rotate(turn, c) {
+                drawArc(
+                    // Starts past 0°, so the tail's round cap sits in the clear part, not where the sweep wraps to yellow.
+                    Brush.sweepGradient(0f to yellow.copy(alpha = 0f), 0.04f to yellow.copy(alpha = 0f), 0.72f to yellow, 0.75f to yellow, center = c),
+                    15f, 255f, false, Offset(c.x - ring, c.y - ring), Size(ring * 2, ring * 2),
+                    style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round),
+                )
+            }
         }
     }
 }
