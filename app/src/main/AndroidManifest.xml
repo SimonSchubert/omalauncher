@@ -196,7 +196,7 @@
             android:name=".HermesWindow"
             android:exported="false"
             android:icon="@drawable/agent_hermes"
-            android:label="Hermes Agent"
+            android:label="Hermes"
             android:targetActivity=".LinuxWindowActivity" />
 
         <activity-alias

@@ -121,7 +121,9 @@ reach existing installs without breaking them. There are four mechanisms:
   store's `index.json` format number only changes for incompatible changes.
 
 **System updates** (`linux/SystemUpdates.kt`) are the user's own: pacman
-packages and the tools mise installed (the coding agents). The launcher
+packages and the tools mise installed (the coding agents). Hermes is not one of
+them — its own installer puts it outside mise, and it updates itself with
+`hermes update`. The launcher
 checks at most every 6 hours while it's on screen: pacman against a private
 copy of the databases in /tmp, so the real ones and pacman's lock are
 untouched, plus `mise outdated`. When updates are pending, a dot shows on the

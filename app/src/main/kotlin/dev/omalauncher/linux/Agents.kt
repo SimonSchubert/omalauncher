@@ -58,7 +58,7 @@ val AGENTS =
         Agent("pi", "Pi", R.string.linux_agent_pi, "pi"),
         Agent(
             "hermes",
-            "Hermes Agent",
+            "Hermes",
             R.string.linux_agent_hermes,
             "hermes",
             // uv hardlinks wheels out of its cache and the guest runs under proot's --link2symlink with
