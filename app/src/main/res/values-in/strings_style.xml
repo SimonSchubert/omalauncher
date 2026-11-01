@@ -126,7 +126,7 @@
     <string name="gestures_keybar_until_fixed">bilah tombol terminal memakai bawaan sampai diperbaiki: %1$s</string>
 
     <string name="agents_title">agen coding</string>
-    <string name="agents_intro">Diinstal dengan mise, seperti di Omarchy. Login terbuka di browser; tempel kunci API lewat papan klip keyboard.</string>
+    <string name="agents_intro">Diinstal dengan mise, seperti di Omarchy, atau dengan penginstal bawaan agen itu sendiri (Hermes). Login terbuka di browser; tempel kunci API lewat papan klip keyboard.</string>
     <string name="agents_open">buka</string>
     <string name="agents_remove">hapus</string>
     <string name="agents_still_running">%1$s masih berjalan: tutup dulu, lalu hapus lagi</string>
