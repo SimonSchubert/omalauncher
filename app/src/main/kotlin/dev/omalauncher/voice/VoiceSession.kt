@@ -11,6 +11,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.AppLanguage
 import dev.omalauncher.R
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.AgentStore
@@ -186,7 +187,8 @@ class VoiceSession(
 
     init {
         readJson(settingsFile)?.let { s ->
-            language = s.optString("language").ifEmpty { null }
+            // Saved in three letters ("deu") before Speaker named the engine's languages in two.
+            language = s.optString("language").ifEmpty { null }?.let(AppLanguage::short)
             voice = s.optString("voice").ifEmpty { null }
             rate = s.optDouble("rate", DEFAULT_RATE.toDouble()).toFloat().takeIf { it in 0.5f..2f } ?: DEFAULT_RATE
         }

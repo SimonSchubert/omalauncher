@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.AppLanguage
 import java.util.Locale
 
 /**
@@ -146,17 +147,17 @@ class Speaker(
     }
 
     /** The language replies are read in. */
-    val locale: Locale get() = language?.let(Locale::forLanguageTag) ?: Locale.getDefault()
+    val locale: Locale get() = language?.let(Locale::forLanguageTag)?.let { Locale(AppLanguage.short(it.language), it.country) } ?: Locale.getDefault()
 
     /** The languages it can read, one each (not each region), as tags; none before it's [ready]. */
-    fun languages(): List<String> = runCatching { tts?.availableLanguages?.map { it.language }?.distinct() }.getOrNull().orEmpty()
+    fun languages(): List<String> = runCatching { tts?.availableLanguages?.map { AppLanguage.short(it.language) }?.distinct() }.getOrNull().orEmpty()
 
     /**
      * [language]'s voices: installed first, then by region; none before it's [ready]. Not Google's "en-US-language"
      * ones, which stand for the engine's default for the language.
      */
     fun voices(language: String): List<Voice> =
-        runCatching { tts?.voices?.filter { it.locale.language == Locale.forLanguageTag(language).language && !it.name.endsWith("-language") } }
+        runCatching { tts?.voices?.filter { AppLanguage.short(it.locale.language) == AppLanguage.short(language) && !it.name.endsWith("-language") } }
             .getOrNull()
             .orEmpty()
             .sortedWith(compareBy({ TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED in it.features }, { it.isNetworkConnectionRequired }, { it.locale.toLanguageTag() }, { it.name }))
