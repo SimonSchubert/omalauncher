@@ -58,6 +58,49 @@ class AgentsTest {
         assertEquals(output, 0, process.waitFor())
     }
 
+    /**
+     * The Hermes install command puts uv's link mode where pm still reads it. pm runs uv with
+     * XDG_CONFIG_HOME and XDG_CONFIG_DIRS on an empty directory, so ~/.config/uv/uv.toml is invisible to it
+     * and /etc/uv/uv.toml is the file that survives; an exported UV_LINK_MODE never arrives either. The path
+     * is rewritten to a temp dir here because /etc needs root — the rest of the command runs as it ships,
+     * with curl stubbed so the installer's own arguments can be read back.
+     */
+    @Test fun hermesWritesTheLinkModePmStillReads() {
+        val sandbox = createTempDirectory("hermes-install").toFile()
+        val stubDir = File(sandbox, "bin").apply { mkdirs() }
+        val recorded = File(sandbox, "installer-args")
+        File(stubDir, "curl").apply {
+            // The installer script arrives as curl's output on the pipe: this stands in for it with a
+            // script that records what `bash -s --` handed over.
+            writeText(
+                """
+                #!/bin/sh
+                cat <<'SCRIPT'
+                printf '%s\n' "${'$'}@" > "${'$'}RECORDED"
+                SCRIPT
+                """.trimIndent() + "\n",
+            )
+            setExecutable(true)
+        }
+        val install = AGENTS.single { it.bin == "hermes" }.install!!
+        assertTrue("the install must write the file pm reads: $install", "mkdir -p /etc/uv &&" in install)
+        val command = install.replace("/etc/uv", "${sandbox.path}/etc/uv")
+        val process = ProcessBuilder("sh", "-c", command)
+            .redirectErrorStream(true)
+            .apply {
+                environment()["PATH"] = "${stubDir.path}:" + environment()["PATH"]
+                environment()["RECORDED"] = recorded.path
+            }
+            .start()
+        val output = process.inputStream.bufferedReader().use { it.readText() }
+        assertEquals(output, 0, process.waitFor())
+        assertEquals("link-mode = \"copy\"", File(sandbox, "etc/uv/uv.toml").readText().trim())
+        assertEquals(
+            listOf("--non-interactive", "--skip-browser", "--skip-computer-use"),
+            recorded.readLines(),
+        )
+    }
+
     /** A prompt from a widget can't pass the agent an option: claude --settings=... would run its hooks. */
     @Test fun aPromptStartingWithADashIsNoOption() {
         val script = """

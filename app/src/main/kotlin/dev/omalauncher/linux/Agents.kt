@@ -62,13 +62,15 @@ val AGENTS =
             R.string.linux_agent_hermes,
             "hermes",
             // uv hardlinks wheels out of its cache and the guest runs under proot's --link2symlink with
-            // /tmp bound elsewhere, so those links fail; copy instead. The UV_LINK_MODE=copy the install
-            // runs with only reaches the install: `hermes chat -q` re-runs uv without it and dies
-            // ("Operation not permitted", os error 1, on a hardlink out of ~/.hermes/cache/uv). uv.toml
-            // is read by every later run, so chat, update and doctor copy too.
-            install = "mkdir -p ~/.config/uv && printf '%s\\n' 'link-mode = \"copy\"' > ~/.config/uv/uv.toml && " +
+            // /tmp bound elsewhere, so those links fail ("Operation not permitted", os error 1, out of
+            // ~/.hermes/cache/uv); copy instead. pm, Hermes's own package manager, runs uv with
+            // XDG_CONFIG_HOME and XDG_CONFIG_DIRS pointed at an empty directory and drops every UV_* it
+            // does not forward, so ~/.config/uv/uv.toml is never read and an exported UV_LINK_MODE never
+            // arrives. /etc/uv/uv.toml is the one uv still reads under that override, so chat, update and
+            // doctor copy too (see UV_LINK_MODE in Proot.command for the uv calls pm does not wrap).
+            install = "mkdir -p /etc/uv && printf '%s\\n' 'link-mode = \"copy\"' > /etc/uv/uv.toml && " +
                 "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | " +
-                "env UV_LINK_MODE=copy bash -s -- --non-interactive --skip-browser --skip-computer-use",
+                "bash -s -- --non-interactive --skip-browser --skip-computer-use",
         ),
         Agent("omp", "Oh My Pi", R.string.linux_agent_omp, "github:can1357/oh-my-pi"),
         Agent("ori", "Ori", R.string.linux_agent_ori, "github:OpenRouterLabs/ori-releases", command = "ori code"),
