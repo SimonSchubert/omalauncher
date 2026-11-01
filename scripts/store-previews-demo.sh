@@ -14,7 +14,7 @@
 # files, `fastfetch` greets terminal-profiles, cleaner finds caches worth clearing, `adb` answers
 # private-space like a phone with its Private Space open, `perl` answers wifi-radar's scan with a
 # made-up home network, `ssh` answers server-pulse's collector, speedtest finds a finished run,
-# share-bridge a link that's up, and `websocat` answers nostr-inbox's relays. `ping` answers network
+# share-bridge a link that's up, libre-summary three quits the Libre app saved, and `websocat` answers nostr-inbox's relays. `ping` answers network
 # with real-looking round trips (the emulator's own replies all say 0 ms), and `python3` answers vacuum's
 # status like a robot on its dock. With "off", puts everything back.
 set -u
@@ -57,6 +57,7 @@ neondl=~/.cache/omalauncher-neondl
 privspace=~/.cache/private-space.json
 speedtest=~/.local/share/omalauncher/speedtest/status.json
 bridge=~/.local/share/omalauncher/share-bridge/status.json
+libre=~/.local/share/libre/resume.json
 nostr=~/.cache/nostr-inbox/009ce97e22b376c406740f9b842f780ca2e92c2093a5f11d12f43f6150d8e6a1
 omagit=~/projects/weather-cli
 
@@ -88,7 +89,7 @@ if [ "${1:-}" = off ]; then
     "$pptver" "$pptsetup" "$pptstatus" "$devlogsver" "$devlogsbin" "$devlogserrors" "$flashcards" \
     "$scripts/backup-dotfiles.sh" "$scripts/clean-downloads.sh" "$scripts/pull-repos.sh" \
     "$scripts/serve-here.sh" "$scripts/update-system.sh" "$layoutlog" "$radio/pid" "$radio/now" "$photo" \
-    "$gameboy" "$neondl/state.json" "$neondl/version.txt" "$privspace" "$speedtest" "$bridge"; do
+    "$gameboy" "$neondl/state.json" "$neondl/version.txt" "$privspace" "$speedtest" "$bridge" "$libre"; do
     [ -f "$f.before-demo" ] && mv "$f.before-demo" "$f" || rm -f "$f"
   done
   exit 0
@@ -817,6 +818,14 @@ printf '{"running":false,"phase":"DONE","step":"Test complete · Tap to re-run",
 # wouldn't outlive this script's proot anyway.
 aside "$bridge"
 echo '{"url":"http://127.0.0.1:8765/store-preview-demo/"}' > "$bridge"
+
+# libre-summary: the summary the Libre app writes, with three made-up quits counted back from now
+# (the same ones as apps/madness807/libre/screens.txt in the store).
+aside "$libre"
+now=$(date +%s)
+printf '{"items":[{"id":"vape-1","nom":"Vape","type":"vape","debut":%s,"parSemaine":15},{"id":"soda-1","nom":"Soda","type":"soda","debut":%s,"parSemaine":6},{"id":"reseaux-1","nom":"Instagram","type":"reseaux","debut":%s,"parSemaine":0}],"envies":[%s,%s,%s],"currency":"$"}\n' \
+  $((now - 12 * 86400 - 5 * 3600)) $((now - 41 * 86400 - 3 * 3600)) $((now - 4 * 86400 - 9 * 3600)) \
+  $((now - 2 * 3600)) $((now - 7 * 3600)) $((now - 30 * 3600)) > "$libre"
 
 # nostr-inbox: a made-up account's last day on nostr, dated from when it's asked. `websocat` answers the
 # relay queries that name it or the people in it; its profile, relays and mute list are the ones the
