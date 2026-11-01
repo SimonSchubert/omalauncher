@@ -1,5 +1,6 @@
 package dev.omalauncher.voice
 
+import dev.omalauncher.widgets.WidgetEngine
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -67,8 +68,8 @@ abstract class AgentLink(
     /** The guest shell command that starts it, continuing [resume] when it's given. */
     abstract fun command(resume: String?): String
 
-    /** Writes what it needs before the first prompt. */
-    open fun open(resume: String?) {}
+    /** Writes what it needs before the first prompt; what that means already, like being ready. */
+    open fun open(resume: String?): List<LinkEvent> = emptyList()
 
     abstract fun prompt(text: String)
 
@@ -106,6 +107,23 @@ const val VOICE_PROMPT =
         "with tools, say once in a few words what you're going to do, then work without talking about each step, " +
         "and at the end say the outcome in a sentence or two, not everything you did."
 
+/** Where agents work in Linux, unless one needs a folder of its own. */
+const val GUEST_HOME = "/root"
+
+/** The agents that can talk, by bin, with the link that talks to each. */
+val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
+    mapOf(
+        "claude" to ::ClaudeLink,
+        "codex" to { w -> CodexLink(w) },
+        "grok" to { w -> AcpLink(w, "grok agent stdio") },
+        // OpenCode snapshots its folder with git before every turn, and all of home took minutes before its first
+        // word; the widgets are what voice is mostly for.
+        "opencode" to { w -> AcpLink(w, "opencode acp", "$GUEST_HOME/${WidgetEngine.GUEST_DIR}") },
+        "copilot" to { w -> AcpLink(w, "copilot --acp") },
+        "kimi" to { w -> AcpLink(w, "kimi acp") },
+        "cursor-agent" to { w -> AcpLink(w, "cursor-agent acp") },
+    )
+
 private fun sh(s: String) = "'" + s.replace("'", "'\\''") + "'"
 
 /**
@@ -126,19 +144,17 @@ class ClaudeLink(
             "--append-system-prompt ${sh(VOICE_PROMPT)} --allowedTools Read,Glob,Grep,WebSearch,WebFetch " +
             "--permission-prompt-tool stdio" + (resume?.let { " --resume ${sh(it)}" } ?: "")
 
-    override fun open(resume: String?) {
+    override fun open(resume: String?): List<LinkEvent> {
         session = resume
         // As the Agent SDK opens a session.
-        write(JSONObject().put("type", "control_request").put("request_id", "init").put("request", JSONObject().put("subtype", "initialize")).toString())
+        send(json("type" to "control_request", "request_id" to "init", "request" to json("subtype" to "initialize")))
+        // It says nothing until the first prompt; it's ready once it runs.
+        return listOf(LinkEvent.Ready)
     }
 
-    override fun prompt(text: String) {
-        write(JSONObject().put("type", "user").put("message", JSONObject().put("role", "user").put("content", text)).toString())
-    }
+    override fun prompt(text: String) = send(json("type" to "user", "message" to json("role" to "user", "content" to text)))
 
-    override fun cancel() {
-        write(JSONObject().put("type", "control_request").put("request_id", "stop${System.nanoTime()}").put("request", JSONObject().put("subtype", "interrupt")).toString())
-    }
+    override fun cancel() = send(json("type" to "control_request", "request_id" to "stop${System.nanoTime()}", "request" to json("subtype" to "interrupt")))
 
     override fun answer(
         id: String,
@@ -149,18 +165,17 @@ class ClaudeLink(
         val input = asked.remove(id) ?: JSONObject()
         val response =
             if (allow) {
-                JSONObject().put("behavior", "allow").put("updatedInput", input)
+                json("behavior" to "allow", "updatedInput" to input)
             } else {
-                JSONObject().put("behavior", "deny").put("message", instead?.let { "The user said no, and said: $it" } ?: "The user said no to this.")
+                json("behavior" to "deny", "message" to (instead?.let { "The user said no, and said: $it" } ?: "The user said no to this."))
             }
-        write(
-            JSONObject().put("type", "control_response").put(
-                "response",
-                JSONObject().put("subtype", "success").put("request_id", id).put("response", response),
-            ).toString(),
-        )
+        respond(json("subtype" to "success", "request_id" to id, "response" to response))
         return true
     }
+
+    private fun send(message: JSONObject) = write(message.toString())
+
+    private fun respond(response: JSONObject) = send(json("type" to "control_response", "response" to response))
 
     override fun read(line: String): List<LinkEvent> {
         val ev = runCatching { JSONObject(line) }.getOrNull() ?: return emptyList()
@@ -197,7 +212,7 @@ class ClaudeLink(
             "result" ->
                 out +=
                     if (ev.optBoolean("is_error")) {
-                        LinkEvent.Done(error = ev.optString("result").ifEmpty { ev.optString("subtype") }.take(200))
+                        LinkEvent.Done(error = ev.optString("result").ifEmpty { ev.optString("subtype") })
                     } else {
                         LinkEvent.Done()
                     }
@@ -205,18 +220,108 @@ class ClaudeLink(
                 val id = ev.optString("request_id")
                 val req = ev.optJSONObject("request") ?: JSONObject()
                 if (req.optString("subtype") != "can_use_tool") {
-                    write(JSONObject().put("type", "control_response").put("response", JSONObject().put("subtype", "error").put("request_id", id).put("error", "not supported")).toString())
+                    respond(json("subtype" to "error", "request_id" to id, "error" to "not supported"))
                 } else {
                     val name = req.optString("tool_name")
                     val input = req.optJSONObject("input") ?: JSONObject()
                     asked[id] = input
-                    val detail = listOf("command", "file_path", "url", "pattern").firstNotNullOfOrNull { k -> input.optString(k).takeIf { it.isNotEmpty() } } ?: ""
-                    out += LinkEvent.Ask(id, Steps.label(name, input), detail.take(400), Steps.alwaysKey(name, input.optString("command")))
+                    val detail = input.firstString("command", "file_path", "url", "pattern")
+                    out += LinkEvent.Ask(id, Steps.label(name, input), detail, Steps.alwaysKey(name, input.optString("command")))
                 }
             }
         }
         return out
     }
+}
+
+/**
+ * An agent spoken to in JSON-RPC on stdio, a request's answer coming to the callback that sent it, and its prompts
+ * one at a time: a later one waits for the one in flight, and none goes before it's ready. [jsonrpc] is whether
+ * messages carry the "jsonrpc" field (Codex leaves it out).
+ */
+abstract class RpcLink(
+    write: (String) -> Unit,
+    private val jsonrpc: Boolean,
+) : AgentLink(write) {
+    private var nextId = 0
+    private val calls = HashMap<Int, (JSONObject?, JSONObject?) -> List<LinkEvent>>()
+    private var ready = false
+    private var inFlight = false
+    private val queue = ArrayDeque<String>()
+
+    /** Starts a turn with [text]; it's in flight until [finished]. */
+    protected abstract fun startTurn(text: String)
+
+    /** What a request or notification of its own means; null for one it doesn't know, refused when it's a request. */
+    protected abstract fun handle(
+        method: String,
+        id: Any?,
+        params: JSONObject,
+    ): List<LinkEvent>?
+
+    final override fun prompt(text: String) {
+        queue.addLast(text)
+        next()
+    }
+
+    /** Takes prompts from now on, the first waiting one now. */
+    protected fun becomeReady(): List<LinkEvent> {
+        ready = true
+        next()
+        return listOf(LinkEvent.Ready)
+    }
+
+    /** The turn in flight ended with [done]; the next waiting prompt goes. */
+    protected fun finished(done: LinkEvent.Done): List<LinkEvent> {
+        inFlight = false
+        next()
+        return listOf(done)
+    }
+
+    /** Drops the prompts waiting, as for a stop. */
+    protected fun dropQueued() = queue.clear()
+
+    private fun next() {
+        if (!ready || inFlight || queue.isEmpty()) return
+        inFlight = true
+        startTurn(queue.removeFirst())
+    }
+
+    final override fun read(line: String): List<LinkEvent> {
+        val ev = runCatching { JSONObject(line) }.getOrNull() ?: return emptyList()
+        val method = ev.optString("method")
+        // An answer to one of ours.
+        if (method.isEmpty() && ev.has("id")) {
+            val then = calls.remove(ev.optInt("id")) ?: return emptyList()
+            return then(ev.optJSONObject("result"), ev.optJSONObject("error"))
+        }
+        val id = ev.opt("id")
+        handle(method, id, ev.optJSONObject("params") ?: JSONObject())?.let { return it }
+        if (id != null) send(json("id" to id, "error" to json("code" to -32601, "message" to "$method isn't supported")))
+        return emptyList()
+    }
+
+    protected fun call(
+        method: String,
+        params: JSONObject,
+        then: (JSONObject?, JSONObject?) -> List<LinkEvent>,
+    ) {
+        val id = ++nextId
+        calls[id] = then
+        send(json("id" to id, "method" to method, "params" to params))
+    }
+
+    protected fun notify(
+        method: String,
+        params: JSONObject? = null,
+    ) = send(json("method" to method, "params" to params))
+
+    protected fun reply(
+        id: Any,
+        result: JSONObject,
+    ) = send(json("id" to id, "result" to result))
+
+    private fun send(message: JSONObject) = write((if (jsonrpc) message.put("jsonrpc", "2.0") else message).toString())
 }
 
 /**
@@ -229,45 +334,36 @@ class AcpLink(
     write: (String) -> Unit,
     /** The guest command that serves ACP on stdio, such as `grok agent stdio` or `kimi acp`. */
     private val serve: String,
-    /** Where its sessions work: OpenCode snapshots this folder with git before each turn, so not all of home. */
-    private val cwd: String = HOME,
-) : AgentLink(write) {
-    private var nextId = 0
-    private val calls = HashMap<Int, (JSONObject?, JSONObject?) -> List<LinkEvent>>()
+    /** Where its sessions work. */
+    private val cwd: String = GUEST_HOME,
+) : RpcLink(write, jsonrpc = true) {
     private var session: String? = null
-    private var ready = false
     private var loading = false
     private var primed = false
-    private var inFlight = false
-    private val queue = ArrayDeque<String>()
     private val asked = HashMap<String, Pair<Any, JSONArray>>()
 
     override fun command(resume: String?) = "exec $serve"
 
-    override fun open(resume: String?) {
+    override fun open(resume: String?): List<LinkEvent> {
         session = resume
         primed = resume != null
-        call(
-            "initialize",
-            JSONObject().put("protocolVersion", 1).put(
-                "clientCapabilities",
-                JSONObject().put("fs", JSONObject().put("readTextFile", false).put("writeTextFile", false)).put("terminal", false),
-            ),
-        ) { _, error ->
+        val fs = json("readTextFile" to false, "writeTextFile" to false)
+        call("initialize", json("protocolVersion" to 1, "clientCapabilities" to json("fs" to fs, "terminal" to false))) { _, error ->
             if (error != null) return@call listOf(LinkEvent.Failed(error.optString("message")))
             val id = session
             if (id != null) {
                 loading = true
-                call("session/load", JSONObject().put("sessionId", id).put("cwd", cwd).put("mcpServers", JSONArray())) { _, e -> loaded(e) }
+                call("session/load", json("sessionId" to id, "cwd" to cwd, "mcpServers" to JSONArray())) { _, e -> loaded(e) }
             } else {
                 newSession()
             }
             emptyList()
         }
+        return emptyList()
     }
 
     private fun newSession() {
-        call("session/new", JSONObject().put("cwd", cwd).put("mcpServers", JSONArray())) { result, error ->
+        call("session/new", json("cwd" to cwd, "mcpServers" to JSONArray())) { result, error ->
             val id = result?.optString("sessionId")?.takeIf { it.isNotEmpty() }
             if (id == null) return@call listOf(LinkEvent.Failed(error?.optString("message").orEmpty()))
             session = id
@@ -284,38 +380,17 @@ class AcpLink(
         return listOf(LinkEvent.ResumeFailed)
     }
 
-    private fun becomeReady(): List<LinkEvent> {
-        ready = true
-        next()
-        return listOf(LinkEvent.Ready)
-    }
-
-    override fun prompt(text: String) {
-        queue.addLast(text)
-        next()
-    }
-
-    private fun next() {
-        if (!ready || inFlight || queue.isEmpty()) return
-        var text = queue.removeFirst()
-        if (!primed) {
-            text = "($VOICE_PROMPT)\n\n$text"
-            primed = true
-        }
-        inFlight = true
-        val params = JSONObject().put("sessionId", session).put("prompt", JSONArray().put(JSONObject().put("type", "text").put("text", text)))
-        call("session/prompt", params) { result, error ->
-            inFlight = false
-            val stop = result?.optString("stopReason")
-            val done = LinkEvent.Done(error = error?.optString("message")?.take(200), cancelled = stop == "cancelled")
-            next()
-            listOf(done)
+    override fun startTurn(text: String) {
+        val said = if (primed) text else "($VOICE_PROMPT)\n\n$text"
+        primed = true
+        call("session/prompt", json("sessionId" to session, "prompt" to JSONArray().put(json("type" to "text", "text" to said)))) { result, error ->
+            finished(LinkEvent.Done(error = error?.optString("message"), cancelled = result?.optString("stopReason") == "cancelled"))
         }
     }
 
     override fun cancel() {
-        queue.clear()
-        session?.let { write(JSONObject().put("jsonrpc", "2.0").put("method", "session/cancel").put("params", JSONObject().put("sessionId", it)).toString()) }
+        dropQueued()
+        session?.let { notify("session/cancel", json("sessionId" to it)) }
     }
 
     override fun answer(
@@ -327,30 +402,22 @@ class AcpLink(
         val (rpcId, options) = asked.remove(id) ?: return false
         val want = if (allow) (if (always) listOf("allow_always", "allow_once") else listOf("allow_once", "allow_always")) else listOf("reject_once", "reject_always")
         val pick = want.firstNotNullOfOrNull { k -> options.objects().firstOrNull { it.optString("kind") == k } }
-        val outcome = if (pick != null) JSONObject().put("outcome", "selected").put("optionId", pick.optString("optionId")) else JSONObject().put("outcome", "cancelled")
-        write(JSONObject().put("jsonrpc", "2.0").put("id", rpcId).put("result", JSONObject().put("outcome", outcome)).toString())
+        val outcome = if (pick != null) json("outcome" to "selected", "optionId" to pick.optString("optionId")) else json("outcome" to "cancelled")
+        reply(rpcId, json("outcome" to outcome))
         return false
     }
 
-    override fun read(line: String): List<LinkEvent> {
-        val ev = runCatching { JSONObject(line) }.getOrNull() ?: return emptyList()
-        val method = ev.optString("method")
-        // An answer to one of ours.
-        if (method.isEmpty() && ev.has("id")) {
-            val then = calls.remove(ev.optInt("id")) ?: return emptyList()
-            return then(ev.optJSONObject("result"), ev.optJSONObject("error"))
-        }
+    override fun handle(
+        method: String,
+        id: Any?,
+        params: JSONObject,
+    ): List<LinkEvent>? =
         when (method) {
-            "session/update" -> if (!loading) return update(ev.optJSONObject("params")?.optJSONObject("update") ?: return emptyList())
-            "session/request_permission" -> return listOf(permission(ev.opt("id") ?: return emptyList(), ev.optJSONObject("params") ?: JSONObject()))
-            else ->
-                // fs/… or terminal/…, which we said we don't offer; notifications (_x.ai/…) need nothing.
-                if (ev.has("id")) {
-                    write(JSONObject().put("jsonrpc", "2.0").put("id", ev.opt("id")).put("error", JSONObject().put("code", -32601).put("message", "$method isn't supported")).toString())
-                }
+            "session/update" -> if (loading) emptyList() else update(params.optJSONObject("update") ?: JSONObject())
+            "session/request_permission" -> if (id == null) emptyList() else listOf(permission(id, params))
+            // fs/… or terminal/…, which we said we don't offer; notifications (_x.ai/…) need nothing.
+            else -> null
         }
-        return emptyList()
-    }
 
     private fun update(u: JSONObject): List<LinkEvent> =
         when (u.optString("sessionUpdate")) {
@@ -371,24 +438,11 @@ class AcpLink(
         val id = "p$rpcId"
         asked[id] = rpcId to (params.optJSONArray("options") ?: JSONArray())
         val raw = call.optJSONObject("rawInput") ?: JSONObject()
-        val detail = listOf("command", "path", "file_path", "url").firstNotNullOfOrNull { k -> raw.optString(k).takeIf { it.isNotEmpty() } } ?: ""
-        val key = if (call.optString("kind") == "execute" && raw.has("command")) Steps.alwaysKey("Bash", raw.optString("command")) else "acp:" + call.optString("kind")
-        return LinkEvent.Ask(id, Steps.acpLabel(call), detail.take(400), key)
-    }
-
-    private fun call(
-        method: String,
-        params: JSONObject,
-        then: (JSONObject?, JSONObject?) -> List<LinkEvent>,
-    ) {
-        val id = ++nextId
-        calls[id] = then
-        write(JSONObject().put("jsonrpc", "2.0").put("id", id).put("method", method).put("params", params).toString())
+        val key = if (call.optString("kind") == "execute" && raw.has("command")) Steps.commandKey(raw.optString("command")) else "acp:" + call.optString("kind")
+        return LinkEvent.Ask(id, Steps.acpLabel(call), raw.firstString("command", "path", "file_path", "url"), key)
     }
 
     companion object {
-        const val HOME = "/root"
-
         /** A chunk that's a whole "Info: /path" line, Copilot's after an approved file change. */
         private val NOTICE = Regex("Info: /\\S+\\s*")
     }
@@ -403,17 +457,12 @@ class AcpLink(
  */
 class CodexLink(
     write: (String) -> Unit,
-    private val cwd: String = AcpLink.HOME,
-) : AgentLink(write) {
+    private val cwd: String = GUEST_HOME,
+) : RpcLink(write, jsonrpc = false) {
     override val instructed = true
 
-    private var nextId = 0
-    private val calls = HashMap<Int, (JSONObject?, JSONObject?) -> List<LinkEvent>>()
     private var thread: String? = null
     private var turn: String? = null
-    private var ready = false
-    private var inFlight = false
-    private val queue = ArrayDeque<String>()
     private val asked = HashMap<String, Any>()
 
     /** What each tool call in this turn does, by item, for a file change's approval, which only names the item. */
@@ -424,11 +473,11 @@ class CodexLink(
 
     override fun command(resume: String?) = "exec codex app-server"
 
-    override fun open(resume: String?) {
-        val info = JSONObject().put("name", "omalauncher_voice").put("title", "Omalauncher Voice").put("version", "1")
-        call("initialize", JSONObject().put("clientInfo", info)) { _, error ->
+    override fun open(resume: String?): List<LinkEvent> {
+        val info = json("name" to "omalauncher_voice", "title" to "Omalauncher Voice", "version" to "1")
+        call("initialize", json("clientInfo" to info)) { _, error ->
             if (error != null) return@call listOf(LinkEvent.Failed(error.optString("message")))
-            write(JSONObject().put("method", "initialized").toString())
+            notify("initialized")
             if (resume != null) {
                 call("thread/resume", threadParams().put("threadId", resume)) { result, e ->
                     if (e == null && started(result) != null) return@call becomeReady()
@@ -439,10 +488,11 @@ class CodexLink(
             }
             emptyList()
         }
+        return emptyList()
     }
 
     /** How the thread works: in [cwd], asking before what isn't known to only read, told it's spoken to. */
-    private fun threadParams() = JSONObject().put("cwd", cwd).put("approvalPolicy", "untrusted").put("developerInstructions", VOICE_PROMPT)
+    private fun threadParams() = json("cwd" to cwd, "approvalPolicy" to "untrusted", "developerInstructions" to VOICE_PROMPT)
 
     private fun startThread() {
         call("thread/start", threadParams()) { result, error ->
@@ -453,41 +503,25 @@ class CodexLink(
 
     private fun started(result: JSONObject?) = result?.optJSONObject("thread")?.optString("id")?.takeIf { it.isNotEmpty() }?.also { thread = it }
 
-    private fun becomeReady(): List<LinkEvent> {
-        ready = true
-        next()
-        return listOf(LinkEvent.Ready)
-    }
-
-    override fun prompt(text: String) {
-        queue.addLast(text)
-        next()
-    }
-
-    private fun next() {
-        if (!ready || inFlight || queue.isEmpty()) return
-        inFlight = true
+    override fun startTurn(text: String) {
         message = null
         acts.clear()
-        val input = JSONArray().put(JSONObject().put("type", "text").put("text", queue.removeFirst()))
-        call("turn/start", JSONObject().put("threadId", thread).put("input", input)) { result, error ->
-            if (error != null) return@call ended(LinkEvent.Done(error = error.optString("message").take(200)))
+        call("turn/start", json("threadId" to thread, "input" to JSONArray().put(json("type" to "text", "text" to text)))) { result, error ->
+            if (error != null) return@call ended(LinkEvent.Done(error = error.optString("message")))
             turn = result?.optJSONObject("turn")?.optString("id")
             emptyList()
         }
     }
 
     private fun ended(done: LinkEvent.Done): List<LinkEvent> {
-        inFlight = false
         turn = null
-        next()
-        return listOf(done)
+        return finished(done)
     }
 
     override fun cancel() {
-        queue.clear()
+        dropQueued()
         val t = turn ?: return
-        call("turn/interrupt", JSONObject().put("threadId", thread).put("turnId", t)) { _, _ -> emptyList() }
+        call("turn/interrupt", json("threadId" to thread, "turnId" to t)) { _, _ -> emptyList() }
     }
 
     override fun answer(
@@ -497,106 +531,97 @@ class CodexLink(
         instead: String?,
     ): Boolean {
         val rpcId = asked.remove(id) ?: return false
-        val decision = if (!allow) "decline" else if (always) "acceptForSession" else "accept"
-        write(JSONObject().put("id", rpcId).put("result", JSONObject().put("decision", decision)).toString())
+        reply(rpcId, json("decision" to if (!allow) "decline" else if (always) "acceptForSession" else "accept"))
         return false
     }
 
-    override fun read(line: String): List<LinkEvent> {
-        val ev = runCatching { JSONObject(line) }.getOrNull() ?: return emptyList()
-        val method = ev.optString("method")
-        val params = ev.optJSONObject("params") ?: JSONObject()
-        // An answer to one of ours.
-        if (method.isEmpty() && ev.has("id")) {
-            val then = calls.remove(ev.optInt("id")) ?: return emptyList()
-            return then(ev.optJSONObject("result"), ev.optJSONObject("error"))
-        }
+    override fun handle(
+        method: String,
+        id: Any?,
+        params: JSONObject,
+    ): List<LinkEvent>? =
         when (method) {
             "item/agentMessage/delta" -> {
                 val item = params.optString("itemId")
                 val gap = if (message != null && message != item) "\n\n" else ""
                 message = item
-                return listOf(LinkEvent.Text(gap + params.optString("delta")))
+                listOf(LinkEvent.Text(gap + params.optString("delta")))
             }
             "item/started" -> {
-                val item = params.optJSONObject("item") ?: return emptyList()
-                val act = act(item) ?: return emptyList()
-                acts[item.optString("id")] = act
-                val images = if (item.optString("type") == "imageView") listOf(item.optString("path")) else emptyList()
-                return listOf(LinkEvent.Working, LinkEvent.Step(act, images))
+                val item = params.optJSONObject("item")
+                val act = item?.let(::act)
+                if (item == null || act == null) {
+                    emptyList()
+                } else {
+                    acts[item.optString("id")] = act
+                    val images = if (item.optString("type") == "imageView") listOf(item.optString("path")) else emptyList()
+                    listOf(LinkEvent.Working, LinkEvent.Step(act, images))
+                }
             }
             "turn/completed" -> {
                 val t = params.optJSONObject("turn") ?: JSONObject()
                 val status = t.optString("status")
                 val error = t.optJSONObject("error")?.optString("message")?.ifEmpty { null }
-                return ended(LinkEvent.Done(error = if (status == "failed") (error ?: "").take(200) else null, cancelled = status == "interrupted"))
+                ended(LinkEvent.Done(error = if (status == "failed") error ?: "" else null, cancelled = status == "interrupted"))
             }
             "error" ->
                 if (params.optBoolean("willRetry")) {
-                    return listOf(LinkEvent.Retrying(params.optJSONObject("error")?.optString("message").orEmpty().ifEmpty { "network" }))
+                    listOf(LinkEvent.Retrying(params.optJSONObject("error")?.optString("message").orEmpty().ifEmpty { "network" }))
+                } else {
+                    emptyList()
                 }
-            "item/commandExecution/requestApproval" -> {
-                val id = "c" + ev.opt("id")
-                asked[id] = ev.opt("id") ?: return emptyList()
-                val command = unwrap(params.optString("command"))
-                val act = acts[params.optString("itemId")] ?: Act(Act.Verb.Run, command.take(60))
-                return listOf(LinkEvent.Ask(id, act, command.take(400), Steps.alwaysKey("Bash", command)))
-            }
-            "item/fileChange/requestApproval" -> {
-                val id = "f" + ev.opt("id")
-                asked[id] = ev.opt("id") ?: return emptyList()
-                val act = acts[params.optString("itemId")] ?: Act(Act.Verb.Edit)
-                return listOf(LinkEvent.Ask(id, act, params.optString("reason").take(400), "codex:fileChange"))
-            }
-            else ->
-                // Its other questions (user input, MCP forms, more permissions): not something to answer by voice.
-                if (ev.has("id")) {
-                    write(JSONObject().put("id", ev.opt("id")).put("error", JSONObject().put("code", -32601).put("message", "$method isn't supported")).toString())
+            "item/commandExecution/requestApproval" ->
+                ask("c", id) {
+                    val command = unwrap(params.optString("command"))
+                    val act = acts[params.optString("itemId")] ?: Act(Act.Verb.Run, command.take(60))
+                    LinkEvent.Ask(it, act, command, Steps.commandKey(command))
                 }
+            "item/fileChange/requestApproval" ->
+                ask("f", id) { LinkEvent.Ask(it, acts[params.optString("itemId")] ?: Act(Act.Verb.Edit), params.optString("reason"), "codex:fileChange") }
+            // Its other questions (user input, MCP forms, more permissions): not something to answer by voice.
+            else -> null
         }
-        return emptyList()
+
+    /** A question with request [rpcId], kept for the answer under its own id ([prefix] and the request's). */
+    private fun ask(
+        prefix: String,
+        rpcId: Any?,
+        ask: (String) -> LinkEvent.Ask,
+    ): List<LinkEvent> {
+        if (rpcId == null) return emptyList()
+        val id = prefix + rpcId
+        asked[id] = rpcId
+        return listOf(ask(id))
     }
 
     /** A tool call item as an [Act]; null for what isn't one (its messages, reasoning). */
-    private fun act(item: JSONObject): Act? {
-        fun base(p: String) = p.trimEnd('/').substringAfterLast('/').ifEmpty { p }
-        return when (item.optString("type")) {
+    private fun act(item: JSONObject): Act? =
+        when (item.optString("type")) {
             "commandExecution" -> {
                 // What it understood the command to do, when that's one plain read, listing or search.
                 val action = item.optJSONArray("commandActions")?.objects()?.singleOrNull()
                 when (action?.optString("type")) {
-                    "read" -> Act(Act.Verb.Read, action.optString("name").ifEmpty { base(action.optString("path")) })
-                    "listFiles" -> Act(Act.Verb.Read, base(action.optString("path").ifEmpty { "." }))
+                    "read" -> Act(Act.Verb.Read, action.optString("name").ifEmpty { fileName(action.optString("path")) })
+                    "listFiles" -> Act(Act.Verb.Read, fileName(action.optString("path").ifEmpty { "." }))
                     "search" -> Act(Act.Verb.Search, action.optString("query").take(50))
                     else -> Act(Act.Verb.Run, unwrap(item.optString("command")).take(60))
                 }
             }
             "fileChange" -> {
-                val change = item.optJSONArray("changes")?.objects()?.firstOrNull() ?: return Act(Act.Verb.Edit)
+                val change = item.optJSONArray("changes")?.objects()?.firstOrNull()
                 val verb =
-                    when (change.optJSONObject("kind")?.optString("type")) {
+                    when (change?.optJSONObject("kind")?.optString("type")) {
                         "add" -> Act.Verb.Write
                         "delete" -> Act.Verb.Delete
                         else -> Act.Verb.Edit
                     }
-                Act(verb, base(change.optString("path")))
+                if (change == null) Act(Act.Verb.Edit) else Act(verb, fileName(change.optString("path")))
             }
             "webSearch" -> Act(Act.Verb.SearchWeb, item.optString("query").take(50))
-            "imageView" -> Act(Act.Verb.Read, base(item.optString("path")))
+            "imageView" -> Act(Act.Verb.Read, fileName(item.optString("path")))
             "mcpToolCall", "dynamicToolCall" -> Act(Act.Verb.Tool, item.optString("tool").take(60))
             else -> null
         }
-    }
-
-    private fun call(
-        method: String,
-        params: JSONObject,
-        then: (JSONObject?, JSONObject?) -> List<LinkEvent>,
-    ) {
-        val id = ++nextId
-        calls[id] = then
-        write(JSONObject().put("id", id).put("method", method).put("params", params).toString())
-    }
 
     companion object {
         /** The command inside Codex's shell wrapper: `/bin/bash -lc 'ls -la'` is `ls -la`. */
@@ -624,13 +649,12 @@ object Steps {
     fun label(
         name: String,
         input: JSONObject,
-    ): Act {
-        fun base(p: String) = p.trimEnd('/').substringAfterLast('/').ifEmpty { p }
-        return when (name) {
+    ): Act =
+        when (name) {
             "Bash" -> Act(Act.Verb.Run, input.optString("description").ifEmpty { input.optString("command") }.take(60))
-            "Read" -> Act(Act.Verb.Read, base(input.optString("file_path")))
-            "Write" -> Act(Act.Verb.Write, base(input.optString("file_path")))
-            "Edit", "NotebookEdit" -> Act(Act.Verb.Edit, base(input.optString("file_path")))
+            "Read" -> Act(Act.Verb.Read, fileName(input.optString("file_path")))
+            "Write" -> Act(Act.Verb.Write, fileName(input.optString("file_path")))
+            "Edit", "NotebookEdit" -> Act(Act.Verb.Edit, fileName(input.optString("file_path")))
             "Glob", "Grep" -> Act(Act.Verb.Search, input.optString("pattern").take(50))
             "WebSearch" -> Act(Act.Verb.SearchWeb, input.optString("query").take(50))
             "WebFetch" -> Act(Act.Verb.Read, input.optString("url").substringAfter("://").substringBefore('/'))
@@ -638,7 +662,6 @@ object Steps {
             "TodoWrite" -> Act(Act.Verb.Plan)
             else -> Act(Act.Verb.Tool, name.lowercase())
         }
-    }
 
     fun acpPaths(u: JSONObject): List<String> {
         val raw = u.optJSONObject("rawInput") ?: JSONObject()
@@ -654,7 +677,7 @@ object Steps {
         return when {
             kind == "execute" -> Act(Act.Verb.Run, raw.optString("description").ifEmpty { title.ifEmpty { raw.optString("command") } }.take(60))
             kind in setOf("read", "edit", "delete") && path != null ->
-                Act(mapOf("read" to Act.Verb.Read, "edit" to Act.Verb.Edit, "delete" to Act.Verb.Delete).getValue(kind), path.trimEnd('/').substringAfterLast('/'))
+                Act(mapOf("read" to Act.Verb.Read, "edit" to Act.Verb.Edit, "delete" to Act.Verb.Delete).getValue(kind), fileName(path))
             // An empty [Act.what] is "a tool".
             else -> Act(Act.Verb.Tool, title.ifEmpty { kind }.take(60))
         }
@@ -669,11 +692,14 @@ object Steps {
             .filter { it.isNotEmpty() }
             .toSet()
 
-    /** What an "always" answer allows: a tool, or for a command every program in it. */
+    /** What an "always" answer to a shell command allows: every program in it. */
+    fun commandKey(command: String) = "Bash:" + programs(command).sorted().joinToString(" ")
+
+    /** What an "always" answer allows: Claude's tool [name], or for its Bash tool every program in [command]. */
     fun alwaysKey(
         name: String,
         command: String,
-    ) = if (name == "Bash") "Bash:" + programs(command).sorted().joinToString(" ") else name
+    ) = if (name == "Bash") commandKey(command) else name
 
     /** Whether "always" answers so far cover [key]: for commands, each of their programs was allowed. */
     fun covered(
@@ -688,5 +714,14 @@ object Steps {
 }
 
 fun isImage(path: String?) = path != null && Regex("\\.(png|jpe?g|webp|gif)$", RegexOption.IGNORE_CASE).containsMatchIn(path)
+
+/** A path's last part, as a step names a file: `/root/w/a.png` is `a.png`. */
+internal fun fileName(path: String) = path.trimEnd('/').substringAfterLast('/').ifEmpty { path }
+
+/** The first of [keys] with a value that isn't empty; empty when none has one. */
+internal fun JSONObject.firstString(vararg keys: String) = keys.firstNotNullOfOrNull { k -> optString(k).takeIf { it.isNotEmpty() } } ?: ""
+
+/** A JSON object of [fields]; a null value leaves its field out. */
+internal fun json(vararg fields: Pair<String, Any?>) = JSONObject().apply { for ((k, v) in fields) put(k, v) }
 
 internal fun JSONArray.objects(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }

@@ -166,7 +166,7 @@ class AgentLinkTest {
                 LinkEvent.Step(Act(Act.Verb.Read, "notes.md")),
                 LinkEvent.Working,
                 LinkEvent.Step(Act(Act.Verb.Run, "rm -rf build && make")),
-                LinkEvent.Ask("c0", Act(Act.Verb.Run, "rm -rf build && make"), "rm -rf build && make", Steps.alwaysKey("Bash", "rm -rf build && make")),
+                LinkEvent.Ask("c0", Act(Act.Verb.Run, "rm -rf build && make"), "rm -rf build && make", Steps.commandKey("rm -rf build && make")),
                 LinkEvent.Text("\n\nDone."),
             ),
             events,
