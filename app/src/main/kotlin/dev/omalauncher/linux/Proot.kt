@@ -180,6 +180,12 @@ class Proot(
                 // (--link2symlink) those become symlinks into the store, and `mise cache clear` after installs and
                 // updates then breaks them (Grok: "no platform binary installed"). npm copies the files.
                 "MISE_NPM_PACKAGE_MANAGER=npm",
+                // uv hardlinks wheels out of its cache, and under proot (--link2symlink) those links become
+                // symlinks that a later cache clear breaks, or fail outright with EPERM (Hermes installs its
+                // dependencies with uv). uv copies instead. Hermes's pm strips ambient UV_* and reads
+                // /etc/uv/uv.toml, so this covers the invocations it does not wrap (install.sh's own uv) and
+                // the wrapped ones as soon as upstream forwards it: NousResearch/hermes-agent#122032.
+                "UV_LINK_MODE=copy",
                 // Coding agents come from mise and update with the system (SystemUpdates); updating themselves
                 // too would bypass that and leave a second copy on a phone that's short on storage.
                 "DISABLE_AUTOUPDATER=1",
