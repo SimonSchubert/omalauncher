@@ -862,7 +862,7 @@ class VoiceSession(
         private val LOGIN = Regex("log ?in|sign ?in|authenticat|api key|credential", RegexOption.IGNORE_CASE)
 
         /** The agents that speak ACP, by bin, with what starts them as an ACP server on stdio. */
-        private val ACP = mapOf("grok" to "grok agent stdio", "opencode" to "opencode acp")
+        private val ACP = mapOf("grok" to "grok agent stdio", "opencode" to "opencode acp", "copilot" to "copilot --acp")
 
         /**
          * Where an ACP agent's sessions work, when not home: OpenCode snapshots its folder with git before every

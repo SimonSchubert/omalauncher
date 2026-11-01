@@ -109,6 +109,14 @@ class AgentLinkTest {
         assertEquals("and again", written.last().getJSONObject("params").getJSONArray("prompt").getJSONObject(0).getString("text"))
     }
 
+    @Test fun acpDropsCopilotsFileNotice() {
+        val link = AcpLink(write, "copilot --acp")
+        fun chunk(text: String) = link.read(JSONObject().put("jsonrpc", "2.0").put("method", "session/update").put("params", JSONObject().put("update", JSONObject().put("sessionUpdate", "agent_message_chunk").put("content", JSONObject().put("type", "text").put("text", text)))).toString())
+        assertTrue(chunk("Info: /root/work/voicetest.txt").isEmpty())
+        assertEquals(listOf(LinkEvent.Text("Info: the file is ready.")), chunk("Info: the file is ready."))
+        assertEquals(listOf(LinkEvent.Text("I created it.")), chunk("I created it."))
+    }
+
     @Test fun acpResumesOrStartsOver() {
         val link = AcpLink(write, "grok agent stdio")
         link.open("old")

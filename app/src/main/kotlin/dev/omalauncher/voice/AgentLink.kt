@@ -220,7 +220,7 @@ class ClaudeLink(
 }
 
 /**
- * An agent over ACP, the Agent Client Protocol: JSON-RPC on stdio (`grok agent stdio`, `opencode acp`). One session; prompts go
+ * An agent over ACP, the Agent Client Protocol: JSON-RPC on stdio (`grok agent stdio`, `opencode acp`, `copilot --acp`). One session; prompts go
  * one at a time, a later one waiting for the one in flight. session/update notifications carry the reply and
  * tool calls, session/request_permission asks before a tool, session/load continues a conversation (its
  * replay of the old one isn't shown). ACP has no system prompt, so the first prompt of a conversation says
@@ -228,7 +228,7 @@ class ClaudeLink(
  */
 class AcpLink(
     write: (String) -> Unit,
-    /** The guest command that serves ACP on stdio: `grok agent stdio`, `opencode acp`. */
+    /** The guest command that serves ACP on stdio: `grok agent stdio`, `opencode acp`, `copilot --acp`. */
     private val serve: String,
     /** Where its sessions work: OpenCode snapshots this folder with git before each turn, so not all of home. */
     private val cwd: String = HOME,
@@ -356,7 +356,10 @@ class AcpLink(
     private fun update(u: JSONObject): List<LinkEvent> =
         when (u.optString("sessionUpdate")) {
             "agent_message_chunk" ->
-                u.optJSONObject("content")?.takeIf { it.optString("type") == "text" }?.let { listOf(LinkEvent.Text(it.optString("text"))) } ?: emptyList()
+                u.optJSONObject("content")?.takeIf { it.optString("type") == "text" }?.optString("text")
+                    // Copilot's note of the file a change it was allowed touched, sent as reply text: not to be read out.
+                    ?.takeUnless { NOTICE.matches(it) }
+                    ?.let { listOf(LinkEvent.Text(it)) } ?: emptyList()
             "tool_call" -> listOf(LinkEvent.Working, LinkEvent.Step(Steps.acpLabel(u), Steps.acpPaths(u).filter(::isImage)))
             else -> emptyList()
         }
@@ -386,6 +389,9 @@ class AcpLink(
 
     companion object {
         const val HOME = "/root"
+
+        /** A chunk that's a whole "Info: /path" line, Copilot's after an approved file change. */
+        private val NOTICE = Regex("Info: /\\S+\\s*")
     }
 }
 
