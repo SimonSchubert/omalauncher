@@ -220,15 +220,14 @@ class ClaudeLink(
 }
 
 /**
- * An agent over ACP, the Agent Client Protocol: JSON-RPC on stdio (`grok agent stdio`, `opencode acp`, `copilot --acp`). One session; prompts go
- * one at a time, a later one waiting for the one in flight. session/update notifications carry the reply and
- * tool calls, session/request_permission asks before a tool, session/load continues a conversation (its
- * replay of the old one isn't shown). ACP has no system prompt, so the first prompt of a conversation says
- * how to talk.
+ * An agent over ACP, the Agent Client Protocol: JSON-RPC on stdio. One session; prompts go one at a time, a
+ * later one waiting for the one in flight. session/update notifications carry the reply and tool calls,
+ * session/request_permission asks before a tool, session/load continues a conversation (its replay of the old
+ * one isn't shown). ACP has no system prompt, so the first prompt of a conversation says how to talk.
  */
 class AcpLink(
     write: (String) -> Unit,
-    /** The guest command that serves ACP on stdio: `grok agent stdio`, `opencode acp`, `copilot --acp`. */
+    /** The guest command that serves ACP on stdio, such as `grok agent stdio` or `kimi acp`. */
     private val serve: String,
     /** Where its sessions work: OpenCode snapshots this folder with git before each turn, so not all of home. */
     private val cwd: String = HOME,
