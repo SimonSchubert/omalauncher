@@ -496,13 +496,7 @@ private fun VoiceSettings(
     /** A sentence in the language replies are read in: its own words when the launcher has them, else its name. */
     fun sample() {
         val locale = speaker.locale
-        val text =
-            if (AppLanguage.supported.any { Locale.forLanguageTag(it).language == locale.language }) {
-                val config = android.content.res.Configuration(configuration).apply { setLocale(locale) }
-                context.createConfigurationContext(config).getString(R.string.voice_sample)
-            } else {
-                AppLanguage.name(locale.toLanguageTag())
-            }
+        val text = AppLanguage.stringIn(context, locale, R.string.voice_sample) ?: AppLanguage.name(locale.toLanguageTag())
         speaker.stop()
         speaker.speak(text)
     }

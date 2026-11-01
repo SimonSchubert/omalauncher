@@ -620,7 +620,7 @@ class VoiceSession(
                     heardBack = true
                     handOver(final = true)
                     afterTool = true
-                    if (System.currentTimeMillis() - lastSaid > PROGRESS_MS) say(str(R.string.voice_say_moment))
+                    if (System.currentTimeMillis() - lastSaid > PROGRESS_MS) say(spoken(R.string.voice_say_moment))
                     if (phase != Phase.Approval) phase = Phase.Working
                 }
                 is LinkEvent.Step -> {
@@ -651,7 +651,7 @@ class VoiceSession(
                     endReply()
                     saveSession()
                     if (prompted && e.error != null) {
-                        say(str(R.string.voice_say_failed))
+                        say(spoken(R.string.voice_say_failed))
                         notice = e.error.ifEmpty { str(R.string.voice_failed) }
                     } else if (prompted && !had && !e.cancelled) {
                         notice = str(R.string.voice_nothing_to_say, name)
@@ -672,7 +672,7 @@ class VoiceSession(
         }
     }
 
-    private fun announce(a: Approval) = say(str(R.string.voice_say_wants, name, a.said))
+    private fun announce(a: Approval) = say(spoken(R.string.voice_say_wants, name, said(a.act, aloud = true)))
 
     /** The agent's name, for what's shown and said. */
     private val name get() = agent?.name ?: str(R.string.voice_the_agent)
@@ -682,6 +682,15 @@ class VoiceSession(
         id: Int,
         vararg args: Any,
     ) = context.getString(id, *args)
+
+    /**
+     * Text said aloud: in the language replies are read in, when the launcher has its text in it, so a German voice
+     * doesn't read the launcher's English; else the launcher's.
+     */
+    private fun spoken(
+        id: Int,
+        vararg args: Any,
+    ) = AppLanguage.stringIn(context, speaker.locale, id, *args) ?: str(id, *args)
 
     /** A step as it's shown: "reading x.png". */
     fun shown(act: Act): String =
@@ -698,9 +707,16 @@ class VoiceSession(
             Act.Verb.Tool -> act.what.ifEmpty { str(R.string.voice_step_tool) }
         }
 
-    /** What it wants to do, after "Claude Code wants to": "read x.png". */
-    private fun said(act: Act): String =
-        when (act.verb) {
+    /** What it wants to do, after "Claude Code wants to": "read x.png"; [aloud], in the language it's said in. */
+    private fun said(
+        act: Act,
+        aloud: Boolean = false,
+    ): String {
+        fun str(
+            id: Int,
+            vararg args: Any,
+        ) = if (aloud) spoken(id, *args) else this.str(id, *args)
+        return when (act.verb) {
             Act.Verb.Run -> str(R.string.voice_do_run, act.what)
             Act.Verb.Read -> str(R.string.voice_do_read, act.what)
             Act.Verb.Write -> str(R.string.voice_do_write, act.what)
@@ -712,6 +728,7 @@ class VoiceSession(
             Act.Verb.Plan -> str(R.string.voice_do_plan)
             Act.Verb.Tool -> if (act.what.isEmpty()) str(R.string.voice_do_tool_unknown) else str(R.string.voice_do_tool, act.what)
         }
+    }
 
     /** Finished sentences to the voice as soon as they're complete; the rest when the reply ends. */
     private fun handOver(final: Boolean) {

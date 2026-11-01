@@ -126,6 +126,18 @@ object AppLanguage {
         Locale.getISOLanguages().mapNotNull { l -> runCatching { Locale(l).isO3Language to l }.getOrNull() }.toMap()
     }
 
+    /** String [id] in [locale] when the launcher has its text in that language, else null. */
+    fun stringIn(
+        context: Context,
+        locale: Locale,
+        id: Int,
+        vararg args: Any,
+    ): String? {
+        if (supported.none { Locale.forLanguageTag(it).language == locale.language }) return null
+        val config = Configuration(context.resources.configuration).apply { setLocale(locale) }
+        return context.createConfigurationContext(config).getString(id, *args)
+    }
+
     /** [tag]'s name in its own language: "English", "Indonesia". */
     fun name(tag: String): String {
         val locale = Locale.forLanguageTag(tag)
