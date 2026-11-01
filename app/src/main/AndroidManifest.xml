@@ -80,9 +80,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
-             websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
-             gone once left. Not exported: the system starts it, and other apps have no reason to. -->
         <!-- Opens a speech app's "speak now" screen for Speech and hands the words back; shows nothing itself. -->
         <activity
             android:name=".SpeakNowActivity"
@@ -91,6 +88,9 @@
             android:exported="false"
             android:taskAffinity=""
             android:theme="@style/Theme.Omalauncher.Dialog" />
+        <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
+             websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
+             gone once left. Not exported: the system starts it, and other apps have no reason to. -->
         <activity
             android:name=".PinShortcutActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
