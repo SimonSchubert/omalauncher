@@ -25,6 +25,14 @@ class WindowManager : WindowManagerHooks {
     lateinit var server: WaylandServer
     private val main = Handler(Looper.getMainLooper())
 
+    /** The app under the pointer draws its own cursor: the touchpad mode shows that instead of the launcher's arrow. */
+    var clientCursor by mutableStateOf(false)
+        private set
+
+    override fun cursorChanged(provided: Boolean) {
+        main.post { clientCursor = provided }
+    }
+
     var focused by mutableStateOf<XdgToplevel?>(null)
         private set
 

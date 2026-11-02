@@ -27,6 +27,9 @@ interface WindowManagerHooks {
     fun toplevelCreated(toplevel: XdgToplevel)
 
     fun toplevelDestroyed(toplevel: XdgToplevel)
+
+    /** The app under the pointer now draws its own cursor ([provided]), or stopped: the launcher's arrow steps aside. */
+    fun cursorChanged(provided: Boolean) {}
 }
 
 /**
@@ -129,6 +132,8 @@ class WaylandServer(
 
     /** Called with the lock held after [surface] committed: its window redraws on the next vsync. */
     fun surfaceCommitted(surface: Surface) {
+        // A cursor belongs to no window: redraw the one the pointer's over.
+        if (surface === input.cursor?.surface) input.pointerFocus?.let { toplevelOf(it)?.renderer }?.requestFrame()
         val renderer = toplevelOf(surface)?.renderer
         when {
             renderer != null -> renderer.requestFrame()
