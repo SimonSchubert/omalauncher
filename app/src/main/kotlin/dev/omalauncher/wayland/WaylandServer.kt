@@ -51,6 +51,7 @@ class WaylandServer(
             Global("zxdg_decoration_manager_v1", 1, ::DecorationManager),
             Global("zwp_text_input_manager_v3", 1, ::TextInputManager),
             Global("org_kde_kwin_server_decoration_manager", 1, ::ServerDecorationManager),
+            Global("zwp_primary_selection_device_manager_v1", 1, ::PrimarySelectionManager),
         )
 
     val clients = mutableListOf<Client>()
@@ -59,6 +60,7 @@ class WaylandServer(
     val popups = mutableListOf<XdgPopup>()
     val input = Input(this)
     val selection = Selection(this)
+    val primary = PrimarySelection(this)
 
     @Volatile
     var output = OutputInfo(1080, 1920, 2, 70, 150)
