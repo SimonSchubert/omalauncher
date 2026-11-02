@@ -1497,6 +1497,12 @@ class LangTest {
         compileError("widget {\n meta { owl: 17 }\n Box { onPull: refresh() } }").let { assertTrue(it, it.contains("onPull only works on Column and Grid")) }
     }
 
+    /** An Input of more lines wraps and grows with what's typed (owl 18). */
+    @Test fun inputLines() {
+        Compiler.compile("widget {\n meta { owl: 18 }\n state draft = \"\"\n Input { lines: 6; onChange: draft = value } }")
+        compileError("widget {\n meta { owl: 17 }\n Input { lines: 6 } }").let { assertTrue(it, it.contains("lines needs owl 18")) }
+    }
+
     /** ripple: false turns off the press shown on a node that takes taps (owl 14). */
     @Test fun rippleOff() {
         Compiler.compile("widget {\n meta { owl: 14 }\n state n = 0\n Box { ripple: false; onTap: n = n + 1 } }")
