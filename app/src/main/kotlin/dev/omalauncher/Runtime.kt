@@ -639,8 +639,8 @@ class Runtime(
         return wm.appWindows.firstOrNull { (it.appId.isNotEmpty() && app.matches(it.appId)) || it.title.equals(app.name, ignoreCase = true) }
     }
 
-    /** Whether [app] opens a Linux window; Files and the editor are the launcher's own screens. */
-    fun opensLinuxWindow(app: LinuxApp) = app.exec != FILES_COMMAND && app.exec != EDIT_COMMAND
+    /** Whether [app] opens a Linux window; Files, the editor and Voice are the launcher's own screens. */
+    fun opensLinuxWindow(app: LinuxApp) = app.exec != FILES_COMMAND && app.exec != EDIT_COMMAND && app.exec != VOICE_COMMAND
 
     /**
      * Whether the new [window] is [app]'s: as in [windowOf], or a terminal [launch] started under the app's name. Only
@@ -703,13 +703,14 @@ class Runtime(
     }
 
     /**
-     * The intent of the launcher's own screen [app] stands for (Files, the editor), in a task of its own, for opening it
+     * The intent of the launcher's own screen [app] stands for (Files, the editor, Voice), in a task of its own, for opening it
      * somewhere else than [launch] does, say in a split half; null for an app that opens a Linux window.
      */
     fun screenIntent(app: LinuxApp): Intent? =
         when (app.exec) {
             FILES_COMMAND -> Intent(context, FilesActivity::class.java)
             EDIT_COMMAND -> EditorActivity.intent(context, null)
+            VOICE_COMMAND -> Intent(context, VoiceActivity::class.java)
             else -> null
         }?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 

@@ -50,8 +50,11 @@ import dev.omalauncher.InstantActivity
 import dev.omalauncher.EditorActivity
 import dev.omalauncher.FilesActivity
 import dev.omalauncher.LinuxWindowActivity
+import dev.omalauncher.R
+import dev.omalauncher.VoiceActivity
 import dev.omalauncher.linux.EDIT_COMMAND
 import dev.omalauncher.linux.FILES_COMMAND
+import dev.omalauncher.linux.VOICE_COMMAND
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.matches
 import dev.omalauncher.ui.LauncherStyle
@@ -229,7 +232,7 @@ class TaskbarService : AccessibilityService() {
             val intent = info.baseIntent
             val handle = intent.data?.takeIf { it.scheme == LINUX_SCHEME }?.lastPathSegment ?: return@mapNotNull null
             if (visible && !info.isVisible) return@mapNotNull null
-            LinuxTask(LinuxWindow(handle, info.taskDescription?.label ?: "Linux"), info.taskId, intent)
+            LinuxTask(LinuxWindow(handle, info.taskDescription?.label ?: getString(R.string.activity_linux)), info.taskId, intent)
         }
 
     /**
@@ -657,7 +660,12 @@ class TaskbarService : AccessibilityService() {
         val SPLIT_KINDS = setOf(ZoneKind.SplitLeft, ZoneKind.SplitRight, ZoneKind.SplitTop, ZoneKind.SplitBottom)
 
         /** Our screens that open for a Linux catalog entry's command; see [appOfScreen]. */
-        val LINUX_SCREENS = mapOf(FilesActivity::class.java.name to FILES_COMMAND, EditorActivity::class.java.name to EDIT_COMMAND)
+        val LINUX_SCREENS =
+            mapOf(
+                FilesActivity::class.java.name to FILES_COMMAND,
+                EditorActivity::class.java.name to EDIT_COMMAND,
+                VoiceActivity::class.java.name to VOICE_COMMAND,
+            )
     }
 }
 
