@@ -234,20 +234,32 @@ internal fun InputNode(
         if (changed) onChange?.run(p.env, listOf(Str(v.text)))
     }
 
+    fun submit() {
+        onSubmit?.run(p.env, listOf(Str(field.text)))
+        if (clear) edit(TextFieldValue(""))
+        // Typed on a keyboard, the keys stay here, as on a soft keyboard Done puts it away.
+        if (inputMode.inputMode != InputMode.Keyboard) focus.clearFocus()
+    }
+
     BasicTextField(
         value = field,
         onValueChange = ::edit,
         modifier =
             (if (sized) mod else mod.fillMaxWidth())
                 .then(if (multiLine) Modifier.leavesFromEdgeLines { layout to field.selection } else Modifier.leavesUpDown())
-                // Enter sends where there's onSubmit, so Shift+Enter is the new line, as in chat apps.
+                // Enter sends where there's onSubmit, so Shift+Enter is the new line, as in chat apps. A keyboard's Enter has
+                // to be caught here: a field of more lines takes it as a new line and never as the keyboard's action.
                 .onPreviewKeyEvent { e ->
-                    val newLine = multiLine && onSubmit != null && e.key == Key.Enter && e.isShiftPressed
-                    if (newLine && e.type == KeyEventType.KeyDown) {
-                        val sel = field.selection
-                        edit(TextFieldValue(field.text.replaceRange(sel.min, sel.max, "\n"), TextRange(sel.min + 1)))
+                    val enter = multiLine && onSubmit != null && (e.key == Key.Enter || e.key == Key.NumPadEnter)
+                    if (enter && e.type == KeyEventType.KeyDown) {
+                        if (e.isShiftPressed) {
+                            val sel = field.selection
+                            edit(TextFieldValue(field.text.replaceRange(sel.min, sel.max, "\n"), TextRange(sel.min + 1)))
+                        } else {
+                            submit()
+                        }
                     }
-                    newLine
+                    enter
                 }
                 .focusRequester(requester)
                 .onFocusChanged {
@@ -272,12 +284,7 @@ internal fun InputNode(
             ),
         visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardActions =
-            KeyboardActions(onAny = {
-                onSubmit?.run(p.env, listOf(Str(field.text)))
-                if (clear) edit(TextFieldValue(""))
-                // Typed on a keyboard, the keys stay here, as on a soft keyboard Done puts it away.
-                if (inputMode.inputMode != InputMode.Keyboard) focus.clearFocus()
-            }),
+            KeyboardActions(onAny = { submit() }),
         decorationBox = { inner ->
             Box(Modifier.padding(vertical = 6.dp)) {
                 if (field.text.isEmpty()) BasicText(placeholder, style = style, maxLines = lines, color = ColorProducer { Palette.muted })

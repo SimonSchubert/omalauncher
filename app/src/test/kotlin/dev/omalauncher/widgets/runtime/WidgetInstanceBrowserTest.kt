@@ -7,7 +7,6 @@ import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.lang.Value
 import kotlinx.coroutines.flow.Flow
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -86,25 +85,17 @@ class WidgetInstanceBrowserTest {
             { errors += it },
         )
 
-    @Test fun thePageAskedForLongestAgoGivesWayAndSaysSoOnce() {
+    @Test fun aNodeKeepsItsPageWhileItsValuesStayTheSame() {
         val errors = ArrayList<String>()
         val w = widget(errors)
         val a = Any()
         val b = Any()
-        val c = Any()
 
         val first = w.browser(a, "https://a.example", false, 1.0)
         val second = w.browser(b, "https://b.example", false, 1.0)
-        // Asking again for a page it already has is no new page, and makes it the newest.
         assertSame(first, w.browser(a, "https://a.example", false, 1.0))
+        assertSame(second, w.browser(b, "https://b.example", false, 1.0))
         assertTrue(errors.isEmpty())
-
-        val third = w.browser(c, "https://c.example", false, 1.0)
-        // b waited longest, so its page ended; asking for it again builds a new one instead of handing back a closed one.
-        assertNotSame(second, w.browser(b, "https://b.example", false, 1.0))
-        assertSame(third, w.browser(c, "https://c.example", false, 1.0))
-        assertEquals(1, errors.size)
-        assertTrue(errors[0], errors[0].startsWith("a widget holds 2 Browser pages at once"))
     }
 
     @Test fun aChangedUrlEndsTheOldPageWithoutCountingAsANewOne() {

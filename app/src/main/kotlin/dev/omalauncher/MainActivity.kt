@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.ui.BrowserPages
 import dev.omalauncher.ui.ImagePicker
 import dev.omalauncher.ui.AskPermission
 import dev.omalauncher.ui.Palette
@@ -212,6 +213,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         runtime.widgets.homeStarted()
         runtime.screenStarted()
+        BrowserPages.started(true)
     }
 
     /** A terminal tile's keys held as home goes, like Super, would stay down for it: Android sends their lift elsewhere. */
@@ -232,6 +234,8 @@ class MainActivity : ComponentActivity() {
         runtime.usage.settle()
         runtime.widgets.homeStopped()
         runtime.screenStopped()
+        // Every Browser page's script waits, the ones on pages home isn't drawing too.
+        BrowserPages.started(false)
     }
 
     private fun shortcut(keyCode: Int): Boolean {

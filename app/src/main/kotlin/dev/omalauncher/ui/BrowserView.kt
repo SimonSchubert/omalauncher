@@ -38,9 +38,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.BuildConfig
 import dev.omalauncher.openUrl
 import dev.omalauncher.widgets.render.LocalHomeCovered
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.io.ByteArrayInputStream
 import kotlin.math.roundToInt
@@ -108,9 +105,6 @@ class EmbeddedBrowser internal constructor(
     /** Whether the tile can be seen: home is in front, nothing covers it, and its page of home is the one showing. */
     private var seen = true
 
-    /** Whether the launcher is started; while it's stopped every page's script waits, not only this one's. */
-    private var started = true
-
     /** Where the tile is, in window pixels, as if the home screen weren't lifted. */
     internal var bounds = Rect.Zero
 
@@ -129,6 +123,7 @@ class EmbeddedBrowser internal constructor(
         val v =
             view ?: create(host.context)?.also {
                 view = it
+                BrowserPages.live += this
                 load()
             } ?: return null
         if (this.holder === holder && v.parent === host) return v
@@ -140,7 +135,7 @@ class EmbeddedBrowser internal constructor(
             if (this.holder !== holder || v.parent === host) return@post
             host.addView(v, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             // Back on screen: a paused page's animations run again, unless home is covered or stopped.
-            if (seen && started) v.onResume()
+            if (seen && BrowserPages.started) v.onResume()
         }
         return v
     }
@@ -154,7 +149,7 @@ class EmbeddedBrowser internal constructor(
             TileWebView(context).also {
                 configure(it)
                 // Timers are paused for every WebView at once: one made after the last page went leaves them paused.
-                if (started) it.resumeTimers()
+                if (BrowserPages.started) it.resumeTimers() else it.pauseTimers()
                 it.webViewClient = Client()
                 it.webChromeClient = Chrome()
             }
@@ -176,21 +171,22 @@ class EmbeddedBrowser internal constructor(
         v.onPause()
     }
 
-    /**
-     * Whether the tile can be seen ([seen]) and the launcher is in front ([started]). Out of sight, the page's animations
-     * and media wait; with the launcher stopped (the screen off, another app open) its script waits too, which onPause
-     * alone doesn't do: a page with `js: true` would otherwise go on running, and fetching, behind everything.
-     */
-    internal fun shown(
-        seen: Boolean,
-        started: Boolean,
-    ) {
+    /** Whether the tile can be seen: out of sight, the page's animations and media wait. */
+    internal fun shown(seen: Boolean) {
         this.seen = seen
-        this.started = started
+        refresh()
+    }
+
+    /**
+     * The page as the tile and the launcher are now ([seen], [BrowserPages.started]). With the launcher stopped (the
+     * screen off, another app open) its script waits too, which onPause alone doesn't do: a page with `js: true` would
+     * otherwise go on running, and fetching, behind everything.
+     */
+    internal fun refresh() {
         val v = view ?: return
         // Global to every WebView in the app; each page says the same, as they share the launcher's lifecycle.
-        if (started) v.resumeTimers() else v.pauseTimers()
-        if (seen && started && holder != null) v.onResume() else v.onPause()
+        if (BrowserPages.started) v.resumeTimers() else v.pauseTimers()
+        if (seen && BrowserPages.started && holder != null) v.onResume() else v.onPause()
     }
 
     /** The tile was tapped: the page gets the focus, and with it the keyboard one of its fields asks for. */
@@ -230,6 +226,7 @@ class EmbeddedBrowser internal constructor(
     /** Ends the page (the widget was removed, or its url changed); a tab switch doesn't. */
     fun close() {
         closed = true
+        BrowserPages.live -= this
         // The tile lets go of it first: a destroyed view can't be cleared.
         tiles?.unfocused(this)
         holder = null
@@ -316,6 +313,7 @@ class EmbeddedBrowser internal constructor(
             detail: RenderProcessGoneDetail,
         ): Boolean {
             if (view !== this@EmbeddedBrowser.view) return true
+            BrowserPages.live -= this@EmbeddedBrowser
             tiles?.unfocused(this@EmbeddedBrowser)
             holder = null
             this@EmbeddedBrowser.view = null
@@ -385,6 +383,25 @@ class EmbeddedBrowser internal constructor(
 }
 
 /**
+ * Every Browser page that has a view, for what WebView keeps for the whole process: its timers, which run only while the
+ * launcher is started. Told by the launcher's own start and stop, not by a tile, so a page kept alive on a home page
+ * that isn't composed waits too. Main thread only.
+ */
+internal object BrowserPages {
+    val live = HashSet<EmbeddedBrowser>()
+
+    /** Whether the launcher is started; while it's stopped every page's script waits. */
+    var started = true
+        private set
+
+    fun started(on: Boolean) {
+        if (on == started) return
+        started = on
+        live.forEach { it.refresh() }
+    }
+}
+
+/**
  * A tile's page as a view: a WebView that takes no touch of its own until the tile is tapped, so the home screen's own
  * gestures still reach it: a swipe across the page turns the page, a long press lifts the tile, a tap outside lets go.
  * It has to be the view's own doing: an AndroidView's touches reach its view before Compose's pointer input does, and
@@ -416,13 +433,11 @@ fun BrowserView(
     }
     val tiles = browser.tiles
     val active = tiles != null && tiles.browser === browser
-    // Paused while home is stopped or the tile can't be seen: a page beside the one showing is still composed.
+    // Paused while the tile can't be seen: a page beside the one showing is still composed. The launcher stopping is
+    // [BrowserPages]'.
     val covered = LocalHomeCovered.current
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(browser, covered, lifecycle) {
-        combine(snapshotFlow { covered() }, lifecycle.currentStateFlow) { c, state -> !c to state.isAtLeast(Lifecycle.State.STARTED) }
-            .distinctUntilChanged()
-            .collect { (seen, started) -> browser.shown(seen, started) }
+    LaunchedEffect(browser, covered) {
+        snapshotFlow { !covered() }.distinctUntilChanged().collect(browser::shown)
     }
     // The tile's tab went away (its visible turned false) or the node did: out of sight, a page with the touches mustn't
     // keep them, or leave the home screen lifted for a tile that no longer shows.

@@ -167,8 +167,7 @@ class TerminalTiles(
         val window = term.window ?: return
         tile = null
         // Unfolded, two pages of home show at once: the tile tapped is the one that takes the keyboard and the touches.
-        browser?.clearFocus()
-        browser = null
+        releaseBrowser()
         wm.focus(window)
         keyboard?.show()
     }
@@ -197,8 +196,7 @@ class TerminalTiles(
         keyboard?.hide()
         field?.release()
         field = null
-        browser?.clearFocus()
-        browser = null
+        releaseBrowser()
     }
 
     /** [f] took focus, and with it the keyboard. */
@@ -207,8 +205,7 @@ class TerminalTiles(
         keyboard?.hide()
         tile = null
         // A page on another tile showing beside this one lets go.
-        browser?.clearFocus()
-        browser = null
+        releaseBrowser()
         field = f
     }
 
@@ -232,12 +229,21 @@ class TerminalTiles(
         if (browser === b) browser = null
     }
 
+    /** The page that has the touches lets go of them, and its field of the keyboard. */
+    private fun releaseBrowser() {
+        browser?.clearFocus()
+        browser = null
+    }
+
+    /** What the typing tile shows: its page or its terminal, measured in the window. */
+    private val surfaceBounds get() = browser?.bounds ?: active?.bounds
+
     /**
      * A press at window point [p]: outside the typing tile, it gives the home screen its touches back. The whole tile,
      * not only its terminal: a widget's own keys beside its Terminal press keys in it rather than taking the keyboard away.
      */
     fun pressAt(p: Offset) {
-        val bounds = typingBounds(field != null, tile, browser?.bounds ?: active?.bounds) ?: return
+        val bounds = typingBounds(field != null, tile, surfaceBounds) ?: return
         if (extraKeys?.contains(p) == true) return
         if (!bounds.translate(0f, -lift).contains(p)) deactivate()
     }
@@ -258,7 +264,7 @@ class TerminalTiles(
         top: Float,
         minHeight: Float,
     ): Float {
-        val bounds = typingBounds(field != null, tile, browser?.bounds ?: active?.bounds)
+        val bounds = typingBounds(field != null, tile, surfaceBounds)
         val (l, c) = bounds?.let { liftAndCut(it, imeHeight, imeTarget, windowHeight, margin, top, minHeight) } ?: (0f to 0f)
         lift = l
         cut = c

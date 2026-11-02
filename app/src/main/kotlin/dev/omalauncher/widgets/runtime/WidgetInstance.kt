@@ -1231,11 +1231,11 @@ class WidgetInstance(
     private val terminals = HashMap<Any, EmbeddedTerminal>()
 
     /**
-     * Browser nodes' pages, by node, the one asked for longest ago first. They keep their page while
-     * the tile is off screen, and end with the widget, when their url, script or zoom changes, or when
-     * a new page needs the room: a widget keeps at most [MAX_BROWSERS] of them alive.
+     * Browser nodes' pages, by node. They keep their page while the tile is off screen, and end with the widget or when
+     * their url, script or zoom changes. Two at most: the compiler allows two Browsers in a file, never in a `for` or a
+     * component, so each node has one page.
      */
-    private val browsers = LinkedHashMap<Any, EmbeddedBrowser>(4, 0.75f, true)
+    private val browsers = HashMap<Any, EmbeddedBrowser>()
 
     fun terminal(
         node: Any,
@@ -1252,21 +1252,9 @@ class WidgetInstance(
         js: Boolean,
         zoom: Double,
     ): EmbeddedBrowser {
-        // Asked for again, so it's the last to give way to a new page.
         browsers[node]?.let {
             if (it.url == url && it.js == js && it.zoom == zoom) return it
             it.close()
-            browsers.remove(node)
-        }
-        // A new page over the limit ends the one asked for longest ago, so a component shown twice or a
-        // `for` over a list can't pile up web views. The node asking for one is never the one that goes.
-        var ended = false
-        while (browsers.isNotEmpty() && browsers.size >= MAX_BROWSERS) {
-            browsers.remove(browsers.keys.first())?.close()
-            ended = true
-        }
-        if (ended) {
-            report("a widget holds $MAX_BROWSERS Browser pages at once, each a web view of its own: the one asked for longest ago was closed to make room; show another page by setting a Browser's url instead")
         }
         return services.browser(url, js, zoom).also { browsers[node] = it }
     }
@@ -1424,9 +1412,6 @@ class WidgetInstance(
 
         /** Distinct sprites kept per widget. */
         private const val MAX_SPRITES = 64
-
-        /** Browser pages alive at once: each is a web view of its own, and two is as many as a phone can carry. */
-        private const val MAX_BROWSERS = 2
 
         /** How soon a failed http fetch is tried again, if its interval is longer. */
         private const val RETRY_MS = 30_000L

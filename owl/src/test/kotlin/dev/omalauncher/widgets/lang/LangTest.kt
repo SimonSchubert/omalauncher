@@ -2134,6 +2134,29 @@ class LangTest {
         assertTrue(e, e.contains("setting a Browser's url instead"))
     }
 
+    @Test fun aBrowserGoesOnATileOrAFaceOnce() {
+        val page = "Browser { url: \"https://a.test/\" }"
+        // A face's own page is fine, as a tile's is.
+        assertEquals(listOf("browser GET https://a.test/"), Compiler.compile("face {\n $owl18\n $page\n}").commands)
+        // Its page is the node's: drawn once per item or per use, the copies would close each other's.
+        val inFor = browserError("state xs = [1, 2]\n Column {\n for x in xs { $page }\n }")
+        assertTrue(inFor, inFor.contains("a Browser can't go inside a for or a component"))
+        val inComponent = browserError("component Page() { $page }\n Page { }")
+        assertTrue(inComponent, inComponent.contains("a Browser can't go inside a for or a component"))
+        // Off home nothing gives its touches back or takes Back for its history.
+        val elsewhere = "a Browser goes on a widget's tile or a face"
+        assertTrue(browserError("Text { text: \"x\" }\n screen { $page }").contains(elsewhere))
+        assertTrue(compileError("app {\n $owl18\n $page\n}").contains(elsewhere))
+        assertTrue(compileError("panel {\n $owl18\n $page\n}").contains(elsewhere))
+    }
+
+    @Test fun webWithoutABrowserDoesntCompile() {
+        val e = browserError("Button { text: \"‹\"; onTap: web(\"back\") }")
+        assertTrue(e, e.contains("web(...) steers this file's Browser, and it has none"))
+        // Written before the Browser it steers is fine: it's checked once the whole file is.
+        browserWidget("Column {\n Button { text: \"‹\"; onTap: web(\"back\") }\n Browser { url: \"https://a.test/\" }\n }")
+    }
+
     @Test fun webSteersABrowser() {
         val p = browserWidget("state t = \"\"\n Browser { url: \"https://a.test/\"; onNavigate: t = value; onTap: web(\"reload\") }")
         val host = TestHost(p)

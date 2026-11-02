@@ -27,7 +27,8 @@ widget "lobsters" {
   out where it starts and put the part that changes through `enc()`. A link in the page that goes to one of
   those loads nothing; `tel:` and `mailto:` open the app for them, as `url(...)` does. The store lists the
   page as `browser GET https://…`, the way it lists an image.
-- Script is off unless the node says `js: true`, and DOM storage comes with it. A page gets no JavaScript
+- Script is off unless the node says `js: true`, and DOM storage comes with it. Many sites need it: one
+  behind a bot check ("making sure you're not a bot") never gets past it without script. A page gets no JavaScript
   bridge, can't reach this phone's files or a `content://` provider, opens no second window, and plays no
   sound before a tap. An https page can't pull in `http://` either.
 - `zoom` is the page's text size, 1 by default and kept between 0.5 and 3.
@@ -39,7 +40,11 @@ widget "lobsters" {
   `onProgress` how much has loaded, 0 to 1.
 - `web("back")` steers it, and so do `"forward"`, `"reload"` and `"stop"`. A handler names no node, so
   `web(...)` steers every Browser in the file.
-- Two Browsers at most in a file: each is a web view of its own, and a tile has room for two.
+- Two Browsers at most in a file: each is a web view of its own, and a tile has room for two. A Browser
+  goes on a widget's tile or a face, not in a `screen { }`, an app, a panel or the key bar, and not inside
+  a `for` or a component: its page belongs to the node, so copies would close each other's. To show one of
+  several pages, let a state choose the url: `url: tab == "news" ? "https://lobste.rs/" : "https://example.com/"`.
+- `web(...)` in a file without a Browser doesn't compile.
 - The page keeps its place while the tile is off screen. It starts again when its `url`, `js` or `zoom`
   changes, and ends with the widget. Out of sight its animations and media wait, and while the launcher
   is behind another app or the screen is off its script waits too.
@@ -72,7 +77,7 @@ face "work" {
 }
 ```
 
-`examples/45-browser.owl` is the first one with back, forward and reload, ready to move up into
+`examples/46-browser.owl` is the first one with back, forward and reload, ready to move up into
 `widgets/` and use.
 
 A tile's page is deliberately closed to a developer: no `http://`, no debugging socket. Working on a

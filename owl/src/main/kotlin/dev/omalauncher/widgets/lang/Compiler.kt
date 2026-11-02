@@ -239,6 +239,15 @@ class Compiler private constructor(
 
     /** Browsers so far, against [MAX_BROWSERS]. */
     private var browsers = 0
+
+    /** Where the first web(...) is, checked against [browser] once every node is compiled. */
+    private var webAt: Int? = null
+
+    /**
+     * Inside a `for` or a component's body: what's written there once is drawn as many times as it's used, every copy
+     * the same node. A Browser can't go there: its page belongs to the node, so the copies would close each other's.
+     */
+    private var repeated = 0
     private var nodes = 0
     private var maxNodes = MAX_NODES
 
@@ -377,7 +386,7 @@ class Compiler private constructor(
                 since(FACE_EDGE, p.pos)
                 ((p.value as? Expr.Lit)?.value as? Bool)?.v ?: fail("edge is true or false, not an expression", p.pos)
             } ?: false
-        checkLevel(level)
+        finish(level)
 
         return Program(
             name = ast.name ?: "widget",
@@ -414,8 +423,10 @@ class Compiler private constructor(
     }
 
     /** Declared, so a launcher too old for a feature says "update the launcher" instead of failing on an unknown name. */
-    private fun checkLevel(level: Int) {
+    /** Checks what can only be told once the whole file is compiled: the level it declares, and a web(...) with no page to steer. */
+    private fun finish(level: Int) {
         needs?.let { (v, feature, pos) -> if (level < v) fail("$feature needs owl $v: add meta { owl: $v }", pos) }
+        webAt?.let { if (!browser) fail("web(...) steers this file's Browser, and it has none: add Browser { url: \"https://host/page\" }", it) }
     }
 
     /**
@@ -472,7 +483,7 @@ class Compiler private constructor(
         val title = body.props.firstOrNull { it.name == "title" }?.let { ex(it.value, root) }
         val back = backProp?.let { ex(it.value, root) }
         val onBack = onBackHandler?.let { handler(it, root) }
-        checkLevel(level)
+        finish(level)
         return Program(
             name = ast.name ?: "app",
             meta = meta,
@@ -546,7 +557,7 @@ class Compiler private constructor(
                 since(PANEL_KEYBOARD, it.pos)
                 ((it.value as? Expr.Lit)?.value as? Bool)?.v ?: fail("keyboard is true or false, not an expression", it.pos)
             } ?: true
-        checkLevel(level)
+        finish(level)
         return Program(
             name = ast.name ?: "panel",
             meta = meta,
@@ -595,7 +606,7 @@ class Compiler private constructor(
         val tree = items(body.items, root, Children.UI)
         if (tree.isEmpty()) fail("a key bar needs at least one node, like Button { text: \"esc\"; onPress: pressKey(\"esc\") }", 0)
         (screenAction ?: openScreen)?.let { fail("screen() and close() open and close a widget's screen { }; the key bar comes and goes with the keyboard", it) }
-        checkLevel(level)
+        finish(level)
         return Program(
             name = ast.name ?: "keybar",
             meta = meta,
@@ -1026,7 +1037,12 @@ class Compiler private constructor(
         if (body.props.isNotEmpty() || body.handlers.isNotEmpty()) fail("a component's body holds nodes; put properties on a node inside it", d.pos)
         val scope = Scope(root, d.params.map { it.first })
         val defaults = d.params.map { (_, def) -> def?.let { ex(it, root) } }
-        return Component(d.params.map { it.first }, defaults, items(body.items, scope, Children.UI))
+        repeated++
+        try {
+            return Component(d.params.map { it.first }, defaults, items(body.items, scope, Children.UI))
+        } finally {
+            repeated--
+        }
     }
 
     // Items
@@ -1073,7 +1089,14 @@ class Compiler private constructor(
                 noProps(it.body, "for")
                 val list = ex(it.list, scope)
                 val inner = Scope(scope, listOfNotNull(it.name, it.index ?: "\u0000index"))
-                WNode.For(list, it.key?.let { k -> ex(k, inner) }, items(it.body.items, inner, mode), it.pos)
+                repeated++
+                val body =
+                    try {
+                        items(it.body.items, inner, mode)
+                    } finally {
+                        repeated--
+                    }
+                WNode.For(list, it.key?.let { k -> ex(k, inner) }, body, it.pos)
             }
             is Item.Let -> error("lets are gathered by items()")
             is Item.Call -> {
@@ -1189,6 +1212,11 @@ class Compiler private constructor(
         }
         if (n.type == "Browser") {
             browser = true
+            if (repeated > 0) fail("a Browser can't go inside a for or a component: its page is the node's, so each copy would close the others'; write it out, two at most", n.pos)
+            // A home tile's or a face's only: elsewhere nothing gives its touches back to home or lets Back reach its history.
+            if (inScreen != false || (ast.kind != OwlKind.Widget && ast.kind != OwlKind.Face)) {
+                fail("a Browser goes on a widget's tile or a face, not in a screen { }, an app, a panel or the key bar", n.pos)
+            }
             if (++browsers > MAX_BROWSERS) {
                 fail("a widget has room for $MAX_BROWSERS Browsers, each a web view of its own: show another page by setting a Browser's url instead", n.pos)
             }
@@ -1378,6 +1406,7 @@ class Compiler private constructor(
                     if ("${call.name}(\"$c\")" in SINCE) since("${call.name}(\"$c\")", call.pos)
                 }
                 since(call.name, call.pos)
+                if (call.name == "web" && webAt == null) webAt = call.pos
                 // notification(...) with one value or three is a word from owl 13, even when the word isn't written out.
                 if (call.name == "notification" && call.args.size != 2) since("notification(\"action\")", call.pos)
                 // A written-out brightness; one from a value, like a Slider's, can't be told from on and off here.
