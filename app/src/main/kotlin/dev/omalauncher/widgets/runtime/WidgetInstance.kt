@@ -589,6 +589,8 @@ class WidgetInstance(
             return report("$name(...) works in handlers like onPress, or in on said.final for what android.speech heard, not in another trigger")
         }
         if (name == "pickImages" && inTrigger) return report("pickImages() works in onTap, not in a trigger")
+        // The permission dialog, like the microphone's, only for a touch.
+        if (name == "location" && inTrigger) return report("location(\"request\") works in onTap, not in a trigger")
         val key = args.firstOrNull().textOrNull()
         // The microphone, like the keys, only from a touch; stopping it from anywhere.
         if (name == "speech" && inTrigger && key !in SPEECH_ANYWHERE) return report("speech(\"$key\") works in onTap, not in a trigger")

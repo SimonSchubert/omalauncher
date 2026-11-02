@@ -249,6 +249,7 @@ class WidgetServices(
             "alarm" -> alarm.updates()
             "modes" -> modes.updates()
             "sim" -> sim.updates()
+            "location" -> runtime.location.updates()
             // Both read Compose state: the app list and its usage, the installed agents and the one picked.
             "apps" -> snapshotFlow { apps() }
             "agents" -> snapshotFlow { agents() }
@@ -664,6 +665,8 @@ class WidgetServices(
             "typeText" -> return runtime.keyboard.type(arg)
             "latch" -> return runtime.keyboard.latch(arg, args.getOrNull(1).textOrNull())
             "pickImages" -> return runtime.keyboard.pickImages()
+            // Nothing to refresh: the source follows the grant itself.
+            "location" -> return runtime.location.request()
         }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.

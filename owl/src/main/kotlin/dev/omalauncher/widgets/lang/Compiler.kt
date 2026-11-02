@@ -892,6 +892,7 @@ class Compiler private constructor(
                 if (e.name == "recent") commands += "read the recently opened apps"
                 if (e.name == "drawer") commands += "read the launcher's apps (names and icons)"
                 if (e.name == "speech") commands += "listen through the microphone after a tap, and read what you say"
+                if (e.name == "location") commands += "read the phone's approximate location, once you allow it"
                 Global.Source(d.name, "android.${e.name}", null, (every ?: 60.0).coerceAtLeast(1.0), false, 0)
             }
             else -> fail("a source is cmd(\"...\"), stream(\"...\"), http(\"...\"), file(\"...\"), clock, or android.${ANDROID.joinToString("/")}", e.pos)
@@ -1416,6 +1417,11 @@ class Compiler private constructor(
                     }
                     // The microphone opens only for a touch, never on a timer or a fetched value.
                     if (TriggerKind.entries.any { it.word == handlerName } && word != null && word !in SPEECH_ANYWHERE) fail("speech(\"$word\") works in onTap, not in a trigger; stop and cancel work anywhere", call.pos)
+                }
+                if (call.name == "location") {
+                    // The permission dialog covers the widget before the finger lifts, and comes only for a touch.
+                    if (handlerName == "onPress" || handlerName == "onRelease") fail("location(\"request\") opens Android's permission dialog over the widget before the finger lifts: put it in onTap", call.pos)
+                    if (TriggerKind.entries.any { it.word == handlerName }) fail("location(\"request\") works in onTap, not in a trigger: Android asks only when you tap", call.pos)
                 }
                 if (call.name == "latch") (args.getOrNull(1)?.const as? Str)?.v?.let { if (it !in KeyNames.hows) fail("latch's second value is ${KeyNames.hows.joinToString()}", call.args[1].pos) }
                 if (call.name == "screen" || call.name == "close") screenAction = screenAction ?: call.pos

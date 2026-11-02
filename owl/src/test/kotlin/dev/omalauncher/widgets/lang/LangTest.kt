@@ -1227,6 +1227,26 @@ class LangTest {
         assertFalse(Compiler.compile(other).triggers.single().dictation)
     }
 
+    @Test fun androidLocationAskedForOnATap() {
+        val src = "widget {\n meta { owl: 18 }\n source here = android.location\n Text { text: here.available ? fixed(here.lat, 2) + \",\" + fixed(here.lon, 2) : \"where?\"; onTap: location(\"request\") } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.location", (p.globals.single() as Global.Source).kind)
+        assertEquals("read the phone's approximate location, once you allow it", p.commands.single())
+        val host = TestHost(p)
+        (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("location request"), host.actions)
+        assertTrue(compileError(src.replace("owl: 18", "owl: 17")).contains("needs owl 18"))
+        assertTrue(compileError(src.replace("\"request\"", "\"open\"")).contains("location takes request"))
+        assertTrue(compileError(src.replace("onTap: location", "text: location")).isNotEmpty())
+        // The permission dialog only for a tap: not as the finger goes down, not on a timer or a fetched value.
+        for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
+        assertTrue(compileError(src.replace(" Text {", " every 1m { location(\"request\") }\n Text {")).contains("not in a trigger"))
+        // A widget's own name for something else still compiles.
+        Compiler.compile("widget {\n meta { owl: 18 }\n let location = \"home\"\n Text { text: location } }")
+        // The store's reviewer sees it flagged.
+        assertEquals(listOf("knows roughly where the phone is; check where it sends that"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
+    }
+
     @Test fun keyNamesAndCombos() {
         assertEquals(KeyNames.Combo(1, emptyList()), KeyNames.combo("esc"))
         assertEquals(KeyNames.Combo(46, listOf(29)), KeyNames.combo("ctrl+c"))

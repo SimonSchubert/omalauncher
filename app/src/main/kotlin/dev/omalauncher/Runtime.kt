@@ -63,6 +63,7 @@ import dev.omalauncher.widgets.WidgetSpec
 import dev.omalauncher.widgets.app
 import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.runtime.Dictation
+import dev.omalauncher.widgets.runtime.PhoneLocation
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -106,6 +107,9 @@ class Runtime(
 
     /** Widgets' speech(...) and android.speech. */
     val dictation = Dictation(context)
+
+    /** Widgets' location("request") and android.location. */
+    val location = PhoneLocation(context)
 
     /** The voice screen's replies, in the phone's voice. */
     val speaker = Speaker(context)

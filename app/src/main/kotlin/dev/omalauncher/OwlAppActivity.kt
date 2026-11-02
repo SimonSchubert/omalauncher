@@ -1,5 +1,6 @@
 package dev.omalauncher
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -10,7 +11,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
-import dev.omalauncher.ui.MicPermission
+import dev.omalauncher.ui.AskPermission
 import dev.omalauncher.ui.OwlAppWindow
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.holdsKeys
@@ -24,7 +25,8 @@ import dev.omalauncher.widgets.render.LocalInputFocus
  */
 class OwlAppActivity : InstantActivity() {
     private var name: String? = null
-    private val mic = MicPermission(this)
+    private val mic = AskPermission(this, Manifest.permission.RECORD_AUDIO)
+    private val place = AskPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION, orSettings = true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,11 +65,14 @@ class OwlAppActivity : InstantActivity() {
     override fun onResume() {
         super.onResume()
         runtime.dictation.askMic = mic::ask
+        runtime.location.ask = place::ask
+        runtime.location.recheck()
     }
 
     override fun onPause() {
         super.onPause()
         runtime.dictation.askMic = null
+        runtime.location.ask = null
     }
 
     override fun onStop() {

@@ -3,13 +3,13 @@ widget "today" {
   order: 1
   size: 3x3
   minSize: 2x2
-  meta { description: "The date and the weather where you are, by IP or a city you type. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.7"; license: "MIT"; category: "world"; owl: 16 }
+  meta { description: "The date and the weather where you are: a city you type, or the phone's location once you allow it, or else by IP. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.8"; license: "MIT"; category: "world"; owl: 18 }
 
   // What it says, in the phone's language where it has a set. wttr names the sky and the moon in English, and
   // its own Indonesian misses newer conditions, so other languages name them from wttr's codes.
   strings {
     en {
-      title: "weather"; loading: "weather…"; offline: "weather offline"; city: "city · empty = auto"
+      title: "weather"; loading: "weather…"; offline: "weather offline"; city: "city · empty = auto"; here: "use my location"
       feels: "feels"; humidity: "humidity"; rainToday: "rain today"; uv: "uv index"; pressure: "pressure"
       visibility: "visibility"; next24: "next 24 hours"; now: "now"; days: "3 days"; today: "today"
       sunrise: "sunrise"; sunset: "sunset"; moon: "moon"; kmh: "km/h"; yr: "open yr.no ↗"
@@ -19,7 +19,7 @@ widget "today" {
       phase: (phase, lit) => "${lower(phase)} · ${lit}% lit"
     }
     id {
-      title: "cuaca"; loading: "cuaca…"; offline: "cuaca offline"; city: "kota · kosong = otomatis"
+      title: "cuaca"; loading: "cuaca…"; offline: "cuaca offline"; city: "kota · kosong = otomatis"; here: "pakai lokasi saya"
       feels: "terasa"; humidity: "kelembapan"; rainToday: "hujan hari ini"; uv: "indeks uv"; pressure: "tekanan"
       visibility: "jarak pandang"; next24: "24 jam ke depan"; now: "kini"; days: "3 hari"; today: "hari ini"
       sunrise: "terbit"; sunset: "terbenam"; moon: "bulan"; kmh: "km/jam"; yr: "buka yr.no ↗"
@@ -52,7 +52,7 @@ widget "today" {
       }, phase, lower(phase)) + " · ${lit}% terang"
     }
     es {
-      title: "clima"; loading: "clima…"; offline: "clima sin conexión"; city: "ciudad · vacío = auto"
+      title: "clima"; loading: "clima…"; offline: "clima sin conexión"; city: "ciudad · vacío = auto"; here: "usar mi ubicación"
       feels: "sensación"; humidity: "humedad"; rainToday: "lluvia hoy"; uv: "índice uv"; pressure: "presión"
       visibility: "visibilidad"; next24: "próximas 24 horas"; now: "ahora"; days: "3 días"; today: "hoy"
       sunrise: "amanecer"; sunset: "atardecer"; moon: "luna"; kmh: "km/h"; yr: "abrir yr.no ↗"
@@ -85,7 +85,7 @@ widget "today" {
       }, phase, lower(phase)) + " · ${lit}% iluminada"
     }
     pt {
-      title: "clima"; loading: "clima…"; offline: "clima offline"; city: "cidade · vazio = auto"
+      title: "clima"; loading: "clima…"; offline: "clima offline"; city: "cidade · vazio = auto"; here: "usar minha localização"
       feels: "sensação"; humidity: "umidade"; rainToday: "chuva hoje"; uv: "índice uv"; pressure: "pressão"
       visibility: "visibilidade"; next24: "próximas 24 horas"; now: "agora"; days: "3 dias"; today: "hoje"
       sunrise: "nascer do sol"; sunset: "pôr do sol"; moon: "lua"; kmh: "km/h"; yr: "abrir yr.no ↗"
@@ -118,7 +118,7 @@ widget "today" {
       }, phase, lower(phase)) + " · ${lit}% iluminada"
     }
     de {
-      title: "wetter"; loading: "wetter…"; offline: "wetter offline"; city: "stadt · leer = auto"
+      title: "wetter"; loading: "wetter…"; offline: "wetter offline"; city: "stadt · leer = auto"; here: "meinen standort nutzen"
       feels: "gefühlt"; humidity: "luftfeuchte"; rainToday: "regen heute"; uv: "uv-index"; pressure: "luftdruck"
       visibility: "sichtweite"; next24: "nächste 24 stunden"; now: "jetzt"; days: "3 tage"; today: "heute"
       sunrise: "aufgang"; sunset: "untergang"; moon: "mond"; kmh: "km/h"; yr: "yr.no öffnen ↗"
@@ -151,7 +151,7 @@ widget "today" {
       }, phase, lower(phase)) + " · ${lit}% beleuchtet"
     }
     zh {
-      title: "天气"; loading: "天气…"; offline: "获取不到天气"; city: "城市 · 留空 = 自动"
+      title: "天气"; loading: "天气…"; offline: "获取不到天气"; city: "城市 · 留空 = 自动"; here: "使用我的位置"
       feels: "体感"; humidity: "湿度"; rainToday: "今日降水"; uv: "紫外线指数"; pressure: "气压"
       visibility: "能见度"; next24: "未来 24 小时"; now: "现在"; days: "未来 3 天"; today: "今天"
       sunrise: "日出"; sunset: "日落"; moon: "月亮"; kmh: "km/h"; yr: "打开 yr.no ↗"
@@ -195,10 +195,15 @@ widget "today" {
   state city = "" persist
   // Blank follows the country. A tap on the degree letter stores C or F.
   state unitChoice = "" persist
-  // The city, percent-encoded so "/", "?", "&" or "#" in it can't break the URL. Empty means located by IP.
+  // The city, percent-encoded so "/", "?", "&" or "#" in it can't break the URL.
   let q = city.replace("%", "%25").replace("+", "%2B").replace("/", "%2F").replace("?", "%3F").replace("#", "%23").replace("&", "%26").replace("'", "%27").replace(" ", "+")
+  // The phone's place, once a tap on the screen's "use my location" has allowed it.
+  source here = android.location
+  // A typed city wins; without one, the phone's place, to two decimals (about the kilometre a coarse fix knows), else
+  // "" for wttr's guess from the IP. Null while the source starts, so it doesn't fetch the IP's weather first.
+  let at = city != "" ? q : here == null ? null : here.available ? "${fixed(here.lat, 2)},${fixed(here.lon, 2)}" : ""
   // One request. Icons and °F countries match omarchy's weather panel.
-  source wx = http("https://wttr.in/${q}?format=j1") every 30m timeout 10s json
+  source wx = http(at == null ? null : "https://wttr.in/${at}?format=j1") every 30m timeout 10s json
   let cur = wx.current_condition[0]
   let day = wx.weather[0]
   let area = wx.nearest_area[0]
@@ -349,6 +354,10 @@ widget "today" {
       text: city
       placeholder: str.city
       onSubmit: { city = trim(value); refresh() }
+    }
+    // Asked only from here: the tile never puts up Android's dialog on its own.
+    if here != null && !here.granted {
+      Text { text: str.here; style: body; color: accent; maxLines: 1; padding: [0, 6]; onTap: location("request") }
     }
     if cur == null {
       Text { text: wx == null ? str.loading : str.offline; style: body; color: muted }
