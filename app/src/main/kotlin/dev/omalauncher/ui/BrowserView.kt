@@ -2,12 +2,15 @@ package dev.omalauncher.ui
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.webkit.CookieManager
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -32,6 +35,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.BuildConfig
 import dev.omalauncher.openUrl
+import java.io.ByteArrayInputStream
 import kotlin.math.roundToInt
 
 /**
@@ -105,15 +109,15 @@ class EmbeddedBrowser internal constructor(
     internal fun attach(
         host: ViewGroup,
         holder: Any,
-    ): TileWebView {
+    ): TileWebView? {
+        // A page closed while its tile still shows (a third page evicted it) stays empty: a view made for it now would
+        // belong to no widget, and nothing would ever destroy it.
+        if (closed) return null
         val v =
-            view ?: TileWebView(host.context).also {
-                configure(it)
-                it.webViewClient = Client()
-                it.webChromeClient = Chrome()
+            view ?: create(host.context)?.also {
                 view = it
-                if (!closed) load()
-            }
+                load()
+            } ?: return null
         if (this.holder === holder && v.parent === host) return v
         (v.parent as? ViewGroup)?.removeView(v)
         this.holder = holder
@@ -129,8 +133,24 @@ class EmbeddedBrowser internal constructor(
     }
 
     /**
+     * A WebView set up for this node, or null while the System WebView can't make one: it throws while its package is
+     * being updated, and a tile that can't show its page mustn't take the launcher down with it. The next attach tries again.
+     */
+    private fun create(context: Context): TileWebView? =
+        try {
+            TileWebView(context).also {
+                configure(it)
+                it.webViewClient = Client()
+                it.webChromeClient = Chrome()
+            }
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "no WebView for a Browser tile", e)
+            null
+        }
+
+    /**
      * The tile has gone off screen: the page leaves its box, so the next holder to draw it can take it.
-     * It isn't destroyed, though: it keeps its page, and its timers wait.
+     * It isn't destroyed, though: it keeps its page, and its animations wait; its script does not.
      */
     fun detach(holder: Any) {
         // A holder that let go after another one took the page leaves it running: it is on screen.
@@ -238,6 +258,38 @@ class EmbeddedBrowser internal constructor(
             return true
         }
 
+        /**
+         * Nothing goes out over http, whatever asks: the app allows cleartext for its own sake, and a form posted to an
+         * http page never reaches [shouldOverrideUrlLoading]. Called off the main thread; it reads only the request.
+         */
+        override fun shouldInterceptRequest(
+            view: WebView,
+            request: WebResourceRequest,
+        ): WebResourceResponse? =
+            if (request.url.scheme.equals("http", ignoreCase = true)) {
+                WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
+            } else {
+                null
+            }
+
+        /**
+         * The page's renderer crashed or was killed for memory. Unhandled, that kills the launcher with it; handled,
+         * the tile drops the dead view and comes back with a new one the next time it's drawn.
+         */
+        override fun onRenderProcessGone(
+            view: WebView,
+            detail: RenderProcessGoneDetail,
+        ): Boolean {
+            if (view !== this@EmbeddedBrowser.view) return true
+            tiles?.unfocused(this@EmbeddedBrowser)
+            holder = null
+            this@EmbeddedBrowser.view = null
+            canGoBack = false
+            (view.parent as? ViewGroup)?.removeView(view)
+            view.destroy()
+            return true
+        }
+
         override fun onPageStarted(
             view: WebView,
             url: String?,
@@ -289,6 +341,8 @@ class EmbeddedBrowser internal constructor(
 
         const val MIN_ZOOM_PERCENT = 50
         const val MAX_ZOOM_PERCENT = 300
+
+        const val TAG = "browser"
     }
 }
 
@@ -338,7 +392,7 @@ fun BrowserView(
             AndroidView(
                 factory = { FrameLayout(it) },
                 update = { host ->
-                    browser.attach(host, holder).also {
+                    browser.attach(host, holder)?.also {
                         it.setBackgroundColor(background.toArgb())
                         // Only a tapped page of a home tile takes touches; until then the overlay below is the tile's.
                         it.inert = tiles != null && !active

@@ -37,7 +37,7 @@ internal val KINDS: Map<String, Kind> =
         "Spacer" to Kind(emptySet(), Children.NONE),
         // owl 2: a live terminal (foot) inside the tile.
         "Terminal" to Kind(setOf("command", "fontSize"), Children.NONE),
-        // owl 11: a live page from the web, another surface in the tile beside it.
+        // owl 18: a live page from the web, another surface in the tile beside it.
         "Browser" to Kind(setOf("url", "js", "zoom"), Children.NONE),
         // owl 4: input.
         "Slider" to Kind(setOf("value", "min", "max", "step", "color", "track", "live"), Children.NONE),
@@ -268,7 +268,7 @@ internal val HANDLER_PARAMS =
         "onDismiss" to emptyList(),
         // A panel's, at its top: a key pressed in the prompt bar while it's open.
         "onKey" to listOf("value"),
-        // owl 19: the page a Browser went to, its title, and how far it has loaded.
+        // owl 18: the page a Browser went to, its title, and how far it has loaded.
         "onNavigate" to listOf("value"),
         "onTitle" to listOf("value"),
         "onProgress" to listOf("value"),
@@ -281,7 +281,7 @@ internal val HANDLER_KINDS =
         "onSubmit" to setOf("Input"),
         "onDismiss" to setOf("Popup"),
         "onPull" to setOf("Column", "Grid"),
-        // owl 19: only a Browser has a page to report on.
+        // owl 18: only a Browser has a page to report on.
         "onNavigate" to setOf("Browser"),
         "onTitle" to setOf("Browser"),
         "onProgress" to setOf("Browser"),
@@ -346,7 +346,7 @@ internal val ACTION_WORDS =
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
         "speech" to setOf("start", "stop", "toggle", "cancel").let { Words(it, "speech takes ${it.joinToString()}; what's heard is in source x = android.speech") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
-        // owl 19: where a Browser goes, or how it loads where it is.
+        // owl 18: where a Browser goes, or how it loads where it is.
         "web" to setOf("back", "forward", "reload", "stop").let { Words(it, "web takes ${it.joinToString()}") },
     )
 
