@@ -76,7 +76,8 @@ object HomeFile {
         |# an app left out comes off home. An app is a package, "pkg/activity" (with "@profile" for a work
         |# profile's), "linux:<desktop id>" or "owl:<file>".
         |# A foldable's cover screen has pages of its own under [cover], as [[cover.page]]; without them it
-        |# starts from the pages above.
+        |# starts from the pages above. With home.unfolded-layout, a Fold's inner screen has its own under
+        |# [unfolded] (its columns home.unfolded-columns), starting from the pages above side by side.
         |# What couldn't be read is in errors.txt next to this file.
         |
         """.trimMargin()
@@ -149,12 +150,13 @@ object HomeFile {
     fun decode(
         table: Map<String, Any>,
         columns: Int,
+        columnsOf: (Screen) -> Int = { columns },
     ): Decoded {
         val problems = ArrayList<String>()
         val screens = LinkedHashMap<Screen, HomeLayout>()
         for (screen in Screen.entries) {
             if (screen != Screen.MAIN && pageKey(screen) !in table && columnsKey(screen) !in table) continue
-            screens[screen] = decodeScreen(table, screen, columns, problems)
+            screens[screen] = decodeScreen(table, screen, columnsOf(screen), problems)
         }
         return Decoded(screens.getValue(Screen.MAIN), screens, problems)
     }

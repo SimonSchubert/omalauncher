@@ -30,6 +30,10 @@
     <string name="style_cover_screen">layar luar</string>
     <string name="style_cover_upright">tegak</string>
     <string name="style_cover_turned">diputar</string>
+    <string name="style_unfolded">terbuka</string>
+    <string name="style_unfolded_own">layar sendiri</string>
+    <string name="style_unfolded_pages">halaman</string>
+    <string name="style_unfolded_columns">kolom terbuka</string>
     <string name="style_corners">sudut</string>
     <string name="style_corners_edge">tajam</string>
     <string name="style_corners_soft">lembut</string>

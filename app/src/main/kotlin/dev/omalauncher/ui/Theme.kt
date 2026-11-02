@@ -145,6 +145,9 @@ object LauncherStyle {
     /** Keeps home upright on a foldable's cover screen, whose window is wider than tall while the phone stands upright. */
     val coverScreen get() = style[Style.COVER_SCREEN]
 
+    /** A home of its own on a foldable's unfolded inner screen, rather than the phone's pages side by side. */
+    val unfoldedLayout get() = style[Style.UNFOLDED_LAYOUT]
+
     /** The outline of tiles, the prompt bar and the rails. */
     val tileBorder: Color get() = color(style[Style.TILE_BORDER], Palette.border)
 

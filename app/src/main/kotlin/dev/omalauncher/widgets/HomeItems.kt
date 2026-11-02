@@ -112,8 +112,8 @@ class Shortcuts(
         if (screen == Screen.MAIN) return items.filter { it.folder == null } + folderEntries.map { f -> Folder(f.key, f.page, items.filter { it.folder == f.key }, f.name) }
         // Read so a page chosen on this screen recomputes what lists home's items; the pages themselves aren't state.
         layout.pageStamp
-        return items.filter { it.folder == null }.map { it.copy(page = layout.page(it.key, screen) ?: it.page) } +
-            folderEntries.map { f -> Folder(f.key, layout.page(f.key, screen) ?: f.page, items.filter { it.folder == f.key }, f.name) }
+        return items.filter { it.folder == null }.map { it.copy(page = layout.page(it.key, screen) ?: screen.fromMain(it.page)) } +
+            folderEntries.map { f -> Folder(f.key, layout.page(f.key, screen) ?: screen.fromMain(f.page), items.filter { it.folder == f.key }, f.name) }
     }
 
     /**

@@ -100,7 +100,7 @@ class HomeStore(
             synced.setProblems(listOf("$FILE: no [[page]]; home stays as it is"))
             return
         }
-        val decoded = HomeFile.decode(parsed, layout.columns)
+        val decoded = HomeFile.decode(parsed, layout.columnsOf(Screen.MAIN), layout::columnsOf)
         val problems = ArrayList(decoded.problems)
         val gone = apply(decoded.layout, problems)
         // A screen's own section places its tiles there; which apps are on home is the main pages' say. A section taken
@@ -114,7 +114,7 @@ class HomeStore(
         if (atStart && gone) problems.removeAll { it.endsWith(MISSING) }
         synced.setProblems(problems)
         // Cells on another grid than home's were moved onto it: the file says so, rather than which grid it was.
-        if ((atStart && gone) || decoded.screens.values.any { it.columns != layout.columns }) synced.save()
+        if ((atStart && gone) || decoded.screens.any { (screen, l) -> l.columns != layout.columnsOf(screen) }) synced.save()
     }
 
     /** Home on [screen] as the file has it now, from what home draws there. */
@@ -139,7 +139,7 @@ class HomeStore(
                     }
             if (tiles.isNotEmpty()) pages += TilePage(tiles)
         }
-        return HomeLayout(layout.columns, pages)
+        return HomeLayout(layout.columnsOf(screen), pages)
     }
 
     /**
@@ -153,7 +153,7 @@ class HomeStore(
         problems: MutableList<String>,
     ) {
         val numbers = HomeFile.numbers(section.pages)
-        val cols = layout.columns
+        val cols = layout.columnsOf(screen)
         val onHome = engine.itemsByPageOn(Screen.MAIN).values.flatten().associateBy { it.key }
         val specs = engine.specs.filter(engine::onHome).associateBy { it.file.name }
         val placed = HashSet<String>()
@@ -232,7 +232,7 @@ class HomeStore(
     ): Boolean {
         val numbers = HomeFile.numbers(file.pages)
         val specs = engine.specs.filter(engine::onHome).associateBy { it.file.name }
-        val cols = layout.columns
+        val cols = layout.columnsOf(Screen.MAIN)
         var gone = false
         val placed = HashSet<String>()
         val widgets = ArrayList<Pair<WidgetSpec, Int>>()
