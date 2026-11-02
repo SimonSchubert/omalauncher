@@ -2033,4 +2033,38 @@ class LangTest {
         val warned = Compiler.compile("widget \"t\" {\n meta { owl: 16 }\n strings { en { a: \"a\"; b: \"b\" } id { a: \"x\" } }\n Text { text: str.a }\n}", "en").warnings
         assertEquals(listOf("3:2: id has no b, so those show in English"), warned)
     }
+
+    private fun lockWidget(body: String) = Compiler.compile("widget {\n meta { owl: 18 }\n state editing = false\n $body\n}")
+
+    private fun lockError(body: String) = compileError("widget {\n meta { owl: 11 }\n state editing = false\n $body\n}")
+
+    @Test fun lockHoldsTheHomeScreenStill() {
+        assertTrue(compileError("widget {\n state editing = false\n Button { text: \"x\"; onTap: lock(editing) }\n}").contains("lock needs owl 18: add meta { owl: 18 }"))
+        assertTrue(compileError("widget {\n meta { owl: 11 }\n Button { text: \"x\"; onTap: lock(true) }\n}").contains("lock needs owl 18"))
+        // Declared, it's an action like any other: one value, handed to the host as it is.
+        val p = lockWidget("Column {\n Button { text: \"x\"; onTap: lock(true) }\n Text { text: \"y\" } }")
+        assertEquals(18, p.level)
+        val host = TestHost(p)
+        val button = (p.root.single() as WNode.Element).children.first() as WNode.Element
+        button.handlers["onTap"]!!.run(Env.root(host), emptyList())
+        assertEquals(listOf("lock true"), host.actions)
+        // lock(false) releases, and its value is an expression like any other argument.
+        val q = lockWidget("Button { text: editing ? \"done\" : \"draw\"; onTap: { editing = !editing; lock(editing) } }")
+        val qh = TestHost(q)
+        val release = q.root.single() as WNode.Element
+        release.handlers["onTap"]!!.run(Env.root(qh), emptyList())
+        release.handlers["onTap"]!!.run(Env.root(qh), emptyList())
+        assertEquals(listOf("lock true", "lock false"), qh.actions)
+        // One value, so none and two both say so, before the version is looked at.
+        assertTrue(lockError("Button { text: \"x\"; onTap: lock() }").contains("lock takes 1-1 values"))
+        assertTrue(lockError("Button { text: \"x\"; onTap: lock(true, false) }").contains("lock takes 1-1 values"))
+        // A value that only reads as true is refused where it's written: a frozen home is a worse surprise than a torch left on.
+        assertTrue(lockError("Button { text: \"x\"; onTap: lock(\"false\") }").contains("lock takes true or false, not a text"))
+        assertTrue(lockError("Button { text: \"x\"; onTap: lock(1) }").contains("lock takes true or false, not a number"))
+        // A computed value is the widget's business: a source's bool passes, and so does null.
+        assertTrue(lockWidget("Button { text: \"x\"; onTap: lock(editing) }").level == 18)
+        // A widget that never calls lock is as it was: no lock is no version to ask for.
+        assertEquals(1, Compiler.compile("widget {\n Column {\n Button { text: \"x\"; onTap: refresh() }\n Text { text: \"y\" } }\n}").level)
+        assertEquals(18, Compiler.compile("widget {\n meta { owl: 18 }\n Button { text: \"x\" }\n}").level)
+    }
 }

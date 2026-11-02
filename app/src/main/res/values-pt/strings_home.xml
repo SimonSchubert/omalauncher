@@ -20,6 +20,9 @@
 
     <string name="home_drop_here">solte aqui</string>
     <string name="home_drop_face_only">aqui só cabe uma face</string>
+    <!-- The cue over a locked home screen. -->
+    <string name="home_lock_locked">tela bloqueada</string>
+    <string name="home_lock_unlock">desbloquear</string>
 
     <plurals name="home_file_problems">
         <item quantity="one">%1$s: %2$d problema</item>

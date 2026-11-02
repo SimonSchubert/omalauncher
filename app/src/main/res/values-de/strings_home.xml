@@ -20,6 +20,9 @@
 
     <string name="home_drop_here">hier ablegen</string>
     <string name="home_drop_face_only">hierhin passt nur ein face</string>
+    <!-- The cue over a locked home screen. -->
+    <string name="home_lock_locked">Bildschirm gesperrt</string>
+    <string name="home_lock_unlock">entsperren</string>
 
     <plurals name="home_file_problems">
         <item quantity="one">%1$s: %2$d fehler</item>

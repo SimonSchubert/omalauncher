@@ -20,6 +20,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,8 +57,9 @@ import dev.omalauncher.wayland.XdgToplevel
  * drawer; tapping it gives it the keyboard and its touches, until a tap
  * outside, Back, or leaving the page. A widget's own text field (an Input)
  * that takes the keyboard is treated the same way: its tile lifts above the
- * keyboard and lets go on the same tap outside, Back or page turn. Main
- * thread only.
+ * keyboard and lets go on the same tap outside, Back or page turn. The lock lives here too,
+ * beside focus and the lift: a widget that asked for it holds the whole home screen still
+ * until it lets go (see [lock]). Main thread only.
  */
 class TerminalTiles(
     private val runtime: Runtime,
@@ -95,6 +97,21 @@ class TerminalTiles(
 
     /** A tile has the keyboard: its terminal ([active]) or one of its widget's text fields ([field]). */
     val typing get() = active != null || field != null
+
+    /** The widgets holding the home screen still; see [HomeLock]. */
+    private val holds = HomeLock()
+
+    /** A widget holds the home screen still: the pages, the swipe up and the long press wait until it lets go. */
+    val locked get() = holds.locked
+
+    /** [owner] holds the home screen still ([on]) or gives it back; another widget's hold stays. */
+    fun lock(
+        owner: Any,
+        on: Boolean,
+    ) = holds.lock(owner, on)
+
+    /** Nothing holds the home screen still any more: the way out on the cue, for a widget that can't be reached. */
+    fun unlockAll() = holds.unlockAll()
 
     init {
         wm.claim = { window -> sessions.firstOrNull { it.appId == window.appId }?.attach(window) != null }
@@ -244,6 +261,28 @@ class TerminalTiles(
             return minOf(overlap(imeHeight), room) to (overlap(imeTarget) - room).coerceIn(0f, (bounds.height - minHeight).coerceAtLeast(0f))
         }
     }
+}
+
+/**
+ * The widgets holding the home screen still, by the instance that asked for it: a set, since two can hold it at once
+ * and one letting go must not free the screen the other holds. Never saved, so a restart comes up unlocked. Main
+ * thread only.
+ */
+internal class HomeLock {
+    // mutableStateSetOf doesn't exist; a map with unit values is the same thing, and recomposes what reads it.
+    private val owners = mutableStateMapOf<Any, Unit>()
+
+    /** Something holds the home screen still. */
+    val locked get() = owners.isNotEmpty()
+
+    fun lock(
+        owner: Any,
+        on: Boolean,
+    ) {
+        if (on) owners[owner] = Unit else owners -= owner
+    }
+
+    fun unlockAll() = owners.clear()
 }
 
 /** A text field on a home tile's widget, which has the keyboard while it's [TerminalTiles.field]; [release] takes its focus away. */

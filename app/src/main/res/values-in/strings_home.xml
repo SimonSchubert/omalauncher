@@ -20,6 +20,9 @@
 
     <string name="home_drop_here">lepas di sini</string>
     <string name="home_drop_face_only">hanya face yang bisa ditaruh di sini</string>
+    <!-- The cue over a locked home screen. -->
+    <string name="home_lock_locked">layar terkunci</string>
+    <string name="home_lock_unlock">buka</string>
 
     <plurals name="home_file_problems">
         <item quantity="other">%1$s: %2$d masalah</item>
