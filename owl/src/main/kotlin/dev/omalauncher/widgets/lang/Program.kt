@@ -402,6 +402,8 @@ class Program(
     val animated: Boolean,
     /** Has a Terminal node. */
     val terminal: Boolean = false,
+    /** Has a Browser node: a web view in the tile, which keeps running while the widget shows. */
+    val browser: Boolean = false,
     val nodeCount: Int,
     /** A tile or an app; for an app [screen] is the whole view and [root] is empty. */
     val kind: OwlKind = OwlKind.Widget,

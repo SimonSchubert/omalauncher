@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 18
+        const val LEVEL = 19
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -60,6 +60,9 @@ class Compiler private constructor(
         const val NUMBER = "‹number›"
 
         private const val MAX_SHAPES = 8
+
+        /** Each Browser is a web view of its own: a tile has room for two. */
+        private const val MAX_BROWSERS = 2
 
         private val TIME_WORD = Regex("""\btime\b""")
 
@@ -232,6 +235,10 @@ class Compiler private constructor(
     private var guest = false
     private var animated = false
     private var terminal = false
+    private var browser = false
+
+    /** Browsers so far, against [MAX_BROWSERS]. */
+    private var browsers = 0
     private var nodes = 0
     private var maxNodes = MAX_NODES
 
@@ -401,6 +408,7 @@ class Compiler private constructor(
             programs = scripts.flatMap(ShellWords::programs).toSortedSet(),
             animated = animated,
             terminal = terminal,
+            browser = browser,
             nodeCount = tileNodes,
         )
     }
@@ -485,6 +493,7 @@ class Compiler private constructor(
             programs = scripts.flatMap(ShellWords::programs).toSortedSet(),
             animated = animated,
             terminal = terminal,
+            browser = browser,
             nodeCount = nodes,
             kind = ast.kind,
             icon = icon,
@@ -692,6 +701,37 @@ class Compiler private constructor(
                 else -> null
             }
         return out?.let(::capped)
+    }
+
+    /**
+     * A Browser's url: a page from the web, at a host written out in the file, so the review can list it as
+     * "browser GET <url>" the way it lists http(...). https only: file:, content:, javascript: and data: say
+     * where a file is or run code, and http sends the page in the clear. Its values follow the same rule as a
+     * URL's anywhere: enc() around each, and none of them the host.
+     */
+    private fun browserUrl(
+        e: Expr,
+        ev: Ev,
+        s: Scope,
+    ) {
+        // Each way it can turn out: url: ready ? "https://a.test/" : "https://a.test/start".
+        if (e is Expr.Cond) return listOf(e.a, e.b).forEach { browserUrl(it, ex(it, s), s) }
+        val whole = constText(e, s)
+        val start = whole ?: constantStart(e, s)
+        if (start.startsWith("http://")) fail("a Browser loads over https only", e.pos)
+        if (start.isNotEmpty() && !start.startsWith("https://")) {
+            fail("a Browser loads pages from the web, so https:// only: not file:, content:, javascript: or data:", e.pos)
+        }
+        // A page that's null loads nothing: nothing to check, and nothing to list.
+        if (ev.const == Null) return
+        val listed =
+            whole?.let { listOf(it) }
+                ?: shapes(e, s, "enc")?.takeIf { it.isNotEmpty() && it.all(FIXED_HOST::containsMatchIn) }
+        if (listed == null) {
+            val (msg, pos) = urlWarning(e, s) ?: ("a Browser's url is https:// at a host written in the file, with its values put through enc()" to e.pos)
+            fail(msg, pos)
+        }
+        listed.forEach { commands += "browser GET $it" }
     }
 
     /**
@@ -1145,6 +1185,14 @@ class Compiler private constructor(
                 listCommand(body.props.first { it.name == "command" }.value, command, scope, "Terminal command")
             }
             guest = true
+        }
+        if (n.type == "Browser") {
+            browser = true
+            if (++browsers > MAX_BROWSERS) {
+                fail("a widget has room for $MAX_BROWSERS Browsers, each a web view of its own: show another page by setting a Browser's url instead", n.pos)
+            }
+            val url = body.props.firstOrNull { it.name == "url" } ?: fail("a Browser needs a url: \"https://host/page\"", n.pos)
+            browserUrl(url.value, props.getValue("url"), scope)
         }
         if (n.type == "Image") body.props.firstOrNull { it.name == "src" }?.let { webFile(it.value, scope, "image") }
         // A shader animates only if its code reads `time`; code that's worked out at run time might.

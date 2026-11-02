@@ -21,8 +21,8 @@ It waits until the launcher has loaded the file as saved, prints compile errors
 and problems found while running, and exits 1 if there are any. The preview is
 the tile as it looks on the home screen, at its size there, after its sources
 have loaded: open it to see whether text fits and the layout works, since you
-can't see the phone. Terminal tiles aren't previewed. Errors also go to
-`.errors/<file>.txt`, and the tile shows them.
+can't see the phone. Terminal and Browser tiles aren't previewed. Errors also
+go to `.errors/<file>.txt`, and the tile shows them.
 
 Widgets sit on a grid of roughly square cells, 6 columns by default (a phone
 has about 12 rows), bordered like Omarchy windows and colored by the current
@@ -93,12 +93,13 @@ declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a pan
 | docs/declarations.md | sources (`cmd`, `http`, `ws`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `at`, `when`, `on`, `on … each`), putting values into commands and URLs, `requires` and working without Linux |
 | docs/android.md | the phone's data: battery, media, notifications, volume, the next alarm, modes, apps, the drawer, agents |
 | docs/expressions.md | operators and every function, dates and times, numbers, changing lists and maps, chance |
-| docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal |
+| docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal, Browser |
 | docs/handlers.md | handlers, every action, sending to web APIs with `post`, tokens and passwords, sounds |
 | docs/drawing.md | Canvas and Shader |
 | docs/screens.md | a widget's full-screen view behind its tile |
 | docs/faces.md | faces: a whole home page |
 | docs/apps.md | apps in the app drawer, and their icons |
+| docs/browser.md | a web page in a tile: `Browser`, and `web` to steer it |
 | docs/panels.md | panels a swipe opens, the app drawer among them |
 | docs/keybar.md | the terminal key bar over the keyboard |
 | docs/home.md | home's layout.toml, and reaching a running widget from scripts with `owl-send` |
@@ -142,6 +143,7 @@ docs say what's current.
 | panels and the prompt bar | `drawer.owl` (lazy lists, search with rank, Popup), `examples/65-ai-bar` (android.agents, ask, open) |
 | the terminal key bar | `keybar.owl`, `examples/keybar-layers` (latch, layers), `examples/keybar-vim`, `examples/keybar-gamepad`, `examples/keybar-commands` (typeText) |
 | a live terminal | `45-terminal` |
+| a web page in a tile | `examples/45-browser`, `examples/44-fav-sites` (a menu of sites), `examples/46-browser-tabs` (two pages at most) |
 | an app that sends | `examples/ntfy` (two views with `back`, a source whose URL takes a state, `post` with a JSON body, and what it answers shown at once), `examples/github-inbox` (a token kept as a `secret`, `post` with `method: "PATCH"`) |
 
 ## Limits

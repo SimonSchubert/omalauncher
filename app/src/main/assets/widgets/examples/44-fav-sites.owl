@@ -1,0 +1,95 @@
+widget "favoriteSites" {
+  page: 1
+  order: 9
+  size: 6x4
+  minSize: 3x2
+
+  meta { owl: 18; description: "Hacker News, old.reddit and GitHub trending in a tile, drawn by Android's own WebView, so it needs no Linux: back, forward and reload, and a menu to pick the site"; version: "1.0"; license: "MIT"; category: "news" }
+
+  // The page reports what it's called and how much has loaded.
+  state title = ""
+  state loaded = 0
+  // Which site the tile shows, and whether its menu is open. The chosen site is kept across restarts.
+  state site = "hn" persist
+  state picking = false
+  // What the menu offers. The addresses themselves are written out in the Browser's url below: a URL
+  // can't be a whole value, its host has to be fixed text in the file.
+  let sites = [
+    { id: "hn", name: "hacker news" },
+    { id: "reddit", name: "old.reddit.com" },
+    { id: "gh", name: "github trending" },
+    { id: "z", name: "Omalauncher Z" }
+  ]
+  let current = find(sites, s => s.id == site) ?? sites[0]
+  // The closed select box and the menu under it are the same width: 40% of the tile, never a bar
+  // across it. (The menu can't size itself to its text in a Popup, so it can't just fit its longest
+  // name; giving both sides the same width keeps them lined up.)
+  let menuWidth = (tileWidth ?? 400) * 0.4
+
+  Column {
+    gap: 6
+
+    Row {
+      gap: 6
+      // A handler names no node, so these steer every Browser in this file. One does that here.
+      // Readable on the tile's dark background: the theme's text color on a surface plate.
+      Button { text: "‹"; color: foreground; background: surface; radius: 6 * corners; width: 34; onTap: web("back") }
+      Button { text: "›"; color: foreground; background: surface; radius: 6 * corners; width: 34; onTap: web("forward") }
+      Button { text: "⟳"; color: foreground; background: surface; radius: 6 * corners; width: 34; onTap: web("reload") }
+
+      // The site menu: a button naming the site that shows, at the toolbar's right end, and a menu
+      // under it, lined up with the button's right edge. The Popup takes no room where it's written,
+      // so the Box is just as wide as the button.
+      Spacer { weight: 1 }
+      // onProgress is 0 to 1; hide it once the page is done. It sits before the menu, which keeps to
+      // the right edge whether the percentage shows or not.
+      Text { text: fmtNum(loaded * 100) + "%"; style: small; color: muted; visible: loaded > 0 && loaded < 1 }
+      Box {
+        width: menuWidth
+        align: end
+        Button {
+          text: "${current.name} ▾"
+          width: menuWidth
+          color: foreground
+          background: surface
+          radius: 6 * corners
+          onTap: picking = !picking
+        }
+        Popup {
+          visible: picking
+          onDismiss: picking = false
+          position: below
+          gap: 6
+          align: end
+          Column {
+            width: menuWidth
+            gap: 0
+            for s in sites key s.id {
+              Text {
+                text: s.name
+                color: s.id == site ? accent : foreground
+                padding: [10, 6]
+                onTap: { site = s.id; picking = false }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Script is on: these pages can run their own JavaScript (js: true). Only do that for pages you
+    // trust. Every address is written out here, each with its host as fixed text, since a URL can't
+    // come from a value.
+    Browser {
+      url: site == "reddit" ? "https://old.reddit.com/" : site == "gh" ? "https://github.com/trending" : site == "hn2" ? "https://hn.algolia.com/" : "https://news.ycombinator.com/"
+      js: true
+      // 130% text, on every site.
+      zoom: 1.3
+      weight: 1
+      onTitle: title = value
+      onProgress: loaded = value
+    }
+
+    Text { text: title; style: muted; maxLines: 1 }
+  }
+}

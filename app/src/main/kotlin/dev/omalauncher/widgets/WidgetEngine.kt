@@ -737,6 +737,7 @@ class WidgetEngine(
         val skip =
             when {
                 program.terminal -> "Terminal tiles aren't previewed"
+                program.browser -> "Browser tiles aren't previewed"
                 waitsForLinux(spec) -> "it needs Linux, which isn't installed"
                 !missing[name].isNullOrEmpty() -> "it needs ${missing[name]!!.joinToString(" ")}; install with pacman -S --needed"
                 instance(spec) == null -> "it isn't running"
