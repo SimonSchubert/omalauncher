@@ -35,6 +35,13 @@ data class Agent(
      * hand, or a script that reaches one on another machine, is left alone (see [AgentStore.isInstalled]).
      */
     val install: String? = null,
+    /**
+     * The file the agent's own installer writes last, from the guest home. Hermes writes ~/.local/bin/hermes
+     * before it builds its runtime, so a command that has a runtime directory beside it and not this file is
+     * an install that stopped partway: offered again, rather than opened onto an update it cannot finish.
+     * Null: the command is the whole install.
+     */
+    val done: String? = null,
     /** What starts it without a prompt, when that's more than [bin]. */
     val command: String = bin,
     /** Whether mise needs node to install it: npm packages run their postinstall scripts with it. */
@@ -75,6 +82,7 @@ val AGENTS =
             install = "mkdir -p /etc/uv && printf '%s\\n' 'link-mode = \"copy\"' > /etc/uv/uv.toml && " +
                 "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | " +
                 "bash -s -- --non-interactive --skip-browser --skip-computer-use",
+            done = ".hermes/hermes-agent/.hermes-bootstrap-complete",
         ),
         Agent("omp", "Oh My Pi", R.string.linux_agent_omp, "github:can1357/oh-my-pi"),
         Agent("ori", "Ori", R.string.linux_agent_ori, "github:OpenRouterLabs/ori-releases", command = "ori code"),
@@ -182,6 +190,21 @@ fun agentInvocation(
     }
 }
 
+/**
+ * Whether a command at ~/.local/bin/[Agent.bin] is an install to use, rather than what a failed one left.
+ *
+ * A command there is the user's — an agent that installs itself, or a script that reaches one on another
+ * machine — and counts. When the agent's own installer writes that command first and its [Agent.done] file
+ * last, a runtime directory that exists without the file is an install that stopped partway: Hermes writes
+ * ~/.local/bin/hermes and its checkout, then dies in its dependency sync, and a bar that offered it would
+ * open onto an update it cannot finish. With no runtime beside it, the command is a wrapper, not a wreck.
+ */
+fun installedByHand(home: File, agent: Agent): Boolean {
+    if (!Files.exists(File(home, ".local/bin/${agent.bin}").toPath(), LinkOption.NOFOLLOW_LINKS)) return false
+    val done = agent.done?.let { File(home, it) } ?: return true
+    return !done.parentFile.exists() || done.exists()
+}
+
 class AgentStore(
     private val proot: Proot,
     /** A string resource with one argument, in the app's language. */
@@ -192,21 +215,18 @@ class AgentStore(
     private val mise get() = File(proot.home, ".local/bin/mise")
     private val shims get() = File(proot.home, ".local/share/mise/shims")
 
-    /** Where an agent's own installer, and a command the user wrote, put [Agent.bin]. */
-    private val localBin get() = File(proot.home, ".local/bin")
-
     val states = mutableStateMapOf<String, JobState>()
 
     /**
      * Shims are symlinks to a guest path (/root/.local/bin/mise), so don't follow them from the host.
      *
-     * A mise shim means this screen installed it. An executable at ~/.local/bin/[Agent.bin] is the user's:
-     * an agent that installs itself, or a script that reaches an agent somewhere else (another machine, a
-     * container). Count it as installed so the bar can pick it, and never write over it.
+     * A mise shim means this screen installed it. A command at ~/.local/bin/[Agent.bin] is the user's: an
+     * agent that installs itself, or a script that reaches an agent somewhere else (another machine, a
+     * container). Count it as installed so the bar can pick it, and never write over it — see
+     * [installedByHand] for what a failed self-install leaves behind.
      */
     fun isInstalled(agent: Agent) =
-        Files.exists(File(shims, agent.bin).toPath(), LinkOption.NOFOLLOW_LINKS) ||
-            Files.exists(File(localBin, agent.bin).toPath(), LinkOption.NOFOLLOW_LINKS)
+        Files.exists(File(shims, agent.bin).toPath(), LinkOption.NOFOLLOW_LINKS) || installedByHand(proot.home, agent)
 
     /** The agent picked in the prompt bar, kept in the guest home where scripts can read it too. */
     private val preferredFile get() = File(proot.launcherConfig, "agent")
