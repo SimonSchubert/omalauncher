@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -35,6 +37,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.BuildConfig
 import dev.omalauncher.openUrl
+import dev.omalauncher.widgets.render.LocalHomeCovered
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.io.ByteArrayInputStream
 import kotlin.math.roundToInt
 
@@ -98,6 +105,12 @@ class EmbeddedBrowser internal constructor(
 
     private var closed = false
 
+    /** Whether the tile can be seen: home is in front, nothing covers it, and its page of home is the one showing. */
+    private var seen = true
+
+    /** Whether the launcher is started; while it's stopped every page's script waits, not only this one's. */
+    private var started = true
+
     /** Where the tile is, in window pixels, as if the home screen weren't lifted. */
     internal var bounds = Rect.Zero
 
@@ -126,8 +139,8 @@ class EmbeddedBrowser internal constructor(
         host.post {
             if (this.holder !== holder || v.parent === host) return@post
             host.addView(v, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-            // Back on screen: a paused page's timers run again.
-            v.onResume()
+            // Back on screen: a paused page's animations run again, unless home is covered or stopped.
+            if (seen && started) v.onResume()
         }
         return v
     }
@@ -140,6 +153,8 @@ class EmbeddedBrowser internal constructor(
         try {
             TileWebView(context).also {
                 configure(it)
+                // Timers are paused for every WebView at once: one made after the last page went leaves them paused.
+                if (started) it.resumeTimers()
                 it.webViewClient = Client()
                 it.webChromeClient = Chrome()
             }
@@ -159,6 +174,23 @@ class EmbeddedBrowser internal constructor(
         val v = view ?: return
         (v.parent as? ViewGroup)?.removeView(v)
         v.onPause()
+    }
+
+    /**
+     * Whether the tile can be seen ([seen]) and the launcher is in front ([started]). Out of sight, the page's animations
+     * and media wait; with the launcher stopped (the screen off, another app open) its script waits too, which onPause
+     * alone doesn't do: a page with `js: true` would otherwise go on running, and fetching, behind everything.
+     */
+    internal fun shown(
+        seen: Boolean,
+        started: Boolean,
+    ) {
+        this.seen = seen
+        this.started = started
+        val v = view ?: return
+        // Global to every WebView in the app; each page says the same, as they share the launcher's lifecycle.
+        if (started) v.resumeTimers() else v.pauseTimers()
+        if (seen && started && holder != null) v.onResume() else v.onPause()
     }
 
     /** The tile was tapped: the page gets the focus, and with it the keyboard one of its fields asks for. */
@@ -211,8 +243,11 @@ class EmbeddedBrowser internal constructor(
     }
 
     private fun configure(v: WebView) {
-        // WebView's own debugging port is for debug builds only.
-        WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
+        // WebView's own debugging port is for debug builds only; the setting is the process's, so once is enough.
+        if (!debuggingSet) {
+            WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
+            debuggingSet = true
+        }
         v.setBackgroundColor(Palette.background.toArgb())
         val s = v.settings
         // Storage and script go together: a page without script has nothing to keep in DOM storage.
@@ -336,6 +371,9 @@ class EmbeddedBrowser internal constructor(
     }
 
     private companion object {
+        /** Whether WebView's debugging port has been set for this process; see [configure]. */
+        var debuggingSet = false
+
         /** Schemes a tile's page may not load: another is a link, https or not at all. */
         val BLOCKED = setOf("http", "file", "content", "javascript", "data")
 
@@ -378,6 +416,14 @@ fun BrowserView(
     }
     val tiles = browser.tiles
     val active = tiles != null && tiles.browser === browser
+    // Paused while home is stopped or the tile can't be seen: a page beside the one showing is still composed.
+    val covered = LocalHomeCovered.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(browser, covered, lifecycle) {
+        combine(snapshotFlow { covered() }, lifecycle.currentStateFlow) { c, state -> !c to state.isAtLeast(Lifecycle.State.STARTED) }
+            .distinctUntilChanged()
+            .collect { (seen, started) -> browser.shown(seen, started) }
+    }
     // The tile's tab went away (its visible turned false) or the node did: out of sight, a page with the touches mustn't
     // keep them, or leave the home screen lifted for a tile that no longer shows.
     DisposableEffect(tiles, browser) { onDispose { if (tiles != null && tiles.browser === browser) tiles.deactivate() } }

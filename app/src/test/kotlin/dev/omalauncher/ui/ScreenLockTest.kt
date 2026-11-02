@@ -98,43 +98,40 @@ class ScreenLockTest {
         val holds = HomeLock()
         val a = Any()
         val b = Any()
-        holds.widgets(setOf(a, b))
+        val both = setOf(a, b)
+        holds.widgets(both, both)
         assertTrue(holds.locked)
-        holds.widgets(setOf(b))
+        holds.widgets(both, setOf(b))
         assertTrue(holds.locked)
-        holds.widgets(emptySet())
+        holds.widgets(both, emptySet())
         assertFalse(holds.locked)
     }
 
     @Test fun backOrTheCueLetsGoUntilTheLockTurnsFalse() {
         val holds = HomeLock()
         val game = Any()
-        holds.widgets(setOf(game))
+        val showing = setOf(game)
+        holds.widgets(showing, showing)
         holds.unlockAll()
         assertFalse(holds.locked)
         // Its lock still says true: the person let go of it, so it stays let go.
-        holds.widgets(setOf(game))
+        holds.widgets(showing, showing)
         assertFalse(holds.locked)
         // Turned false and back, as the next game starts: it holds again.
-        holds.widgets(emptySet())
-        holds.widgets(setOf(game))
+        holds.widgets(showing, emptySet())
+        holds.widgets(showing, showing)
         assertTrue(holds.locked)
     }
 
-    @Test fun aHoldByNameIsLetGoBySetAndByTheCue() {
+    @Test fun aPageTurnedAwayFromAndBackDoesntLockAgain() {
         val holds = HomeLock()
-        val page = Any()
-        holds.lock(page, true)
-        // A widget's set changing doesn't touch it.
-        holds.widgets(emptySet())
-        assertTrue(holds.locked)
-        holds.lock(page, false)
-        assertFalse(holds.locked)
-        holds.lock(page, true)
+        val game = Any()
+        val showing = setOf(game)
+        holds.widgets(showing, showing)
         holds.unlockAll()
+        // Out of sight, its lock isn't seen false: still let go when its page shows again, while the game still runs.
+        holds.widgets(emptySet(), emptySet())
+        holds.widgets(showing, showing)
         assertFalse(holds.locked)
-        // Asked for again after the cue, it holds again: the cue lets go once, it doesn't refuse.
-        holds.lock(page, true)
-        assertTrue(holds.locked)
     }
 }

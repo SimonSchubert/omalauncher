@@ -144,16 +144,11 @@ fun HomeScreen(
 
     val terminals = runtime.terminals
     // A page that has the tile holds the screen still, so its drags stay its own; editing lets go so a page can be moved.
-    LaunchedEffect(terminals.browser, state.editing, arrange.folder) {
-        terminals.syncFocusLock(state.editing != null || arrange.folder != null)
-    }
+    val editing = state.editing != null || arrange.folder != null
+    SideEffect { terminals.editing = editing }
     // Composed last, a BackHandler takes Back first; this one goes before the others to take it only when nothing else on
     // home wants it, so a tile typing (a terminal's control, a page's history) gets it as it does now.
-    BackHandler(enabled = terminals.locked) {
-        // The page lets go first: unlocking while it still has the tile would only lock it again.
-        terminals.deactivate()
-        terminals.unlockAll()
-    }
+    BackHandler(enabled = terminals.locked) { terminals.unlock() }
     BackHandler(enabled = terminals.typing) { terminals.deactivate() }
     // A focused page takes Back for its own history first, as any web view does, and only then lets go of the tile.
     // Composed after the one above, so it is asked first: a BackHandler takes Back before the ones before it.
@@ -218,17 +213,16 @@ fun HomeScreen(
     }
     val shown = slots.getOrElse(pager.currentPage) { listOf(1) }
     // A face showing has the keyboard, for one of its fields, terminals or pages: it isn't lifted, it makes room itself.
-    val faceTyping = shown.mapNotNull(::faceOn).any { f -> engine.instance(f.spec)?.let { it.owns(runtime.terminals.active) || it.owns(runtime.terminals.browser) || runtime.terminals.field?.widget === it } == true }
+    val faceTyping = shown.mapNotNull(::faceOn).any { f -> engine.instance(f.spec)?.let(terminals::typingIn) == true }
     val faceShowing = shown.all(::full)
     val statusBarAway = shown.all { faceOn(it)?.let { f -> engine.instance(f.spec) }?.showsStatusBar() == false }
     // The widgets showing whose lock: holds keep the screen still, read here rather than in composition, so a game's state
     // changing doesn't recompose home. Only those showing: a page turned away from can't hold the one turned to.
     LaunchedEffect(engine, shown) {
         snapshotFlow {
-            shown.flatMap(engine::itemsOn).filterIsInstance<WidgetItem>().mapNotNullTo(HashSet()) { item ->
-                engine.instance(item.spec)?.takeIf { it.holdsHome() }
-            }
-        }.collect { terminals.holdWidgets(it) }
+            val showing = shown.flatMap(engine::itemsOn).filterIsInstance<WidgetItem>().mapNotNullTo(HashSet()) { engine.instance(it.spec) }
+            showing to showing.filterTo(HashSet()) { it.holdsHome() }
+        }.collect { (showing, holding) -> terminals.holdWidgets(showing, holding) }
     }
     // Which pager slots are full screen, for the bar to slide with the others.
     val fullSlots = slots.map { it.all(::full) }
@@ -526,10 +520,7 @@ fun HomeScreen(
     if (terminals.locked) {
         LockCue(
             face = faceShowing,
-            onUnlock = {
-                terminals.deactivate()
-                terminals.unlockAll()
-            },
+            onUnlock = terminals::unlock,
         )
     }
 
@@ -694,7 +685,7 @@ private fun HomeTile(
         is WidgetItem -> {
             // Whose terminal has the keyboard: the tile gives up what the keyboard covers once the lift is spent.
             val instance = engine.instance(item.spec)
-            val typing = instance != null && (instance.owns(terminals.active) || instance.owns(terminals.browser) || terminals.field?.widget === instance)
+            val typing = instance != null && terminals.typingIn(instance)
             WidgetTile(
                 spec = item.spec,
                 instance = engine.instance(item.spec),

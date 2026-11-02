@@ -41,7 +41,8 @@ widget "lobsters" {
   `web(...)` steers every Browser in the file.
 - Two Browsers at most in a file: each is a web view of its own, and a tile has room for two.
 - The page keeps its place while the tile is off screen. It starts again when its `url`, `js` or `zoom`
-  changes, and ends with the widget.
+  changes, and ends with the widget. Out of sight its animations and media wait, and while the launcher
+  is behind another app or the screen is off its script waits too.
 - Browser tiles aren't previewed; `owl-check` says so in place of a picture.
 - Every Browser in the launcher shares one WebView profile, so signing in in one signs in the rest, and
   what one page keeps in cookies the others can read.

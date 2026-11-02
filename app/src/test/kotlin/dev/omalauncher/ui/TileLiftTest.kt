@@ -19,7 +19,7 @@ class TileLiftTest {
     ) = liftAndCut(bounds, ime, target, windowHeight = 2400, margin = margin, top = 50f, minHeight = 64f)
 
     @Test fun aFieldKeepsItsTallTileAboveTheKeyboardWithoutATerminal() {
-        val bounds = typingBounds(fieldFocused = true, browserFocused = false, tile = tall, terminal = null, browser = null)!!
+        val bounds = typingBounds(fieldFocused = true, tile = tall, surface = null)!!
         val (l, c) = lift(bounds, 900)
         assertEquals(50f, l, 0f)
         assertEquals(458f, c, 0f)
@@ -27,13 +27,13 @@ class TileLiftTest {
     }
 
     @Test fun aFieldWaitsForItsOwnTileRatherThanATerminalsBounds() {
-        assertNull(typingBounds(fieldFocused = true, browserFocused = false, tile = null, terminal = tall, browser = null))
+        assertNull(typingBounds(fieldFocused = true, tile = null, surface = tall))
         val next = Rect(0f, 1000f, 1000f, 1800f)
-        assertEquals(308f to 0f, lift(typingBounds(fieldFocused = true, browserFocused = false, tile = next, terminal = null, browser = null)!!, 900))
+        assertEquals(308f to 0f, lift(typingBounds(fieldFocused = true, tile = next, surface = null)!!, 900))
     }
 
     @Test fun nothingTypingLiftsNothing() {
-        assertNull(typingBounds(fieldFocused = false, browserFocused = false, tile = tall, terminal = null, browser = null))
+        assertNull(typingBounds(fieldFocused = false, tile = tall, surface = null))
     }
 
     @Test fun aClosedKeyboardLiftsNothingAndReopeningLiftsAgain() {
@@ -49,12 +49,11 @@ class TileLiftTest {
     }
 
     @Test fun aPageFallsBackToItsOwnBoundsAsATerminalDoes() {
-        assertSame(tall, typingBounds(fieldFocused = false, browserFocused = true, tile = null, terminal = null, browser = tall))
-        assertNull(typingBounds(fieldFocused = false, browserFocused = false, tile = null, terminal = null, browser = tall))
+        assertSame(tall, typingBounds(fieldFocused = false, tile = null, surface = tall))
     }
 
     @Test fun aTerminalFallsBackToItsOwnBoundsAndClearsTheExtraKeys() {
-        val bounds = typingBounds(fieldFocused = false, browserFocused = false, tile = null, terminal = tall, browser = null)!!
+        val bounds = typingBounds(fieldFocused = false, tile = null, surface = tall)!!
         assertSame(tall, bounds)
         val (l, c) = lift(bounds, 900, margin = 108f)
         assertEquals(50f, l, 0f)

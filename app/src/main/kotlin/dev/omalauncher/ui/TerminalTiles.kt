@@ -47,6 +47,9 @@ import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.wayland.WindowRenderer
 import dev.omalauncher.wayland.XdgToplevel
+import dev.omalauncher.widgets.runtime.WidgetInstance
+import java.util.Collections
+import java.util.WeakHashMap
 
 /**
  * Terminals that live inside home-screen tiles (the widgets' `Terminal` node)
@@ -108,44 +111,33 @@ class TerminalTiles(
     /** The widgets holding the home screen still; see [HomeLock]. */
     private val holds = HomeLock()
 
-    /** A widget holds the home screen still: the pages, the swipe up and the long press wait until it lets go. */
-    val locked get() = holds.locked
-
-    /** [owner] holds the home screen still ([on]) or gives it back; another's hold stays. */
-    fun lock(
-        owner: Any,
-        on: Boolean,
-    ) = holds.lock(owner, on)
-
-    /** The widgets showing whose `lock:` holds now; see [HomeLock.widgets]. */
-    fun holdWidgets(holding: Set<Any>) = holds.widgets(holding)
-
-    /** The focused page's hold, if it has one; see [syncFocusLock]. */
-    private var focusLock: Any? = null
+    /** Home is being edited (a tile selected, a folder open): a focused page doesn't hold it still, so it can be moved. */
+    var editing by mutableStateOf(false)
 
     /**
-     * A page has the tile and home isn't being edited: it holds the screen still, so a swipe that starts beside the
-     * page turns nothing and a long press lifts nothing. Editing lets go, since a locked screen can't be rearranged.
+     * Something holds the home screen still: the pages, the swipe up and the long press wait until it lets go. A widget
+     * showing whose `lock:` holds, or a page that has the tile, so a swipe that starts beside the page turns nothing and a
+     * long press lifts nothing; editing lets go of the page's, since a locked screen can't be rearranged.
      */
-    fun syncFocusLock(editing: Boolean) {
-        val page = browser?.takeIf { !editing }
-        if (focusLock === page) return
-        focusLock?.let { holds.lock(it, false) }
-        focusLock = page
-        page?.let { holds.lock(it, true) }
-    }
+    val locked get() = holds.locked || (browser != null && !editing)
 
-    /** The page let go, so its hold does too. */
-    fun releaseFocusLock() {
-        focusLock?.let { holds.lock(it, false) }
-        focusLock = null
-    }
+    /** The widgets showing, and those of them whose `lock:` holds now; see [HomeLock.widgets]. */
+    fun holdWidgets(
+        showing: Set<Any>,
+        holding: Set<Any>,
+    ) = holds.widgets(showing, holding)
 
-    /** Nothing holds the home screen still any more: the way out on the cue, for a widget that can't be reached. */
-    fun unlockAll() {
-        releaseFocusLock()
+    /**
+     * Back or the cue's button: the tile lets go first (a page that kept it would only hold the screen again), then every
+     * widget's hold does, until its lock turns false.
+     */
+    fun unlock() {
+        deactivate()
         holds.unlockAll()
     }
+
+    /** [instance]'s tile has the keyboard or the touches: its terminal, one of its text fields or one of its pages. */
+    fun typingIn(instance: WidgetInstance) = instance.owns(active) || instance.owns(browser) || field?.widget === instance
 
     init {
         wm.claim = { window -> sessions.firstOrNull { it.appId == window.appId }?.attach(window) != null }
@@ -207,7 +199,6 @@ class TerminalTiles(
         field = null
         browser?.clearFocus()
         browser = null
-        releaseFocusLock()
     }
 
     /** [f] took focus, and with it the keyboard. */
@@ -238,10 +229,7 @@ class TerminalTiles(
 
     /** [b] let go: its page closed, or the tile went away with it. */
     fun unfocused(b: EmbeddedBrowser) {
-        if (browser === b) {
-            browser = null
-            releaseFocusLock()
-        }
+        if (browser === b) browser = null
     }
 
     /**
@@ -249,7 +237,7 @@ class TerminalTiles(
      * not only its terminal: a widget's own keys beside its Terminal press keys in it rather than taking the keyboard away.
      */
     fun pressAt(p: Offset) {
-        val bounds = typingBounds(field != null, browser != null, tile, active?.bounds, browser?.bounds) ?: return
+        val bounds = typingBounds(field != null, tile, browser?.bounds ?: active?.bounds) ?: return
         if (extraKeys?.contains(p) == true) return
         if (!bounds.translate(0f, -lift).contains(p)) deactivate()
     }
@@ -270,7 +258,7 @@ class TerminalTiles(
         top: Float,
         minHeight: Float,
     ): Float {
-        val bounds = typingBounds(field != null, browser != null, tile, active?.bounds, browser?.bounds)
+        val bounds = typingBounds(field != null, tile, browser?.bounds ?: active?.bounds)
         val (l, c) = bounds?.let { liftAndCut(it, imeHeight, imeTarget, windowHeight, margin, top, minHeight) } ?: (0f to 0f)
         lift = l
         cut = c
@@ -304,16 +292,9 @@ class TerminalTiles(
          */
         internal fun typingBounds(
             fieldFocused: Boolean,
-            browserFocused: Boolean,
             tile: Rect?,
-            terminal: Rect?,
-            browser: Rect?,
-        ): Rect? =
-            when {
-                fieldFocused -> tile
-                browserFocused -> browser?.let { tile ?: it }
-                else -> terminal?.let { tile ?: it }
-            }
+            surface: Rect?,
+        ): Rect? = if (fieldFocused) tile else surface?.let { tile ?: it }
 
         /** The lift and cut for [bounds], see [liftFor]. */
         internal fun liftAndCut(
@@ -333,39 +314,32 @@ class TerminalTiles(
 }
 
 /**
- * What holds the home screen still: the widgets showing whose `lock:` holds, and anything else that asks by name. Sets,
- * since two can hold it at once and one letting go must not free the screen the other holds. Never saved, so a restart
- * comes up unlocked. Main thread only.
+ * The widgets holding the home screen still, from their `lock:`. A set, since two can hold it at once and one letting go
+ * must not free the screen the other holds. Never saved, so a restart comes up unlocked. Main thread only.
  */
 internal class HomeLock {
     // mutableStateSetOf doesn't exist; a map with unit values is the same thing, and recomposes what reads it.
-    private val owners = mutableStateMapOf<Any, Unit>()
-
-    /** The widgets holding it, from their `lock:`. */
     private val widgets = mutableStateMapOf<Any, Unit>()
 
     /**
      * Widgets whose hold Back or the cue let go of. Their `lock:` still says true, but the person said otherwise: they
-     * stay let go until it turns false, so the next game, not this one, holds the screen again.
+     * stay let go until it's seen false, so the next game, not this one, holds the screen again. A page turned away from
+     * and back doesn't count as false. Weak, so a widget removed while let go isn't kept for it.
      */
-    private val released = HashSet<Any>()
+    private val released: MutableSet<Any> = Collections.newSetFromMap(WeakHashMap())
 
     /** Something holds the home screen still. */
-    val locked get() = owners.isNotEmpty() || widgets.isNotEmpty()
-
-    fun lock(
-        owner: Any,
-        on: Boolean,
-    ) {
-        if (on) owners[owner] = Unit else owners -= owner
-    }
+    val locked get() = widgets.isNotEmpty()
 
     /**
-     * The widgets showing whose `lock:` holds now, in place of the ones before: a widget whose lock turned false, or
-     * that went (its page turned away, it was removed or reloaded), lets go, and is held again only once it says so.
+     * The widgets [showing], and those of them whose `lock:` [holding] now, in place of the ones before: a widget whose
+     * lock turned false, or that went out of sight (its page turned away, it was removed or reloaded), lets go.
      */
-    fun widgets(holding: Set<Any>) {
-        released.retainAll(holding)
+    fun widgets(
+        showing: Set<Any>,
+        holding: Set<Any>,
+    ) {
+        released.removeAll { it in showing && it !in holding }
         val now = holding - released
         widgets.keys.retainAll(now)
         now.forEach { widgets[it] = Unit }
@@ -375,7 +349,6 @@ internal class HomeLock {
     fun unlockAll() {
         released.addAll(widgets.keys)
         widgets.clear()
-        owners.clear()
     }
 }
 
