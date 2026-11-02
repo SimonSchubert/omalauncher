@@ -2059,6 +2059,6 @@ class LangTest {
         assertTrue(lockWidget("Button { text: \"x\"; onTap: lock(editing) }").level == 18)
         // A widget that never calls lock is as it was: no lock is no version to ask for.
         assertEquals(1, Compiler.compile("widget {\n Column {\n Button { text: \"x\"; onTap: refresh() }\n Text { text: \"y\" } }\n}").level)
-        assertEquals(18, Compiler.compile("widget {\n meta { owl: 14 }\n Button { text: \"x\" }\n}").level)
+        assertEquals(18, Compiler.compile("widget {\n meta { owl: 18 }\n Button { text: \"x\" }\n}").level)
     }
 }

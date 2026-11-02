@@ -63,7 +63,7 @@ fun LockCue(
         ) {
             LockIcon(Palette.accent)
             BasicText(stringResource(R.string.home_lock_locked), style = Mono.copy(fontSize = TextSize.Small))
-            BracketAction(stringResource(R.string.home_lock_unlock), Palette.accent, onUnlock)
+            BracketAction(stringResource(R.string.home_lock_unlock), Palette.accent, onClick = onUnlock)
         }
     }
 }
