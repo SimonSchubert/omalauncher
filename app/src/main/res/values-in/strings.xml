@@ -10,4 +10,6 @@
     <string name="activity_voice">Suara</string>
     <string name="activity_settings">Setelan</string>
     <string name="notification_listener">Widget Omalauncher</string>
+    <string name="taskbar_service_description">Menampilkan taskbar Omalauncher di atas aplikasi lain, untuk berganti aplikasi dan menyeret satu ke layar terbagi atau pop-up. Ia membaca aplikasi mana yang ada di layar dan di mana, tidak pernah isinya.</string>
+    <string name="taskbar_service_label">Taskbar Omalauncher</string>
 </resources>

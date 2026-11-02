@@ -1,12 +1,15 @@
 package dev.omalauncher.taskbar
 
+import androidx.annotation.StringRes
+import dev.omalauncher.R
+
 /** What the taskbar lists. Saved in preferences by [id]: never rename. */
 enum class TaskbarMode(
     val id: String,
-    val label: String,
+    @StringRes val label: Int,
 ) {
-    Recent("recent", "recent apps"),
-    PinnedAndRecent("pinned", "pinned + recent"),
+    Recent("recent", R.string.taskbar_mode_recent),
+    PinnedAndRecent("pinned", R.string.taskbar_mode_pinned),
     ;
 
     companion object {

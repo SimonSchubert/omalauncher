@@ -13,6 +13,9 @@
     <string name="settings_gestures">gesten</string>
     <!-- What swiping up and down on home open: a panel's name, or nothing. -->
     <string name="settings_gestures_subtitle">hoch: %1$s · runter: %2$s</string>
+    <string name="settings_taskbar">taskleiste</string>
+    <string name="settings_taskbar_on">an · %1$s</string>
+    <string name="settings_taskbar_off">aus · apps über anderen apps wechseln und teilen</string>
     <string name="settings_language">sprache</string>
     <!-- Following the language the phone is set to, rather than one picked here. -->
     <string name="settings_language_phone">sprache des smartphones</string>

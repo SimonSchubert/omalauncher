@@ -23,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.taskbar.TaskbarMode
 import dev.omalauncher.taskbar.TaskbarStatus
@@ -43,25 +45,25 @@ fun TaskbarScreen(
     val taskbar = runtime.taskbar
     val supported = Build.VERSION.SDK_INT >= 35
     var query by rememberSaveable { mutableStateOf("") }
-    OverlayPanel("taskbar", onDismiss, contentWidth = ReadingWidth) {
+    OverlayPanel(stringResource(R.string.taskbar_title), onDismiss, contentWidth = ReadingWidth) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item(key = "on") {
                 SettingRow(
-                    "taskbar",
-                    if (!supported) "needs Android 15" else "a handle at the bottom of other apps: switch apps, drag one to split the screen",
-                    if (!supported) "unavailable" else if (taskbar.enabled) "on" else "off",
+                    stringResource(R.string.taskbar_title),
+                    stringResource(if (!supported) R.string.taskbar_needs_android_15 else R.string.taskbar_about),
+                    stringResource(if (!supported) R.string.taskbar_unavailable else if (taskbar.enabled) R.string.taskbar_on else R.string.taskbar_off),
                     valueColor = if (supported) Palette.accent else Palette.muted,
                 ) { if (supported) taskbar.enabled = !taskbar.enabled }
             }
             if (taskbar.enabled && !TaskbarStatus.serviceOn) {
                 item(key = "service") {
-                    SettingRow("turn on Omalauncher taskbar in accessibility", "Android lets only you turn it on; it reads which apps are on screen, no text", "open", warning = true) {
+                    SettingRow(stringResource(R.string.taskbar_service), stringResource(R.string.taskbar_service_why), stringResource(R.string.taskbar_service_open), warning = true) {
                         runCatching { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
                     }
                 }
             }
             item(key = "mode") {
-                SettingRow("shows", taskbar.mode.label, "change") {
+                SettingRow(stringResource(R.string.taskbar_shows), stringResource(taskbar.mode.label), stringResource(R.string.taskbar_shows_change)) {
                     taskbar.mode = if (taskbar.mode == TaskbarMode.Recent) TaskbarMode.PinnedAndRecent else TaskbarMode.Recent
                 }
             }
@@ -75,10 +77,10 @@ fun TaskbarScreen(
                     } else {
                         rankMatches(all, query.trim(), name = { it.label }).map { it.first }
                     }
-                item(key = "search") { SearchField(query, { query = it }, onGo = {}, placeholder = "search apps") }
+                item(key = "search") { SearchField(query, { query = it }, onGo = {}, placeholder = stringResource(R.string.taskbar_search)) }
                 items(apps, key = { it.key }) { app ->
                     val pinned = app.key in taskbar.pinned
-                    SettingRow(app.label, if (pinned) "pinned #${taskbar.pinned.indexOf(app.key) + 1}" else "not pinned", if (pinned) "●" else "○") {
+                    SettingRow(app.label, if (pinned) stringResource(R.string.taskbar_pinned, taskbar.pinned.indexOf(app.key) + 1) else stringResource(R.string.taskbar_not_pinned), if (pinned) "●" else "○") {
                         taskbar.togglePin(app.key)
                     }
                 }

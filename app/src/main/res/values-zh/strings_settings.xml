@@ -10,6 +10,9 @@
     </plurals>
     <string name="settings_gestures">手势</string>
     <string name="settings_gestures_subtitle">上滑：%1$s · 下滑：%2$s</string>
+    <string name="settings_taskbar">任务栏</string>
+    <string name="settings_taskbar_on">开 · %1$s</string>
+    <string name="settings_taskbar_off">关 · 在其他应用上方切换和分屏</string>
     <string name="settings_language">语言</string>
     <string name="settings_language_phone">跟随手机语言</string>
     <string name="settings_linux">linux</string>

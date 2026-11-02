@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The floating taskbar's settings (ui/TaskbarScreen.kt). -->
+<resources>
+    <string name="taskbar_mode_recent">最近使用的应用</string>
+    <string name="taskbar_mode_pinned">已固定 + 最近</string>
+    <string name="taskbar_title">任务栏</string>
+    <string name="taskbar_about">其他应用底部的把手：切换应用，拖动一个应用来分屏</string>
+    <string name="taskbar_needs_android_15">需要 Android 15</string>
+    <string name="taskbar_unavailable">不可用</string>
+    <string name="taskbar_on">开</string>
+    <string name="taskbar_off">关</string>
+    <string name="taskbar_service">在无障碍设置中开启 Omalauncher 任务栏</string>
+    <string name="taskbar_service_why">Android 只允许你自己开启；它只读取屏幕上有哪些应用，不读取文字</string>
+    <string name="taskbar_service_open">打开</string>
+    <string name="taskbar_shows">显示</string>
+    <string name="taskbar_shows_change">更改</string>
+    <string name="taskbar_search">搜索应用</string>
+    <string name="taskbar_pinned">已固定 #%1$d</string>
+    <string name="taskbar_not_pinned">未固定</string>
+</resources>

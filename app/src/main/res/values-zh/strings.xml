@@ -10,4 +10,6 @@
     <string name="activity_voice">语音</string>
     <string name="activity_settings">设置</string>
     <string name="notification_listener">Omalauncher 小组件</string>
+    <string name="taskbar_service_description">在其他应用上方显示 Omalauncher 的任务栏，用来切换应用，并把应用拖到分屏或弹出窗口。它读取屏幕上有哪些应用及其位置，从不读取其中的内容。</string>
+    <string name="taskbar_service_label">Omalauncher 任务栏</string>
 </resources>

@@ -113,7 +113,7 @@ fun SettingsScreen(
                 ),
                 SettingsRow(
                     R.string.settings_taskbar,
-                    if (runtime.taskbar.enabled) stringResource(R.string.settings_taskbar_on, runtime.taskbar.mode.label) else stringResource(R.string.settings_taskbar_off),
+                    if (runtime.taskbar.enabled) stringResource(R.string.settings_taskbar_on, stringResource(runtime.taskbar.mode.label)) else stringResource(R.string.settings_taskbar_off),
                     onTaskbar,
                 ),
                 languageRow(),

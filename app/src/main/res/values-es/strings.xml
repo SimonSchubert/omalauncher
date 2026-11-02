@@ -10,4 +10,6 @@
     <string name="activity_voice">Voz</string>
     <string name="activity_settings">Configuración</string>
     <string name="notification_listener">Widgets de Omalauncher</string>
+    <string name="taskbar_service_description">Muestra la barra de tareas de Omalauncher sobre otras apps, para cambiar de app y arrastrar una a pantalla dividida o a una ventana emergente. Lee qué apps están en pantalla y dónde, nunca lo que hay en ellas.</string>
+    <string name="taskbar_service_label">Barra de tareas de Omalauncher</string>
 </resources>
