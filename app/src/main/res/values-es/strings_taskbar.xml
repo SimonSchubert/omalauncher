@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The floating taskbar's settings (ui/TaskbarScreen.kt). -->
+<resources>
+    <string name="taskbar_mode_recent">apps recientes</string>
+    <string name="taskbar_mode_pinned">fijadas + recientes</string>
+    <string name="taskbar_title">barra de tareas</string>
+    <string name="taskbar_about">un asa abajo sobre otras apps: cambia de app, arrastra una para dividir la pantalla</string>
+    <string name="taskbar_needs_android_15">requiere Android 15</string>
+    <string name="taskbar_unavailable">no disponible</string>
+    <string name="taskbar_on">activada</string>
+    <string name="taskbar_off">desactivada</string>
+    <string name="taskbar_service">activa la barra de tareas de Omalauncher en accesibilidad</string>
+    <string name="taskbar_service_why">Android solo te deja activarla a ti; lee qué apps están en pantalla, ningún texto</string>
+    <string name="taskbar_service_open">abrir</string>
+    <string name="taskbar_shows">muestra</string>
+    <string name="taskbar_shows_change">cambiar</string>
+    <string name="taskbar_search">buscar apps</string>
+    <string name="taskbar_pinned">fijada #%1$d</string>
+    <string name="taskbar_not_pinned">no fijada</string>
+    <string name="taskbar_linux_app">linux · %1$s</string>
+</resources>

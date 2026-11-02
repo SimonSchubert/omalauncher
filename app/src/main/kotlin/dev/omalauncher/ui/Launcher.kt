@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import dev.omalauncher.Runtime
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
+import dev.omalauncher.ui.splitdrag.DropZoneOverlay
 import dev.omalauncher.widgets.HomeStore
 import dev.omalauncher.widgets.checkSecretsCommand
 import dev.omalauncher.widgets.editWidgetCommand
@@ -291,6 +292,8 @@ private fun DesktopScreen(
     // Full-screen panels draw over the bar.
     ThemesOverlay(runtime, state)
     FileErrors(listOf(StyleStore.FILE to runtime.style.errors, HomeStore.FILE to runtime.widgets.home.errors) + runtime.gestureProblems())
+    // An app dragged out of home: where it can go. Over everything, as the system's own zones are.
+    DropZoneOverlay(runtime.splitDrag)
 }
 
 /**

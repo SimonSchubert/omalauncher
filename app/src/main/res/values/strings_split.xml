@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where an app dragged out of the recent strip or the taskbar can go (ui/splitdrag/DropZoneOverlay.kt). -->
+<resources>
+    <!-- Over the zones while an app is dragged; the app's name. -->
+    <string name="drop_release">Release over a zone to open %1$s</string>
+    <string name="drop_full_screen">Full screen</string>
+    <string name="drop_pop_up">Pop-up</string>
+    <string name="drop_split_top">Split · top</string>
+    <string name="drop_split_bottom">Split · bottom</string>
+    <string name="drop_split_left">Split · left</string>
+    <string name="drop_split_right">Split · right</string>
+    <!-- A split half the dragged app takes; the name of the app in it now. -->
+    <string name="drop_replace">Replace %1$s</string>
+</resources>

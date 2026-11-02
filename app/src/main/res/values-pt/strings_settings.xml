@@ -12,6 +12,9 @@
     </plurals>
     <string name="settings_gestures">gestos</string>
     <string name="settings_gestures_subtitle">para cima: %1$s · para baixo: %2$s</string>
+    <string name="settings_taskbar">barra de tarefas</string>
+    <string name="settings_taskbar_on">ativada · %1$s</string>
+    <string name="settings_taskbar_off">desativada · troque e divida apps sobre outros apps</string>
     <string name="settings_language">idioma</string>
     <string name="settings_language_phone">idioma do telefone</string>
     <string name="settings_linux">linux</string>

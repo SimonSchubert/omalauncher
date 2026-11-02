@@ -59,6 +59,7 @@ fun SettingsScreen(
     onLinux: () -> Unit,
     onLicenses: () -> Unit,
     onGestures: () -> Unit,
+    onTaskbar: () -> Unit,
 ) {
     val context = LocalContext.current
     val linux by runtime.bootstrap.state.collectAsState()
@@ -109,6 +110,11 @@ fun SettingsScreen(
                     R.string.settings_gestures,
                     stringResource(R.string.settings_gestures_subtitle, runtime.gestureLabel(runtime.gestures.swipeUp), runtime.gestureLabel(runtime.gestures.swipeDown)),
                     onGestures,
+                ),
+                SettingsRow(
+                    R.string.settings_taskbar,
+                    if (runtime.taskbar.enabled) stringResource(R.string.settings_taskbar_on, stringResource(runtime.taskbar.mode.label)) else stringResource(R.string.settings_taskbar_off),
+                    onTaskbar,
                 ),
                 languageRow(),
                 SettingsRow(R.string.settings_linux, linuxStatus, onLinux),

@@ -10,6 +10,9 @@
     </plurals>
     <string name="settings_gestures">gestur</string>
     <string name="settings_gestures_subtitle">atas: %1$s · bawah: %2$s</string>
+    <string name="settings_taskbar">taskbar</string>
+    <string name="settings_taskbar_on">aktif · %1$s</string>
+    <string name="settings_taskbar_off">nonaktif · ganti dan bagi aplikasi dari atas aplikasi lain</string>
     <string name="settings_language">bahasa</string>
     <string name="settings_language_phone">bahasa ponsel</string>
     <string name="settings_linux">linux</string>

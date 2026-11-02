@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where an app dragged out of the recent strip or the taskbar can go (ui/splitdrag/DropZoneOverlay.kt). -->
+<resources>
+    <string name="drop_release">Lepaskan di atas zona untuk membuka %1$s</string>
+    <string name="drop_full_screen">Layar penuh</string>
+    <string name="drop_pop_up">Pop-up</string>
+    <string name="drop_split_top">Terbagi · atas</string>
+    <string name="drop_split_bottom">Terbagi · bawah</string>
+    <string name="drop_split_left">Terbagi · kiri</string>
+    <string name="drop_split_right">Terbagi · kanan</string>
+    <string name="drop_replace">Ganti %1$s</string>
+</resources>

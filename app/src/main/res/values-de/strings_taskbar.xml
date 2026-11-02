@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The floating taskbar's settings (ui/TaskbarScreen.kt). -->
+<resources>
+    <string name="taskbar_mode_recent">zuletzt genutzte apps</string>
+    <string name="taskbar_mode_pinned">angeheftet + zuletzt</string>
+    <string name="taskbar_title">taskleiste</string>
+    <string name="taskbar_about">ein griff unten über anderen apps: apps wechseln, eine ziehen, um den bildschirm zu teilen</string>
+    <string name="taskbar_needs_android_15">braucht Android 15</string>
+    <string name="taskbar_unavailable">nicht verfügbar</string>
+    <string name="taskbar_on">an</string>
+    <string name="taskbar_off">aus</string>
+    <string name="taskbar_service">Omalauncher-Taskleiste in der Bedienungshilfe einschalten</string>
+    <string name="taskbar_service_why">nur du kannst sie in Android einschalten; sie liest, welche apps auf dem bildschirm sind, keinen text</string>
+    <string name="taskbar_service_open">öffnen</string>
+    <string name="taskbar_shows">zeigt</string>
+    <string name="taskbar_shows_change">ändern</string>
+    <string name="taskbar_search">apps suchen</string>
+    <string name="taskbar_pinned">angeheftet #%1$d</string>
+    <string name="taskbar_not_pinned">nicht angeheftet</string>
+    <string name="taskbar_linux_app">linux · %1$s</string>
+</resources>

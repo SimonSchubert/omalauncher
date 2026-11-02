@@ -25,6 +25,7 @@ import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.ui.BrowserPages
 import dev.omalauncher.ui.ImagePicker
 import dev.omalauncher.ui.AskPermission
+import dev.omalauncher.taskbar.HomeVisibility
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.theme.Style
 import dev.omalauncher.ui.KeyIndicated
@@ -208,9 +209,10 @@ class MainActivity : ComponentActivity() {
         return super.dispatchKeyEvent(event) || escapeAsBack(event)
     }
 
-    /** Widgets only refresh while the home screen is visible. */
+    /** Widgets only refresh while the home screen is visible; the taskbar hides while it is (see HomeVisibility). */
     override fun onStart() {
         super.onStart()
+        HomeVisibility.shown = true
         runtime.widgets.homeStarted()
         runtime.screenStarted()
         BrowserPages.started(true)
@@ -226,9 +228,11 @@ class MainActivity : ComponentActivity() {
         runtime.widgets.airpods.ask = null
     }
 
+    /** Home is out of sight: the taskbar may show over this launcher's other windows again. */
     override fun onStop() {
         super.onStop()
         away = true
+        HomeVisibility.shown = false
         state.closeNow()
         // An app was just opened from home: it moves to the front of the strip now, out of sight.
         runtime.usage.settle()

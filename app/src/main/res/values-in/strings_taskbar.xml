@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The floating taskbar's settings (ui/TaskbarScreen.kt). -->
+<resources>
+    <string name="taskbar_mode_recent">aplikasi terbaru</string>
+    <string name="taskbar_mode_pinned">disematkan + terbaru</string>
+    <string name="taskbar_title">taskbar</string>
+    <string name="taskbar_about">pegangan di bawah aplikasi lain: ganti aplikasi, seret satu untuk membagi layar</string>
+    <string name="taskbar_needs_android_15">perlu Android 15</string>
+    <string name="taskbar_unavailable">tidak tersedia</string>
+    <string name="taskbar_on">aktif</string>
+    <string name="taskbar_off">nonaktif</string>
+    <string name="taskbar_service">aktifkan taskbar Omalauncher di aksesibilitas</string>
+    <string name="taskbar_service_why">hanya kamu yang bisa mengaktifkannya di Android; ia membaca aplikasi mana yang ada di layar, bukan teks</string>
+    <string name="taskbar_service_open">buka</string>
+    <string name="taskbar_shows">menampilkan</string>
+    <string name="taskbar_shows_change">ubah</string>
+    <string name="taskbar_search">cari aplikasi</string>
+    <string name="taskbar_pinned">disematkan #%1$d</string>
+    <string name="taskbar_not_pinned">tidak disematkan</string>
+    <string name="taskbar_linux_app">linux · %1$s</string>
+</resources>
