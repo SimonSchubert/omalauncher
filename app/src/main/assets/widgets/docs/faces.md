@@ -39,7 +39,11 @@ face "morning" {
   and the nodes keep clear of it; `statusBar: false` hides it while the face shows (a swipe down from the
   top brings it back for a moment), and they keep clear of a camera cutout only. The background runs
   under both. `statusBar` can be any expression, and the bar comes and goes as it changes: `statusBar: !playing`
-  keeps it while a game waits and hides it while one runs. With `edge: true` (owl 14) the nodes run on under the status bar too, and in landscape
+  keeps it while a game waits and hides it while one runs. `lock: playing` (owl 18, a widget's too) holds the home
+  screen still while it's true: no page turn, no swipe up, no long press, and the prompt bar and recent strip open
+  nothing, so a game's swipes stay its own. A border and a chip at the top show it; the chip's `[ unlock ]` and Back
+  let go until the value turns false, so the next game holds it again. Only a page showing holds it, and a fixed
+  `lock: true` doesn't compile. With `edge: true` (owl 14) the nodes run on under the status bar too, and in landscape
   under a camera cutout or a navigation bar at the side, as a photo or a drawing should: `screenTop` is how much of the
   top the status bar covers (or a cutout, while it's hidden), and `screenLeft` and `screenRight` how much of each side a
   cutout or navigation bar covers, in dp, so pad what has to stay readable by them,

@@ -58,8 +58,8 @@ import dev.omalauncher.wayland.XdgToplevel
  * outside, Back, or leaving the page. A widget's own text field (an Input)
  * that takes the keyboard is treated the same way: its tile lifts above the
  * keyboard and lets go on the same tap outside, Back or page turn. The lock lives here too,
- * beside focus and the lift: a widget that asked for it holds the whole home screen still
- * until it lets go (see [lock]). Main thread only.
+ * beside focus and the lift: a widget showing whose `lock:` holds keeps the whole home screen
+ * still (see [holdWidgets]). Main thread only.
  */
 class TerminalTiles(
     private val runtime: Runtime,
@@ -104,11 +104,14 @@ class TerminalTiles(
     /** A widget holds the home screen still: the pages, the swipe up and the long press wait until it lets go. */
     val locked get() = holds.locked
 
-    /** [owner] holds the home screen still ([on]) or gives it back; another widget's hold stays. */
+    /** [owner] holds the home screen still ([on]) or gives it back; another's hold stays. */
     fun lock(
         owner: Any,
         on: Boolean,
     ) = holds.lock(owner, on)
+
+    /** The widgets showing whose `lock:` holds now; see [HomeLock.widgets]. */
+    fun holdWidgets(holding: Set<Any>) = holds.widgets(holding)
 
     /** Nothing holds the home screen still any more: the way out on the cue, for a widget that can't be reached. */
     fun unlockAll() = holds.unlockAll()
@@ -264,16 +267,25 @@ class TerminalTiles(
 }
 
 /**
- * The widgets holding the home screen still, by the instance that asked for it: a set, since two can hold it at once
- * and one letting go must not free the screen the other holds. Never saved, so a restart comes up unlocked. Main
- * thread only.
+ * What holds the home screen still: the widgets showing whose `lock:` holds, and anything else that asks by name. Sets,
+ * since two can hold it at once and one letting go must not free the screen the other holds. Never saved, so a restart
+ * comes up unlocked. Main thread only.
  */
 internal class HomeLock {
     // mutableStateSetOf doesn't exist; a map with unit values is the same thing, and recomposes what reads it.
     private val owners = mutableStateMapOf<Any, Unit>()
 
+    /** The widgets holding it, from their `lock:`. */
+    private val widgets = mutableStateMapOf<Any, Unit>()
+
+    /**
+     * Widgets whose hold Back or the cue let go of. Their `lock:` still says true, but the person said otherwise: they
+     * stay let go until it turns false, so the next game, not this one, holds the screen again.
+     */
+    private val released = HashSet<Any>()
+
     /** Something holds the home screen still. */
-    val locked get() = owners.isNotEmpty()
+    val locked get() = owners.isNotEmpty() || widgets.isNotEmpty()
 
     fun lock(
         owner: Any,
@@ -282,7 +294,23 @@ internal class HomeLock {
         if (on) owners[owner] = Unit else owners -= owner
     }
 
-    fun unlockAll() = owners.clear()
+    /**
+     * The widgets showing whose `lock:` holds now, in place of the ones before: a widget whose lock turned false, or
+     * that went (its page turned away, it was removed or reloaded), lets go, and is held again only once it says so.
+     */
+    fun widgets(holding: Set<Any>) {
+        released.retainAll(holding)
+        val now = holding - released
+        widgets.keys.retainAll(now)
+        now.forEach { widgets[it] = Unit }
+    }
+
+    /** Back or the cue's button: everything lets go, and the widgets' locks stay let go until they turn false. */
+    fun unlockAll() {
+        released.addAll(widgets.keys)
+        widgets.clear()
+        owners.clear()
+    }
 }
 
 /** A text field on a home tile's widget, which has the keyboard while it's [TerminalTiles.field]; [release] takes its focus away. */

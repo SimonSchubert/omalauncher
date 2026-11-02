@@ -36,6 +36,7 @@ widget "memory" {
   order: 2                // placement order on the page when first placed (lower = first)
   size: 3x4               // size in grid cells when first placed: columns x rows
   minSize: 2x3            // users can't shrink it below this
+  // lock: playing        // holds the home screen still while true, for a game or a drawing pad (owl 18)
 
   source mem = cmd("free -b | awk '/Mem:/ {print $2, $3}'") every 5s
   let used = num(words(mem)[1])

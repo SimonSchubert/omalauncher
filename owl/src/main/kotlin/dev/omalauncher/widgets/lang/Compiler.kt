@@ -357,6 +357,13 @@ class Compiler private constructor(
         val background = props["background"]?.let { if (gradient(it.value)) since(GRADIENT_BACKGROUND, it.pos); ex(it.value, root) }
         // Whether the status bar stays over a face, read as it changes: a face can hide it for a game and bring it back.
         val statusBar = props["statusBar"]?.let { ex(it.value, root) }
+        // Whether the home screen holds still around the tile, read as it changes: a game holds it while it's played. A
+        // constant would hold it whenever the page shows, so it has to be something that changes, like a state.
+        val lock =
+            props["lock"]?.let { p ->
+                since(HOME_LOCK, p.pos)
+                ex(p.value, root).also { if (it.const != null) fail("lock holds the home screen still while what it says is true, so it's something that changes, like lock: playing, not a fixed value", p.pos) }
+            }
         // Drawn under the status bar and a camera cutout: fixed in the file, since the whole face moves when it changes.
         val edge =
             props["edge"]?.let { p ->
@@ -371,6 +378,7 @@ class Compiler private constructor(
             level = level,
             size = props["size"]?.let { cells(it) },
             statusBar = statusBar,
+            lock = lock,
             edge = edge,
             kind = ast.kind,
             minSize = props["minSize"]?.let { cells(it) } ?: (1 to 1),
@@ -1313,23 +1321,6 @@ class Compiler private constructor(
                 val arity = Builtins.actions[call.name] ?: fail("'${call.name}' isn't an action (${Builtins.actions.keys.joinToString()})", call.pos)
                 if (call.args.size !in arity) fail("${call.name} takes ${arity.first}-${arity.last} values", call.pos)
                 val args = call.args.map { ex(it, scope) }
-                // lock holds the whole home screen still, so a value that only reads as a truth is refused where it's
-                // written: lock("false") would lock, and a frozen home is a worse surprise than a torch left on.
-                if (call.name == "lock") {
-                    val c = args[0].const
-                    if (c != null && c != Null && c !is Bool) {
-                        val what =
-                            when (c) {
-                                is Str -> "text"
-                                is Num -> "number"
-                                is Col -> "color"
-                                is Lst -> "list"
-                                is Obj -> "map"
-                                else -> "value"
-                            }
-                        fail("lock takes true or false, not a $what: a value that only reads as true would hold the home screen still", call.pos)
-                    }
-                }
                 ACTION_WORDS[call.name]?.let { w ->
                     val c = (args[0].const as? Str)?.v
                     if (c != null && c !in w.words && !(w.numbers && c.toDoubleOrNull() != null)) fail(w.message, call.pos)

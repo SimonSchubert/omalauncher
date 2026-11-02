@@ -216,11 +216,6 @@ class WidgetInstance(
     private val secretFile: File? = null,
     /** screen() and close(): opens or closes the widget's screen { }. */
     private val onScreen: (Boolean) -> Unit = {},
-    /**
-     * lock(true) and lock(false): holds the home screen still while the widget is being used, or lets it go. Null
-     * where there is no home to hold, as in a preview, which is told so rather than failing quietly.
-     */
-    private val onLock: ((Boolean) -> Unit)? = null,
     /** Linux is installed and running; `optional` sources wait for it. Snapshot state. */
     private val linux: () -> Boolean = { true },
     /** An app's window or the widget's screen is showing. Snapshot state. */
@@ -560,11 +555,6 @@ class WidgetInstance(
         }
         if (name == "screen" || name == "close") {
             onScreen(name == "screen")
-            return
-        }
-        if (name == "lock") {
-            val hold = onLock ?: return report(NO_HOME_TO_LOCK)
-            hold(args.firstOrNull()?.truthy == true)
             return
         }
         if (name == "sound") {
@@ -1177,6 +1167,9 @@ class WidgetInstance(
     /** Whether a face or an app keeps the status bar over it now: its `statusBar`, true unless it says otherwise. */
     fun showsStatusBar() = program.statusBar?.let { eval(it, root, "statusBar").truthy } ?: true
 
+    /** Whether a widget or a face holds the home screen still now: its `lock`, false unless it says otherwise. */
+    fun holdsHome() = program.lock?.let { eval(it, root, "lock").truthy } == true
+
     /** Whether an app's Back goes up a level inside it now, because its `back` holds. */
     fun canGoUp() = program.back?.let { eval(it, root, "back").truthy } == true
 
@@ -1230,8 +1223,6 @@ class WidgetInstance(
 
     fun stop() {
         services.sound(this, null, null)
-        // A hold on the home screen ends with the widget that asked for it, not left for no one to release.
-        onLock?.invoke(false)
         jobs.forEach { it.cancel() }
         jobs.clear()
         terminals.values.forEach { it.close() }
@@ -1386,9 +1377,6 @@ class WidgetInstance(
 
 /** A request that failed, for a report: its status, or that it never got one. */
 private fun httpFailure(r: ShellResult) = "${if (r.code > 0) "HTTP ${r.code}" else "request failed"}: ${r.err}"
-
-/** What `lock(...)` says where no home screen is there to hold: a preview draws the widget on its own. */
-internal const val NO_HOME_TO_LOCK = "a preview has no home screen to lock"
 
 /** A command that failed, for a report: its exit code and the first lines it printed to stderr. */
 private fun commandFailure(r: ShellResult) = "exit ${r.code}: ${r.err.lines().take(3).joinToString(" / ")}"

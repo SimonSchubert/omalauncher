@@ -209,6 +209,15 @@ fun HomeScreen(
     val faceTyping = shown.mapNotNull(::faceOn).any { f -> engine.instance(f.spec)?.let { it.owns(runtime.terminals.active) || runtime.terminals.field?.widget === it } == true }
     val faceShowing = shown.all(::full)
     val statusBarAway = shown.all { faceOn(it)?.let { f -> engine.instance(f.spec) }?.showsStatusBar() == false }
+    // The widgets showing whose lock: holds keep the screen still, read here rather than in composition, so a game's state
+    // changing doesn't recompose home. Only those showing: a page turned away from can't hold the one turned to.
+    LaunchedEffect(engine, shown) {
+        snapshotFlow {
+            shown.flatMap(engine::itemsOn).filterIsInstance<WidgetItem>().mapNotNullTo(HashSet()) { item ->
+                engine.instance(item.spec)?.takeIf { it.holdsHome() }
+            }
+        }.collect { terminals.holdWidgets(it) }
+    }
     // Which pager slots are full screen, for the bar to slide with the others.
     val fullSlots = slots.map { it.all(::full) }
     SideEffect {

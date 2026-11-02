@@ -1,7 +1,10 @@
 # Screen lock — implementation plan
 
-Status: proposed, nothing implemented yet.
-Target: `copongcopong/omalauncher`, a new owl level (12).
+Status: landed in owl 18 as #254, then changed from the `lock(true)`/`lock(false)` action below to a
+widget's or a face's `lock:` property (`lock: playing`), which the launcher follows while the tile shows.
+Back and the chip let go until the value turns false. A widget can't forget to let go, and can't
+believe it still holds a screen the person freed. The rest of this plan describes the action as
+first proposed.
 Goal: let a widget hold the home screen still while it is being used, so a tap or a swipe on
 it doesn't turn the page or open the drawer. A desktop window keeps its drags; a tile should
 keep its swipes.

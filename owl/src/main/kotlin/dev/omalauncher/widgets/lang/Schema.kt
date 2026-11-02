@@ -166,8 +166,8 @@ internal val SINCE =
         listOf(HTTP_PIN, "ws", "send", ON_EACH).associateWith { 17 } +
         // owl 18: a field that wraps what's typed and grows with it, for messages longer than a line.
         mapOf("Input.lines" to 18) +
-        // owl 18: holding the home screen still while the widget is being used.
-        mapOf("lock" to 18)
+        // owl 18: holding the home screen still while the widget is being used, as long as its lock: holds.
+        mapOf(HOME_LOCK to 18)
 
 /** `strings { ... }`, named like this in [SINCE]. */
 internal const val STRINGS_DECL = "strings { }"
@@ -214,6 +214,9 @@ internal const val QUERY = "query"
 internal const val GRADIENT_BACKGROUND = "a gradient background"
 
 internal const val APP_STATUS_BAR = "an app's statusBar"
+
+/** A widget's or a face's `lock:`, named like this in [SINCE]. */
+internal const val HOME_LOCK = "lock"
 
 internal const val FACE_EDGE = "a face's edge"
 
@@ -333,7 +336,7 @@ internal val TILE = setOf("cols", "rows", "tileWidth", "tileHeight", "screenWidt
 /** Builtins that always give a number (or null, which reads as …). */
 internal val NUMBERS = setOf("int", "round", "floor", "ceil", "abs", "fixed", "len", "count", "sum", "min", "max", "clamp")
 
-internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding", "background")
+internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding", "background", "lock")
 
 /** A face has no tile's size; it says where it goes and whether the status bar stays over it. */
-internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge")
+internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge", "lock")

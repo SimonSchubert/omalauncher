@@ -28,6 +28,7 @@ Part of the widget docs: README.md, one folder up, comes first, and paths here a
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see docs/screens.md (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
 | `padding: 12` / `background: ...` | the tile's padding (dp) and background |
+| `lock: playing` | holds the home screen still while it's true and the tile shows: no page turn, swipe up or long press, so a game's or a drawing pad's swipes stay its own. Back and the chip it puts at the top let go until it turns false. Something that changes, never a fixed `true` (owl 18) |
 
 Sources only run while their page (or a neighbour) is on screen, and
 identical commands in several widgets run once. A few commands run at the same
