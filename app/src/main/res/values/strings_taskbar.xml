@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The floating taskbar's settings (ui/TaskbarScreen.kt). -->
+<resources>
+    <!-- What the taskbar lists (taskbar/TaskbarApps.kt). -->
+    <string name="taskbar_mode_recent">recent apps</string>
+    <string name="taskbar_mode_pinned">pinned + recent</string>
+    <string name="taskbar_title">taskbar</string>
+    <string name="taskbar_about">a handle at the bottom of other apps: switch apps, drag one to split the screen</string>
+    <string name="taskbar_needs_android_15">needs Android 15</string>
+    <string name="taskbar_unavailable">unavailable</string>
+    <string name="taskbar_on">on</string>
+    <string name="taskbar_off">off</string>
+    <string name="taskbar_service">turn on Omalauncher taskbar in accessibility</string>
+    <string name="taskbar_service_why">Android lets only you turn it on; it reads which apps are on screen, no text</string>
+    <string name="taskbar_service_open">open</string>
+    <string name="taskbar_shows">shows</string>
+    <string name="taskbar_shows_change">change</string>
+    <string name="taskbar_search">search apps</string>
+    <!-- An app pinned to the taskbar, with its place among the pins. -->
+    <string name="taskbar_pinned">pinned #%1$d</string>
+    <string name="taskbar_not_pinned">not pinned</string>
+</resources>

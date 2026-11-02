@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where an app dragged out of the recent strip or the taskbar can go (ui/splitdrag/DropZoneOverlay.kt). -->
+<resources>
+    <string name="drop_release">Suelta sobre una zona para abrir %1$s</string>
+    <string name="drop_full_screen">Pantalla completa</string>
+    <string name="drop_pop_up">Ventana emergente</string>
+    <string name="drop_split_top">Dividida · arriba</string>
+    <string name="drop_split_bottom">Dividida · abajo</string>
+    <string name="drop_split_left">Dividida · izquierda</string>
+    <string name="drop_split_right">Dividida · derecha</string>
+    <string name="drop_replace">Reemplazar %1$s</string>
+</resources>

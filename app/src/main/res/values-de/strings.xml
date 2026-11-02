@@ -10,4 +10,6 @@
     <string name="activity_voice">Sprechen</string>
     <string name="activity_settings">Einstellungen</string>
     <string name="notification_listener">Omalauncher-Widgets</string>
+    <string name="taskbar_service_description">Zeigt die Taskleiste von Omalauncher über anderen Apps, um Apps zu wechseln und eine in den geteilten Bildschirm oder ein Pop-up zu ziehen. Sie liest, welche Apps auf dem Bildschirm sind und wo, nie was in ihnen steht.</string>
+    <string name="taskbar_service_label">Omalauncher-Taskleiste</string>
 </resources>
