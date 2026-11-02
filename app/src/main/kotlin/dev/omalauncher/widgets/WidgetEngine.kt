@@ -37,6 +37,7 @@ import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.lang.Source
 import dev.omalauncher.widgets.lang.phoneLanguage
 import dev.omalauncher.widgets.market.Shared
+import dev.omalauncher.widgets.runtime.NO_HOME_TO_LOCK
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -636,7 +637,9 @@ class WidgetEngine(
             }
             prev?.stop()
             val name = spec.file.name
-            val inst =
+            // Named in its own callback, which the constructor can't be yet: the lock is held by the instance that asked.
+            lateinit var inst: WidgetInstance
+            inst =
                 WidgetInstance(
                     program,
                     services,
@@ -649,6 +652,13 @@ class WidgetEngine(
                             program.kind == OwlKind.Panel -> if (!open) panelCloses.tryEmit(name)
                             open -> openScreen = name
                             openScreen == name -> openScreen = null
+                        }
+                    },
+                    onLock = { on ->
+                        when {
+                            // A preview draws the widget on its own, with no home screen of the user's to hold still.
+                            on && name in previewing -> inst.report(NO_HOME_TO_LOCK)
+                            else -> runtime.terminals.lock(inst, on)
                         }
                     },
                     linux = { linux },

@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 17
+        const val LEVEL = 18
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -1313,6 +1313,23 @@ class Compiler private constructor(
                 val arity = Builtins.actions[call.name] ?: fail("'${call.name}' isn't an action (${Builtins.actions.keys.joinToString()})", call.pos)
                 if (call.args.size !in arity) fail("${call.name} takes ${arity.first}-${arity.last} values", call.pos)
                 val args = call.args.map { ex(it, scope) }
+                // lock holds the whole home screen still, so a value that only reads as a truth is refused where it's
+                // written: lock("false") would lock, and a frozen home is a worse surprise than a torch left on.
+                if (call.name == "lock") {
+                    val c = args[0].const
+                    if (c != null && c != Null && c !is Bool) {
+                        val what =
+                            when (c) {
+                                is Str -> "text"
+                                is Num -> "number"
+                                is Col -> "color"
+                                is Lst -> "list"
+                                is Obj -> "map"
+                                else -> "value"
+                            }
+                        fail("lock takes true or false, not a $what: a value that only reads as true would hold the home screen still", call.pos)
+                    }
+                }
                 ACTION_WORDS[call.name]?.let { w ->
                     val c = (args[0].const as? Str)?.v
                     if (c != null && c !in w.words && !(w.numbers && c.toDoubleOrNull() != null)) fail(w.message, call.pos)

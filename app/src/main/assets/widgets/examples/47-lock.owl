@@ -1,0 +1,32 @@
+widget "sketch" {
+  page: 3
+  order: 6
+  size: 6x3
+  minSize: 4x2
+
+  meta { owl: 18; description: "A pad to draw on: tap draw, and the home screen holds still so a stroke can't turn the page. Tap done to let it go."; version: "1.0"; license: "MIT"; category: "fun" }
+
+  // The lock follows this mode: while drawing, home's swipes, its long presses and the prompt bar wait.
+  state drawing = false
+  state dots = []
+
+  Column {
+    gap: 6
+    Row {
+      gap: 8
+      Text { text: drawing ? "locked" : "unlocked"; style: small; color: drawing ? accent : muted; weight: 1 }
+      // The button that turns the mode on turns the lock on with it, and off with it.
+      Button { text: drawing ? "done" : "draw"; onTap: { drawing = !drawing; lock(drawing) } }
+    }
+    // A dot per tap, wherever it lands. Unlocked, the first drag on the pad would turn the page instead.
+    // Nothing tells the widget whether it still holds the lock, so this state is its own: the chip
+    // frees the screen without changing it.
+    Canvas {
+      weight: 1
+      background: alpha(surface, 0.6)
+      radius: 8 * corners
+      onTap: { if drawing { dots = dots + [{x: x, y: y}] } }
+      for d in dots { circle(d.x, d.y, 6, fill: accent) }
+    }
+  }
+}

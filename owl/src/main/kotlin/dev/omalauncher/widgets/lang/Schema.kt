@@ -163,7 +163,9 @@ internal val SINCE =
         // owl 17: a list pulled down past its top, to fetch again.
         mapOf("onPull" to 17) +
         // owl 17: servers with a certificate of their own, pinned; WebSockets, and a trigger for each of their messages.
-        listOf(HTTP_PIN, "ws", "send", ON_EACH).associateWith { 17 }
+        listOf(HTTP_PIN, "ws", "send", ON_EACH).associateWith { 17 } +
+        // owl 18: holding the home screen still while the widget is being used.
+        mapOf("lock" to 18)
 
 /** `strings { ... }`, named like this in [SINCE]. */
 internal const val STRINGS_DECL = "strings { }"

@@ -20,6 +20,9 @@
 
     <string name="home_drop_here">放到这里</string>
     <string name="home_drop_face_only">这里只能放 face</string>
+    <!-- The cue over a locked home screen. -->
+    <string name="home_lock_locked">屏幕已锁定</string>
+    <string name="home_lock_unlock">解锁</string>
 
     <plurals name="home_file_problems">
         <item quantity="other">%1$s：%2$d 个问题</item>

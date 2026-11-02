@@ -29,6 +29,9 @@
     <!-- On an empty page while a tile is dragged. -->
     <string name="home_drop_here">drop here</string>
     <string name="home_drop_face_only">only a face goes here</string>
+    <!-- The cue over a locked home screen. -->
+    <string name="home_lock_locked">screen locked</string>
+    <string name="home_lock_unlock">unlock</string>
 
     <!-- The red banner over home when style.toml or layout.toml has errors. %1$s is the file's name. -->
     <plurals name="home_file_problems">
