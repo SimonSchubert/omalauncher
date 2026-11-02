@@ -1,5 +1,6 @@
 package dev.omalauncher
 
+import android.annotation.SuppressLint
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -27,6 +28,9 @@ class OwlAppActivity : InstantActivity() {
     private var name: String? = null
     private val mic = AskPermission(this, Manifest.permission.RECORD_AUDIO)
     private val place = AskPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION, orSettings = true)
+    // Asked for only from Android 12 on: before it, an install-time permission covers AirPods, which then never ask.
+    @SuppressLint("InlinedApi")
+    private val bluetooth = AskPermission(this, Manifest.permission.BLUETOOTH_CONNECT, orSettings = true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,12 +71,15 @@ class OwlAppActivity : InstantActivity() {
         runtime.dictation.askMic = mic::ask
         runtime.location.ask = place::ask
         runtime.location.recheck()
+        runtime.widgets.airpods.ask = bluetooth::ask
+        runtime.widgets.airpods.recheck()
     }
 
     override fun onPause() {
         super.onPause()
         runtime.dictation.askMic = null
         runtime.location.ask = null
+        runtime.widgets.airpods.ask = null
     }
 
     override fun onStop() {

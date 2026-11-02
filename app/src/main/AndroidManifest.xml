@@ -13,6 +13,13 @@
     <!-- Widgets' android.location, after a tap on location("request"): approximate only, and only while on screen. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- AirPods' batteries and settings for android.airpods (AirPods.kt), over their own link. Asked for by a widget's
+         first airpods(...); before Android 12, BLUETOOTH covers it. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+
     <!-- Uninstall from the app drawer's long-press menu (ACTION_DELETE). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 

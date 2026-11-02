@@ -136,6 +136,9 @@ class WidgetEngine(
     /** The home screen's view, for haptic(); set by the UI. */
     var view by services::view
 
+    /** android.airpods and airpods(...), which ask the activity in front for Bluetooth. */
+    val airpods get() = services.airpods
+
     /** The store's widgets, and its apps. */
     val market = Market(this, OwlKind.Widget)
     val faceMarket = Market(this, OwlKind.Face)

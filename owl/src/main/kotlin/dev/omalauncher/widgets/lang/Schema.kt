@@ -173,7 +173,9 @@ internal val SINCE =
         // owl 18: a web page in the tile, and the taps that steer it.
         listOf("Browser", "web").associateWith { 18 } +
         // owl 18: where the phone roughly is, once a tap has asked for it.
-        listOf("android.location", "location").associateWith { 18 }
+        listOf("android.location", "location").associateWith { 18 } +
+        // owl 18: AirPods, read and set over their own link, with the Bluetooth permission.
+        listOf("android.airpods", "airpods").associateWith { 18 }
 
 /** `strings { ... }`, named like this in [SINCE]. */
 internal const val STRINGS_DECL = "strings { }"
@@ -299,7 +301,7 @@ internal val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 val SPEECH_ANYWHERE = setOf("stop", "cancel")
 
 /** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location")
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods")
 
 /**
  * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the
@@ -311,6 +313,9 @@ internal class Words(
     val numbers: Boolean = false,
     val forms: Map<String, Pair<IntRange, String>> = emptyMap(),
 )
+
+/** AirPods' listening modes, as android.airpods' `mode` and `modes` name them. */
+internal val AIRPODS_MODES = setOf("off", "anc", "transparency", "adaptive")
 
 /** settings("...")'s pages. */
 internal val SETTINGS_PAGES = setOf("internet", "wifi", "bluetooth", "airplane", "data", "location", "cast", "nfc", "volume", "output", "sound", "dnd", "display", "dark", "battery", "notifications")
@@ -351,6 +356,16 @@ internal val ACTION_WORDS =
         "location" to setOf("request").let { Words(it, "location takes request; where the phone is is in source x = android.location") },
         // owl 18: where a Browser goes, or how it loads where it is.
         "web" to setOf("back", "forward", "reload", "stop").let { Words(it, "web takes ${it.joinToString()}") },
+        // A listening mode, the next one, or a setting: on and off ones turn over without a value.
+        "airpods" to
+            Words(
+                AIRPODS_MODES + setOf("next", "connect", "conversation", "oneBud", "earDetection", "adaptiveLevel"),
+                "airpods takes ${AIRPODS_MODES.joinToString()}, next, connect, conversation, oneBud, earDetection or adaptiveLevel",
+                forms =
+                    (AIRPODS_MODES + setOf("next", "connect")).associateWith { 1..1 to "airpods(\"$it\")" } +
+                        setOf("conversation", "oneBud", "earDetection").associateWith { 1..2 to "airpods(\"$it\"), or airpods(\"$it\", on)" } +
+                        ("adaptiveLevel" to (2..2 to "airpods(\"adaptiveLevel\", level)")),
+            ),
     )
 
 /** The tile's size, readable anywhere a declaration of the same name doesn't shadow it. */
