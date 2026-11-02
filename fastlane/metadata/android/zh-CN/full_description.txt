@@ -1,0 +1,37 @@
+Omalauncher 是一款适合键盘操作的主屏幕，把 Omarchy 的外观带到 Android 上，还能在手机应用旁边运行完整的 Arch Linux ARM 系统。
+
+主题
+从 22 款 Omarchy 主题中挑选：Tokyo Night、Catppuccin、Gruvbox、Nord、Rose Pine、Kanagawa、Everforest 等。每款主题都会给整个启动器换上配色，并自带壁纸，也可以设为动态壁纸。
+
+主屏幕、小组件和 FACE
+• 网格上的多页小组件和固定应用
+• 内置日期、天气和系统小组件
+• Face：整页一体绘制的主屏幕，比如漫画页、终端或包豪斯海报
+• 商店里有小组件、face、小应用和小游戏，用一种小巧开放、你自己也能修改的语言编写
+• 带搜索的应用抽屉，收纳你所有的 Android 应用
+
+ARCH LINUX（可选）
+不装 Linux 也能用。需要的话，Omalauncher 会下载 Arch Linux ARM，并用 proot 运行，无需 root。
+• Linux 应用在各自的窗口中打开，在最近任务里各有一张卡片
+• Omalauncher 就是 Wayland 合成器，所以 foot 等图形应用都能运行
+• 搜索并安装 Arch Linux ARM 和 AUR 中的软件包
+• 在主屏幕上运行命令的终端小组件
+• Files：管理 Linux 主目录的文件管理器
+• 你的主题也会应用到 Linux 应用上
+
+编程智能体
+装好 Linux 后，主屏幕底部的输入栏会把你的请求发给 Claude Code、Codex、Copilot、Grok 或 opencode 等编程智能体，并在终端中打开。智能体还能帮你做小组件。
+
+语音
+点一下语音按钮，就能和编程智能体对话。它会出声回答，显示正在做什么，并在运行命令或修改文件前先问你。更想打字？切换到打字模式，阅读回复即可。语音由 Android 识别，只有文字会传给 Linux。
+
+键盘快捷键
+使用实体键盘时：Super+T 打开终端，Super+D 打开应用抽屉，Super+1 到 9 切换页面，Super+W 关闭窗口。
+
+语言
+English、Bahasa Indonesia、Español、Português、Deutsch 和简体中文。
+
+隐私
+无需账号，没有广告，没有跟踪。Omalauncher 只在下载主题、小组件、天气，以及（如果你选择安装）Linux 及其软件包时联网。
+
+Omalauncher 是独立项目，与 Omarchy 和 Arch Linux 无关联。

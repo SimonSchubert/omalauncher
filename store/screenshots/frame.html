@@ -4,7 +4,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Noto+Sans+SC:wght@800&display=block" rel="stylesheet">
 <style>
   * { margin: 0; box-sizing: border-box; }
   html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
@@ -16,6 +16,8 @@
   .caption { position: absolute; z-index: 1; left: 64px; right: 64px; bottom: 34px; color: var(--ink);
              font-size: 66px; font-weight: 800; line-height: 1.1; letter-spacing: -2px; }
   .caption em { font-style: normal; color: var(--accent); }
+  /* JetBrains Mono has no Chinese; its letter-spacing would squeeze the characters together. */
+  :lang(zh) .caption { font-family: 'JetBrains Mono', 'Noto Sans SC', sans-serif; letter-spacing: 0; }
   .shot { position: absolute; top: 250px; left: 0; display: block; width: 1080px; height: 1670px; }
 </style>
 </head>
@@ -23,23 +25,46 @@
 <div id="root"></div>
 <script>
 // ink and accent come from each theme's colors (app/src/main/assets/themes/<theme>.toml); veil evens out the
-// band under the caption where the top of the wallpaper is busy.
+// band under the caption where the top of the wallpaper is busy. ?l= picks the language: captures from raw/<l>/
+// and the caption in it.
 const SLIDES = [
-  { shot: '1-home', ink: '#ffffff', accent: '#7aa2f7', veil: 'rgba(26,27,38,0.30)', title: 'Arch Linux on <em>your phone</em>' },
-  { shot: '2-face', ink: '#dcd7ba', accent: '#98bb6c', veil: 'transparent', title: 'Home is a <em>terminal</em>' },
-  { shot: '3-light', ink: '#4c4f69', accent: '#1e66f5', veil: 'rgba(239,241,245,0.25)', title: '22 themes, <em>one tap</em>' },
-  { shot: '4-live', ink: '#C1C497', accent: '#509475', veil: 'rgba(17,28,24,0.30)', title: 'Widgets that <em>move</em>' },
-  { shot: '5-store', ink: '#d4be98', accent: '#7daea3', veil: 'transparent', title: 'A <em>widget store</em>' },
-  { shot: '6-app', ink: '#d3c6aa', accent: '#7fbbb3', veil: 'transparent', title: '<em>Apps</em> from the store' },
-  { shot: '7-linux', ink: '#bebebe', accent: '#e68e0d', veil: 'transparent', title: 'A real <em>terminal</em>' },
-  { shot: '8-style', ink: '#e6d9db', accent: '#f38d70', veil: 'transparent', title: 'Make it <em>yours</em>' },
+  { shot: '1-home', ink: '#e4eff7', accent: '#ff503e', veil: 'rgba(7,11,18,0.30)' },
+  { shot: '2-manga', ink: '#fffcf0', accent: '#4385be', veil: 'rgba(16,15,15,0.82)' },
+  { shot: '3-voice', ink: '#dcd7ba', accent: '#98bb6c', veil: 'transparent' },
+  { shot: '4-linux', ink: '#bebebe', accent: '#e68e0d', veil: 'transparent' },
+  { shot: '5-live', ink: '#C1C497', accent: '#509475', veil: 'rgba(17,28,24,0.30)' },
+  { shot: '6-light', ink: '#4c4f69', accent: '#1e66f5', veil: 'rgba(239,241,245,0.25)' },
+  { shot: '7-store', ink: '#d4be98', accent: '#7daea3', veil: 'transparent' },
+  { shot: '8-style', ink: '#e6d9db', accent: '#f38d70', veil: 'transparent' },
 ];
-const n = +(new URLSearchParams(location.search).get('s') || 1);
+const TITLES = {
+  en: ['Arch Linux on <em>your phone</em>', 'Your home, <em>any style</em>', 'Talk to your <em>coding agent</em>',
+       'A real <em>terminal</em>', 'Widgets that <em>move</em>', '22 themes, <em>one tap</em>', 'A <em>widget store</em>',
+       'Make it <em>yours</em>'],
+  de: ['Arch Linux auf <em>deinem Smartphone</em>', 'Dein Startbildschirm, <em>jeder Stil</em>',
+       'Sprich mit deinem <em>Coding-Agent</em>', 'Ein echtes <em>Terminal</em>', 'Widgets, die sich <em>bewegen</em>',
+       '22 Themes, <em>ein Tipp</em>', 'Ein <em>Widget-Store</em>', 'Mach es zu <em>deinem</em>'],
+  es: ['Arch Linux en <em>tu teléfono</em>', 'Tu inicio, <em>en cualquier estilo</em>',
+       'Habla con tu <em>agente de programación</em>', 'Una <em>terminal</em> de verdad', 'Widgets que <em>se mueven</em>',
+       '22 temas, <em>un toque</em>', 'Una <em>tienda de widgets</em>', 'Hazlo <em>tuyo</em>'],
+  pt: ['Arch Linux no <em>seu celular</em>', 'Sua tela inicial, <em>qualquer estilo</em>',
+       'Fale com seu <em>agente de programação</em>', 'Um <em>terminal</em> de verdade', 'Widgets que <em>se mexem</em>',
+       '22 temas, <em>um toque</em>', 'Uma <em>loja de widgets</em>', 'Deixe do <em>seu jeito</em>'],
+  id: ['Arch Linux di <em>HP-mu</em>', 'Layar utama, <em>gaya apa pun</em>', 'Ngobrol dengan <em>agen coding</em>',
+       '<em>Terminal</em> sungguhan', 'Widget yang <em>bergerak</em>', '22 tema, <em>sekali ketuk</em>', '<em>Toko widget</em>',
+       'Buat jadi <em>milikmu</em>'],
+  zh: ['手机上的 <em>Arch Linux</em>', '主屏幕，<em>百变风格</em>', '和 <em>编程智能体</em> 对话', '真正的 <em>终端</em>',
+       '会 <em>动</em> 的小组件', '22 款主题，<em>一键切换</em>', '<em>小组件商店</em>', '打造 <em>你的</em> 风格'],
+};
+const params = new URLSearchParams(location.search);
+const n = +(params.get('s') || 1);
+const l = params.get('l') || 'en';
 const s = SLIDES[n - 1];
-const img = `raw/${s.shot}.png`;
+const img = `raw/${l}/${s.shot}.png`;
+document.documentElement.lang = l;
 document.getElementById('root').innerHTML = `
   <div class="slide" style="--ink:${s.ink};--accent:${s.accent};--veil:${s.veil}">
-    <div class="band" style="background-image:url(${img})"><div class="caption">${s.title}</div></div>
+    <div class="band" style="background-image:url(${img})"><div class="caption">${TITLES[l][n - 1]}</div></div>
     <img class="shot" src="${img}">
   </div>`;
 document.title = String(SLIDES.length);

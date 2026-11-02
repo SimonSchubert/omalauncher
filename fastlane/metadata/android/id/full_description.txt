@@ -1,0 +1,37 @@
+Omalauncher adalah layar utama yang ramah keyboard, membawa tampilan Omarchy ke Android, dan bisa menjalankan sistem Arch Linux ARM lengkap di samping aplikasi HP-mu.
+
+TEMA
+Pilih dari 22 tema Omarchy: Tokyo Night, Catppuccin, Gruvbox, Nord, Rose Pine, Kanagawa, Everforest, dan lainnya. Setiap tema mewarnai seluruh launcher dan punya wallpaper sendiri, yang juga bisa kamu pakai sebagai wallpaper animasi.
+
+LAYAR UTAMA, WIDGET DAN FACE
+• Halaman berisi widget dan aplikasi yang disematkan di dalam grid
+• Widget bawaan untuk tanggal, cuaca, dan sistemmu
+• Face: satu halaman penuh yang digambar jadi satu, seperti halaman manga, terminal, atau poster Bauhaus
+• Toko berisi widget, face, aplikasi kecil, dan game, ditulis dalam bahasa kecil yang terbuka dan bisa kamu edit sendiri
+• Laci aplikasi dengan pencarian untuk semua aplikasi Android-mu
+
+ARCH LINUX (OPSIONAL)
+Launcher-nya tetap jalan tanpa Linux. Kalau mau, Omalauncher mengunduh Arch Linux ARM dan menjalankannya dengan proot, tanpa root.
+• Aplikasi Linux terbuka di jendelanya sendiri, masing-masing dengan kartu sendiri di Terbaru
+• Omalauncher adalah compositor Wayland, jadi aplikasi grafis seperti foot bisa jalan
+• Cari dan instal paket dari Arch Linux ARM dan AUR
+• Widget terminal yang menjalankan perintah di layar utama
+• Files, pengelola file untuk folder home Linux
+• Temamu juga dipakai di aplikasi Linux
+
+AGEN CODING
+Setelah Linux terinstal, bilah di bagian bawah layar utama mengirim perintahmu ke agen coding seperti Claude Code, Codex, Copilot, Grok, atau opencode, yang terbuka di terminal. Agen juga bisa membuatkan widget untukmu.
+
+SUARA
+Ketuk tombol suara dan ngobrol dengan agen coding-mu. Ia menjawab dengan suara, menunjukkan apa yang sedang dikerjakan, dan bertanya dulu sebelum menjalankan perintah atau mengubah file. Lebih suka mengetik? Ganti ke mode ketik dan baca jawabannya. Suara dikenali oleh Android, jadi hanya teksnya yang sampai ke Linux.
+
+PINTASAN KEYBOARD
+Dengan keyboard fisik: Super+T membuka terminal, Super+D laci aplikasi, Super+1 sampai 9 berpindah halaman, dan Super+W menutup jendela.
+
+BAHASA
+English, Bahasa Indonesia, Español, Português, Deutsch, dan 简体中文.
+
+PRIVASI
+Tanpa akun, tanpa iklan, tanpa pelacakan. Omalauncher hanya terhubung ke internet untuk mengunduh tema, widget, cuaca, dan, kalau kamu mau, Linux beserta paketnya.
+
+Omalauncher adalah proyek independen dan tidak berafiliasi dengan Omarchy atau Arch Linux.
