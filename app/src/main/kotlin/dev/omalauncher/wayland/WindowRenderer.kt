@@ -206,13 +206,57 @@ class WindowRenderer(
         val scale = output * fitScale(g.width * output, g.height * output, width, visibleBottom())
         val layers = ArrayList<Layer>()
         addTree(layers, window.surface, -g.x * scale, -g.y * scale, scale, inPopup = false)
+        // Where each window's geometry is and its scale, for its popups.
+        origins.clear()
+        origins[window] = Triple(0f, 0f, scale)
+        for (child in window.children) placeChild(child, output)?.let { (x, y, s) ->
+            origins[child] = Triple(x, y, s)
+            val cg = child.xdg.effectiveGeometry
+            addTree(layers, child.surface, x - cg.x * s, y - cg.y * s, s, inPopup = false)
+        }
         for (popup in server.popups) {
-            if (server.toplevelOf(popup.surface) !== window) continue
-            val origin = geometryOrigin(popup.xdg, scale) ?: continue
+            val top = server.toplevelOf(popup.surface) ?: continue
+            val s = origins[top]?.third ?: continue
+            val origin = geometryOrigin(popup.xdg, s) ?: continue
             val pg = popup.xdg.effectiveGeometry
-            addTree(layers, popup.surface, origin.first - pg.x * scale, origin.second - pg.y * scale, scale, inPopup = true)
+            addTree(layers, popup.surface, origin.first - pg.x * s, origin.second - pg.y * s, s, inPopup = true)
         }
         return layers
+    }
+
+    private val origins = HashMap<XdgToplevel, Triple<Float, Float, Float>>()
+
+    /**
+     * Where a window hosted by this one goes, and its scale; null until it has content. It floats at its own
+     * size, centred, unless it's as wide or as tall as the view: then it's told the view's size and fills it,
+     * shrunk if it still doesn't fit, as a window of its own would.
+     */
+    private fun placeChild(
+        child: XdgToplevel,
+        output: Int,
+    ): Triple<Float, Float, Float>? {
+        if (!child.xdg.mapped) return null
+        val cg = child.xdg.effectiveGeometry
+        val bottom = visibleBottom()
+        val wide = cg.width * output >= width
+        if (!child.fullscreen && (wide || cg.height * output >= bottom)) {
+            child.fullscreen = true
+            child.fullscreenForKeyboard = !wide && cg.height * output < height
+            val (w, h) = window.configuredSize
+            if (w > 0) child.configure(w, h, child.configuredActive)
+        } else if (child.fullscreenForKeyboard && bottom >= height) {
+            // The keyboard closed: back to floating at the size it picks.
+            child.fullscreen = false
+            child.fullscreenForKeyboard = false
+            child.position = null
+            child.configure(0, 0, child.configuredActive)
+        }
+        if (child.fullscreen) return Triple(0f, 0f, output * fitScale(cg.width * output, cg.height * output, width, bottom))
+        val w = cg.width * output.toFloat()
+        val h = cg.height * output.toFloat()
+        val (x, y) = child.position ?: ((width - w) / 2 to (bottom - h) / 2).also { child.position = it }
+        // On screen whatever the view did since: the keyboard came up, the phone turned.
+        return Triple(x.coerceIn(0f, (width - w).coerceAtLeast(0f)), y.coerceIn(0f, (bottom - h).coerceAtLeast(0f)), output.toFloat())
     }
 
     private fun addTree(
@@ -239,7 +283,7 @@ class WindowRenderer(
         scale: Float,
         depth: Int = 0,
     ): Pair<Float, Float>? {
-        if (xdg.toplevel === window) return 0f to 0f
+        xdg.toplevel?.let { top -> return origins[top]?.let { it.first to it.second } }
         val popup = xdg.popup ?: return null
         // Parents that loop (a client bug) would recurse forever.
         if (depth >= MAX_NESTING) return null
@@ -269,6 +313,16 @@ class WindowRenderer(
         val base = layers.firstOrNull { it.surface === window.surface } ?: return null
         return SurfaceHit(base.surface, (x - base.x) / base.scale, (y - base.y) / base.scale, scale = base.scale)
     }
+
+    /**
+     * Window pixel ([x], [y]) in [surface]'s coordinates, wherever it is: a drag that started on a surface goes on
+     * telling it where the pointer is, as a desktop's implicit grab does. Null when it isn't drawn.
+     */
+    fun locate(
+        surface: Surface,
+        x: Float,
+        y: Float,
+    ): SurfaceHit? = scene.lastOrNull { it.surface === surface }?.let { SurfaceHit(it.surface, (x - it.x) / it.scale, (y - it.y) / it.scale, it.inPopup, it.scale) }
 
     /** Whether this window has a popup open; a tap elsewhere closes it. */
     val hasPopups get() = scene.any { it.inPopup }
