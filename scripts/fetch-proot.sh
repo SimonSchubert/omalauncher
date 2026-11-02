@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds proot from Termux's source with our patches (patches/proot) and downloads Termux's prebuilt
+# Builds proot from Termux's source with our patches, if any (patches/proot), and downloads Termux's prebuilt
 # aarch64 runtime deps, placing them in app/src/main/jniLibs/arm64-v8a as lib*.so so Android
 # extracts them into nativeLibraryDir, the only place an app targeting API 29+ may exec from.
 # Needs the Android NDK (NDK_VERSION below, in the SDK at ANDROID_HOME or local.properties) and bsdtar.
@@ -16,7 +16,7 @@ trap 'rm -rf "$WORK"' EXIT
 # the version and SHA256 here (from $REPO/dists/stable/main/binary-aarch64/Packages) and the source
 # links in LicensesScreen.kt together. PROOT's SHA256 is the one termux-packages pins in
 # packages/proot/build.sh.
-PROOT=5.1.107.96
+PROOT=5.1.107.97
 TALLOC=2.5.0
 SHMEM=0.7
 # The NDK Termux builds proot with (its clang version string), and one GitHub's Ubuntu runners have.
@@ -43,11 +43,12 @@ fetch libandroid-shmem pool/main/liba/libandroid-shmem/libandroid-shmem_${SHMEM}
 
 echo "fetching proot $PROOT source"
 curl -fsSL "https://github.com/termux/proot/archive/v$PROOT.zip" -o "$WORK/proot.zip"
-echo "75f654fe60dea92dabff2bf083ae8bfe4f91baa6a1a374786a6bf391015eebaa  $WORK/proot.zip" |
+echo "badd014e6868c0d57b5eae6db08afc284b77f85990c71665d1659e121482df26  $WORK/proot.zip" |
   shasum -a 256 -c --status || { echo "proot $PROOT source: SHA256 mismatch" >&2; exit 1; }
 (cd "$WORK" && bsdtar xf proot.zip)
 SRC="$WORK/proot-$PROOT"
 for p in "$ROOT"/patches/proot/*.patch; do
+  [ -e "$p" ] || continue # none: the glob stays as written
   echo "applying $(basename "$p")"
   patch -d "$SRC" -p1 --quiet < "$p"
 done
