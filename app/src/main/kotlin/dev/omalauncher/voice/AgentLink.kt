@@ -122,6 +122,8 @@ val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
         "copilot" to { w -> AcpLink(w, "copilot --acp") },
         "kimi" to { w -> AcpLink(w, "kimi acp") },
         "cursor-agent" to { w -> AcpLink(w, "cursor-agent acp") },
+        "omp" to { w -> AcpLink(w, "omp acp") },
+        "pi" to ::PiLink,
     )
 
 private fun sh(s: String) = "'" + s.replace("'", "'\\''") + "'"
@@ -349,7 +351,7 @@ class AcpLink(
         primed = resume != null
         val fs = json("readTextFile" to false, "writeTextFile" to false)
         call("initialize", json("protocolVersion" to 1, "clientCapabilities" to json("fs" to fs, "terminal" to false))) { _, error ->
-            if (error != null) return@call listOf(LinkEvent.Failed(error.optString("message")))
+            if (error != null) return@call listOf(LinkEvent.Failed(reason(error)))
             val id = session
             if (id != null) {
                 loading = true
@@ -365,7 +367,7 @@ class AcpLink(
     private fun newSession() {
         call("session/new", json("cwd" to cwd, "mcpServers" to JSONArray())) { result, error ->
             val id = result?.optString("sessionId")?.takeIf { it.isNotEmpty() }
-            if (id == null) return@call listOf(LinkEvent.Failed(error?.optString("message").orEmpty()))
+            if (id == null) return@call listOf(LinkEvent.Failed(error?.let(::reason).orEmpty()))
             session = id
             listOf(LinkEvent.Session(id)) + becomeReady()
         }
@@ -384,7 +386,7 @@ class AcpLink(
         val said = if (primed) text else "($VOICE_PROMPT)\n\n$text"
         primed = true
         call("session/prompt", json("sessionId" to session, "prompt" to JSONArray().put(json("type" to "text", "text" to said)))) { result, error ->
-            finished(LinkEvent.Done(error = error?.optString("message"), cancelled = result?.optString("stopReason") == "cancelled"))
+            finished(LinkEvent.Done(error = error?.let(::reason), cancelled = result?.optString("stopReason") == "cancelled"))
         }
     }
 
@@ -445,6 +447,14 @@ class AcpLink(
     companion object {
         /** A chunk that's a whole "Info: /path" line, Copilot's after an approved file change. */
         private val NOTICE = Regex("Info: /\\S+\\s*")
+
+        /**
+         * What an error says went wrong: its data's details when it has them, as omp's "Internal error" does
+         * ("No model selected.\n\nUse /login, …"), on one line.
+         */
+        fun reason(error: JSONObject) =
+            error.optJSONObject("data")?.optString("details")?.trim()?.takeIf { it.isNotEmpty() }?.replace(Regex("\\s*\\n\\s*"), " ")
+                ?: error.optString("message")
     }
 }
 
@@ -634,6 +644,161 @@ class CodexLink(
 }
 
 /**
+ * Pi over its RPC mode (`pi --mode rpc`): one JSON command a line in, the responses (by our id) and its session's
+ * events out, with [VOICE_PROMPT] appended to its system prompt. Pi never asks before a tool, so there's nothing to
+ * answer. It refuses a prompt while it's working, so a later one waits for agent_settled, the end of all a prompt
+ * set off. Its session is the file it's kept in, which switch_session continues.
+ */
+class PiLink(
+    write: (String) -> Unit,
+) : AgentLink(write) {
+    override val instructed = true
+
+    private var nextId = 0
+    private val calls = HashMap<String, (JSONObject) -> List<LinkEvent>>()
+    private var ready = false
+    private var inFlight = false
+    private val queue = ArrayDeque<String>()
+    private var session: String? = null
+
+    /** Why the turn in flight failed, once it has. */
+    private var error: String? = null
+
+    override fun command(resume: String?) = "exec pi --mode rpc --append-system-prompt ${sh(VOICE_PROMPT)}"
+
+    override fun open(resume: String?): List<LinkEvent> {
+        if (resume == null) return becomeReady()
+        session = resume
+        call(json("type" to "switch_session", "sessionPath" to resume)) { switched ->
+            if (!switched.optBoolean("success")) return@call listOf(LinkEvent.ResumeFailed) + becomeReady()
+            // A file that's gone is a new session under the old name: nothing in it to continue.
+            call(json("type" to "get_state")) { state ->
+                val empty = state.optJSONObject("data")?.optInt("messageCount") == 0
+                (if (empty) listOf(LinkEvent.ResumeFailed) else emptyList()) + becomeReady()
+            }
+            emptyList()
+        }
+        return emptyList()
+    }
+
+    private fun becomeReady(): List<LinkEvent> {
+        ready = true
+        next()
+        return listOf(LinkEvent.Ready)
+    }
+
+    override fun prompt(text: String) {
+        queue.addLast(text)
+        next()
+    }
+
+    private fun next() {
+        if (!ready || inFlight || queue.isEmpty()) return
+        inFlight = true
+        error = null
+        call(json("type" to "prompt", "message" to queue.removeFirst())) { r ->
+            when {
+                // "No API key found for the selected model.\n\nUse /login…" and where its docs are: the first part.
+                !r.optBoolean("success") -> finished(LinkEvent.Done(error = r.optString("error").substringBefore("\n\n").trim()))
+                // A command of an extension's that took it: no run follows.
+                r.optJSONObject("data")?.optString("disposition") == "handled" -> finished(LinkEvent.Done())
+                else -> emptyList()
+            }
+        }
+    }
+
+    private fun finished(done: LinkEvent.Done): List<LinkEvent> {
+        inFlight = false
+        // Which file it's in, known for certain once something is in it.
+        call(json("type" to "get_state")) { state ->
+            val file = state.optJSONObject("data")?.optString("sessionFile")?.takeIf { it.isNotEmpty() && it != session }
+            if (file == null) return@call emptyList()
+            session = file
+            listOf(LinkEvent.Session(file))
+        }
+        next()
+        return listOf(done)
+    }
+
+    override fun cancel() {
+        queue.clear()
+        if (inFlight) call(json("type" to "abort")) { emptyList() }
+    }
+
+    override fun answer(
+        id: String,
+        allow: Boolean,
+        always: Boolean,
+        instead: String?,
+    ) = false
+
+    private fun call(
+        command: JSONObject,
+        then: (JSONObject) -> List<LinkEvent>,
+    ) {
+        val id = "v${++nextId}"
+        calls[id] = then
+        write(command.put("id", id).toString())
+    }
+
+    override fun read(line: String): List<LinkEvent> {
+        val ev = runCatching { JSONObject(line) }.getOrNull() ?: return emptyList()
+        return when (ev.optString("type")) {
+            "response" -> calls.remove(ev.optString("id"))?.invoke(ev) ?: emptyList()
+            "message_update" -> {
+                val e = ev.optJSONObject("assistantMessageEvent")
+                if (e?.optString("type") == "text_delta") listOf(LinkEvent.Text(e.optString("delta"))) else emptyList()
+            }
+            "message_end" -> {
+                val m = ev.optJSONObject("message")
+                if (m?.optString("role") == "assistant" && m.optString("stopReason") == "error") error = m.optString("errorMessage")
+                emptyList()
+            }
+            "tool_execution_start" -> {
+                val args = ev.optJSONObject("args") ?: JSONObject()
+                val path = args.optString("path").let { if (it.isEmpty() || it.startsWith('/')) it else "$GUEST_HOME/$it" }
+                val images = if (ev.optString("toolName") == "read" && isImage(path)) listOf(path) else emptyList()
+                listOf(LinkEvent.Working, LinkEvent.Step(act(ev.optString("toolName"), args), images))
+            }
+            "auto_retry_start" -> listOf(LinkEvent.Retrying(ev.optString("errorMessage").ifEmpty { "network" }))
+            "auto_retry_end" -> {
+                if (!ev.optBoolean("success")) error = ev.optString("finalError")
+                emptyList()
+            }
+            "agent_settled" ->
+                if (!inFlight) {
+                    emptyList()
+                } else {
+                    val aborted = ev.optBoolean("aborted")
+                    finished(LinkEvent.Done(error = if (aborted) null else error, cancelled = aborted))
+                }
+            "extension_ui_request" -> {
+                // An extension's dialog: not something to answer by voice, and it waits until it's answered.
+                if (ev.optString("method") in setOf("select", "confirm", "input", "editor")) {
+                    write(json("type" to "extension_ui_response", "id" to ev.optString("id"), "cancelled" to true).toString())
+                }
+                emptyList()
+            }
+            else -> emptyList()
+        }
+    }
+
+    private fun act(
+        tool: String,
+        args: JSONObject,
+    ): Act =
+        when (tool) {
+            "bash" -> Act(Act.Verb.Run, args.optString("command").take(60))
+            "read" -> Act(Act.Verb.Read, fileName(args.optString("path")))
+            "ls" -> Act(Act.Verb.Read, fileName(args.optString("path").ifEmpty { "." }))
+            "write" -> Act(Act.Verb.Write, fileName(args.optString("path")))
+            "edit" -> Act(Act.Verb.Edit, fileName(args.optString("path")))
+            "grep", "find" -> Act(Act.Verb.Search, args.optString("pattern").take(50))
+            else -> Act(Act.Verb.Tool, tool.take(60))
+        }
+}
+
+/**
  * What a tool call does: a [verb] and what it does it to ([what]: a file, a command's description, a search), put
  * into words in the phone's language by the voice session.
  */
@@ -675,7 +840,8 @@ object Steps {
         val raw = u.optJSONObject("rawInput") ?: JSONObject()
         val path = acpPaths(u).firstOrNull()
         return when {
-            kind == "execute" -> Act(Act.Verb.Run, raw.optString("description").ifEmpty { title.ifEmpty { raw.optString("command") } }.take(60))
+            // omp's title is the command as typed: "$ ls".
+            kind == "execute" -> Act(Act.Verb.Run, raw.optString("description").ifEmpty { title.removePrefix("$ ").ifEmpty { raw.optString("command") } }.take(60))
             kind in setOf("read", "edit", "delete") && path != null ->
                 Act(mapOf("read" to Act.Verb.Read, "edit" to Act.Verb.Edit, "delete" to Act.Verb.Delete).getValue(kind), fileName(path))
             // An empty [Act.what] is "a tool".

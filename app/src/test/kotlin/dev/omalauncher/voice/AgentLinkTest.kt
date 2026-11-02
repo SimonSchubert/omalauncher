@@ -217,6 +217,101 @@ class AgentLinkTest {
         assertEquals("git status", CodexLink.unwrap("git status"))
     }
 
+    @Test fun ompsErrorDetailsAndCommandTitle() {
+        val link = AcpLink(write, "omp acp")
+        link.open(null)
+        link.read("""{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":1}}""")
+        link.read("""{"jsonrpc":"2.0","id":2,"result":{"sessionId":"s1"}}""")
+        link.prompt("hi")
+        val call = """{"kind":"execute","title":"${'$'} ls -la","rawInput":{"command":"ls -la","cwd":"/root"}}"""
+        assertEquals(
+            listOf(LinkEvent.Working, LinkEvent.Step(Act(Act.Verb.Run, "ls -la"))),
+            link.read("""{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"s1","update":{"sessionUpdate":"tool_call",${call.drop(1)}}}"""),
+        )
+        assertEquals(
+            listOf(LinkEvent.Done(error = "No model selected. Use /login, set an API key environment variable.")),
+            link.read(
+                """{"jsonrpc":"2.0","id":3,"error":{"code":-32603,"message":"Internal error","data":{"details":"No model selected.\n\nUse /login, set an API key environment variable."}}}""",
+            ),
+        )
+    }
+
+    @Test fun piStreamsATurnOneAtATime() {
+        val link = PiLink(write)
+        assertEquals(listOf(LinkEvent.Ready), link.open(null))
+        link.prompt("list files")
+        link.prompt("and then?")
+        // The second waits: Pi refuses a prompt while it works.
+        assertEquals(listOf("prompt"), written.map { it.getString("type") })
+        assertEquals("list files", written.last().getString("message"))
+        val events =
+            listOf(
+                """{"id":"v1","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}""",
+                """{"type":"message_update","assistantMessageEvent":{"type":"thinking_delta","contentIndex":0,"delta":"hmm"}}""",
+                """{"type":"tool_execution_start","toolCallId":"c1","toolName":"bash","args":{"command":"ls"}}""",
+                """{"type":"tool_execution_start","toolCallId":"c2","toolName":"read","args":{"path":"w/a.png"}}""",
+                """{"type":"message_update","assistantMessageEvent":{"type":"text_delta","contentIndex":1,"delta":"One file."}}""",
+                """{"type":"message_end","message":{"role":"assistant","content":[],"stopReason":"stop"}}""",
+                """{"type":"agent_settled","aborted":false}""",
+            ).flatMap(link::read)
+        assertEquals(
+            listOf(
+                LinkEvent.Working,
+                LinkEvent.Step(Act(Act.Verb.Run, "ls")),
+                LinkEvent.Working,
+                LinkEvent.Step(Act(Act.Verb.Read, "a.png"), listOf("/root/w/a.png")),
+                LinkEvent.Text("One file."),
+                LinkEvent.Done(),
+            ),
+            events,
+        )
+        // Where the session is kept, then the waiting prompt.
+        assertEquals(listOf("get_state", "prompt"), written.drop(1).map { it.getString("type") })
+        assertEquals("and then?", written.last().getString("message"))
+        assertEquals(
+            listOf(LinkEvent.Session("/root/.pi/agent/sessions/x/s.jsonl")),
+            link.read("""{"id":"v2","type":"response","command":"get_state","success":true,"data":{"sessionFile":"/root/.pi/agent/sessions/x/s.jsonl","messageCount":4}}"""),
+        )
+        link.cancel()
+        assertEquals("abort", written.last().getString("type"))
+        assertEquals(listOf(LinkEvent.Done(cancelled = true)), link.read("""{"type":"agent_settled","aborted":true}"""))
+        link.read("""{"type":"extension_ui_request","id":"u1","method":"confirm","title":"Sure?"}""")
+        assertTrue(written.last().getBoolean("cancelled"))
+        assertFalse(link.answer("x", true, false, null))
+    }
+
+    @Test fun piFailsAndResumes() {
+        val link = PiLink(write)
+        link.open(null)
+        link.prompt("hi")
+        assertEquals(
+            listOf(LinkEvent.Done(error = "No API key found for the selected model.")),
+            link.read("""{"id":"v1","type":"response","command":"prompt","success":false,"error":"No API key found for the selected model.\n\nUse /login to log into a provider."}"""),
+        )
+        link.prompt("again")
+        link.read("""{"id":"v3","type":"response","command":"prompt","success":true,"data":{"disposition":"started"}}""")
+        link.read("""{"type":"message_end","message":{"role":"assistant","content":[],"stopReason":"error","errorMessage":"404: model not found"}}""")
+        assertEquals(listOf(LinkEvent.Retrying("529 overloaded")), link.read("""{"type":"auto_retry_start","attempt":1,"errorMessage":"529 overloaded"}"""))
+        assertEquals(listOf(LinkEvent.Done(error = "404: model not found")), link.read("""{"type":"agent_settled","aborted":false}"""))
+
+        written.clear()
+        val resumed = PiLink(write)
+        assertTrue(resumed.open("/s/old.jsonl").isEmpty())
+        assertEquals("/s/old.jsonl", written.single().getString("sessionPath"))
+        assertTrue(resumed.read("""{"id":"v1","type":"response","command":"switch_session","success":true,"data":{"cancelled":false}}""").isEmpty())
+        // The file was gone: a new session under its name.
+        assertEquals(
+            listOf(LinkEvent.ResumeFailed, LinkEvent.Ready),
+            resumed.read("""{"id":"v2","type":"response","command":"get_state","success":true,"data":{"messageCount":0}}"""),
+        )
+        val failed = PiLink(write)
+        failed.open("/nope/x.jsonl")
+        assertEquals(
+            listOf(LinkEvent.ResumeFailed, LinkEvent.Ready),
+            failed.read("""{"id":"v1","type":"response","command":"switch_session","success":false,"error":"ENOENT"}"""),
+        )
+    }
+
     @Test fun alwaysCoversEachProgram() {
         val always = setOf(Steps.alwaysKey("Bash", "cd ~/w && curl -s x | head -c 3; echo"))
         assertEquals(setOf("cd", "curl", "head", "echo"), Steps.programs("cd ~/w && curl -s x | head -c 3; echo"))
