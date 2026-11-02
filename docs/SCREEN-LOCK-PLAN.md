@@ -55,6 +55,12 @@ widget "notes" {
 A widget that never releases is not a trap: the lock ends when the widget does (see below),
 and the chip goes with it.
 
+A focused `Browser` holds the lock by itself: it is the one tile whose focus home can see, since
+tapping it sets `TerminalTiles.browser` and a tap outside or Back clears it. It rides the same owner
+set as a widget's `lock(true)`, so the two coexist; editing home or arranging a page releases it, or
+a page could never be moved. The chip and Back therefore let go of the page too — releasing the
+hold alone would only let the focused page take it straight back.
+
 ## What "locked" turns off
 
 | gesture | unlocked | locked |

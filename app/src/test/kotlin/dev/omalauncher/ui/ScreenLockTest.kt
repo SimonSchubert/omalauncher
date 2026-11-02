@@ -57,6 +57,12 @@ class ScreenLockTest {
             command: String?,
             fontSize: Double?,
         ): EmbeddedTerminal = error("no terminal")
+
+        override fun browser(
+            url: String?,
+            js: Boolean,
+            zoom: Double,
+        ): EmbeddedBrowser = error("no browser")
     }
 
     /** A widget whose `lock:` says [lock], with a `playing` state to hold it by. */

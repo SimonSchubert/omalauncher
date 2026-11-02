@@ -79,6 +79,7 @@ import dev.omalauncher.ui.AppHandlers
 import dev.omalauncher.ui.ShortcutMenu
 import dev.omalauncher.ui.initials
 import dev.omalauncher.ui.AppHit
+import dev.omalauncher.ui.EmbeddedBrowser
 import dev.omalauncher.ui.act
 import dev.omalauncher.ui.actionWords
 import dev.omalauncher.ui.kind
@@ -347,6 +348,13 @@ class WidgetServices(
         command: String?,
         fontSize: Double?,
     ) = runtime.terminals.create(command, fontSize)
+
+    /** A page for a Browser node: the tile draws it, so nothing runs until it shows. */
+    override fun browser(
+        url: String?,
+        js: Boolean,
+        zoom: Double,
+    ) = EmbeddedBrowser(runtime.terminals, url, js, zoom)
 
     // Resolved again for every read, so a folder swapped for a link out of Linux isn't followed.
     override fun fileUpdates(path: String) = watchFile { guestFile(path) }

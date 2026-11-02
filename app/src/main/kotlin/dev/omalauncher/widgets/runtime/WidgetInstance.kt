@@ -27,6 +27,7 @@ import dev.omalauncher.linux.ShellResult
 import dev.omalauncher.theme.Setting
 import dev.omalauncher.theme.Style
 import dev.omalauncher.ui.EmbeddedTerminal
+import dev.omalauncher.ui.EmbeddedBrowser
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.widgets.HTTP_TOO_BIG
@@ -198,6 +199,13 @@ interface Services {
         command: String?,
         fontSize: Double?,
     ): EmbeddedTerminal
+
+    /** A page for a `Browser` node, not shown yet; [url] null shows nothing. */
+    fun browser(
+        url: String?,
+        js: Boolean,
+        zoom: Double,
+    ): EmbeddedBrowser
 }
 
 /**
@@ -559,6 +567,17 @@ class WidgetInstance(
         }
         if (name == "sound") {
             args.firstOrNull().textOrNull()?.let { sound(it) }
+            return
+        }
+        if (name == "web") {
+            // Every Browser tile the widget has: the word comes from a tap or a trigger, which names no node.
+            if (browsers.isEmpty()) return report("web(...) needs a Browser tile in this widget")
+            when (args.firstOrNull()?.toString()) {
+                "back" -> browsers.values.forEach { it.back() }
+                "forward" -> browsers.values.forEach { it.forward() }
+                "reload" -> browsers.values.forEach { it.reload() }
+                "stop" -> browsers.values.forEach { it.stop() }
+            }
             return
         }
         // An agent or an app opening on its own, from a timer or a fetched value, over whatever the user is doing: like
@@ -1209,6 +1228,13 @@ class WidgetInstance(
      */
     private val terminals = HashMap<Any, EmbeddedTerminal>()
 
+    /**
+     * Browser nodes' pages, by node, the one asked for longest ago first. They keep their page while
+     * the tile is off screen, and end with the widget, when their url, script or zoom changes, or when
+     * a new page needs the room: a widget keeps at most [MAX_BROWSERS] of them alive.
+     */
+    private val browsers = LinkedHashMap<Any, EmbeddedBrowser>(4, 0.75f, true)
+
     fun terminal(
         node: Any,
         command: String?,
@@ -1218,8 +1244,36 @@ class WidgetInstance(
         return services.terminal(command, fontSize).also { terminals[node] = it }
     }
 
+    fun browser(
+        node: Any,
+        url: String?,
+        js: Boolean,
+        zoom: Double,
+    ): EmbeddedBrowser {
+        // Asked for again, so it's the last to give way to a new page.
+        browsers[node]?.let {
+            if (it.url == url && it.js == js && it.zoom == zoom) return it
+            it.close()
+            browsers.remove(node)
+        }
+        // A new page over the limit ends the one asked for longest ago, so a component shown twice or a
+        // `for` over a list can't pile up web views. The node asking for one is never the one that goes.
+        var ended = false
+        while (browsers.isNotEmpty() && browsers.size >= MAX_BROWSERS) {
+            browsers.remove(browsers.keys.first())?.close()
+            ended = true
+        }
+        if (ended) {
+            report("a widget holds $MAX_BROWSERS Browser pages at once, each a web view of its own: the one asked for longest ago was closed to make room; show another page by setting a Browser's url instead")
+        }
+        return services.browser(url, js, zoom).also { browsers[node] = it }
+    }
+
     /** [term] is one of this widget's terminals. */
     fun owns(term: EmbeddedTerminal?) = term != null && term in terminals.values
+
+    /** [b] is one of this widget's pages. */
+    fun owns(b: EmbeddedBrowser?) = b != null && b in browsers.values
 
     fun stop() {
         services.sound(this, null, null)
@@ -1227,6 +1281,8 @@ class WidgetInstance(
         jobs.clear()
         terminals.values.forEach { it.close() }
         terminals.clear()
+        browsers.values.forEach { it.close() }
+        browsers.clear()
         // A change made during the write interval would otherwise be lost.
         if (persisted.isNotEmpty()) save(persisted.map { read(it) })
         if (secrets.isNotEmpty()) seal(secrets.map { read(it) })
@@ -1366,6 +1422,9 @@ class WidgetInstance(
 
         /** Distinct sprites kept per widget. */
         private const val MAX_SPRITES = 64
+
+        /** Browser pages alive at once: each is a web view of its own, and two is as many as a phone can carry. */
+        private const val MAX_BROWSERS = 2
 
         /** How soon a failed http fetch is tried again, if its interval is longer. */
         private const val RETRY_MS = 30_000L
