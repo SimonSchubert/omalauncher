@@ -30,6 +30,8 @@ class ScreenLockTest {
             headers: Map<String, String>,
             timeoutSeconds: Int,
             body: ByteArray?,
+            method: String,
+            pin: String?,
         ): ShellResult = error("no http")
 
         override fun run(
@@ -59,12 +61,6 @@ class ScreenLockTest {
             command: String?,
             fontSize: Double?,
         ): EmbeddedTerminal = error("no terminal")
-
-        override fun browser(
-            url: String?,
-            js: Boolean,
-            zoom: Double,
-        ): EmbeddedBrowser = error("no browser")
     }
 
     private fun program() =
