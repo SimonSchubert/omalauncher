@@ -154,10 +154,11 @@ fun HomeScreen(
         terminals.deactivate()
         terminals.unlockAll()
     }
+    BackHandler(enabled = terminals.typing) { terminals.deactivate() }
     // A focused page takes Back for its own history first, as any web view does, and only then lets go of the tile.
+    // Composed after the one above, so it is asked first: a BackHandler takes Back before the ones before it.
     val page = terminals.browser
     BackHandler(enabled = page != null && page.canGoBack) { page?.back() }
-    BackHandler(enabled = terminals.typing) { terminals.deactivate() }
     BackHandler(enabled = state.homeMenuOpen) { state.homeMenuOpen = false }
     BackHandler(enabled = arrange.folder != null && !state.homeMenuOpen) { arrange.folder = null }
     // After the folder's, so back puts down an app selected in it before closing it.
