@@ -71,10 +71,8 @@ face "work" {
 }
 ```
 
-`examples/45-browser.owl` and `examples/46-browser-tabs.owl` are those two, ready to move up into
-`widgets/` and use. `examples/44-fav-sites.owl` is a third: a page with a menu of sites in its
-toolbar (Hacker News, old.reddit.com, GitHub trending, Hacker News again) which remembers the
-one picked across restarts.
+`examples/45-browser.owl` is the first one with back, forward and reload, ready to move up into
+`widgets/` and use.
 
 A tile's page is deliberately closed to a developer: no `http://`, no debugging socket. Working on a
 page served from this phone wants the opposite of both, and that is not this node's job.
