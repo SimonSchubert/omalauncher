@@ -20,9 +20,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import dev.omalauncher.R
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
@@ -56,14 +58,14 @@ fun DropZoneOverlay(session: SplitDragSession) {
             for (z in zones) {
                 if (z == active) continue
                 Area(z.trigger, fill = 0.06f, line = 0.30f, width = LauncherStyle.borderWidth)
-                Label(z.trigger, z.label, strong = false)
+                Label(z.trigger, z.text(), strong = false)
             }
             if (active != null) {
                 Area(active.preview, fill = 0.25f, line = 1f, width = LauncherStyle.focusWidth)
-                Label(active.preview, active.label, strong = true)
+                Label(active.preview, active.text(), strong = true)
             }
             BasicText(
-                "Release over a zone to open $label",
+                stringResource(R.string.drop_release, label),
                 style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Body),
                 modifier =
                     Modifier
@@ -82,6 +84,21 @@ fun DropZoneOverlay(session: SplitDragSession) {
         }
     }
 }
+
+/** What a zone says it does: where the app goes, or whose split half it takes. */
+@Composable
+private fun DropZone.text(): String =
+    replacing?.let { stringResource(R.string.drop_replace, it) }
+        ?: stringResource(
+            when (kind) {
+                ZoneKind.FullScreen -> R.string.drop_full_screen
+                ZoneKind.PopUp -> R.string.drop_pop_up
+                ZoneKind.SplitTop -> R.string.drop_split_top
+                ZoneKind.SplitBottom -> R.string.drop_split_bottom
+                ZoneKind.SplitLeft -> R.string.drop_split_left
+                ZoneKind.SplitRight -> R.string.drop_split_right
+            },
+        )
 
 /** The label, finger and icon last drawn, to draw while the overlay fades out; not state, nothing waits on it. */
 private class LastDrawn {

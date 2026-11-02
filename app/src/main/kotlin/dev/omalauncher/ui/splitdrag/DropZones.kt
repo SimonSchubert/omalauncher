@@ -16,12 +16,15 @@ data class ZoneBox(
     ) = x >= left && x < right && y >= top && y < bottom
 }
 
-/** Where an app dragged out of the launcher can go: let go over [trigger], it opens in [preview]'s place. */
+/**
+ * Where an app dragged out of the launcher can go: let go over [trigger], it opens in [preview]'s place. [replacing] is
+ * the name of the app a split half has now, for a zone that takes its place; the overlay words the zone by [kind].
+ */
 data class DropZone(
     val kind: ZoneKind,
-    val label: String,
     val trigger: ZoneBox,
     val preview: ZoneBox,
+    val replacing: String? = null,
 )
 
 /** The top band, as a share of the height, that opens an app full screen. */
@@ -58,17 +61,17 @@ fun dropZones(
     val popH = height * if (upright) 0.4f else 0.6f
     val popUp = ZoneBox((width - popW) / 2, (height - popH) / 2, (width + popW) / 2, (height + popH) / 2)
     return buildList {
-        add(DropZone(ZoneKind.FullScreen, "Full screen", ZoneBox(0f, 0f, width, band), whole))
-        if (canPopUp) add(DropZone(ZoneKind.PopUp, "Pop-up", popUp, popUp))
+        add(DropZone(ZoneKind.FullScreen, ZoneBox(0f, 0f, width, band), whole))
+        if (canPopUp) add(DropZone(ZoneKind.PopUp, popUp, popUp))
         when {
-            !canSplit -> add(DropZone(ZoneKind.FullScreen, "Full screen", ZoneBox(0f, band, width, height), whole))
+            !canSplit -> add(DropZone(ZoneKind.FullScreen, ZoneBox(0f, band, width, height), whole))
             !sideBySide -> {
-                add(DropZone(ZoneKind.SplitTop, "Split · top", ZoneBox(0f, band, width, height / 2), ZoneBox(0f, 0f, width, height / 2)))
-                add(DropZone(ZoneKind.SplitBottom, "Split · bottom", ZoneBox(0f, height / 2, width, height), ZoneBox(0f, height / 2, width, height)))
+                add(DropZone(ZoneKind.SplitTop, ZoneBox(0f, band, width, height / 2), ZoneBox(0f, 0f, width, height / 2)))
+                add(DropZone(ZoneKind.SplitBottom, ZoneBox(0f, height / 2, width, height), ZoneBox(0f, height / 2, width, height)))
             }
             else -> {
-                add(DropZone(ZoneKind.SplitLeft, "Split · left", ZoneBox(0f, band, width / 2, height), ZoneBox(0f, 0f, width / 2, height)))
-                add(DropZone(ZoneKind.SplitRight, "Split · right", ZoneBox(width / 2, band, width, height), ZoneBox(width / 2, 0f, width, height)))
+                add(DropZone(ZoneKind.SplitLeft, ZoneBox(0f, band, width / 2, height), ZoneBox(0f, 0f, width / 2, height)))
+                add(DropZone(ZoneKind.SplitRight, ZoneBox(width / 2, band, width, height), ZoneBox(width / 2, 0f, width, height)))
             }
         }
     }

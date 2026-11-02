@@ -13,7 +13,7 @@ class DropZonesTest {
         assertEquals(ZoneKind.SplitLeft, open.zoneAt(100f, 1000f)?.kind)
         assertEquals(ZoneKind.SplitRight, open.zoneAt(1900f, 1000f)?.kind)
         assertEquals(ZoneBox(0f, 0f, 1038f, 2152f), open.zoneAt(100f, 1000f)?.preview)
-        assertEquals("Split · left", open.zoneAt(100f, 1000f)?.label)
+        assertEquals(ZoneKind.SplitLeft, open.zoneAt(100f, 1000f)?.kind)
     }
 
     @Test fun foldedHalvesSplitTopAndBottom() {
