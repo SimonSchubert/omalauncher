@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_failed">hat nicht geklappt</string>
+    <string name="files_cant_hand_over">kann %1$s nicht an andere apps weitergeben</string>
+    <string name="files_no_app">keine app kann %1$s öffnen</string>
+    <string name="files_leads_to_nothing">das ziel existiert nicht</string>
+    <string name="files_cant_open">kann %1$s nicht öffnen: %2$s</string>
+    <string name="files_selected">%1$d ausgewählt</string>
+    <string name="files_filter_hint">diesen ordner filtern</string>
+    <string name="files_home">persönlich</string>
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">downloads</string>
+    <string name="files_place_system">system</string>
+    <string name="files_search">suchen</string>
+    <string name="files_more">mehr</string>
+    <string name="files_new_file">neue datei</string>
+    <string name="files_new_folder">neuer ordner</string>
+    <string name="files_hide_hidden">versteckte dateien ausblenden</string>
+    <string name="files_show_hidden">versteckte dateien zeigen</string>
+    <string name="files_open_terminal">terminal hier öffnen</string>
+    <string name="files_empty_folder">leerer ordner</string>
+    <string name="files_no_matches">keine treffer</string>
+    <string name="files_create">erstellen</string>
+    <string name="files_rename">umbenennen</string>
+    <string name="files_delete_one">%1$s löschen?</string>
+    <plurals name="files_delete_items">
+        <item quantity="one">%1$d element löschen?</item>
+        <item quantity="other">%1$d elemente löschen?</item>
+    </plurals>
+    <string name="files_delete_message">Das kannst du nicht rückgängig machen.</string>
+    <string name="files_delete">löschen</string>
+    <plurals name="files_items">
+        <item quantity="one">%1$d element</item>
+        <item quantity="other">%1$d elemente</item>
+    </plurals>
+    <string name="files_folder">ordner</string>
+    <string name="files_copy">kopieren</string>
+    <string name="files_cut">ausschneiden</string>
+    <string name="files_select_all">alle auswählen</string>
+    <string name="files_edit">bearbeiten</string>
+    <string name="files_open_with">öffnen mit…</string>
+    <string name="files_share">teilen</string>
+    <string name="files_cancel">abbrechen</string>
+    <string name="files_move_here">hierher verschieben</string>
+    <string name="files_paste_here">hier einfügen</string>
+
+    <string name="editor_title">Editor</string>
+    <string name="editor_cant_read">kann %1$s nicht lesen: %2$s</string>
+    <string name="editor_cant_save">kann %1$s nicht speichern: %2$s</string>
+    <string name="editor_not_found">nicht gefunden</string>
+    <string name="editor_find_hint">in datei suchen</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">vorheriger treffer</string>
+    <string name="editor_next_match">nächster treffer</string>
+    <string name="editor_save">speichern</string>
+    <string name="editor_find">suchen</string>
+    <string name="editor_no_wrap">zeilen nicht umbrechen</string>
+    <string name="editor_wrap">zeilen umbrechen</string>
+    <string name="editor_show_in_files">in dateien zeigen</string>
+    <string name="editor_open_in_micro">in micro öffnen</string>
+    <string name="editor_save_confirm">%1$s speichern?</string>
+    <string name="editor_save_confirm_message">Du hast noch ungespeicherte Änderungen.</string>
+    <string name="editor_discard">verwerfen</string>
+    <string name="editor_key_left">links</string>
+    <string name="editor_key_up">hoch</string>
+    <string name="editor_key_down">runter</string>
+    <string name="editor_key_right">rechts</string>
+    <string name="editor_key_undo">rückgängig</string>
+    <string name="editor_key_redo">wiederholen</string>
+    <string name="editor_home_title">editor</string>
+    <string name="editor_new">neu</string>
+    <string name="editor_browse">durchsuchen</string>
+    <string name="editor_recent">zuletzt</string>
+    <string name="editor_recent_empty">Dateien, die du bearbeitest, erscheinen hier.</string>
+    <string name="editor_new_file_hint">ein pfad in Linux</string>
+
+    <string name="prompt_listening">hört zu…</string>
+    <string name="prompt_hint_apps">app öffnen…</string>
+    <string name="prompt_hint_ask">app öffnen oder %1$s fragen…</string>
+    <string name="prompt_enter_ask">⏎ fragen</string>
+    <string name="prompt_agent">agent</string>
+    <string name="prompt_manage_agents">"  agenten verwalten…"</string>
+
+    <string name="prompt_speech_no_recognizer">keine spracherkennung auf diesem smartphone</string>
+    <string name="prompt_speech_refused">die spracherkennung des smartphones lässt andere apps nicht ran</string>
+    <string name="prompt_speech_failed">spracherkennung hat nicht geklappt (%1$d)</string>
+    <string name="prompt_speech_language">spracheingabe gibt\'s in dieser sprache nicht</string>
+    <string name="prompt_speech_not_downloaded">spracheingabe für diese sprache ist auf diesem telefon nicht geladen</string>
+    <string name="prompt_speech_mic_permission">mikrofon-berechtigung fehlt</string>
+    <string name="prompt_speech_network">spracherkennung braucht eine netzwerkverbindung</string>
+</resources>

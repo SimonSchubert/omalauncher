@@ -191,6 +191,17 @@ internal fun PromptBar(
         }
     }
 
+    /**
+     * A tap on the mic: the voice screen, a spoken conversation with the bar's agent, when it's one that talks there
+     * (Claude Code, Grok, OpenCode) and the phone has speech recognition; dictation into the bar for the others.
+     * Holding the mic always dictates.
+     */
+    fun tapMic() {
+        val talker = agent?.takeIf { linux && runtime.voice.opensFor(it) } ?: return talk(hold = false)
+        runtime.voice.prefer(talker)
+        runtime.openVoice()
+    }
+
     LaunchedEffect(state.promptRequest) {
         when (state.promptRequest) {
             PromptRequest.Type -> {
@@ -198,7 +209,7 @@ internal fun PromptBar(
                 keyboard?.show()
             }
             PromptRequest.Send -> send(text)
-            PromptRequest.Listen -> talk(hold = false)
+            PromptRequest.Listen -> tapMic()
             // A menu opened over the panel: the keyboard stays down from here on, rather than coming back as it closes.
             PromptRequest.Release -> {
                 focusManager.clearFocus()
@@ -348,8 +359,10 @@ internal fun PromptBar(
                 }
                 MicButton(
                     listening = listening,
-                    // A tap dictates into the field and stops at the next pause; another tap stops it sooner.
-                    onTap = { if (speech.listening) speech.stop() else talk(hold = false) },
+                    voice = linux && runtime.voice.opensFor(agent),
+                    // A tap opens the voice app, or dictates into the field and stops at the next pause; another tap
+                    // stops it sooner.
+                    onTap = { if (speech.listening) speech.stop() else tapMic() },
                     onHold = { talk(hold = true) },
                     onRelease = { if (speech.listening) speech.stop() },
                     onCancel = {
@@ -387,6 +400,8 @@ private const val HOLD_MILLIS = 250L
 @Composable
 private fun MicButton(
     listening: Boolean,
+    /** A tap opens the voice screen: the sound bars rather than the microphone. */
+    voice: Boolean,
     onTap: () -> Unit,
     onHold: () -> Unit,
     onRelease: () -> Unit,
@@ -442,7 +457,19 @@ private fun MicButton(
                 }
             },
         contentAlignment = Alignment.Center,
-    ) { MicIcon(if (listening) Palette.background else Palette.foreground) }
+    ) { if (voice && !listening) VoiceIcon(Palette.foreground) else MicIcon(if (listening) Palette.background else Palette.foreground) }
+}
+
+/** Sound bars, the voice screen's icon, on the same grid as [MicIcon]: what the mic shows when a tap talks to an agent. */
+@Composable
+internal fun VoiceIcon(color: Color) {
+    Canvas(Modifier.size(22.dp)) {
+        val u = size.width / 24f
+        // x and half-height of each bar, as in art/icons/voice.svg.
+        for ((x, h) in listOf(4.5f to 2f, 8.25f to 5f, 12f to 8.5f, 15.75f to 5f, 19.5f to 2f)) {
+            drawLine(color, androidx.compose.ui.geometry.Offset(x * u, (12f - h) * u), androidx.compose.ui.geometry.Offset(x * u, (12f + h) * u), 2.4f * u, StrokeCap.Round)
+        }
+    }
 }
 
 /** A microphone drawn on a 24-unit grid, like the home screen's other icons. */

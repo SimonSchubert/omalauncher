@@ -8,6 +8,7 @@
     <string name="activity_terminal">Terminal</string>
     <string name="activity_app">App</string>
     <string name="activity_files">Files</string>
+    <string name="activity_voice">Voice</string>
     <string name="activity_settings">Settings</string>
     <!-- In Android's notification access settings. -->
     <string name="notification_listener">Omalauncher widgets</string>

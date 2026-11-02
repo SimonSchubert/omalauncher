@@ -52,8 +52,8 @@
     <string name="editor_next_match">hasil berikutnya</string>
     <string name="editor_save">simpan</string>
     <string name="editor_find">cari</string>
-    <string name="editor_no_wrap">jangan bungkus baris</string>
-    <string name="editor_wrap">bungkus baris</string>
+    <string name="editor_no_wrap">jangan lipat baris</string>
+    <string name="editor_wrap">lipat baris</string>
     <string name="editor_show_in_files">tampilkan di File</string>
     <string name="editor_open_in_micro">buka di micro</string>
     <string name="editor_save_confirm">simpan %1$s?</string>
@@ -83,6 +83,7 @@
     <string name="prompt_speech_refused">pengenal suara ponsel tidak mengizinkan aplikasi lain memakainya</string>
     <string name="prompt_speech_failed">pengenalan suara gagal (%1$d)</string>
     <string name="prompt_speech_language">pengenalan suara tidak tersedia untuk bahasa ini</string>
+    <string name="prompt_speech_not_downloaded">pengenalan suara untuk bahasa ini belum diunduh di ponsel ini</string>
     <string name="prompt_speech_mic_permission">perlu izin mikrofon</string>
     <string name="prompt_speech_network">pengenalan suara memerlukan koneksi jaringan</string>
 </resources>

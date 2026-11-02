@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_edit">编辑</string>
+    <string name="home_share">分享</string>
+    <string name="home_remove">移除</string>
+
+    <string name="home_create_with">用 %1$s 创建</string>
+    <string name="home_create_with_an_agent">用智能体创建</string>
+    <string name="home_browse_store">浏览商店</string>
+    <string name="home_create_widget">小组件</string>
+    <string name="home_create_app">应用</string>
+    <string name="home_create_panel">面板</string>
+
+    <string name="home_face_invite_title">属于你的 face</string>
+    <string name="home_face_invite_text">这一页留给你放一个 face：信息流、仪表盘、起始页、游戏都行。说出你想要什么，%1$s 就在这里全屏做出来。</string>
+    <string name="home_face_invite_text_no_agent">这一页留给你放一个 face：信息流、仪表盘、起始页、游戏都行。说出你想要什么，智能体就在这里全屏做出来。</string>
+    <string name="home_widget_invite_title">留给小组件的地方</string>
+    <string name="home_widget_invite_text">这一页还是空的。放上小组件吧：时钟、天气、待办清单、正在干活的智能体。说出你想要什么，%1$s 就做出来。</string>
+    <string name="home_widget_invite_text_no_agent">这一页还是空的。放上小组件吧：时钟、天气、待办清单、正在干活的智能体。说出你想要什么，智能体就做出来。</string>
+
+    <string name="home_drop_here">放到这里</string>
+    <string name="home_drop_face_only">这里只能放 face</string>
+
+    <plurals name="home_file_problems">
+        <item quantity="other">%1$s：%2$d 个问题</item>
+    </plurals>
+    <plurals name="home_file_problems_more">
+        <item quantity="other">errors.txt 中还有 %1$d 个 · 点按隐藏</item>
+    </plurals>
+    <string name="home_file_problems_hide">点按隐藏</string>
+
+    <string name="home_widget_needs">需要 %1$s</string>
+    <string name="home_installing">正在安装…</string>
+    <string name="home_install">安装</string>
+    <string name="home_retry">重试</string>
+    <string name="home_fix_with_agent">让智能体修复</string>
+    <string name="home_widget_needs_linux">需要 Linux</string>
+    <string name="home_widget_needs_linux_text">在可选的 Arch Linux 中运行命令</string>
+
+    <string name="home_terminal_starting">正在启动…</string>
+    <string name="home_terminal_exited">已退出 · 点按重启</string>
+
+    <string name="home_prompt_hint_agent">打开应用或问 %1$s</string>
+    <string name="home_prompt_hint">打开应用</string>
+    <string name="home_prompt_hint_short">应用</string>
+
+    <string name="home_folder_named">%1$s 文件夹</string>
+    <string name="home_folder">文件夹</string>
+    <string name="home_folder_tap_to_name">点按命名</string>
+
+    <string name="home_refresh">刷新</string>
+    <string name="home_refreshing">正在刷新</string>
+    <string name="home_job_failed">失败：</string>
+    <string name="home_job_whole_log">完整日志</string>
+    <string name="home_job_less">收起</string>
+    <string name="home_job_copy">复制</string>
+    <string name="home_settings">设置</string>
+
+    <string name="home_linux_window">Linux</string>
+
+    <string name="drawer_action_pin">添加到主屏幕</string>
+    <string name="drawer_action_info">应用信息</string>
+    <string name="drawer_action_uninstall">卸载</string>
+</resources>

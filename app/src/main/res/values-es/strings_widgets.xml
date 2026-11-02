@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widgets_no_app_opens">ninguna app abre %1$s</string>
+    <string name="widgets_copied">copiado</string>
+    <string name="widgets_notify_channel">Widgets</string>
+</resources>

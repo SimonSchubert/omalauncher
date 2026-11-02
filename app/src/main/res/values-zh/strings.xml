@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omalauncher</string>
+    <string name="wallpaper_label">Omarchy</string>
+    <string name="wallpaper_description">当前 Omarchy 主题的背景。系统颜色跟随主题。</string>
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">终端</string>
+    <string name="activity_app">应用</string>
+    <string name="activity_files">文件</string>
+    <string name="activity_voice">语音</string>
+    <string name="activity_settings">设置</string>
+    <string name="notification_listener">Omalauncher 小组件</string>
+</resources>

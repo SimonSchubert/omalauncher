@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.content.res.Resources
 import android.os.IBinder
 import dev.omalauncher.linux.LinuxState
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +29,9 @@ class LinuxService : Service() {
     private var watch: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /** The app's, so the notification is in the language picked in settings. */
+    override fun getResources(): Resources = application?.resources ?: super.getResources()
 
     override fun onStartCommand(
         intent: Intent?,

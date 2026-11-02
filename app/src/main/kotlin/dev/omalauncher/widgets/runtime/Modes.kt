@@ -1,7 +1,7 @@
 package dev.omalauncher.widgets.runtime
 
+import dev.omalauncher.registerNotExported
 import android.app.NotificationManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -177,15 +177,6 @@ class Modes(
     /** Emits whenever one of the modes changes, from anywhere: quick settings, a schedule, another app. */
     fun updates(): Flow<Value> =
         callbackFlow {
-            val receiver =
-                object : BroadcastReceiver() {
-                    override fun onReceive(
-                        c: Context,
-                        intent: Intent,
-                    ) {
-                        trySend(Unit)
-                    }
-                }
             val filter =
                 IntentFilter().apply {
                     addAction(NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED)
@@ -195,7 +186,7 @@ class Modes(
                     // Dark theme turning on or off changes the configuration.
                     addAction(Intent.ACTION_CONFIGURATION_CHANGED)
                 }
-            if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, filter)
+            val receiver = context.registerNotExported(filter) { trySend(Unit) }
             // The radios, rotation and brightness send no broadcast an app without permissions may hear; their settings change.
             val observer =
                 object : ContentObserver(main) {

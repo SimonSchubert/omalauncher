@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The store of widgets, faces and apps (ui/StoreScreen.kt), sharing a widget (ui/ShareWidgetScreen.kt), a widget shared
+     with you (ui/SharedWidgetScreen.kt), adding an app's shortcut (ui/PinShortcutDialog.kt) and the community themes
+     (ui/ThemeCatalogScreen.kt). -->
+<resources>
+    <string name="store_title">store</string>
+
+    <!-- What the store holds, one of; the toggle in the store's header, and the %s in the store's sentences below. -->
+    <string name="store_kind_widgets">widgets</string>
+    <string name="store_kind_faces">faces</string>
+    <string name="store_kind_apps">apps</string>
+    <string name="store_kind_panels">panels</string>
+    <string name="store_kind_keybars">tastenleisten</string>
+    <!-- One of them, in the title of a widget shared with you: "shared widget". -->
+    <string name="store_kind_widget">widget</string>
+    <string name="store_kind_face">face</string>
+    <string name="store_kind_app">app</string>
+    <string name="store_kind_panel">panel</string>
+    <string name="store_kind_keybar">tastenleiste</string>
+
+    <!-- Beside the grid on a wide screen, before one is picked. -->
+    <string name="store_pick_widget">tipp ein widget an und sieh, was es installiert und ausführt</string>
+    <string name="store_pick_face">tipp ein face an und sieh, was es installiert und ausführt</string>
+    <string name="store_pick_app">tipp eine app an und sieh, was sie installiert und ausführt</string>
+    <string name="store_pick_panel">tipp ein panel an und sieh, was es installiert und ausführt</string>
+    <string name="store_pick_keybar">tipp eine tastenleiste an und sieh, was sie installiert und ausführt</string>
+
+    <!-- %1$d is how many there are, %2$s what they are, like "widgets". -->
+    <string name="store_search">%1$d %2$s durchsuchen</string>
+    <!-- The store's tabs; the others are categories the store names. -->
+    <string name="store_tab_all">alle</string>
+    <string name="store_tab_new">neu</string>
+    <string name="store_tab_installed">installiert</string>
+    <!-- The category of one the store gives none: a tab, and on its card. -->
+    <string name="store_category_other">sonstige</string>
+    <!-- A tab: its name and how many are in it. -->
+    <string name="store_tab">%1$s %2$d</string>
+    <!-- The installed tab with updates: its name, how many are installed, how many have an update. -->
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <!-- The terminal tiles the launcher has itself, above the store's. -->
+    <string name="store_builtin">integriert</string>
+    <string name="store_terminal">terminal</string>
+    <string name="store_terminal_details">6x4 · eine shell</string>
+    <!-- %1$s is the coding agent's command, like "claude". -->
+    <string name="store_agent_details">6x6 · startet %1$s</string>
+    <string name="store_on_home">✓ auf dem startbildschirm</string>
+    <string name="store_tap_to_add">tippen: zu seite %1$d hinzufügen</string>
+
+    <!-- %1$s is what they are, like "widgets"; %2$s the store's repo, like "SimonSchubert/omarchy-widgets". -->
+    <string name="store_reviewed">geprüfte %1$s von github.com/%2$s</string>
+    <string name="store_loading">lädt…</string>
+    <!-- %1$s is what they are, like "widgets". -->
+    <string name="store_empty">noch keine %1$s</string>
+    <string name="store_no_new">keine neuen %1$s</string>
+    <string name="store_none_installed">keine %1$s aus dem store installiert</string>
+    <!-- %1$s is what was searched for. -->
+    <string name="store_no_match">keine treffer für „%1$s“</string>
+
+    <!-- A card's status line. -->
+    <string name="store_update_available">update da</string>
+    <string name="store_installed">✓ installiert</string>
+    <string name="store_needs_newer">braucht neueren launcher</string>
+    <string name="store_needs_linux">braucht linux</string>
+    <!-- A face's page count, after its category: "clock · 3 pages". -->
+    <plurals name="store_pages">
+        <item quantity="one">%1$d seite</item>
+        <item quantity="other">%1$d seiten</item>
+    </plurals>
+    <!-- Beside the name of one added to the store in the last few days. -->
+    <string name="store_badge_new">neu</string>
+
+    <!-- An entry's page. %1$d is the version of the widget language it needs. -->
+    <string name="store_needs_newer_detail">braucht einen neueren launcher (owl %1$d); aktualisier den launcher, dann klappt\'s</string>
+    <string name="store_may_have_changes">hat vielleicht deine änderungen drin; aktualisieren ersetzt sie</string>
+    <string name="store_you_changed">von dir geändert; aktualisieren ersetzt deine änderungen</string>
+    <!-- %1$s is the installed version, %2$s the new one. -->
+    <string name="store_update_anyway">trotzdem aktualisieren %1$s → %2$s</string>
+    <string name="store_update">aktualisieren %1$s → %2$s</string>
+    <string name="store_open">öffnen</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="one">fehlende seite hinzufügen</item>
+        <item quantity="other">%1$d fehlende seiten hinzufügen</item>
+    </plurals>
+    <string name="store_add_to_page">zu seite %1$d hinzufügen</string>
+    <string name="store_add_as_face">als face hinzufügen</string>
+    <string name="store_install">installieren</string>
+    <string name="store_uninstall">deinstallieren</string>
+    <string name="store_remove">entfernen</string>
+    <!-- %1$s is its name. -->
+    <string name="store_uninstall_confirm">%1$s deinstallieren?</string>
+    <string name="store_remove_confirm">%1$s entfernen?</string>
+    <string name="store_remove_file">Die Datei landet in .removed/ im Widgets-Ordner.</string>
+    <string name="store_remove_files">Die Dateien landen in .removed/ im Widgets-Ordner.</string>
+    <string name="store_changed_since_approval">befehle oder pakete haben sich seit der von dir freigegebenen version geändert</string>
+
+    <!-- Where one added went. -->
+    <string name="store_added_widget">✓ auf deinem startbildschirm</string>
+    <string name="store_added_face">✓ links von deiner ersten seite</string>
+    <string name="store_added_app">✓ in deiner app-übersicht</string>
+    <string name="store_added_panel">✓ in den gesten-einstellungen</string>
+    <string name="store_added_keybar">✓ in deinem widgets-ordner</string>
+
+    <string name="store_needs_linux_app">braucht Linux: führt befehle in Arch aus und taucht deshalb erst in der app-übersicht auf, wenn du Linux in den einstellungen installierst</string>
+    <string name="store_needs_linux_widget">braucht Linux: führt befehle in Arch aus und wartet deshalb als platzhalter, bis du Linux in den einstellungen installierst</string>
+
+    <!-- %1$s lists them by package manager, like "pacman: jq, curl; aur: yay". -->
+    <string name="store_installs_packages">installiert pakete: %1$s</string>
+    <string name="store_packages_none">keine</string>
+    <string name="store_runs_no_commands">führt keine befehle aus</string>
+    <string name="store_runs_commands">führt diese befehle in Arch aus:</string>
+
+    <!-- What's happening to an entry, while it is. -->
+    <string name="store_installing">wird installiert…</string>
+    <string name="store_updating">wird aktualisiert…</string>
+    <string name="store_adding_pages">fügt seiten hinzu…</string>
+    <!-- %1$s is why, an error message from the system. -->
+    <string name="store_load_failed">konnte den store nicht laden: %1$s</string>
+    <string name="store_download_mismatch">der download passt nicht zur geprüften version; versuch\'s später nochmal</string>
+    <!-- %1$s is why, an error message. -->
+    <string name="store_install_failed">installieren hat nicht geklappt: %1$s</string>
+
+    <!-- A widget someone shared with you. %1$s is what it is, like "widget". -->
+    <string name="store_shared_title">geteilt: %1$s</string>
+    <!-- %1$s is the site it's on, like "dpaste.com". -->
+    <string name="store_shared_fetching">lädt von %1$s…</string>
+    <string name="store_shared_unreadable">nicht lesbar</string>
+    <!-- %1$s is why. -->
+    <string name="store_shared_not_widget">Dieser Link enthält kein Widget: %1$s.</string>
+    <!-- In place of the name of one shared without one. -->
+    <string name="store_shared_unnamed_app">eine app</string>
+    <string name="store_shared_unnamed_widget">ein widget</string>
+    <!-- %1$s is its version and size when it says them, like " · v1.2 · 4x2", or nothing; %2$.1f its size in kilobytes. -->
+    <string name="store_shared_info">mit dir geteilt%1$s · %2$.1f KB</string>
+    <string name="store_shared_warning">Füg es nur hinzu, wenn du dem Absender vertraust. Es führt die Befehle unten als du in Arch aus und kommt an deine Dateien und ins Netz.</string>
+    <!-- %1$d is the version of the widget language it needs. -->
+    <string name="store_shared_needs_newer">braucht einen neueren launcher (owl %1$d); aktualisier den launcher, dann klappt\'s</string>
+    <!-- %1$s is its name. -->
+    <string name="store_shared_replace">zuvor geteilte version von %1$s ersetzen</string>
+    <string name="store_add_to_drawer">zur app-übersicht hinzufügen</string>
+    <string name="store_add_to_panels">zu den gesten-panels hinzufügen</string>
+    <string name="store_add_to_widgets_folder">zu deinem widgets-ordner hinzufügen</string>
+    <string name="store_hide_file">datei ausblenden</string>
+    <string name="store_show_file">ganze datei anzeigen</string>
+    <string name="store_review_with_agent">mit agent prüfen</string>
+
+    <!-- Sharing a widget. %1$s is its name. -->
+    <string name="store_share_title">%1$s teilen</string>
+    <string name="store_check_secrets">mit agent auf secrets prüfen</string>
+    <!-- %1$s is a file name. -->
+    <string name="store_share_unreadable">%1$s nicht lesbar</string>
+    <!-- %1$s is a file name, %2$d the most a launcher takes. -->
+    <string name="store_share_too_big">%1$s ist größer als %2$d KB, mehr als ein launcher annimmt</string>
+    <string name="store_uploading">lädt hoch…</string>
+    <string name="store_share_get_code">QR-code erstellen</string>
+    <string name="store_something_wrong">da ist was schiefgegangen</string>
+    <!-- %1$s is the site, like "dpaste.com"; %2$d how many days it keeps it. -->
+    <string name="store_share_uploads">lädt es öffentlich für %2$d tage auf %1$s hoch</string>
+    <string name="store_share_send_link">Oder sende den Link: dauerhaft, das ganze Widget steckt darin.</string>
+    <string name="store_share_too_big_link">Zu groß für einen Link: Teile es über den QR-Code.</string>
+    <!-- %1$s is the site, like "dpaste.com"; %2$d how many days it keeps it. -->
+    <string name="store_share_pasted_permanent">Verweist auf %1$s, dort in %2$d Tagen gelöscht. Der Link unten ist dauerhaft.</string>
+    <string name="store_share_pasted">Verweist auf %1$s, dort in %2$d Tagen gelöscht.</string>
+    <string name="store_share_permanent">Dauerhaft: Das ganze Widget steckt im Bild.</string>
+    <string name="store_share_code">QR-code teilen</string>
+    <string name="store_share_link">link teilen</string>
+    <string name="store_copied">kopiert</string>
+    <string name="store_copy_link">link kopieren</string>
+    <!-- The subject of a shared message and the clipboard's label; %1$s is the widget's name. -->
+    <string name="store_share_subject">%1$s-widget</string>
+    <!-- The clipboard's label for the code's image; %1$s is the widget's name. -->
+    <string name="store_share_code_clip">QR-code von %1$s</string>
+    <!-- The title of Android's share sheet; %1$s is the widget's name. -->
+    <string name="store_share_chooser">%1$s teilen</string>
+    <string name="store_in_store">im store</string>
+    <!-- %1$s is the store's repo, like "SimonSchubert/omarchy-widgets". -->
+    <string name="store_issue_info">Ein Issue auf github.com/%1$s; nach der Prüfung kann es jeder installieren.</string>
+    <string name="store_pr_info">Oder ein Pull Request von deinem Agenten, der auch eine Vorschau hinzufügen kann:</string>
+    <string name="store_create_pr">pull request mit agent erstellen</string>
+    <string name="store_open_issue">GitHub-issue öffnen</string>
+    <!-- %1$s is a web address. -->
+    <string name="store_no_browser">kein browser zum öffnen von %1$s</string>
+    <!-- %1$s is the site, like "dpaste.com". -->
+    <string name="store_issue_uploads">lädt es öffentlich zur prüfung auf %1$s hoch</string>
+    <!-- %1$s is why. -->
+    <string name="store_upload_failed">✗ hochladen hat nicht geklappt: %1$s</string>
+
+    <!-- An app asks to put one of its shortcuts on the home screen. -->
+    <string name="store_pin_title">zum startbildschirm hinzufügen?</string>
+    <!-- %1$s is the app that asks. -->
+    <string name="store_pin_from">von %1$s</string>
+    <string name="store_cancel">abbrechen</string>
+    <string name="store_add">hinzufügen</string>
+
+    <!-- The community themes listed on omarchy.org/themes. -->
+    <string name="store_theme_title">community-themes</string>
+    <string name="store_theme_search">%1$d themes durchsuchen</string>
+    <string name="store_theme_header">von der community, gelistet auf omarchy.org/themes · installiert von GitHub</string>
+    <string name="store_theme_in_use">✓ aktiv</string>
+    <!-- %1$s is the theme's name. -->
+    <string name="store_theme_install_confirm">%1$s installieren?</string>
+    <!-- %1$s is where it comes from, like "github.com/owner/repo". -->
+    <string name="store_theme_install_message">Von %1$s. Linux bekommt die Farben und Hintergründe, aber nicht die Skripte oder Terminal-Configs.</string>
+    <!-- %2$s is the name of the user's own theme it replaces. -->
+    <string name="store_theme_install_message_replaces">Von %1$s. Linux bekommt die Farben und Hintergründe, aber nicht die Skripte oder Terminal-Configs.\n\nEs ersetzt dein %2$s.</string>
+    <!-- %2$s is the name of Omarchy's theme of the same name. -->
+    <string name="store_theme_install_message_over">Von %1$s. Linux bekommt die Farben und Hintergründe, aber nicht die Skripte oder Terminal-Configs.\n\nEs überdeckt Omarchys %2$s; entfernst du es, ist das wieder da.</string>
+    <!-- %1$s is the theme's name, %2$d how many megabytes have downloaded. -->
+    <string name="store_theme_installing">installiert %1$s… %2$d MB</string>
+    <!-- %1$s is why, an error message from the system. -->
+    <string name="store_theme_catalog_failed">konnte omarchy.org/themes nicht laden: %1$s</string>
+    <string name="store_theme_page_changed">die seite hat sich geändert, lesen klappt nicht mehr</string>
+    <!-- %1$s is what the user gave as the theme's repo. -->
+    <string name="store_theme_not_github">kein GitHub-repo: %1$s</string>
+    <!-- %1$s is the repo, like "github.com/owner/repo". -->
+    <string name="store_theme_not_on_github">%1$s ist nicht auf GitHub</string>
+    <string name="store_theme_no_colors">hat keine colors.toml oder alacritty.toml</string>
+    <string name="store_theme_cant_move">kann das theme nicht an seinen platz schieben</string>
+</resources>

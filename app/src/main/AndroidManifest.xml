@@ -41,6 +41,15 @@
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
+        <!-- A speech app's own "speak now" screen, for one without a recognition service (FUTO Voice Input). -->
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+        <!-- Lets TextToSpeech bind the phone's engine (the voice screen's replies). Google's was only visible as a
+             recognizer above; another default engine (Samsung's, eSpeak) wasn't, and Android fell back or said nothing. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
     </queries>
 
     <application
@@ -78,6 +87,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Opens a speech app's "speak now" screen for Speech and hands the words back; shows nothing itself. -->
+        <activity
+            android:name=".SpeakNowActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
         <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
              websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
              gone once left. Not exported: the system starts it, and other apps have no reason to. -->
@@ -232,6 +249,17 @@
             android:taskAffinity="${applicationId}.files"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".VoiceActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:exported="false"
+            android:icon="@drawable/voice"
+            android:label="@string/activity_voice"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:taskAffinity="${applicationId}.voice"
+            android:theme="@style/Theme.Omalauncher.Window" />
 
         <activity
             android:name=".SettingsActivity"

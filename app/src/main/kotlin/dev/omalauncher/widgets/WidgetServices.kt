@@ -1,13 +1,13 @@
 package dev.omalauncher.widgets
 
+import dev.omalauncher.copyText
+import dev.omalauncher.registerNotExported
+import dev.omalauncher.shareText
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.BroadcastReceiver
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -50,10 +50,20 @@ import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.ShellPool
 import dev.omalauncher.linux.ShellResult
 import dev.omalauncher.SecretBox
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.resume
+import kotlin.concurrent.thread
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.suspendCancellableCoroutine
+import dev.omalauncher.WebSocket
+import dev.omalauncher.LocalNetwork
 import dev.omalauncher.openHttp
+import dev.omalauncher.pin
 import dev.omalauncher.openUrl
 import dev.omalauncher.readUpTo
-import dev.omalauncher.sha256Hex
+import dev.omalauncher.widgets.lang.sha256Hex
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.Builtins
 import dev.omalauncher.widgets.lang.KeyNames
@@ -61,6 +71,7 @@ import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
+import dev.omalauncher.widgets.lang.Pins
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WidgetError
@@ -116,11 +127,15 @@ import java.io.File
 import java.io.IOException
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
+import javax.net.ssl.HttpsURLConnection
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import dev.omalauncher.widgets.lang.textOrNull
 
 private const val MAX_HTTP_BYTES = 1 shl 20
+
+/** WebSockets open at once; a widget's page and its neighbours are live together. */
+private const val MAX_WEBSOCKETS = 8
 
 /** Why a request whose response is over [MAX_HTTP_BYTES] failed; it isn't tried again any sooner than its interval. */
 internal const val HTTP_TOO_BIG = "the response is over 1 MB, more than a widget reads"
@@ -260,18 +275,8 @@ class WidgetServices(
                 .flowOn(Dispatchers.Default)
             "battery" ->
                 callbackFlow {
-                    val receiver =
-                        object : BroadcastReceiver() {
-                            override fun onReceive(
-                                c: Context,
-                                intent: Intent,
-                            ) {
-                                trySend(battery())
-                            }
-                        }
-                    val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
                     // The broadcast is sticky: registering delivers the current state at once.
-                    if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, filter)
+                    val receiver = context.registerNotExported(IntentFilter(Intent.ACTION_BATTERY_CHANGED)) { trySend(battery()) }
                     awaitClose { context.unregisterReceiver(receiver) }
                 }.distinctUntilChanged()
             else -> null
@@ -698,7 +703,7 @@ class WidgetServices(
             "haptic" -> view?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
             "open" -> openApp(arg)
             "ask" -> ask(arg, args.getOrNull(1).textOrNull())
-            "appAction" -> args.getOrNull(1)?.takeIf { it != Null }?.let { appAction(arg, it.toString()) }
+            "appAction" -> args.getOrNull(1).textOrNull()?.let { appAction(arg, it) }
             "workApps" -> workApps(arg)
         }
         // Anything the action changed should show up without waiting for the next interval.
@@ -722,9 +727,15 @@ class WidgetServices(
         timeoutSeconds: Int,
         body: ByteArray?,
         method: String,
+        pin: String?,
     ): ShellResult =
         withContext(Dispatchers.IO) {
             if (!url.startsWith("https://") && !url.startsWith("http://")) return@withContext ShellResult("", "not an http(s) URL: $url", -1)
+            val pinned =
+                pin?.let {
+                    if (!url.startsWith("https://")) return@withContext ShellResult("", "pin: needs an https:// URL: $url", -1)
+                    Pins.normalize(it) ?: return@withContext ShellResult("", "pin: isn't a SHA-256 (64 hex digits): $it", -1)
+                }
             try {
                 var target = URL(url)
                 var sendMethod = if (body != null) method else "GET"
@@ -735,6 +746,7 @@ class WidgetServices(
                     val connection = openHttp(target.toString(), timeoutSeconds * 1000, timeoutSeconds * 1000)
                     try {
                         connection.instanceFollowRedirects = false
+                        if (pinned != null) (connection as HttpsURLConnection).pin(pinned)
                         connection.setRequestProperty("User-Agent", "omalauncher-widgets")
                         if (origin(target) == origin(URL(url))) headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
                         connection.requestMethod = sendMethod
@@ -747,6 +759,8 @@ class WidgetServices(
                         val code = connection.responseCode
                         val location = connection.getHeaderField("Location")
                         if (code in REDIRECTS && location != null) {
+                            // The pin is for this one server; wherever else it points isn't known to be it.
+                            if (pinned != null) return@withContext ShellResult("", "a pinned request was redirected (to $location), not followed", -1)
                             val next = redirect(code, target, URL(target, location), sendMethod, sendBody)
                             target = next.url
                             sendMethod = next.method
@@ -766,10 +780,74 @@ class WidgetServices(
                 }
                 ShellResult("", "too many redirects", -1)
             } catch (e: IOException) {
-                ShellResult("", e.message ?: e.toString(), -1)
+                ShellResult("", listOfNotNull(e.message ?: e.toString(), LocalNetwork.hint(context, url)).joinToString("; "), -1)
             }
         }
 
+
+    override suspend fun webSocket(
+        url: String,
+        headers: Map<String, String>,
+        pin: String?,
+        opened: ((String) -> Boolean) -> Unit,
+        onText: (String) -> Unit,
+        onBinary: () -> Unit,
+    ) {
+        val pinned = pin?.let { Pins.normalize(it) ?: throw IOException("pin: isn't a SHA-256 (64 hex digits): $it") }
+        // Each holds a thread and a connection the whole time its page shows.
+        if (webSockets.incrementAndGet() > MAX_WEBSOCKETS) {
+            webSockets.decrementAndGet()
+            throw IOException("over $MAX_WEBSOCKETS WebSockets are open at once on the pages around this one")
+        }
+        try {
+            connectWebSocket(url, headers, pinned, opened, onText, onBinary)
+        } catch (e: IOException) {
+            throw withContext(Dispatchers.IO) { LocalNetwork.hint(context, url) }?.let { IOException("${e.message}; $it", e) } ?: e
+        } finally {
+            webSockets.decrementAndGet()
+        }
+    }
+
+    /** WebSocket connections open now, all widgets together. */
+    private val webSockets = AtomicInteger()
+
+    private suspend fun connectWebSocket(
+        url: String,
+        headers: Map<String, String>,
+        pinned: String?,
+        opened: ((String) -> Boolean) -> Unit,
+        onText: (String) -> Unit,
+        onBinary: () -> Unit,
+    ) {
+        val socket = AtomicReference<WebSocket?>()
+        val gone = AtomicBoolean()
+        suspendCancellableCoroutine { cont ->
+            // Leaving the page says goodbye; the socket's thread finishes the close handshake on its own.
+            cont.invokeOnCancellation {
+                gone.set(true)
+                socket.get()?.close(1001)
+            }
+            // A thread of its own: the connection blocks it for as long as it's open.
+            thread(name = "owl-ws", isDaemon = true) {
+                try {
+                    val ws = WebSocket.connect(url, headers, pinned)
+                    socket.set(ws)
+                    if (gone.get()) return@thread ws.cancel()
+                    // Handlers send on the main thread; WebSocket writes on a thread of its own.
+                    opened(ws::send)
+                    val closed = ws.listen(onText) { onBinary() }
+                    // Going away (a server restarting) or no code is how a connection ends; anything else says why.
+                    if (closed.code !in setOf(1000, 1001, 1005)) {
+                        throw IOException("the server closed it with ${closed.code}" + closed.reason.ifEmpty { null }?.let { ": $it" }.orEmpty())
+                    }
+                    cont.resume(Unit)
+                } catch (e: Exception) {
+                    // Anything else thrown here would take the launcher down; the source reports it and connects again.
+                    cont.resumeWithException(e as? IOException ?: IOException(e.message ?: e.toString(), e))
+                }
+            }
+        }
+    }
 
     override fun seal(plain: ByteArray) = SecretBox.seal(plain)
 
@@ -965,15 +1043,14 @@ class WidgetServices(
     }
 
     private fun copy(text: String) {
-        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("widget", text))
+        context.copyText("widget", text)
         // Android 13+ confirms copies itself.
         if (Build.VERSION.SDK_INT < 33) Toast.makeText(context, R.string.widgets_copied, Toast.LENGTH_SHORT).show()
     }
 
     /** share(text): Android's share sheet, to send the text to any app. */
     private fun share(text: String) {
-        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
-        context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.shareText(text)
     }
 
     private var notificationId = 1000

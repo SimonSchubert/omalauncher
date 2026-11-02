@@ -1,5 +1,6 @@
 package dev.omalauncher.theme
 
+import dev.omalauncher.LauncherData
 import android.system.Os
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.TerminalFont
@@ -28,7 +29,9 @@ class GuestThemeConfig(
      */
     fun render(theme: OmarchyTheme) {
         val themeDir = File(currentDir, "theme")
-        themeDir.deleteRecursively()
+        // In the guest's home, where Omarchy's own scripts make current/theme a link to a theme: emptied through
+        // the link, that theme would be lost.
+        LauncherData.deleteTree(themeDir)
         themeDir.mkdirs()
         theme.guestFiles().forEach { (name, file) -> file.copyTo(File(themeDir, name)) }
         File(currentDir, "theme.name").writeText(theme.name + "\n")

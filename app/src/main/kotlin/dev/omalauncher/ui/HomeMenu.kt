@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,6 +55,7 @@ internal fun EditAction(
  * screen (not inside the home page's system-bar padding) so its scrim covers the
  * status and navigation bars too.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeMenu(
     runtime: Runtime,
@@ -78,7 +81,8 @@ fun HomeMenu(
             Column(Modifier.weight(1f).padding(start = 12.dp, end = 4.dp, top = 10.dp)) {
                 BasicText(createWithLabel(agent?.name), style = Mono.copy(fontSize = TextSize.Item))
                 // Pulled left by the buttons' own padding, so the first bracket lines up with the label.
-                Row(Modifier.offset(x = (-8).dp)) {
+                // Flows, since in some languages the three don't fit a line beside settings.
+                FlowRow(Modifier.offset(x = (-8).dp)) {
                     // The English name also names the agent's session.
                     val kinds: List<Triple<Int, String, (String) -> String>> =
                         listOf(

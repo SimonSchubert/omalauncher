@@ -23,6 +23,7 @@ import dev.omalauncher.linux.AudioBridge
 import dev.omalauncher.linux.Bootstrap
 import dev.omalauncher.linux.EDIT_COMMAND
 import dev.omalauncher.linux.FILES_COMMAND
+import dev.omalauncher.linux.VOICE_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.OpenBridge
@@ -42,6 +43,8 @@ import dev.omalauncher.theme.ThemeStore
 import dev.omalauncher.ui.Gestures
 import dev.omalauncher.ui.KeyboardBridge
 import dev.omalauncher.ui.SettingsPage
+import dev.omalauncher.ui.Speaker
+import dev.omalauncher.voice.VoiceSession
 import dev.omalauncher.ui.TerminalTiles
 import dev.omalauncher.ui.WindowManager
 import dev.omalauncher.ui.bitmapMask
@@ -96,13 +99,19 @@ class Runtime(
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
-    private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit)
+    private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onOpenVoice = ::openVoice, onEdit = ::edit)
     val agents = AgentStore(proot, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
 
     /** Widgets' speech(...) and android.speech. */
     val dictation = Dictation(context)
+
+    /** The voice screen's replies, in the phone's voice. */
+    val speaker = Speaker(context)
+
+    /** A spoken conversation with a coding agent: the voice screen's (VoiceActivity). */
+    val voice by lazy { VoiceSession(context, proot, agents, speaker) }
     val updates = SystemUpdates(proot, pacman, agents)
     val gpu = Gpu(context, proot, pacman)
 
@@ -118,6 +127,7 @@ class Runtime(
                 { defaultApps(proot.applications) },
                 { bundledIcons(context, proot.home) },
                 openBridge::managed,
+                proot::managed,
                 pacman::managed,
                 agents::managed,
                 themes::managed,
@@ -558,6 +568,7 @@ class Runtime(
         // Our own Files app: open it directly rather than round-tripping through the guest.
         if (app.exec == FILES_COMMAND) return openFiles()
         if (app.exec == EDIT_COMMAND) return edit()
+        if (app.exec == VOICE_COMMAND) return openVoice()
         if (app.terminal) return terminal(app.exec, app.name)
         // Like an Android icon: an app that already has a window comes back to it. Single-instance
         // apps would otherwise just exit on a second launch, showing nothing. Quickshell apps (App Finder)
@@ -612,6 +623,11 @@ class Runtime(
     /** Opens the owl app in file [name] in its own task; nothing if it isn't running (removed, or broken). */
     fun openOwlApp(name: String) {
         if (widgets.isApp(name)) InstantActivity.startInstantly(context, OwlAppActivity.intent(context, name))
+    }
+
+    /** Opens the voice screen, a spoken conversation with a coding agent. */
+    fun openVoice() {
+        InstantActivity.startInstantly(context, Intent(context, VoiceActivity::class.java))
     }
 
     /** Opens the Files app, at [path] (a guest path) if given. */

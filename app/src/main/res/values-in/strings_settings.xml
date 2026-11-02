@@ -1,32 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_title">pengaturan</string>
+    <string name="settings_title">setelan</string>
 
     <string name="settings_style">gaya</string>
-    <string name="settings_style_subtitle">tema, latar belakang, layar beranda</string>
+    <string name="settings_style_subtitle">tema, latar belakang, layar utama</string>
     <string name="settings_pages">halaman</string>
     <plurals name="settings_pages_subtitle">
         <item quantity="other">%1$d halaman · susun, edit, hapus</item>
     </plurals>
     <string name="settings_gestures">gestur</string>
     <string name="settings_gestures_subtitle">atas: %1$s · bawah: %2$s</string>
+    <string name="settings_language">bahasa</string>
+    <string name="settings_language_phone">bahasa ponsel</string>
     <string name="settings_linux">linux</string>
-    <string name="settings_linux_installed">terpasang · hapus</string>
-    <string name="settings_linux_installing_percent">memasang %1$d%% · %2$s</string>
-    <string name="settings_linux_installing">memasang · %1$s</string>
+    <string name="settings_linux_installed">terinstal · hapus</string>
+    <string name="settings_linux_installing_percent">menginstal %1$d%% · %2$s</string>
+    <string name="settings_linux_installing">menginstal · %1$s</string>
     <string name="settings_linux_failed">penyiapan berhenti · coba lagi</string>
     <string name="settings_linux_removing">menghapus…</string>
-    <string name="settings_linux_not_installed">belum terpasang · pasang Arch Linux untuk aplikasi terminal dan agen</string>
+    <string name="settings_linux_not_installed">belum terinstal · instal Arch Linux untuk aplikasi terminal dan agen</string>
     <string name="settings_agents">agen coding</string>
     <string name="settings_agents_default">default: %1$s</string>
-    <string name="settings_agents_install">pasang Claude Code, OpenCode, …</string>
+    <string name="settings_agents_install">instal Claude Code, OpenCode, …</string>
     <string name="settings_needs_linux">perlu linux</string>
     <string name="settings_packages">paket</string>
-    <string name="settings_packages_subtitle">pasang aplikasi dan alat Linux dengan pacman dan AUR</string>
+    <string name="settings_packages_subtitle">instal aplikasi dan alat Linux dengan pacman dan AUR</string>
+    <string name="settings_home_app">aplikasi beranda default</string>
+    <string name="settings_home_app_subtitle">jadikan Omalauncher layar utama kamu · pintasan aplikasi memerlukannya</string>
     <string name="settings_local_network">jaringan lokal</string>
     <string name="settings_local_network_subtitle">izinkan widget dan linux mengakses printer, home assistant, …</string>
-    <string name="settings_android">pengaturan android</string>
-    <string name="settings_android_subtitle">pengaturan sistem ponsel</string>
+    <string name="settings_android">setelan android</string>
+    <string name="settings_android_subtitle">setelan sistem ponsel</string>
     <string name="settings_licenses">lisensi</string>
     <string name="settings_licenses_subtitle">perangkat lunak open source di Omalauncher</string>
 

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_edit">editar</string>
+    <string name="home_share">compartilhar</string>
+    <string name="home_remove">remover</string>
+
+    <string name="home_create_with">criar com %1$s</string>
+    <string name="home_create_with_an_agent">criar com um agente</string>
+    <string name="home_browse_store">explorar a loja</string>
+    <string name="home_create_widget">widget</string>
+    <string name="home_create_app">app</string>
+    <string name="home_create_panel">painel</string>
+
+    <string name="home_face_invite_title">uma face só sua</string>
+    <string name="home_face_invite_text">Esta página é sua para preencher com uma face: um feed, um painel de controle, uma página inicial, um jogo. Diga o que quer e o %1$s cria aqui, em tela cheia.</string>
+    <string name="home_face_invite_text_no_agent">Esta página é sua para preencher com uma face: um feed, um painel de controle, uma página inicial, um jogo. Diga o que quer e um agente cria aqui, em tela cheia.</string>
+    <string name="home_widget_invite_title">espaço para widgets</string>
+    <string name="home_widget_invite_text">Ainda não há nada nesta página. Preencha com widgets: um relógio, o clima, uma lista de tarefas, seus agentes trabalhando. Diga o que quer e o %1$s cria.</string>
+    <string name="home_widget_invite_text_no_agent">Ainda não há nada nesta página. Preencha com widgets: um relógio, o clima, uma lista de tarefas, seus agentes trabalhando. Diga o que quer e um agente cria.</string>
+
+    <string name="home_drop_here">solte aqui</string>
+    <string name="home_drop_face_only">aqui só cabe uma face</string>
+
+    <plurals name="home_file_problems">
+        <item quantity="one">%1$s: %2$d problema</item>
+        <item quantity="many">%1$s: %2$d problemas</item>
+        <item quantity="other">%1$s: %2$d problemas</item>
+    </plurals>
+    <plurals name="home_file_problems_more">
+        <item quantity="one">mais %1$d em errors.txt · toque para ocultar</item>
+        <item quantity="many">mais %1$d em errors.txt · toque para ocultar</item>
+        <item quantity="other">mais %1$d em errors.txt · toque para ocultar</item>
+    </plurals>
+    <string name="home_file_problems_hide">toque para ocultar</string>
+
+    <string name="home_widget_needs">requer %1$s</string>
+    <string name="home_installing">instalando…</string>
+    <string name="home_install">instalar</string>
+    <string name="home_retry">tentar de novo</string>
+    <string name="home_fix_with_agent">corrigir com agente</string>
+    <string name="home_widget_needs_linux">requer Linux</string>
+    <string name="home_widget_needs_linux_text">executa comandos no Arch Linux opcional</string>
+
+    <string name="home_terminal_starting">iniciando…</string>
+    <string name="home_terminal_exited">encerrado · toque para reiniciar</string>
+
+    <string name="home_prompt_hint_agent">abra um app ou pergunte ao %1$s</string>
+    <string name="home_prompt_hint">abra um app</string>
+    <string name="home_prompt_hint_short">apps</string>
+
+    <string name="home_folder_named">pasta %1$s</string>
+    <string name="home_folder">pasta</string>
+    <string name="home_folder_tap_to_name">toque para nomear</string>
+
+    <string name="home_refresh">atualizar</string>
+    <string name="home_refreshing">atualizando</string>
+    <string name="home_job_failed">falhou:</string>
+    <string name="home_job_whole_log">log completo</string>
+    <string name="home_job_less">menos</string>
+    <string name="home_job_copy">copiar</string>
+    <string name="home_settings">configurações</string>
+
+    <string name="home_linux_window">Linux</string>
+
+    <string name="drawer_action_pin">adicionar à tela inicial</string>
+    <string name="drawer_action_info">informações do app</string>
+    <string name="drawer_action_uninstall">desinstalar</string>
+</resources>

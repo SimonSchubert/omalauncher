@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets
 
+import dev.omalauncher.widgets.lang.sha256Hex
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
@@ -22,7 +23,6 @@ import dev.omalauncher.upgrade.strings
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.market.Catalog
 import dev.omalauncher.widgets.market.CatalogEntry
-import dev.omalauncher.widgets.market.Review
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -179,7 +179,7 @@ class Market(
         val file = File(engine.dir, page.file)
         val stamp = file.length() to file.lastModified()
         editedFiles[page.file]?.takeIf { it.first == stamp }?.let { return it.second }
-        val edited = runCatching { Review.sha256(file.readBytes()) != sha }.getOrDefault(true)
+        val edited = runCatching { sha256Hex(file.readBytes()) != sha }.getOrDefault(true)
         editedFiles[page.file] = stamp to edited
         return edited
     }
@@ -230,7 +230,7 @@ class Market(
                 withContext(Dispatchers.IO) {
                     picked.associateWith { n -> httpGet(BASE + paths[n].first) }
                 }
-            if (bytes.any { (n, b) -> Review.sha256(b) != paths[n].second }) return StoreMessage(R.string.store_download_mismatch)
+            if (bytes.any { (n, b) -> sha256Hex(b) != paths[n].second }) return StoreMessage(R.string.store_download_mismatch)
             // A page on home keeps its place; a new one goes where the user is. Apps go in the drawer, on no page, and a face's
             // pages left of page 1, side by side from the empty page waiting there leftwards, page 1 leftmost. A face's pages
             // added back take the ones still there along, so they stay in order. Their pages are all picked first: home

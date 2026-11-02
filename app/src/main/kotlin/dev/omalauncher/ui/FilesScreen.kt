@@ -37,6 +37,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -60,6 +61,7 @@ fun FilesScreen(
     onExit: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val fs = runtime.proot.guestFs
     val scope = rememberCoroutineScope()
 
@@ -116,7 +118,7 @@ fun FilesScreen(
     fun operate(block: () -> Unit) {
         scope.launch {
             val error = withContext(Dispatchers.IO) { runCatching(block).exceptionOrNull() }
-            if (error != null) toast(error.message ?: context.getString(R.string.files_failed))
+            if (error != null) toast(error.message ?: resources.getString(R.string.files_failed))
             selected.clear()
             reload++
         }
@@ -128,7 +130,7 @@ fun FilesScreen(
             try {
                 FileProvider.getUriForFile(context, context.packageName + ".files", file)
             } catch (e: IllegalArgumentException) {
-                return toast(context.getString(R.string.files_cant_hand_over, file.name))
+                return toast(resources.getString(R.string.files_cant_hand_over, file.name))
             }
         val mime = mimeOf(file.name) ?: "*/*"
         val intent =
@@ -140,7 +142,7 @@ fun FilesScreen(
         try {
             context.startActivity(Intent.createChooser(intent, file.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: ActivityNotFoundException) {
-            toast(context.getString(R.string.files_no_app, file.name))
+            toast(resources.getString(R.string.files_no_app, file.name))
         }
     }
 
@@ -152,9 +154,9 @@ fun FilesScreen(
      */
     fun hostFile(entry: GuestEntry): File? =
         try {
-            fs.host(entry.path).also { if (!it.exists()) throw IOException(context.getString(R.string.files_leads_to_nothing)) }
+            fs.host(entry.path).also { if (!it.exists()) throw IOException(resources.getString(R.string.files_leads_to_nothing)) }
         } catch (e: IOException) {
-            toast(context.getString(R.string.files_cant_open, entry.name, e.message))
+            toast(resources.getString(R.string.files_cant_open, entry.name, e.message))
             null
         }
 
@@ -344,7 +346,7 @@ fun FilesScreen(
                 dialog = null
                 scope.launch {
                     val created = withContext(Dispatchers.IO) { runCatching { fs.createFile(path, name) } }
-                    created.exceptionOrNull()?.let { toast(it.message ?: context.getString(R.string.files_failed)) }
+                    created.exceptionOrNull()?.let { toast(it.message ?: resources.getString(R.string.files_failed)) }
                     reload++
                     created.getOrNull()?.let { runtime.edit(it) }
                 }

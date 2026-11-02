@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_failed">失败</string>
+    <string name="files_cant_hand_over">无法把 %1$s 交给其他应用</string>
+    <string name="files_no_app">没有应用能打开 %1$s</string>
+    <string name="files_leads_to_nothing">它指向的目标不存在</string>
+    <string name="files_cant_open">无法打开 %1$s：%2$s</string>
+    <string name="files_selected">已选择 %1$d 项</string>
+    <string name="files_filter_hint">筛选此文件夹</string>
+    <string name="files_home">主目录</string>
+    <string name="files_place_config">配置</string>
+    <string name="files_place_downloads">下载</string>
+    <string name="files_place_system">系统</string>
+    <string name="files_search">搜索</string>
+    <string name="files_more">更多</string>
+    <string name="files_new_file">新建文件</string>
+    <string name="files_new_folder">新建文件夹</string>
+    <string name="files_hide_hidden">不显示隐藏文件</string>
+    <string name="files_show_hidden">显示隐藏文件</string>
+    <string name="files_open_terminal">在此处打开终端</string>
+    <string name="files_empty_folder">空文件夹</string>
+    <string name="files_no_matches">没有匹配项</string>
+    <string name="files_create">创建</string>
+    <string name="files_rename">重命名</string>
+    <string name="files_delete_one">删除 %1$s？</string>
+    <plurals name="files_delete_items">
+        <item quantity="other">删除 %1$d 项？</item>
+    </plurals>
+    <string name="files_delete_message">此操作无法撤消。</string>
+    <string name="files_delete">删除</string>
+    <plurals name="files_items">
+        <item quantity="other">%1$d 项</item>
+    </plurals>
+    <string name="files_folder">文件夹</string>
+    <string name="files_copy">复制</string>
+    <string name="files_cut">剪切</string>
+    <string name="files_select_all">全选</string>
+    <string name="files_edit">编辑</string>
+    <string name="files_open_with">打开方式…</string>
+    <string name="files_share">分享</string>
+    <string name="files_cancel">取消</string>
+    <string name="files_move_here">移到此处</string>
+    <string name="files_paste_here">粘贴到此处</string>
+
+    <string name="editor_title">编辑器</string>
+    <string name="editor_cant_read">无法读取 %1$s：%2$s</string>
+    <string name="editor_cant_save">无法保存 %1$s：%2$s</string>
+    <string name="editor_not_found">未找到</string>
+    <string name="editor_find_hint">在文件中查找</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">上一个匹配项</string>
+    <string name="editor_next_match">下一个匹配项</string>
+    <string name="editor_save">保存</string>
+    <string name="editor_find">查找</string>
+    <string name="editor_no_wrap">不自动换行</string>
+    <string name="editor_wrap">自动换行</string>
+    <string name="editor_show_in_files">在文件中显示</string>
+    <string name="editor_open_in_micro">在 micro 中打开</string>
+    <string name="editor_save_confirm">保存 %1$s？</string>
+    <string name="editor_save_confirm_message">你有尚未保存的更改。</string>
+    <string name="editor_discard">放弃</string>
+    <string name="editor_key_left">左</string>
+    <string name="editor_key_up">上</string>
+    <string name="editor_key_down">下</string>
+    <string name="editor_key_right">右</string>
+    <string name="editor_key_undo">撤消</string>
+    <string name="editor_key_redo">重做</string>
+    <string name="editor_home_title">编辑器</string>
+    <string name="editor_new">新建</string>
+    <string name="editor_browse">浏览</string>
+    <string name="editor_recent">最近</string>
+    <string name="editor_recent_empty">你编辑过的文件会显示在这里。</string>
+    <string name="editor_new_file_hint">Linux 中的路径</string>
+
+    <string name="prompt_listening">正在聆听…</string>
+    <string name="prompt_hint_apps">打开应用…</string>
+    <string name="prompt_hint_ask">打开应用或问 %1$s…</string>
+    <string name="prompt_enter_ask">⏎ 提问</string>
+    <string name="prompt_agent">智能体</string>
+    <string name="prompt_manage_agents">"  管理智能体…"</string>
+
+    <string name="prompt_speech_no_recognizer">这台手机上没有语音识别器</string>
+    <string name="prompt_speech_refused">手机的语音识别器不允许其他应用使用</string>
+    <string name="prompt_speech_failed">语音识别失败（%1$d）</string>
+    <string name="prompt_speech_language">这种语言无法使用语音输入</string>
+    <string name="prompt_speech_not_downloaded">这部手机还没有下载这种语言的语音输入</string>
+    <string name="prompt_speech_mic_permission">需要麦克风权限</string>
+    <string name="prompt_speech_network">语音识别需要网络连接</string>
+</resources>

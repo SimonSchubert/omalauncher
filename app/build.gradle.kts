@@ -21,8 +21,8 @@ android {
         applicationId = "dev.omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 26
-        versionName = "0.15.0"
+        versionCode = 29
+        versionName = "0.18.0"
         ndk { abiFilters += "arm64-v8a" }
     }
 
@@ -39,6 +39,10 @@ android {
             keepDebugSymbols += listOf("**/libproot.so", "**/libproot-loader.so")
         }
     }
+
+    // Every language's text in every install: settings can pick a language the phone isn't set to (AppLanguage), and
+    // Play's language splits would only carry the phone's.
+    bundle { language { enableSplit = false } }
 
     // android.util.Log and friends are no-ops in JVM tests instead of throwing.
     testOptions { unitTests.isReturnDefaultValues = true }

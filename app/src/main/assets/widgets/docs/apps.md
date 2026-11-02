@@ -13,9 +13,19 @@ run only while open.
 app "notes" {
   meta { owl: 8 }
   title: "notes"                // the window's title; the drawer shows the name
-  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M11 5h18l9 9v29H11z"/>
-    <path d="M29 5v9h9M17 24h15M17 32h10"/>
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect width="256" height="256" rx="56" fill="#24283B"/>
+    <rect x="70" y="58" width="128" height="164" rx="14" fill="#16161E" fill-opacity="0.5"/>
+    <rect x="64" y="50" width="128" height="164" rx="14" fill="#F4E3A1"/>
+    <path d="M64 64a14 14 0 0 1 14-14h100a14 14 0 0 1 14 14v18H64z" fill="#E0AF68"/>
+    <path d="M86 112h84M86 140h84M86 168h52" stroke="#B8A36A" stroke-width="10" stroke-linecap="round"/>
+    <g transform="rotate(45 178 168)">
+      <rect x="164" y="88" width="28" height="104" rx="4" fill="#7AA2F7"/>
+      <rect x="164" y="88" width="10" height="104" fill="#A9C1FF"/>
+      <rect x="164" y="76" width="28" height="18" rx="4" fill="#F7768E"/>
+      <path d="M164 192h28l-14 26z" fill="#F0D2B0"/>
+      <path d="M173 209h10l-5 9z" fill="#1A1B26"/>
+    </g>
   </svg>"""
   state text = "" persist
   Column {
@@ -96,21 +106,29 @@ file rather than an expression, since it's drawn before the app runs, and it's o
 - an image, `asset logo = base64"..."` and `icon: logo`: a PNG (or WebP) shown as it is, scaled to
   fit a square. For a logo or artwork that has its own colors.
 
-Without one, the drawer shows the name's initials. Give every app one. The launcher draws icons
-standalone, on the theme's background, with no plate or frame of its own, so:
+Without one, the drawer shows the name's initials. Give every app one, and make it look like an
+app icon from a good phone, not a symbol from an icon font. The launcher draws no plate or frame of
+its own, so the icon brings its tile. That's how the store's apps look, so they sit together in
+the drawer:
 
-- Draw just the symbol, transparent around it: a square `viewBox` (`0 0 48 48`) filled edge to edge
-  by a line drawing in `currentColor`, strokes about 3.5 wide with round caps and joins, like the
-  example above. That's how the store's own apps look, so they sit together in the drawer.
-- A backdrop or frame is yours to add if the icon needs one (a rounded `<rect>` behind the symbol),
-  but most don't.
-- One idea, two or three shapes, readable at 40 dp: a page for notes, arrows for a converter.
-  No text, and no other app's or brand's logo.
-- With monochrome icons on, the launcher draws the icon's bright parts in one color, so the shape
-  has to read by its outline alone.
+- A rounded tile filling the canvas: `viewBox="0 0 256 256"` with
+  `<rect width="256" height="256" rx="56" fill="…"/>` first. A dark tile (`#1A1B26`, `#24283B`) or a
+  deep color that fits the subject (night blue for a lantern, sea blue for fishing).
+- One subject, big: it fills about two thirds of the tile, in flat fills of 4 to 8 colors that go
+  together, with a lighter side for light and a darker one, or a soft shadow under it, for depth. A
+  notepad and pencil for notes, a gold fish on a line for fishing, a knight for a dungeon game.
+  Games can fill the whole tile with a small scene (the tile clipped with a `clipPath`) instead.
+- Filled shapes rather than outlines. Thin strokes vanish at 40 dp, so keep any line at least 8
+  units wide on the 256 canvas. Pixel art (`shape-rendering="crispEdges"`, a grid of `<rect>`s)
+  suits retro games.
+- No text, and no other app's or brand's logo. Write the colors out; `currentColor` (the theme's
+  accent) only for a part that should change with the theme.
+- With monochrome icons on, the launcher draws the icon's bright parts in one color, so the subject
+  should be brighter than its tile.
 
-owl-check doesn't draw the icon; to look at an SVG, render it yourself (for example
-`rsvg-convert -w 192 icon.svg > icon.png`, from `librsvg`).
+owl-check doesn't draw the icon, so render it and look at it before you're done:
+`rsvg-convert -w 192 icon.svg > icon.png` and `-w 48` (from `librsvg`). At 48 px it should still
+read as its subject at a glance; if it's a muddle there, make it simpler and bigger.
 
 A widget and an app are separate files and don't share state; a widget that needs a bigger view
 of itself has its own `screen { }`.

@@ -62,7 +62,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 A file holds declarations, then the nodes it shows:
 
 - `source x = cmd("...") every 5s` runs a bash command in this Arch system, and `x` is its output (`json` parses
-  it). `http("https://...")` fetches from Android, with no Linux needed; `stream`, `file` and `clock` are sources
+  it). `http("https://...")` fetches from Android, with no Linux needed, and `ws("wss://...")` listens to a WebSocket; `stream`, `file` and `clock` are sources
   too, and `android.battery`, `android.media`, `android.notifications` and more read the phone.
 - `state x = 0` is a value handlers change (`persist` keeps it across restarts), and `let x = ...` a value worked
   out from the others, again whenever they change.
@@ -77,7 +77,7 @@ A file holds declarations, then the nodes it shows:
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 17.
+  it's 1. This launcher has 18.
 - Text is written in the language of whoever uses the widget. One meant for the store keeps its text in
   `strings { en { ... } id { ... } }` and shows `str.name`, the phone's language's (owl 16, see Text in more
   languages in docs/declarations.md).
@@ -89,7 +89,7 @@ declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a pan
 
 | read | for |
 |---|---|
-| docs/declarations.md | sources (`cmd`, `http`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `at`, `when`, `on`), putting values into commands and URLs, `requires` and working without Linux |
+| docs/declarations.md | sources (`cmd`, `http`, `ws`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `at`, `when`, `on`, `on … each`), putting values into commands and URLs, `requires` and working without Linux |
 | docs/android.md | the phone's data: battery, media, notifications, volume, the next alarm, modes, apps, the drawer, agents, AirPods |
 | docs/expressions.md | operators and every function, dates and times, numbers, changing lists and maps, chance |
 | docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal |
@@ -133,7 +133,7 @@ docs say what's current.
 | a shell command shown as text | `examples/10-clock` (clock, theme name), `examples/30-disk` (df, a bar) |
 | a number over time | `examples/20-system` (history, Sparkline, requires), `examples/93-latency` (stream: one long-running command) |
 | JSON and lists from commands | `examples/80-system-info` (json), `examples/70-processes` (lines into maps, a bar per row), `examples/94-scripts`, `examples/96-ai-usage` (jq in a `"""` command), `examples/60-agents` (for, if, Button) |
-| the web, no Linux needed | `examples/50-weather` (http), `examples/86-whats-new` (a screen behind the tile), `10-today` (weather, Input for a city, persist) |
+| the web, no Linux needed | `examples/50-weather` (http), `examples/86-whats-new` (a screen behind the tile), `10-today` (weather, Input for a city, persist), `examples/75-live-price` (ws: a WebSocket, greeting each connection, every message) |
 | the phone's own data | `examples/40-battery` (Ring), `examples/85-quick` (alarm, modes, torch), `examples/97-now-playing` (media, album art), `examples/98-notifications`, `examples/99-volume` (Slider), `examples/airpods` (AirPods' batteries and settings, a screen), `20-fetch` (with or without Linux) |
 | state, buttons and timers | `examples/91-focus` (persist, `at`, notify), `examples/87-breathe` (a session paced by the clock), `examples/88-notes` (Input, a saved list) |
 | drawing | `examples/90-analog-clock` (Canvas), `50-koi` (pixel art, taps), `60-owl` (sprites, a pet that keeps its state), `examples/92-aurora` and `examples/89-lava` (Shader) |

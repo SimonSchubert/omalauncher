@@ -2,7 +2,8 @@ package dev.omalauncher.linux
 
 import android.content.Context
 import dev.omalauncher.LauncherData
-import dev.omalauncher.upgrade.writeAtomically
+import dev.omalauncher.upgrade.Managed
+import dev.omalauncher.upgrade.Policy
 import java.io.File
 
 /** Paths and process launching for the proot'd Arch rootfs. */
@@ -35,9 +36,6 @@ class Proot(
 
     /** How guest apps render OpenGL and Vulkan: in software, or on the GPU once [Gpu] turns it on. */
     @Volatile var graphicsEnv: List<String> = SOFTWARE_ENV
-
-    /** Replaces /usr/bin/bwrap in the guest, see assets/bwrap-shim.sh. */
-    private val bwrapShim = File(filesDir, "bwrap-shim")
 
     /** Launcher data the guest sees in its home, kept outside the rootfs; see [LauncherData]. */
     private val dataBinds =
@@ -122,9 +120,19 @@ class Proot(
             }
         }
         for (sub in listOf("devices/system/cpu", "class", "block", "bus", "dev", "fs", "kernel")) File(sysDir, sub).mkdirs()
-        val shim = context.assets.open("bwrap-shim.sh").use { it.readBytes() }
-        if (!bwrapShim.isFile || !bwrapShim.readBytes().contentEquals(shim)) writeAtomically(bwrapShim, shim, executable = true)
+        // The stand-in was bound over /usr/bin/bwrap, which left proot's empty mount point there; no package owned
+        // it, so pacman refused to install bubblewrap and everything needing it (glycin, so GTK apps). A real
+        // bwrap is never empty.
+        File(rootfs, "usr/bin/bwrap").takeIf { it.isFile && it.length() == 0L }?.delete()
+        File(filesDir, "bwrap-shim").delete()
     }
+
+    /**
+     * The bwrap stand-in (assets/bwrap-shim.sh): user namespaces are unavailable under proot, so the real one
+     * fails. glycin and Codex look for bwrap on PATH, where /usr/local/bin precedes the package's /usr/bin.
+     */
+    fun managed(): List<Managed> =
+        listOf(Managed.asset(context, "bwrap-shim.sh", File(rootfs, "usr/local/bin/bwrap"), Policy.Owned, executable = true))
 
     private fun command(script: String): List<String> =
         listOf(
@@ -143,7 +151,6 @@ class Proot(
             ) + (if (cjkFont.isFile) listOf("-b", "${cjkFont.path}:$GUEST_CJK_FONT") else emptyList()) +
             binds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
             listOf(
-                "-b", "${bwrapShim.path}:/usr/bin/bwrap",
                 "-w", GUEST_HOME,
                 "/usr/bin/env", "-i",
                 "HOME=$GUEST_HOME",

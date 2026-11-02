@@ -1,8 +1,7 @@
 package dev.omalauncher.widgets.runtime
 
-import android.content.BroadcastReceiver
+import dev.omalauncher.registerNotExported
 import android.content.Context
-import android.content.Intent
 import android.content.IntentFilter
 import android.database.ContentObserver
 import android.media.AudioDeviceCallback
@@ -79,22 +78,13 @@ class Volume(
     fun updates(): Flow<Value> =
         callbackFlow {
             val main = Handler(Looper.getMainLooper())
-            val receiver =
-                object : BroadcastReceiver() {
-                    override fun onReceive(
-                        c: Context,
-                        intent: Intent,
-                    ) {
-                        trySend(Unit)
-                    }
-                }
             // Not public API, but sent by every Android version; the settings observer below covers phones that don't.
             val filter =
                 IntentFilter().apply {
                     addAction("android.media.VOLUME_CHANGED_ACTION")
                     addAction("android.media.STREAM_MUTE_CHANGED_ACTION")
                 }
-            if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, filter)
+            val receiver = context.registerNotExported(filter) { trySend(Unit) }
             val observer =
                 object : ContentObserver(main) {
                     override fun onChange(selfChange: Boolean) {

@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets
 
+import dev.omalauncher.widgets.lang.sha256Hex
 import android.content.ComponentCallbacks
 import android.content.Context
 import android.content.res.Configuration
@@ -13,6 +14,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.AppLanguage
 import dev.omalauncher.BuildConfig
 import dev.omalauncher.LauncherData
 import dev.omalauncher.Runtime
@@ -34,7 +36,6 @@ import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.lang.Source
 import dev.omalauncher.widgets.lang.phoneLanguage
-import dev.omalauncher.widgets.market.Review
 import dev.omalauncher.widgets.market.Shared
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import kotlinx.coroutines.CoroutineScope
@@ -45,6 +46,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
@@ -535,7 +537,8 @@ class WidgetEngine(
                 dir.mkdirs()
                 checkDir.mkdirs()
                 // Requests from before this start have been given up on: owl-send waits a few seconds at most.
-                inboxDir.deleteRecursively()
+                // The guest can write here: a link in the inbox's place must not take what it points to with it.
+                runCatching { LauncherData.deleteTree(inboxDir) }
                 inboxDir.mkdirs()
                 markets.forEach { it.load() }
             }
@@ -584,7 +587,8 @@ class WidgetEngine(
                 snapshotFlow { loaded }.first { it }
                 snapshotFlow { runtime.style.style[Style.COLUMNS] }.collect { layout.regrid(it, pages.map(::itemsOn)) }
             }
-            // A new phone language: files with strings { } or lang() compile anew for it.
+            // A new phone language, or one picked in settings: files with strings { } or lang() compile anew for it.
+            launch { AppLanguage.language.drop(1).collect { changes.trySend(false) } }
             context.registerComponentCallbacks(
                 object : ComponentCallbacks {
                     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -896,7 +900,7 @@ class WidgetEngine(
         val stamp = file.lastModified()
         val bytes = runCatching { file.readBytes() }.getOrElse { return broken(file, previous, stamp, it.message ?: "can't read", "") }
         val text = String(bytes)
-        val hash = Review.sha256(bytes)
+        val hash = sha256Hex(bytes)
         hashes[file.name] = hash
         return try {
             val p = Compiler.compile(text)
@@ -1035,7 +1039,7 @@ class WidgetEngine(
             path: String,
             target: File,
             policy: Policy,
-        ) = Managed(target, policy) { context.assets.open(path).use { it.readBytes() } }
+        ) = Managed.asset(context, path, target, policy)
 
         val assets = context.assets
         return buildList {
@@ -1053,7 +1057,7 @@ class WidgetEngine(
     fun guestManaged(): List<Managed> =
         listOf("AGENTS.md", "CLAUDE.md").map { Managed.text(File(proot.home, it), Policy.Seeded) { AGENT_POINTER } } +
             listOf("owl-check", "owl-send").map { bin ->
-                Managed(File(proot.rootfs, "usr/local/bin/$bin"), Policy.Owned, executable = true) { context.assets.open("$bin.sh").use { it.readBytes() } }
+                Managed.asset(context, "$bin.sh", File(proot.rootfs, "usr/local/bin/$bin"), Policy.Owned, executable = true)
             }
 
     companion object {

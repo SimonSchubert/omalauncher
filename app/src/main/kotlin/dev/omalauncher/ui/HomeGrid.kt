@@ -755,10 +755,11 @@ internal fun HomeGrid(
         ) {
             // A face's nodes say here when they take a long press, so the menu doesn't open for it too.
             CompositionLocalProvider(LocalLongPressClaim provides claims) {
-                // The pages either side are made ahead, so a swipe doesn't start by composing the one it brings in. Their
-                // animated widgets wait until some of the page shows.
+                // Two pages either side are made ahead: a swipe that starts bringing one in makes the page beyond it a neighbor,
+                // and composing that one, a face's shaders drawn with it, held up the swipe's first frames. Their animated
+                // widgets wait until some of the page shows.
                 val homeCovered = LocalHomeCovered.current
-                HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 1, key = { slots.getOrNull(it)?.first() ?: -it }) { slot ->
+                HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 2, key = { slots.getOrNull(it)?.first() ?: -it }) { slot ->
                     val shown = pagesAt(slot, slots)
                     val g = gridFor(shown, grid to wide)
                     val covered = remember(homeCovered, pager, slot) { { homeCovered() || pager.layoutInfo.visiblePagesInfo.none { it.index == slot } } }

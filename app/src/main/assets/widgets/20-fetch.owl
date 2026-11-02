@@ -2,15 +2,15 @@ widget "fetch" {
   page: 1
   order: 2
   size: 3x3
-  minSize: 3x2
-  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.7"; license: "MIT"; category: "system"; owl: 16 }
+  minSize: 2x2
+  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.10"; license: "MIT"; category: "system"; owl: 16 }
 
   // What it says, in the phone's language where it has a set. Words fastfetch and Linux use as names (os, host,
   // kernel, cpu, shell) stay as they are. Android's battery words come in English, so a set names them itself.
   strings {
     en {
       uptime: "uptime"; packages: "packages"; display: "display"; theme: "theme"; memory: "memory"; disk: "disk"
-      battery: "battery"; apps: "apps"; byDefault: "default"; phone: "phone"; hardware: "hardware"; network: "network"
+      battery: "battery"; apps: "apps"; byDefault: "default"; phone: "phone"; device: "device"; hardware: "hardware"; network: "network"
       launcher: "launcher"; security: "security"; build: "build"; locale: "locale"; cores: "cores"; storage: "storage"
       speed: "speed"; received: "received"; sent: "sent"; mobile: "mobile"; level: "level"; temperature: "temperature"
       voltage: "voltage"; health: "health"; cycles: "cycles"; technology: "technology"; version: "version"
@@ -18,24 +18,102 @@ widget "fetch" {
       notInstalled: "not installed. arch linux arm adds a terminal, agents and pacman to the launcher."
       upTo: ghz => " · up to ${ghz} GHz"
       androidApps: n => "${n} android apps"
+      appCount: n => "${n} apps"
       word: w => w
     }
     id {
       uptime: "aktif"; packages: "paket"; display: "layar"; theme: "tema"; memory: "memori"; disk: "disk"
-      battery: "baterai"; apps: "aplikasi"; byDefault: "default"; phone: "ponsel"; hardware: "perangkat keras"
+      battery: "baterai"; apps: "aplikasi"; byDefault: "default"; phone: "ponsel"; device: "perangkat"; hardware: "perangkat keras"
       network: "jaringan"; launcher: "launcher"; security: "keamanan"; build: "build"; locale: "bahasa"; cores: "inti"
       storage: "penyimpanan"; speed: "kecepatan"; received: "diterima"; sent: "dikirim"; mobile: "seluler"
       level: "level"; temperature: "suhu"; voltage: "tegangan"; health: "kondisi"; cycles: "siklus"
-      technology: "teknologi"; version: "versi"; explicit: "eksplisit"; upgraded: "diperbarui"; never: "belum pernah"
-      unknown: "tidak diketahui"; installLinux: "pasang linux"
-      notInstalled: "belum terpasang. arch linux arm menambahkan terminal, agen, dan pacman ke launcher."
+      technology: "teknologi"; version: "versi"; explicit: "diinstal manual"; upgraded: "diperbarui"; never: "belum pernah"
+      unknown: "tidak diketahui"; installLinux: "instal linux"
+      notInstalled: "belum terinstal. arch linux arm menambahkan terminal, agen, dan pacman ke launcher."
       upTo: ghz => " · hingga ${ghz} GHz"
       androidApps: n => "${n} aplikasi android"
+      appCount: n => "${n} aplikasi"
       // android.battery's status, health and plug.
       word: w => get({
         "charging": "mengisi", "plugged in": "tercolok", "on battery": "tanpa cas", "good": "baik",
         "overheating": "kepanasan", "dead": "tidak berfungsi", "over voltage": "tegangan berlebih", "cold": "dingin",
         "failing": "bermasalah", "wireless": "nirkabel", "dock": "dok"
+      }, w, w)
+    }
+    es {
+      uptime: "uptime"; packages: "paquetes"; display: "pantalla"; theme: "tema"; memory: "memoria"; disk: "disco"
+      battery: "batería"; apps: "apps"; byDefault: "predeterminado"; phone: "teléfono"; device: "dispositivo"; hardware: "hardware"
+      network: "red"; launcher: "launcher"; security: "seguridad"; build: "compilación"; locale: "idioma"; cores: "núcleos"
+      storage: "almacenamiento"; speed: "velocidad"; received: "recibido"; sent: "enviado"; mobile: "móvil"
+      level: "nivel"; temperature: "temperatura"; voltage: "voltaje"; health: "salud"; cycles: "ciclos"
+      technology: "tecnología"; version: "versión"; explicit: "explícitos"; upgraded: "actualizado"; never: "nunca"
+      unknown: "desconocido"; installLinux: "instalar linux"
+      notInstalled: "no instalado. arch linux arm suma una terminal, agentes y pacman al launcher."
+      upTo: ghz => " · hasta ${ghz} GHz"
+      androidApps: n => "${n} apps de android"
+      appCount: n => "${n} apps"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "cargando", "plugged in": "conectado", "on battery": "desconectado", "good": "buena",
+        "overheating": "sobrecalentada", "dead": "inservible", "over voltage": "sobrevoltaje", "cold": "fría",
+        "failing": "fallando", "wireless": "inalámbrica", "dock": "base"
+      }, w, w)
+    }
+    pt {
+      uptime: "uptime"; packages: "pacotes"; display: "tela"; theme: "tema"; memory: "memória"; disk: "disco"
+      battery: "bateria"; apps: "apps"; byDefault: "padrão"; phone: "telefone"; device: "dispositivo"; hardware: "hardware"
+      network: "rede"; launcher: "launcher"; security: "segurança"; build: "build"; locale: "idioma"; cores: "núcleos"
+      storage: "armazenamento"; speed: "velocidade"; received: "recebido"; sent: "enviado"; mobile: "dados móveis"
+      level: "nível"; temperature: "temperatura"; voltage: "tensão"; health: "saúde"; cycles: "ciclos"
+      technology: "tecnologia"; version: "versão"; explicit: "explícitos"; upgraded: "atualizado"; never: "nunca"
+      unknown: "desconhecido"; installLinux: "instalar linux"
+      notInstalled: "não instalado. o arch linux arm adiciona um terminal, agentes e o pacman ao launcher."
+      upTo: ghz => " · até ${ghz} GHz"
+      androidApps: n => "${n} apps android"
+      appCount: n => "${n} apps"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "carregando", "plugged in": "na tomada", "on battery": "na bateria", "good": "boa",
+        "overheating": "superaquecida", "dead": "inutilizável", "over voltage": "sobretensão", "cold": "fria",
+        "failing": "falhando", "wireless": "sem fio", "dock": "dock"
+      }, w, w)
+    }
+    de {
+      uptime: "uptime"; packages: "pakete"; display: "display"; theme: "theme"; memory: "ram"; disk: "speicher"
+      battery: "akku"; apps: "apps"; byDefault: "standard"; phone: "smartphone"; device: "gerät"; hardware: "hardware"
+      network: "netzwerk"; launcher: "launcher"; security: "sicherheit"; build: "build"; locale: "sprache"; cores: "kerne"
+      storage: "speicher"; speed: "takt"; received: "empfangen"; sent: "gesendet"; mobile: "mobil"
+      level: "ladestand"; temperature: "temperatur"; voltage: "spannung"; health: "zustand"; cycles: "ladezyklen"
+      technology: "technologie"; version: "version"; explicit: "explizit"; upgraded: "aktualisiert"; never: "nie"
+      unknown: "unbekannt"; installLinux: "linux installieren"
+      notInstalled: "nicht installiert. arch linux arm bringt ein terminal, agenten und pacman in den launcher."
+      upTo: ghz => " · bis ${ghz} GHz"
+      androidApps: n => "${n} android-apps"
+      appCount: n => "${n} apps"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "lädt", "plugged in": "angeschlossen", "on battery": "akkubetrieb", "good": "gut",
+        "overheating": "überhitzt", "dead": "defekt", "over voltage": "überspannung", "cold": "kalt",
+        "failing": "schwächelt", "wireless": "kabellos", "dock": "dock"
+      }, w, w)
+    }
+    zh {
+      uptime: "运行时间"; packages: "软件包"; display: "屏幕"; theme: "主题"; memory: "内存"; disk: "磁盘"
+      battery: "电池"; apps: "应用"; byDefault: "默认"; phone: "手机"; device: "设备"; hardware: "硬件"
+      network: "网络"; launcher: "启动器"; security: "安全补丁"; build: "版本号"; locale: "语言"; cores: "核心"
+      storage: "存储"; speed: "网速"; received: "接收"; sent: "发送"; mobile: "移动数据"
+      level: "电量"; temperature: "温度"; voltage: "电压"; health: "健康度"; cycles: "循环次数"
+      technology: "类型"; version: "版本"; explicit: "手动安装"; upgraded: "上次升级"; never: "从未"
+      unknown: "未知"; installLinux: "安装 linux"
+      notInstalled: "未安装。arch linux arm 为启动器带来终端、智能体和 pacman。"
+      upTo: ghz => " · 最高 ${ghz} GHz"
+      androidApps: n => "${n} 个 android 应用"
+      appCount: n => "${n} 个应用"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "充电中", "plugged in": "已接电源", "on battery": "电池供电", "good": "良好",
+        "overheating": "过热", "dead": "损坏", "over voltage": "过压", "cold": "过冷",
+        "failing": "故障", "wireless": "无线", "dock": "底座"
       }, w, w)
     }
   }
@@ -44,9 +122,10 @@ widget "fetch" {
   source dev = android.device
   source sys = android.system every 5s
   source bat = android.battery
-  source net = android.network every 5s
   // The Arch side, once Linux is installed. Base tools only, so it doesn't make the widget need Linux.
-  source lx = cmd("""
+  source net = android.network every 5s
+  // Where the launcher is itself Linux, android.system already has these facts, and this never runs.
+  source lxCmd = cmd("""
     . /etc/os-release
     printf '{"os":"%s","pkgs":%s,"explicit":%s,"shell":"%s","upgraded":"%s"}' \
       "$PRETTY_NAME" "$(pacman -Qq | wc -l)" "$(pacman -Qqe | wc -l)" \
@@ -54,13 +133,28 @@ widget "fetch" {
       "$(grep -a 'starting full system upgrade' /var/log/pacman.log 2>/dev/null | tail -1 | cut -c2-11)"
   """) every 5m json optional
 
-  let host = lower(replace(dev.model ?? "phone", " ", "-"))
-  let user = linux ? "root" : "user"
+  let lx = sys.linux ?? lxCmd
+  // A desktop host knows who and where you are; the phone's guest is root.
+  let host = lx.host ?? lower(replace(dev.model ?? "phone", " ", "-"))
+  let user = lx.user ?? (linux ? "root" : "user")
+  // Android's apps are only counted where there is Android; elsewhere the
+  // app menu's apps aren't packages.
+  let onAndroid = dev.android != null
   let mem = sys.memory
   let disk = sys.storage
   let shown = sys.display
   let kernel = split(sys.kernel ?? "", "-")[0]
   let batColor = bat.level <= 15 ? red : bat.level <= 30 ? yellow : green
+  // A short tile (the landscape home screen, or 3x2) has room for 8 lines:
+  // shell or display, theme and cpu give way to memory, disk and battery.
+  let short = tileHeight != null && tileHeight < 190
+  // A low one (two rows on a phone) has room for 6: host, kernel and packages give way too.
+  // A tiny one (two rows on a landscape phone) for 4: memory, disk and battery.
+  let low = tileHeight != null && tileHeight < 150
+  let tiny = tileHeight != null && tileHeight < 110
+  // A narrow tile (two columns on a phone) has room for a label and a number: no os, host or kernel,
+  // uptime in its largest unit, and memory, disk and battery as percentages.
+  let narrow = tileWidth != null && tileWidth < 170
 
   // Bytes a second over the last two reads; null until there are two, and after a reboot restarts the counters.
   state down = null
@@ -91,10 +185,10 @@ widget "fetch" {
     }
   }
 
-  component Line(key, value, size = 10, keyWidth = 50) {
+  component Line(key, value, size = 10, keyWidth = 56) {
     Row {
       gap: 6
-      Text { text: key; fontSize: size; font: mono; color: accent; width: keyWidth }
+      Text { text: key; fontSize: size; font: mono; color: accent; width: keyWidth; maxLines: 1 }
       Text { text: value; fontSize: size; font: mono; maxLines: 1; weight: 1 }
     }
   }
@@ -145,21 +239,45 @@ widget "fetch" {
       }
     }
     Spacer { height: 3 }
-    Line { key: "os"; value: linux ? lx.os : dev == null ? null : "Android ${dev.android}" }
-    Line { key: "host"; value: dev == null ? null : "${dev.maker} ${dev.model}" }
-    Line { key: "kernel"; value: kernel }
-    Line { key: str.uptime; value: sys.uptime == null ? null : fmtDuration(sys.uptime) }
-    Line { key: str.packages; value: linux ? (lx.pkgs == null ? null : "${lx.pkgs} (pacman), ${sys.apps} (${str.apps})") : "${sys.apps} (${str.apps})" }
-    if linux {
-      Line { key: "shell"; value: lx.shell }
+    if narrow {
+      if !tiny {
+        // Uptime's largest unit only: 11h, not 11h 5m.
+        Line { key: str.uptime; value: sys.uptime == null ? null : split(fmtDuration(sys.uptime), " ")[0] }
+        Line { key: str.packages; value: linux ? lx.pkgs : sys.apps }
+      }
+      if !short {
+        Line { key: "cpu"; value: sys.cpu == null ? null : "${sys.cpu.cores}" }
+      }
+      Line { key: str.memory; value: mem == null ? null : "${round(mem.used / mem.total * 100)}%" }
+      Line { key: str.disk; value: disk == null ? null : "${round(disk.used / disk.total * 100)}%" }
+      Line { key: str.battery; value: bat == null ? null : "${bat.level}%" }
     } else {
-      Line { key: str.display; value: shown.width == null ? null : "${shown.width}x${shown.height} @ ${shown.hz}Hz" }
+      if !tiny {
+        Line { key: "os"; value: linux ? lx.os : dev == null ? null : "Android ${dev.android}" }
+      }
+      if !low {
+        Line { key: "host"; value: dev == null ? null : "${dev.maker} ${dev.model}" }
+        Line { key: "kernel"; value: kernel }
+      }
+      if !tiny {
+        Line { key: str.uptime; value: sys.uptime == null ? null : fmtDuration(sys.uptime) }
+      }
+      if !low {
+        Line { key: str.packages; value: linux ? (lx.pkgs == null ? null : onAndroid ? "${lx.pkgs} (pacman), ${sys.apps} (${str.apps})" : "${lx.pkgs} (pacman)") : "${sys.apps} (${str.apps})" }
+      }
+      if !short {
+        if linux {
+          Line { key: "shell"; value: lx.shell }
+        } else {
+          Line { key: str.display; value: shown.width == null ? null : "${shown.width}x${shown.height} @ ${shown.hz}Hz" }
+        }
+        Line { key: str.theme; value: sys.theme ?? str.byDefault }
+        Line { key: "cpu"; value: sys.cpu == null ? null : "${sys.cpu.soc == "" ? sys.cpu.hardware : sys.cpu.soc} (${sys.cpu.cores})" }
+      }
+      Line { key: str.memory; value: mem == null ? null : "${fmtBytes(mem.used)} / ${fmtBytes(mem.total)} (${round(mem.used / mem.total * 100)}%)" }
+      Line { key: str.disk; value: disk == null ? null : "${fmtBytes(disk.used)} / ${fmtBytes(disk.total)} (${round(disk.used / disk.total * 100)}%)" }
+      Line { key: str.battery; value: bat == null ? null : "${bat.level}% · ${str.word(bat.status)}" }
     }
-    Line { key: str.theme; value: sys.theme ?? str.byDefault }
-    Line { key: "cpu"; value: sys.cpu == null ? null : "${sys.cpu.soc == "" ? sys.cpu.hardware : sys.cpu.soc} (${sys.cpu.cores})" }
-    Line { key: str.memory; value: mem == null ? null : "${fmtBytes(mem.used)} / ${fmtBytes(mem.total)} (${round(mem.used / mem.total * 100)}%)" }
-    Line { key: str.disk; value: disk == null ? null : "${fmtBytes(disk.used)} / ${fmtBytes(disk.total)} (${round(disk.used / disk.total * 100)}%)" }
-    Line { key: str.battery; value: bat == null ? null : "${bat.level}% · ${str.word(bat.status)}" }
   }
 
   screen {
@@ -180,11 +298,18 @@ widget "fetch" {
         }
       }
 
-      Heading { label: str.phone }
-      Line { key: "host"; value: dev == null ? null : "${dev.maker} ${dev.model} (${sys.codename})"; size: 13; keyWidth: 110 }
-      Line { key: "android"; value: dev == null ? null : "${dev.android} (sdk ${dev.sdk})"; size: 13; keyWidth: 110 }
-      Line { key: str.security; value: sys.patch; size: 13; keyWidth: 110 }
-      Line { key: str.build; value: sys.build; size: 13; keyWidth: 110 }
+      Heading { label: onAndroid ? str.phone : str.device }
+      Line { key: "host"; value: dev == null ? null : "${dev.maker} ${dev.model}${sys.codename == null ? "" : " (${sys.codename})"}"; size: 13; keyWidth: 110 }
+      // Android's own facts: absent where the launcher is Linux.
+      if dev.android != null {
+        Line { key: "android"; value: "${dev.android} (sdk ${dev.sdk})"; size: 13; keyWidth: 110 }
+      }
+      if sys.patch != null {
+        Line { key: str.security; value: sys.patch; size: 13; keyWidth: 110 }
+      }
+      if sys.build != null {
+        Line { key: str.build; value: sys.build; size: 13; keyWidth: 110 }
+      }
       Line { key: "kernel"; value: sys.kernel; size: 13; keyWidth: 110 }
       Line { key: str.uptime; value: sys.uptime == null ? null : fmtDuration(sys.uptime); size: 13; keyWidth: 110 }
       Line { key: str.locale; value: sys.locale == null ? null : "${sys.locale} · ${sys.timezone}"; size: 13; keyWidth: 110 }
@@ -192,7 +317,7 @@ widget "fetch" {
       Heading { label: str.hardware }
       Line { key: "cpu"; value: sys.cpu == null ? null : trim("${sys.cpu.maker} ${sys.cpu.soc == "" ? sys.cpu.hardware : sys.cpu.soc}"); size: 13; keyWidth: 110 }
       Line { key: str.cores; value: sys.cpu == null ? null : "${sys.cpu.cores} · ${sys.cpu.abi}${!sys.cpu.maxMhz ? "" : str.upTo(fixed(sys.cpu.maxMhz / 1000, 2))}"; size: 13; keyWidth: 110 }
-      Line { key: str.display; value: shown.width == null ? null : "${shown.width}x${shown.height} @ ${shown.hz}Hz · ${shown.dpi} dpi"; size: 13; keyWidth: 110 }
+      Line { key: str.display; value: shown.width == null ? null : "${shown.width}x${shown.height} @ ${shown.hz}Hz${shown.dpi == null ? "" : " · ${shown.dpi} dpi"}"; size: 13; keyWidth: 110 }
       Meter { label: str.memory; used: mem.used; total: mem.total; tint: round(mem.used / mem.total * 100) > 85 ? red : accent }
       Meter { label: str.storage; used: disk.used; total: disk.total; tint: round(disk.used / disk.total * 100) > 90 ? red : accent }
 
@@ -204,8 +329,12 @@ widget "fetch" {
       Heading { label: str.battery }
       Line { key: str.level; value: bat == null ? null : "${bat.level}% · ${str.word(bat.status)}${bat.plugged == null ? "" : " (" + str.word(bat.plugged) + ")"}"; size: 13; keyWidth: 110 }
       Progress { value: bat.level ?? 0; color: batColor; padding: [116, 0, 0, 0] }
-      Line { key: str.temperature; value: bat.temp == null ? null : "${fixed(bat.temp, 1)}°C"; size: 13; keyWidth: 110 }
-      Line { key: str.voltage; value: bat.voltage == null ? null : "${fixed(bat.voltage, 2)} V"; size: 13; keyWidth: 110 }
+      if bat.temp != null {
+        Line { key: str.temperature; value: "${fixed(bat.temp, 1)}°C"; size: 13; keyWidth: 110 }
+      }
+      if bat.voltage != null {
+        Line { key: str.voltage; value: "${fixed(bat.voltage, 2)} V"; size: 13; keyWidth: 110 }
+      }
       Line { key: str.health; value: bat.health == null ? str.unknown : str.word(bat.health); size: 13; keyWidth: 110 }
       if bat.cycles != null {
         Line { key: str.cycles; value: bat.cycles; size: 13; keyWidth: 110 }
@@ -217,17 +346,17 @@ widget "fetch" {
       Heading { label: str.launcher }
       Line { key: str.version; value: sys.launcher; size: 13; keyWidth: 110 }
       Line { key: str.theme; value: sys.theme ?? str.byDefault; size: 13; keyWidth: 110 }
-      Line { key: str.apps; value: sys.apps == null ? null : str.androidApps(sys.apps); size: 13; keyWidth: 110 }
+      Line { key: str.apps; value: sys.apps == null ? null : onAndroid ? str.androidApps(sys.apps) : str.appCount(sys.apps); size: 13; keyWidth: 110 }
 
       Heading { label: "linux" }
       if linux {
         Line { key: "os"; value: lx.os; size: 13; keyWidth: 110 }
         Line { key: str.packages; value: lx.pkgs == null ? null : "${lx.pkgs} (${lx.explicit} ${str.explicit})"; size: 13; keyWidth: 110 }
         Line { key: "shell"; value: lx.shell; size: 13; keyWidth: 110 }
-        Line { key: str.upgraded; value: lx.upgraded == "" ? str.never : lx.upgraded; size: 13; keyWidth: 110 }
+        Line { key: str.upgraded; value: (lx.upgraded ?? "") == "" ? str.never : lx.upgraded; size: 13; keyWidth: 110 }
         Row {
           justify: end
-          Button { text: "fastfetch ↗"; color: muted; onTap: terminal("command -v fastfetch >/dev/null || pacman -S --needed --noconfirm fastfetch; fastfetch", "fastfetch") }
+          Button { text: "fastfetch ↗"; color: muted; onTap: terminal("command -v fastfetch >/dev/null && fastfetch || echo 'fastfetch is not installed: pacman -S fastfetch'", "fastfetch") }
         }
       } else {
         Text { text: str.notInstalled; style: small; color: muted }

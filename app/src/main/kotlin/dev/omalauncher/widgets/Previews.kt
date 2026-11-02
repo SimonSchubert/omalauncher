@@ -146,7 +146,9 @@ internal class Previews(
             Log.w("widgets", "preview of ${spec.file.name} failed", e)
             return false
         } finally {
-            presentation?.dismiss()
+            // The window manager can refuse the removal (IllegalStateException from system_server on a Pixel 9 Pro,
+            // Android 17); thrown from here it crashed the launcher and skipped releasing the display.
+            runCatching { presentation?.dismiss() }.onFailure { Log.w("widgets", "cannot dismiss the preview", it) }
             owner.destroy()
             display.release()
             latest?.close()

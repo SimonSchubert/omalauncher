@@ -3,7 +3,6 @@ package dev.omalauncher
 import java.io.ByteArrayOutputStream
 import java.io.FilterInputStream
 import java.io.InputStream
-import java.security.MessageDigest
 
 /** Reads to the end, or [limit] bytes. Not readNBytes: that's API 33, and before it the call throws. */
 fun InputStream.readUpTo(limit: Int): ByteArray {
@@ -16,12 +15,6 @@ fun InputStream.readUpTo(limit: Int): ByteArray {
     }
     return out.toByteArray()
 }
-
-/** Lowercase hex, as sha256sum prints it. */
-fun sha256Hex(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).hex()
-
-/** Lowercase hex of what [MessageDigest.digest] returned. */
-fun ByteArray.hex(): String = joinToString("") { "%02x".format(it) }
 
 /** Counts the bytes read through it; [onRead] gets the running total after each read. */
 class CountingInputStream(

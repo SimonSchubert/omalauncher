@@ -2,8 +2,8 @@ widget "today" {
   page: 1
   order: 1
   size: 3x3
-  minSize: 3x2
-  meta { description: "The date and the weather where you are, by IP or a city you type. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.2"; license: "MIT"; category: "world"; owl: 16 }
+  minSize: 2x2
+  meta { description: "The date and the weather where you are, by IP or a city you type. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.7"; license: "MIT"; category: "world"; owl: 16 }
 
   // What it says, in the phone's language where it has a set. wttr names the sky and the moon in English, and
   // its own Indonesian misses newer conditions, so other languages name them from wttr's codes.
@@ -51,9 +51,147 @@ widget "today" {
         "Last Quarter": "kuartir akhir", "Waning Crescent": "sabit akhir"
       }, phase, lower(phase)) + " · ${lit}% terang"
     }
+    es {
+      title: "clima"; loading: "clima…"; offline: "clima sin conexión"; city: "ciudad · vacío = auto"
+      feels: "sensación"; humidity: "humedad"; rainToday: "lluvia hoy"; uv: "índice uv"; pressure: "presión"
+      visibility: "visibilidad"; next24: "próximas 24 horas"; now: "ahora"; days: "3 días"; today: "hoy"
+      sunrise: "amanecer"; sunset: "atardecer"; moon: "luna"; kmh: "km/h"; yr: "abrir yr.no ↗"
+      sky: (code, desc) => get({
+        "113": "despejado", "116": "parcialmente nublado", "119": "nublado", "122": "cubierto", "143": "neblina",
+        "176": "lluvia dispersa", "179": "nieve dispersa", "182": "aguanieve dispersa", "185": "llovizna helada dispersa",
+        "200": "tormenta eléctrica", "227": "nieve con viento", "230": "ventisca", "248": "niebla", "260": "niebla helada",
+        "263": "llovizna ligera dispersa", "266": "llovizna ligera", "281": "llovizna helada", "284": "llovizna helada intensa",
+        "293": "lluvia ligera dispersa", "296": "lluvia ligera", "299": "a ratos lluvia moderada", "302": "lluvia moderada",
+        "305": "a ratos lluvia fuerte", "308": "lluvia fuerte", "311": "lluvia helada ligera", "314": "lluvia helada fuerte",
+        "317": "aguanieve ligera", "320": "aguanieve fuerte", "323": "nevada ligera dispersa", "326": "nevada ligera",
+        "329": "nevada moderada dispersa", "332": "nevada moderada", "335": "nevada fuerte dispersa", "338": "nevada fuerte",
+        "350": "granizo fino", "353": "chubascos ligeros", "356": "chubascos fuertes", "359": "aguacero",
+        "362": "chubascos de aguanieve ligeros", "365": "chubascos de aguanieve fuertes", "368": "chubascos de nieve ligeros",
+        "371": "chubascos de nieve fuertes", "374": "chubascos de granizo fino ligeros", "377": "chubascos de granizo fino fuertes",
+        "386": "lluvia ligera con truenos", "389": "lluvia fuerte con truenos", "392": "nieve ligera con truenos",
+        "395": "nieve fuerte con truenos"
+      }, code, lower(trim(desc)))
+      // Eight points: the sixteen's in-between ones go to the nearer of north, east, south and west.
+      wind: dir => "viento del " + get({
+        "N": "norte", "NNE": "norte", "NE": "noreste", "ENE": "este", "E": "este", "ESE": "este",
+        "SE": "sureste", "SSE": "sur", "S": "sur", "SSW": "sur", "SW": "suroeste", "WSW": "oeste",
+        "W": "oeste", "WNW": "oeste", "NW": "noroeste", "NNW": "norte"
+      }, dir, lower(dir))
+      uvLevel: uv => uv >= 8 ? "muy alto" : uv >= 6 ? "alto" : uv >= 3 ? "moderado" : "bajo"
+      phase: (phase, lit) => get({
+        "New Moon": "luna nueva", "Waxing Crescent": "creciente", "First Quarter": "cuarto creciente",
+        "Waxing Gibbous": "gibosa creciente", "Full Moon": "luna llena", "Waning Gibbous": "gibosa menguante",
+        "Last Quarter": "cuarto menguante", "Waning Crescent": "menguante"
+      }, phase, lower(phase)) + " · ${lit}% iluminada"
+    }
+    pt {
+      title: "clima"; loading: "clima…"; offline: "clima offline"; city: "cidade · vazio = auto"
+      feels: "sensação"; humidity: "umidade"; rainToday: "chuva hoje"; uv: "índice uv"; pressure: "pressão"
+      visibility: "visibilidade"; next24: "próximas 24 horas"; now: "agora"; days: "3 dias"; today: "hoje"
+      sunrise: "nascer do sol"; sunset: "pôr do sol"; moon: "lua"; kmh: "km/h"; yr: "abrir yr.no ↗"
+      sky: (code, desc) => get({
+        "113": "céu limpo", "116": "parcialmente nublado", "119": "nublado", "122": "encoberto", "143": "névoa",
+        "176": "chuva isolada", "179": "neve isolada", "182": "chuva com neve isolada", "185": "garoa congelante isolada",
+        "200": "trovoada", "227": "neve com vento", "230": "nevasca", "248": "neblina", "260": "neblina congelante",
+        "263": "garoa fraca isolada", "266": "garoa fraca", "281": "garoa congelante", "284": "garoa congelante forte",
+        "293": "chuva fraca isolada", "296": "chuva fraca", "299": "às vezes chuva moderada", "302": "chuva moderada",
+        "305": "às vezes chuva forte", "308": "chuva forte", "311": "chuva congelante fraca", "314": "chuva congelante forte",
+        "317": "chuva com neve fraca", "320": "chuva com neve forte", "323": "neve fraca isolada", "326": "neve fraca",
+        "329": "neve moderada isolada", "332": "neve moderada", "335": "neve forte isolada", "338": "neve forte",
+        "350": "granizo miúdo", "353": "pancadas de chuva fracas", "356": "pancadas de chuva fortes", "359": "aguaceiro",
+        "362": "pancadas de chuva com neve fracas", "365": "pancadas de chuva com neve fortes", "368": "pancadas de neve fracas",
+        "371": "pancadas de neve fortes", "374": "pancadas de granizo miúdo fracas", "377": "pancadas de granizo miúdo fortes",
+        "386": "chuva fraca com trovões", "389": "chuva forte com trovões", "392": "neve fraca com trovões",
+        "395": "neve forte com trovões"
+      }, code, lower(trim(desc)))
+      // Eight points: the sixteen's in-between ones go to the nearer of north, east, south and west.
+      wind: dir => "vento " + get({
+        "N": "norte", "NNE": "norte", "NE": "nordeste", "ENE": "leste", "E": "leste", "ESE": "leste",
+        "SE": "sudeste", "SSE": "sul", "S": "sul", "SSW": "sul", "SW": "sudoeste", "WSW": "oeste",
+        "W": "oeste", "WNW": "oeste", "NW": "noroeste", "NNW": "norte"
+      }, dir, lower(dir))
+      uvLevel: uv => uv >= 8 ? "muito alto" : uv >= 6 ? "alto" : uv >= 3 ? "moderado" : "baixo"
+      phase: (phase, lit) => get({
+        "New Moon": "lua nova", "Waxing Crescent": "crescente", "First Quarter": "quarto crescente",
+        "Waxing Gibbous": "crescente gibosa", "Full Moon": "lua cheia", "Waning Gibbous": "minguante gibosa",
+        "Last Quarter": "quarto minguante", "Waning Crescent": "minguante"
+      }, phase, lower(phase)) + " · ${lit}% iluminada"
+    }
+    de {
+      title: "wetter"; loading: "wetter…"; offline: "wetter offline"; city: "stadt · leer = auto"
+      feels: "gefühlt"; humidity: "luftfeuchte"; rainToday: "regen heute"; uv: "uv-index"; pressure: "luftdruck"
+      visibility: "sichtweite"; next24: "nächste 24 stunden"; now: "jetzt"; days: "3 tage"; today: "heute"
+      sunrise: "aufgang"; sunset: "untergang"; moon: "mond"; kmh: "km/h"; yr: "yr.no öffnen ↗"
+      sky: (code, desc) => get({
+        "113": "klar", "116": "teils bewölkt", "119": "bewölkt", "122": "bedeckt", "143": "dunst",
+        "176": "örtlich regen", "179": "örtlich schnee", "182": "örtlich schneeregen", "185": "örtlich gefrierender niesel",
+        "200": "gewitter", "227": "schneetreiben", "230": "schneesturm", "248": "nebel", "260": "gefrierender nebel",
+        "263": "örtlich leichter niesel", "266": "leichter niesel", "281": "gefrierender niesel", "284": "starker gefrierender niesel",
+        "293": "örtlich leichter regen", "296": "leichter regen", "299": "zeitweise mäßiger regen", "302": "mäßiger regen",
+        "305": "zeitweise starker regen", "308": "starker regen", "311": "leichter gefrierender regen", "314": "starker gefrierender regen",
+        "317": "leichter schneeregen", "320": "starker schneeregen", "323": "örtlich leichter schnee", "326": "leichter schnee",
+        "329": "örtlich mäßiger schnee", "332": "mäßiger schnee", "335": "örtlich starker schnee", "338": "starker schnee",
+        "350": "eiskörner", "353": "leichte regenschauer", "356": "starke regenschauer", "359": "wolkenbruch",
+        "362": "leichte schneeregenschauer", "365": "starke schneeregenschauer", "368": "leichte schneeschauer",
+        "371": "starke schneeschauer", "374": "leichte eiskörnerschauer", "377": "starke eiskörnerschauer",
+        "386": "leichter regen mit gewitter", "389": "starker regen mit gewitter", "392": "leichter schnee mit gewitter",
+        "395": "starker schnee mit gewitter"
+      }, code, lower(trim(desc)))
+      // Eight points: the sixteen's in-between ones go to the nearer of north, east, south and west.
+      wind: dir => get({
+        "N": "nordwind", "NNE": "nordwind", "NE": "nordostwind", "ENE": "ostwind", "E": "ostwind", "ESE": "ostwind",
+        "SE": "südostwind", "SSE": "südwind", "S": "südwind", "SSW": "südwind", "SW": "südwestwind", "WSW": "westwind",
+        "W": "westwind", "WNW": "westwind", "NW": "nordwestwind", "NNW": "nordwind"
+      }, dir, "wind ${lower(dir)}")
+      uvLevel: uv => uv >= 8 ? "sehr hoch" : uv >= 6 ? "hoch" : uv >= 3 ? "mäßig" : "niedrig"
+      phase: (phase, lit) => get({
+        "New Moon": "neumond", "Waxing Crescent": "zunehmende sichel", "First Quarter": "erstes viertel",
+        "Waxing Gibbous": "zunehmender mond", "Full Moon": "vollmond", "Waning Gibbous": "abnehmender mond",
+        "Last Quarter": "letztes viertel", "Waning Crescent": "abnehmende sichel"
+      }, phase, lower(phase)) + " · ${lit}% beleuchtet"
+    }
+    zh {
+      title: "天气"; loading: "天气…"; offline: "获取不到天气"; city: "城市 · 留空 = 自动"
+      feels: "体感"; humidity: "湿度"; rainToday: "今日降水"; uv: "紫外线指数"; pressure: "气压"
+      visibility: "能见度"; next24: "未来 24 小时"; now: "现在"; days: "未来 3 天"; today: "今天"
+      sunrise: "日出"; sunset: "日落"; moon: "月亮"; kmh: "km/h"; yr: "打开 yr.no ↗"
+      sky: (code, desc) => get({
+        "113": "晴", "116": "局部多云", "119": "多云", "122": "阴", "143": "薄雾",
+        "176": "局部有雨", "179": "局部有雪", "182": "局部雨夹雪", "185": "局部冻毛毛雨",
+        "200": "雷暴", "227": "风吹雪", "230": "暴风雪", "248": "雾", "260": "冻雾",
+        "263": "局部小毛毛雨", "266": "小毛毛雨", "281": "冻毛毛雨", "284": "强冻毛毛雨",
+        "293": "局部小雨", "296": "小雨", "299": "间歇中雨", "302": "中雨",
+        "305": "间歇大雨", "308": "大雨", "311": "小冻雨", "314": "大冻雨",
+        "317": "小雨夹雪", "320": "大雨夹雪", "323": "局部小雪", "326": "小雪",
+        "329": "局部中雪", "332": "中雪", "335": "局部大雪", "338": "大雪",
+        "350": "冰粒", "353": "小阵雨", "356": "大阵雨", "359": "暴雨",
+        "362": "小阵雨夹雪", "365": "大阵雨夹雪", "368": "小阵雪",
+        "371": "大阵雪", "374": "小阵冰粒", "377": "大阵冰粒",
+        "386": "雷阵雨", "389": "强雷阵雨", "392": "小雷阵雪",
+        "395": "大雷阵雪"
+      }, code, lower(trim(desc)))
+      // Eight points: the sixteen's in-between ones go to the nearer of north, east, south and west.
+      wind: dir => get({
+        "N": "北风", "NNE": "北风", "NE": "东北风", "ENE": "东风", "E": "东风", "ESE": "东风",
+        "SE": "东南风", "SSE": "南风", "S": "南风", "SSW": "南风", "SW": "西南风", "WSW": "西风",
+        "W": "西风", "WNW": "西风", "NW": "西北风", "NNW": "北风"
+      }, dir, "风向 ${dir}")
+      uvLevel: uv => uv >= 8 ? "很强" : uv >= 6 ? "强" : uv >= 3 ? "中等" : "弱"
+      phase: (phase, lit) => get({
+        "New Moon": "新月", "Waxing Crescent": "蛾眉月", "First Quarter": "上弦月",
+        "Waxing Gibbous": "盈凸月", "Full Moon": "满月", "Waning Gibbous": "亏凸月",
+        "Last Quarter": "下弦月", "Waning Crescent": "残月"
+      }, phase, lower(phase)) + " · 照亮 ${lit}%"
+    }
   }
 
   source now = clock every 1m
+  // The date on two lines with the forecast row under it needs about 195dp; a 3x3 squeezed by an extra row
+  // (190 on a Pixel 9a) cut the forecast off.
+  let short = tileHeight != null && tileHeight < 200
+  // A low tile (two rows on a phone) has no room for the days ahead; a narrow one (two columns) drops sunrise and sunset.
+  let low = tileHeight != null && tileHeight < 150
+  let narrow = tileWidth != null && tileWidth < 170
   state city = "" persist
   // Blank follows the country. A tap on the degree letter stores C or F.
   state unitChoice = "" persist
@@ -117,15 +255,29 @@ widget "today" {
 
   Column {
     gap: 0
-    Row {
-      gap: 10
-      align: center
-      Text { text: fmtTime(now, "d"); style: huge; width: 60 }
-      Column {
-        gap: 0
-        weight: 1
-        Text { text: lower(fmtTime(now, "EEEE")); style: label; color: accent; maxLines: 1 }
-        Text { text: lower(fmtTime(now, "MMMM yyyy")); style: small; color: muted; maxLines: 1 }
+    // A short tile (a 3x3 on the landscape home screen) gets the date on one line, so the forecast row still fits,
+    // and so does a narrow one, where the month won't fit beside the big day.
+    if short || narrow {
+      Row {
+        gap: 6
+        align: center
+        Text { text: fmtTime(now, "d"); fontSize: 20; width: 28; maxLines: 1 }
+        Text { text: lower(fmtTime(now, "EEEE")); style: label; color: accent; weight: 1; maxLines: 1 }
+        if !narrow {
+          Text { text: lower(fmtTime(now, "MMMM")); style: small; color: muted; width: 76; align: end; maxLines: 1 }
+        }
+      }
+    } else {
+      Row {
+        gap: 10
+        align: center
+        Text { text: fmtTime(now, "d"); style: huge; width: 60 }
+        Column {
+          gap: 0
+          weight: 1
+          Text { text: lower(fmtTime(now, "EEEE")); style: label; color: accent; maxLines: 1 }
+          Text { text: lower(fmtTime(now, "MMMM yyyy")); style: small; color: muted; maxLines: 1 }
+        }
       }
     }
     Spacer { weight: 1 }
@@ -137,46 +289,52 @@ widget "today" {
         align: bottom
         Text { text: weatherIcon(cur.weatherCode, night); font: icon; fontSize: 32; color: sky; width: 26; padding: [0, 0, 0, 3] }
         Text { text: "${get(cur, "temp_" + unit)}°"; fontSize: 28; color: cyan; width: 68; maxLines: 1 }
-        Column {
-          gap: 0
-          weight: 1
-          Text { text: str.sky(cur.weatherCode, cur.weatherDesc[0].value); style: small; align: end; maxLines: 1 }
-          Text { text: "↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}°"; style: small; color: muted; align: end; maxLines: 1; padding: [0, 0, 0, 5] }
-        }
-      }
-      Text { text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1 }
-      Spacer { weight: 1 }
-      Spacer { height: 1; fill: width; background: alpha(muted, 0.25) }
-      Spacer { height: 8 }
-      // The next two days (icon from the noon reading), then sunrise and sunset.
-      // Each named from its own date: just after midnight, the forecast from before it still starts yesterday.
-      Row {
-        gap: 4
-        align: center
-        for d, i in drop(wx.weather, 1) key d.date {
+        if !narrow {
           Column {
             gap: 0
             weight: 1
-            align: center
-            Text { text: lower(fmtTime(parseTime(d.date), "EEE")); style: label; color: muted; align: center }
-            Text { text: weatherIcon(d.hourly[4].weatherCode, false); font: icon; fontSize: 18; align: center }
-            Text { text: "${get(d, "maxtemp" + unit)}° ${get(d, "mintemp" + unit)}°"; style: small; align: center; maxLines: 1 }
+            Text { text: str.sky(cur.weatherCode, cur.weatherDesc[0].value); style: small; align: end; maxLines: 1 }
+            Text { text: "↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}°"; style: small; color: muted; align: end; maxLines: 1; padding: [0, 0, 0, 5] }
           }
         }
-        Column {
+      }
+      Text { text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1 }
+      if !low {
+        Spacer { weight: 1 }
+        Spacer { height: 1; fill: width; background: alpha(muted, 0.25) }
+        Spacer { height: 8 }
+        // The next two days (icon from the noon reading), then sunrise and sunset.
+        // Each named from its own date: just after midnight, the forecast from before it still starts yesterday.
+        Row {
           gap: 4
-          weight: 1.2
-          Row {
-            gap: 4
-            align: center
-            Text { text: ""; font: icon; fontSize: 14; color: yellow; width: 20 }
-            Text { text: sun[0]; style: small; maxLines: 1; weight: 1 }
+          align: center
+          for d, i in drop(wx.weather, 1) key d.date {
+            Column {
+              gap: 0
+              weight: 1
+              align: center
+              Text { text: lower(fmtTime(parseTime(d.date), "EEE")); style: label; color: muted; align: center }
+              Text { text: weatherIcon(d.hourly[4].weatherCode, false); font: icon; fontSize: 18; align: center }
+              Text { text: "${get(d, "maxtemp" + unit)}° ${get(d, "mintemp" + unit)}°"; style: small; align: center; maxLines: 1 }
+            }
           }
-          Row {
-            gap: 4
-            align: center
-            Text { text: ""; font: icon; fontSize: 14; color: orange; width: 20 }
-            Text { text: sun[1]; style: small; maxLines: 1; weight: 1 }
+          if !narrow {
+            Column {
+              gap: 4
+              weight: 1.2
+              Row {
+                gap: 4
+                align: center
+                Text { text: ""; font: icon; fontSize: 14; color: yellow; width: 20 }
+                Text { text: sun[0]; style: small; maxLines: 1; weight: 1 }
+              }
+              Row {
+                gap: 4
+                align: center
+                Text { text: ""; font: icon; fontSize: 14; color: orange; width: 20 }
+                Text { text: sun[1]; style: small; maxLines: 1; weight: 1 }
+              }
+            }
           }
         }
       }

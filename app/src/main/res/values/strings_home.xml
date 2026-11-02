@@ -72,6 +72,10 @@
     <string name="home_refreshing">refreshing</string>
     <!-- Above the last lines of a Linux job that failed. -->
     <string name="home_job_failed">failed:</string>
+    <!-- Under the last lines of a Linux job: opens all of it, closes it again, copies it. -->
+    <string name="home_job_whole_log">whole log</string>
+    <string name="home_job_less">less</string>
+    <string name="home_job_copy">copy</string>
     <!-- Screen reader label of the gear that opens settings. -->
     <string name="home_settings">settings</string>
 

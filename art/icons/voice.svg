@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Voice: a spoken conversation, as sound bars -->
+  <rect width="256" height="256" rx="56" fill="#1A1B26"/>
+  <g stroke="#7AA2F7" stroke-width="18" stroke-linecap="round">
+    <path d="M68 112v32M98 92v72M128 70v116M158 92v72M188 112v32"/>
+  </g>
+</svg>

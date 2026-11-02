@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widgets_no_app_opens">没有应用能打开 %1$s</string>
+    <string name="widgets_copied">已复制</string>
+    <string name="widgets_notify_channel">小组件</string>
+</resources>

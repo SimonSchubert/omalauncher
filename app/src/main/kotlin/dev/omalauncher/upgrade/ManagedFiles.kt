@@ -1,7 +1,8 @@
 package dev.omalauncher.upgrade
 
+import android.content.Context
 import android.util.Log
-import dev.omalauncher.sha256Hex
+import dev.omalauncher.widgets.lang.sha256Hex
 import org.json.JSONObject
 import java.io.File
 
@@ -32,6 +33,15 @@ class Managed(
             executable: Boolean = false,
             content: () -> String,
         ) = Managed(file, policy, executable) { content().toByteArray() }
+
+        /** [path] in the APK's assets, read when it's written. */
+        fun asset(
+            context: Context,
+            path: String,
+            file: File,
+            policy: Policy,
+            executable: Boolean = false,
+        ) = Managed(file, policy, executable) { context.assets.open(path).use { it.readBytes() } }
     }
 }
 

@@ -5,7 +5,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import dev.omalauncher.sha256Hex
+import dev.omalauncher.widgets.lang.sha256Hex
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.Program
 import kotlinx.coroutines.CoroutineScope

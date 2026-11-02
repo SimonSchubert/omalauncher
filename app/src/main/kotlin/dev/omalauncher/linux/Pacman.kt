@@ -157,7 +157,7 @@ class Pacman(
             "fakeroot" to File(dir, "bin/fakeroot"),
             "yay" to File(proot.rootfs, "usr/local/bin/yay"),
         ).map { (asset, target) ->
-            Managed(target, Policy.Owned, executable = true) { context.assets.open("aur/$asset").use { it.readBytes() } }
+            Managed.asset(context, "aur/$asset", target, Policy.Owned, executable = true)
         }
     }
 

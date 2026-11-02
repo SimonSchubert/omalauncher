@@ -30,8 +30,8 @@
     <string name="home_file_problems_hide">ketuk untuk menyembunyikan</string>
 
     <string name="home_widget_needs">perlu %1$s</string>
-    <string name="home_installing">memasang…</string>
-    <string name="home_install">pasang</string>
+    <string name="home_installing">menginstal…</string>
+    <string name="home_install">instal</string>
     <string name="home_retry">coba lagi</string>
     <string name="home_fix_with_agent">perbaiki dengan agen</string>
     <string name="home_widget_needs_linux">perlu Linux</string>
@@ -51,11 +51,14 @@
     <string name="home_refresh">muat ulang</string>
     <string name="home_refreshing">memuat ulang</string>
     <string name="home_job_failed">gagal:</string>
-    <string name="home_settings">pengaturan</string>
+    <string name="home_job_whole_log">log lengkap</string>
+    <string name="home_job_less">ringkas</string>
+    <string name="home_job_copy">salin</string>
+    <string name="home_settings">setelan</string>
 
     <string name="home_linux_window">Linux</string>
 
-    <string name="drawer_action_pin">tambah ke beranda</string>
+    <string name="drawer_action_pin">tambah ke layar utama</string>
     <string name="drawer_action_info">info aplikasi</string>
-    <string name="drawer_action_uninstall">copot</string>
+    <string name="drawer_action_uninstall">uninstal</string>
 </resources>

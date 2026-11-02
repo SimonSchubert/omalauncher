@@ -76,12 +76,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.PopupPositionProvider
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LauncherFont
@@ -684,19 +679,6 @@ private fun FontOption(
             }
         }
     }
-}
-
-/** Just under the anchor, lined up with its start, and kept on screen. */
-private object BelowAnchorStart : PopupPositionProvider {
-    override fun calculatePosition(
-        anchorBounds: IntRect,
-        windowSize: IntSize,
-        layoutDirection: LayoutDirection,
-        popupContentSize: IntSize,
-    ) = IntOffset(
-        anchorBounds.left.coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
-        (anchorBounds.bottom + 8).coerceAtMost((windowSize.height - popupContentSize.height).coerceAtLeast(0)),
-    )
 }
 
 /** The column option names take, so the controls beside them line up. */

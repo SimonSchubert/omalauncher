@@ -6,14 +6,72 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
-- Widgets can show and change AirPods: owl 17's `android.airpods` has each bud's and
+- Widgets can show and change AirPods: owl 18's `android.airpods` has each bud's and
   the case's battery, which buds are in, the listening mode and the settings, read
   over the AirPods' own link as Apple's devices do, and `airpods(...)` switches
   noise cancellation, transparency and adaptive and turns Conversation Awareness
   and the rest on and off; `examples/airpods.owl` shows them. It asks for the
   Bluetooth permission the first time, and needs Android 17 (16 QPR3 on a Pixel).
 
-## 0.15.0 (versionCode 26) – unreleased
+## 0.18.0 (versionCode 29) – 2026-11-01
+
+- Voice talks to Codex (over `codex app-server`), GitHub Copilot, Kimi and Cursor (over ACP)
+  too, besides Claude Code, Grok and OpenCode. Its agent list has every one of them, and
+  picking one that isn't installed installs it, with the install's log and a retry in place of
+  the conversation.
+- Voice has its own settings, from a gear in its top row: the language it listens and reads
+  replies in, the voice for that language and how fast replies are read (1.25x by default).
+  What Voice says itself is in that language too.
+- When the agent says it isn't signed in, Voice offers [ log in ], which opens the agent in a
+  terminal of its own.
+- Voice's orb is a lit disc in the theme's accent, rings leaving it as you speak and a comet
+  circling it while the agent works. On a tablet the conversation is centred and no wider
+  than 560dp.
+- Speech goes online for a language with no offline model, uses a recognizer picked over
+  Google's (such as Transcribro), skips a stand-in one (FUTO Voice Input) for the speech app's
+  own speak-now screen, and understands the three-letter languages Samsung's text-to-speech
+  names.
+- A job's log offers the whole log with a [ whole log ] button.
+- Fixes: a widget preview whose window the system refused to remove and listing apps when a
+  system call fails partway no longer crash the launcher; Voice brought back in a new process
+  finds the agents again.
+
+## 0.17.0 (versionCode 28) – 2026-10-31
+
+- Voice: a spoken conversation with Claude Code, Grok or OpenCode as a launcher screen of its
+  own, opened from the drawer, the AI bar's mic (holding it still dictates) or `omarchy-voice`.
+  Each open starts a new conversation and the last one can be resumed; a type button switches
+  to typing and reading, with nothing said aloud. It speaks and understands the launcher's six
+  languages.
+- The launcher comes in German and Simplified Chinese.
+- Settings offers to make Omalauncher the default home app while it isn't one.
+- today and fetch shrink to 2x2, and on a short or squeezed tile today's date takes one line so
+  the forecast isn't cut off.
+- On a slow tablet the drawer opens without a pause and swiping past a face with shaders runs
+  smoothly.
+- The store side by side opens on the grid's first entry rather than an empty pane.
+
+## 0.16.0 (versionCode 27) – 2026-10-29
+
+- Settings has a language: the phone's, or one the launcher has its text in. A pick brings
+  every open screen back in it, and widgets' `strings { }` and `lang()` follow it too.
+- The launcher comes in Spanish and Brazilian Portuguese (also for phones set to Portugal's),
+  with the drawer, today, fetch, owl and key bar widgets translated. Play installs carry every
+  language, not just the phone's. Indonesian uses the words Android itself does.
+- A Linux job's log keeps up with progress bars instead of piling them up, holds 200 lines,
+  and opens whole when tapped, red only where something went wrong, with [ copy ] for a bug
+  report (#240).
+- pacman installs bubblewrap again, so glycin and the GTK apps needing it upgrade (#243).
+- With frosted glass, the recent apps and the prompt bar frost too, on home, in the landscape
+  rail and over the open drawer.
+- Owl 17: `ws(url)` listens to a WebSocket server, `send()` talks back and `on x each { }`
+  runs for every message; `pin:` on `http`, `post` and `ws` trusts a LAN server's own
+  certificate by its SHA-256; a scrolling Column or Grid takes `onPull` for pull to refresh.
+- Fixes: picking a language no longer opens a terminal; home's long-press menu wraps its
+  buttons instead of cutting the last one off; rendering a theme no longer empties a folder
+  Omarchy's `current/theme` links to.
+
+## 0.15.0 (versionCode 26) – 2026-10-28
 
 - The launcher speaks Indonesian: with the phone set to Indonesian, all of its text, the
   drawer, the today, fetch and owl widgets and the terminal key bar's spoken key names are

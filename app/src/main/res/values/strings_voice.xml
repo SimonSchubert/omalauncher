@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="voice_listening">listening</string>
+    <string name="voice_listening_working">listening · still working</string>
+    <string name="voice_starting">starting</string>
+    <!-- Under the orb while an agent waits for an OK; %1$s is the time it has been working, like 0:12. -->
+    <string name="voice_needs_ok">needs your OK · %1$s</string>
+    <string name="voice_working">working · %1$s</string>
+    <!-- Under the orb while a reply is read aloud: a tap talks over it. -->
+    <string name="voice_tap_over">tap to talk over it</string>
+    <string name="voice_tap">tap to talk</string>
+    <!-- A toggle: every question the agent asks is answered yes. -->
+    <string name="voice_allow_all">allow all</string>
+    <!-- Starts a new conversation; the last one can be resumed. -->
+    <string name="voice_new">new</string>
+    <!-- Brings back the last conversation. -->
+    <string name="voice_resume">resume</string>
+    <string name="voice_no_speech">Voice needs speech recognition, and this phone has none. Install one, like Google\'s Speech Recognition &amp; Synthesis, and pick it in Android\'s voice input settings. Or type instead.</string>
+    <string name="voice_input_settings">voice input</string>
+    <!-- Switches from talking to typing. -->
+    <string name="voice_type">type</string>
+    <string name="voice_no_agent">Voice talks with a coding agent in Linux. Install one to talk.</string>
+    <string name="voice_agents">agents</string>
+    <string name="voice_log_in">log in</string>
+    <string name="voice_thinking">thinking</string>
+    <plurals name="voice_steps">
+        <item quantity="one">%1$d step</item>
+        <item quantity="other">%1$d steps</item>
+    </plurals>
+    <!-- The text field's hint; %1$s is the agent, like Claude Code. -->
+    <string name="voice_message">message %1$s</string>
+    <string name="voice_answer_hint">yes, no, or what to do instead</string>
+    <string name="voice_send">send</string>
+    <string name="voice_stop">stop</string>
+    <!-- The approval card; %1$s is the agent, %2$s what it wants to do (a voice_do_ phrase, like "run a command"). -->
+    <string name="voice_wants">%1$s wants to %2$s</string>
+    <string name="voice_allow">allow</string>
+    <string name="voice_always">always</string>
+    <string name="voice_deny">deny</string>
+    <string name="voice_or_type">or type yes, no, or what to do instead</string>
+    <string name="voice_or_say">or tap the orb and say yes, no, or what to do instead</string>
+    <!-- Under a picture shown whole. -->
+    <string name="voice_tap_close">tap to close</string>
+    <!-- Steps of a task, shown as they happen. %1$s is a command's description or the command. -->
+    <string name="voice_step_run">running: %1$s</string>
+    <!-- %1$s is a file name or a web site. -->
+    <string name="voice_step_read">reading %1$s</string>
+    <string name="voice_step_write">writing %1$s</string>
+    <string name="voice_step_edit">editing %1$s</string>
+    <string name="voice_step_delete">deleting %1$s</string>
+    <string name="voice_step_search">searching %1$s</string>
+    <string name="voice_step_web">searching the web: %1$s</string>
+    <string name="voice_step_subtask">subtask: %1$s</string>
+    <string name="voice_step_plan">planning</string>
+    <!-- A step whose tool has no name. -->
+    <string name="voice_step_tool">a tool</string>
+    <!-- What the agent wants to do, in "%1$s wants to %2$s" (voice_wants, voice_say_wants): an infinitive phrase. -->
+    <string name="voice_do_run">run a command: %1$s</string>
+    <!-- Like voice_do_run when the command itself is shown below. -->
+    <string name="voice_do_command">run a command</string>
+    <string name="voice_do_read">read %1$s</string>
+    <string name="voice_do_write">write %1$s</string>
+    <string name="voice_do_edit">edit %1$s</string>
+    <string name="voice_do_delete">delete %1$s</string>
+    <string name="voice_do_search">search for %1$s</string>
+    <string name="voice_do_web">search the web for %1$s</string>
+    <string name="voice_do_subtask">start a subtask: %1$s</string>
+    <string name="voice_do_plan">make a plan</string>
+    <string name="voice_do_tool">use %1$s</string>
+    <string name="voice_do_tool_unknown">use a tool</string>
+    <!-- Said aloud when the agent asks to do something; %2$s is one of the voice_do_ phrases. -->
+    <string name="voice_say_wants">%1$s wants to %2$s. Allow it?</string>
+    <!-- Said aloud while the agent works quietly. -->
+    <string name="voice_say_moment">One moment.</string>
+    <string name="voice_say_failed">Sorry, that didn\'t work.</string>
+    <!-- In place of the agent's name when there is none. -->
+    <string name="voice_the_agent">the agent</string>
+    <!-- Notes in the conversation, lower case. -->
+    <string name="voice_note_allow_all">allowing everything %1$s asks for</string>
+    <string name="voice_note_ask_again">asking before each action again</string>
+    <string name="voice_note_task_stopped">the last task was stopped; say continue to pick it up</string>
+    <string name="voice_note_cant_continue">couldn\'t continue the last conversation; this is a new one</string>
+    <string name="voice_cant_start">couldn\'t start %1$s: %2$s</string>
+    <string name="voice_restarted">%1$s stopped and was restarted; ask again</string>
+    <!-- %2$s is what the agent printed last, in its own words. -->
+    <string name="voice_stopped">%1$s stopped: %2$s</string>
+    <string name="voice_nothing_to_say">%1$s answered with nothing to say</string>
+    <string name="voice_no_answer">no answer from %1$s yet; it may be out of quota or not signed in</string>
+    <string name="voice_quiet">%1$s has been quiet for two minutes; stop it if it\'s stuck</string>
+    <!-- When the agent gave no reason for a failure. -->
+    <string name="voice_failed">failed</string>
+    <!-- %1$s is the agent's error, like a network error. -->
+    <string name="voice_retrying">retrying: %1$s</string>
+    <!-- The voice settings: the chip in the top row and the dialog it opens. -->
+    <string name="voice_voice">voice</string>
+    <string name="voice_language">language</string>
+    <!-- The language picked in the launcher, which Voice uses unless another is picked; %1$s is its name. -->
+    <string name="voice_language_launcher">default (%1$s)</string>
+    <string name="voice_default">default</string>
+    <!-- After a voice that needs the internet. -->
+    <string name="voice_online">online</string>
+    <string name="voice_speed">speed</string>
+    <string name="voice_tts_settings">text-to-speech settings</string>
+    <string name="voice_no_voice">No voice for %1$s on this phone yet: get one in the text-to-speech settings.</string>
+    <string name="voice_sample">This is how replies will sound.</string>
+</resources>

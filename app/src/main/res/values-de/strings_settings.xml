@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The settings hub (ui/SettingsScreen.kt). -->
+<resources>
+    <string name="settings_title">einstellungen</string>
+
+    <string name="settings_style">stil</string>
+    <string name="settings_style_subtitle">theme, hintergrund, startbildschirm</string>
+    <string name="settings_pages">seiten</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="one">%1$d seite · anordnen, bearbeiten, entfernen</item>
+        <item quantity="other">%1$d seiten · anordnen, bearbeiten, entfernen</item>
+    </plurals>
+    <string name="settings_gestures">gesten</string>
+    <!-- What swiping up and down on home open: a panel's name, or nothing. -->
+    <string name="settings_gestures_subtitle">hoch: %1$s · runter: %2$s</string>
+    <string name="settings_language">sprache</string>
+    <!-- Following the language the phone is set to, rather than one picked here. -->
+    <string name="settings_language_phone">sprache des smartphones</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">installiert · entfernen</string>
+    <!-- %2$s is the setup stage, like "download arch linux". -->
+    <string name="settings_linux_installing_percent">wird installiert %1$d%% · %2$s</string>
+    <string name="settings_linux_installing">wird installiert · %1$s</string>
+    <string name="settings_linux_failed">einrichtung gestoppt · nochmal versuchen</string>
+    <string name="settings_linux_removing">wird entfernt…</string>
+    <string name="settings_linux_not_installed">nicht installiert · hol dir Arch Linux für terminal-apps und agenten</string>
+    <string name="settings_agents">coding-agenten</string>
+    <string name="settings_agents_default">standard: %1$s</string>
+    <string name="settings_agents_install">Claude Code, OpenCode, … installieren</string>
+    <string name="settings_needs_linux">braucht linux</string>
+    <string name="settings_packages">pakete</string>
+    <string name="settings_packages_subtitle">Linux-apps und -tools mit pacman und dem AUR installieren</string>
+    <string name="settings_home_app">standard-start-app</string>
+    <string name="settings_home_app_subtitle">mach Omalauncher zu deinem startbildschirm · app-verknüpfungen brauchen das</string>
+    <string name="settings_local_network">lokales netzwerk</string>
+    <string name="settings_local_network_subtitle">lässt widgets und linux deinen drucker, home assistant, … erreichen</string>
+    <string name="settings_android">android-einstellungen</string>
+    <string name="settings_android_subtitle">die systemeinstellungen des smartphones</string>
+    <string name="settings_licenses">lizenzen</string>
+    <string name="settings_licenses_subtitle">open-source-software in Omalauncher</string>
+
+    <!-- %1$s is what the running update does, like "upgrading packages". -->
+    <string name="settings_system_updating">systemupdate: %1$s…</string>
+    <string name="settings_system_update_failed">ein systemupdate ist nicht fertig geworden</string>
+    <string name="settings_retry">nochmal versuchen</string>
+    <string name="settings_system_updates">systemupdates</string>
+    <string name="settings_widget_updates">widgets</string>
+    <string name="settings_update_all">alle aktualisieren</string>
+    <string name="settings_check">prüfen</string>
+    <string name="settings_update">aktualisieren</string>
+    <string name="settings_updating">wird aktualisiert…</string>
+    <string name="settings_checking">wird geprüft…</string>
+    <string name="settings_not_checked">noch nicht geprüft</string>
+    <!-- %1$s is how long ago, like "5m ago". -->
+    <string name="settings_up_to_date">aktuell · geprüft %1$s</string>
+    <string name="settings_store_unreachable">store gerade nicht erreichbar</string>
+    <!-- %1$s lists the edited widgets with their versions. -->
+    <string name="settings_updates_held">von dir bearbeitet, also hier nicht aktualisiert: %1$s · ein update im store ersetzt deine änderungen</string>
+    <!-- Below a list cut short: how many lines are left out. -->
+    <string name="settings_more_lines">+%1$d weitere</string>
+    <string name="settings_just_now">gerade eben</string>
+    <string name="settings_minutes_ago">vor %1$d min</string>
+    <string name="settings_hours_ago">vor %1$d std</string>
+    <string name="settings_days_ago">vor %1$d tg</string>
+</resources>

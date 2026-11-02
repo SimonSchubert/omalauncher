@@ -281,20 +281,30 @@ class EmbeddedTerminal internal constructor(
             main.post {
                 running = false
                 window = null
+                if (closed) tiles.forget(this)
             }
         }
     }
 
-    /** Ends the terminal (the widget was removed or changed); foot closes its shell. */
+    /**
+     * Ends the terminal (the widget was removed or changed, or reloaded for a new language); foot closes its shell.
+     * One still starting stays claimable until its window shows up, else that window would open as an app of its own.
+     */
     fun close() {
         closed = true
+        if (running && window == null) return
         tiles.forget(this)
         window?.let(tiles::close)
     }
 
     internal fun attach(w: XdgToplevel) {
         // Closed while foot was still starting: it goes as soon as it shows up.
-        if (closed) tiles.close(w) else window = w
+        if (closed) {
+            tiles.forget(this)
+            tiles.close(w)
+        } else {
+            window = w
+        }
     }
 
     internal fun detach() {

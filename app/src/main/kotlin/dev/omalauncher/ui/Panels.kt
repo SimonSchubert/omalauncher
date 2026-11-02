@@ -9,9 +9,16 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import dev.omalauncher.Runtime
@@ -33,11 +40,23 @@ internal fun UpPanel(
     runtime: Runtime,
     state: LauncherState,
     name: String,
+    /** Closed but kept composed (see Launcher): reopening it then doesn't compose and measure its list again. */
+    hidden: () -> Boolean,
     modifier: Modifier = Modifier,
 ) {
     val inst = runtime.widgets.panelInstance(name)?.second ?: return
-    // Cheap when nothing changed, as for the drawer: Linux apps installed since show up in android.drawer.
-    LaunchedEffect(Unit) { runtime.refreshApps() }
+    val focusManager = LocalFocusManager.current
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(inst, hidden) {
+        snapshotFlow { hidden() }.collect { closed ->
+            when {
+                // Each time it opens. Cheap when nothing changed, as for the drawer: Linux apps installed since show up in android.drawer.
+                !closed -> runtime.refreshApps()
+                // What had the keys in it lets go as it closes: kept, it would hold them out of sight.
+                focused -> focusManager.clearFocus(force = true)
+            }
+        }
+    }
     // The panel reads the bar's text itself. Set before it composes, below, so its first frame has it too.
     val bar = remember(state) { { state.query } }
     if (inst.query !== bar) inst.query = bar
@@ -49,9 +68,11 @@ internal fun UpPanel(
             inst,
             modifier
                 .fillMaxSize()
+                .onFocusChanged { focused = it.hasFocus }
                 .nestedScroll(pull)
                 // A tap nothing in the panel takes closes it, as one on the backdrop beside the drawer's list does.
                 .pointerInput(state) { detectTapGestures { state.close() } },
+            hidden,
         )
     }
 }
@@ -78,7 +99,11 @@ internal fun PulledPanel(
         Box(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = state.pull.value }
+                .graphicsLayer {
+                    alpha = state.pull.value
+                    // Both fade as they draw, as the drawer's do (see Launcher): no full-screen buffer each frame.
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
+                }
                 .background(Palette.background.copy(alpha = inst.panelOpacity()))
                 .pullSwipe(state)
                 .holdsKeys()
@@ -86,6 +111,7 @@ internal fun PulledPanel(
                 .graphicsLayer {
                     // Faded in as it comes, as the drawer's content: half down, it doesn't draw over home's tiles at full strength.
                     alpha = state.pull.value
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
                     translationY = -(1f - state.pull.value) * size.height * 0.6f
                 },
         ) {

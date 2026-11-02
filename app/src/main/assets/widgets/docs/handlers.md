@@ -47,7 +47,8 @@ after it in its block (and blocks inside them), and needs a name not used for a 
 | `ask(text)` | opens a terminal with the default agent answering `text`, as sending it from the prompt bar does; `ask(text, "codex")` asks that installed agent. Without one installed it opens the agents settings. The store's reviewer sees what a widget asks (owl 10) |
 | `copy(text)` | copies text to the Android clipboard |
 | `notify("title", "text")` | posts an Android notification (if the launcher may post them) |
-| `post("https://...", body, headers)` | sends an HTTP POST from Android: a map or list `body` goes as JSON, text as it is; `headers` is a map like `http(...)`'s. `x = post(...)` puts the answer into the state `x` when it arrives: `{code, ok, out, err}`, with `out` parsed when it's JSON and `err` why it failed (code -1 when no answer came: offline, a timeout, a redirect it didn't follow). `method: "PUT"`, `"PATCH"` or `"DELETE"` sends that instead (owl 12). Never retried; a null URL sends nothing. When it succeeds, the widget's sources run again. See Sending (owl 8) |
+| `post("https://...", body, headers)` | sends an HTTP POST from Android: a map or list `body` goes as JSON, text as it is; `headers` is a map like `http(...)`'s. `x = post(...)` puts the answer into the state `x` when it arrives: `{code, ok, out, err}`, with `out` parsed when it's JSON and `err` why it failed (code -1 when no answer came: offline, a timeout, a redirect it didn't follow). `method: "PUT"`, `"PATCH"` or `"DELETE"` sends that instead (owl 12), and `pin:` trusts one certificate of a server of your own (owl 17). Never retried; a null URL sends nothing. When it succeeds, the widget's sources run again. See Sending (owl 8) |
+| `send(x, message)` | sends a message on the `ws(...)` source `x`'s connection: a map or list as JSON, anything else as its text. Dropped, with an error, while it isn't connected. See WebSockets (owl 17) |
 | `url("https://...")` | opens in the Android browser. Other links open in the app that takes them: `tel:` the dialer, `geo:` maps, `mailto:` email |
 | `share(text)` | opens Android's share sheet with the text (owl 7) |
 | `haptic()` | a short tap of haptic feedback, if the user has touch feedback on (owl 7) |
@@ -67,7 +68,7 @@ after it in its block (and blocks inside them), and needs a name not used for a 
 | `notification("open", key)` | opens a notification from `android.notifications` as tapping it in the shade would; `"dismiss"` clears it. Without notification access, opens the setting that grants it (owl 4). `notification("clear")` clears every one that can be, as the shade's Clear all does (owl 13). `notification("snooze", key, seconds)` hides one until the time is up, when Android shows it again, as snoozing in the shade does; `notification("snoozeAll", 3600)` every one that can be cleared, for an hour. From a minute to a week. `notification("unsnooze", key)` brings one back now, `notification("unsnoozeAll")` every snoozed one, those snoozed in the shade too (owl 13) |
 | `notification("action", key, i)` | presses the `i`-th of a notification's `actions`, counted from 0, as tapping its button in the shade would. One whose `reply` is true takes text instead: `notification("reply", key, text)` answers through it, as replying in the shade does: `Input { onSubmit: notification("reply", item.key, value) }`. The store review lists both, since they act as you in other apps (owl 13) |
 | `settings("wifi")` | opens Android's own panel, a sheet over home, or its settings screen where it has no panel: `internet`, `wifi`, `bluetooth`, `airplane`, `data`, `location`, `cast`, `nfc`, `volume`, `output`, `sound`, `dnd`, `display`, `dark`, `battery` or `notifications`. For what a launcher may show but not switch, like the radios in `android.modes`. `output` is Android's output switcher for what's playing, the sheet its media controls open, to move the sound to headphones or a speaker; Bluetooth settings on a phone without one (owl 13) |
-| `airpods("anc")` | switches the connected AirPods' listening mode: `off`, `anc` (noise cancellation), `transparency` or `adaptive`, any of `android.airpods`' `modes`; `airpods("next")` goes on to the next of them. `airpods("conversation", true)` turns Conversation Awareness on or off, `"oneBud"` noise cancellation with one bud in, and `"earDetection"` noticing being taken out; without the second value they turn over. `airpods("adaptiveLevel", 50)` sets how much noise adaptive lets through, from 0 (the most) to 100 (the least). What the pair doesn't have does nothing, and so does any of them with no AirPods connected. While `available` is false, the first one asks the user to let the launcher use Bluetooth instead; `airpods("connect")` asks just that, or tries the link again once it's allowed (owl 17) |
+| `airpods("anc")` | switches the connected AirPods' listening mode: `off`, `anc` (noise cancellation), `transparency` or `adaptive`, any of `android.airpods`' `modes`; `airpods("next")` goes on to the next of them. `airpods("conversation", true)` turns Conversation Awareness on or off, `"oneBud"` noise cancellation with one bud in, and `"earDetection"` noticing being taken out; without the second value they turn over. `airpods("adaptiveLevel", 50)` sets how much noise adaptive lets through, from 0 (the most) to 100 (the least). What the pair doesn't have does nothing, and so does any of them with no AirPods connected. While `available` is false, the first one asks the user to let the launcher use Bluetooth instead; `airpods("connect")` asks just that, or tries the link again once it's allowed (owl 18) |
 
 ## Sending
 
@@ -121,6 +122,22 @@ back, and base64url too, padded or not, so `parseJson(fromBase64(split(jwt, ".")
 says about itself (when it expires, `exp`); it's null when the text isn't base64. Both work on text,
 not on binary data.
 
+A server on your network with a certificate of its own (self-signed, as a NAS, a router or a desktop app
+makes one) isn't trusted by Android. `pin:` on `http(...)` or `post(...)` trusts that one certificate,
+by its SHA-256, and nothing else, at whatever address it answers (owl 17):
+
+```owl
+widget "pc" {
+  meta { owl: 17 }
+  source pc = http("https://192.168.1.20:8759/api/status", {}, pin: "3F:A1:5C:0B:6E:2D:88:41:9A:C7:13:F0:52:BE:64:D9:07:A3:1E:C8:95:4F:2B:D6:70:18:E3:AC:59:06:B4:9C") every 10s json
+  Text { text: pc.hostname ?? "…" }
+}
+```
+
+The pin is what `openssl x509 -noout -fingerprint -sha256 -in cert.pem` prints, colons or not, and it can
+be a value: a pairing link's fingerprint, kept in a `persist` state. A server showing any other
+certificate fails with an error that says the SHA-256 it showed. A pinned request follows no redirects.
+
 ### Tokens and passwords
 
 Whenever a widget needs an API key, a token or a password, keep it in a `secret` state, never in a plain
@@ -129,14 +146,14 @@ phone, in a file of its own beside the widget's `persist` values, so Linux, a ba
 the widget never holds it. Never write a token into the file itself either: ask for it with an `Input`
 whose `password: true` shows dots and keeps the keyboard from suggesting or learning what's typed.
 
-The compiler lets a secret go only into `http(...)`'s and `post(...)`'s headers and `post`'s body
+The compiler lets a secret go only into `http(...)`'s, `post(...)`'s and `ws(...)`'s headers, `post`'s body and `send`'s message
 (through anything there, like `toBase64(...)`), written out at each call, since a `let` can't hold it,
 and into `token == null`, `token != null` or `token != ""` to see whether it's set. An API that takes its key in the URL gets it as `enc(key)` there, written just so:
 `"https://api.example.com/data?appid=${enc(key)}"`. Showing it, putting it in a URL any other way, a
 command or a notification, copying it, a trigger on it or assigning it to another state is a compile
 error. A handler may set it: `token = value` from the Input, `token = null` to sign out; `owl-send`
 can't, so owl-check's preview shows the widget signed out, and the user types the token in on the phone. The server a secret goes to is written out in the URL (`"https://api.example.com/${enc(id)}"`),
-not taken from a value, and it's an `https://` one. Prefer a header when the API takes one: servers often log the URLs they're asked
+not taken from a value, and it's an `https://` one (or `wss://`: a secret sent on a WebSocket goes to the server its `ws(...)` connects to). Prefer a header when the API takes one: servers often log the URLs they're asked
 for.
 
 ```owl
@@ -159,6 +176,50 @@ Gate the source on the token with a `null` URL, as above: without it, the source
 `Bearer …` (null as text) and fails. A user name that isn't secret can sit in a plain `persist` state
 next to a secret password. A secret is kept for the servers it was typed in for: when the file changes
 to send it to another one, or no longer calls it `secret`, the widget starts without it and asks again.
+
+### WebSockets
+
+A server that pushes what changes, like a home's lights, a price or a terminal, talks over a WebSocket.
+`ws(url)` is a source whose value is the server's latest message (owl 17); `send(source, message)` talks
+back on the same connection. It connects from Android while the widget's page shows (or the app is
+open), closes when it doesn't, connects again when its URL, headers or pin change, and after it drops
+waits a second, then longer each time it fails, up to a minute. At most 8 are open at once, all
+widgets together. The URL is listed for review as `websocket wss://…`, under the same rule as `http`'s,
+and a `pin:` trusts a server's own certificate as it does there. Messages are text; a server's binary
+ones are skipped, and the widget says so. A server that speaks a subprotocol gets it as a header,
+`ws(url, {"Sec-WebSocket-Protocol": "graphql-transport-ws"})`. `examples/75-live-price` is a whole one.
+
+The value is the latest message, so it's what to show when each message says the whole state. When
+each one says what changed, an event or one line of a chat, `on x each { }` runs for every message, in
+the order they came, repeats too, with `value` the message; it may run 100 times a second, and a
+widget that can't keep up with 256 waiting loses the oldest. Answer a server's greeting there, too:
+
+```owl
+widget "home" {
+  meta { owl: 17 }
+  state token = null secret
+  state lights = {}
+  source ha = ws(token == null ? null : "wss://home.example.com/api/websocket") json status
+  on ha each {
+    if value.type == "auth_required" { send(ha, {type: "auth", access_token: token}) }
+    if value.type == "auth_ok" { send(ha, {id: 1, type: "subscribe_events", event_type: "state_changed"}) }
+    if value.type == "event" { lights = set(lights, value.event.data.entity_id, value.event.data.new_state.state) }
+  }
+  Column {
+    if token == null {
+      Input { placeholder: "access token"; password: true; onSubmit: token = value }
+    } else {
+      Text { text: ha.open ? "${len(keys(lights))} changed" : (ha.err != "" ? ha.err : "connecting…") }
+    }
+  }
+}
+```
+
+`when x.open { send(x, …) }` greets each new connection instead, for a server that waits to be spoken
+to first. With `status`, the source is `{out, open, err}`: `out` the last message, kept while it
+reconnects, `open` whether it's connected now, and `err` why it last failed (a refusal, a certificate,
+the server closing it with a code of its own). A secret goes into its headers or `send`'s message,
+and only to a `wss://` server.
 
 ## Sounds
 

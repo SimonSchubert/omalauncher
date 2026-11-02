@@ -113,6 +113,7 @@
     <!-- %1$d is the recognizer's error code. -->
     <string name="prompt_speech_failed">speech recognition failed (%1$d)</string>
     <string name="prompt_speech_language">speech isn\'t available in this language</string>
+    <string name="prompt_speech_not_downloaded">speech for this language isn\'t downloaded on this phone</string>
     <string name="prompt_speech_mic_permission">microphone permission needed</string>
     <string name="prompt_speech_network">speech recognition needs a network connection</string>
 </resources>

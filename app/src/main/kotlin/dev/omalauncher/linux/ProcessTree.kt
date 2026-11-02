@@ -28,14 +28,20 @@ fun killTree(process: Process) {
 /** Android's Process says its pid only in its text, "Process[pid=1234, hasExited=false]". */
 private fun pidOf(process: Process): Int? = Regex("""pid=(\d+)""").find(process.toString())?.groupValues?.get(1)?.toIntOrNull()
 
+/**
+ * The fields of a /proc/<pid>/stat after the process name, from its state on, so ppid is [1] and utime/stime are
+ * [11]/[12]; null for a process we can't read. "pid (comm) state ppid …": the name may hold spaces and parentheses,
+ * so this reads after its last ')'.
+ */
+internal fun statFields(proc: File): List<String>? =
+    runCatching { File(proc, "stat").readText() }.getOrNull()?.substringAfterLast(')')?.trim()?.split(' ')
+
 /** Every process under [root], from /proc's parent links; our own are the only ones we can read. */
 private fun descendants(root: Int): List<Int> {
     val children = HashMap<Int, MutableList<Int>>()
     for (dir in File("/proc").listFiles().orEmpty()) {
         val pid = dir.name.toIntOrNull() ?: continue
-        // "pid (comm) state ppid …": the name may hold spaces and parentheses, so read after its last ')'.
-        val stat = runCatching { File(dir, "stat").readText() }.getOrNull() ?: continue
-        val ppid = stat.substringAfterLast(')').trim().split(' ').getOrNull(1)?.toIntOrNull() ?: continue
+        val ppid = statFields(dir)?.getOrNull(1)?.toIntOrNull() ?: continue
         children.getOrPut(ppid) { ArrayList() }.add(pid)
     }
     val out = ArrayList<Int>()

@@ -4,6 +4,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.Canvas
@@ -202,7 +207,12 @@ private fun DesktopScreen(
         Box(
             Modifier
                 .fillMaxSize()
-                .graphicsLayer { alpha = state.drawer.value.coerceAtMost(1f) }
+                .graphicsLayer {
+                    alpha = state.drawer.value.coerceAtMost(1f)
+                    // Faded as it draws rather than drawn into a buffer of its own first: one color either way, and a
+                    // full-screen buffer each frame of the slide was most of a slow tablet's GPU time.
+                    compositingStrategy = CompositingStrategy.ModulateAlpha
+                }
                 .background(Palette.background.copy(alpha = opacity))
                 // A tap on it closes the drawer; keys move between the drawer's apps, not to it.
                 .focusProperties { canFocus = false }
@@ -215,7 +225,9 @@ private fun DesktopScreen(
     val side = homeSide()
     if (side != null && !panelShown) {
         if (!runtime.terminals.typing) {
-            SideRail(runtime, state, handlers, side, Modifier.fillMaxSize().graphicsLayer { translationX = state.barShift() * size.width }.safePadding())
+            CompositionLocalProvider(LocalBackdrop provides backdrop) {
+                SideRail(runtime, state, handlers, side, Modifier.fillMaxSize().graphicsLayer { translationX = state.barShift() * size.width }.safePadding())
+            }
         }
     } else {
         Column(
@@ -230,27 +242,43 @@ private fun DesktopScreen(
                     Modifier.graphicsLayer {
                         val progress = state.drawer.value
                         alpha = progress.coerceAtMost(1f)
+                        // As the backdrop: what overlaps in the panel shows through itself for the moment it fades,
+                        // instead of a full-screen buffer each frame (a Galaxy Tab A8's slide went from 40 ms a frame to 21).
+                        compositingStrategy = CompositingStrategy.ModulateAlpha
                         translationY = (1f - progress) * size.height * 0.6f
                     }
                 // Long-pressing an app opens its menu: the keyboard goes then, once, and stays down.
                 val release = remember(state) { { state.promptRequest = PromptRequest.Release } }
-                if (panelShown && drawer != null) {
+                // Composed from its first opening on and kept while closed, measured but not placed: it neither draws nor
+                // takes touches then, and opening it again only places and draws it. Composing and measuring its list on
+                // each opening held a Galaxy Tab A8's first frame for 120-220 ms.
+                var drawerKept by remember(drawer) { mutableStateOf(false) }
+                LaunchedEffect(drawer, panelShown) { if (panelShown) drawerKept = true }
+                if ((panelShown || drawerKept) && drawer != null) {
+                    // It holds keys only while it shows, as when closing it disposed of it.
+                    val keys = if (panelShown) Modifier.holdsKeys(enters = false, traps = false) else Modifier
+                    val hidden = remember(state) { { state.drawer.value <= 0.01f } }
                     // An arrow with nothing focused, as after a tap in it, starts in the drawer.
-                    CompositionLocalProvider(LocalMenuOpened provides release) { UpPanel(runtime, state, drawer, slide.holdsKeys(enters = false, traps = false)) }
+                    CompositionLocalProvider(LocalMenuOpened provides release) {
+                        UpPanel(runtime, state, drawer, hidden, Modifier.placedWhile { panelShown }.then(slide).then(keys))
+                    }
                 }
             }
             // Hidden while a tile types: it would sit on the keyboard, over the tile. They slide with the tile pages,
             // out past a face; swiping up there opens the drawer, which brings them back.
             if (!runtime.terminals.typing || runtime.terminals.keyboardLeaving) {
                 Column(Modifier.graphicsLayer { if (!panelShown) translationX = state.barShift() * size.width }) {
-                    // Home only: the open app list has everything.
-                    // Swiping up from either does what it does on home, as from the dock on stock launchers.
-                    // Keys go between it and home's tiles both ways, which Compose's search doesn't find (see PromptBar).
-                    if (LauncherStyle.recentApps && !panelShown) {
-                        RecentStrip(runtime, handlers, Modifier.homeSwipe(runtime, state).focusRequester(state.stripEntry).focusGroup(), home = state.homeEntry)
+                    // They frost over the wallpaper as home's tiles do, over the open drawer too.
+                    CompositionLocalProvider(LocalBackdrop provides backdrop) {
+                        // Home only: the open app list has everything.
+                        // Swiping up from either does what it does on home, as from the dock on stock launchers.
+                        // Keys go between it and home's tiles both ways, which Compose's search doesn't find (see PromptBar).
+                        if (LauncherStyle.recentApps && !panelShown) {
+                            RecentStrip(runtime, handlers, Modifier.homeSwipe(runtime, state).focusRequester(state.stripEntry).focusGroup(), home = state.homeEntry)
+                        }
+                        // Insets itself by the grid gap, so it lines up with the tiles and the gap still takes taps.
+                        PromptBar(runtime, state, modifier = Modifier.homeSwipe(runtime, state))
                     }
-                    // Insets itself by the grid gap, so it lines up with the tiles and the gap still takes taps.
-                    PromptBar(runtime, state, modifier = Modifier.homeSwipe(runtime, state))
                 }
             }
         }
@@ -400,4 +428,21 @@ private fun Band(
             drawRect(border, r.topLeft, r.size)
         },
     )
+}
+
+/**
+ * Placed only while [shown]; measured all the same, so it's ready to show. Hidden, it keeps the size it last had showing:
+ * the keyboard coming up for a tile doesn't measure it again every frame.
+ */
+@Composable
+private fun Modifier.placedWhile(shown: () -> Boolean): Modifier {
+    val kept = remember { arrayOfNulls<Constraints>(1) }
+    return layout { measurable, constraints ->
+        val show = shown()
+        if (show || kept[0] == null) kept[0] = constraints
+        val placeable = measurable.measure(kept[0]!!)
+        layout(constraints.constrainWidth(placeable.width), constraints.constrainHeight(placeable.height)) {
+            if (show) placeable.place(0, 0)
+        }
+    }
 }

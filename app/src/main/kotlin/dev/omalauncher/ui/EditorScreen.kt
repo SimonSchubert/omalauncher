@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextLayoutResult
@@ -113,6 +114,7 @@ fun EditorScreen(
     onExit: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val fs = runtime.proot.guestFs
     val loaded by produceState<Result<EditorFile>?>(null, path) {
         value = withContext(Dispatchers.IO) { runCatching { readEditorFile(fs.host(path)) } }
@@ -122,7 +124,7 @@ fun EditorScreen(
         null ->
             loaded?.exceptionOrNull()?.let { error ->
                 LaunchedEffect(error) {
-                    Toast.makeText(context, context.getString(R.string.editor_cant_read, path.substringAfterLast('/'), error.message), Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, resources.getString(R.string.editor_cant_read, path.substringAfterLast('/'), error.message), Toast.LENGTH_LONG).show()
                     onExit()
                 }
             }
@@ -141,6 +143,7 @@ private fun EditorBody(
     onExit: () -> Unit,
 ) {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val prefs = remember { EditorPrefs(context) }
     val name = path.substringAfterLast('/')
@@ -173,7 +176,7 @@ private fun EditorBody(
                 }.exceptionOrNull()
             }
         if (error != null) {
-            toast(context.getString(R.string.editor_cant_save, name, error.message))
+            toast(resources.getString(R.string.editor_cant_save, name, error.message))
             return false
         }
         saved = text
@@ -199,7 +202,7 @@ private fun EditorBody(
         val hit = findMatch(state.text, q, from, backward)
         if (hit == null) {
             match = null
-            if (q.isNotEmpty()) toast(context.getString(R.string.editor_not_found))
+            if (q.isNotEmpty()) toast(resources.getString(R.string.editor_not_found))
             return
         }
         match = TextRange(hit, hit + q.length).also { state.edit { selection = it } }

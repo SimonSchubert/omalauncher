@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">configuración</string>
+
+    <string name="settings_style">estilo</string>
+    <string name="settings_style_subtitle">tema, fondo, pantalla principal</string>
+    <string name="settings_pages">páginas</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="one">%1$d página · ordenar, editar, quitar</item>
+        <item quantity="many">%1$d páginas · ordenar, editar, quitar</item>
+        <item quantity="other">%1$d páginas · ordenar, editar, quitar</item>
+    </plurals>
+    <string name="settings_gestures">gestos</string>
+    <string name="settings_gestures_subtitle">arriba: %1$s · abajo: %2$s</string>
+    <string name="settings_language">idioma</string>
+    <string name="settings_language_phone">idioma del teléfono</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">instalado · eliminar</string>
+    <string name="settings_linux_installing_percent">instalando %1$d%% · %2$s</string>
+    <string name="settings_linux_installing">instalando · %1$s</string>
+    <string name="settings_linux_failed">la instalación se detuvo · reintentar</string>
+    <string name="settings_linux_removing">eliminando…</string>
+    <string name="settings_linux_not_installed">no instalado · instala Arch Linux para apps de terminal y agentes</string>
+    <string name="settings_agents">agentes de programación</string>
+    <string name="settings_agents_default">predeterminado: %1$s</string>
+    <string name="settings_agents_install">instala Claude Code, OpenCode, …</string>
+    <string name="settings_needs_linux">requiere linux</string>
+    <string name="settings_packages">paquetes</string>
+    <string name="settings_packages_subtitle">instala apps y herramientas de Linux con pacman y el AUR</string>
+    <string name="settings_home_app">app de inicio predeterminada</string>
+    <string name="settings_home_app_subtitle">haz de Omalauncher tu pantalla principal · los accesos directos de apps lo necesitan</string>
+    <string name="settings_local_network">red local</string>
+    <string name="settings_local_network_subtitle">permite que los widgets y linux lleguen a tu impresora, home assistant, …</string>
+    <string name="settings_android">configuración de android</string>
+    <string name="settings_android_subtitle">la configuración del sistema del teléfono</string>
+    <string name="settings_licenses">licencias</string>
+    <string name="settings_licenses_subtitle">software de código abierto en Omalauncher</string>
+
+    <string name="settings_system_updating">actualizando el sistema: %1$s…</string>
+    <string name="settings_system_update_failed">una actualización del sistema no terminó</string>
+    <string name="settings_retry">reintentar</string>
+    <string name="settings_system_updates">actualizaciones del sistema</string>
+    <string name="settings_widget_updates">widgets</string>
+    <string name="settings_update_all">actualizar todo</string>
+    <string name="settings_check">comprobar</string>
+    <string name="settings_update">actualizar</string>
+    <string name="settings_updating">actualizando…</string>
+    <string name="settings_checking">comprobando…</string>
+    <string name="settings_not_checked">aún sin comprobar</string>
+    <string name="settings_up_to_date">al día · comprobado %1$s</string>
+    <string name="settings_store_unreachable">no se pudo conectar con la tienda</string>
+    <string name="settings_updates_held">editados, así que no se actualizan aquí: %1$s · actualizar uno en la tienda reemplaza tus cambios</string>
+    <string name="settings_more_lines">+%1$d más</string>
+    <string name="settings_just_now">ahora mismo</string>
+    <string name="settings_minutes_ago">hace %1$d min</string>
+    <string name="settings_hours_ago">hace %1$d h</string>
+    <string name="settings_days_ago">hace %1$d d</string>
+</resources>

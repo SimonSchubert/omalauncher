@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="linux_stage_download">descargar arch linux</string>
+    <string name="linux_stage_extract">descomprimir el sistema</string>
+    <string name="linux_stage_configure">configurar pacman</string>
+    <string name="linux_stage_packages">instalar las apps de omarchy</string>
+    <string name="linux_stage_agents">instalar agentes de programación</string>
+    <string name="linux_stage_agents_named">instalar %1$s</string>
+
+    <string name="linux_step_download">Descargando Arch Linux ARM</string>
+    <string name="linux_step_configure">Configurando el sistema</string>
+    <string name="linux_step_forks">Comprobando que los programas pueden iniciarse</string>
+    <string name="linux_step_keyring">Inicializando el llavero de pacman</string>
+    <string name="linux_step_no_kernel">Quitando paquetes del kernel</string>
+    <string name="linux_step_packages">Instalando paquetes</string>
+    <string name="linux_step_keymap">Compilando el mapa de teclado</string>
+    <string name="linux_step_cliamp">Instalando cliamp</string>
+    <string name="linux_step_agent">Instalando %1$s</string>
+    <string name="linux_step_downloaded">%1$d de %2$d MB</string>
+    <string name="linux_step_downloaded_unknown">%1$d MB</string>
+    <string name="linux_step_extract_start">Iniciando</string>
+    <plurals name="linux_step_extracted">
+        <item quantity="one">%d archivo</item>
+        <item quantity="many">%d archivos</item>
+        <item quantity="other">%d archivos</item>
+    </plurals>
+
+    <string name="linux_log_retrying">%1$s; reintentando (%2$d de %3$d)</string>
+    <string name="linux_log_step_failed">falló «%1$s»: %2$s; reintenta en configuración</string>
+    <string name="linux_log_agent_failed">%1$s no se instaló; reintenta en configuración › agentes de programación</string>
+
+    <string name="linux_error_no_space">no hay espacio suficiente: Linux necesita %1$s libres y el teléfono tiene %2$s; libera espacio y vuelve a intentarlo</string>
+    <string name="linux_error_out_of_space">el teléfono se quedó sin espacio; Linux necesita unos %1$s libres; libera espacio y vuelve a intentarlo</string>
+    <string name="linux_error_http">falló la descarga: HTTP %1$d</string>
+    <string name="linux_error_cut_short">la descarga se interrumpió; reintenta para continuarla</string>
+    <string name="linux_error_move_download">no se puede mover la descarga a su lugar</string>
+    <string name="linux_error_cant_run">Linux no puede ejecutar comandos aquí (exit %1$d)</string>
+    <string name="linux_error_kernel">el kernel de este teléfono impide que los programas de Linux inicien otros programas, así que la instalación no puede continuar. las ROMs personalizadas con kernel 4.14 necesitan que su mantenedor incluya el commit 05b289263772 del kernel; consulta el issue #105 en github</string>
+    <string name="linux_error_command">`%1$s` falló (exit %2$d)</string>
+    <string name="linux_error_cliamp_mismatch">la descarga de cliamp no coincide con %1$s</string>
+    <string name="linux_error_cant_replace">no se puede reemplazar %1$s</string>
+
+    <string name="linux_job_installing">instalando</string>
+    <string name="linux_job_removing">eliminando</string>
+    <string name="linux_job_building">compilando</string>
+    <string name="linux_job_updating">actualizando</string>
+    <string name="linux_job_waiting">esperando</string>
+    <string name="linux_job_checking">comprobando</string>
+    <string name="linux_job_working">%1$s…</string>
+
+    <string name="linux_updates_unreachable">no se pudo conectar con los mirrors</string>
+
+    <string name="linux_agent_claude">El agente de programación de Anthropic</string>
+    <string name="linux_agent_opencode">Agente de código abierto, con cualquier proveedor de modelos</string>
+    <string name="linux_agent_codex">El agente de programación de OpenAI</string>
+    <string name="linux_agent_grok">El agente de programación de xAI</string>
+    <string name="linux_agent_copilot">El agente de programación de GitHub</string>
+    <string name="linux_agent_crush">El agente de Charm para la terminal</string>
+    <string name="linux_agent_cursor">El agente de Cursor para la terminal</string>
+    <string name="linux_agent_antigravity">El agente de programación Gemini de Google</string>
+    <string name="linux_agent_pi">Agente de programación mínimo y extensible</string>
+    <string name="linux_agent_omp">Pi con herramientas y plugins incluidos</string>
+    <string name="linux_agent_ori">El agente de programación de OpenRouter</string>
+    <string name="linux_agent_muse">El agente de programación de Meta</string>
+    <string name="linux_agent_kimi">El agente de programación de Moonshot AI</string>
+
+    <string name="linux_welcome_title">omarchy en tu pantalla principal</string>
+    <string name="linux_welcome_body">Los temas y fondos de Omarchy, tus apps de Android y widgets en la pantalla principal. Arch Linux suma apps de terminal y agentes de programación, ahora o más tarde en configuración.</string>
+    <string name="linux_welcome_linux">linux</string>
+    <string name="linux_welcome_choice">configurar también Arch Linux</string>
+    <string name="linux_welcome_choice_detail">apps de terminal, agentes, pacman · ~1 GB de descarga, 3 GB de espacio</string>
+    <string name="linux_welcome_start">empezar</string>
+    <string name="linux_welcome_start_linux">empezar y configurar linux</string>
+    <string name="linux_welcome_start_hint">Descarga ahora el fondo del tema, y los demás temas de Omarchy (unos 70 MB) en segundo plano.</string>
+    <string name="linux_welcome_start_linux_hint">Linux descarga aproximadamente 1 GB, así que mejor por Wi-Fi, y ocupa 3 GB. Se instala en segundo plano en 10 a 20 minutos; la pantalla principal está lista enseguida.</string>
+    <string name="linux_welcome_getting">descargando %1$s</string>
+    <string name="linux_welcome_theme_failed">el tema no se descargó</string>
+    <string name="linux_welcome_wallpaper">descargar su fondo</string>
+    <string name="linux_welcome_skip">continuar sin fondos</string>
+    <string name="linux_welcome_skip_hint">Los colores del tema se aplican de todos modos. El launcher lo vuelve a intentar más tarde, o descárgalos en configuración › estilo.</string>
+
+    <string name="linux_agents_label">agentes de programación</string>
+    <string name="linux_agents_hint">Elige los que quieras instalar con Linux. Puedes agregarlos o quitarlos más tarde en configuración.</string>
+    <string name="linux_theme_label">tema</string>
+    <string name="linux_more_themes">más temas ›</string>
+
+    <string name="linux_progress_title">configurando linux</string>
+    <string name="linux_progress_stopped">la instalación se detuvo</string>
+    <string name="linux_try_again">reintentar</string>
+    <string name="linux_cancel_install">cancelar instalación</string>
+    <string name="linux_progress_background">Puedes cerrar esto y usar el launcher; la instalación sigue en segundo plano.</string>
+    <string name="linux_output">salida</string>
+    <string name="linux_output_less">menos</string>
+    <string name="linux_output_more">más</string>
+
+    <string name="linux_title">linux</string>
+    <string name="linux_removing">eliminando linux…</string>
+    <string name="linux_offer_title">arch linux, opcional</string>
+    <string name="linux_offer_body">Apps de Linux, widgets de terminal, agentes de programación, pacman y Archivos. Alrededor de 1 GB de descarga y 3 GB de espacio; se instala en segundo plano.</string>
+    <string name="linux_install">instalar linux</string>
+    <plurals name="linux_install_with_agents">
+        <item quantity="one">instalar linux y %d agente</item>
+        <item quantity="many">instalar linux y %d agentes</item>
+        <item quantity="other">instalar linux y %d agentes</item>
+    </plurals>
+    <string name="linux_arch">arch linux</string>
+    <string name="linux_installed_size">instalado · %1$s</string>
+    <string name="linux_measuring">midiendo…</string>
+    <string name="linux_remove">eliminar linux</string>
+    <string name="linux_remove_ask">¿eliminar linux?</string>
+    <string name="linux_remove_body">Borra las apps de Linux, los agentes de programación, los paquetes y todo lo que hay en /root, como Downloads. Los temas, fondos, widgets y tu pantalla principal se quedan.</string>
+    <string name="linux_remove_confirm">eliminar</string>
+    <string name="linux_cancel">cancelar</string>
+    <string name="linux_gpu_title">aceleración por gpu</string>
+    <string name="linux_gpu_on">activada · %1$s · para las apps que abras a partir de ahora</string>
+    <string name="linux_gpu_off_failed">desactivada: la GPU falló su comprobación tras una actualización del sistema</string>
+    <string name="linux_gpu_waiting">activada · esperando su comprobación</string>
+    <string name="linux_gpu_failed">la GPU falló su comprobación; las apps siguen renderizando por software</string>
+    <string name="linux_gpu_offer">experimental · %1$s · apps y juegos OpenGL y Vulkan más rápidos; las apps de terminal no cambian</string>
+    <string name="linux_retry">reintentar</string>
+    <string name="linux_gpu_turn_off">desactivar</string>
+    <string name="linux_gpu_turn_on">activar</string>
+
+    <string name="linux_notification_channel">Sesión de Linux</string>
+    <string name="linux_notification_installing">Instalando Linux · %1$s</string>
+    <string name="linux_notification_installing_percent">Instalando Linux · %1$d%% · %2$s</string>
+    <string name="linux_notification_failed">La instalación de Linux se detuvo · abre configuración › linux para reintentar</string>
+    <string name="linux_notification_removing">Eliminando Linux</string>
+    <string name="linux_notification_running">Sesión de Linux en ejecución</string>
+
+    <string name="packages_title">paquetes</string>
+    <string name="packages_search">buscar paquetes</string>
+    <string name="packages_intro">Paquetes de Arch Linux ARM con pacman, y el AUR con yay. Instalar también actualiza el sistema, así que puede tardar. Los paquetes del AUR los suben usuarios y se compilan en el dispositivo: revisa antes su PKGBUILD en aur.archlinux.org.</string>
+    <string name="packages_loading">cargando…</string>
+    <string name="packages_searching">buscando…</string>
+    <string name="packages_installed">instalados (%1$d)</string>
+    <string name="packages_none">ningún paquete coincide</string>
+    <plurals name="packages_results">
+        <item quantity="one">%d resultado</item>
+        <item quantity="many">%d resultados</item>
+        <item quantity="other">%d resultados</item>
+    </plurals>
+    <string name="packages_required">necesario</string>
+    <string name="packages_confirm">confirmar</string>
+    <string name="packages_remove">eliminar</string>
+    <string name="packages_install">instalar</string>
+
+    <string name="licenses_title">licencias</string>
+    <string name="licenses_header">Omalauncher %1$s · © 2026 Simon Schubert\n\nIncluye el software de código abierto que aparece abajo.</string>
+    <string name="licenses_website">sitio web</string>
+    <string name="licenses_source">código fuente</string>
+    <string name="licenses_use_proot">ejecuta el sistema Linux opcional</string>
+    <string name="licenses_use_talloc">asignador de memoria que usa PRoot</string>
+    <string name="licenses_use_shmem">memoria compartida para PRoot</string>
+    <string name="licenses_use_mesa">OpenGL en GPUs Adreno en el sistema Linux opcional</string>
+    <string name="licenses_use_wayland">archivos de protocolo incluidos con Mesa</string>
+    <string name="licenses_use_omarchy">colores de temas incluidos para el primer inicio</string>
+    <string name="licenses_use_nerd_fonts">fuente de símbolos</string>
+    <string name="licenses_use_weather_icons">glifos del clima en la fuente de símbolos</string>
+    <string name="licenses_use_mdi">glifos en la fuente de símbolos</string>
+    <string name="licenses_use_compose">interfaz de usuario</string>
+    <string name="licenses_use_jetpack">activity, Compose y otras bibliotecas de AndroidX</string>
+    <string name="licenses_use_kotlin">runtime del lenguaje</string>
+    <string name="licenses_use_commons_compress">descomprime las descargas</string>
+    <string name="licenses_use_androidsvg">dibuja los iconos SVG</string>
+    <string name="licenses_use_zxing">dibuja los códigos QR con los que se comparten los widgets</string>
+    <string name="licenses_use_json">lee y escribe JSON</string>
+</resources>

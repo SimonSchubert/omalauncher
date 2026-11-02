@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_failed">falhou</string>
+    <string name="files_cant_hand_over">não é possível passar %1$s para outros apps</string>
+    <string name="files_no_app">nenhum app abre %1$s</string>
+    <string name="files_leads_to_nothing">ele não aponta para nada</string>
+    <string name="files_cant_open">não é possível abrir %1$s: %2$s</string>
+    <string name="files_selected">selecionados: %1$d</string>
+    <string name="files_filter_hint">filtrar esta pasta</string>
+    <string name="files_home">pessoal</string>
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">downloads</string>
+    <string name="files_place_system">sistema</string>
+    <string name="files_search">pesquisar</string>
+    <string name="files_more">mais</string>
+    <string name="files_new_file">novo arquivo</string>
+    <string name="files_new_folder">nova pasta</string>
+    <string name="files_hide_hidden">ocultar arquivos ocultos</string>
+    <string name="files_show_hidden">mostrar arquivos ocultos</string>
+    <string name="files_open_terminal">abrir terminal aqui</string>
+    <string name="files_empty_folder">pasta vazia</string>
+    <string name="files_no_matches">nada corresponde</string>
+    <string name="files_create">criar</string>
+    <string name="files_rename">renomear</string>
+    <string name="files_delete_one">excluir %1$s?</string>
+    <plurals name="files_delete_items">
+        <item quantity="one">excluir %1$d item?</item>
+        <item quantity="many">excluir %1$d itens?</item>
+        <item quantity="other">excluir %1$d itens?</item>
+    </plurals>
+    <string name="files_delete_message">Isso não pode ser desfeito.</string>
+    <string name="files_delete">excluir</string>
+    <plurals name="files_items">
+        <item quantity="one">%1$d item</item>
+        <item quantity="many">%1$d itens</item>
+        <item quantity="other">%1$d itens</item>
+    </plurals>
+    <string name="files_folder">pasta</string>
+    <string name="files_copy">copiar</string>
+    <string name="files_cut">recortar</string>
+    <string name="files_select_all">selecionar tudo</string>
+    <string name="files_edit">editar</string>
+    <string name="files_open_with">abrir com…</string>
+    <string name="files_share">compartilhar</string>
+    <string name="files_cancel">cancelar</string>
+    <string name="files_move_here">mover para cá</string>
+    <string name="files_paste_here">colar aqui</string>
+
+    <string name="editor_title">Editor</string>
+    <string name="editor_cant_read">não é possível ler %1$s: %2$s</string>
+    <string name="editor_cant_save">não é possível salvar %1$s: %2$s</string>
+    <string name="editor_not_found">não encontrado</string>
+    <string name="editor_find_hint">localizar no arquivo</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">resultado anterior</string>
+    <string name="editor_next_match">próximo resultado</string>
+    <string name="editor_save">salvar</string>
+    <string name="editor_find">localizar</string>
+    <string name="editor_no_wrap">não quebrar linhas</string>
+    <string name="editor_wrap">quebrar linhas</string>
+    <string name="editor_show_in_files">mostrar em arquivos</string>
+    <string name="editor_open_in_micro">abrir no micro</string>
+    <string name="editor_save_confirm">salvar %1$s?</string>
+    <string name="editor_save_confirm_message">Há alterações que ainda não foram salvas.</string>
+    <string name="editor_discard">descartar</string>
+    <string name="editor_key_left">esquerda</string>
+    <string name="editor_key_up">cima</string>
+    <string name="editor_key_down">baixo</string>
+    <string name="editor_key_right">direita</string>
+    <string name="editor_key_undo">desfazer</string>
+    <string name="editor_key_redo">refazer</string>
+    <string name="editor_home_title">editor</string>
+    <string name="editor_new">novo</string>
+    <string name="editor_browse">procurar</string>
+    <string name="editor_recent">recentes</string>
+    <string name="editor_recent_empty">Os arquivos que você editar aparecem aqui.</string>
+    <string name="editor_new_file_hint">um caminho no Linux</string>
+
+    <string name="prompt_listening">ouvindo…</string>
+    <string name="prompt_hint_apps">abra um app…</string>
+    <string name="prompt_hint_ask">abra um app ou pergunte ao %1$s…</string>
+    <string name="prompt_enter_ask">⏎ perguntar</string>
+    <string name="prompt_agent">agente</string>
+    <string name="prompt_manage_agents">"  gerenciar agentes…"</string>
+
+    <string name="prompt_speech_no_recognizer">não há reconhecimento de fala neste telefone</string>
+    <string name="prompt_speech_refused">o reconhecimento de fala do telefone não deixa outros apps usá-lo</string>
+    <string name="prompt_speech_failed">o reconhecimento de fala falhou (%1$d)</string>
+    <string name="prompt_speech_language">a fala não está disponível neste idioma</string>
+    <string name="prompt_speech_not_downloaded">a fala deste idioma não foi baixada neste telefone</string>
+    <string name="prompt_speech_mic_permission">é preciso a permissão do microfone</string>
+    <string name="prompt_speech_network">o reconhecimento de fala precisa de conexão com a rede</string>
+</resources>

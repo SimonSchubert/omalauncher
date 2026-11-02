@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="store_title">loja</string>
+
+    <string name="store_kind_widgets">widgets</string>
+    <string name="store_kind_faces">faces</string>
+    <string name="store_kind_apps">apps</string>
+    <string name="store_kind_panels">painéis</string>
+    <string name="store_kind_keybars">barras de teclas</string>
+    <string name="store_kind_widget">widget</string>
+    <string name="store_kind_face">face</string>
+    <string name="store_kind_app">app</string>
+    <string name="store_kind_panel">painel</string>
+    <string name="store_kind_keybar">barra de teclas</string>
+
+    <string name="store_pick_widget">escolha um widget para ver o que ele instala e executa</string>
+    <string name="store_pick_face">escolha uma face para ver o que ela instala e executa</string>
+    <string name="store_pick_app">escolha um app para ver o que ele instala e executa</string>
+    <string name="store_pick_panel">escolha um painel para ver o que ele instala e executa</string>
+    <string name="store_pick_keybar">escolha uma barra de teclas para ver o que ela instala e executa</string>
+
+    <string name="store_search">pesquisar %1$d %2$s</string>
+    <string name="store_tab_all">todos</string>
+    <string name="store_tab_new">novos</string>
+    <string name="store_tab_installed">instalados</string>
+    <string name="store_category_other">outros</string>
+    <string name="store_tab">%1$s %2$d</string>
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <string name="store_builtin">incluídos</string>
+    <string name="store_terminal">terminal</string>
+    <string name="store_terminal_details">6x4 · um shell</string>
+    <string name="store_agent_details">6x6 · executa %1$s</string>
+    <string name="store_on_home">✓ no início</string>
+    <string name="store_tap_to_add">toque para adicionar à página %1$d</string>
+
+    <string name="store_reviewed">%1$s com revisão, de github.com/%2$s</string>
+    <string name="store_loading">carregando…</string>
+    <string name="store_empty">ainda não há %1$s</string>
+    <string name="store_no_new">nenhuma novidade em %1$s</string>
+    <string name="store_none_installed">você ainda não instalou %1$s da loja</string>
+    <string name="store_no_match">nada corresponde a \"%1$s\"</string>
+
+    <string name="store_update_available">atualização disponível</string>
+    <string name="store_installed">✓ instalado</string>
+    <string name="store_needs_newer">requer um launcher mais novo</string>
+    <string name="store_needs_linux">requer linux</string>
+    <plurals name="store_pages">
+        <item quantity="one">%1$d página</item>
+        <item quantity="many">%1$d páginas</item>
+        <item quantity="other">%1$d páginas</item>
+    </plurals>
+    <string name="store_badge_new">novo</string>
+
+    <string name="store_needs_newer_detail">requer um launcher mais novo (owl %1$d); atualize o launcher para instalar</string>
+    <string name="store_may_have_changes">pode ter alterações suas, e atualizar as substitui</string>
+    <string name="store_you_changed">você fez alterações, e atualizar as substitui</string>
+    <string name="store_update_anyway">atualizar mesmo assim %1$s → %2$s</string>
+    <string name="store_update">atualizar %1$s → %2$s</string>
+    <string name="store_open">abrir</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="one">adicionar %1$d página que falta</item>
+        <item quantity="many">adicionar as %1$d páginas que faltam</item>
+        <item quantity="other">adicionar as %1$d páginas que faltam</item>
+    </plurals>
+    <string name="store_add_to_page">adicionar à página %1$d</string>
+    <string name="store_add_as_face">adicionar como face</string>
+    <string name="store_install">instalar</string>
+    <string name="store_uninstall">desinstalar</string>
+    <string name="store_remove">remover</string>
+    <string name="store_uninstall_confirm">desinstalar %1$s?</string>
+    <string name="store_remove_confirm">remover %1$s?</string>
+    <string name="store_remove_file">O arquivo vai para .removed/ na pasta de widgets.</string>
+    <string name="store_remove_files">Os arquivos vão para .removed/ na pasta de widgets.</string>
+    <string name="store_changed_since_approval">os comandos ou pacotes mudaram desde a versão que você aprovou</string>
+
+    <string name="store_added_widget">✓ na sua tela inicial</string>
+    <string name="store_added_face">✓ à esquerda da sua primeira página</string>
+    <string name="store_added_app">✓ na sua gaveta de apps</string>
+    <string name="store_added_panel">✓ nas configurações de gestos</string>
+    <string name="store_added_keybar">✓ na sua pasta de widgets</string>
+
+    <string name="store_needs_linux_app">requer Linux: executa comandos no Arch, então aparece na gaveta de apps quando você instalar o Linux nas configurações</string>
+    <string name="store_needs_linux_widget">requer Linux: executa comandos no Arch, então espera como marcador até você instalar o Linux nas configurações</string>
+
+    <string name="store_installs_packages">instala pacotes: %1$s</string>
+    <string name="store_packages_none">nenhum</string>
+    <string name="store_runs_no_commands">não executa comandos</string>
+    <string name="store_runs_commands">executa estes comandos no Arch:</string>
+
+    <string name="store_installing">instalando…</string>
+    <string name="store_updating">atualizando…</string>
+    <string name="store_adding_pages">adicionando páginas…</string>
+    <string name="store_load_failed">não foi possível carregar a loja: %1$s</string>
+    <string name="store_download_mismatch">o download não corresponde à versão revisada; tente de novo mais tarde</string>
+    <string name="store_install_failed">a instalação falhou: %1$s</string>
+
+    <string name="store_shared_title">compartilhado: %1$s</string>
+    <string name="store_shared_fetching">buscando em %1$s…</string>
+    <string name="store_shared_unreadable">o conteúdo não pode ser lido</string>
+    <string name="store_shared_not_widget">Este link não contém um widget: %1$s.</string>
+    <string name="store_shared_unnamed_app">um app</string>
+    <string name="store_shared_unnamed_widget">um widget</string>
+    <string name="store_shared_info">compartilhado com você%1$s · %2$.1f KB</string>
+    <string name="store_shared_warning">Só adicione se você confia em quem enviou. Ele executa os comandos abaixo no Arch como você, com seus arquivos e a rede.</string>
+    <string name="store_shared_needs_newer">requer um launcher mais novo (owl %1$d); atualize o launcher para adicionar</string>
+    <string name="store_shared_replace">substituir %1$s, compartilhado antes</string>
+    <string name="store_add_to_drawer">adicionar à gaveta de apps</string>
+    <string name="store_add_to_panels">adicionar aos painéis de gestos</string>
+    <string name="store_add_to_widgets_folder">adicionar à sua pasta de widgets</string>
+    <string name="store_hide_file">ocultar o arquivo</string>
+    <string name="store_show_file">mostrar o arquivo inteiro</string>
+    <string name="store_review_with_agent">revisar com agente</string>
+
+    <string name="store_share_title">compartilhar %1$s</string>
+    <string name="store_check_secrets">procurar segredos com agente</string>
+    <string name="store_share_unreadable">não é possível ler %1$s</string>
+    <string name="store_share_too_big">%1$s passa de %2$d KB, mais do que um launcher aceita</string>
+    <string name="store_uploading">enviando…</string>
+    <string name="store_share_get_code">gerar QR code</string>
+    <string name="store_something_wrong">algo deu errado</string>
+    <string name="store_share_uploads">envia, público, para %1$s por %2$d dias</string>
+    <string name="store_share_send_link">Ou envie o link: permanente, o widget inteiro está nele.</string>
+    <string name="store_share_too_big_link">Grande demais para enviar como link: o QR code é o jeito de compartilhar.</string>
+    <string name="store_share_pasted_permanent">Aponta para %1$s, some em %2$d dias. O link abaixo é permanente.</string>
+    <string name="store_share_pasted">Aponta para %1$s, some em %2$d dias.</string>
+    <string name="store_share_permanent">Permanente: o widget inteiro está na imagem.</string>
+    <string name="store_share_code">compartilhar QR code</string>
+    <string name="store_share_link">compartilhar link</string>
+    <string name="store_copied">copiado</string>
+    <string name="store_copy_link">copiar link</string>
+    <string name="store_share_subject">widget %1$s</string>
+    <string name="store_share_code_clip">QR code de %1$s</string>
+    <string name="store_share_chooser">Compartilhar %1$s</string>
+    <string name="store_in_store">na loja</string>
+    <string name="store_issue_info">Uma issue em github.com/%1$s; após a revisão, qualquer pessoa pode instalar.</string>
+    <string name="store_pr_info">Ou um pull request do seu agente, que também pode adicionar uma prévia:</string>
+    <string name="store_create_pr">criar pull request com agente</string>
+    <string name="store_open_issue">abrir issue no GitHub</string>
+    <string name="store_no_browser">nenhum navegador para abrir %1$s</string>
+    <string name="store_issue_uploads">envia, público, para %1$s para revisão</string>
+    <string name="store_upload_failed">✗ não foi possível enviar: %1$s</string>
+
+    <string name="store_pin_title">adicionar à tela inicial?</string>
+    <string name="store_pin_from">de %1$s</string>
+    <string name="store_cancel">cancelar</string>
+    <string name="store_add">adicionar</string>
+
+    <string name="store_theme_title">temas da comunidade</string>
+    <string name="store_theme_search">pesquisar %1$d temas</string>
+    <string name="store_theme_header">feitos pela comunidade, listados em omarchy.org/themes · instalados do GitHub</string>
+    <string name="store_theme_in_use">✓ em uso</string>
+    <string name="store_theme_install_confirm">instalar %1$s?</string>
+    <string name="store_theme_install_message">De %1$s. O Linux recebe as cores e os papéis de parede, não os scripts nem as configurações de terminal.</string>
+    <string name="store_theme_install_message_replaces">De %1$s. O Linux recebe as cores e os papéis de parede, não os scripts nem as configurações de terminal.\n\nEle substitui o seu %2$s.</string>
+    <string name="store_theme_install_message_over">De %1$s. O Linux recebe as cores e os papéis de parede, não os scripts nem as configurações de terminal.\n\nEle fica por cima do %2$s do Omarchy; removê-lo traz aquele de volta.</string>
+    <string name="store_theme_installing">instalando %1$s… %2$d MB</string>
+    <string name="store_theme_catalog_failed">não foi possível carregar omarchy.org/themes: %1$s</string>
+    <string name="store_theme_page_changed">a página mudou e não pode ser lida</string>
+    <string name="store_theme_not_github">não é um repositório do GitHub: %1$s</string>
+    <string name="store_theme_not_on_github">%1$s não está no GitHub</string>
+    <string name="store_theme_no_colors">não tem colors.toml nem alacritty.toml</string>
+    <string name="store_theme_cant_move">não é possível mover o tema para o lugar</string>
+</resources>

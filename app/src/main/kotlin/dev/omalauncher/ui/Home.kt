@@ -475,7 +475,13 @@ fun HomeScreen(
             per = per,
             onLongPressEmpty = { openMenu(null) },
             feed = { page ->
-                FaceInvite(runtime.agents.default?.name, onBrowse = { state.show(SettingsPage.FaceStore) }) {
+                val agent = runtime.agents.default?.name
+                PageInvite(
+                    stringResource(R.string.home_face_invite_title),
+                    agent?.let { stringResource(R.string.home_face_invite_text, it) } ?: stringResource(R.string.home_face_invite_text_no_agent),
+                    agent,
+                    onBrowse = { state.show(SettingsPage.FaceStore) },
+                ) {
                     if (linuxState == LinuxState.Installed) {
                         state.withAgent(runtime, "New face") { newOwlCommand(it, OwlKind.Face, page) }
                     } else {
@@ -484,7 +490,13 @@ fun HomeScreen(
                 }
             },
             invite = {
-                WidgetInvite(runtime.agents.default?.name, onBrowse = { state.show(SettingsPage.Store) }) {
+                val agent = runtime.agents.default?.name
+                PageInvite(
+                    stringResource(R.string.home_widget_invite_title),
+                    agent?.let { stringResource(R.string.home_widget_invite_text, it) } ?: stringResource(R.string.home_widget_invite_text_no_agent),
+                    agent,
+                    onBrowse = { state.show(SettingsPage.Store) },
+                ) {
                     if (linuxState == LinuxState.Installed) {
                         state.withAgent(runtime, "New widget") { newOwlCommand(it, OwlKind.Widget) }
                     } else {
@@ -528,11 +540,14 @@ fun HomeScreen(
 
 
 /**
- * The page left of the first, while it's empty: where a stock launcher has its news feed, an invitation to have
- * [agent] build a face of the user's own for it.
+ * An invitation on an empty page to have [agent] build something, or to take one from the store: on the page left
+ * of the first, while it's empty, a face of the user's own, where a stock launcher has its news feed; on an empty
+ * tile page, the one after the last or page 1 of an empty home, a widget.
  */
 @Composable
-private fun FaceInvite(
+private fun PageInvite(
+    title: String,
+    text: String,
     agent: String?,
     onBrowse: () -> Unit,
     onCreate: () -> Unit,
@@ -545,44 +560,10 @@ private fun FaceInvite(
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            BasicText(stringResource(R.string.home_face_invite_title), style = Mono.copy(color = Palette.accent))
+            BasicText(title, style = Mono.copy(color = Palette.accent))
             // The theme's own text color: muted is too faint on some themes' card.
-            BasicText(
-                agent?.let { stringResource(R.string.home_face_invite_text, it) } ?: stringResource(R.string.home_face_invite_text_no_agent),
-                style = Mono,
-            )
+            BasicText(text, style = Mono)
             // Pulled left by the buttons' own padding, so the first bracket lines up with the text.
-            Column(Modifier.offset(x = (-8).dp)) {
-                BracketAction(createWithLabel(agent), Palette.accent, onClick = onCreate)
-                BracketAction(stringResource(R.string.home_browse_store), Palette.accent, onClick = onBrowse)
-            }
-        }
-    }
-}
-
-/**
- * An empty tile page, the one after the last or page 1 of an empty home: in [FaceInvite]'s style, an invitation to
- * have [agent] build a widget, or to take one from the store.
- */
-@Composable
-private fun WidgetInvite(
-    agent: String?,
-    onBrowse: () -> Unit,
-    onCreate: () -> Unit,
-) {
-    Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-        Column(
-            Modifier
-                .widthIn(max = 360.dp)
-                .frame(1.dp, Palette.border, Palette.background.copy(alpha = 0.85f))
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            BasicText(stringResource(R.string.home_widget_invite_title), style = Mono.copy(color = Palette.accent))
-            BasicText(
-                agent?.let { stringResource(R.string.home_widget_invite_text, it) } ?: stringResource(R.string.home_widget_invite_text_no_agent),
-                style = Mono,
-            )
             Column(Modifier.offset(x = (-8).dp)) {
                 BracketAction(createWithLabel(agent), Palette.accent, onClick = onCreate)
                 BracketAction(stringResource(R.string.home_browse_store), Palette.accent, onClick = onBrowse)

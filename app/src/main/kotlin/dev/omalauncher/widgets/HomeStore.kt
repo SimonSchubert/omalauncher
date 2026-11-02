@@ -3,7 +3,7 @@ package dev.omalauncher.widgets
 import android.content.Context
 import dev.omalauncher.LauncherData
 import dev.omalauncher.Runtime
-import dev.omalauncher.sha256Hex
+import dev.omalauncher.widgets.lang.sha256Hex
 import dev.omalauncher.theme.Toml
 import dev.omalauncher.upgrade.SyncedFile
 import java.io.File

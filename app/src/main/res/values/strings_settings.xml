@@ -13,6 +13,9 @@
     <string name="settings_gestures">gestures</string>
     <!-- What swiping up and down on home open: a panel's name, or nothing. -->
     <string name="settings_gestures_subtitle">up: %1$s · down: %2$s</string>
+    <string name="settings_language">language</string>
+    <!-- Following the language the phone is set to, rather than one picked here. -->
+    <string name="settings_language_phone">phone\'s language</string>
     <string name="settings_linux">linux</string>
     <string name="settings_linux_installed">installed · remove</string>
     <!-- %2$s is the setup stage, like "download arch linux". -->
@@ -27,6 +30,9 @@
     <string name="settings_needs_linux">needs linux</string>
     <string name="settings_packages">packages</string>
     <string name="settings_packages_subtitle">install Linux apps and tools with pacman and the AUR</string>
+    <!-- Shown while Omalauncher isn't the default home app; tapping asks Android to make it one. -->
+    <string name="settings_home_app">default home app</string>
+    <string name="settings_home_app_subtitle">make Omalauncher your home screen · app shortcuts need it</string>
     <string name="settings_local_network">local network</string>
     <string name="settings_local_network_subtitle">let widgets and linux reach your printer, home assistant, …</string>
     <string name="settings_android">android settings</string>

@@ -47,6 +47,12 @@ abstract class InstantActivity : ComponentActivity() {
 
     protected val runtime get() = (application as App).runtime
 
+    /** In the language picked in settings. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        AppLanguage.applyTo(this)
+    }
+
     /** Like setContent, with the system bars in the theme's colors, but drawing nothing while the window leaves. */
     protected fun setInstantContent(content: @Composable () -> Unit) {
         applySystemBars(this, Palette.isLight)

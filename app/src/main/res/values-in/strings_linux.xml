@@ -3,19 +3,19 @@
     <string name="linux_stage_download">unduh arch linux</string>
     <string name="linux_stage_extract">ekstrak sistem</string>
     <string name="linux_stage_configure">konfigurasi pacman</string>
-    <string name="linux_stage_packages">pasang aplikasi omarchy</string>
-    <string name="linux_stage_agents">pasang agen coding</string>
-    <string name="linux_stage_agents_named">pasang %1$s</string>
+    <string name="linux_stage_packages">instal aplikasi omarchy</string>
+    <string name="linux_stage_agents">instal agen coding</string>
+    <string name="linux_stage_agents_named">instal %1$s</string>
 
     <string name="linux_step_download">Mengunduh Arch Linux ARM</string>
     <string name="linux_step_configure">Mengonfigurasi sistem</string>
     <string name="linux_step_forks">Memeriksa apakah program bisa berjalan</string>
     <string name="linux_step_keyring">Menginisialisasi keyring pacman</string>
     <string name="linux_step_no_kernel">Menghapus paket kernel</string>
-    <string name="linux_step_packages">Memasang paket</string>
+    <string name="linux_step_packages">Menginstal paket</string>
     <string name="linux_step_keymap">Mengompilasi keymap</string>
-    <string name="linux_step_cliamp">Memasang cliamp</string>
-    <string name="linux_step_agent">Memasang %1$s</string>
+    <string name="linux_step_cliamp">Menginstal cliamp</string>
+    <string name="linux_step_agent">Menginstal %1$s</string>
     <string name="linux_step_downloaded">%1$d dari %2$d MB</string>
     <string name="linux_step_downloaded_unknown">%1$d MB</string>
     <string name="linux_step_extract_start">Memulai</string>
@@ -24,8 +24,8 @@
     </plurals>
 
     <string name="linux_log_retrying">%1$s; mencoba lagi (%2$d dari %3$d)</string>
-    <string name="linux_log_step_failed">%1$s gagal: %2$s; coba lagi di pengaturan</string>
-    <string name="linux_log_agent_failed">%1$s tidak terpasang; coba lagi di pengaturan › agen coding</string>
+    <string name="linux_log_step_failed">%1$s gagal: %2$s; coba lagi di setelan</string>
+    <string name="linux_log_agent_failed">%1$s tidak terinstal; coba lagi di setelan › agen coding</string>
 
     <string name="linux_error_no_space">ruang tidak cukup: Linux perlu %1$s kosong, ruang kosong di ponsel hanya %2$s; kosongkan sebagian ruang, lalu coba lagi</string>
     <string name="linux_error_out_of_space">ruang ponsel habis; Linux perlu sekitar %1$s kosong; kosongkan sebagian, lalu coba lagi</string>
@@ -38,7 +38,7 @@
     <string name="linux_error_cliamp_mismatch">unduhan cliamp tidak cocok dengan %1$s</string>
     <string name="linux_error_cant_replace">tidak dapat mengganti %1$s</string>
 
-    <string name="linux_job_installing">memasang</string>
+    <string name="linux_job_installing">menginstal</string>
     <string name="linux_job_removing">menghapus</string>
     <string name="linux_job_building">mengompilasi</string>
     <string name="linux_job_updating">memperbarui</string>
@@ -62,30 +62,30 @@
     <string name="linux_agent_muse">Agen coding dari Meta</string>
     <string name="linux_agent_kimi">Agen coding dari Moonshot AI</string>
 
-    <string name="linux_welcome_title">omarchy di layar berandamu</string>
-    <string name="linux_welcome_body">Tema dan wallpaper Omarchy, aplikasi Android-mu, dan widget layar beranda. Arch Linux menambahkan aplikasi terminal dan agen coding, sekarang atau nanti di pengaturan.</string>
+    <string name="linux_welcome_title">omarchy di layar utamamu</string>
+    <string name="linux_welcome_body">Tema dan wallpaper Omarchy, aplikasi Android-mu, dan widget layar utama. Arch Linux menambahkan aplikasi terminal dan agen coding, sekarang atau nanti di setelan.</string>
     <string name="linux_welcome_linux">linux</string>
     <string name="linux_welcome_choice">siapkan Arch Linux juga</string>
     <string name="linux_welcome_choice_detail">aplikasi terminal, agen, pacman · unduhan ~1 GB, ruang 3 GB</string>
     <string name="linux_welcome_start">mulai</string>
     <string name="linux_welcome_start_linux">mulai dan siapkan linux</string>
     <string name="linux_welcome_start_hint">Mengunduh wallpaper tema sekarang, dan tema Omarchy lainnya (sekitar 70 MB) di latar belakang.</string>
-    <string name="linux_welcome_start_linux_hint">Linux mengunduh sekitar 1 GB, jadi sebaiknya pakai Wi-Fi, dan memakai ruang 3 GB. Pemasangan berjalan di latar belakang selama 10 sampai 20 menit; layar beranda langsung siap.</string>
+    <string name="linux_welcome_start_linux_hint">Linux mengunduh sekitar 1 GB, jadi sebaiknya pakai Wi-Fi, dan memakai ruang 3 GB. Penginstalan berjalan di latar belakang selama 10 sampai 20 menit; layar utama langsung siap.</string>
     <string name="linux_welcome_getting">mengunduh %1$s</string>
     <string name="linux_welcome_theme_failed">tema gagal diunduh</string>
     <string name="linux_welcome_wallpaper">unduh wallpaper-nya</string>
     <string name="linux_welcome_skip">lanjut tanpa wallpaper</string>
-    <string name="linux_welcome_skip_hint">Warna tema tetap diterapkan. Launcher akan mencoba lagi nanti, atau unduh sendiri di pengaturan › gaya.</string>
+    <string name="linux_welcome_skip_hint">Warna tema tetap diterapkan. Launcher akan mencoba lagi nanti, atau unduh sendiri di setelan › gaya.</string>
 
     <string name="linux_agents_label">agen coding</string>
-    <string name="linux_agents_hint">Pilih yang mana saja untuk dipasang bersama Linux. Kamu bisa menambah atau menghapusnya nanti di pengaturan.</string>
+    <string name="linux_agents_hint">Pilih yang mana saja untuk diinstal bersama Linux. Kamu bisa menambah atau menghapusnya nanti di setelan.</string>
     <string name="linux_theme_label">tema</string>
     <string name="linux_more_themes">tema lain ›</string>
 
     <string name="linux_progress_title">menyiapkan linux</string>
     <string name="linux_progress_stopped">penyiapan berhenti</string>
     <string name="linux_try_again">coba lagi</string>
-    <string name="linux_cancel_install">batalkan pemasangan</string>
+    <string name="linux_cancel_install">batalkan penginstalan</string>
     <string name="linux_progress_background">Kamu bisa menutup ini dan memakai launcher; penyiapan tetap berjalan di latar belakang.</string>
     <string name="linux_output">output</string>
     <string name="linux_output_less">ringkas</string>
@@ -94,17 +94,17 @@
     <string name="linux_title">linux</string>
     <string name="linux_removing">menghapus linux…</string>
     <string name="linux_offer_title">arch linux, opsional</string>
-    <string name="linux_offer_body">Aplikasi Linux, widget terminal, agen coding, pacman, dan File. Unduhan sekitar 1 GB dan ruang 3 GB; dipasang di latar belakang.</string>
-    <string name="linux_install">pasang linux</string>
+    <string name="linux_offer_body">Aplikasi Linux, widget terminal, agen coding, pacman, dan File. Unduhan sekitar 1 GB dan ruang 3 GB; diinstal di latar belakang.</string>
+    <string name="linux_install">instal linux</string>
     <plurals name="linux_install_with_agents">
-        <item quantity="other">pasang linux dan %d agen</item>
+        <item quantity="other">instal linux dan %d agen</item>
     </plurals>
     <string name="linux_arch">arch linux</string>
-    <string name="linux_installed_size">terpasang · %1$s</string>
+    <string name="linux_installed_size">terinstal · %1$s</string>
     <string name="linux_measuring">mengukur…</string>
     <string name="linux_remove">hapus linux</string>
     <string name="linux_remove_ask">hapus linux?</string>
-    <string name="linux_remove_body">Menghapus aplikasi Linux, agen coding, paket, dan semua isi /root, seperti Downloads. Tema, wallpaper, widget, dan layar berandamu tetap ada.</string>
+    <string name="linux_remove_body">Menghapus aplikasi Linux, agen coding, paket, dan semua isi /root, seperti Downloads. Tema, wallpaper, widget, dan layar utamamu tetap ada.</string>
     <string name="linux_remove_confirm">hapus</string>
     <string name="linux_cancel">batal</string>
     <string name="linux_gpu_title">akselerasi gpu</string>
@@ -118,18 +118,18 @@
     <string name="linux_gpu_turn_on">aktifkan</string>
 
     <string name="linux_notification_channel">Sesi Linux</string>
-    <string name="linux_notification_installing">Memasang Linux · %1$s</string>
-    <string name="linux_notification_installing_percent">Memasang Linux · %1$d%% · %2$s</string>
-    <string name="linux_notification_failed">Penyiapan Linux berhenti · buka pengaturan › linux untuk mencoba lagi</string>
+    <string name="linux_notification_installing">Menginstal Linux · %1$s</string>
+    <string name="linux_notification_installing_percent">Menginstal Linux · %1$d%% · %2$s</string>
+    <string name="linux_notification_failed">Penyiapan Linux berhenti · buka setelan › linux untuk mencoba lagi</string>
     <string name="linux_notification_removing">Menghapus Linux</string>
     <string name="linux_notification_running">Sesi Linux berjalan</string>
 
     <string name="packages_title">paket</string>
     <string name="packages_search">cari paket</string>
-    <string name="packages_intro">Paket Arch Linux ARM lewat pacman, dan AUR lewat yay. Memasang juga memperbarui sistem, jadi bisa butuh waktu. Paket AUR dikirim pengguna dan dikompilasi di perangkat: periksa dulu PKGBUILD-nya di aur.archlinux.org.</string>
+    <string name="packages_intro">Paket Arch Linux ARM lewat pacman, dan AUR lewat yay. Menginstal juga memperbarui sistem, jadi bisa butuh waktu. Paket AUR dikirim pengguna dan dikompilasi di perangkat: periksa dulu PKGBUILD-nya di aur.archlinux.org.</string>
     <string name="packages_loading">memuat…</string>
     <string name="packages_searching">mencari…</string>
-    <string name="packages_installed">terpasang (%1$d)</string>
+    <string name="packages_installed">terinstal (%1$d)</string>
     <string name="packages_none">tidak ada paket yang cocok</string>
     <plurals name="packages_results">
         <item quantity="other">%d hasil</item>
@@ -137,7 +137,7 @@
     <string name="packages_required">diperlukan</string>
     <string name="packages_confirm">konfirmasi</string>
     <string name="packages_remove">hapus</string>
-    <string name="packages_install">pasang</string>
+    <string name="packages_install">instal</string>
 
     <string name="licenses_title">lisensi</string>
     <string name="licenses_header">Omalauncher %1$s · © 2026 Simon Schubert\n\nAplikasi ini menyertakan perangkat lunak open source di bawah ini.</string>

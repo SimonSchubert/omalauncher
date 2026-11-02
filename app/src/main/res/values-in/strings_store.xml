@@ -13,16 +13,16 @@
     <string name="store_kind_panel">panel</string>
     <string name="store_kind_keybar">keybar</string>
 
-    <string name="store_pick_widget">pilih widget untuk melihat apa yang dipasang dan dijalankannya</string>
-    <string name="store_pick_face">pilih face untuk melihat apa yang dipasang dan dijalankannya</string>
-    <string name="store_pick_app">pilih aplikasi untuk melihat apa yang dipasang dan dijalankannya</string>
-    <string name="store_pick_panel">pilih panel untuk melihat apa yang dipasang dan dijalankannya</string>
-    <string name="store_pick_keybar">pilih keybar untuk melihat apa yang dipasang dan dijalankannya</string>
+    <string name="store_pick_widget">pilih widget untuk melihat apa yang diinstal dan dijalankannya</string>
+    <string name="store_pick_face">pilih face untuk melihat apa yang diinstal dan dijalankannya</string>
+    <string name="store_pick_app">pilih aplikasi untuk melihat apa yang diinstal dan dijalankannya</string>
+    <string name="store_pick_panel">pilih panel untuk melihat apa yang diinstal dan dijalankannya</string>
+    <string name="store_pick_keybar">pilih keybar untuk melihat apa yang diinstal dan dijalankannya</string>
 
     <string name="store_search">cari %1$d %2$s</string>
     <string name="store_tab_all">semua</string>
     <string name="store_tab_new">baru</string>
-    <string name="store_tab_installed">terpasang</string>
+    <string name="store_tab_installed">terinstal</string>
     <string name="store_category_other">lainnya</string>
     <string name="store_tab">%1$s %2$d</string>
     <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
@@ -31,18 +31,18 @@
     <string name="store_terminal">terminal</string>
     <string name="store_terminal_details">6x4 · shell</string>
     <string name="store_agent_details">6x6 · menjalankan %1$s</string>
-    <string name="store_on_home">✓ di beranda</string>
+    <string name="store_on_home">✓ di layar utama</string>
     <string name="store_tap_to_add">ketuk untuk menambahkan ke halaman %1$d</string>
 
     <string name="store_reviewed">%1$s yang sudah ditinjau dari github.com/%2$s</string>
     <string name="store_loading">memuat…</string>
     <string name="store_empty">belum ada %1$s</string>
     <string name="store_no_new">tidak ada %1$s baru</string>
-    <string name="store_none_installed">belum ada %1$s yang dipasang dari toko</string>
+    <string name="store_none_installed">belum ada %1$s yang diinstal dari toko</string>
     <string name="store_no_match">tidak ada yang cocok dengan \"%1$s\"</string>
 
     <string name="store_update_available">pembaruan tersedia</string>
-    <string name="store_installed">✓ terpasang</string>
+    <string name="store_installed">✓ terinstal</string>
     <string name="store_needs_newer">perlu launcher yang lebih baru</string>
     <string name="store_needs_linux">perlu linux</string>
     <plurals name="store_pages">
@@ -50,7 +50,7 @@
     </plurals>
     <string name="store_badge_new">baru</string>
 
-    <string name="store_needs_newer_detail">perlu launcher yang lebih baru (owl %1$d); perbarui launcher untuk memasangnya</string>
+    <string name="store_needs_newer_detail">perlu launcher yang lebih baru (owl %1$d); perbarui launcher untuk menginstalnya</string>
     <string name="store_may_have_changes">mungkin berisi perubahanmu, dan memperbarui akan menimpanya</string>
     <string name="store_you_changed">kamu sudah mengubahnya, dan memperbarui akan menimpa perubahanmu</string>
     <string name="store_update_anyway">tetap perbarui %1$s → %2$s</string>
@@ -61,35 +61,35 @@
     </plurals>
     <string name="store_add_to_page">tambah ke halaman %1$d</string>
     <string name="store_add_as_face">tambah sebagai face</string>
-    <string name="store_install">pasang</string>
-    <string name="store_uninstall">copot</string>
+    <string name="store_install">instal</string>
+    <string name="store_uninstall">uninstal</string>
     <string name="store_remove">hapus</string>
-    <string name="store_uninstall_confirm">copot %1$s?</string>
+    <string name="store_uninstall_confirm">uninstal %1$s?</string>
     <string name="store_remove_confirm">hapus %1$s?</string>
     <string name="store_remove_file">File-nya dipindahkan ke .removed/ di folder widget.</string>
     <string name="store_remove_files">File-filenya dipindahkan ke .removed/ di folder widget.</string>
     <string name="store_changed_since_approval">perintah atau paketnya berubah sejak versi yang kamu setujui</string>
 
-    <string name="store_added_widget">✓ di layar berandamu</string>
+    <string name="store_added_widget">✓ di layar utamamu</string>
     <string name="store_added_face">✓ di kiri halaman pertamamu</string>
     <string name="store_added_app">✓ di laci aplikasimu</string>
-    <string name="store_added_panel">✓ di pengaturan gestur</string>
+    <string name="store_added_panel">✓ di setelan gestur</string>
     <string name="store_added_keybar">✓ di folder widget-mu</string>
 
-    <string name="store_needs_linux_app">perlu Linux: aplikasi ini menjalankan perintah di Arch, jadi baru muncul di laci aplikasi setelah kamu memasang Linux di pengaturan</string>
-    <string name="store_needs_linux_widget">perlu Linux: widget ini menjalankan perintah di Arch, jadi menunggu sebagai placeholder sampai kamu memasang Linux di pengaturan</string>
+    <string name="store_needs_linux_app">perlu Linux: aplikasi ini menjalankan perintah di Arch, jadi baru muncul di laci aplikasi setelah kamu menginstal Linux di setelan</string>
+    <string name="store_needs_linux_widget">perlu Linux: widget ini menjalankan perintah di Arch, jadi menunggu sebagai placeholder sampai kamu menginstal Linux di setelan</string>
 
-    <string name="store_installs_packages">memasang paket: %1$s</string>
+    <string name="store_installs_packages">menginstal paket: %1$s</string>
     <string name="store_packages_none">tidak ada</string>
     <string name="store_runs_no_commands">tidak menjalankan perintah</string>
     <string name="store_runs_commands">menjalankan perintah berikut di Arch:</string>
 
-    <string name="store_installing">memasang…</string>
+    <string name="store_installing">menginstal…</string>
     <string name="store_updating">memperbarui…</string>
     <string name="store_adding_pages">menambah halaman…</string>
     <string name="store_load_failed">tidak dapat memuat toko: %1$s</string>
     <string name="store_download_mismatch">unduhan tidak cocok dengan versi yang ditinjau; coba lagi nanti</string>
-    <string name="store_install_failed">pemasangan gagal: %1$s</string>
+    <string name="store_install_failed">penginstalan gagal: %1$s</string>
 
     <string name="store_shared_title">%1$s yang dibagikan</string>
     <string name="store_shared_fetching">mengambil dari %1$s…</string>
@@ -98,7 +98,7 @@
     <string name="store_shared_unnamed_app">sebuah aplikasi</string>
     <string name="store_shared_unnamed_widget">sebuah widget</string>
     <string name="store_shared_info">dibagikan kepadamu%1$s · %2$.1f KB</string>
-    <string name="store_shared_warning">Tambahkan hanya jika kamu memercayai pengirimnya. Widget ini menjalankan perintah berikut di Arch atas namamu, dengan akses ke file dan jaringanmu.</string>
+    <string name="store_shared_warning">Tambahkan hanya jika kamu memercayai pengirimnya. Isinya menjalankan perintah berikut di Arch atas namamu, dengan akses ke file dan jaringanmu.</string>
     <string name="store_shared_needs_newer">perlu launcher yang lebih baru (owl %1$d); perbarui launcher untuk menambahkannya</string>
     <string name="store_shared_replace">ganti %1$s yang dibagikan sebelumnya</string>
     <string name="store_add_to_drawer">tambah ke laci aplikasi</string>
@@ -129,7 +129,7 @@
     <string name="store_share_code_clip">kode QR %1$s</string>
     <string name="store_share_chooser">Bagikan %1$s</string>
     <string name="store_in_store">di toko</string>
-    <string name="store_issue_info">Sebuah issue di github.com/%1$s; setelah ditinjau, siapa pun bisa memasangnya.</string>
+    <string name="store_issue_info">Sebuah issue di github.com/%1$s; setelah ditinjau, siapa pun bisa menginstalnya.</string>
     <string name="store_pr_info">Atau pull request dari agenmu, yang juga bisa menambahkan pratinjau:</string>
     <string name="store_create_pr">buat pull request dengan agen</string>
     <string name="store_open_issue">buka issue GitHub</string>
@@ -137,20 +137,20 @@
     <string name="store_issue_uploads">mengunggahnya secara publik ke %1$s untuk ditinjau</string>
     <string name="store_upload_failed">✗ gagal mengunggah: %1$s</string>
 
-    <string name="store_pin_title">tambah ke layar beranda?</string>
+    <string name="store_pin_title">tambah ke layar utama?</string>
     <string name="store_pin_from">dari %1$s</string>
     <string name="store_cancel">batal</string>
     <string name="store_add">tambah</string>
 
     <string name="store_theme_title">tema komunitas</string>
     <string name="store_theme_search">cari %1$d tema</string>
-    <string name="store_theme_header">dibuat oleh komunitas, terdaftar di omarchy.org/themes · dipasang dari GitHub</string>
+    <string name="store_theme_header">dibuat oleh komunitas, terdaftar di omarchy.org/themes · diinstal dari GitHub</string>
     <string name="store_theme_in_use">✓ dipakai</string>
-    <string name="store_theme_install_confirm">pasang %1$s?</string>
+    <string name="store_theme_install_confirm">instal %1$s?</string>
     <string name="store_theme_install_message">Dari %1$s. Linux mendapat warna dan wallpaper-nya, bukan skrip atau konfigurasi terminalnya.</string>
     <string name="store_theme_install_message_replaces">Dari %1$s. Linux mendapat warna dan wallpaper-nya, bukan skrip atau konfigurasi terminalnya.\n\nTema ini menggantikan %2$s milikmu.</string>
     <string name="store_theme_install_message_over">Dari %1$s. Linux mendapat warna dan wallpaper-nya, bukan skrip atau konfigurasi terminalnya.\n\nTema ini menimpa %2$s dari Omarchy; menghapus tema ini akan memulihkan %2$s.</string>
-    <string name="store_theme_installing">memasang %1$s… %2$d MB</string>
+    <string name="store_theme_installing">menginstal %1$s… %2$d MB</string>
     <string name="store_theme_catalog_failed">tidak dapat memuat omarchy.org/themes: %1$s</string>
     <string name="store_theme_page_changed">halamannya berubah dan tidak dapat dibaca</string>
     <string name="store_theme_not_github">bukan repo GitHub: %1$s</string>

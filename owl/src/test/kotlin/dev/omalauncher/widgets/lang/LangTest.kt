@@ -62,8 +62,16 @@ class LangTest {
             headers: Map<String, String>,
             slot: Int?,
             method: String,
+            pin: String?,
         ) {
-            actions += "post $slot $url $body $headers" + (if (method != "POST") " $method" else "")
+            actions += "post $slot $url $body $headers" + (if (method != "POST") " $method" else "") + (pin?.let { " pin $it" } ?: "")
+        }
+
+        override fun send(
+            slot: Int,
+            message: Value,
+        ) {
+            actions += "send $slot $message"
         }
     }
 
@@ -309,6 +317,84 @@ class LangTest {
         assertTrue(compileError("app \"t\" {\n meta { owl: 11 }\n back: true\n onBack: post(\"https://x.test/\", null, {}, method: \"PUT\")\n Text { text: 1 } }").contains("needs owl 12"))
         assertTrue(compileError(app + "method: \"HEAD\")\n Text { text: 1 } }").contains("method: is one of"))
         assertTrue(compileError(app + "retries: 3)\n Text { text: 1 } }").contains("no other named arguments"))
+    }
+
+    /** pin: trusts one certificate (owl 17), on http(...) and post(...). */
+    @Test fun pinnedRequests() {
+        val pin = "AB:" + "cd".repeat(31)
+        val p =
+            Compiler.compile(
+                "app \"t\" {\n meta { owl: 17 }\n source h = http(\"https://pc.lan:8759/a\", {}, pin: \"$pin\") json\n back: true\n" +
+                    " onBack: post(\"https://pc.lan:8759/h/1\", null, {}, method: \"delete\", pin: \"$pin\")\n" +
+                    " Text { text: h } }",
+            )
+        val host = TestHost(p)
+        assertEquals(pin, (p.globals[0] as Global.Source).pin!!(Env.root(host)).toString())
+        p.onBack!!.run(Env.root(host), emptyList())
+        assertEquals(listOf("post null https://pc.lan:8759/h/1 null {} DELETE pin $pin"), host.actions)
+        assertEquals(setOf("http GET https://pc.lan:8759/a", "http DELETE https://pc.lan:8759/h/1"), p.commands.toSet())
+        assertEquals("ab" + "cd".repeat(31), Pins.normalize(pin))
+        assertEquals(null, Pins.normalize("abcd"))
+        val app = "app \"t\" {\n meta { owl: 17 }\n back: true\n onBack: post(\"https://x.test/\", null, {}, "
+        assertTrue(compileError("widget {\n meta { owl: 16 }\n source h = http(\"https://x.test/\", {}, pin: \"$pin\")\n Text { text: h } }").contains("needs owl 17"))
+        assertTrue(compileError(app + "pin: \"abcd\")\n Text { text: 1 } }").contains("64 hex digits"))
+        assertTrue(compileError("widget {\n meta { owl: 17 }\n source h = http(\"http://x.test/\", {}, pin: \"$pin\")\n Text { text: h } }").contains("pin: needs an https://"))
+        assertTrue(compileError("widget {\n meta { owl: 17 }\n source h = http(\"https://x.test/\", {}, retries: 3)\n Text { text: h } }").contains("http takes pin:, and no other"))
+    }
+
+    /** ws(...) listens to a WebSocket server, and send(...) talks back on its connection (owl 17). */
+    @Test fun webSockets() {
+        val pin = "ab".repeat(32)
+        val p =
+            Compiler.compile(
+                "app \"t\" {\n meta { owl: 17 }\n state token = null secret\n state cols = 80\n" +
+                    " source t = ws(token == null ? null : \"wss://pc.lan:8759/stream?viewport=1\", {Authorization: \"Bearer ${'$'}{token}\"}, pin: \"$pin\") json status\n" +
+                    " source h = ws(\"ws://192.168.1.2/harnesses\")\n" +
+                    " when t.open { send(t, {type: \"viewport\", columns: cols, auth: token}) }\n" +
+                    " every 10s { send(h, \"ping\") }\n Text { text: t.out } }",
+            )
+        val t = p.globals[2] as Global.Source
+        assertEquals("ws", t.kind)
+        assertTrue(t.json && t.status && t.headers != null && t.pin != null)
+        assertEquals(setOf("websocket wss://pc.lan:8759/stream?viewport=1", "websocket ws://192.168.1.2/harnesses"), p.commands.toSet())
+        assertFalse(p.needsLinux)
+        // A secret sent on a connection is bound to the server the source connects to, as one in its headers is.
+        assertEquals(mapOf("token" to listOf("wss://pc.lan:8759")), p.secretHosts)
+        val host = TestHost(p)
+        host.slots[0] = Str("tk")
+        p.triggers.forEach { it.action.run(Env.root(host), emptyList()) }
+        assertEquals(listOf("send 2 {type: viewport, columns: 80, auth: tk}", "send 3 ping"), host.actions)
+
+        val w = "widget {\n meta { owl: 17 }\n"
+        compileError(w + " source s = ws(\"https://x.test/\")\n Text { text: s } }").let { assertTrue(it, it.contains("ws:// or wss://")) }
+        compileError(w + " source s = ws(\"wss://x.test/\") every 5s\n Text { text: s } }").let { assertTrue(it, it.contains("no every or timeout")) }
+        compileError(w + " source s = http(\"https://x.test/\")\n Text { text: 1; onTap: send(s, 1) } }").let { assertTrue(it, it.contains("send's first value is a ws(...) source")) }
+        compileError(w + " source s = ws(\"wss://x.test/\")\n Text { text: 1; onTap: send(s) } }").let { assertTrue(it, it.contains("takes a ws(...) source and a message")) }
+        compileError(w + " source s = ws(\"ws://x.test/\", {}, pin: \"$pin\")\n Text { text: s } }").let { assertTrue(it, it.contains("pin: needs an https:// or wss:// URL")) }
+        compileError(w + " source s = ws(\"wss://x.test/\")\n Text { text: send(s, 1) } }").let { assertTrue(it, it.contains("is an action")) }
+        compileError(w + " state k = null secret\n source s = ws(\"ws://x.test/\")\n Text { text: 1; onTap: send(s, {k: k}) } }").let { assertTrue(it, it.contains("only to a wss:// server")) }
+        compileError(w + " state k = null secret\n source s = ws(\"ws://x.test/\", {A: k})\n Text { text: s } }").let { assertTrue(it, it.contains("only to a wss:// server")) }
+        compileError("widget {\n meta { owl: 16 }\n source s = ws(\"wss://x.test/\")\n Text { text: s } }").let { assertTrue(it, it.contains("ws needs owl 17")) }
+    }
+
+    /** `on x each` runs for every message of a ws(...) source, repeats too (owl 17). */
+    @Test fun onEachMessage() {
+        val p =
+            Compiler.compile(
+                "widget {\n meta { owl: 17 }\n state n = 0\n source feed = ws(\"wss://x.test/io\")\n" +
+                    " on feed each { if value == \"2\" { send(feed, \"3\") }; n = n + 1 }\n Text { text: n } }",
+            )
+        val tr = p.triggers.single()
+        assertEquals(1, tr.each)
+        val host = TestHost(p)
+        repeat(2) { tr.action.run(Env.root(host), listOf(Str("2"), Null)) }
+        tr.action.run(Env.root(host), listOf(Str("hello"), Null))
+        assertEquals(listOf("send 1 3", "send 1 3"), host.actions)
+        assertEquals(Num(3.0), host.slots[0])
+        val w = "widget {\n meta { owl: 17 }\n"
+        compileError(w + " source s = http(\"https://x.test/\")\n on s each { }\n Text { text: s } }").let { assertTrue(it, it.contains("every message of a ws(...) source")) }
+        compileError(w + " source s = ws(\"wss://x.test/\")\n on s.type each { }\n Text { text: s } }").let { assertTrue(it, it.contains("every message of a ws(...) source")) }
+        compileError("widget {\n meta { owl: 16 }\n source s = ws(\"wss://x.test/\")\n on s each { }\n Text { text: s } }").let { assertTrue(it, it.contains("needs owl 17")) }
     }
 
     /** A secret only goes into a request's headers and body, or a check that it's set (owl 12). */
@@ -1398,6 +1484,17 @@ class LangTest {
         compileError("widget {\n meta { owl: 13 }\n Box { drag: vertical } }").let { assertTrue(it, it.contains("add onDrag")) }
         compileError("widget {\n meta { owl: 13 }\n state v = 0\n Box { onDragEnd: v = vx } }").let { assertTrue(it, it.contains("onDragEnd runs when an onDrag drag ends")) }
         compileError("widget {\n meta { owl: 13 }\n component C() { Box { } }\n C { drag: horizontal } }").let { assertTrue(it, it.contains("drag goes on the node inside C")) }
+    }
+
+    /** onPull runs when a list that scrolls is pulled down past its top (owl 17). */
+    @Test fun pullToRefresh() {
+        Compiler.compile("widget {\n meta { owl: 17 }\n Column { scroll: true; onPull: refresh(); Text { text: 1 } } }")
+        Compiler.compile("widget {\n meta { owl: 17 }\n Column { lazy: true; onPull: refresh(); Text { text: 1 } } }")
+        Compiler.compile("widget {\n meta { owl: 17 }\n Grid { lazy: true; onPull: refresh(); Text { text: 1 } } }")
+        compileError("widget {\n meta { owl: 16 }\n Column { scroll: true; onPull: refresh() } }").let { assertTrue(it, it.contains("onPull needs owl 17")) }
+        compileError("widget {\n meta { owl: 17 }\n Column { onPull: refresh() } }").let { assertTrue(it, it.contains("add scroll: true or lazy: true")) }
+        compileError("widget {\n meta { owl: 17 }\n Grid { onPull: refresh() } }").let { assertTrue(it, it.contains("add lazy: true")) }
+        compileError("widget {\n meta { owl: 17 }\n Box { onPull: refresh() } }").let { assertTrue(it, it.contains("onPull only works on Column and Grid")) }
     }
 
     /** ripple: false turns off the press shown on a node that takes taps (owl 14). */

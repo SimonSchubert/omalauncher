@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">设置</string>
+
+    <string name="settings_style">外观</string>
+    <string name="settings_style_subtitle">主题、背景、主屏幕</string>
+    <string name="settings_pages">页面</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="other">%1$d 个页面 · 排列、编辑、移除</item>
+    </plurals>
+    <string name="settings_gestures">手势</string>
+    <string name="settings_gestures_subtitle">上滑：%1$s · 下滑：%2$s</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_phone">跟随手机语言</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">已安装 · 移除</string>
+    <string name="settings_linux_installing_percent">正在安装 %1$d%% · %2$s</string>
+    <string name="settings_linux_installing">正在安装 · %1$s</string>
+    <string name="settings_linux_failed">安装已中止 · 重试</string>
+    <string name="settings_linux_removing">正在移除…</string>
+    <string name="settings_linux_not_installed">未安装 · 安装 Arch Linux 即可使用终端应用和智能体</string>
+    <string name="settings_agents">编程智能体</string>
+    <string name="settings_agents_default">默认：%1$s</string>
+    <string name="settings_agents_install">安装 Claude Code、OpenCode…</string>
+    <string name="settings_needs_linux">需要 linux</string>
+    <string name="settings_packages">软件包</string>
+    <string name="settings_packages_subtitle">用 pacman 和 AUR 安装 Linux 应用和工具</string>
+    <string name="settings_home_app">默认主屏幕应用</string>
+    <string name="settings_home_app_subtitle">将 Omalauncher 设为主屏幕 · 应用快捷方式需要它</string>
+    <string name="settings_local_network">局域网</string>
+    <string name="settings_local_network_subtitle">让小组件和 linux 访问你的打印机、Home Assistant…</string>
+    <string name="settings_android">android 设置</string>
+    <string name="settings_android_subtitle">手机的系统设置</string>
+    <string name="settings_licenses">开源许可</string>
+    <string name="settings_licenses_subtitle">Omalauncher 中的开源软件</string>
+
+    <string name="settings_system_updating">正在更新系统：%1$s…</string>
+    <string name="settings_system_update_failed">系统更新没有完成</string>
+    <string name="settings_retry">重试</string>
+    <string name="settings_system_updates">系统更新</string>
+    <string name="settings_widget_updates">小组件</string>
+    <string name="settings_update_all">全部更新</string>
+    <string name="settings_check">检查</string>
+    <string name="settings_update">更新</string>
+    <string name="settings_updating">正在更新…</string>
+    <string name="settings_checking">正在检查…</string>
+    <string name="settings_not_checked">尚未检查</string>
+    <string name="settings_up_to_date">已是最新 · %1$s检查</string>
+    <string name="settings_store_unreachable">无法连接商店</string>
+    <string name="settings_updates_held">已修改，因此这里不更新：%1$s · 在商店里更新会覆盖你的修改</string>
+    <string name="settings_more_lines">还有 %1$d 条</string>
+    <string name="settings_just_now">刚刚</string>
+    <string name="settings_minutes_ago">%1$d 分钟前</string>
+    <string name="settings_hours_ago">%1$d 小时前</string>
+    <string name="settings_days_ago">%1$d 天前</string>
+</resources>

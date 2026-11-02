@@ -87,9 +87,7 @@ class ProcShim(
         var user = 0L
         var system = 0L
         File("/proc").listFiles { f -> f.name.all(Char::isDigit) }.orEmpty().forEach { p ->
-            val stat = runCatching { File(p, "stat").readText() }.getOrNull() ?: return@forEach
-            // Fields after the parenthesised command name; utime/stime are fields 14/15.
-            val fields = stat.substringAfterLast(')').trim().split(' ')
+            val fields = statFields(p) ?: return@forEach
             user += fields.getOrNull(11)?.toLongOrNull() ?: 0
             system += fields.getOrNull(12)?.toLongOrNull() ?: 0
         }

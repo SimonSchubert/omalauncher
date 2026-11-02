@@ -9,7 +9,7 @@ import androidx.annotation.StringRes
 import dev.omalauncher.R
 import dev.omalauncher.CountingInputStream
 import dev.omalauncher.LauncherData
-import dev.omalauncher.hex
+import dev.omalauncher.widgets.lang.hex
 import dev.omalauncher.openHttp
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.upgrade.StepJournal

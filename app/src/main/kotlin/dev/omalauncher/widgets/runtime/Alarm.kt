@@ -1,11 +1,9 @@
 package dev.omalauncher.widgets.runtime
 
+import dev.omalauncher.registerNotExported
 import android.app.AlarmManager
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
@@ -41,17 +39,8 @@ class Alarm(
     /** Emits whenever an alarm is set, changed, dismissed or goes off. */
     fun updates(): Flow<Value> =
         callbackFlow {
-            val receiver =
-                object : BroadcastReceiver() {
-                    override fun onReceive(
-                        c: Context,
-                        intent: Intent,
-                    ) {
-                        trySend(Unit)
-                    }
-                }
             val filter = IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED)
-            if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, filter)
+            val receiver = context.registerNotExported(filter) { trySend(Unit) }
             trySend(Unit)
             awaitClose { context.unregisterReceiver(receiver) }
         }.conflate().map { value() }.distinctUntilChanged()

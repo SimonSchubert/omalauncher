@@ -50,7 +50,7 @@ interface Host {
     /**
      * `post(url, body, headers)` in a handler: an HTTP POST, with a map or list [body] sent as JSON. With a
      * [slot] (`x = post(...)`), the answer goes there as `{code, ok, out}` when it arrives. [method] is
-     * POST, or `method:`'s PUT, PATCH or DELETE.
+     * POST, or `method:`'s PUT, PATCH or DELETE, and [pin] is `pin:`'s certificate hash.
      */
     fun post(
         url: String,
@@ -58,6 +58,13 @@ interface Host {
         headers: Map<String, String>,
         slot: Int?,
         method: String,
+        pin: String?,
+    ) {}
+
+    /** `send(source, message)`: [message] on the connection of the ws(...) source in [slot], a map or list as JSON. */
+    fun send(
+        slot: Int,
+        message: Value,
     ) {}
 
     val budget: Budget
@@ -263,6 +270,8 @@ sealed interface Global {
         val headers: Ev? = null,
         /** cmd, stream or file that runs only while Linux is installed, and stays null until then. */
         val optional: Boolean = false,
+        /** http(..., pin: "…") or ws(..., pin: "…"): the SHA-256 of the only certificate the server may show. */
+        val pin: Ev? = null,
     ) : Global
 
     class State(
@@ -329,6 +338,11 @@ class Trigger(
      * type it with typeText and pressKey, which other triggers can't (see WidgetInstance).
      */
     val dictation: Boolean = false,
+    /**
+     * `on feed each { }`: the slot of the ws(...) source whose every message runs it, in the order they came,
+     * repeats too, with `value` the message; it watches nothing else (see WidgetInstance).
+     */
+    val each: Int? = null,
 )
 
 class Program(

@@ -1,5 +1,5 @@
 widget "owl" {
-  meta { owl: 16; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.1"; license: "MIT"; category: "fun" }
+  meta { owl: 16; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.2"; license: "MIT"; category: "fun" }
   page: 2
   order: 1
   size: 3x3
@@ -23,6 +23,26 @@ widget "owl" {
       eggShort: "ketuk: tetaskan"; egg: "telur · ketuk: tetaskan"; hungryShort: "beri makan"; hungry: "lapar · ketuk: beri makan"
       music: "musik"; minutes: n => "${n}m"; hours: n => "${n}j"
       day: d => "hari ${d}"; tiredShort: b => "lelah · ${b}%"; tired: b => "lelah · baterai ${b}%"; fed: t => "makan ${t} lalu"
+    }
+    es {
+      eggShort: "toca y nacerá"; egg: "un huevo · toca para que nazca"; hungryShort: "dale de comer"; hungry: "con hambre · toca para alimentarlo"
+      music: "música"; minutes: n => "${n}m"; hours: n => "${n}h"
+      day: d => "día ${d}"; tiredShort: b => "cansado · ${b}%"; tired: b => "cansado · batería ${b}%"; fed: t => "comió hace ${t}"
+    }
+    pt {
+      eggShort: "toque e eclode"; egg: "um ovo · toque e ele eclode"; hungryShort: "dar comida"; hungry: "com fome · dar comida"
+      music: "música"; minutes: n => "${n}m"; hours: n => "${n}h"
+      day: d => "dia ${d}"; tiredShort: b => "cansada · ${b}%"; tired: b => "cansada · bateria ${b}%"; fed: t => "comeu há ${t}"
+    }
+    de {
+      eggShort: "ausbrüten"; egg: "ein ei · tippen zum schlüpfen"; hungryShort: "füttern"; hungry: "hungrig · tippen zum füttern"
+      music: "musik"; minutes: n => "${n}m"; hours: n => "${n}h"
+      day: d => "tag ${d}"; tiredShort: b => "müde · ${b}%"; tired: b => "müde · akku ${b}%"; fed: t => "gefüttert vor ${t}"
+    }
+    zh {
+      eggShort: "点按孵化"; egg: "一颗蛋 · 点按孵化"; hungryShort: "点按喂食"; hungry: "饿了 · 点按喂食"
+      music: "音乐"; minutes: n => "${n}分钟"; hours: n => "${n}小时"
+      day: d => "第 ${d} 天"; tiredShort: b => "累了 · ${b}%"; tired: b => "累了 · 电量 ${b}%"; fed: t => "${t}前喂过"
     }
   }
 

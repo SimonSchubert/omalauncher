@@ -1,6 +1,7 @@
 package dev.omalauncher
 
 import android.content.pm.LauncherApps
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,6 +16,12 @@ import dev.omalauncher.ui.PinShortcutDialog
  */
 class PinShortcutActivity : ComponentActivity() {
     private val runtime get() = (application as App).runtime
+
+    /** In the language picked in settings. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        AppLanguage.applyTo(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

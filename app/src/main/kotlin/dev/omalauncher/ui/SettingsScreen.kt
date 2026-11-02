@@ -1,6 +1,7 @@
 package dev.omalauncher.ui
 
 import android.app.Activity
+import android.app.role.RoleManager
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -9,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -32,6 +34,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import dev.omalauncher.AppLanguage
 import dev.omalauncher.LocalNetwork
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
@@ -71,6 +75,20 @@ fun SettingsScreen(
                 )
             }
         }
+    val roles = remember { context.getSystemService(RoleManager::class.java) }
+    val homeRoleMissing = { roles.isRoleAvailable(RoleManager.ROLE_HOME) && !roles.isRoleHeld(RoleManager.ROLE_HOME) }
+    var notHome by remember { mutableStateOf(homeRoleMissing()) }
+    // Made the default (or not) in Android's settings while away.
+    LifecycleResumeEffect(Unit) {
+        notHome = homeRoleMissing()
+        onPauseOrDispose {}
+    }
+    val askHome =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            notHome = homeRoleMissing()
+            // Refused, or Android didn't ask at all after earlier refusals: the choice is then in its home app settings.
+            if (notHome) context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
     OverlayPanel(stringResource(R.string.settings_title), onDismiss, contentWidth = ReadingWidth) {
         val linuxStatus =
             when (val l = linux) {
@@ -92,6 +110,7 @@ fun SettingsScreen(
                     stringResource(R.string.settings_gestures_subtitle, runtime.gestureLabel(runtime.gestures.swipeUp), runtime.gestureLabel(runtime.gestures.swipeDown)),
                     onGestures,
                 ),
+                languageRow(),
                 SettingsRow(R.string.settings_linux, linuxStatus, onLinux),
                 if (installed) {
                     SettingsRow(
@@ -103,6 +122,13 @@ fun SettingsScreen(
                     SettingsRow(R.string.settings_agents, needsLinux, onLinux)
                 },
                 SettingsRow(R.string.settings_packages, if (installed) stringResource(R.string.settings_packages_subtitle) else needsLinux, if (installed) onPackages else onLinux),
+                if (notHome) {
+                    SettingsRow(R.string.settings_home_app, stringResource(R.string.settings_home_app_subtitle)) {
+                        askHome.launch(roles.createRequestRoleIntent(RoleManager.ROLE_HOME))
+                    }
+                } else {
+                    null
+                },
                 if (localNetworkMissing) {
                     SettingsRow(R.string.settings_local_network, stringResource(R.string.settings_local_network_subtitle)) {
                         askLocalNetwork.launch(LocalNetwork.PERMISSION)
@@ -125,33 +151,54 @@ fun SettingsScreen(
     }
 }
 
-/** A row of the settings hub: [title] is its string, which also keys it. */
+/**
+ * A row of the settings hub: [title] is its string, which also keys it. With [menu], a tap opens that under the row's
+ * end instead of calling [onClick]; it's given what closes it.
+ */
 private class SettingsRow(
     @StringRes val title: Int,
     val subtitle: String,
     val onClick: () -> Unit,
-)
+) {
+    var menu: (@Composable (close: () -> Unit) -> Unit)? = null
+}
+
+/** The language the launcher is in: the phone's, or one it has its text in; a pick brings the open screens back in it. */
+@Composable
+private fun languageRow(): SettingsRow {
+    val context = LocalContext.current
+    val picked by AppLanguage.language.collectAsState()
+    val phone = stringResource(R.string.settings_language_phone)
+    val label = { tag: String? -> tag?.let(AppLanguage::name) ?: phone }
+    return SettingsRow(R.string.settings_language, label(picked)) {}.apply {
+        menu = { close -> ChoicePopup(listOf(null) + AppLanguage.supported, picked, BelowAnchorEnd, onDismiss = close, onPick = { AppLanguage.pick(context, it) }, label = label) }
+    }
+}
 
 @Composable
 private fun SettingsRows(rows: List<SettingsRow>) {
-    // The local network row goes once it's granted: keys on it go on to the next.
+    // The home app and local network rows go once granted: keys on them go on to the next.
     val next = remember { FocusRequester() }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for (row in rows) {
             key(row.title) {
+                var open by remember { mutableStateOf(false) }
                 Row(
                     when (row.title) {
-                        R.string.settings_local_network -> Modifier.passesKeys(next)
+                        R.string.settings_home_app, R.string.settings_local_network -> Modifier.passesKeys(next)
                         R.string.settings_android -> Modifier.focusRequester(next)
                         else -> Modifier
-                    }.card(onClick = row.onClick),
+                    }.card(onClick = { if (row.menu != null) open = !open else row.onClick() }),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
                         BasicText(stringResource(row.title), style = Mono.copy(fontSize = TextSize.Item))
                         BasicText(row.subtitle, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                     }
-                    Symbol(Glyph.ChevronRight, Palette.accent, fontSize = TextSize.Title)
+                    Box {
+                        Symbol(if (row.menu == null) Glyph.ChevronRight else if (open) Glyph.ChevronUp else Glyph.ChevronDown, Palette.accent, fontSize = TextSize.Title)
+                        if (open) row.menu?.invoke { open = false }
+                    }
                 }
             }
         }

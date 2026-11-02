@@ -88,11 +88,12 @@ class Parser private constructor(
                     if (!top) fail("'$word' is only allowed at the top of the widget")
                     next()
                     val e = expr()
-                    // `on x first { }`: for x's first value too.
+                    // `on x first { }`: for x's first value too; `on x each { }`: for every message of a ws(...) source.
                     val first = word == "on" && t.type == T.Ident && t.text == "first"
-                    if (first) next()
+                    val each = word == "on" && t.type == T.Ident && t.text == "each"
+                    if (first || each) next()
                     if (!t.isP("{")) fail("expected '{' with the statements to run: $word ... { ... }")
-                    decls += Decl.Trigger(word, e, handler(), start.pos, first)
+                    decls += Decl.Trigger(word, e, handler(), start.pos, first, each)
                 }
                 word == "if" -> items += ifItem()
                 word == "for" -> items += forItem()

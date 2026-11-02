@@ -233,6 +233,8 @@ sealed interface Decl {
         val stmts: List<Stmt>,
         override val pos: Int,
         val first: Boolean = false,
+        /** `on feed each { }`: for every message of a ws(...) source. */
+        val each: Boolean = false,
     ) : Decl {
         override val name get() = kind
     }

@@ -1,12 +1,12 @@
 package dev.omalauncher.widgets.market
 
+import dev.omalauncher.widgets.lang.sha256Hex
 import dev.omalauncher.widgets.lang.CompileError
 import dev.omalauncher.widgets.lang.Global
 import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.lang.Source
-import java.security.MessageDigest
 
 /**
  * The marketplace rules for one submitted widget or app: it compiles, it lives at
@@ -40,7 +40,7 @@ class Review(
 
     val id get() = "$author/$name"
     val version get() = Catalog.metaText(program?.meta?.get("version")).orEmpty()
-    val sha256 get() = sha256(text.toByteArray())
+    val sha256 get() = sha256Hex(text.toByteArray())
 
     init {
         run()
@@ -264,7 +264,5 @@ class Review(
                 Regex("""^reply to notifications as you""") to "sends messages as you through other apps; check when it replies and what it says",
                 Regex("""^press the buttons on notifications""") to "presses buttons on other apps' notifications (delete, archive, call back); check which and when",
             )
-
-        fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
     }
 }

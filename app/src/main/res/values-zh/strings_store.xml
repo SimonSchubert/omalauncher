@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="store_title">商店</string>
+
+    <string name="store_kind_widgets">小组件</string>
+    <string name="store_kind_faces">face</string>
+    <string name="store_kind_apps">应用</string>
+    <string name="store_kind_panels">面板</string>
+    <string name="store_kind_keybars">按键栏</string>
+    <string name="store_kind_widget">小组件</string>
+    <string name="store_kind_face">face</string>
+    <string name="store_kind_app">应用</string>
+    <string name="store_kind_panel">面板</string>
+    <string name="store_kind_keybar">按键栏</string>
+
+    <string name="store_pick_widget">选一个小组件，看看它会安装和运行什么</string>
+    <string name="store_pick_face">选一个 face，看看它会安装和运行什么</string>
+    <string name="store_pick_app">选一个应用，看看它会安装和运行什么</string>
+    <string name="store_pick_panel">选一个面板，看看它会安装和运行什么</string>
+    <string name="store_pick_keybar">选一个按键栏，看看它会安装和运行什么</string>
+
+    <string name="store_search">搜索 %1$d 个%2$s</string>
+    <string name="store_tab_all">全部</string>
+    <string name="store_tab_new">新上架</string>
+    <string name="store_tab_installed">已安装</string>
+    <string name="store_category_other">其他</string>
+    <string name="store_tab">%1$s %2$d</string>
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <string name="store_builtin">内置</string>
+    <string name="store_terminal">终端</string>
+    <string name="store_terminal_details">6x4 · 一个 shell</string>
+    <string name="store_agent_details">6x6 · 运行 %1$s</string>
+    <string name="store_on_home">✓ 已在主屏幕</string>
+    <string name="store_tap_to_add">点按添加到第 %1$d 页</string>
+
+    <string name="store_reviewed">来自 github.com/%2$s 的已审核%1$s</string>
+    <string name="store_loading">正在加载…</string>
+    <string name="store_empty">还没有%1$s</string>
+    <string name="store_no_new">没有新的%1$s</string>
+    <string name="store_none_installed">还没有从商店安装的%1$s</string>
+    <string name="store_no_match">没有与“%1$s”匹配的内容</string>
+
+    <string name="store_update_available">有可用更新</string>
+    <string name="store_installed">✓ 已安装</string>
+    <string name="store_needs_newer">需要新版启动器</string>
+    <string name="store_needs_linux">需要 linux</string>
+    <plurals name="store_pages">
+        <item quantity="other">%1$d 页</item>
+    </plurals>
+    <string name="store_badge_new">新</string>
+
+    <string name="store_needs_newer_detail">需要新版启动器（owl %1$d）；更新启动器后即可安装</string>
+    <string name="store_may_have_changes">它可能包含你的修改，更新会覆盖这些修改</string>
+    <string name="store_you_changed">你修改过它，更新会覆盖你的修改</string>
+    <string name="store_update_anyway">仍然更新 %1$s → %2$s</string>
+    <string name="store_update">更新 %1$s → %2$s</string>
+    <string name="store_open">打开</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="other">添加缺少的 %1$d 页</item>
+    </plurals>
+    <string name="store_add_to_page">添加到第 %1$d 页</string>
+    <string name="store_add_as_face">添加为 face</string>
+    <string name="store_install">安装</string>
+    <string name="store_uninstall">卸载</string>
+    <string name="store_remove">移除</string>
+    <string name="store_uninstall_confirm">卸载 %1$s？</string>
+    <string name="store_remove_confirm">移除 %1$s？</string>
+    <string name="store_remove_file">它的文件会移到小组件文件夹中的 .removed/。</string>
+    <string name="store_remove_files">它的文件会移到小组件文件夹中的 .removed/。</string>
+    <string name="store_changed_since_approval">它的命令或软件包与你批准的版本相比有变化</string>
+
+    <string name="store_added_widget">✓ 已在你的主屏幕上</string>
+    <string name="store_added_face">✓ 已在第一页左边</string>
+    <string name="store_added_app">✓ 已在你的应用抽屉中</string>
+    <string name="store_added_panel">✓ 已在手势设置中</string>
+    <string name="store_added_keybar">✓ 已在你的小组件文件夹中</string>
+
+    <string name="store_needs_linux_app">需要 Linux：它在 Arch 中运行命令，所以在设置里安装 Linux 后才会出现在应用抽屉中</string>
+    <string name="store_needs_linux_widget">需要 Linux：它在 Arch 中运行命令，所以在设置里安装 Linux 之前它只是一个占位符</string>
+
+    <string name="store_installs_packages">安装软件包：%1$s</string>
+    <string name="store_packages_none">无</string>
+    <string name="store_runs_no_commands">不运行任何命令</string>
+    <string name="store_runs_commands">在 Arch 中运行这些命令：</string>
+
+    <string name="store_installing">正在安装…</string>
+    <string name="store_updating">正在更新…</string>
+    <string name="store_adding_pages">正在添加页面…</string>
+    <string name="store_load_failed">无法加载商店：%1$s</string>
+    <string name="store_download_mismatch">下载的内容与已审核的版本不符；请稍后再试</string>
+    <string name="store_install_failed">安装失败：%1$s</string>
+
+    <string name="store_shared_title">收到的%1$s</string>
+    <string name="store_shared_fetching">正在从 %1$s 获取…</string>
+    <string name="store_shared_unreadable">无法读取</string>
+    <string name="store_shared_not_widget">这个链接里没有小组件：%1$s。</string>
+    <string name="store_shared_unnamed_app">一个应用</string>
+    <string name="store_shared_unnamed_widget">一个小组件</string>
+    <string name="store_shared_info">分享给你%1$s · %2$.1f KB</string>
+    <string name="store_shared_warning">只有信任发送者时才添加它。它会以你的身份在 Arch 中运行下面的命令，可以访问你的文件和网络。</string>
+    <string name="store_shared_needs_newer">需要新版启动器（owl %1$d）；更新启动器后即可添加</string>
+    <string name="store_shared_replace">替换之前分享的 %1$s</string>
+    <string name="store_add_to_drawer">添加到应用抽屉</string>
+    <string name="store_add_to_panels">添加到手势面板</string>
+    <string name="store_add_to_widgets_folder">添加到你的小组件文件夹</string>
+    <string name="store_hide_file">隐藏文件</string>
+    <string name="store_show_file">显示完整文件</string>
+    <string name="store_review_with_agent">让智能体审查</string>
+
+    <string name="store_share_title">分享 %1$s</string>
+    <string name="store_check_secrets">让智能体检查有没有泄露密钥</string>
+    <string name="store_share_unreadable">无法读取 %1$s</string>
+    <string name="store_share_too_big">%1$s 超过 %2$d KB，启动器无法接收</string>
+    <string name="store_uploading">正在上传…</string>
+    <string name="store_share_get_code">获取二维码</string>
+    <string name="store_something_wrong">出了点问题</string>
+    <string name="store_share_uploads">把它公开上传到 %1$s，保留 %2$d 天</string>
+    <string name="store_share_send_link">也可以发送链接：永久有效，整个小组件都在链接里。</string>
+    <string name="store_share_too_big_link">太大了，无法作为链接发送：请用二维码分享。</string>
+    <string name="store_share_pasted_permanent">链接指向 %1$s，%2$d 天后失效。下面的链接永久有效。</string>
+    <string name="store_share_pasted">链接指向 %1$s，%2$d 天后失效。</string>
+    <string name="store_share_permanent">永久有效：整个小组件都在图片里。</string>
+    <string name="store_share_code">分享二维码</string>
+    <string name="store_share_link">分享链接</string>
+    <string name="store_copied">已复制</string>
+    <string name="store_copy_link">复制链接</string>
+    <string name="store_share_subject">%1$s 小组件</string>
+    <string name="store_share_code_clip">%1$s 二维码</string>
+    <string name="store_share_chooser">分享 %1$s</string>
+    <string name="store_in_store">上架商店</string>
+    <string name="store_issue_info">在 github.com/%1$s 上提一个 issue；审核通过后，任何人都能安装。</string>
+    <string name="store_pr_info">或者让你的智能体提交 pull request，它还能附上预览图：</string>
+    <string name="store_create_pr">让智能体创建 pull request</string>
+    <string name="store_open_issue">提交 GitHub issue</string>
+    <string name="store_no_browser">没有浏览器能打开 %1$s</string>
+    <string name="store_issue_uploads">把它公开上传到 %1$s 以供审核</string>
+    <string name="store_upload_failed">✗ 无法上传：%1$s</string>
+
+    <string name="store_pin_title">添加到主屏幕？</string>
+    <string name="store_pin_from">来自 %1$s</string>
+    <string name="store_cancel">取消</string>
+    <string name="store_add">添加</string>
+
+    <string name="store_theme_title">社区主题</string>
+    <string name="store_theme_search">搜索 %1$d 个主题</string>
+    <string name="store_theme_header">由社区制作，列于 omarchy.org/themes · 从 GitHub 安装</string>
+    <string name="store_theme_in_use">✓ 使用中</string>
+    <string name="store_theme_install_confirm">安装 %1$s？</string>
+    <string name="store_theme_install_message">来自 %1$s。Linux 会获得它的颜色和壁纸，但不包括它的脚本和终端配置。</string>
+    <string name="store_theme_install_message_replaces">来自 %1$s。Linux 会获得它的颜色和壁纸，但不包括它的脚本和终端配置。\n\n它会替换你的 %2$s。</string>
+    <string name="store_theme_install_message_over">来自 %1$s。Linux 会获得它的颜色和壁纸，但不包括它的脚本和终端配置。\n\n它会覆盖 Omarchy 的 %2$s；移除它即可恢复原样。</string>
+    <string name="store_theme_installing">正在安装 %1$s… %2$d MB</string>
+    <string name="store_theme_catalog_failed">无法加载 omarchy.org/themes：%1$s</string>
+    <string name="store_theme_page_changed">页面已改变，无法读取</string>
+    <string name="store_theme_not_github">不是 GitHub 仓库：%1$s</string>
+    <string name="store_theme_not_on_github">%1$s 不在 GitHub 上</string>
+    <string name="store_theme_no_colors">它没有 colors.toml 或 alacritty.toml</string>
+    <string name="store_theme_cant_move">无法把主题移到目标位置</string>
+</resources>

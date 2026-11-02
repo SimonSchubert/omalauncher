@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_failed">falló</string>
+    <string name="files_cant_hand_over">no se puede pasar %1$s a otras apps</string>
+    <string name="files_no_app">ninguna app puede abrir %1$s</string>
+    <string name="files_leads_to_nothing">no apunta a nada</string>
+    <string name="files_cant_open">no se puede abrir %1$s: %2$s</string>
+    <string name="files_selected">seleccionados: %1$d</string>
+    <string name="files_filter_hint">filtrar esta carpeta</string>
+    <string name="files_home">personal</string>
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">descargas</string>
+    <string name="files_place_system">sistema</string>
+    <string name="files_search">buscar</string>
+    <string name="files_more">más</string>
+    <string name="files_new_file">nuevo archivo</string>
+    <string name="files_new_folder">nueva carpeta</string>
+    <string name="files_hide_hidden">ocultar archivos ocultos</string>
+    <string name="files_show_hidden">mostrar archivos ocultos</string>
+    <string name="files_open_terminal">abrir terminal aquí</string>
+    <string name="files_empty_folder">carpeta vacía</string>
+    <string name="files_no_matches">no hay coincidencias</string>
+    <string name="files_create">crear</string>
+    <string name="files_rename">renombrar</string>
+    <string name="files_delete_one">¿eliminar %1$s?</string>
+    <plurals name="files_delete_items">
+        <item quantity="one">¿eliminar %1$d elemento?</item>
+        <item quantity="many">¿eliminar %1$d elementos?</item>
+        <item quantity="other">¿eliminar %1$d elementos?</item>
+    </plurals>
+    <string name="files_delete_message">No se puede deshacer.</string>
+    <string name="files_delete">eliminar</string>
+    <plurals name="files_items">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="many">%1$d elementos</item>
+        <item quantity="other">%1$d elementos</item>
+    </plurals>
+    <string name="files_folder">carpeta</string>
+    <string name="files_copy">copiar</string>
+    <string name="files_cut">cortar</string>
+    <string name="files_select_all">seleccionar todo</string>
+    <string name="files_edit">editar</string>
+    <string name="files_open_with">abrir con…</string>
+    <string name="files_share">compartir</string>
+    <string name="files_cancel">cancelar</string>
+    <string name="files_move_here">mover aquí</string>
+    <string name="files_paste_here">pegar aquí</string>
+
+    <string name="editor_title">Editor</string>
+    <string name="editor_cant_read">no se puede leer %1$s: %2$s</string>
+    <string name="editor_cant_save">no se puede guardar %1$s: %2$s</string>
+    <string name="editor_not_found">no encontrado</string>
+    <string name="editor_find_hint">buscar en el archivo</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">coincidencia anterior</string>
+    <string name="editor_next_match">coincidencia siguiente</string>
+    <string name="editor_save">guardar</string>
+    <string name="editor_find">buscar</string>
+    <string name="editor_no_wrap">no ajustar líneas</string>
+    <string name="editor_wrap">ajustar líneas</string>
+    <string name="editor_show_in_files">mostrar en archivos</string>
+    <string name="editor_open_in_micro">abrir en micro</string>
+    <string name="editor_save_confirm">¿guardar %1$s?</string>
+    <string name="editor_save_confirm_message">Tienes cambios sin guardar.</string>
+    <string name="editor_discard">descartar</string>
+    <string name="editor_key_left">izquierda</string>
+    <string name="editor_key_up">arriba</string>
+    <string name="editor_key_down">abajo</string>
+    <string name="editor_key_right">derecha</string>
+    <string name="editor_key_undo">deshacer</string>
+    <string name="editor_key_redo">rehacer</string>
+    <string name="editor_home_title">editor</string>
+    <string name="editor_new">nuevo</string>
+    <string name="editor_browse">explorar</string>
+    <string name="editor_recent">recientes</string>
+    <string name="editor_recent_empty">Los archivos que edites aparecerán aquí.</string>
+    <string name="editor_new_file_hint">una ruta en Linux</string>
+
+    <string name="prompt_listening">escuchando…</string>
+    <string name="prompt_hint_apps">abre una app…</string>
+    <string name="prompt_hint_ask">abre una app o pregúntale a %1$s…</string>
+    <string name="prompt_enter_ask">⏎ preguntar</string>
+    <string name="prompt_agent">agente</string>
+    <string name="prompt_manage_agents">"  gestionar agentes…"</string>
+
+    <string name="prompt_speech_no_recognizer">no hay reconocimiento de voz en este teléfono</string>
+    <string name="prompt_speech_refused">el reconocimiento de voz del teléfono no deja que otras apps lo usen</string>
+    <string name="prompt_speech_failed">falló el reconocimiento de voz (%1$d)</string>
+    <string name="prompt_speech_language">el reconocimiento de voz no está disponible en este idioma</string>
+    <string name="prompt_speech_not_downloaded">el reconocimiento de voz de este idioma no está descargado en este teléfono</string>
+    <string name="prompt_speech_mic_permission">se necesita permiso de micrófono</string>
+    <string name="prompt_speech_network">el reconocimiento de voz necesita conexión a internet</string>
+</resources>

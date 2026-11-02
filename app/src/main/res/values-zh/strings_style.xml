@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="style_title">外观</string>
+
+    <string name="style_home_screen">主屏幕</string>
+    <string name="style_widgets">小组件</string>
+    <string name="style_screens">界面</string>
+    <string name="style_keybar">终端按键栏</string>
+    <string name="style_system_bars">系统栏</string>
+    <string name="style_launcher_widgets">启动器和小组件</string>
+    <string name="style_theme">主题</string>
+    <string name="style_background">背景</string>
+    <string name="style_terminal">终端</string>
+
+    <string name="style_icons">图标</string>
+    <string name="style_monochrome">单色</string>
+    <string name="style_colored">彩色</string>
+    <string name="style_home_apps">主屏应用</string>
+    <string name="style_boxed">带框</string>
+    <string name="style_icon_only">仅图标</string>
+    <string name="style_recent_apps">最近应用</string>
+    <string name="style_shown">显示</string>
+    <string name="style_hidden">隐藏</string>
+    <string name="style_empty_page_left">左侧空白页</string>
+    <string name="style_empty_page_right">右侧空白页</string>
+    <string name="style_columns">列数</string>
+    <string name="style_pages">页数</string>
+    <string name="style_pages_one">一页</string>
+    <string name="style_pages_auto">自动</string>
+    <string name="style_corners">圆角</string>
+    <string name="style_corners_edge">直角</string>
+    <string name="style_corners_soft">微圆</string>
+    <string name="style_corners_round">圆润</string>
+    <string name="style_gaps_in">内间距</string>
+    <string name="style_gaps_out">外间距</string>
+    <string name="style_border_width">边框宽度</string>
+    <string name="style_opacity">不透明度</string>
+    <string name="style_frosted_glass">毛玻璃</string>
+    <string name="style_on">开</string>
+    <string name="style_off">关</string>
+    <string name="style_status_bar">状态栏</string>
+    <string name="style_bars_background">背景</string>
+    <string name="style_font">字体</string>
+    <string name="style_system_font">系统默认</string>
+    <string name="style_text">字号</string>
+    <string name="style_text_smaller">较小</string>
+    <string name="style_text_default">默认</string>
+    <string name="style_text_larger">较大</string>
+    <string name="style_preview">预览</string>
+    <string name="style_preview_app">应用</string>
+    <string name="style_reset">重置</string>
+    <string name="style_differ_step">它们在 style.toml 中的值不同；调一档会全部统一</string>
+    <string name="style_differ">值各不相同</string>
+    <string name="style_custom">自定义：%1$s，来自 style.toml</string>
+    <string name="style_more_settings">更多设置，比如边框和系统栏颜色：%1$s</string>
+
+    <string name="style_keys">按键</string>
+    <string name="style_keybar_removed">已移除</string>
+    <string name="style_keybar_errors">有错误</string>
+    <string name="style_keybar_stock">默认</string>
+    <string name="style_keybar_edited">已修改</string>
+    <string name="style_keybar_edit">让智能体编辑</string>
+    <string name="style_keybar_back_to_stock">恢复默认</string>
+    <string name="style_keybar_gone">%1$s 不见了，所以显示默认按键</string>
+    <string name="style_keybar_restore_title">恢复默认按键？</string>
+    <string name="style_keybar_restore_message">你的 keybar.owl 会被替换为这个启动器自带的版本。</string>
+    <string name="style_replace">替换</string>
+
+    <string name="style_browse">浏览</string>
+    <string name="style_install">安装</string>
+    <string name="style_install_theme">安装主题</string>
+    <string name="style_install_hint">填写主题的 GitHub 仓库。它会替换已安装的同名主题。</string>
+    <string name="style_own_theme">你自己的主题</string>
+    <string name="style_update">更新</string>
+    <string name="style_remove">移除</string>
+    <string name="style_remove_theme_title">移除 %1$s？</string>
+    <string name="style_remove_theme_builtin">你对它的修改会被删除；Omarchy 的版本保留。</string>
+    <string name="style_remove_deleted">它会从手机和 Linux 中删除。</string>
+    <string name="style_themes_downloading">正在从 github.com/omacom/omarchy 下载 Omarchy 的其他主题（约 70 MB）。</string>
+    <string name="style_themes_not_installed">Omarchy 的主题还没有安装。它们会从 github.com/omacom/omarchy 下载（约 70 MB）。</string>
+    <string name="style_downloading">正在下载… %1$d MB</string>
+    <string name="style_failed">失败：%1$s</string>
+    <string name="style_retry">重试</string>
+    <string name="style_download_themes">下载主题</string>
+
+    <string name="style_add_image">+ 图片</string>
+    <string name="style_wallpaper_active">✓ android 壁纸和系统颜色跟随主题（系统颜色在屏幕关闭后更新）</string>
+    <string name="style_wallpaper_use">用作 android 壁纸 + 系统颜色</string>
+    <string name="style_remove_background_title">移除背景？</string>
+
+    <string name="style_terminal_hint">对之后打开的终端生效 · 用 pacman 安装更多字体，比如 ttf-cascadia-code</string>
+    <plurals name="style_terminal_size">
+        <item quantity="other">%1$s pt · 竖屏 %2$d 列</item>
+    </plurals>
+
+    <string name="pages_title">页面</string>
+    <string name="pages_intro">主屏幕的各个页面，从左到右排列。拖动 ≡ 来移动页面；用键盘的话，按 Enter 拿起 ≡，再用方向键移动。主屏幕默认停在第一个有小组件或应用的页面；排在它前面的 face 在它左边。</string>
+    <string name="pages_loading">正在加载…</string>
+    <string name="pages_remove_named">移除 %1$s？</string>
+    <string name="pages_remove_page">移除这个页面？</string>
+    <string name="pages_remove_face_message">它的文件会移到小组件文件夹中的 .removed/。</string>
+    <string name="pages_remove_tiles_message">%1$s。它的小组件会移到小组件文件夹中的 .removed/；它的应用会从主屏幕移走，但仍保持安装。</string>
+    <string name="pages_remove">移除</string>
+    <plurals name="pages_apps">
+        <item quantity="other">%1$d 个应用</item>
+    </plurals>
+    <string name="pages_empty">空</string>
+    <string name="pages_doesnt_compile">无法编译</string>
+    <string name="pages_face">face</string>
+    <string name="pages_home">主屏幕</string>
+    <string name="pages_edit">编辑</string>
+    <string name="pages_share">分享</string>
+
+    <string name="gestures_title">手势</string>
+    <string name="gestures_swipe_up">上滑</string>
+    <string name="gestures_swipe_down">下滑</string>
+    <string name="gestures_nothing">无</string>
+    <string name="gestures_has_errors">%1$s（有错误）</string>
+    <string name="gestures_missing">%1$s（缺失）</string>
+    <string name="gestures_edit">编辑</string>
+    <string name="gestures_hint">面板是 owl 文件，应用抽屉也是其中之一：可以像小组件一样编辑，也可以在主屏幕菜单里让智能体新建一个。上滑未设置时，点按输入栏仍会打开应用抽屉</string>
+    <string name="gestures_stock_drawer">默认抽屉</string>
+    <string name="gestures_drawer_shows">应用抽屉改用“%1$s”</string>
+    <string name="gestures_swipe_down_nothing">下滑不会打开任何内容</string>
+    <string name="gestures_until_fixed">修复之前，%1$s：%2$s</string>
+    <string name="gestures_keybar_until_fixed">修复之前，终端按键栏使用默认按键：%1$s</string>
+
+    <string name="agents_title">编程智能体</string>
+    <string name="agents_intro">和 Omarchy 一样用 mise 安装。登录会在浏览器中打开；用键盘的剪贴板粘贴密钥。</string>
+    <string name="agents_open">打开</string>
+    <string name="agents_remove">移除</string>
+    <string name="agents_install">安装</string>
+</resources>

@@ -121,11 +121,15 @@ fun StoreScreen(
         ) {
             BoxWithConstraints {
                 val paneWidth = (maxWidth * 0.42f).coerceIn(340.dp, 520.dp)
+                // Side by side, the pane is never empty: until one is tapped, the grid's first entry shows in it.
+                val picked = if (wide) detail ?: shownEntries(market, filter).firstOrNull() else detail
                 val select = { id: String ->
                     open = id
                     message = null
                 }
                 val showDetail = @Composable { e: CatalogEntry, modifier: Modifier ->
+                    // Acting on the preselected entry picks it, so its message stays with it when the grid's first entry changes.
+                    val pick = { open = e.id }
                     Detail(
                         market = market,
                         e = e,
@@ -136,21 +140,26 @@ fun StoreScreen(
                         modifier = modifier,
                         onOpen = { market.installedVersion(e)?.let { onOpenApp(it.file) } },
                         onInstall = {
+                            pick()
                             scope.launch {
                                 message = market.install(e, page)
                                 // A widget closes the store to show it on its page; an app or a face stays, its page saying where it went.
                                 if (message == null && market.kind == OwlKind.Widget) onDismiss()
                             }
                         },
-                        onAddPages = { scope.launch { message = market.addPages(e) } },
+                        onAddPages = {
+                            pick()
+                            scope.launch { message = market.addPages(e) }
+                        },
                         onRemove = {
+                            pick()
                             message = null
                             market.remove(e)
                         },
                     )
                 }
                 val list = @Composable { modifier: Modifier ->
-                    StoreList(engine, market, agents, page, theme, filter, if (wide) open else null, modifier, select, onDismiss)
+                    StoreList(engine, market, agents, page, theme, filter, if (wide) picked?.id else null, modifier, select, onDismiss)
                 }
                 when {
                     // Side by side: the grid, and the picked widget's page beside it.
@@ -159,8 +168,8 @@ fun StoreScreen(
                             list(Modifier.weight(1f))
                             Box(Modifier.padding(horizontal = 12.dp).width(1.dp).fillMaxHeight().background(Palette.border))
                             val pane = Modifier.width(paneWidth).fillMaxHeight()
-                            if (detail != null) {
-                                showDetail(detail, pane)
+                            if (picked != null) {
+                                showDetail(picked, pane)
                             } else {
                                 Box(pane, contentAlignment = Alignment.Center) {
                                     BasicText(stringResource(pickText(kind)), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
@@ -247,20 +256,7 @@ private fun StoreList(
                 add(INSTALLED to installed.size)
             }
         val q = filter.query.trim().lowercase()
-        // In the catalog's order, which the store repo sets in order.txt.
-        val shown =
-            market.entries
-                .filter { e ->
-                    when (filter.tab) {
-                        ALL -> true
-                        NEW -> e.new
-                        INSTALLED -> e in installed
-                        OTHER -> e.category == null
-                        else -> e.category == filter.tab
-                    }
-                }.filter { e -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { q in it.lowercase() } }
-                // Newest first; a stable sort, so a day's widgets keep the catalog's order.
-                .let { l -> if (filter.tab == NEW) l.sortedByDescending { it.added } else l }
+        val shown = shownEntries(market, filter)
         val updates = installed.count { market.hasUpdate(it) }
 
         SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = stringResource(R.string.store_search, market.entries.size, noun))
@@ -331,6 +327,27 @@ private fun StoreList(
             items(shown, key = { it.id }) { e -> Card(market, e, theme, engine.linux, selected = e.id == selected) { onOpen(e.id) } }
         }
     }
+}
+
+/** The entries [filter]'s tab and search leave of [market]'s, in the order the grid shows them. */
+private fun shownEntries(
+    market: Market,
+    filter: StoreFilter,
+): List<CatalogEntry> {
+    val q = filter.query.trim().lowercase()
+    // In the catalog's order, which the store repo sets in order.txt.
+    return market.entries
+        .filter { e ->
+            when (filter.tab) {
+                ALL -> true
+                NEW -> e.new
+                INSTALLED -> market.installedVersion(e) != null
+                OTHER -> e.category == null
+                else -> e.category == filter.tab
+            }
+        }.filter { e -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { q in it.lowercase() } }
+        // Newest first; a stable sort, so a day's widgets keep the catalog's order.
+        .let { l -> if (filter.tab == NEW) l.sortedByDescending { it.added } else l }
 }
 
 private const val ALL = "all"
