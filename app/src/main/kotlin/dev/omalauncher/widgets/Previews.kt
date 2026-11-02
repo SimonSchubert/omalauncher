@@ -31,7 +31,9 @@ import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.ui.WidgetTile
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
@@ -137,11 +139,15 @@ internal class Previews(
             delay(SETTLE_MS)
             val image = latest ?: return false
             val bitmap = image.toBitmap(widthPx, heightPx)
-            out.parentFile?.mkdirs()
-            val tmp = File(out.path + ".tmp")
-            tmp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
-            bitmap.recycle()
-            return tmp.renameTo(out)
+            // Encoding the PNG and writing it is for a worker thread (Bitmap.compress is @WorkerThread), not for the
+            // main thread, which shows the presentation.
+            return withContext(Dispatchers.IO) {
+                out.parentFile?.mkdirs()
+                val tmp = File(out.path + ".tmp")
+                tmp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                bitmap.recycle()
+                tmp.renameTo(out)
+            }
         } catch (e: Exception) {
             Log.w("widgets", "preview of ${spec.file.name} failed", e)
             return false
