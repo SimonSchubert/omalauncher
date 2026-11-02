@@ -101,6 +101,27 @@ class AgentsTest {
         )
     }
 
+    /**
+     * A failed self-install leaves its command behind, and the bar must not offer what cannot answer. Hermes
+     * writes ~/.local/bin/hermes and its checkout first and its dependency sync last, so a runtime directory
+     * without `.hermes-bootstrap-complete` is an install that stopped partway; a command with no runtime
+     * beside it is the user's own wrapper to another machine, which counts whatever the runtime looks like.
+     */
+    @Test fun aRuntimeWithoutItsDoneFileIsNotAnInstall() {
+        val home = createTempDirectory("agents").toFile()
+        val hermes = AGENTS.single { it.bin == "hermes" }
+        val claude = AGENTS.first { it.bin == "claude" }
+        File(home, ".local/bin").mkdirs()
+        File(home, ".local/bin/hermes").writeText("#!/bin/sh\nexec ssh -t vps hermes chat -q \"\$*\"\n")
+        File(home, ".local/bin/claude").writeText("#!/bin/sh\n")
+        assertTrue("a command alone is the user's", installedByHand(home, hermes))
+        File(home, ".hermes/hermes-agent").mkdirs()
+        assertTrue("a runtime without the done file is a failed install", !installedByHand(home, hermes))
+        assertTrue("an agent without a done file needs only its command", installedByHand(home, claude))
+        File(home, hermes.done!!).writeText("")
+        assertTrue("a finished runtime is an install", installedByHand(home, hermes))
+    }
+
     /** A prompt from a widget can't pass the agent an option: claude --settings=... would run its hooks. */
     @Test fun aPromptStartingWithADashIsNoOption() {
         val script = """
