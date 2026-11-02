@@ -47,7 +47,7 @@ import java.io.IOException
  * Android has no public way to open it: AAP is a classic L2CAP channel, and the public API only makes RFCOMM and LE
  * sockets. So it's made with BluetoothSocket's own constructor, as Android's hidden createL2capSocket does, which the
  * hidden API checks let the launcher reach only once aap.c has exempted it. From Android 16 QPR3 on, Android's stack
- * lets that channel through; before, it needs root, and `connected` stays false.
+ * lets that channel through, and the constructor takes the adapter first; before, it needs root, and [supported] is false.
  */
 class AirPods(
     private val context: Context,
@@ -63,8 +63,23 @@ class AirPods(
     /** The link while it's up, for airpods(...) to write to. */
     @Volatile private var link: BluetoothSocket? = null
 
-    /** Set once this Android won't make the socket at all, which no retry changes. */
-    @Volatile private var unsupported = false
+    /**
+     * The socket's constructor, as Android 16 QPR3 and later have it, which is also what lets the channel through: null
+     * where this Android can't link to AirPods at all, so nothing asks for Bluetooth there for nothing.
+     */
+    private val constructor by lazy {
+        if (adapter == null || !exempted) return@lazy null
+        val int = Int::class.javaPrimitiveType!!
+        val bool = Boolean::class.javaPrimitiveType!!
+        runCatching {
+            BluetoothSocket::class.java
+                .getDeclaredConstructor(BluetoothAdapter::class.java, BluetoothDevice::class.java, int, bool, bool, int, ParcelUuid::class.java)
+                .apply { isAccessible = true }
+        }.onFailure { Log.w(TAG, "no L2CAP socket for apps here: ${it.message}") }.getOrNull()
+    }
+
+    /** Whether this phone can link to AirPods: Android 16 QPR3 or later, with Bluetooth, and aap.c loaded. */
+    val supported: Boolean get() = constructor != null
 
     /** Something worth looking for AirPods again for: one connecting or leaving, Bluetooth on, the permission, "connect". */
     private val nudges = Channel<Unit>(Channel.CONFLATED)
@@ -76,12 +91,12 @@ class AirPods(
     val granted: Boolean
         get() = Build.VERSION.SDK_INT < 31 || context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
 
-    fun value(): Value = state.value.value(granted, alias)
+    fun value(): Value = state.value.value(supported, granted, alias)
 
     private val shared: Flow<Value> =
         channelFlow {
             launch(Dispatchers.IO) { keep() }
-            combine(state, allowed) { s, a -> s.value(a, alias) }.collect { send(it) }
+            combine(state, allowed) { s, a -> s.value(supported, a, alias) }.collect { send(it) }
         }.distinctUntilChanged()
             // A stale "connected" mustn't come back when a page shows again: the link is set up anew then.
             .shareIn(scope, SharingStarted.WhileSubscribed(LINGER_MS, 0), replay = 1)
@@ -106,19 +121,21 @@ class AirPods(
     }
 
     /**
-     * airpods("anc") and the other listening modes, airpods("next") for the next of the modes this pair has, and
-     * airpods("conversation" / "oneBud" / "earDetection", on) and airpods("adaptiveLevel", 0 to 100) for the settings;
+     * airpods("request") from a tap asks for Bluetooth: the dialog, or the app's settings once Android won't show it
+     * again; on a phone that can't link to AirPods it does nothing. airpods("anc") and the other listening modes,
+     * airpods("next") for the next of the modes this pair has, and airpods("conversation" / "oneBud" / "earDetection", on) and airpods("adaptiveLevel", 0 to 100) for the settings;
      * a setting without a value turns over. What the AirPods don't have, or a pair not connected, does nothing.
      */
     fun control(
         word: String,
         arg: Value?,
     ) {
-        // Without Bluetooth, any of them asks for it: the dialog, or the app's settings once Android won't show it again.
-        if (!granted) {
-            ask?.invoke { if (it) connect() }
+        if (word == "request") {
+            if (supported && !granted) ask?.invoke { if (it) connect() }
             return
         }
+        // Only "request" asks, and only from a tap: the rest do nothing until Bluetooth is allowed.
+        if (!granted) return
         if (word == "connect") return connect()
         val s = state.value
         val current = s.controls[Aap.MODE]?.let { Aap.MODES.getOrNull(it - 1) }
@@ -192,7 +209,7 @@ class AirPods(
                 var backoff = 0
                 while (true) {
                     allowed.value = granted
-                    val device = if (granted && !unsupported) find() else null
+                    val device = if (granted && supported) find() else null
                     if (device != null) {
                         val heard =
                             try {
@@ -296,34 +313,10 @@ class AirPods(
             }
         }
 
-    /**
-     * A classic L2CAP socket to AAP's PSM. BluetoothSocket's constructor takes the adapter first since Android 16 QPR3,
-     * and the device first before it; neither is public, which is why it's looked up.
-     */
+    /** A classic L2CAP socket to AAP's PSM, made with [constructor], as no public API makes one. */
     private fun open(device: BluetoothDevice): BluetoothSocket {
-        val loaded = exempted
-        val uuid = ParcelUuid.fromString(Aap.UUID)
-        val int = Int::class.javaPrimitiveType!!
-        val bool = Boolean::class.javaPrimitiveType!!
-        val shapes =
-            listOf(
-                arrayOf(BluetoothAdapter::class.java, BluetoothDevice::class.java, int, bool, bool, int, ParcelUuid::class.java) to
-                    arrayOf<Any?>(adapter, device, TYPE_L2CAP, true, true, Aap.PSM, uuid),
-                arrayOf(BluetoothDevice::class.java, int, bool, bool, int, ParcelUuid::class.java) to
-                    arrayOf<Any?>(device, TYPE_L2CAP, true, true, Aap.PSM, uuid),
-            )
-        var failure: Throwable? = null
-        for ((types, args) in shapes) {
-            try {
-                val constructor = BluetoothSocket::class.java.getDeclaredConstructor(*types)
-                constructor.isAccessible = true
-                return constructor.newInstance(*args) as BluetoothSocket
-            } catch (e: ReflectiveOperationException) {
-                failure = e.cause ?: e
-            }
-        }
-        unsupported = true
-        throw IOException(if (loaded) "this Android makes no L2CAP sockets for apps" else "aap.c didn't load", failure)
+        val constructor = constructor ?: throw IOException("this Android makes no L2CAP sockets for apps")
+        return constructor.newInstance(adapter, device, TYPE_L2CAP, true, true, Aap.PSM, ParcelUuid.fromString(Aap.UUID)) as BluetoothSocket
     }
 
     private fun send(
@@ -346,7 +339,7 @@ class AirPods(
     private companion object {
         const val TAG = "AirPods"
 
-        /** Whether aap.c loaded, which opens BluetoothSocket's constructor to the launcher as it loads; tried once, before the first socket. */
+        /** Whether aap.c loaded, which opens BluetoothSocket's constructor to the launcher as it loads; tried once, as [supported] is first read. */
         val exempted by lazy { runCatching { System.loadLibrary("aap") }.onFailure { Log.w(TAG, "aap: ${it.message}") }.isSuccess }
 
         val AAP_UUID: ParcelUuid = ParcelUuid.fromString(Aap.UUID)

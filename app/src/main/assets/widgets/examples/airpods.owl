@@ -6,7 +6,8 @@ widget "airpods" {
 
   meta { owl: 18; description: "Your AirPods: each bud's and the case's battery, the listening mode and the settings, more of it the bigger the tile. Tap the mode to switch it, the tile for the rest."; version: "1.0"; license: "MIT"; category: "system" }
 
-  // Read over the AirPods' own link while the tile shows. Until the launcher may use Bluetooth, a tap asks for it.
+  // Read over the AirPods' own link while the tile shows. Until the launcher may use Bluetooth, a tap asks for it; on a
+  // phone that can't link to them, it says so instead.
   source a = android.airpods
 
   // What they said last while connected, kept across restarts: shown faded while they're away. And each battery as it
@@ -34,7 +35,7 @@ widget "airpods" {
   let p = a.connected ? a : last
   let fade = a.connected ? 1 : 0.4
   // Why it's faded, in place of the mode.
-  let away = !a.available ? "tap to allow" : "not connected"
+  let away = !a.supported ? "needs android 17" : (!a.granted ? "tap to allow" : "not connected")
   let leftBat = a.left ?? lastLeft
   let rightBat = a.right ?? lastRight
   let caseBat = a.case ?? lastCase
@@ -62,17 +63,17 @@ widget "airpods" {
   let cellFont = clamp(min(h * 0.2, (w - 24 - 14 * (cells - 1)) / cells / 2.9), 14, 44)
 
   onTap: {
-    if a.available {
+    if a.granted || !a.supported {
       screen()
     } else {
-      airpods("connect")
+      airpods("request")
     }
   }
 
   // The listening mode, a tap going on to the next; while they're away, why.
   component ModeChip(short) {
     if !a.connected {
-      Text { text: short && a.available ? "offline" : away; style: small; color: a.available ? dim : accent; maxLines: 1 }
+      Text { text: short && a.granted ? "offline" : away; style: small; color: a.granted || !a.supported ? dim : accent; maxLines: 1 }
     } else if p.mode != null {
       Text { text: get(modeShort, p.mode, p.mode); style: small; color: p.mode == "off" ? dim : accent; padding: [10, 4]; radius: 3 * corners; background: p.mode == "off" ? surface : alpha(accent, 0.2); onTap: { haptic(); airpods("next") } }
     }
@@ -245,7 +246,7 @@ widget "airpods" {
       gap: 2
       justify: center
       Text { text: "airpods"; style: label }
-      if !oneRow { Text { text: a.available ? "not connected" : "tap to let the launcher reach them"; color: dim; maxLines: 3 } }
+      if !oneRow { Text { text: !a.supported ? "needs Android 17, or 16 QPR3 on a Pixel" : (a.granted ? "not connected" : "tap to let the launcher reach them"); color: dim; maxLines: 3 } }
     }
   } else if oneRow {
     Row {
@@ -313,12 +314,14 @@ widget "airpods" {
           padding: [14, 12]
           background: surface
           radius: 8 * corners
-          Text { text: a.available ? "not connected" : "the launcher may not use Bluetooth yet"; style: title }
-          Text { text: a.available ? "Connect them in Android's Bluetooth settings; they show here once they answer. Below is how they were last." : "Let it, and it talks to the AirPods connected to your phone, and to nothing else."; color: dim }
-          Row {
-            gap: 8
-            Button { text: a.available ? "try again" : "allow"; onTap: airpods("connect") }
-            Button { text: "bluetooth"; color: dim; onTap: settings("bluetooth") }
+          Text { text: !a.supported ? "this phone can't reach them" : (a.granted ? "not connected" : "the launcher may not use Bluetooth yet"); style: title }
+          Text { text: !a.supported ? "AirPods' own link needs Android 17, or 16 QPR3 on a Pixel." : (a.granted ? "Connect them in Android's Bluetooth settings; they show here once they answer. Below is how they were last." : "Let it, and it talks to the AirPods connected to your phone, and to nothing else."); color: dim }
+          if a.supported {
+            Row {
+              gap: 8
+              Button { text: a.granted ? "try again" : "allow"; onTap: { if a.granted { airpods("connect") } else { airpods("request") } } }
+              Button { text: "bluetooth"; color: dim; onTap: settings("bluetooth") }
+            }
           }
         }
       }

@@ -314,6 +314,9 @@ internal class Words(
     val forms: Map<String, Pair<IntRange, String>> = emptyMap(),
 )
 
+/** What the store's review lists for a widget that reads or changes AirPods, from the source or airpods(...). */
+internal const val AIRPODS_COMMAND = "read and change the AirPods connected to the phone over Bluetooth, once you allow it"
+
 /** AirPods' listening modes, as android.airpods' `mode` and `modes` name them. */
 internal val AIRPODS_MODES = setOf("off", "anc", "transparency", "adaptive")
 
@@ -359,10 +362,10 @@ internal val ACTION_WORDS =
         // A listening mode, the next one, or a setting: on and off ones turn over without a value.
         "airpods" to
             Words(
-                AIRPODS_MODES + setOf("next", "connect", "conversation", "oneBud", "earDetection", "adaptiveLevel"),
-                "airpods takes ${AIRPODS_MODES.joinToString()}, next, connect, conversation, oneBud, earDetection or adaptiveLevel",
+                AIRPODS_MODES + setOf("next", "request", "connect", "conversation", "oneBud", "earDetection", "adaptiveLevel"),
+                "airpods takes ${AIRPODS_MODES.joinToString()}, next, request, connect, conversation, oneBud, earDetection or adaptiveLevel",
                 forms =
-                    (AIRPODS_MODES + setOf("next", "connect")).associateWith { 1..1 to "airpods(\"$it\")" } +
+                    (AIRPODS_MODES + setOf("next", "request", "connect")).associateWith { 1..1 to "airpods(\"$it\")" } +
                         setOf("conversation", "oneBud", "earDetection").associateWith { 1..2 to "airpods(\"$it\"), or airpods(\"$it\", on)" } +
                         ("adaptiveLevel" to (2..2 to "airpods(\"adaptiveLevel\", level)")),
             ),

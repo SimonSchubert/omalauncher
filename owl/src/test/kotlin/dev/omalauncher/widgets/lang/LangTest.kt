@@ -1247,6 +1247,24 @@ class LangTest {
         assertEquals(listOf("knows roughly where the phone is; check where it sends that"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
     }
 
+    @Test fun airpodsAskedForOnATap() {
+        val src = "widget {\n meta { owl: 18 }\n source a = android.airpods\n Text { text: a.granted ? a.mode : \"allow\"; onTap: airpods(\"request\") } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.airpods", (p.globals.single() as Global.Source).kind)
+        assertEquals(listOf(AIRPODS_COMMAND), p.commands)
+        val host = TestHost(p)
+        (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("airpods request"), host.actions)
+        // The permission dialog only for a tap: not as the finger goes down, not on a timer or a fetched value.
+        for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
+        assertTrue(compileError(src.replace(" Text {", " every 1m { airpods(\"request\") }\n Text {")).contains("not in a trigger"))
+        // The rest switch the AirPods from anywhere, a trigger too: they never ask.
+        Compiler.compile(src.replace(" Text {", " on a { airpods(\"anc\") }\n Text {").replace("onTap: airpods(\"request\")", "onPress: airpods(\"next\")"))
+        // airpods(...) alone, without the source, is listed too; and the store's reviewer sees it flagged.
+        assertEquals(listOf(AIRPODS_COMMAND), Compiler.compile("widget {\n meta { owl: 18 }\n Text { text: \"anc\"; onTap: airpods(\"anc\") } }").commands)
+        assertEquals(listOf("reads and changes the AirPods connected to the phone; check where it sends what it reads"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
+    }
+
     @Test fun keyNamesAndCombos() {
         assertEquals(KeyNames.Combo(1, emptyList()), KeyNames.combo("esc"))
         assertEquals(KeyNames.Combo(46, listOf(29)), KeyNames.combo("ctrl+c"))

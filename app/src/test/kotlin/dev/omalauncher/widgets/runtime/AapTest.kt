@@ -38,7 +38,7 @@ class AapTest {
         val s = read("04 00 04 00 04 00 03 02 01 64 02 01 04 01 63 01 01 08 01 11 02 01")
         assertEquals(mapOf(Aap.RIGHT to AapBattery(100, false), Aap.LEFT to AapBattery(99, true), Aap.CASE to AapBattery(17, false)), s.batteries)
         assertEquals(Aap.RIGHT, s.primary)
-        val v = s.value(true, null)
+        val v = s.value(true, true, null)
         assertEquals(Num(100.0), v.at("right", "level"))
         assertEquals(TRUE, v.at("left", "charging"))
         assertEquals(Obj(mapOf("level" to Num(17.0), "charging" to FALSE)), v.at("case"))
@@ -50,25 +50,25 @@ class AapTest {
         val s = read("04 00 04 00 04 00 03 04 01 50 02 01 02 01 52 02 01 08 01 00 04 01")
         assertEquals(setOf(Aap.LEFT, Aap.RIGHT), s.batteries.keys)
         assertEquals(Aap.LEFT, s.primary)
-        assertEquals(Null, s.value(true, null).at("case"))
+        assertEquals(Null, s.value(true, true, null).at("case"))
     }
 
     @Test fun earDetectionNamesThePrimaryBudFirst() {
         // Left is primary: the ear report's first byte is the left bud's.
         val s = read("04 00 04 00 04 00 02 04 01 50 02 01 02 01 52 02 01", "04 00 04 00 06 00 00 02")
-        val v = s.value(true, null)
+        val v = s.value(true, true, null)
         assertEquals(TRUE, v.at("left", "inEar"))
         assertEquals(FALSE, v.at("left", "inCase"))
         assertEquals(FALSE, v.at("right", "inEar"))
         assertEquals(TRUE, v.at("right", "inCase"))
         // Right becomes primary when it's listed first: the same report now reads the other way round.
-        val w = s.read(Aap.hex("0400040004000202015202010401500201")).value(true, null)
+        val w = s.read(Aap.hex("0400040004000202015202010401500201")).value(true, true, null)
         assertEquals(TRUE, w.at("right", "inEar"))
         assertEquals(TRUE, w.at("left", "inCase"))
     }
 
     @Test fun modelSettingsAndModes() {
-        val v = read(*airpods4).value(true, "Pavel's AirPods")
+        val v = read(*airpods4).value(true, true, "Pavel's AirPods")
         assertEquals(Str("Pavel's AirPods"), v.at("name"))
         assertEquals(Str("AirPods 4"), v.at("model"))
         assertEquals(Str("A3055"), v.at("modelNumber"))
@@ -79,18 +79,19 @@ class AapTest {
         assertEquals(FALSE, v.at("oneBud"))
         assertEquals(TRUE, v.at("earDetection"))
         assertEquals(TRUE, v.at("connected"))
-        assertEquals(TRUE, v.at("available"))
+        assertEquals(TRUE, v.at("granted"))
+        assertEquals(TRUE, v.at("supported"))
         // Without a name from Android, the one the AirPods gave.
-        assertEquals(Str("AirPods"), read(*airpods4).value(true, null).at("name"))
+        assertEquals(Str("AirPods"), read(*airpods4).value(true, true, null).at("name"))
     }
 
     @Test fun whatAModelLacksIsNull() {
         // AirPods Pro 3 have no off; AirPods 3 no listening modes at all, and none of those settings even if reported.
         val pro3 = read("040004001d00" + "AirPods Pro".hexOf() + "00" + "A3064".hexOf() + "00" + "Apple Inc.".hexOf() + "00", "04 00 04 00 09 00 0D 03 00 00 00")
         assertEquals(listOf("anc", "transparency", "adaptive"), pro3.modes)
-        assertEquals(Str("transparency"), pro3.value(true, null).at("mode"))
+        assertEquals(Str("transparency"), pro3.value(true, true, null).at("mode"))
         val gen3 = read("040004001d00" + "AirPods".hexOf() + "00" + "A2565".hexOf() + "00" + "Apple Inc.".hexOf() + "00", "04 00 04 00 09 00 28 01 00 00 00")
-        val v = gen3.value(true, null)
+        val v = gen3.value(true, true, null)
         assertEquals(Lst(emptyList()), v.at("modes"))
         assertEquals(Null, v.at("mode"))
         assertEquals(Null, v.at("conversation"))
@@ -101,7 +102,7 @@ class AapTest {
         val s = read("04 00 04 00 09 00 0D 01 00 00 00", "04 00 04 00 09 00 2E 64 00 00 00", "04 00 04 00 09 00 28 02 00 00 00")
         assertNull(s.model)
         assertEquals(Aap.MODES, s.modes)
-        val v = s.value(true, null)
+        val v = s.value(true, true, null)
         assertEquals(Str("off"), v.at("mode"))
         assertEquals(FALSE, v.at("conversation"))
         assertEquals(Null, v.at("oneBud"))
@@ -112,15 +113,16 @@ class AapTest {
 
     @Test fun speakingOnlyWhileConversationAwarenessIsOn() {
         val on = read(*airpods4, "04 00 04 00 4B 00 02 00 01 01")
-        assertEquals(TRUE, on.value(true, null).at("speaking"))
-        assertEquals(FALSE, on.read(Aap.hex("040004004b0002000108")).value(true, null).at("speaking"))
+        assertEquals(TRUE, on.value(true, true, null).at("speaking"))
+        assertEquals(FALSE, on.read(Aap.hex("040004004b0002000108")).value(true, true, null).at("speaking"))
         val off = read(*airpods4, "04 00 04 00 09 00 28 02 00 00 00", "04 00 04 00 4B 00 02 00 01 02")
-        assertEquals(FALSE, off.value(true, null).at("speaking"))
+        assertEquals(FALSE, off.value(true, true, null).at("speaking"))
     }
 
     @Test fun beforeAnythingIsHeard() {
-        val v = AapState().value(false, null)
-        assertEquals(FALSE, v.at("available"))
+        val v = AapState().value(false, false, null)
+        assertEquals(FALSE, v.at("granted"))
+        assertEquals(FALSE, v.at("supported"))
         assertEquals(FALSE, v.at("connected"))
         for (k in listOf("name", "model", "left", "right", "case", "headset", "mode", "adaptiveLevel", "conversation", "oneBud", "earDetection")) assertEquals(k, Null, v.at(k))
         assertEquals(Lst(emptyList()), v.at("modes"))
@@ -138,7 +140,7 @@ class AapTest {
                 "0400040009003e02000000",
             )
         val oneOut = read(*airpods4, *settings, "0400040004000302015d020104010004010801000401", "0400040006000003")
-        var v = oneOut.value(true, null)
+        var v = oneOut.value(true, true, null)
         assertEquals(Obj(mapOf("level" to Num(93.0), "charging" to FALSE, "inEar" to TRUE, "inCase" to FALSE)), v.at("right"))
         assertEquals(Null, v.at("left"))
         assertEquals(Null, v.at("case"))
@@ -147,7 +149,7 @@ class AapTest {
         assertEquals(Num(100.0), v.at("adaptiveLevel"))
         assertEquals(FALSE, v.at("oneBud"))
         val inCase = oneOut.read(Aap.hex("0400040004000302015a0101040164010108014e0201")).read(Aap.hex("0400040006000202"))
-        v = inCase.value(true, null)
+        v = inCase.value(true, true, null)
         assertEquals(Obj(mapOf("level" to Num(90.0), "charging" to TRUE, "inEar" to FALSE, "inCase" to TRUE)), v.at("right"))
         assertEquals(Obj(mapOf("level" to Num(100.0), "charging" to TRUE, "inEar" to FALSE, "inCase" to TRUE)), v.at("left"))
         assertEquals(Obj(mapOf("level" to Num(78.0), "charging" to FALSE)), v.at("case"))
@@ -156,9 +158,9 @@ class AapTest {
     @Test fun aSettingSentReadsAsTheAnswerItGetsNone() {
         // They answer a new listening mode, not the other settings: AirPods.kt reads what it sent as their answer.
         val s = read(*airpods4)
-        assertEquals(FALSE, s.read(Aap.control(Aap.CONVERSATION, 2)).value(true, null).at("conversation"))
-        assertEquals(TRUE, s.read(Aap.control(Aap.ONE_BUD, 1)).value(true, null).at("oneBud"))
-        assertEquals(Num(75.0), s.read(Aap.control(Aap.ADAPTIVE_LEVEL, 75)).value(true, null).at("adaptiveLevel"))
+        assertEquals(FALSE, s.read(Aap.control(Aap.CONVERSATION, 2)).value(true, true, null).at("conversation"))
+        assertEquals(TRUE, s.read(Aap.control(Aap.ONE_BUD, 1)).value(true, true, null).at("oneBud"))
+        assertEquals(Num(75.0), s.read(Aap.control(Aap.ADAPTIVE_LEVEL, 75)).value(true, true, null).at("adaptiveLevel"))
     }
 
     @Test fun packetsOutAndOddOnesIn() {

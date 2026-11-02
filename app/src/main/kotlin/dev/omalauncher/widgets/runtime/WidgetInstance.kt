@@ -593,6 +593,7 @@ class WidgetInstance(
         if (name == "location" && inTrigger) return report("location(\"request\") works in onTap, not in a trigger")
         val key = args.firstOrNull().textOrNull()
         // The microphone, like the keys, only from a touch; stopping it from anywhere.
+        if (name == "airpods" && key == "request" && inTrigger) return report("airpods(\"request\") works in onTap, not in a trigger")
         if (name == "speech" && inTrigger && key !in SPEECH_ANYWHERE) return report("speech(\"$key\") works in onTap, not in a trigger")
         if (name == "speech") return key?.let { services.speech(this, it) } ?: Unit
         // Names built from values, which the compiler couldn't check: say so rather than press nothing.

@@ -159,16 +159,21 @@ internal data class AapState(
     /** Whether it has a setting: by its model, else by whether it reported one. */
     fun has(control: Int): Boolean = model?.controls?.contains(control) ?: (control in controls)
 
-    /** The value `source a = android.airpods` gives; [available] is whether the launcher may use Bluetooth. */
+    /**
+     * The value `source a = android.airpods` gives: [supported] whether this phone can link to AirPods at all,
+     * [granted] whether the launcher may use Bluetooth, named as android.location's is.
+     */
     fun value(
-        available: Boolean,
+        supported: Boolean,
+        granted: Boolean,
         name: String?,
     ): Value {
         fun on(control: Int): Value = if (has(control)) controls[control]?.let { bool(it == 1) } ?: Null else Null
         val mode = controls[Aap.MODE]?.let { Aap.MODES.getOrNull(it - 1) }?.takeIf { it in modes }
         return Obj(
             mapOf(
-                "available" to bool(available),
+                "supported" to bool(supported),
+                "granted" to bool(granted),
                 "connected" to bool(connected),
                 "name" to ((name ?: this.name)?.let(::Str) ?: Null),
                 "model" to (model?.name?.let(::Str) ?: Null),
