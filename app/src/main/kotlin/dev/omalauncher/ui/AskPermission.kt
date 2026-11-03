@@ -11,7 +11,8 @@ import androidx.core.content.edit
 /**
  * Asks for one runtime permission for a widget: the microphone for speech("start") (see
  * [dev.omalauncher.widgets.runtime.Dictation]), the location for location("request") (see
- * [dev.omalauncher.widgets.runtime.PhoneLocation]), Bluetooth for airpods(...) (see
+ * [dev.omalauncher.widgets.runtime.PhoneLocation]), calendar for calendar("request") (see
+ * [dev.omalauncher.widgets.runtime.PhoneCalendar]), Bluetooth for airpods(...) (see
  * [dev.omalauncher.widgets.runtime.AirPods]). Each activity that shows widgets has one of each, made with it, as a
  * launcher must be registered before the activity starts. With [orSettings], a tap once Android won't show its dialog
  * any more opens the app's own settings, where the switch then is, so the tap still does something.

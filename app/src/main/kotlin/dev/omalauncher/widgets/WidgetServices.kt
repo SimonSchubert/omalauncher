@@ -254,6 +254,7 @@ class WidgetServices(
             "modes" -> modes.updates()
             "sim" -> sim.updates()
             "location" -> runtime.location.updates()
+            "calendar" -> runtime.calendar.updates()
             "airpods" -> airpods.updates()
             // Both read Compose state: the app list and its usage, the installed agents and the one picked.
             "apps" -> snapshotFlow { apps() }
@@ -672,6 +673,7 @@ class WidgetServices(
             "pickImages" -> return runtime.keyboard.pickImages()
             // Nothing to refresh: the source follows the grant itself.
             "location" -> return runtime.location.request()
+            "calendar" -> return runtime.calendar.request()
         }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.

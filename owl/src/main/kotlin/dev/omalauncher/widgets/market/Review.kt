@@ -261,6 +261,7 @@ class Review(
                 Regex("""^(image|sound|font) GET https://[^/\s]*…$""") to "loads a file from a server put together while the widget runs, which can send its data anywhere",
                 Regex("""^($IF_LINUX)?read file \(a path built from widget values\)$""") to "reads a file whose path is put together while the widget runs",
                 Regex("""^read the phone's approximate location""") to "knows roughly where the phone is; check where it sends that",
+                Regex("""^read events in the phone's calendars""") to "sees calendar event titles, times and locations; check nothing sends them elsewhere",
                 Regex("""^read and change the AirPods""") to "reads and changes the AirPods connected to the phone; check where it sends what it reads",
                 Regex("""^read Android notifications""") to "sees every notification on the phone; check nothing sends them anywhere",
                 Regex("""^reply to notifications as you""") to "sends messages as you through other apps; check when it replies and what it says",
