@@ -47,6 +47,7 @@ import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.TRUE
 import dev.omalauncher.widgets.lang.FALSE
 import dev.omalauncher.widgets.lang.Program
+import dev.omalauncher.widgets.lang.ASKS
 import dev.omalauncher.widgets.lang.SPEECH_ANYWHERE
 import dev.omalauncher.widgets.lang.Sprite
 import dev.omalauncher.widgets.lang.Str
@@ -582,19 +583,17 @@ class WidgetInstance(
         }
         // An agent or an app opening on its own, from a timer or a fetched value, over whatever the user is doing: like
         // sound(...), a trigger does it only while the app or screen is open.
-        if ((name == "ask" || name == "open") && inTrigger && !foreground()) return report("$name(...) in a trigger works only while the app or screen is open")
+        val key = args.firstOrNull().textOrNull()
+        if ((name == "ask" || name == "open" || (name == "calendar" && key == "open")) && inTrigger && !foreground()) return report("$name(...) in a trigger works only while the app or screen is open")
         // Keys go to whatever window has the keyboard: only from a touch, never on a timer or a fetched value. Or from
         // what the user just said, to this widget's dictation a tap started: on said.final { typeText(value) }.
         if ((name == "pressKey" || name == "typeText" || name == "latch") && inTrigger && !byDictation) {
             return report("$name(...) works in handlers like onPress, or in on said.final for what android.speech heard, not in another trigger")
         }
         if (name == "pickImages" && inTrigger) return report("pickImages() works in onTap, not in a trigger")
-        // The permission dialog, like the microphone's, only for a touch.
-        if (name == "location" && inTrigger) return report("location(\"request\") works in onTap, not in a trigger")
-        if (name == "calendar" && inTrigger) return report("calendar(\"request\") works in onTap, not in a trigger")
-        val key = args.firstOrNull().textOrNull()
+        // A permission dialog, like the microphone's, only for a touch.
+        if (name in ASKS && key == "request" && inTrigger) return report("$name(\"request\") works in onTap, not in a trigger")
         // The microphone, like the keys, only from a touch; stopping it from anywhere.
-        if (name == "airpods" && key == "request" && inTrigger) return report("airpods(\"request\") works in onTap, not in a trigger")
         if (name == "speech" && inTrigger && key !in SPEECH_ANYWHERE) return report("speech(\"$key\") works in onTap, not in a trigger")
         if (name == "speech") return key?.let { services.speech(this, it) } ?: Unit
         // Names built from values, which the compiler couldn't check: say so rather than press nothing.

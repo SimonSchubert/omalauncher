@@ -1241,6 +1241,7 @@ class LangTest {
         // The permission dialog only for a tap: not as the finger goes down, not on a timer or a fetched value.
         for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
         assertTrue(compileError(src.replace(" Text {", " every 1m { location(\"request\") }\n Text {")).contains("not in a trigger"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n Text { text: \"where?\"; onTap: location(\"request\") } }").contains("declare it"))
         // A widget's own name for something else still compiles.
         Compiler.compile("widget {\n meta { owl: 18 }\n let location = \"home\"\n Text { text: location } }")
         // The store's reviewer sees it flagged.
@@ -1256,7 +1257,15 @@ class LangTest {
         (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
         assertEquals(listOf("calendar request"), host.actions)
         assertTrue(compileError(src.replace("owl: 18", "owl: 17")).contains("needs owl 18"))
-        assertTrue(compileError(src.replace("\"request\"", "\"open\"")).contains("calendar takes request"))
+        assertTrue(compileError(src.replace("\"request\"", "\"close\"")).contains("calendar takes request or open"))
+        // Opening needs no permission, and works with an event or without, on today.
+        val open = Compiler.compile(src.replace("calendar(\"request\")", "calendar(\"open\", agenda.events[0])"))
+        val openHost = TestHost(open)
+        (open.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(openHost), listOf(Num(0.0), Num(0.0)))
+        assertEquals(1, openHost.actions.size)
+        assertTrue(openHost.actions.single().startsWith("calendar open"))
+        Compiler.compile(src.replace("calendar(\"request\")", "calendar(\"open\")"))
+        Compiler.compile(src.replace(" source agenda = android.calendar\n", "").replace("agenda.granted", "true").replace("\"request\"", "\"open\""))
         for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
         assertTrue(compileError(src.replace(" Text {", " every 1m { calendar(\"request\") }\n Text {")).contains("not in a trigger"))
         assertTrue(compileError(src.replace(" source agenda = android.calendar\n", "").replace("agenda.granted", "true")).contains("declare it"))
@@ -1274,6 +1283,7 @@ class LangTest {
         // The permission dialog only for a tap: not as the finger goes down, not on a timer or a fetched value.
         for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
         assertTrue(compileError(src.replace(" Text {", " every 1m { airpods(\"request\") }\n Text {")).contains("not in a trigger"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n Text { text: \"allow\"; onTap: airpods(\"request\") } }").contains("declare it"))
         // The rest switch the AirPods from anywhere, a trigger too: they never ask.
         Compiler.compile(src.replace(" Text {", " on a { airpods(\"anc\") }\n Text {").replace("onTap: airpods(\"request\")", "onPress: airpods(\"next\")"))
         // airpods(...) alone, without the source, is listed too; and the store's reviewer sees it flagged.

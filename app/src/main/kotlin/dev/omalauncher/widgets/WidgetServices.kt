@@ -673,7 +673,13 @@ class WidgetServices(
             "pickImages" -> return runtime.keyboard.pickImages()
             // Nothing to refresh: the source follows the grant itself.
             "location" -> return runtime.location.request()
-            "calendar" -> return runtime.calendar.request()
+            "calendar" ->
+                return when {
+                    arg == "request" -> runtime.calendar.request()
+                    // An event still loading (…) would open today instead.
+                    args.getOrNull(1) == Null -> Unit
+                    else -> runtime.calendar.open(args.getOrNull(1))
+                }
         }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.

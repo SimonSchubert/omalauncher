@@ -1,6 +1,5 @@
 package dev.omalauncher
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
@@ -46,7 +45,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.ui.ExtraKeys
 import dev.omalauncher.ui.ImagePicker
 import dev.omalauncher.ui.KeyboardSink
-import dev.omalauncher.ui.AskPermission
+import dev.omalauncher.ui.WidgetAsks
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.linuxWindowInput
@@ -61,12 +60,7 @@ import kotlinx.coroutines.flow.first
 class LinuxWindowActivity : InstantActivity() {
     private var window: XdgToplevel? = null
     private val imagePicker = ImagePicker(this) { runtime }
-    private val mic = AskPermission(this, Manifest.permission.RECORD_AUDIO)
-    private val place = AskPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION, orSettings = true)
-    private val calendar = AskPermission(this, Manifest.permission.READ_CALENDAR, orSettings = true)
-    // Asked for only from Android 12 on: before it, an install-time permission covers AirPods, which then never ask.
-    @SuppressLint("InlinedApi")
-    private val bluetooth = AskPermission(this, Manifest.permission.BLUETOOTH_CONNECT, orSettings = true)
+    private val asks = WidgetAsks(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,13 +94,7 @@ class LinuxWindowActivity : InstantActivity() {
         super.onResume()
         window?.let(runtime.wm::focus)
         runtime.keyboard.imagePicker = imagePicker
-        runtime.dictation.askMic = mic::ask
-        runtime.location.ask = place::ask
-        runtime.location.recheck()
-        runtime.calendar.ask = calendar::ask
-        runtime.calendar.recheck()
-        runtime.widgets.airpods.ask = bluetooth::ask
-        runtime.widgets.airpods.recheck()
+        asks.resumed(runtime)
     }
 
     override fun onStop() {
@@ -138,10 +126,7 @@ class LinuxWindowActivity : InstantActivity() {
         super.onPause()
         runtime.keyboard.releaseHeld()
         if (runtime.keyboard.imagePicker === imagePicker) runtime.keyboard.imagePicker = null
-        runtime.dictation.askMic = null
-        runtime.location.ask = null
-        runtime.calendar.ask = null
-        runtime.widgets.airpods.ask = null
+        asks.paused(runtime)
     }
 }
 

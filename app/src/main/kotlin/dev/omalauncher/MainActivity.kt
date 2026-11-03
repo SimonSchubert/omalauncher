@@ -1,6 +1,5 @@
 package dev.omalauncher
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.role.RoleManager
@@ -24,7 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.ui.BrowserPages
 import dev.omalauncher.ui.ImagePicker
-import dev.omalauncher.ui.AskPermission
+import dev.omalauncher.ui.WidgetAsks
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.theme.Style
 import dev.omalauncher.ui.KeyIndicated
@@ -47,12 +46,7 @@ class MainActivity : ComponentActivity() {
     private val runtime get() = (application as App).runtime
     private val state = LauncherState()
     private val imagePicker = ImagePicker(this) { runtime }
-    private val mic = AskPermission(this, Manifest.permission.RECORD_AUDIO)
-    private val place = AskPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION, orSettings = true)
-    private val calendar = AskPermission(this, Manifest.permission.READ_CALENDAR, orSettings = true)
-    // Asked for only from Android 12 on: before it, an install-time permission covers AirPods, which then never ask.
-    @SuppressLint("InlinedApi")
-    private val bluetooth = AskPermission(this, Manifest.permission.BLUETOOTH_CONNECT, orSettings = true)
+    private val asks = WidgetAsks(this)
 
     /** In the language picked in settings. */
     override fun attachBaseContext(newBase: Context) {
@@ -136,13 +130,7 @@ class MainActivity : ComponentActivity() {
         away = false
         runtime.wm.focus(null)
         runtime.keyboard.imagePicker = imagePicker
-        runtime.dictation.askMic = mic::ask
-        runtime.location.ask = place::ask
-        runtime.location.recheck()
-        runtime.calendar.ask = calendar::ask
-        runtime.calendar.recheck()
-        runtime.widgets.airpods.ask = bluetooth::ask
-        runtime.widgets.airpods.recheck()
+        asks.resumed(runtime)
         removeStaleWindowTasks()
         // Made the default home app (or no longer it) while away: only then does Android show us pinned shortcuts.
         runtime.androidApps.checkShortcutAccess()
@@ -224,10 +212,7 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         runtime.keyboard.releaseHeld()
         if (runtime.keyboard.imagePicker === imagePicker) runtime.keyboard.imagePicker = null
-        runtime.dictation.askMic = null
-        runtime.location.ask = null
-        runtime.calendar.ask = null
-        runtime.widgets.airpods.ask = null
+        asks.paused(runtime)
     }
 
     override fun onStop() {

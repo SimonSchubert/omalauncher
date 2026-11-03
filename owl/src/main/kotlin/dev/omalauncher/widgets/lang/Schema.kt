@@ -302,6 +302,12 @@ internal val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
  */
 val SPEECH_ANYWHERE = setOf("stop", "cancel")
 
+/**
+ * The android sources a widget asks Android's permission for, each with x("request") from a tap: never a press, before
+ * the finger lifts, or a trigger, so a widget can't ask on its own. The compiler and WidgetInstance both check.
+ */
+val ASKS = setOf("location", "calendar", "airpods")
+
 /** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
 internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar")
 
@@ -359,7 +365,12 @@ internal val ACTION_WORDS =
         "speech" to setOf("start", "stop", "toggle", "cancel").let { Words(it, "speech takes ${it.joinToString()}; what's heard is in source x = android.speech") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
         "location" to setOf("request").let { Words(it, "location takes request; where the phone is is in source x = android.location") },
-        "calendar" to setOf("request").let { Words(it, "calendar takes request; events are in source x = android.calendar") },
+        "calendar" to
+            Words(
+                setOf("request", "open"),
+                "calendar takes request or open; the events are in source x = android.calendar",
+                forms = mapOf("request" to (1..1 to "calendar(\"request\")"), "open" to (1..2 to "calendar(\"open\"), or calendar(\"open\", event)")),
+            ),
         // owl 18: where a Browser goes, or how it loads where it is.
         "web" to setOf("back", "forward", "reload", "stop").let { Words(it, "web takes ${it.joinToString()}") },
         // A listening mode, the next one, or a setting: on and off ones turn over without a value.

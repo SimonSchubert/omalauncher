@@ -112,7 +112,7 @@ class Runtime(
     /** Widgets' location("request") and android.location. */
     val location = PhoneLocation(context)
 
-    /** Widgets' calendar("request") and android.calendar. */
+    /** Widgets' android.calendar, calendar("request") and calendar("open"). */
     val calendar = PhoneCalendar(context)
 
     /** The voice screen's replies, in the phone's voice. */
