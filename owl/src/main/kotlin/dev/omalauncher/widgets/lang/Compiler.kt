@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 19
+        const val LEVEL = 18
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -1026,13 +1026,15 @@ class Compiler private constructor(
     }
 
     /** The names of the sources that read android.speech: speech(...) needs one, and `on said.final` may type. */
-    private val speechSources by lazy {
+    private val speechSources by lazy { androidSources("speech") }
+
+    /** The names of the sources that read android.[name]. */
+    private fun androidSources(name: String) =
         ast.body.decls
             .filterIsInstance<Decl.Source>()
-            .filter { (it.expr as? Expr.Member)?.let { m -> m.name == "speech" && (m.e as? Expr.Name)?.name == "android" } == true }
+            .filter { (it.expr as? Expr.Member)?.let { m -> m.name == name && (m.e as? Expr.Name)?.name == "android" } == true }
             .map { it.name }
             .toSet()
-    }
 
     private fun component(d: Decl.Component): Component {
         val body = d.body
@@ -1455,6 +1457,8 @@ class Compiler private constructor(
                     if (TriggerKind.entries.any { it.word == handlerName }) fail("location(\"request\") works in onTap, not in a trigger: Android asks only when you tap", call.pos)
                 }
                 if (call.name == "calendar") {
+                    // Asking for what nothing reads: the events are only in the source.
+                    if (androidSources("calendar").isEmpty()) fail("calendar(\"request\") asks for what source c = android.calendar reads; declare it, then c.events", call.pos)
                     if (handlerName == "onPress" || handlerName == "onRelease") fail("calendar(\"request\") opens Android's permission dialog before the finger lifts: put it in onTap", call.pos)
                     if (TriggerKind.entries.any { it.word == handlerName }) fail("calendar(\"request\") works in onTap, not in a trigger: Android asks only when you tap", call.pos)
                 }

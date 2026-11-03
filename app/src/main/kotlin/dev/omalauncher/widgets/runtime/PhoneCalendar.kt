@@ -128,19 +128,26 @@ class PhoneCalendar(
                 CalendarContract.Instances.CALENDAR_DISPLAY_NAME,
             )
         val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
-        val result = ArrayList<Value>()
+        val local = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val today = local.format(Date(now))
+        // An all-day event is stored from UTC midnight to UTC midnight, not the phone's: it's over once its last date
+        // is past here, not at its end time, which is 19:00 the same day in New York and 02:00 the next in Berlin.
+        // It also sorts at the start of its day here, where its UTC start would put it in the evening before, or mid-morning.
+        val rows = ArrayList<Pair<Long, Value>>()
         context.contentResolver.query(
             uri, projection,
-            "${CalendarContract.Instances.VISIBLE} = 1 AND ${CalendarContract.Instances.DELETED} = 0 AND ${CalendarContract.Instances.END} > ?",
-            arrayOf(now.toString()),
+            "${CalendarContract.Instances.VISIBLE} = 1 AND ${CalendarContract.Events.DELETED} = 0",
+            null,
             "${CalendarContract.Instances.BEGIN} ASC",
         )?.use { cursor ->
-            while (cursor.moveToNext() && result.size < 100) {
+            while (cursor.moveToNext() && rows.size < 100) {
                 val eventId = cursor.getLong(0)
                 val begin = cursor.getLong(1)
                 val end = cursor.getLong(2)
                 val allDay = cursor.getInt(5) != 0
-                result += Obj(
+                if (if (allDay) date.format(Date(maxOf(begin, end - 1))) < today else end <= now) continue
+                val sortAt = if (allDay) local.parse(date.format(Date(begin)))!!.time else begin
+                rows += sortAt to Obj(
                     mapOf(
                         "id" to Str("$eventId-$begin"),
                         "eventId" to Num(eventId.toDouble()),
@@ -155,7 +162,7 @@ class PhoneCalendar(
                 )
             }
         }
-        return result
+        return rows.sortedBy { it.first }.map { it.second }
     }
 
     private fun value(granted: Boolean, events: List<Value> = emptyList()): Value =

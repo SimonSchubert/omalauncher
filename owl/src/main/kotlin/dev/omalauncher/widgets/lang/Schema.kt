@@ -176,8 +176,8 @@ internal val SINCE =
         listOf("android.location", "location").associateWith { 18 } +
         // owl 18: AirPods, read and set over their own link, with the Bluetooth permission.
         listOf("android.airpods", "airpods").associateWith { 18 } +
-        // owl 19: events in the phone's calendars, only after a tap asks for read access.
-        listOf("android.calendar", "calendar").associateWith { 19 }
+        // owl 18: events in the phone's calendars, only after a tap asks for read access.
+        listOf("android.calendar", "calendar").associateWith { 18 }
 
 /** `strings { ... }`, named like this in [SINCE]. */
 internal const val STRINGS_DECL = "strings { }"
