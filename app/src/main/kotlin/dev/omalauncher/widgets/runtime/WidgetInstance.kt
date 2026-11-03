@@ -591,6 +591,7 @@ class WidgetInstance(
         if (name == "pickImages" && inTrigger) return report("pickImages() works in onTap, not in a trigger")
         // The permission dialog, like the microphone's, only for a touch.
         if (name == "location" && inTrigger) return report("location(\"request\") works in onTap, not in a trigger")
+        if (name == "calendar" && inTrigger) return report("calendar(\"request\") works in onTap, not in a trigger")
         val key = args.firstOrNull().textOrNull()
         // The microphone, like the keys, only from a touch; stopping it from anywhere.
         if (name == "airpods" && key == "request" && inTrigger) return report("airpods(\"request\") works in onTap, not in a trigger")

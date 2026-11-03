@@ -175,7 +175,9 @@ internal val SINCE =
         // owl 18: where the phone roughly is, once a tap has asked for it.
         listOf("android.location", "location").associateWith { 18 } +
         // owl 18: AirPods, read and set over their own link, with the Bluetooth permission.
-        listOf("android.airpods", "airpods").associateWith { 18 }
+        listOf("android.airpods", "airpods").associateWith { 18 } +
+        // owl 19: events in the phone's calendars, only after a tap asks for read access.
+        listOf("android.calendar", "calendar").associateWith { 19 }
 
 /** `strings { ... }`, named like this in [SINCE]. */
 internal const val STRINGS_DECL = "strings { }"
@@ -301,7 +303,7 @@ internal val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 val SPEECH_ANYWHERE = setOf("stop", "cancel")
 
 /** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods")
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar")
 
 /**
  * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the
@@ -357,6 +359,7 @@ internal val ACTION_WORDS =
         "speech" to setOf("start", "stop", "toggle", "cancel").let { Words(it, "speech takes ${it.joinToString()}; what's heard is in source x = android.speech") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
         "location" to setOf("request").let { Words(it, "location takes request; where the phone is is in source x = android.location") },
+        "calendar" to setOf("request").let { Words(it, "calendar takes request; events are in source x = android.calendar") },
         // owl 18: where a Browser goes, or how it loads where it is.
         "web" to setOf("back", "forward", "reload", "stop").let { Words(it, "web takes ${it.joinToString()}") },
         // A listening mode, the next one, or a setting: on and off ones turn over without a value.

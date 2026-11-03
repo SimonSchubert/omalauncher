@@ -1247,6 +1247,21 @@ class LangTest {
         assertEquals(listOf("knows roughly where the phone is; check where it sends that"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
     }
 
+    @Test fun androidCalendarAskedForOnATap() {
+        val src = "widget {\n meta { owl: 19 }\n source agenda = android.calendar\n Text { text: agenda.granted ? \"events\" : \"allow\"; onTap: calendar(\"request\") } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.calendar", (p.globals.single() as Global.Source).kind)
+        assertEquals(listOf("read events in the phone's calendars, once you allow it"), p.commands)
+        val host = TestHost(p)
+        (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("calendar request"), host.actions)
+        assertTrue(compileError(src.replace("owl: 19", "owl: 18")).contains("needs owl 19"))
+        assertTrue(compileError(src.replace("\"request\"", "\"open\"")).contains("calendar takes request"))
+        for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
+        assertTrue(compileError(src.replace(" Text {", " every 1m { calendar(\"request\") }\n Text {")).contains("not in a trigger"))
+        assertEquals(listOf("sees calendar event titles, times and locations; check nothing sends them elsewhere"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
+    }
+
     @Test fun airpodsAskedForOnATap() {
         val src = "widget {\n meta { owl: 18 }\n source a = android.airpods\n Text { text: a.granted ? a.mode : \"allow\"; onTap: airpods(\"request\") } }"
         val p = Compiler.compile(src)
