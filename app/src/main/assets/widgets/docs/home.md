@@ -40,6 +40,28 @@ tiles = [
 - What couldn't be read is in `errors.txt` next to it, and on the phone's home.
   A file that doesn't parse changes nothing, and isn't saved over until it's fixed.
 
+On a foldable, the cover screen has pages of its own, under `[cover]`: the
+same tiles, placed for a screen a third as tall. The pages at the top say
+what's on home; `[cover]` only says where it goes there. A tile left out of
+`[cover]` keeps its place on the cover screen, and without the section the
+cover screen starts from the pages at the top, each tile at its own size and
+what doesn't fit on to the next page. The launcher writes the section the
+first time it's shown on the cover screen; deleting it starts over.
+
+```toml
+[cover]
+columns = 6
+
+[[cover.page]]
+tiles = [
+  { widget = "10-today.owl", x = 0, y = 0, w = 3, h = 3 },
+  { widget = "20-fetch.owl", x = 3, y = 0, w = 3, h = 3 },
+]
+
+[[cover.page]]
+tiles = [ { widget = "45-terminal.owl", x = 0, y = 0, w = 6, h = 3 } ]
+```
+
 ## From scripts
 
 Anything in this system (a script, a cron job, a pacman hook, an agent) can reach a running widget:
