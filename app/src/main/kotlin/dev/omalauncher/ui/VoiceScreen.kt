@@ -765,6 +765,8 @@ private fun Orb(
         val fill = max(fill, 0.45f * press)
         val c = Offset(this.size.width / 2, this.size.height / 2)
         val r = min(this.size.width, this.size.height) / 2 - 10.dp.toPx()
+        // Squeezed smaller than its margin (a short window, the keyboard up) there's nothing to draw, and a radial gradient of radius ≤ 0 throws.
+        if (r <= 0f) return@Canvas
         val swell = if (speaking || waiting) breath else 0f
         val core = r * 0.72f * (1f + 0.035f * swell)
         // A soft light around it, brighter as it speaks or listens louder.
