@@ -821,6 +821,38 @@ class LangTest {
         assertEquals("[1, 2, 3]", text("matchAll(s, \"\\\\d\")", "state s = \"1a2b3\""))
     }
 
+    /** Many matches in one update share one allowance: a map of them, each well under half a second, held home past Android's five seconds. */
+    @Test fun regexesShareOneUpdatesTime() {
+        val p =
+            Compiler.compile(
+                "widget \"t\" {\nstate n = 10\nstate k = 1\n" +
+                    "Text { text: map(range(k), i => match(pad(\"\", n, \"a\"), \"(.*a){4}b\")) }\n}",
+            )
+        val host = TestHost(p)
+        val ev = (p.root.single() as WNode.Element).props["text"]!!
+
+        fun timed(): Long {
+            val started = System.nanoTime()
+            host.budget.eval(ev, Env.root(host))
+            return (System.nanoTime() - started) / 1_000_000
+        }
+        // A text long enough that one match takes a while, on this machine, but gives up on its own.
+        while (timed() < 60) host.slots[0] = Num((host.slots[0] as Num).v + 4)
+        host.slots[1] = Num(40.0)
+        val started = System.nanoTime()
+        try {
+            host.budget.eval(ev, Env.root(host))
+            fail("expected the matches to give up together")
+        } catch (e: WidgetError) {
+            assertTrue(e.message, e.message!!.contains("in all in one update"))
+        }
+        // Over 40 times 60 ms before.
+        assertTrue((System.nanoTime() - started) / 1_000_000 < 1800)
+        // The pattern isn't refused, and the next update has its own allowance.
+        host.slots[1] = Num(1.0)
+        assertEquals("[null]", host.budget.eval(ev, Env.root(host)).toString())
+    }
+
     /** A font in spans is listed for review like a `font:`, in a Text and in a Canvas text. */
     @Test fun fontsInSpansAreListed() {
         val p =
