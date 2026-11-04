@@ -13,6 +13,16 @@ Dates are when the build was uploaded to Play.
   and the rest on and off; `examples/airpods.owl` shows them. `airpods("request")`
   from a tap asks for the Bluetooth permission, and only on Android 17 (16 QPR3 on a
   Pixel), which it needs; elsewhere `supported` is false and nothing asks.
+- Widgets can know roughly where the phone is: owl 18's `android.location` gives an
+  approximate place (a kilometre or two), only once `location("request")` from a tap
+  has allowed it, and only while the widget shows. The bundled today widget has "use my
+  location" for its weather; a typed city still wins.
+- Widgets can show the phone's calendars: owl 18's `android.calendar` lists the next 14
+  days of events, local and synced, each time of a repeating one on its own, without
+  cancelled ones or those you declined, once `calendar("request")` from a tap has
+  allowed it. All-day events run midnight to midnight wherever the phone is, each event
+  has its color, and `calendar("open", e)` opens one in the calendar app.
+  `examples/calendar.owl` shows the next events.
 
 ## 0.18.0 (versionCode 29) – 2026-11-01
 

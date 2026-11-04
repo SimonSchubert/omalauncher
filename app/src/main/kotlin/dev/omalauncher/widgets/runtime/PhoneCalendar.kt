@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.os.Handler
@@ -13,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.registerNotExported
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
@@ -98,7 +100,10 @@ class PhoneCalendar(
             }.catch { if (it is SecurityException) emit(value(false)) else throw it }
         }.distinctUntilChanged()
 
-    /** Provider changes and the clock both matter: an event can end without a database change. */
+    /**
+     * Provider changes and the clock both matter: an event can end without a database change, and an all-day one's
+     * times are the phone's midnights, which move with its time zone.
+     */
     private fun changes(): Flow<Unit> =
         callbackFlow {
             val resolver = context.contentResolver
@@ -115,6 +120,13 @@ class PhoneCalendar(
                 resolver.unregisterContentObserver(observer)
                 throw e
             }
+            val clock =
+                IntentFilter().apply {
+                    addAction(Intent.ACTION_TIMEZONE_CHANGED)
+                    addAction(Intent.ACTION_TIME_CHANGED)
+                    addAction(Intent.ACTION_DATE_CHANGED)
+                }
+            val receiver = context.registerNotExported(clock) { trySend(Unit) }
             trySend(Unit)
             val timer = launch {
                 while (true) {
@@ -125,6 +137,7 @@ class PhoneCalendar(
             awaitClose {
                 timer.cancel()
                 resolver.unregisterContentObserver(observer)
+                context.unregisterReceiver(receiver)
             }
         }.conflate()
 
@@ -161,8 +174,11 @@ class PhoneCalendar(
         val rows = ArrayList<Triple<Long, Long, Value>>()
         context.contentResolver.query(
             uri, projection,
-            // DELETED is the event's: an instance has none of its own.
-            "${CalendarContract.Instances.VISIBLE} = 1 AND ${CalendarContract.Events.DELETED} = 0",
+            // DELETED is the event's: an instance has none of its own. A cancelled time of a repeating event never
+            // comes, but a cancelled meeting on its own does, as does one you declined: neither is still to come.
+            "${CalendarContract.Instances.VISIBLE} = 1 AND ${CalendarContract.Events.DELETED} = 0" +
+                " AND ifnull(${CalendarContract.Instances.STATUS}, -1) != ${CalendarContract.Instances.STATUS_CANCELED}" +
+                " AND ifnull(${CalendarContract.Instances.SELF_ATTENDEE_STATUS}, -1) != ${CalendarContract.Attendees.ATTENDEE_STATUS_DECLINED}",
             null,
             "${CalendarContract.Instances.BEGIN} ASC",
         )?.use { cursor ->
