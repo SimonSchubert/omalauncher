@@ -59,9 +59,12 @@ class GuestShell(
         val quoted = shellQuote(command)
         // stdin is this shell's command pipe, so commands get /dev/null instead of eating the next command.
         // stderr goes to a file and follows the exit code, so it never mixes into the output.
+        // stdout stops at MAX_OUT bytes, as stderr does at 8 KB: a widget's `cat` of a huge log ran the launcher out of
+        // memory. A command still writing then fails on the closed pipe (SIGPIPE's 141, or a write error); one under it keeps its exit code.
         stdin!!.apply {
             write(
-                "timeout $timeoutSeconds bash -c $quoted </dev/null 2>\"\$__err\"; printf '\\n%s %d\\n' $marker \$?; " +
+                "timeout $timeoutSeconds bash -c $quoted </dev/null 2>\"\$__err\" | head -c $MAX_OUT; " +
+                    "printf '\\n%s %d\\n' $marker \"\${PIPESTATUS[0]}\"; " +
                     "head -c 8192 \"\$__err\"; printf '\\n%s\\n' $marker\n",
             )
             flush()
@@ -104,6 +107,9 @@ class GuestShell(
         process = null
     }
 }
+
+/** Above any search the launcher runs itself (`pacman -Ss` matching every package is about 2 MB). */
+private const val MAX_OUT = 4 shl 20
 
 /**
  * A few [GuestShell]s, so one slow command (a curl timing out) doesn't hold
