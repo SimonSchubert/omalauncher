@@ -130,11 +130,12 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The voice screen: a spoken conversation with a coding agent ([VoiceSession]). It listens as it opens; a tap on
- * the orb talks again or talks over the reply. The agent (a tap picks another) heads it; the orb shows what's
- * happening (listening to your voice's level, speaking, working, waiting for an OK) with a word under it; the
- * conversation runs up from the bottom, where the step in progress, any trouble, stop and the switch to typing
- * are; and an agent's question slides up above them.
+ * The voice screen: a spoken conversation with a coding agent ([VoiceSession]). It listens as it opens, and again
+ * once a reply has been read, so talking goes on without a tap; a tap on the orb talks over the reply, and stops it
+ * listening until the next tap. The agent (a tap picks another) heads it; the orb shows what's happening (listening
+ * to your voice's level, speaking, working, waiting for an OK) with a word under it; the conversation runs up from
+ * the bottom, where the step in progress, any trouble, stop and the switch to typing are; and an agent's question
+ * slides up above them.
  */
 @Composable
 fun VoiceScreen(
@@ -168,7 +169,15 @@ fun VoiceScreen(
     // An agent installed or removed while it's open.
     LaunchedEffect(session.voiceAgents.map { it.bin }) { session.wake() }
 
+    /** Whether the user ended the talking themselves, with a tap on the orb or stop; then it waits for a tap. */
+    var quiet by remember { mutableStateOf(false) }
+
+    /** A reply is on its way: it's listened after, so the conversation goes on without a tap. */
+    var replying by remember { mutableStateOf(false) }
+
     fun listen() {
+        quiet = false
+        replying = false
         speaker.stop()
         speech.start(hold = false) { heard -> if (heard.isNotBlank()) session.ask(heard) }
     }
@@ -176,7 +185,10 @@ fun VoiceScreen(
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) listen() }
 
     fun talk() {
-        if (speech.listening) return speech.stop()
+        if (speech.listening) {
+            quiet = true
+            return speech.stop()
+        }
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) listen() else permission.launch(Manifest.permission.RECORD_AUDIO)
     }
@@ -185,6 +197,17 @@ fun VoiceScreen(
     LaunchedEffect(opens) {
         while (session.phase == Phase.Starting) delay(100)
         if (session.agent != null && canHear && !typing && !speech.listening) talk()
+    }
+    LaunchedEffect(session.busy) { if (session.busy) replying = true }
+    // Listening again after a reply: once the agent's done and its voice is quiet, the microphone opens. The pause
+    // keeps the end of the reply, and a word said right after it, out of what's heard. Not after the user stopped
+    // it, nor while they type, pick a voice or an agent, or when the screen is out of sight.
+    LaunchedEffect(shown, canHear, typing, tuning, picking, quiet, session.busy, speaker.speaking, session.approvals.size) {
+        if (!shown || !canHear || typing || tuning || picking || quiet || !replying) return@LaunchedEffect
+        if (session.busy || speaker.speaking) return@LaunchedEffect
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return@LaunchedEffect
+        delay(800)
+        if (!speech.listening && !session.busy && !speaker.speaking) listen()
     }
     // Typing: the keyboard comes up, as opening to talk listens.
     LaunchedEffect(typing, session.agent != null) { if (typing && session.agent != null) runCatching { field.requestFocus() } }
@@ -424,6 +447,7 @@ fun VoiceScreen(
 
                     val stoppable = session.busy || (!typing && speaker.speaking)
                     fun stop() {
+                        quiet = true
                         speech.cancel()
                         session.stop()
                     }
