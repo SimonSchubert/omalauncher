@@ -27,6 +27,13 @@
     <string name="style_pages">页数</string>
     <string name="style_pages_one">一页</string>
     <string name="style_pages_auto">自动</string>
+    <string name="style_cover_screen">外屏</string>
+    <string name="style_cover_upright">竖向</string>
+    <string name="style_cover_turned">横向</string>
+    <string name="style_unfolded">展开</string>
+    <string name="style_unfolded_own">独立主屏幕</string>
+    <string name="style_unfolded_pages">页面</string>
+    <string name="style_unfolded_columns">展开列数</string>
     <string name="style_corners">圆角</string>
     <string name="style_corners_edge">直角</string>
     <string name="style_corners_soft">微圆</string>

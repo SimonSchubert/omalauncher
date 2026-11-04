@@ -3,6 +3,7 @@ package dev.omalauncher.widgets
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.upgrade.Versioned
@@ -50,8 +51,62 @@ fun isFacePage(page: Int) = page <= FACE_PAGE
 const val CLASSIC_COLUMNS = 6
 
 /**
+ * A screen home has a layout of its own: the phone's, a foldable's cover screen, where a layout made
+ * for the inner screen would squeeze every tile into a third of its height, or a Fold's unfolded inner
+ * screen, where it would stretch them over twice the width. [key] names it in saved data and
+ * layout.toml's `[cover]` and `[unfolded]` sections; [MAIN] is the top of the file, as before there were
+ * two. [ownColumns]: the screen's grid has a column count of its own (home.unfolded-columns) rather than
+ * home.columns.
+ */
+enum class Screen(
+    val key: String,
+    val ownColumns: Boolean = false,
+) {
+    MAIN("main"),
+    COVER("cover"),
+    UNFOLDED("unfolded", ownColumns = true),
+    ;
+
+    /**
+     * The page a tile on main page [page] starts on here: the same, but unfolded, where home showed the main pages in
+     * pairs side by side, the pair's (main pages 2k-1 and 2k are unfolded page k). Faces keep theirs.
+     */
+    fun fromMain(page: Int) = if (this == UNFOLDED && page >= 1) (page + 1) / 2 else page
+}
+
+/**
+ * Where tiles start on an unfolded screen the first time it shows: where home showed them there before it had a layout
+ * of its own, the main pages side by side. Each of [main]'s tiles (key to main page and cell, null before its page was
+ * laid out) goes to the pair's page (see [Screen.fromMain]), the second page of a pair shifted right by
+ * [mainColumns]; the pair, twice that wide, then moves onto the unfolded grid's [columns] (see [Cell.rescaled]), each
+ * tile at least its [minWidth]. A tile that lands on one before it on its page loses its cell (null), so that page
+ * places it afresh; a face keeps its page and has no cell.
+ */
+fun seedUnfolded(
+    main: List<Triple<String, Int, Cell?>>,
+    mainColumns: Int,
+    columns: Int,
+    minWidth: (String) -> Int,
+): Map<String, Pair<Int, Cell?>> {
+    val kept = HashMap<Int, MutableList<Cell>>()
+    return main.associate { (key, page, cell) ->
+        val to = Screen.UNFOLDED.fromMain(page)
+        val placed =
+            cell
+                ?.takeIf { page >= 1 }
+                ?.let { if (page % 2 == 0) it.copy(x = it.x + mainColumns) else it }
+                ?.rescaled(2 * mainColumns, columns, minWidth(key))
+                ?.takeIf { c -> kept[to].orEmpty().none { it.overlaps(c) } }
+                ?.also { kept.getOrPut(to) { ArrayList() } += it }
+        key to (to to placed)
+    }
+}
+
+/**
  * Where each widget and pinned app sits on the home grid, keyed by file name
- * (or shortcut key), and the page a widget was moved to on the phone. Kept apart
+ * (or shortcut key), and the page a widget was moved to on the phone; one set
+ * per [Screen], of which [screen] is the one home shows and every call here
+ * reads and writes unless it says otherwise. Kept apart
  * from the widget files, so rearranging never rewrites the files agents own:
  * [HomeStore] writes it all to layout.toml, which agents may edit instead.
  */
@@ -59,43 +114,128 @@ class WidgetLayout(
     context: Context,
 ) {
     private val prefs = context.getSharedPreferences("widget_grid", Context.MODE_PRIVATE)
-    private val cells = mutableStateMapOf<String, Cell>()
+    private val cellsOf = Screen.entries.associateWith { mutableStateMapOf<String, Cell>() }
     /** Read while compiling widgets, off the main thread. */
-    private val pages = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val pagesOf = Screen.entries.associateWith { java.util.concurrent.ConcurrentHashMap<String, Int>() }
 
-    /** Columns of the home grid the cells are on; saved with them, so [regrid] can move them onto another. */
-    var columns by mutableIntStateOf(CLASSIC_COLUMNS)
+    /** The screen home is on; see [show]. State, so what lists home's items by page follows it. */
+    var screen: Screen by mutableStateOf(Screen.MAIN)
         private set
+
+    /**
+     * Counts page changes. The pages aren't snapshot state (they're read while compiling, off the main thread), so what
+     * derives an app's page on another screen than the main one from them reads this to follow them; see [Shortcuts.onGrid].
+     */
+    var pageStamp by mutableIntStateOf(0)
+        private set
+
+    private val cells get() = cellsOf.getValue(screen)
+    private val pages get() = pagesOf.getValue(screen)
+
+    /** Whether [screen] has a layout of its own yet: a cell or a page chosen for it. Without one, home lays its tiles out afresh there. */
+    fun has(screen: Screen) = cellsOf.getValue(screen).isNotEmpty() || pagesOf.getValue(screen).isNotEmpty()
+
+    /**
+     * Home moves to [screen]: its cells and pages are the ones read and written from here on. On a screen without a
+     * layout of its own yet, every tile is on the page it has on the main screen (see [chosenPage]) and has no cell: its
+     * grid lays them out afresh at their own size, and what doesn't fit moves on to the next page there.
+     */
+    fun show(screen: Screen) {
+        if (screen == this.screen) return
+        this.screen = screen
+        pageStamp++
+    }
+
+    /** Forgets [screen]'s layout; shown, it starts over from the main screen's pages as in [show]. */
+    fun reset(screen: Screen) {
+        cellsOf.getValue(screen).clear()
+        pagesOf.getValue(screen).clear()
+        pageStamp++
+        save()
+    }
+
+    /**
+     * Columns of the home grid the cells are on, each screen's: home.columns, or for a screen with [Screen.ownColumns]
+     * its own. Saved with them, so [regrid] can move them onto another.
+     */
+    private val columnsBy = Screen.entries.filter { it.ownColumns }.associateWith { mutableIntStateOf(CLASSIC_COLUMNS) }
+    private var mainColumns by mutableIntStateOf(CLASSIC_COLUMNS)
+
+    /** Columns of the grid of [screen]: its own, or home.columns. */
+    fun columnsOf(screen: Screen) = columnsBy[screen]?.intValue ?: mainColumns
+
+    /** Columns of the grid home shows, [screen]'s. */
+    val columns get() = columnsOf(screen)
 
     init {
         (Versioned.read(prefs.getString(LAYOUT, null), VERSION) as? JSONObject)?.let { data ->
-            columns = columnsOf(data)
+            mainColumns = savedColumns(data, Screen.MAIN)
+            for ((screen, c) in columnsBy) c.intValue = savedColumns(data, screen)
             load(data)
         }
     }
 
-    private fun columnsOf(data: JSONObject) = data.optInt("columns", CLASSIC_COLUMNS).takeIf { it > 0 } ?: CLASSIC_COLUMNS
+    private fun suffix(screen: Screen) = if (screen == Screen.MAIN) "" else "_${screen.key}"
+
+    /** The columns saved for [screen]'s grid; one saved before it had its own has the main grid's. */
+    private fun savedColumns(
+        data: JSONObject,
+        screen: Screen,
+    ): Int {
+        val main = data.optInt("columns", CLASSIC_COLUMNS).takeIf { it > 0 } ?: CLASSIC_COLUMNS
+        return if (screen.ownColumns) data.optInt("columns${suffix(screen)}", main).takeIf { it > 0 } ?: main else main
+    }
 
     private fun load(data: JSONObject) {
-        val saved = columnsOf(data)
-        data.optJSONObject("cells")?.mapEntries { _, c -> Cell(c.getInt("x"), c.getInt("y"), c.getInt("w"), c.getInt("h")).rescaled(saved, columns) }?.let(cells::putAll)
-        data.optJSONObject("pages")?.let { p -> for (k in p.keys()) pages[k] = p.optInt(k, 1) }
+        // The main screen's are "cells" and "pages", as saved before there were two screens; the others' carry the screen's key.
+        for (screen in Screen.entries) {
+            val suffix = suffix(screen)
+            data.optJSONObject("cells$suffix")?.mapEntries { _, c -> Cell(c.getInt("x"), c.getInt("y"), c.getInt("w"), c.getInt("h")) }?.let(cellsOf.getValue(screen)::putAll)
+            data.optJSONObject("pages$suffix")?.let { p -> for (k in p.keys()) pagesOf.getValue(screen)[k] = p.optInt(k, 1) }
+        }
+    }
+
+    /**
+     * Gives [screen], which has no layout of its own yet, the pages and cells in [seed] (key to page and cell, null
+     * where its page places it afresh); see [seedUnfolded].
+     */
+    fun seed(
+        screen: Screen,
+        seed: Map<String, Pair<Int, Cell?>>,
+    ) {
+        val cells = cellsOf.getValue(screen)
+        val pages = pagesOf.getValue(screen)
+        for ((key, at) in seed) {
+            pages[key] = at.first
+            at.second?.let { cells[key] = it }
+        }
+        pageStamp++
+        save()
     }
 
     /**
      * Moves every cell onto a grid of [to] columns (see [Cell.rescaled]); a widget stays as wide as its
      * [HomeItem.minSize] allows. A tile that lands on one before it on its page in [tiles] (each page's, in the
      * order they keep their spots) loses its cell, so its page places it afresh in its first free spot, or moves
-     * it to a page with room.
+     * it to a page with room. The other screens' cells move onto the new grid too; their pages aren't laid out now, so
+     * which of them then overlap is settled when that screen shows.
      */
     fun regrid(
         to: Int,
         tiles: List<List<HomeItem>>,
+        screen: Screen = Screen.MAIN,
     ) {
-        if (to == columns) return
+        val from = columnsOf(screen)
+        if (to == from) return
         val minWidth = tiles.flatten().associate { it.key to it.minSize.first }
-        for ((key, c) in cells.toMap()) cells[key] = c.rescaled(columns, to, minWidth[key] ?: 1)
-        columns = to
+        // The screens on this grid: one with its own columns alone, else every one without.
+        val on = Screen.entries.filter { if (screen.ownColumns) it == screen else !it.ownColumns }
+        for (s in on) {
+            val screenCells = cellsOf.getValue(s)
+            for ((key, c) in screenCells.toMap()) screenCells[key] = c.rescaled(from, to, minWidth[key] ?: 1)
+        }
+        columnsBy[screen]?.let { it.intValue = to } ?: run { mainColumns = to }
+        val cells = cellsOf.getValue(screen)
         for (items in tiles) {
             val kept = ArrayList<Cell>()
             for (item in items) {
@@ -106,24 +246,51 @@ class WidgetLayout(
         save()
     }
 
-    /** The page [name] was moved to on the phone, if it was. */
-    fun page(name: String) = pages[name]
+    /** The page [name] was moved to on the phone, if it was; on [screen], the one shown unless said. */
+    fun page(
+        name: String,
+        screen: Screen = this.screen,
+    ): Int? = pagesOf.getValue(screen)[name]
+
+    /**
+     * The page [name] is on on [screen] by choice: the one chosen for it there, or, on another screen than the main
+     * one, the one chosen for it on the main screen (unfolded, the pair's; see [Screen.fromMain]), so a screen without a
+     * layout of its own starts from the main one's pages; null when neither was, and it goes by its file.
+     */
+    fun chosenPage(
+        name: String,
+        screen: Screen = this.screen,
+    ): Int? = pagesOf.getValue(screen)[name] ?: if (screen == Screen.MAIN) null else pagesOf.getValue(Screen.MAIN)[name]?.let(screen::fromMain)
+
+    /** The page [name] is on on [screen]: as [chosenPage], else its file's [filePage] as it is on that screen (see [Screen.fromMain]). */
+    fun pageOn(
+        name: String,
+        filePage: Int,
+        screen: Screen = this.screen,
+    ): Int = chosenPage(name, screen) ?: screen.fromMain(filePage)
 
     fun setPage(
         name: String,
         page: Int,
+        screen: Screen = this.screen,
     ) {
-        pages[name] = page
+        pagesOf.getValue(screen)[name] = page
+        pageStamp++
         save()
     }
 
-    fun cell(name: String) = cells[name]
+    fun cell(
+        name: String,
+        screen: Screen = this.screen,
+    ) = cellsOf.getValue(screen)[name]
 
     /** Live update while dragging; [save] persists. An unchanged cell isn't written, so pointer moves within it don't recompose the page. */
     fun set(
         name: String,
         cell: Cell,
+        screen: Screen = this.screen,
     ) {
+        val cells = cellsOf.getValue(screen)
         if (cells[name] != cell) cells[name] = cell
     }
 
@@ -235,14 +402,18 @@ class WidgetLayout(
     }
 
     /** Takes [name]'s cell, so its page places it afresh in its first free spot. */
-    fun clearCell(name: String) {
-        cells.remove(name)
+    fun clearCell(
+        name: String,
+        screen: Screen = this.screen,
+    ) {
+        cellsOf.getValue(screen).remove(name)
     }
 
-    /** Forgets everything about [name]: its cell and page. */
+    /** Forgets everything about [name] on every screen: its cells and pages. */
     fun remove(name: String) {
-        cells.remove(name)
-        pages.remove(name)
+        for (c in cellsOf.values) c.remove(name)
+        for (p in pagesOf.values) p.remove(name)
+        pageStamp++
         save()
     }
 
@@ -274,13 +445,14 @@ class WidgetLayout(
     fun pagePx(metrics: android.util.DisplayMetrics) = pageSize ?: (metrics.widthPixels to (metrics.heightPixels * 0.8f).toInt())
 
     fun save() {
-        val json = JSONObject()
-        for ((name, c) in cells) json.put(name, JSONObject().put("x", c.x).put("y", c.y).put("w", c.w).put("h", c.h))
-        val data =
-            JSONObject()
-                .put("columns", columns)
-                .put("cells", json)
-                .put("pages", JSONObject(pages as Map<*, *>))
+        val data = JSONObject().put("columns", mainColumns)
+        for ((screen, c) in columnsBy) data.put("columns${suffix(screen)}", c.intValue)
+        for (screen in Screen.entries) {
+            val suffix = suffix(screen)
+            val json = JSONObject()
+            for ((name, c) in cellsOf.getValue(screen)) json.put(name, JSONObject().put("x", c.x).put("y", c.y).put("w", c.w).put("h", c.h))
+            data.put("cells$suffix", json).put("pages$suffix", JSONObject(pagesOf.getValue(screen) as Map<*, *>))
+        }
         prefs.edit().putString(LAYOUT, Versioned.write(VERSION, data)).apply()
         onSave()
     }

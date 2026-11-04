@@ -40,6 +40,47 @@ tiles = [
 - What couldn't be read is in `errors.txt` next to it, and on the phone's home.
   A file that doesn't parse changes nothing, and isn't saved over until it's fixed.
 
+On a foldable, the cover screen has pages of its own, under `[cover]`: the
+same tiles, placed for a screen a third as tall. The pages at the top say
+what's on home; `[cover]` only says where it goes there. A tile left out of
+`[cover]` keeps its place on the cover screen, and without the section the
+cover screen starts from the pages at the top, each tile at its own size and
+what doesn't fit on to the next page. The launcher writes the section the
+first time it's shown on the cover screen; deleting it starts over.
+
+```toml
+[cover]
+columns = 6
+
+[[cover.page]]
+tiles = [
+  { widget = "10-today.owl", x = 0, y = 0, w = 3, h = 3 },
+  { widget = "20-fetch.owl", x = 3, y = 0, w = 3, h = 3 },
+]
+
+[[cover.page]]
+tiles = [ { widget = "45-terminal.owl", x = 0, y = 0, w = 6, h = 3 } ]
+```
+
+A Fold's unfolded inner screen shows home's pages two side by side. With
+`home.unfolded-layout = true` in style.toml it has pages of its own instead,
+under `[unfolded]`, the same way as `[cover]`: one wide page whose tiles can
+span the hinge, on a grid of `home.unfolded-columns` (12 by default). The first
+time it shows, it starts from the pages at the top as it showed them, pages 1
+and 2 side by side as its page 1, 3 and 4 as page 2; after that the two go
+their own ways.
+
+```toml
+[unfolded]
+columns = 12
+
+[[unfolded.page]]
+tiles = [
+  { widget = "10-today.owl", x = 0, y = 0, w = 6, h = 3 },
+  { widget = "45-terminal.owl", x = 6, y = 0, w = 6, h = 6 },
+]
+```
+
 ## From scripts
 
 Anything in this system (a script, a cron job, a pacman hook, an agent) can reach a running widget:
