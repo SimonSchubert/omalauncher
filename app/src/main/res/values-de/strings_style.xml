@@ -128,7 +128,7 @@
     <string name="gestures_keybar_until_fixed">die terminal-tastenleiste ist die standardleiste, bis der fehler behoben ist: %1$s</string>
 
     <string name="agents_title">coding-agenten</string>
-    <string name="agents_intro">Installiert mit mise, wie bei Omarchy. Anmeldungen öffnen sich im Browser; füge Schlüssel über die Zwischenablage der Tastatur ein.</string>
+    <string name="agents_intro">Installiert mit mise, wie bei Omarchy, oder mit dem eigenen Installer des Agenten (Hermes). Anmeldungen öffnen sich im Browser; füge Schlüssel über die Zwischenablage der Tastatur ein.</string>
     <string name="agents_open">öffnen</string>
     <string name="agents_remove">deinstallieren</string>
     <string name="agents_install">installieren</string>

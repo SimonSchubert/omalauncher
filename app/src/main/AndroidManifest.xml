@@ -204,6 +204,13 @@
             android:targetActivity=".LinuxWindowActivity" />
 
         <activity-alias
+            android:name=".HermesWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_hermes"
+            android:label="Hermes"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
             android:name=".OmpWindow"
             android:exported="false"
             android:icon="@drawable/agent_omp"
