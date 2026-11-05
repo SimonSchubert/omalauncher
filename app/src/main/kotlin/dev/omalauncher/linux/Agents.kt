@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import dev.omalauncher.R
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -271,9 +272,17 @@ class AgentStore(
         script: () -> String,
     ): Boolean {
         val publish: (JobState) -> Unit = { states[agent.bin] = it }
-        publish(JobState.Working(R.string.linux_job_waiting, emptyList()))
+        val waiting = JobState.Working(R.string.linux_job_waiting, emptyList())
+        publish(waiting)
         // The script is made once it's this job's turn: the one before may have installed mise.
-        val (ok, _) = lock.withLock { proot.trackedJob(action, withContext(Dispatchers.IO) { script() }, publish = publish) }
+        val (ok, _) =
+            try {
+                lock.withLock { proot.trackedJob(action, withContext(Dispatchers.IO) { script() }, publish = publish) }
+            } catch (e: CancellationException) {
+                // Its screen closed before its turn: the row isn't left "waiting…", which also blocks installing it again.
+                if (states[agent.bin] === waiting) states.remove(agent.bin)
+                throw e
+            }
         Log.i("agents", "${agent.bin}: ${if (ok) "ok" else "failed"}")
         return ok
     }
