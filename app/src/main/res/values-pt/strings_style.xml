@@ -133,5 +133,6 @@
     <string name="agents_intro">Instalados com o mise, como no Omarchy. Os logins abrem no navegador; cole chaves com a área de transferência do teclado.</string>
     <string name="agents_open">abrir</string>
     <string name="agents_remove">remover</string>
+    <string name="agents_still_running">%1$s ainda está aberto: feche e remova de novo</string>
     <string name="agents_install">instalar</string>
 </resources>

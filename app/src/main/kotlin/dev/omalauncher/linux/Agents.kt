@@ -10,6 +10,7 @@ import dev.omalauncher.R
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.file.Files
@@ -151,6 +152,8 @@ fun agentInvocation(
 
 class AgentStore(
     private val proot: Proot,
+    /** A string resource with one argument, in the app's language. */
+    private val text: (Int, String) -> String,
     /** Called when the set of installed agents changed, so their desktop entries follow. */
     private val onChanged: () -> Unit,
 ) {
@@ -208,12 +211,23 @@ class AgentStore(
         onChanged()
     }
 
-    suspend fun remove(agent: Agent) =
-        run(agent, R.string.linux_job_removing) { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
-            .also {
-                refresh()
-                onChanged()
-            }
+    /** Stops what the launcher itself keeps running of an agent, such as Voice's; whether something was stopped. */
+    var release: (Agent) -> Boolean = { false }
+
+    /**
+     * mise keeps a version that a running program started from, so an agent still open in a window or terminal
+     * stays installed, out of mise's config; the row then says to close it, instead of looking untouched. What
+     * the launcher runs itself (Voice) is stopped first.
+     */
+    suspend fun remove(agent: Agent): Boolean {
+        // Its process ends on another thread: a moment, so mise doesn't find it still running.
+        if (release(agent)) delay(1500)
+        val ok = run(agent, R.string.linux_job_removing) { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
+        refresh()
+        onChanged()
+        if (ok && isInstalled(agent)) states[agent.bin] = JobState.Failed(listOf(text(R.string.agents_still_running, agent.name)))
+        return ok && !isInstalled(agent)
+    }
 
     /** Drawer entries for the installed agents, with their logos (see [bundledIcons]); each opens in a terminal in the home directory. */
     fun managed(): List<Managed> =

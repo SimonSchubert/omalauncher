@@ -409,6 +409,13 @@ class VoiceSession(
         if (on) for (a in approvals.toList()) answer(a.id, true)
     }
 
+    /** [bin] is being removed: its process stops if it's the agent here, as mise won't delete a running one. */
+    fun release(bin: String): Boolean {
+        if (agent?.bin != bin || process == null) return false
+        stopAgent()
+        return true
+    }
+
     /** Talks to [to] instead: the conversation so far is put aside and [to]'s comes back. */
     fun switchTo(to: Agent) {
         installing = null

@@ -131,5 +131,6 @@
     <string name="agents_intro">Installiert mit mise, wie bei Omarchy. Anmeldungen öffnen sich im Browser; füge Schlüssel über die Zwischenablage der Tastatur ein.</string>
     <string name="agents_open">öffnen</string>
     <string name="agents_remove">deinstallieren</string>
+    <string name="agents_still_running">%1$s läuft noch: schließ es und deinstalliere es dann noch mal</string>
     <string name="agents_install">installieren</string>
 </resources>

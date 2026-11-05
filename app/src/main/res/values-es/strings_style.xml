@@ -133,5 +133,6 @@
     <string name="agents_intro">Se instalan con mise, como en Omarchy. Los inicios de sesión se abren en tu navegador; pega las claves con el portapapeles del teclado.</string>
     <string name="agents_open">abrir</string>
     <string name="agents_remove">desinstalar</string>
+    <string name="agents_still_running">%1$s sigue abierto: ciérralo y vuelve a desinstalarlo</string>
     <string name="agents_install">instalar</string>
 </resources>

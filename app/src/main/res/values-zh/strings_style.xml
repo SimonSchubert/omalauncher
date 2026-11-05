@@ -129,5 +129,6 @@
     <string name="agents_intro">和 Omarchy 一样用 mise 安装。登录会在浏览器中打开；用键盘的剪贴板粘贴密钥。</string>
     <string name="agents_open">打开</string>
     <string name="agents_remove">移除</string>
+    <string name="agents_still_running">%1$s 仍在运行：请先关闭，再移除一次</string>
     <string name="agents_install">安装</string>
 </resources>

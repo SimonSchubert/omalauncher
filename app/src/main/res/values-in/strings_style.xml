@@ -129,5 +129,6 @@
     <string name="agents_intro">Diinstal dengan mise, seperti di Omarchy. Login terbuka di browser; tempel kunci API lewat papan klip keyboard.</string>
     <string name="agents_open">buka</string>
     <string name="agents_remove">hapus</string>
+    <string name="agents_still_running">%1$s masih berjalan: tutup dulu, lalu hapus lagi</string>
     <string name="agents_install">instal</string>
 </resources>

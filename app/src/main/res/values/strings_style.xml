@@ -166,5 +166,6 @@
     <string name="agents_intro">Installed with mise, like Omarchy. Logins open in your browser; paste keys with the keyboard\'s clipboard.</string>
     <string name="agents_open">open</string>
     <string name="agents_remove">remove</string>
+    <string name="agents_still_running">%1$s is still running: close it, then remove it again</string>
     <string name="agents_install">install</string>
 </resources>
