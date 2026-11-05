@@ -150,6 +150,7 @@ internal fun PromptBar(
     var importingAttachments by remember { mutableStateOf(false) }
     val attachmentScope = rememberCoroutineScope()
 
+    val attachmentLabel = stringResource(R.string.prompt_attachment)
     fun importAttachments(uris: List<Uri>) {
         if (uris.isEmpty()) return
         attachmentScope.launch {
@@ -182,7 +183,6 @@ internal fun PromptBar(
 
     val photoLabel = stringResource(R.string.prompt_attach_photos)
     val fileLabel = stringResource(R.string.prompt_attach_files)
-    val attachmentLabel = stringResource(R.string.prompt_attachment)
     val attachmentPrompt = stringResource(R.string.prompt_attachment_prompt)
     val attachmentChoices =
         remember(photoLabel, fileLabel) {
