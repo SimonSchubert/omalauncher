@@ -103,12 +103,12 @@ private enum class AttachmentKind { Photos, Files }
 
 private data class AttachmentChoice(val kind: AttachmentKind, val label: String)
 
-private fun attachmentName(context: Context, uri: Uri): String =
+private fun attachmentName(context: Context, uri: Uri, fallback: String): String =
     runCatching {
         context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0) else null
         }
-    }.getOrNull() ?: context.getString(R.string.prompt_attachment)
+    }.getOrNull() ?: fallback
 /**
  * How the prompt bar was summoned from outside it; Send asks the agent with what's typed (the panel's ask row),
  * Listen dictates into it (the landscape rail's mic).
@@ -159,7 +159,7 @@ internal fun PromptBar(
                     withContext(Dispatchers.IO) {
                         uris.mapNotNull { uri ->
                             runCatching { runtime.savePromptAttachment(uri) }.getOrNull()?.let { path ->
-                                PromptAttachment(attachmentName(context, uri), path)
+                                PromptAttachment(attachmentName(context, uri, attachmentLabel), path)
                             }
                         }
                     }
@@ -182,6 +182,8 @@ internal fun PromptBar(
 
     val photoLabel = stringResource(R.string.prompt_attach_photos)
     val fileLabel = stringResource(R.string.prompt_attach_files)
+    val attachmentLabel = stringResource(R.string.prompt_attachment)
+    val attachmentPrompt = stringResource(R.string.prompt_attachment_prompt)
     val attachmentChoices =
         remember(photoLabel, fileLabel) {
             listOf(
@@ -213,7 +215,7 @@ internal fun PromptBar(
                 if (p.isNotEmpty()) append(p)
                 if (attachments.isNotEmpty()) {
                     if (isNotEmpty()) append("\n\n")
-                    append(context.getString(R.string.prompt_attachment_prompt))
+                    append(attachmentPrompt)
                     append('\n')
                     append(attachments.joinToString("\n") { it.path })
                 }
@@ -431,7 +433,7 @@ internal fun PromptBar(
                                                 .padding(horizontal = 4.dp, vertical = 2.dp),
                                         ) {
                                             BasicText(
-                                                context.getString(R.string.prompt_attachment_chip, attachment.name),
+                                                stringResource(R.string.prompt_attachment_chip, attachment.name),
                                                 style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
