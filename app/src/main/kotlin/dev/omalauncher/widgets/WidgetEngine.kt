@@ -1093,7 +1093,12 @@ class WidgetEngine(
 
         private const val AGENT_POINTER =
             "# omalauncher\n\nThis Arch system runs inside an Android launcher, omalauncher; its source is at " +
-                "https://github.com/SimonSchubert/omalauncher, should you need to understand how the launcher works. " +
+                "https://github.com/SimonSchubert/omalauncher, should you need to understand how the launcher works.\n\n" +
+                "It's Arch Linux ARM under proot, not a booted system: you are root already (no sudo needed), and there is " +
+                "no systemd (systemctl, services and timers don't work), no cron, no Docker and no kernel modules. Install " +
+                "packages with pacman or yay, command-line tools with mise. The phone's own storage (/sdcard, Downloads) isn't " +
+                "visible here. xdg-open opens http(s) links in Android's browser; `omarchy-edit <file>` opens a file in the " +
+                "launcher's editor and `omarchy-files [folder]` its file manager; GUI apps (Wayland) open as windows on the launcher.\n\n" +
                 "Home-screen widgets are `.owl` files in " +
                 "~/$GUEST_DIR, written in a small declarative language documented in README.md there (and docs/ next to it); so are apps for the " +
                 "app drawer (`app \"name\" { }`) and panels that swiping up or down on home opens (`panel \"name\" { }`, picked with " +
@@ -1103,7 +1108,7 @@ class WidgetEngine(
                 "and .stock-keybar.owl the bar as shipped. " +
                 "Saved files show up on the phone within seconds. After saving, run `owl-check <file>`: it prints the errors " +
                 "and the path of a PNG of the tile or view, drawn with live data; look at it to check the layout. " +
-                "examples/ holds more widgets to learn from or move up to use. Scripts, cron jobs and hooks can set a running " +
+                "examples/ holds more widgets to learn from or move up to use. Scripts and hooks can set a running " +
                 "widget's state or refresh it with `owl-send <file> set <state> <value>` and `owl-send <file> refresh`.\n\n" +
                 "The launcher's look (theme, background, tile spacing and borders, corners, the system bars' colors, the " +
                 "terminals' font) is ~/${StyleStore.GUEST_DIR}/${StyleStore.FILE}; ${StyleStore.DEFAULTS} next to it lists every " +
