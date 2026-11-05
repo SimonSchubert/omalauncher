@@ -131,6 +131,7 @@ val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
         "kilo" to { w -> AcpLink(w, "kilo acp", "$GUEST_HOME/${WidgetEngine.GUEST_DIR}") },
         "devin" to { w -> AcpLink(w, "devin acp") },
         "commandcode" to { w -> AcpLink(w, "commandcode acp") },
+        "agy" to { w -> AcpLink(w, "agy acp") },
         "pi" to ::PiLink,
     )
 
