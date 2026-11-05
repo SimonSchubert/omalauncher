@@ -32,6 +32,10 @@
     <string name="style_pages">pages</string>
     <string name="style_pages_one">one</string>
     <string name="style_pages_auto">auto</string>
+    <!-- A foldable's cover screen: home upright with the bar below (true), or turned on its side as in landscape. -->
+    <string name="style_cover_screen">cover screen</string>
+    <string name="style_cover_upright">upright</string>
+    <string name="style_cover_turned">turned</string>
     <string name="style_corners">corners</string>
     <string name="style_corners_edge">edge</string>
     <string name="style_corners_soft">soft</string>
