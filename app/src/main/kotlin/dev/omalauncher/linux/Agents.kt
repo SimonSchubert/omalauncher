@@ -11,6 +11,8 @@ import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.file.Files
@@ -211,6 +213,12 @@ class AgentStore(
         onChanged()
     }
 
+    /**
+     * mise locks its config and its installs while it works, and a second `mise use` at the same time fails on
+     * the lock: installs, removals and system updates take this first, one at a time, the others waiting.
+     */
+    val lock = Mutex()
+
     /** Stops what the launcher itself keeps running of an agent, such as Voice's; whether something was stopped. */
     var release: (Agent) -> Boolean = { false }
 
@@ -262,7 +270,10 @@ class AgentStore(
         @StringRes action: Int,
         script: () -> String,
     ): Boolean {
-        val (ok, _) = proot.trackedJob(action, withContext(Dispatchers.IO) { script() }) { states[agent.bin] = it }
+        val publish: (JobState) -> Unit = { states[agent.bin] = it }
+        publish(JobState.Working(R.string.linux_job_waiting, emptyList()))
+        // The script is made once it's this job's turn: the one before may have installed mise.
+        val (ok, _) = lock.withLock { proot.trackedJob(action, withContext(Dispatchers.IO) { script() }, publish = publish) }
         Log.i("agents", "${agent.bin}: ${if (ok) "ok" else "failed"}")
         return ok
     }
