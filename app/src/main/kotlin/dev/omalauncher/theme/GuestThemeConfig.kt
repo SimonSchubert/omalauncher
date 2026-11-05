@@ -89,8 +89,7 @@ class GuestThemeConfig(
         // Omarchy's bash setup (aliases, starship, zoxide, fzf) reads everything from $OMARCHY_PATH.
         seed(".bashrc") { BASHRC }
         File(omarchyDir, "etc/fastfetch/config.jsonc").takeIf { it.isFile }?.let { src ->
-            // In portrait the side-by-side logo leaves ~20 columns for the info; stack it on top.
-            seed(".config/fastfetch/config.jsonc") { src.readText().replaceFirst("\"type\": \"file\",", "\"type\": \"file\",\n    \"position\": \"top\",") }
+            seed(".config/fastfetch/config.jsonc") { guestFastfetch(src.readText()) }
         }
         // btop rewrites its config on exit; from then on it's the user's.
         copy("config/btop/btop.conf", ".config/btop/btop.conf")
@@ -225,3 +224,21 @@ class GuestThemeConfig(
             """.trimIndent() + "\n"
     }
 }
+
+/** Omarchy 4.5's OS Age line, which words its count with omarchy-i18n. */
+private const val OS_AGE_I18N = "omarchy-i18n --count \\\"\$days\\\" about.days \\\"\$days\\\""
+
+/** Omarchy 4.5's Uptime line: a command reading /proc/uptime, which Android denies apps, worded with omarchy-i18n. */
+private val UPTIME_COMMAND = Regex(""""type": "command",(\s*"key": "[^"]*Uptime",\s*"keyColor": "[^"]*"),\s*"text": "[^\n]*omarchy-i18n[^\n]*""")
+
+/**
+ * Omarchy's fastfetch config, made to fit the guest. In portrait the
+ * side-by-side logo leaves ~20 columns for the info, so it goes on top.
+ * omarchy-i18n isn't in the guest: OS Age says its days in English, and
+ * Uptime is fastfetch's own again, as before 4.5.
+ */
+internal fun guestFastfetch(config: String): String =
+    config
+        .replaceFirst("\"type\": \"file\",", "\"type\": \"file\",\n    \"position\": \"top\",")
+        .replace(OS_AGE_I18N, "echo \\\"\$days days\\\"")
+        .replace(UPTIME_COMMAND, "\"type\": \"uptime\",$1")

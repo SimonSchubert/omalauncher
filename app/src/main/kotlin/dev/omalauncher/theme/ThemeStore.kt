@@ -156,7 +156,7 @@ class ThemeStore(
         val theme = themes.firstOrNull { it.name == picked } ?: return false
         val backgrounds = theme.backgrounds()
         val bgName = style.style[Style.BACKGROUND]
-        val bg = bgName?.let { n -> backgrounds.firstOrNull { it.name == n } }
+        val bg = bgName?.let(theme::backgroundNamed)
         if (bgName != null && bg == null) style.report("background: \"$bgName\" isn't one of ${theme.name}'s backgrounds; showing its first")
         val target = bg ?: backgrounds.firstOrNull()
         when {
@@ -220,10 +220,12 @@ class ThemeStore(
             withContext(Dispatchers.IO) { guest.render(theme) }
             prefs.edit().putString(RENDERED_BY, appStamp(context)).apply()
         }
-        val bg = theme.backgrounds().let { list -> list.firstOrNull { it.name == style.style[Style.BACKGROUND] } ?: list.firstOrNull() }
+        val bg = style.style[Style.BACKGROUND]?.let(theme::backgroundNamed) ?: theme.backgrounds().firstOrNull()
         // On reload a different background may replace one already showing; it stays up until the new one is decoded.
         val stale = wallpaper != null && bg != background
         background = bg
+        // A new release can move it (a dropped theme into the user's, renumbered backgrounds), leaving Linux's link dangling.
+        if (bg != null && isLinux()) withContext(Dispatchers.IO) { runCatching { guest.linkBackground(bg) } }
         // Decodes the wallpaper on first load, unless ours is the live one.
         refreshLiveWallpaper()
         if (stale && !liveWallpaperActive) wallpaper = decodeWallpaper(bg)
@@ -317,7 +319,7 @@ class ThemeStore(
         withContext(Dispatchers.IO) {
             download = ThemeDownload.Running(0)
             try {
-                release.download { download = ThemeDownload.Running(it) }
+                release.download(picked, dirs.user) { download = ThemeDownload.Running(it) }
                 themes = scan()
                 complete = true
                 download = ThemeDownload.Idle
@@ -547,7 +549,7 @@ class ThemeStore(
 
     companion object {
         /** The Omarchy commit themes and configs come from. Changing it updates them on every install. */
-        const val OMARCHY_REF = "8b4eae66da2938ba9559f103b18dbf85cdf28a70"
+        const val OMARCHY_REF = "ac2690cd7be4f47e4a255f5e2e78d904d436b068"
 
         private const val RENDERED_BY = "rendered_by"
         private const val DEFAULT_THEME = "tokyo-night"
@@ -574,7 +576,7 @@ class ThemeStore(
             val name = saved[Style.THEME] ?: DEFAULT_THEME
             val theme = runCatching { themeDirs(context).load(name) }.getOrNull() ?: return null
             // Unset, or not one of the theme's: its first, as the launcher shows.
-            val bg = theme.backgrounds().let { list -> list.firstOrNull { it.name == saved[Style.BACKGROUND] } ?: list.firstOrNull() }
+            val bg = saved[Style.BACKGROUND]?.let(theme::backgroundNamed) ?: theme.backgrounds().firstOrNull()
             return theme.colors to bg
         }
     }

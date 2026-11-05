@@ -43,7 +43,7 @@ SCENES=(
   "manga       flexoki-light     face:manga"
   "voice       kanagawa          today"
   "linux       matte-black       today"
-  "live        osaka-jade        ssalentin/red-panda hieitheevileye/fatcat dimasmds/hootling asphyksia/companion"
+  "live        jade-horse        ssalentin/red-panda hieitheevileye/fatcat dimasmds/hootling asphyksia/companion"
   "light       catppuccin-latte  boogercheeseonrye/dog-of-the-day travonted/apod weebowiz/trip-view rcrohmana/classic-clock"
   "store       gruvbox           today"
   "style       ristretto         today"
