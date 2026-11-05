@@ -91,6 +91,13 @@
     <string name="linux_agent_ori">OpenRouter\'s coding agent</string>
     <string name="linux_agent_muse">Meta\'s coding agent</string>
     <string name="linux_agent_kimi">Moonshot AI\'s coding agent</string>
+    <string name="linux_agent_qwen">Alibaba\'s Qwen coding agent</string>
+    <string name="linux_agent_mcode">MiniMax\'s coding agent</string>
+    <string name="linux_agent_kiro">Amazon\'s coding agent</string>
+    <string name="linux_agent_kilo">Open-source agent built on OpenCode</string>
+    <string name="linux_agent_devin">Cognition\'s coding agent</string>
+    <string name="linux_agent_amp">Coding agent from ampcode.com</string>
+    <string name="linux_agent_commandcode">Coding agent from commandcode.ai</string>
 
     <!-- The first-run screen. -->
     <string name="linux_welcome_title">omarchy on your home screen</string>

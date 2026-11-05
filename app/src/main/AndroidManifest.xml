@@ -231,6 +231,55 @@
             android:label="Kimi"
             android:targetActivity=".LinuxWindowActivity" />
 
+        <activity-alias
+            android:name=".QwenWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_qwen"
+            android:label="Qwen Code"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".McodeWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_mcode"
+            android:label="MiniMax Code"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".KiroCliWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_kiro_cli"
+            android:label="Kiro CLI"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".KiloWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_kilo"
+            android:label="Kilo"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".DevinWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_devin"
+            android:label="Devin CLI"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".AmpWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_amp"
+            android:label="Amp"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".CommandcodeWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_commandcode"
+            android:label="Command Code"
+            android:targetActivity=".LinuxWindowActivity" />
+
         <!-- One task per owl app, named after it; launched with its file name in the intent's data. -->
         <activity
             android:name=".OwlAppActivity"

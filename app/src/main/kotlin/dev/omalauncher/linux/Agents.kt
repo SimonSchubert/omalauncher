@@ -54,6 +54,33 @@ val AGENTS =
             "http:muse[url=https://api.meta.ai/muse-launcher.sh,bin=muse,version_list_url=https://api.meta.ai/muse-code/channels/muse-stable,version_json_path=.version]",
         ),
         Agent("kimi", "Kimi", R.string.linux_agent_kimi, "npm:@moonshot-ai/kimi-code"),
+        // mise installs Qwen Code from npm.
+        Agent("qwen", "Qwen Code", R.string.linux_agent_qwen, "qwen", node = true),
+        // Its postinstall builds better-sqlite3, which npm skips unless allowed.
+        Agent("mcode", "MiniMax Code", R.string.linux_agent_mcode, "npm:@minimax-ai/code[allow_builds=better-sqlite3]"),
+        Agent(
+            "kiro-cli",
+            "Kiro CLI",
+            R.string.linux_agent_kiro,
+            // Kiro publishes per-platform archives behind a manifest of the stable release.
+            "http:kiro-cli[platforms_linux_x64_url=https://prod.download.cli.kiro.dev/stable/{{version}}/kirocli-x86_64-linux.tar.gz," +
+                "platforms_linux_arm64_url=https://prod.download.cli.kiro.dev/stable/{{version}}/kirocli-aarch64-linux.tar.gz," +
+                "version_list_url=https://prod.download.cli.kiro.dev/stable/latest/manifest.json,version_json_path=.version]",
+            command = "kiro-cli chat",
+        ),
+        Agent("kilo", "Kilo", R.string.linux_agent_kilo, "npm:@kilocode/cli"),
+        Agent(
+            "devin",
+            "Devin CLI",
+            R.string.linux_agent_devin,
+            // Cognition publishes per-platform archives behind a manifest of the current release.
+            "http:devin[platforms_linux_x64_url=https://static.devin.ai/cli/{{ version }}/devin-{{ version }}-x86_64-unknown-linux.tar.gz," +
+                "platforms_linux_arm64_url=https://static.devin.ai/cli/{{ version }}/devin-{{ version }}-aarch64-unknown-linux.tar.gz," +
+                "bin_path=bin,version_list_url=https://static.devin.ai/cli/current/manifest.json,version_json_path=.version]",
+        ),
+        // From npm; every Amp release has a prerelease-style version (0.0.<n>-g<hash>), which mise skips unless told.
+        Agent("amp", "Amp", R.string.linux_agent_amp, "amp[prerelease=true]", node = true),
+        Agent("commandcode", "Command Code", R.string.linux_agent_commandcode, "npm:command-code"),
     )
 
 /**
@@ -91,7 +118,9 @@ val MISE_NODE_FOR_AGENTS =
  * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, Antigravity and Copilot as -i (they
  * refuse a bare argument), the others as an argument.
  * Ori's agent is `ori code`, which stays open only with --interactive. Kimi takes a prompt only in
- * print mode, so the session it ran in is continued after the answer.
+ * print mode, so the session it ran in is continued after the answer. Qwen Code and Kilo bind it to
+ * an option, MiniMax Code, Kiro, Devin and Command Code take it after --, and Amp reads its first
+ * message from stdin (an argument would be one turn that exits), as Omarchy's omarchy-agent starts them.
  * [readOnly], for reading something untrusted: Claude Code and Antigravity start in plan mode, where they
  * can read but not run commands or change files whatever the user's settings say. The others have no flag
  * for that we can rely on inside proot, and only have the prompt.
@@ -111,6 +140,11 @@ fun agentInvocation(
         agentBin == "kimi" -> "kimi --prompt $quoted && kimi --continue"
         agentBin == "agy" && readOnly -> "$agentBin --mode plan -i $quoted"
         agentBin == "agy" -> "$agentBin -i $quoted"
+        agentBin == "qwen" -> "qwen --prompt-interactive=$quoted"
+        agentBin == "kilo" -> "kilo --prompt=$quoted"
+        agentBin == "kiro-cli" -> "kiro-cli chat -- $quoted"
+        agentBin == "mcode" || agentBin == "devin" || agentBin == "commandcode" -> "$agentBin -- $quoted"
+        agentBin == "amp" -> "printf '%s\\n' $quoted | amp"
         else -> "$agentBin $quoted"
     }
 }
