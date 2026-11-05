@@ -1,8 +1,8 @@
 name: ci
 
 on:
+# Fork branch pushes build artifacts before upstream PR approval.
   push:
-    branches: [main]
   pull_request:
 
 permissions:
