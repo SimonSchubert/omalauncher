@@ -101,6 +101,23 @@ class PhoneCalendar(
         }.distinctUntilChanged()
 
     /**
+     * `phone calendar` in the guest: the events of the next [days] days as android.calendar has them, at most [max]; null
+     * without the permission, which only a widget's tap asks for. Main thread.
+     */
+    suspend fun read(
+        days: Int,
+        max: Int,
+    ): List<Value>? {
+        recheck()
+        if (!granted) return null
+        return try {
+            withContext(Dispatchers.IO) { events(days, max) }
+        } catch (_: SecurityException) {
+            null
+        }
+    }
+
+    /**
      * Provider changes and the clock both matter: an event can end without a database change, and an all-day one's
      * times are the phone's midnights, which move with its time zone.
      */
@@ -142,11 +159,14 @@ class PhoneCalendar(
         }.conflate()
 
     /**
-     * Each occurrence from the start of today for [DAYS] days, a repeating event's each on its own, that hasn't ended:
-     * {id, eventId, title, start, end, allDay, calendar, color, location}, by start, at most [MAX]. Times are Unix
+     * Each occurrence from the start of today for [days] days, a repeating event's each on its own, that hasn't ended:
+     * {id, eventId, title, start, end, allDay, calendar, color, location}, by start, at most [max]. Times are Unix
      * seconds, an all-day event's from midnight to midnight here, so fmtTime shows its day in any time zone.
      */
-    private fun events(): List<Value> {
+    private fun events(
+        days: Int = DAYS,
+        max: Int = MAX,
+    ): List<Value> {
         val now = System.currentTimeMillis()
         val day = Calendar.getInstance().apply {
             set(Calendar.HOUR_OF_DAY, 0)
@@ -155,7 +175,7 @@ class PhoneCalendar(
             set(Calendar.MILLISECOND, 0)
         }
         val from = day.timeInMillis
-        day.add(Calendar.DAY_OF_YEAR, DAYS) // Local calendar days, including daylight-saving changes.
+        day.add(Calendar.DAY_OF_YEAR, days) // Local calendar days, including daylight-saving changes.
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
             ContentUris.appendId(it, from)
             ContentUris.appendId(it, day.timeInMillis)
@@ -208,7 +228,7 @@ class PhoneCalendar(
                 ))
             }
         }
-        return rows.sortedWith(compareBy({ it.first }, { it.second })).take(MAX).map { it.third }
+        return rows.sortedWith(compareBy({ it.first }, { it.second })).take(max).map { it.third }
     }
 
     /** UTC midnight [utc] as the same date's midnight on the phone. */

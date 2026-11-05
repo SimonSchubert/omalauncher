@@ -27,6 +27,7 @@ import dev.omalauncher.linux.VOICE_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.OpenBridge
+import dev.omalauncher.linux.PhoneBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.SystemUpdates
@@ -115,6 +116,9 @@ class Runtime(
     /** Widgets' android.calendar, calendar("request") and calendar("open"). */
     val calendar = PhoneCalendar(context)
 
+    /** `phone` in the guest: location, calendar and AirPods for agents, as far as widgets were allowed them. */
+    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, scope) }
+
     /** The voice screen's replies, in the phone's voice. */
     val speaker = Speaker(context)
 
@@ -135,6 +139,7 @@ class Runtime(
                 { defaultApps(proot.applications) },
                 { bundledIcons(context, proot.home) },
                 openBridge::managed,
+                { phoneBridge.managed() },
                 proot::managed,
                 pacman::managed,
                 agents::managed,
@@ -340,6 +345,7 @@ class Runtime(
                 server.start()
                 proot.procShim.start()
                 openBridge.start()
+                phoneBridge.start()
             }
         } else {
             // Linux installed again: its new home has no foot-font.ini yet.

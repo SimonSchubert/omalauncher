@@ -81,6 +81,9 @@ class AirPods(
     /** Whether this phone can link to AirPods: Android 16 QPR3 or later, with Bluetooth, and aap.c loaded. */
     val supported: Boolean get() = constructor != null
 
+    /** Whether Bluetooth is on. */
+    val enabled: Boolean get() = adapter?.isEnabled == true
+
     /** Something worth looking for AirPods again for: one connecting or leaving, Bluetooth on, the permission, "connect". */
     private val nudges = Channel<Unit>(Channel.CONFLATED)
 

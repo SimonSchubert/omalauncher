@@ -1110,6 +1110,8 @@ class WidgetEngine(
                 "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n\n" +
                 "Where everything on home is (pages in order, faces, widgets, pinned apps and folders, each tile's cell) is " +
                 "~/${HomeStore.GUEST_DIR}/${HomeStore.FILE}; edit it to move, resize or pin things or reorder pages. " +
-                "docs/home.md in the widgets folder explains it.\n"
+                "docs/home.md in the widgets folder explains it.\n\n" +
+                "The phone's approximate location, its calendar and the AirPods connected to it are `phone location`, " +
+                "`phone calendar [days]` and `phone airpods` (JSON; `phone --help` says more), where the launcher was allowed them.\n"
     }
 }
