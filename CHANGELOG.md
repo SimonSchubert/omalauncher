@@ -4,6 +4,26 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 0.20.0 (versionCode 31) – 2026-11-05
+
+- Omarchy 4.5: themes and configs come from v4.5.0. Jade Horse and Starship join the themes
+  and Osaka Jade leaves them; whoever has it picked keeps it. The boot intro videos stay out
+  of the download.
+- Coding agents: Qwen Code, MiniMax Code, Kiro CLI, Kilo, Devin CLI, Amp and Command Code, as
+  in Omarchy 4.5's agent list. Voice talks to all of them but Amp (which has no ACP) over ACP,
+  and to Antigravity (`agy acp`) too.
+- Agents install one at a time, as two at once failed on mise's lock; a second one waits
+  ("waiting…"). Removing an agent that's running stops Voice's copy first, or says to close
+  it, instead of seeming to do nothing.
+- Agents and scripts in Linux can ask for the phone's location, calendar and AirPods with
+  `phone location`, `phone calendar [days]` and `phone airpods [control [value]]`, as far as
+  the launcher was already allowed them; nothing asks for a permission. AGENTS.md tells
+  agents what system they're in (Arch under proot, no systemd, pacman/yay and mise, what
+  opens where). `x-www-browser` opens links in Android's browser.
+- Voice does less work while it talks: only the conversation redraws, and the orb animates
+  only while it shows.
+- Fixes: an agent queued to install no longer stays "waiting…" after the Agents screen closes.
+
 ## 0.19.0 (versionCode 30) – 2026-11-04
 
 - Browser tiles: a widget or face can show a web page in a tile of its own, drawn by
