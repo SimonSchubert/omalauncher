@@ -123,6 +123,14 @@ val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
         "kimi" to { w -> AcpLink(w, "kimi acp") },
         "cursor-agent" to { w -> AcpLink(w, "cursor-agent acp") },
         "omp" to { w -> AcpLink(w, "omp acp") },
+        "qwen" to { w -> AcpLink(w, "qwen --acp") },
+        "mcode" to { w -> AcpLink(w, "mcode acp") },
+        // Kiro can't load a session, so a conversation picked up later starts a new one.
+        "kiro-cli" to { w -> AcpLink(w, "kiro-cli acp") },
+        // Kilo is OpenCode underneath, with its snapshots: the widgets, as for OpenCode.
+        "kilo" to { w -> AcpLink(w, "kilo acp", "$GUEST_HOME/${WidgetEngine.GUEST_DIR}") },
+        "devin" to { w -> AcpLink(w, "devin acp") },
+        "commandcode" to { w -> AcpLink(w, "commandcode acp") },
         "pi" to ::PiLink,
     )
 
