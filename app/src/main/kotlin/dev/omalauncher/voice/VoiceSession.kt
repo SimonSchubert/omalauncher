@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.AppLanguage
+import dev.omalauncher.PhoneStorage
 import dev.omalauncher.R
 import dev.omalauncher.linux.AGENTS
 import dev.omalauncher.linux.Agent
@@ -177,6 +178,9 @@ class VoiceSession(
 
     private var link: AgentLink? = null
     private var process: Process? = null
+
+    /** Whether [process] started with /sdcard: proot's binds are fixed as it starts. */
+    private var storage = false
     private var session: String? = null
     private val always = HashSet<String>()
     private var buffer = ""
@@ -297,6 +301,9 @@ class VoiceSession(
             anew = false
             if (!busy && approvals.isEmpty()) putAside()
         }
+        // Phone storage turned on or off since it started, in Android's settings: started again, in the same
+        // conversation, so /sdcard is there or gone for it too; as it would be after an idle stop.
+        if (process?.isAlive == true && storage != PhoneStorage.granted() && !busy && approvals.isEmpty()) stopAgent()
         // No agent that talks: the screen says which to install, and nothing starts.
         if (agent != null && process?.isAlive != true) start()
     }
@@ -537,6 +544,7 @@ class VoiceSession(
         sent = 0
         complaints.clear()
         phase = Phase.Starting
+        storage = PhoneStorage.granted()
         val p =
             runCatching { proot.process(l.command(session)).redirectErrorStream(false).start() }.getOrElse {
                 phase = Phase.Off
