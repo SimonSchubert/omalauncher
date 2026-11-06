@@ -3,7 +3,17 @@ package dev.omalauncher.linux
 import android.content.Context
 import android.os.FileObserver
 import android.util.Log
+import dev.omalauncher.BuildConfig
 import dev.omalauncher.R
+import dev.omalauncher.ui.mimeOf
+import dev.omalauncher.widgets.lang.Str
+import dev.omalauncher.widgets.runtime.battery
+import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.Intent
+import android.net.Uri
+import android.os.PowerManager
+import androidx.core.content.FileProvider
 import dev.omalauncher.postNotification
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
@@ -35,7 +45,8 @@ private const val TAG = "phone"
 
 /**
  * `omalauncher` for the guest (`phone` until 0.20, which stays as another name for it): the phone's location, calendar
- * and AirPods for agents and scripts, as JSON, from the same sources widgets read, and notifications from them. Only what the launcher was already
+ * AirPods and battery for agents and scripts, as JSON, from the same sources widgets read; and notifications and
+ * Android's share sheet for them. Only what the launcher was already
  * allowed: nothing here asks for a permission; a widget's tap does that. A request is a file in the runtime dir's
  * phone/ (<id>.req, the command and its arguments, each ended by a NUL, so a text can span lines), the answer <id>.done: `ok` and then the JSON, or
  * `usage: ...`, `denied: ...` or `error: ...`, which the script tells apart by exit code; like owl-send's inbox.
@@ -88,6 +99,9 @@ class PhoneBridge(
                 when (args[0]) {
                     "location" -> location()
                     "calendar" -> calendar(args.getOrNull(1))
+                    "battery" -> battery()
+                    "share" -> share(args.drop(1).filter { it.isNotEmpty() })
+                    "version" -> Answer.Ok(Obj(mapOf("version" to Str(BuildConfig.VERSION_NAME), "versionCode" to Num(BuildConfig.VERSION_CODE.toDouble()), "commands" to Lst(COMMANDS.map(::Str)))))
                     "notify" -> notify(args.getOrNull(1).orEmpty(), args.getOrNull(2)?.takeIf { it.isNotEmpty() })
                     "airpods" -> airpods(args.getOrNull(1)?.takeIf { it.isNotEmpty() }, args.getOrNull(2))
                     else -> Answer.Error("unknown command '${args[0]}'")
@@ -131,6 +145,47 @@ class PhoneBridge(
         if (title.isBlank()) return Answer.Usage("notify: a title")
         val posted = context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.linux_notify_channel), NOTIFY_CHANNEL, nextId(), title, text)
         return if (posted) Answer.Ok(null) else Answer.Denied(NO_NOTIFICATIONS)
+    }
+
+    /** android.battery's fields, and whether the phone is saving power. */
+    private fun battery(): Answer {
+        val saver = context.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
+        val v = battery(context) as Obj
+        return Answer.Ok(Obj(v.fields + ("saver" to bool(saver))))
+    }
+
+    /**
+     * Android's share sheet for [paths], absolute guest paths, as Files shares: the user picks the app. Only files Linux
+     * sees, through the launcher's FileProvider, which can't reach the launcher's own.
+     */
+    private suspend fun share(paths: List<String>): Answer {
+        if (paths.isEmpty()) return Answer.Usage("share: one or more files")
+        val uris = ArrayList<Uri>()
+        val mimes = HashSet<String>()
+        for (path in paths) {
+            // Not there for Android: one Linux makes up (/proc), or behind a link out of Linux.
+            val file = withContext(Dispatchers.IO) { proot.guestFile(path)?.takeIf { it.isFile } }
+            val uri = file?.let { runCatching { FileProvider.getUriForFile(context, context.packageName + ".files", it) }.getOrNull() } ?: return Answer.Error("share: $path can't be handed to Android")
+            uris += uri
+            mimes += mimeOf(file.name) ?: "*/*"
+        }
+        // One type for them all, or the family they share (image/*), or anything.
+        val mime = mimes.singleOrNull() ?: mimes.map { it.substringBefore('/') }.toSet().singleOrNull()?.let { "$it/*" } ?: "*/*"
+        val send =
+            if (uris.size == 1) {
+                Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris[0])
+            } else {
+                Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+            }.setType(mime)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                // The apps in the sheet read the uris through the clip, which the chooser passes on.
+                .apply { clipData = ClipData.newUri(context.contentResolver, "", uris[0]).also { c -> uris.drop(1).forEach { c.addItem(ClipData.Item(it)) } } }
+        return try {
+            context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION))
+            Answer.Ok(null)
+        } catch (e: ActivityNotFoundException) {
+            Answer.Error("share: no app to share with")
+        }
     }
 
     /** Its own id for each, so none replaces one still showing, from before a restart either. */
@@ -190,6 +245,8 @@ class PhoneBridge(
         const val COMMAND = "omalauncher"
         const val OLD_COMMAND = "phone"
         const val SCRIPT = "$COMMAND.sh"
+        /** What this launcher's `omalauncher` answers, for `omalauncher version`. */
+        val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "version")
         const val NOTIFY_CHANNEL = "linux"
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
