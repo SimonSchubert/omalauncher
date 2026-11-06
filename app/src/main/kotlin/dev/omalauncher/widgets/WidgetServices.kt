@@ -176,7 +176,7 @@ class WidgetServices(
     private val streams = Streams(proot, scope)
 
     /** What's playing on the phone. */
-    private val media = Media(context)
+    val media = Media(context)
     private val notifications = Notifications(context, media, ::profileKind)
     private val volume = Volume(context)
     private val alarm = Alarm(context)

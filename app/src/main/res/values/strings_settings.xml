@@ -32,9 +32,33 @@
     <string name="settings_packages_subtitle">install Linux apps and tools with pacman and the AUR</string>
     <!-- Shown while Omalauncher isn't the default home app; tapping asks Android to make it one. -->
     <string name="settings_home_app">default home app</string>
-    <string name="settings_home_app_subtitle">make Omalauncher your home screen · app shortcuts need it</string>
+    <string name="settings_home_app_subtitle">make Omalauncher your home screen</string>
     <string name="settings_local_network">local network</string>
     <string name="settings_local_network_subtitle">let widgets and linux reach your printer, home assistant, …</string>
+    <string name="settings_permissions">permissions</string>
+    <string name="settings_permissions_subtitle">microphone, location, files, …</string>
+
+    <!-- The permissions screen (ui/PermissionsScreen.kt). Its rows reuse settings_local_network and linux_storage_title. -->
+    <string name="permissions_title">permissions</string>
+    <string name="permissions_note">widgets and agents can use whatever is on here. android keeps the switches: turn on asks, turn off opens android\'s settings for it</string>
+    <!-- %1$s is what uses the permission, like "the prompt bar's mic". -->
+    <string name="permissions_on">on · %1$s</string>
+    <string name="permissions_off">off · %1$s</string>
+    <string name="permissions_mic">microphone</string>
+    <string name="permissions_mic_uses">the prompt bar\'s mic, Voice, widgets that listen</string>
+    <string name="permissions_location">location</string>
+    <string name="permissions_location_uses">approximate · widgets like the weather, while on screen · agents with phone location</string>
+    <string name="permissions_calendar">calendar</string>
+    <string name="permissions_calendar_uses">your events, read only · calendar widgets · agents with phone calendar</string>
+    <string name="permissions_bluetooth">bluetooth</string>
+    <string name="permissions_bluetooth_uses">your AirPods\' batteries and settings · AirPods widgets · agents with phone airpods</string>
+    <string name="permissions_notifications">notifications</string>
+    <string name="permissions_notifications_uses">linux while it runs, widgets that notify you</string>
+    <string name="permissions_notification_access">notification access</string>
+    <string name="permissions_notification_access_uses">what\'s playing and do not disturb, for widgets</string>
+    <!-- %1$s is where Linux sees the storage, /sdcard. -->
+    <string name="permissions_storage_uses">your downloads, photos and documents at %1$s in linux · agents and linux apps, widgets that read files</string>
+
     <string name="settings_android">android settings</string>
     <string name="settings_android_subtitle">the phone\'s system settings</string>
     <string name="settings_licenses">licenses</string>

@@ -42,6 +42,9 @@ enum class SettingsPage {
     Linux,
     Licenses,
     Gestures,
+
+    /** Every permission, to turn on or off. */
+    Permissions,
 }
 
 /** Opens [page] over the ones in [stack]; one that's already open comes back to the top, closing what's over it. */
@@ -115,6 +118,7 @@ private fun SettingsPage(
                 onLinux = { stack.push(SettingsPage.Linux) },
                 onLicenses = { stack.push(SettingsPage.Licenses) },
                 onGestures = { stack.push(SettingsPage.Gestures) },
+                onPermissions = { stack.push(SettingsPage.Permissions) },
             )
         SettingsPage.Style -> StyleScreen(runtime, onDismiss = close, onBrowse = { stack.push(SettingsPage.Themes) }, onAgent = ::agent)
         SettingsPage.Pages -> {
@@ -162,5 +166,6 @@ private fun SettingsPage(
         SettingsPage.Linux -> LinuxScreen(runtime, onDismiss = close)
         SettingsPage.Licenses -> LicensesScreen(onDismiss = close)
         SettingsPage.Gestures -> GesturesScreen(runtime, onDismiss = close, onAgent = ::agent)
+        SettingsPage.Permissions -> PermissionsScreen(runtime, onDismiss = close)
     }
 }

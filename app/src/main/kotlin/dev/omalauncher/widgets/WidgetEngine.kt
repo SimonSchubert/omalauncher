@@ -139,6 +139,9 @@ class WidgetEngine(
     /** android.airpods and airpods(...), which ask the activity in front for Bluetooth. */
     val airpods get() = services.airpods
 
+    /** android.media, and android.modes' Do Not Disturb switch: both need notification access. */
+    val media get() = services.media
+
     /** The store's widgets, and its apps. */
     val market = Market(this, OwlKind.Widget)
     val faceMarket = Market(this, OwlKind.Face)

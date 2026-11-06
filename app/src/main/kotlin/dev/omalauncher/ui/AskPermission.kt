@@ -2,12 +2,19 @@ package dev.omalauncher.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.core.content.edit
 import dev.omalauncher.Runtime
 
@@ -21,12 +28,63 @@ import dev.omalauncher.Runtime
  * any more opens the app's own settings, where the switch then is, so the tap still does something.
  */
 class AskPermission(
-    private val activity: ComponentActivity,
+    activity: ComponentActivity,
     private val permission: String,
-    private val orSettings: Boolean = false,
+    orSettings: Boolean = false,
 ) {
     private var then: ((Boolean) -> Unit)? = null
+    private val refusals = Refusals(activity, permission) { if (orSettings) appDetails(activity) else null }
 
+    private val launcher =
+        activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            val then = then
+            this.then = null
+            then?.invoke(granted)
+            refusals.answered(granted)
+        }
+
+    fun ask(then: (Boolean) -> Unit) {
+        this.then = then
+        refusals.asking()
+        launcher.launch(permission)
+    }
+}
+
+/**
+ * [AskPermission] for a screen in compose: asks for [permission], then calls [then]. Once Android won't show its dialog
+ * any more, a tap opens [settings] (the app's own page if null), where the switch then is.
+ */
+@Composable
+fun rememberAskPermission(
+    permission: String,
+    settings: Intent? = null,
+    then: (Boolean) -> Unit = {},
+): () -> Unit {
+    val activity = LocalActivity.current ?: return {}
+    val refusals = remember(permission) { Refusals(activity, permission) { settings ?: appDetails(activity) } }
+    val answered by rememberUpdatedState(then)
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            answered(granted)
+            refusals.answered(granted)
+        }
+    return {
+        refusals.asking()
+        launcher.launch(permission)
+    }
+}
+
+/** The launcher's own page in Android's settings, App info, where each runtime permission has its switch. */
+fun appDetails(context: Context): Intent =
+    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+/** Tells a refusal from a dialog Android no longer shows, and opens [settings] (if any) for the latter, where the switch is. */
+private class Refusals(
+    private val activity: Activity,
+    private val permission: String,
+    /** Made only when needed: an [AskPermission] is made with its activity, before it has a package name. */
+    private val settings: () -> Intent?,
+) {
     /** Whether Android would explain itself as it asked: true after one refusal, false again after the second. */
     private var refusedOnce = false
 
@@ -36,28 +94,18 @@ class AskPermission(
      */
     private val refused get() = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private val launcher =
-        activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            val then = then
-            this.then = null
-            then?.invoke(granted)
-            val explain = activity.shouldShowRequestPermissionRationale(permission)
-            if (!granted && explain) refused.edit { putBoolean(permission, true) }
-            // After two refusals Android stops showing the dialog and answers no at once. False before and after, once
-            // refused: no dialog came, whereas a second refusal just now was true before, and the user has said no.
-            if (!granted && orSettings && !refusedOnce && !explain && refused.getBoolean(permission, false)) {
-                runCatching {
-                    activity.startActivity(
-                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", activity.packageName, null)),
-                    )
-                }
-            }
-        }
-
-    fun ask(then: (Boolean) -> Unit) {
-        this.then = then
+    fun asking() {
         refusedOnce = activity.shouldShowRequestPermissionRationale(permission)
-        launcher.launch(permission)
+    }
+
+    fun answered(granted: Boolean) {
+        val explain = activity.shouldShowRequestPermissionRationale(permission)
+        if (!granted && explain) refused.edit { putBoolean(permission, true) }
+        // After two refusals Android stops showing the dialog and answers no at once. False before and after, once
+        // refused: no dialog came, whereas a second refusal just now was true before, and the user has said no.
+        if (!granted && !refusedOnce && !explain && refused.getBoolean(permission, false)) {
+            settings()?.let { runCatching { activity.startActivity(it) } }
+        }
     }
 
     private companion object {
