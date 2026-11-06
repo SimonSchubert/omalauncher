@@ -87,6 +87,8 @@ In debug builds you can launch guest commands with
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the compositor, rendering, GPU
   acceleration, and how updates reach existing installs
+- [docs/LINUX-DOCUMENTS.md](docs/LINUX-DOCUMENTS.md): Linux home in Android's
+  document picker, file sharing and verification
 - [docs/RELEASING.md](docs/RELEASING.md): Play releases and store assets
 - [app/src/main/assets/widgets/README.md](app/src/main/assets/widgets/README.md):
   the widget language

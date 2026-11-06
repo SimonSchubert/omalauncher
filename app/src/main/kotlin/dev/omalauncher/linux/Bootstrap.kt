@@ -258,6 +258,8 @@ class Bootstrap(
                 // Errors too (out of memory): otherwise the screen shows the step running forever.
                 Log.e(TAG, "setup failed", e)
                 _state.value = LinuxState.Failed(stage, e.message ?: e.toString(), log.toList())
+            } finally {
+                LinuxDocumentsProvider.rootsChanged(context)
             }
         }
 
@@ -313,6 +315,7 @@ class Bootstrap(
                 cancelled = false
             }
             _state.value = LinuxState.NotInstalled
+            LinuxDocumentsProvider.rootsChanged(context)
         }
 
     /**
