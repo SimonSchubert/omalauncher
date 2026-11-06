@@ -169,6 +169,7 @@
 
     <!-- The ongoing notification while Linux runs. -->
     <string name="linux_notification_channel">Linux session</string>
+    <string name="linux_media_channel">Playing from Linux</string>
     <!-- %1$s: the install's phase (download arch linux). -->
     <string name="linux_notification_installing">Installing Linux · %1$s</string>
     <!-- %1$d: percent done, %2$s: the install's phase (download arch linux). -->

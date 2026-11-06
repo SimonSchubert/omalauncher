@@ -4,6 +4,14 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- A Linux player can show what it plays in Android's media controls: `phone media set` with
+  the track's title, artist, cover, length and position puts it on the lock screen and in the
+  notification shade's player, on a car's display over Bluetooth and on a watch, and their
+  buttons, a headset's and AirPods' too, run the player's command in Linux (`<command> pause`,
+  `<command> seek 120`). `phone media clear` takes it away.
+
 ## 0.20.0 (versionCode 31) – 2026-11-05
 
 - Omarchy 4.5: themes and configs come from v4.5.0. Jade Horse and Starship join the themes

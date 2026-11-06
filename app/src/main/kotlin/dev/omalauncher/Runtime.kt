@@ -26,6 +26,7 @@ import dev.omalauncher.linux.FILES_COMMAND
 import dev.omalauncher.linux.VOICE_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
+import dev.omalauncher.linux.LinuxMedia
 import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.PhoneBridge
 import dev.omalauncher.linux.Pacman
@@ -116,8 +117,11 @@ class Runtime(
     /** Widgets' android.calendar, calendar("request") and calendar("open"). */
     val calendar = PhoneCalendar(context)
 
+    /** Linux players in Android's media controls, through `phone media`. */
+    private val linuxMedia by lazy { LinuxMedia(context, proot, scope) }
+
     /** `phone` in the guest: location, calendar and AirPods for agents, as far as widgets were allowed them. */
-    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, scope) }
+    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, linuxMedia, scope) }
 
     /** The voice screen's replies, in the phone's voice. */
     val speaker = Speaker(context)
@@ -306,6 +310,7 @@ class Runtime(
                 launcherFont.forget()
                 widgets.linuxChanged(false)
                 audio.stop()
+                linuxMedia.clear()
                 withContext(Dispatchers.IO) { proot.killAll() }
                 bootstrap.remove()
                 withContext(Dispatchers.IO) {

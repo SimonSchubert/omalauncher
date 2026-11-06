@@ -1117,6 +1117,7 @@ class WidgetEngine(
                 "~/${HomeStore.GUEST_DIR}/${HomeStore.FILE}; edit it to move, resize or pin things or reorder pages. " +
                 "docs/home.md in the widgets folder explains it.\n\n" +
                 "The phone's approximate location, its calendar and the AirPods connected to it are `phone location`, " +
-                "`phone calendar [days]` and `phone airpods` (JSON; `phone --help` says more), where the launcher was allowed them.\n"
+                "`phone calendar [days]` and `phone airpods` (JSON; `phone --help` says more), where the launcher was allowed them. " +
+                "A Linux player shows what it plays in Android's media controls (lock screen, car, headset buttons) with `phone media set`.\n"
     }
 }

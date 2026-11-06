@@ -1,7 +1,9 @@
 #!/bin/bash
 # omalauncher: the phone's location, calendar and AirPods as JSON, for agents
 # and scripts (see PhoneBridge.kt). Only what the launcher was already allowed;
-# nothing here asks. Drops a request into the launcher's inbox and waits.
+# nothing here asks. `phone media` puts what a Linux player plays in Android's
+# media controls (LinuxMedia.kt). Drops a request into the launcher's inbox and
+# waits.
 set -u
 inbox=/run/user/0/phone
 
@@ -16,6 +18,18 @@ usage: phone location             {lat, lon, accuracy (metres), time}, approxima
                                   off, anc, transparency, adaptive, next;
                                   conversation, oneBud, earDetection [on|off];
                                   adaptiveLevel <0-100>
+       phone media set '<json>'   show what a Linux player plays in Android's
+                                  media controls (lock screen, notification,
+                                  car over Bluetooth, headset buttons):
+                                  {title, artist, album, art (https URL or file),
+                                  duration, position (seconds), playing, speed,
+                                  command, actions}; without a title it changes
+                                  only the fields given. A press runs
+                                  "<command> play|pause|next|previous|stop" or
+                                  "<command> seek <seconds>" in Linux; actions
+                                  limits them (default all but stop)
+       phone media clear          take it away again
+       phone media                what's set
 
 Times are Unix seconds. Prints JSON; exits 1 with a reason on stderr when the
 launcher isn't allowed it (a widget showing it asks, or Android's settings),
@@ -29,6 +43,11 @@ case $1 in
   location) [ $# -eq 1 ] || usage ;;
   calendar) [ $# -le 2 ] || usage ;;
   airpods) [ $# -le 3 ] || usage ;;
+  media)
+    [ $# -le 3 ] || usage
+    # One request line per argument: a JSON object written over several lines goes on one.
+    if [ $# -eq 3 ]; then set -- "$1" "$2" "${3//$'\n'/ }"; fi
+    ;;
   -h | --help | help) usage ;;
   *) usage ;;
 esac
