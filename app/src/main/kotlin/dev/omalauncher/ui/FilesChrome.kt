@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import dev.omalauncher.PhoneStorage
 import dev.omalauncher.R
 import dev.omalauncher.linux.GuestEntry
 
@@ -70,7 +71,7 @@ internal fun Breadcrumbs(
     }
 }
 
-/** Quick jumps, like stock Files' drawer: home, config, the whole system; the one you're in is in the accent color. */
+/** Quick jumps, like stock Files' drawer: home, config, the phone's storage once allowed, the whole system; the one you're in is in the accent color. */
 @Composable
 internal fun Places(
     path: String,
@@ -83,9 +84,11 @@ internal fun Places(
                 R.string.files_home to "/root",
                 R.string.files_place_config to "/root/.config",
                 R.string.files_place_downloads to "/root/Downloads",
+                R.string.files_place_phone to PhoneStorage.GUEST,
                 R.string.files_place_system to "/",
             )
-                .filter { exists(it.second) }
+                // An empty mount point stays until the launcher restarts once access is taken back.
+                .filter { exists(it.second) && (it.second != PhoneStorage.GUEST || PhoneStorage.granted()) }
         }
     LazyRow(Modifier.bleed(PanelPadding), contentPadding = PaddingValues(horizontal = PanelPadding - 8.dp)) {
         items(places) { (label, target) ->

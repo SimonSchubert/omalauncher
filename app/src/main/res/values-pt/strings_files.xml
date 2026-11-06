@@ -10,6 +10,7 @@
     <string name="files_home">pessoal</string>
     <string name="files_place_config">config</string>
     <string name="files_place_downloads">downloads</string>
+    <string name="files_place_phone">telefone</string>
     <string name="files_place_system">sistema</string>
     <string name="files_search">pesquisar</string>
     <string name="files_more">mais</string>

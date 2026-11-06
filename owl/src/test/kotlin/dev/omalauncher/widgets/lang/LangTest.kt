@@ -1280,6 +1280,14 @@ class LangTest {
         assertEquals(listOf("knows roughly where the phone is; check where it sends that"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
     }
 
+    @Test fun reviewFlagsThePhonesStorage() {
+        val why = "reaches the phone's own files (photos, downloads); check nothing sends them elsewhere"
+        for (cmd in listOf("ls /sdcard/DCIM", "read file /sdcard/Download/notes.txt", "cp x \"/storage/emulated/0/Download\"", "cd /sdcard")) {
+            assertEquals(cmd, listOf(why), Review.risks(listOf(cmd)).map { it.removePrefix("command ").substringBefore(": ") })
+        }
+        for (cmd in listOf("ls ~/sdcards", "echo /sdcardish", "cat /root/sdcard")) assertTrue(cmd, Review.risks(listOf(cmd)).isEmpty())
+    }
+
     @Test fun androidCalendarAskedForOnATap() {
         val src = "widget {\n meta { owl: 18 }\n source agenda = android.calendar\n Text { text: agenda.granted ? \"events\" : \"allow\"; onTap: calendar(\"request\") } }"
         val p = Compiler.compile(src)

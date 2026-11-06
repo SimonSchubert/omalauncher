@@ -10,6 +10,7 @@
     <string name="files_home">主目录</string>
     <string name="files_place_config">配置</string>
     <string name="files_place_downloads">下载</string>
+    <string name="files_place_phone">手机</string>
     <string name="files_place_system">系统</string>
     <string name="files_search">搜索</string>
     <string name="files_more">更多</string>

@@ -20,6 +20,7 @@
     <!-- Quick jumps to /root/.config, /root/Downloads and / -->
     <string name="files_place_config">config</string>
     <string name="files_place_downloads">downloads</string>
+    <string name="files_place_phone">phone</string>
     <string name="files_place_system">system</string>
     <string name="files_search">search</string>
     <string name="files_more">more</string>

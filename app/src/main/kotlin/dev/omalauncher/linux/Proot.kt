@@ -2,6 +2,7 @@ package dev.omalauncher.linux
 
 import android.content.Context
 import dev.omalauncher.LauncherData
+import dev.omalauncher.PhoneStorage
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import java.io.File
@@ -54,8 +55,13 @@ class Proot(
      */
     private val cjkFont = File("/system/fonts/NotoSansCJK-Regular.ttc")
 
+    private val fixedBinds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
+
+    /** The phone's storage while Android allows it ([PhoneStorage]); allowed or taken back while away, for what starts next. */
+    private val storageBinds get() = if (PhoneStorage.granted()) listOf(PhoneStorage.GUEST to PhoneStorage.root) else emptyList()
+
     /** Host directories bound over guest paths by [command]. */
-    private val binds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
+    private val binds get() = fixedBinds + storageBinds
 
     /**
      * Where an absolute guest path lives on the Android side, following the
@@ -69,10 +75,10 @@ class Proot(
     }
 
     /** Where the guest can see: the rootfs and the binds, as real paths. */
-    private val visible by lazy { (listOf(rootfs) + binds.map { it.second }).map { it.canonicalFile } }
+    private val visible by lazy { (listOf(rootfs) + fixedBinds.map { it.second }).map { it.canonicalFile } }
 
     /** Whether [real], a canonical host file, is one the guest can see, rather than the launcher's own. */
-    fun guestVisible(real: File) = visible.any { real.startsWith(it) }
+    fun guestVisible(real: File) = (visible + storageBinds.map { it.second.canonicalFile }).any { real.startsWith(it) }
 
     /** The guest's files as it sees them; see [GuestFs]. */
     val guestFs by lazy { GuestFs(::hostFile, ::guestVisible) }
@@ -108,6 +114,8 @@ class Proot(
             host.mkdirs()
             if (rootfs.isDirectory) File(rootfs, guest.removePrefix("/")).mkdirs()
         }
+        // Its mount point, so / lists it; without access, an empty one left from before goes (delete() leaves a full one).
+        if (rootfs.isDirectory) File(rootfs, PhoneStorage.GUEST.removePrefix("/")).let { if (PhoneStorage.granted()) it.mkdirs() else it.delete() }
         File(rootfs, "var/lib/pacman/db.lck").delete()
         // An empty stand-in, so fontconfig lists the bound font when it reads the directory.
         if (rootfs.isDirectory) {
@@ -134,8 +142,10 @@ class Proot(
     fun managed(): List<Managed> =
         listOf(Managed.asset(context, "bwrap-shim.sh", File(rootfs, "usr/local/bin/bwrap"), Policy.Owned, executable = true))
 
-    private fun command(script: String): List<String> =
-        listOf(
+    private fun command(script: String): List<String> {
+        // Allowed since prepare(): / lists it from now on too.
+        if (PhoneStorage.granted() && rootfs.isDirectory) File(rootfs, PhoneStorage.GUEST.removePrefix("/")).mkdirs()
+        return listOf(
             File(nativeDir, "libproot.so").path,
             "--kill-on-exit",
             "--link2symlink",
@@ -185,6 +195,7 @@ class Proot(
                 "MOZ_ENABLE_WAYLAND=1",
                 "SDL_VIDEODRIVER=wayland",
             ) + graphicsEnv + listOf("/bin/sh", "-c", script)
+    }
 
     /**
      * Kills every proot we started and every guest process: before the rootfs
