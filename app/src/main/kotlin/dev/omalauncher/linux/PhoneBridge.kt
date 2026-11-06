@@ -49,7 +49,8 @@ private const val TAG = "phone"
  * Android's share sheet for them. Only what the launcher was already
  * allowed: nothing here asks for a permission; a widget's tap does that. A request is a file in the runtime dir's
  * phone/ (<id>.req, the command and its arguments, each ended by a NUL, so a text can span lines), the answer <id>.done: `ok` and then the JSON, or
- * `usage: ...`, `denied: ...` or `error: ...`, which the script tells apart by exit code; like owl-send's inbox.
+ * `usage: ...`, `denied: ...` or `error: ...`, which the script tells apart by exit code; like owl-send's inbox. <id>.ack, made
+ * as soon as a request is seen, tells the script the launcher is listening, so it waits longer for a slow answer.
  */
 class PhoneBridge(
     private val context: Context,
@@ -86,7 +87,11 @@ class PhoneBridge(
                     event: Int,
                     path: String?,
                 ) {
-                    if (path != null && path.endsWith(".req") && '/' !in path) scope.launch { receive(path.removeSuffix(".req")) }
+                    if (path == null || !path.endsWith(".req") || '/' in path) return
+                    val id = path.removeSuffix(".req")
+                    // Here, not on main: the script tells a launcher that's busy from one that isn't listening by it.
+                    runCatching { File(inbox, "$id.ack").createNewFile() }
+                    scope.launch { receive(id) }
                 }
             }.also { it.startWatching() }
     }
@@ -104,7 +109,7 @@ class PhoneBridge(
                     "version" -> Answer.Ok(Obj(mapOf("version" to Str(BuildConfig.VERSION_NAME), "versionCode" to Num(BuildConfig.VERSION_CODE.toDouble()), "commands" to Lst(COMMANDS.map(::Str)))))
                     "notify" -> notify(args.getOrNull(1).orEmpty(), args.getOrNull(2)?.takeIf { it.isNotEmpty() })
                     "airpods" -> airpods(args.getOrNull(1)?.takeIf { it.isNotEmpty() }, args.getOrNull(2))
-                    else -> Answer.Error("unknown command '${args[0]}'")
+                    else -> Answer.Usage("unknown command '${args[0]}'")
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "phone ${args[0]} failed", e)
@@ -117,7 +122,10 @@ class PhoneBridge(
                 is Answer.Usage -> "usage: ${reply.message}"
                 is Answer.Denied -> "denied: " + reply.message
             }
-        withContext(Dispatchers.IO) { runCatching { writeAtomically(File(inbox, "$id.done"), (text + "\n").toByteArray()) } }
+        withContext(Dispatchers.IO) {
+            // Its .ack gone, the script gave up waiting: nothing would read the answer.
+            if (File(inbox, "$id.ack").exists()) runCatching { writeAtomically(File(inbox, "$id.done"), (text + "\n").toByteArray()) }
+        }
     }
 
     /** The fix android.location has, or the first one within [LOCATION_MS]. */
