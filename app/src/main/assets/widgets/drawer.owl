@@ -11,7 +11,7 @@ panel "app drawer" {
     en {
       personal: "personal"; work: "work"; apps: "apps"; linux: "linux"; shortcuts: "shortcuts"; android: "android"
       workApps: "work apps"; workPaused: "work apps paused"; linuxApps: "linux apps"
-      pin: "add to home"; info: "app info"; uninstall: "uninstall"; remove: "remove"; edit: "edit"; share: "share"
+      pin: "add to home"; strip: "add to strip"; unstrip: "remove from strip"; info: "app info"; uninstall: "uninstall"; remove: "remove"; edit: "edit"; share: "share"
       settings: "settings"; turnOn: "turn on"; pause: "pause"; installing: "installing…"; installLinux: "install linux"
       open: "open"; ask: "ask"; askInstallLinux: "ask an agent · install linux"; askInstallAgent: "ask an agent · install one"
       askAgent: (bin, text) => "ask ${bin}: ${text}"
@@ -19,7 +19,7 @@ panel "app drawer" {
     id {
       personal: "pribadi"; work: "kerja"; apps: "aplikasi"; linux: "linux"; shortcuts: "pintasan"; android: "android"
       workApps: "aplikasi kerja"; workPaused: "aplikasi kerja dijeda"; linuxApps: "aplikasi linux"
-      pin: "tambah ke layar utama"; info: "info aplikasi"; uninstall: "uninstal"; remove: "hapus"; edit: "edit"; share: "bagikan"
+      pin: "tambah ke layar utama"; strip: "tambah ke bilah aplikasi"; unstrip: "hapus dari bilah aplikasi"; info: "info aplikasi"; uninstall: "uninstal"; remove: "hapus"; edit: "edit"; share: "bagikan"
       settings: "setelan"; turnOn: "aktifkan"; pause: "jeda"; installing: "menginstal…"; installLinux: "instal linux"
       open: "buka"; ask: "tanya"; askInstallLinux: "tanya agen · instal linux"; askInstallAgent: "tanya agen · instal satu"
       askAgent: (bin, text) => "tanya ${bin}: ${text}"
@@ -27,7 +27,7 @@ panel "app drawer" {
     es {
       personal: "personal"; work: "trabajo"; apps: "apps"; linux: "linux"; shortcuts: "accesos directos"; android: "android"
       workApps: "apps de trabajo"; workPaused: "apps de trabajo en pausa"; linuxApps: "apps de linux"
-      pin: "agregar a inicio"; info: "info de la app"; uninstall: "desinstalar"; remove: "quitar"; edit: "editar"; share: "compartir"
+      pin: "agregar a inicio"; strip: "agregar a la barra de apps"; unstrip: "quitar de la barra de apps"; info: "info de la app"; uninstall: "desinstalar"; remove: "quitar"; edit: "editar"; share: "compartir"
       settings: "configuración"; turnOn: "activar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
       open: "abrir"; ask: "preguntar"; askInstallLinux: "preguntar a un agente · instalar linux"; askInstallAgent: "preguntar a un agente · instalar uno"
       askAgent: (bin, text) => "preguntar a ${bin}: ${text}"
@@ -35,7 +35,7 @@ panel "app drawer" {
     pt {
       personal: "pessoal"; work: "trabalho"; apps: "apps"; linux: "linux"; shortcuts: "atalhos"; android: "android"
       workApps: "apps de trabalho"; workPaused: "apps de trabalho pausados"; linuxApps: "apps linux"
-      pin: "adicionar à tela inicial"; info: "informações do app"; uninstall: "desinstalar"; remove: "remover"; edit: "editar"; share: "compartilhar"
+      pin: "adicionar à tela inicial"; strip: "adicionar à barra de apps"; unstrip: "remover da barra de apps"; info: "informações do app"; uninstall: "desinstalar"; remove: "remover"; edit: "editar"; share: "compartilhar"
       settings: "configurações"; turnOn: "ativar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
       open: "abrir"; ask: "perguntar"; askInstallLinux: "perguntar a um agente · instalar linux"; askInstallAgent: "perguntar a um agente · instalar um"
       askAgent: (bin, text) => "perguntar ao ${bin}: ${text}"
@@ -43,7 +43,7 @@ panel "app drawer" {
     de {
       personal: "persönlich"; work: "arbeit"; apps: "apps"; linux: "linux"; shortcuts: "verknüpfungen"; android: "android"
       workApps: "arbeits-apps"; workPaused: "arbeits-apps pausiert"; linuxApps: "linux-apps"
-      pin: "zum startbildschirm hinzufügen"; info: "app-info"; uninstall: "deinstallieren"; remove: "entfernen"; edit: "bearbeiten"; share: "teilen"
+      pin: "zum startbildschirm hinzufügen"; strip: "zur app-leiste hinzufügen"; unstrip: "aus der app-leiste entfernen"; info: "app-info"; uninstall: "deinstallieren"; remove: "entfernen"; edit: "bearbeiten"; share: "teilen"
       settings: "einstellungen"; turnOn: "aktivieren"; pause: "pausieren"; installing: "wird installiert…"; installLinux: "linux installieren"
       open: "öffnen"; ask: "fragen"; askInstallLinux: "einen agenten fragen · linux installieren"; askInstallAgent: "einen agenten fragen · einen installieren"
       askAgent: (bin, text) => "${bin} fragen: ${text}"
@@ -51,7 +51,7 @@ panel "app drawer" {
     zh {
       personal: "个人"; work: "工作"; apps: "应用"; linux: "linux"; shortcuts: "快捷方式"; android: "android"
       workApps: "工作应用"; workPaused: "工作应用已暂停"; linuxApps: "linux 应用"
-      pin: "添加到主屏幕"; info: "应用信息"; uninstall: "卸载"; remove: "移除"; edit: "编辑"; share: "分享"
+      pin: "添加到主屏幕"; strip: "添加到应用栏"; unstrip: "从应用栏移除"; info: "应用信息"; uninstall: "卸载"; remove: "移除"; edit: "编辑"; share: "分享"
       settings: "设置"; turnOn: "开启"; pause: "暂停"; installing: "正在安装…"; installLinux: "安装 linux"
       open: "打开"; ask: "提问"; askInstallLinux: "问智能体 · 安装 linux"; askInstallAgent: "问智能体 · 先装一个"
       askAgent: (bin, text) => "问 ${bin}：${text}"

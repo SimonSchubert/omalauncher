@@ -561,7 +561,7 @@ class WidgetServices(
                         // Whether `icon` draws anything: its silhouette, with monochrome icons. Without one, the drawer shows the initials.
                         "hasIcon" to bool(appIconOf(runtime, hit.key, LauncherStyle.monochromeIcons) != null),
                         "initials" to Str(initials(hit.label)),
-                        "actions" to Lst(hit.actionWords().map(::Str)),
+                        "actions" to Lst(hit.actionWords(runtime.stripPins.keys).map(::Str)),
                         "score" to Num(Math.round(runtime.usage.score(hit.key) * 10.0) / 10.0),
                         "last" to (runtime.usage.last(hit.key)?.let { Num((it / 1000).toDouble()) } ?: Null),
                     ),

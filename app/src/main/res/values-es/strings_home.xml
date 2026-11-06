@@ -66,6 +66,8 @@
     <string name="home_linux_window">Linux</string>
 
     <string name="drawer_action_pin">agregar a inicio</string>
+    <string name="drawer_action_add_to_strip">agregar a la barra de apps</string>
+    <string name="drawer_action_remove_from_strip">quitar de la barra de apps</string>
     <string name="drawer_action_info">info de la app</string>
     <string name="drawer_action_uninstall">desinstalar</string>
 </resources>

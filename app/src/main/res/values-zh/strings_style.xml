@@ -19,6 +19,9 @@
     <string name="style_boxed">带框</string>
     <string name="style_icon_only">仅图标</string>
     <string name="style_recent_apps">最近应用</string>
+    <string name="style_app_strip">应用栏</string>
+    <string name="style_pinned">固定</string>
+    <string name="style_recent">最近</string>
     <string name="style_shown">显示</string>
     <string name="style_hidden">隐藏</string>
     <string name="style_empty_page_left">左侧空白页</string>
