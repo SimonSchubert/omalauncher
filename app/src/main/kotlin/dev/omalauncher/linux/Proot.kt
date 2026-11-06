@@ -183,6 +183,10 @@ class Proot(
                 "DISABLE_AUTOUPDATER=1",
                 "OPENCODE_DISABLE_AUTOUPDATE=1",
                 "GROK_DISABLE_AUTOUPDATER=1",
+                // Claude Code's cross-session messaging (its internal switch, undocumented): proot sends opens of
+                // /proc/*/uid_map to /dev/null, for bwrap's writes, so Claude reads an empty map, takes it for a user
+                // namespace without one, and greets every start with a warning that messaging is off.
+                "CLAUDE_CODE_HARBOR_KITE=0",
                 "BROWSER=xdg-open",
                 // The launcher's editor; yazi and git open files with it. Its shim falls back to micro.
                 "EDITOR=$EDIT_COMMAND",
