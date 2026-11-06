@@ -34,8 +34,9 @@ private const val TAG = "phone"
 /**
  * `phone` for the guest: the phone's location, calendar and AirPods for agents and scripts, as JSON, from the same
  * sources widgets read. Only what the launcher was already allowed: nothing here asks for a permission; a widget's tap
- * does that. A request is a file in the runtime dir's phone/ (<id>.req, its lines the command and its arguments), the
- * answer <id>.done, `ok` or `error: ...` and then the JSON; like owl-send's inbox.
+ * does that. `phone media` goes the other way: a Linux player puts what it plays in Android's media controls
+ * (LinuxMedia). A request is a file in the runtime dir's phone/ (<id>.req, its lines the command and its arguments),
+ * the answer <id>.done, `ok` or `error: ...` and then the JSON; like owl-send's inbox.
  */
 class PhoneBridge(
     private val context: Context,
@@ -43,6 +44,7 @@ class PhoneBridge(
     private val location: PhoneLocation,
     private val calendar: PhoneCalendar,
     private val airpods: () -> AirPods,
+    private val media: LinuxMedia,
     /** Main: the sources are read on the main thread, as widgets read them. */
     private val scope: CoroutineScope,
 ) {
@@ -77,6 +79,7 @@ class PhoneBridge(
                     "location" -> location()
                     "calendar" -> calendar(args.getOrNull(1))
                     "airpods" -> airpods(args.getOrNull(1)?.takeIf { it.isNotEmpty() }, args.getOrNull(2))
+                    "media" -> media(args.getOrNull(1)?.takeIf { it.isNotEmpty() }, args.getOrNull(2))
                     else -> Answer.Error("unknown command '${args[0]}'")
                 }
             } catch (e: Exception) {
@@ -131,6 +134,28 @@ class PhoneBridge(
         val after = updates.settle(CONTROL_MS) { it != v } ?: v
         return Answer.Ok(after.without("supported", "granted"))
     }
+
+    /** `phone media`: what's in Android's media controls; `set <json>` puts a track there or changes it, `clear` takes it away. */
+    private fun media(
+        word: String?,
+        json: String?,
+    ): Answer =
+        when (word) {
+            null -> Answer.Ok(media.current())
+            "set" -> {
+                val v = json?.let { runCatching { Json.parse(it) }.getOrNull() } as? Obj
+                if (v == null) {
+                    Answer.Error("media set: one JSON object, like {\"title\": \"…\", \"playing\": true, \"command\": \"myplayer\"}")
+                } else {
+                    media.set(v)?.let { Answer.Error(it) } ?: Answer.Ok(media.current())
+                }
+            }
+            "clear" -> {
+                media.clear()
+                Answer.Ok(Null)
+            }
+            else -> Answer.Error("media: set <json>, clear, or nothing for what's set")
+        }
 
     private sealed interface Answer {
         class Ok(
