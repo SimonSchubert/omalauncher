@@ -3,6 +3,8 @@ package dev.omalauncher.linux
 import android.content.Context
 import android.os.FileObserver
 import android.util.Log
+import dev.omalauncher.R
+import dev.omalauncher.postNotification
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import dev.omalauncher.upgrade.writeAtomically
@@ -33,9 +35,9 @@ private const val TAG = "phone"
 
 /**
  * `omalauncher` for the guest (`phone` until 0.20, which stays as another name for it): the phone's location, calendar
- * and AirPods for agents and scripts, as JSON, from the same sources widgets read. Only what the launcher was already
+ * and AirPods for agents and scripts, as JSON, from the same sources widgets read, and notifications from them. Only what the launcher was already
  * allowed: nothing here asks for a permission; a widget's tap does that. A request is a file in the runtime dir's
- * phone/ (<id>.req, its lines the command and its arguments), the answer <id>.done: `ok` and then the JSON, or
+ * phone/ (<id>.req, the command and its arguments, each ended by a NUL, so a text can span lines), the answer <id>.done: `ok` and then the JSON, or
  * `usage: ...`, `denied: ...` or `error: ...`, which the script tells apart by exit code; like owl-send's inbox.
  */
 class PhoneBridge(
@@ -80,12 +82,13 @@ class PhoneBridge(
 
     private suspend fun receive(id: String) {
         val request = File(inbox, "$id.req")
-        val args = withContext(Dispatchers.IO) { runCatching { request.readText() }.getOrNull().also { request.delete() } }?.lines() ?: return
+        val args = withContext(Dispatchers.IO) { runCatching { request.readText() }.getOrNull().also { request.delete() } }?.removeSuffix("\u0000")?.split('\u0000') ?: return
         val reply =
             try {
                 when (args[0]) {
                     "location" -> location()
                     "calendar" -> calendar(args.getOrNull(1))
+                    "notify" -> notify(args.getOrNull(1).orEmpty(), args.getOrNull(2)?.takeIf { it.isNotEmpty() })
                     "airpods" -> airpods(args.getOrNull(1)?.takeIf { it.isNotEmpty() }, args.getOrNull(2))
                     else -> Answer.Error("unknown command '${args[0]}'")
                 }
@@ -95,10 +98,10 @@ class PhoneBridge(
             }
         val text =
             when (reply) {
-                is Answer.Ok -> "ok\n" + (Json.write(reply.value) ?: "null")
+                is Answer.Ok -> "ok" + (reply.value?.let { "\n" + (Json.write(it) ?: "null") } ?: "")
                 is Answer.Error -> "error: ${reply.message}"
                 is Answer.Usage -> "usage: ${reply.message}"
-                is Answer.Denied -> "denied: " + NOT_ALLOWED.format(reply.what)
+                is Answer.Denied -> "denied: " + reply.message
             }
         withContext(Dispatchers.IO) { runCatching { writeAtomically(File(inbox, "$id.done"), (text + "\n").toByteArray()) } }
     }
@@ -108,7 +111,7 @@ class PhoneBridge(
         location.recheck()
         val v = location.updates().settle(LOCATION_MS) { !it.flag("granted") || it.flag("available") }
         return when {
-            v == null || !v.flag("granted") -> Answer.Denied("location")
+            v == null || !v.flag("granted") -> Answer.Denied(NOT_ALLOWED.format("location"))
             !v.flag("available") -> Answer.Error("no location yet; is location on, and the launcher in front?")
             else -> Answer.Ok(v.without("granted", "available"))
         }
@@ -116,8 +119,26 @@ class PhoneBridge(
 
     private suspend fun calendar(days: String?): Answer {
         val n = if (days.isNullOrEmpty()) DAYS else days.toIntOrNull()?.takeIf { it in 1..MAX_DAYS } ?: return Answer.Usage("days: 1 to $MAX_DAYS")
-        val events = calendar.read(n, MAX_EVENTS) ?: return Answer.Denied("calendar")
+        val events = calendar.read(n, MAX_EVENTS) ?: return Answer.Denied(NOT_ALLOWED.format("calendar"))
         return Answer.Ok(Lst(events))
+    }
+
+    /** A notification on the phone, which opens the home screen; posted, it prints nothing. */
+    private fun notify(
+        title: String,
+        text: String?,
+    ): Answer {
+        if (title.isBlank()) return Answer.Usage("notify: a title")
+        val posted = context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.linux_notify_channel), NOTIFY_CHANNEL, nextId(), title, text)
+        return if (posted) Answer.Ok(null) else Answer.Denied(NO_NOTIFICATIONS)
+    }
+
+    /** Its own id for each, so none replaces one still showing, from before a restart either. */
+    private var lastId = 0
+
+    private fun nextId(): Int {
+        lastId = maxOf(lastId + 1, (System.currentTimeMillis() / 1000 % Int.MAX_VALUE).toInt())
+        return lastId
     }
 
     /**
@@ -132,7 +153,7 @@ class PhoneBridge(
         val pods = airpods()
         pods.recheck()
         if (!pods.supported) return Answer.Error("this phone can't link to AirPods (Android 16 QPR3 or later)")
-        if (!pods.granted) return Answer.Denied("Bluetooth")
+        if (!pods.granted) return Answer.Denied(NOT_ALLOWED.format("Bluetooth"))
         if (!pods.enabled) return Answer.Error("Bluetooth is off")
         val updates = pods.updates()
         val v = updates.settle(AIRPODS_MS) { it.flag("connected") && (it.has("left") || it.has("right") || it.has("headset")) }
@@ -145,8 +166,9 @@ class PhoneBridge(
     }
 
     private sealed interface Answer {
+        /** [value] as JSON, or nothing. */
         class Ok(
-            val value: Value,
+            val value: Value?,
         ) : Answer
 
         class Error(
@@ -160,7 +182,7 @@ class PhoneBridge(
 
         /** Not allowed: exit code 3. */
         class Denied(
-            val what: String,
+            val message: String,
         ) : Answer
     }
 
@@ -168,6 +190,8 @@ class PhoneBridge(
         const val COMMAND = "omalauncher"
         const val OLD_COMMAND = "phone"
         const val SCRIPT = "$COMMAND.sh"
+        const val NOTIFY_CHANNEL = "linux"
+        const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
         const val LOCATION_MS = 10_000L
         const val AIRPODS_MS = 12_000L

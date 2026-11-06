@@ -3,10 +3,6 @@ package dev.omalauncher.widgets
 import dev.omalauncher.copyText
 import dev.omalauncher.registerNotExported
 import dev.omalauncher.shareText
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -36,8 +32,8 @@ import android.os.UserHandle
 import android.os.UserManager
 import android.util.Log
 import android.widget.Toast
-import dev.omalauncher.MainActivity
 import dev.omalauncher.R
+import dev.omalauncher.postNotification
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.LinuxState
@@ -1068,23 +1064,9 @@ class WidgetServices(
         title: String,
         text: String?,
     ) {
-        val nm = context.getSystemService(NotificationManager::class.java)
-        if (!nm.areNotificationsEnabled()) {
+        if (!context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.widgets_notify_channel), NOTIFY_CHANNEL, notificationId++, title, text)) {
             Log.w("widgets", "notify: notifications are off for the launcher")
-            return
         }
-        nm.createNotificationChannel(NotificationChannel(NOTIFY_CHANNEL, context.getString(R.string.widgets_notify_channel), NotificationManager.IMPORTANCE_DEFAULT))
-        val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val n =
-            Notification
-                .Builder(context, NOTIFY_CHANNEL)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setContentIntent(open)
-                .setAutoCancel(true)
-                .build()
-        nm.notify(notificationId++, n)
     }
 }
 

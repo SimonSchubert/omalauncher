@@ -130,6 +130,7 @@
     <string name="linux_storage_offer">deine downloads, fotos und dokumente unter %1$s in linux; android fragt, ob du zugriff auf alle dateien erlaubst</string>
 
     <string name="linux_notification_channel">Linux-Sitzung</string>
+    <string name="linux_notify_channel">Agenten und Skripte</string>
     <string name="linux_notification_installing">Linux wird installiert · %1$s</string>
     <string name="linux_notification_installing_percent">Linux wird installiert · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">Linux-Einrichtung gestoppt · nochmal versuchen unter einstellungen › linux</string>

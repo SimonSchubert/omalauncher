@@ -132,6 +132,7 @@
     <string name="linux_storage_offer">tus descargas, fotos y documentos en %1$s en linux; android te pide permitir el acceso a todos los archivos</string>
 
     <string name="linux_notification_channel">Sesión de Linux</string>
+    <string name="linux_notify_channel">Agentes y scripts</string>
     <string name="linux_notification_installing">Instalando Linux · %1$s</string>
     <string name="linux_notification_installing_percent">Instalando Linux · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">La instalación de Linux se detuvo · abre configuración › linux para reintentar</string>
