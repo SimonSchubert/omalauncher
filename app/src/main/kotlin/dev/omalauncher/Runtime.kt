@@ -553,6 +553,9 @@ class Runtime(
             else -> false
         }
 
+    /** Copies an Android photo or document into Linux's temporary files and returns its guest path. */
+    fun savePromptAttachment(uri: Uri): String? = guestImages.save(uri)?.let(guestImages::guestPath)
+
     /**
      * Opens [command] (or a shell) in a terminal named [name]. Each gets its own
      * foot app_id, so Recents shows "Grok" or "btop" rather than one "foot" per window.

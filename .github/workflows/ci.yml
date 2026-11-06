@@ -1,8 +1,8 @@
 name: ci
 
 on:
+# Fork branch pushes build artifacts before upstream PR approval.
   push:
-    branches: [main]
   pull_request:
 
 permissions:
@@ -30,6 +30,19 @@ jobs:
       - name: Test
         run: ./gradlew :owl:test :app:testDebugUnitTest :owl:owlJar
 
-      # Builds without proot (scripts/fetch-proot.sh), which is enough to compile wlbridge and run lint.
+      - name: Install proot build dependencies
+        run: sudo apt-get update -q && sudo apt-get install -yq libarchive-tools
+
+      - name: Fetch proot
+        run: scripts/fetch-proot.sh
+
       - name: Build and lint
         run: ./gradlew :app:assembleDebug :app:lintDebug
+
+      - name: Upload installable debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: omalauncher-debug-${{ github.sha }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 7
