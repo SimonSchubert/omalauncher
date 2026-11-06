@@ -209,15 +209,16 @@ class VoiceSession(
     val dir get() = File(context.filesDir, "voice")
 
     /**
-     * What went to and came from the agent, for finding out why it misbehaves: /tmp/voice-agent.log in Linux,
-     * readable from a terminal, cut in half when it passes 1 MB; /tmp is emptied as the launcher starts.
+     * What went to and came from the agent, for finding out why it misbehaves: ~/.cache/omalauncher/voice-agent.log in
+     * Linux, readable from a terminal, cut in half when it passes 1 MB. Not in /tmp, which is emptied as the launcher
+     * starts: an update or Android ending the process took the log of what went wrong with it.
      */
     private fun trace(
         way: Char,
         line: String,
     ) = files.execute {
         runCatching {
-            val log = proot.hostFile("/tmp/voice-agent.log")
+            val log = File(proot.home, ".cache/omalauncher/voice-agent.log").apply { parentFile?.mkdirs() }
             if (log.length() > 1_000_000) log.writeText(log.readText().takeLast(500_000))
             log.appendText("${System.currentTimeMillis() % 100_000_000} $way ${line.take(4000)}\n")
         }
