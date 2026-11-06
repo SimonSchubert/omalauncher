@@ -101,7 +101,7 @@ class PhoneCalendar(
         }.distinctUntilChanged()
 
     /**
-     * `phone calendar` in the guest: the events of the next [days] days as android.calendar has them, at most [max]; null
+     * `omalauncher calendar` in the guest: the events of the next [days] days as android.calendar has them, at most [max]; null
      * without the permission, which only a widget's tap asks for. Main thread.
      */
     suspend fun read(

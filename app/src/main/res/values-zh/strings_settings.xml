@@ -39,11 +39,11 @@
     <string name="permissions_mic">麦克风</string>
     <string name="permissions_mic_uses">输入栏的麦克风、Voice、会聆听的小组件</string>
     <string name="permissions_location">位置</string>
-    <string name="permissions_location_uses">大致位置 · 天气等小组件，仅在显示时 · 智能体用 phone location</string>
+    <string name="permissions_location_uses">大致位置 · 天气等小组件，仅在显示时 · 智能体用 omalauncher location</string>
     <string name="permissions_calendar">日历</string>
-    <string name="permissions_calendar_uses">你的日程，只读 · 日历小组件 · 智能体用 phone calendar</string>
+    <string name="permissions_calendar_uses">你的日程，只读 · 日历小组件 · 智能体用 omalauncher calendar</string>
     <string name="permissions_bluetooth">蓝牙</string>
-    <string name="permissions_bluetooth_uses">AirPods 的电量和设置 · AirPods 小组件 · 智能体用 phone airpods</string>
+    <string name="permissions_bluetooth_uses">AirPods 的电量和设置 · AirPods 小组件 · 智能体用 omalauncher airpods</string>
     <string name="permissions_notifications">通知</string>
     <string name="permissions_notifications_uses">linux 运行时的状态、发送通知的小组件</string>
     <string name="permissions_notification_access">通知使用权</string>

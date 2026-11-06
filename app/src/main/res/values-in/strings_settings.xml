@@ -39,11 +39,11 @@
     <string name="permissions_mic">mikrofon</string>
     <string name="permissions_mic_uses">mikrofon di bilah prompt, Voice, widget yang mendengarkan</string>
     <string name="permissions_location">lokasi</string>
-    <string name="permissions_location_uses">perkiraan · widget seperti cuaca, saat tampil di layar · agen dengan phone location</string>
+    <string name="permissions_location_uses">perkiraan · widget seperti cuaca, saat tampil di layar · agen dengan omalauncher location</string>
     <string name="permissions_calendar">kalender</string>
-    <string name="permissions_calendar_uses">acaramu, hanya dibaca · widget kalender · agen dengan phone calendar</string>
+    <string name="permissions_calendar_uses">acaramu, hanya dibaca · widget kalender · agen dengan omalauncher calendar</string>
     <string name="permissions_bluetooth">bluetooth</string>
-    <string name="permissions_bluetooth_uses">baterai dan setelan AirPods-mu · widget AirPods · agen dengan phone airpods</string>
+    <string name="permissions_bluetooth_uses">baterai dan setelan AirPods-mu · widget AirPods · agen dengan omalauncher airpods</string>
     <string name="permissions_notifications">notifikasi</string>
     <string name="permissions_notifications_uses">linux selama berjalan, widget yang memberi notifikasi</string>
     <string name="permissions_notification_access">akses notifikasi</string>

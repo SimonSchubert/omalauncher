@@ -41,11 +41,11 @@
     <string name="permissions_mic">micrófono</string>
     <string name="permissions_mic_uses">el micrófono de la barra de prompt, Voice, widgets que escuchan</string>
     <string name="permissions_location">ubicación</string>
-    <string name="permissions_location_uses">aproximada · widgets como el clima, mientras están en pantalla · agentes con phone location</string>
+    <string name="permissions_location_uses">aproximada · widgets como el clima, mientras están en pantalla · agentes con omalauncher location</string>
     <string name="permissions_calendar">calendario</string>
-    <string name="permissions_calendar_uses">tus eventos, solo lectura · widgets de calendario · agentes con phone calendar</string>
+    <string name="permissions_calendar_uses">tus eventos, solo lectura · widgets de calendario · agentes con omalauncher calendar</string>
     <string name="permissions_bluetooth">bluetooth</string>
-    <string name="permissions_bluetooth_uses">las baterías y la configuración de tus AirPods · widgets de AirPods · agentes con phone airpods</string>
+    <string name="permissions_bluetooth_uses">las baterías y la configuración de tus AirPods · widgets de AirPods · agentes con omalauncher airpods</string>
     <string name="permissions_notifications">notificaciones</string>
     <string name="permissions_notifications_uses">linux mientras se ejecuta, widgets que te notifican</string>
     <string name="permissions_notification_access">acceso a notificaciones</string>

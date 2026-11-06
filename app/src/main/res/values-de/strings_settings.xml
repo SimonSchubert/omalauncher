@@ -44,11 +44,11 @@
     <string name="permissions_mic">mikrofon</string>
     <string name="permissions_mic_uses">das mikro in der eingabeleiste, Voice, widgets, die zuhören</string>
     <string name="permissions_location">standort</string>
-    <string name="permissions_location_uses">ungefähr · widgets wie das wetter, solange sie zu sehen sind · agenten mit phone location</string>
+    <string name="permissions_location_uses">ungefähr · widgets wie das wetter, solange sie zu sehen sind · agenten mit omalauncher location</string>
     <string name="permissions_calendar">kalender</string>
-    <string name="permissions_calendar_uses">deine termine, nur lesen · kalender-widgets · agenten mit phone calendar</string>
+    <string name="permissions_calendar_uses">deine termine, nur lesen · kalender-widgets · agenten mit omalauncher calendar</string>
     <string name="permissions_bluetooth">bluetooth</string>
-    <string name="permissions_bluetooth_uses">akkus und einstellungen deiner AirPods · AirPods-widgets · agenten mit phone airpods</string>
+    <string name="permissions_bluetooth_uses">akkus und einstellungen deiner AirPods · AirPods-widgets · agenten mit omalauncher airpods</string>
     <string name="permissions_notifications">benachrichtigungen</string>
     <string name="permissions_notifications_uses">linux, solange es läuft, widgets, die dich benachrichtigen</string>
     <string name="permissions_notification_access">benachrichtigungszugriff</string>

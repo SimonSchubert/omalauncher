@@ -116,7 +116,7 @@ class Runtime(
     /** Widgets' android.calendar, calendar("request") and calendar("open"). */
     val calendar = PhoneCalendar(context)
 
-    /** `phone` in the guest: location, calendar and AirPods for agents, as far as widgets were allowed them. */
+    /** `omalauncher` in the guest (and `phone`, its old name): location, calendar and AirPods for agents, as far as widgets were allowed them. */
     private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, scope) }
 
     /** The voice screen's replies, in the phone's voice. */

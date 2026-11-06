@@ -32,10 +32,11 @@ import java.io.File
 private const val TAG = "phone"
 
 /**
- * `phone` for the guest: the phone's location, calendar and AirPods for agents and scripts, as JSON, from the same
- * sources widgets read. Only what the launcher was already allowed: nothing here asks for a permission; a widget's tap
- * does that. A request is a file in the runtime dir's phone/ (<id>.req, its lines the command and its arguments), the
- * answer <id>.done, `ok` or `error: ...` and then the JSON; like owl-send's inbox.
+ * `omalauncher` for the guest (`phone` until 0.20, which stays as another name for it): the phone's location, calendar
+ * and AirPods for agents and scripts, as JSON, from the same sources widgets read. Only what the launcher was already
+ * allowed: nothing here asks for a permission; a widget's tap does that. A request is a file in the runtime dir's
+ * phone/ (<id>.req, its lines the command and its arguments), the answer <id>.done: `ok` and then the JSON, or
+ * `usage: ...`, `denied: ...` or `error: ...`, which the script tells apart by exit code; like owl-send's inbox.
  */
 class PhoneBridge(
     private val context: Context,
@@ -49,13 +50,22 @@ class PhoneBridge(
     private val inbox = File(proot.runtimeDir, "phone")
     private var observer: FileObserver? = null
 
-    fun managed(): List<Managed> = listOf(Managed.asset(context, SCRIPT, File(proot.rootfs, "usr/local/bin/phone"), Policy.Owned, executable = true))
+    fun managed(): List<Managed> {
+        val bin = File(proot.rootfs, "usr/local/bin")
+        return listOf(
+            Managed.asset(context, SCRIPT, File(bin, COMMAND), Policy.Owned, executable = true),
+            // Agents told about `phone` in 0.20, and AGENTS.md files edited since, still call it that.
+            Managed.text(File(bin, OLD_COMMAND), Policy.Owned, executable = true) {
+                "#!/bin/sh\n# omalauncher: phone was the name of omalauncher until 0.20\nexec $COMMAND \"$@\"\n"
+            },
+        )
+    }
 
     /** Any thread. */
     fun start() {
         if (observer != null) return
         inbox.mkdirs()
-        // Answers nobody waited for, from a `phone` killed while it waited: nothing reads them now.
+        // Answers nobody waited for, from an `omalauncher` killed while it waited: nothing reads them now.
         inbox.listFiles()?.forEach { it.delete() }
         observer =
             object : FileObserver(inbox, CLOSE_WRITE or MOVED_TO) {
@@ -87,6 +97,8 @@ class PhoneBridge(
             when (reply) {
                 is Answer.Ok -> "ok\n" + (Json.write(reply.value) ?: "null")
                 is Answer.Error -> "error: ${reply.message}"
+                is Answer.Usage -> "usage: ${reply.message}"
+                is Answer.Denied -> "denied: " + NOT_ALLOWED.format(reply.what)
             }
         withContext(Dispatchers.IO) { runCatching { writeAtomically(File(inbox, "$id.done"), (text + "\n").toByteArray()) } }
     }
@@ -96,15 +108,15 @@ class PhoneBridge(
         location.recheck()
         val v = location.updates().settle(LOCATION_MS) { !it.flag("granted") || it.flag("available") }
         return when {
-            v == null || !v.flag("granted") -> Answer.Error(NOT_ALLOWED.format("location"))
+            v == null || !v.flag("granted") -> Answer.Denied("location")
             !v.flag("available") -> Answer.Error("no location yet; is location on, and the launcher in front?")
             else -> Answer.Ok(v.without("granted", "available"))
         }
     }
 
     private suspend fun calendar(days: String?): Answer {
-        val n = if (days.isNullOrEmpty()) DAYS else days.toIntOrNull()?.takeIf { it in 1..MAX_DAYS } ?: return Answer.Error("days: 1 to $MAX_DAYS")
-        val events = calendar.read(n, MAX_EVENTS) ?: return Answer.Error(NOT_ALLOWED.format("calendar"))
+        val n = if (days.isNullOrEmpty()) DAYS else days.toIntOrNull()?.takeIf { it in 1..MAX_DAYS } ?: return Answer.Usage("days: 1 to $MAX_DAYS")
+        val events = calendar.read(n, MAX_EVENTS) ?: return Answer.Denied("calendar")
         return Answer.Ok(Lst(events))
     }
 
@@ -116,11 +128,11 @@ class PhoneBridge(
         word: String?,
         arg: String?,
     ): Answer {
-        if (word != null && word !in CONTROLS) return Answer.Error("airpods: one of ${CONTROLS.joinToString(", ")}")
+        if (word != null && word !in CONTROLS) return Answer.Usage("airpods: one of ${CONTROLS.joinToString(", ")}")
         val pods = airpods()
         pods.recheck()
         if (!pods.supported) return Answer.Error("this phone can't link to AirPods (Android 16 QPR3 or later)")
-        if (!pods.granted) return Answer.Error(NOT_ALLOWED.format("Bluetooth"))
+        if (!pods.granted) return Answer.Denied("Bluetooth")
         if (!pods.enabled) return Answer.Error("Bluetooth is off")
         val updates = pods.updates()
         val v = updates.settle(AIRPODS_MS) { it.flag("connected") && (it.has("left") || it.has("right") || it.has("headset")) }
@@ -140,10 +152,22 @@ class PhoneBridge(
         class Error(
             val message: String,
         ) : Answer
+
+        /** Wrong arguments: exit code 2. */
+        class Usage(
+            val message: String,
+        ) : Answer
+
+        /** Not allowed: exit code 3. */
+        class Denied(
+            val what: String,
+        ) : Answer
     }
 
     private companion object {
-        const val SCRIPT = "phone.sh"
+        const val COMMAND = "omalauncher"
+        const val OLD_COMMAND = "phone"
+        const val SCRIPT = "$COMMAND.sh"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
         const val LOCATION_MS = 10_000L
         const val AIRPODS_MS = 12_000L
@@ -153,7 +177,7 @@ class PhoneBridge(
         const val MAX_EVENTS = 1000
         val CONTROLS = Aap.MODES + listOf("next", "conversation", "oneBud", "earDetection", "adaptiveLevel")
 
-        /** on/off as well as JSON: `phone airpods conversation off`. */
+        /** on/off as well as JSON: `omalauncher airpods conversation off`. */
         fun argument(text: String): Value =
             when (text) {
                 "on" -> bool(true)
