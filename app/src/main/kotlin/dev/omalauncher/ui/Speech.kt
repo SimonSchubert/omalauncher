@@ -255,6 +255,9 @@ class Speech(
             .putExtra(MUTE_BEEPS, true)
             .apply { language?.let { putExtra(RecognizerIntent.EXTRA_LANGUAGE, it) } }
             .apply {
+                // Words no recognizer knows, which come out as "all my launcher" or "home alarm show"; one that
+                // doesn't bias ignores it.
+                if (Build.VERSION.SDK_INT >= 33) putStringArrayListExtra(RecognizerIntent.EXTRA_BIASING_STRINGS, BIASING)
                 // Held, one session that hands over each phrase as it ends, rather than a new one after every pause,
                 // which loses what's said in between. One that doesn't do segments ignores it, and ends at a pause as
                 // before, for [next]. An Int: Google's recognizers ignore a Long, and with it the segments.
@@ -512,6 +515,9 @@ class Speech(
          * recognizers take at most 5 minutes, and ignore more, segments and all.
          */
         private const val SESSION_MS = 5 * 60 * 1000
+
+        /** The launcher's own names, said to agents: see [RecognizerIntent.EXTRA_BIASING_STRINGS]. */
+        private val BIASING = arrayListOf("omalauncher", "Omarchy", "owl")
 
         /** Google's own extra, in both its recognizers, for no start and end beeps. */
         private const val MUTE_BEEPS = "com.google.recognition.extra.MUTE_AUDIO_BEEPS"
