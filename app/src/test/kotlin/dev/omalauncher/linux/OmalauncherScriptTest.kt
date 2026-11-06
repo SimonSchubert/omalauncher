@@ -40,7 +40,10 @@ class OmalauncherScriptTest {
                     for (req in inbox.listFiles { f -> f.name.endsWith(".req") && !f.name.startsWith(".") }.orEmpty()) {
                         val id = req.name.removeSuffix(".req")
                         val reply = answer ?: continue
-                        val args = req.readText().removeSuffix("\u0000").split('\u0000')
+                        // The script writes it in place; the launcher waits for it to be closed, this for its last NUL.
+                        val text = req.readText()
+                        if (!text.endsWith('\u0000')) continue
+                        val args = text.removeSuffix("\u0000").split('\u0000')
                         req.delete()
                         received = args
                         File(inbox, "$id.ack").createNewFile()

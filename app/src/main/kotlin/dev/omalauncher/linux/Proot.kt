@@ -58,7 +58,7 @@ class Proot(
     private val fixedBinds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
 
     /** The phone's storage while Android allows it ([PhoneStorage]); allowed or taken back while away, for what starts next. */
-    private val storageBinds get() = if (PhoneStorage.granted()) listOf(PhoneStorage.GUEST to PhoneStorage.root) else emptyList()
+    private val storageBinds get() = if (PhoneStorage.grantedLately()) listOf(PhoneStorage.GUEST to PhoneStorage.root) else emptyList()
 
     /** Host directories bound over guest paths by [command]. */
     private val binds get() = fixedBinds + storageBinds
@@ -78,7 +78,9 @@ class Proot(
     private val visible by lazy { (listOf(rootfs) + fixedBinds.map { it.second }).map { it.canonicalFile } }
 
     /** Whether [real], a canonical host file, is one the guest can see, rather than the launcher's own. */
-    fun guestVisible(real: File) = (visible + storageBinds.map { it.second.canonicalFile }).any { real.startsWith(it) }
+    fun guestVisible(real: File) = visible.any { real.startsWith(it) } || (PhoneStorage.grantedLately() && real.startsWith(storageReal))
+
+    private val storageReal by lazy { PhoneStorage.root.canonicalFile }
 
     /** The guest's files as it sees them; see [GuestFs]. */
     val guestFs by lazy { GuestFs(::hostFile, ::guestVisible) }

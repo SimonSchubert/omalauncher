@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.annotation.RequiresApi
 import java.io.File
@@ -24,7 +25,25 @@ object PhoneStorage {
     fun supported(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
 
     /** Whether Linux sees it: Android allows all files. Can change while the launcher is away, in Android's settings. */
-    fun granted(): Boolean = supported() && Environment.isExternalStorageManager()
+    fun granted(): Boolean = (supported() && Environment.isExternalStorageManager()).also { asked = Asked(it, SystemClock.elapsedRealtime()) }
+
+    /**
+     * [granted] as Android said it within the last second: for paths looked up one by one (a Files folder, a widget's
+     * images), as asking is a call into another process each time.
+     */
+    fun grantedLately(): Boolean {
+        val last = asked
+        return if (last != null && SystemClock.elapsedRealtime() - last.at < LATELY_MS) last.granted else granted()
+    }
+
+    private class Asked(
+        val granted: Boolean,
+        val at: Long,
+    )
+
+    @Volatile private var asked: Asked? = null
+
+    private const val LATELY_MS = 1_000L
 
     /** The storage itself, /storage/emulated/0 for the phone's owner. */
     val root: File get() = Environment.getExternalStorageDirectory()

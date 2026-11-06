@@ -99,19 +99,23 @@ if [ ! -d "$inbox" ]; then
   exit 4
 fi
 
-# Waiting in bash's own sleep, where it has it, rather than starting one 200
-# times: each start is slow under proot.
-enable -f /usr/lib/bash/sleep sleep 2>/dev/null
+# bash's own sleep and rm, where it has them, rather than starting them as
+# programs: each start is slow under proot.
+fast=
+enable -f /usr/lib/bash/sleep sleep 2>/dev/null && fast=1
+enable -f /usr/lib/bash/rm rm 2>/dev/null
 
 id="${EPOCHREALTIME/./}-$$"
-# Each ended by a NUL: a notification's text can span lines.
-printf '%s\0' "$@" >"$inbox/.$id.tmp"
-mv "$inbox/.$id.tmp" "$inbox/$id.req"
+# Each ended by a NUL: a notification's text can span lines. Written in place, not
+# moved there: the launcher reads it once it's closed.
+printf '%s\0' "$@" >"$inbox/$id.req"
 
 # The launcher says it has the request (.ack) at once; then it is only slow (AirPods
-# can take a while to link up), and waited for longer.
+# can take a while to link up), and waited for longer. Most answers come within
+# milliseconds: looked for every 10 ms for the first half second, then every 100.
 acked=
-for ((i = 0; ; i++)); do
+ms=0
+while :; do
   if [ -f "$inbox/$id.done" ]; then
     reply=
     IFS= read -r -d '' reply <"$inbox/$id.done"
@@ -137,16 +141,22 @@ for ((i = 0; ; i++)); do
         ;;
     esac
   fi
-  [ -n "$acked" ] || [ ! -f "$inbox/$id.ack" ] || acked=$i
-  if [ -z "$acked" ] && ((i >= 50)); then
+  [ -n "$acked" ] || [ ! -f "$inbox/$id.ack" ] || acked=$ms
+  if [ -z "$acked" ] && ((ms >= 5000)); then
     rm -f "$inbox/$id.req"
     echo "omalauncher: the launcher didn't take the request; is it running?" >&2
     exit 4
   fi
-  if [ -n "$acked" ] && ((i - acked >= 1200)); then
+  if [ -n "$acked" ] && ((ms - acked >= 120000)); then
     rm -f "$inbox/$id.ack"
     echo "omalauncher: the launcher took the request but didn't answer in 2 minutes" >&2
     exit 4
   fi
-  sleep 0.1
+  if [ -n "$fast" ] && ((ms < 500)); then
+    sleep 0.01
+    ((ms += 10))
+  else
+    sleep 0.1
+    ((ms += 100))
+  fi
 done
