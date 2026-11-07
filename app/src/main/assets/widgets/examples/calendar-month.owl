@@ -82,8 +82,11 @@ widget "calendar month" {
           }
         }
       }
-      if selected != today {
-        Text { text: "↺"; font: mono; style: small; color: accent; onTap: { month = null; picked = null } }
+      Column {
+        height: 24
+        if selected != today {
+          Text { text: "↺"; font: mono; fontSize: 22; color: red; onTap: { month = null; picked = null } }
+        }
       }
     }
 
