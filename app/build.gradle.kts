@@ -21,8 +21,8 @@ android {
         applicationId = "dev.omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 31
-        versionName = "0.20.0"
+        versionCode = 32
+        versionName = "1.0.0"
         ndk { abiFilters += "arm64-v8a" }
     }
 

@@ -4,6 +4,27 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 1.0.0 (versionCode 32) – 2026-11-07
+
+- Phone storage: "phone storage" on the Linux screen (Android 11+) opens Android's all-files
+  page; while it is allowed, the phone's shared storage is at /sdcard in Linux, read and write,
+  and Files gets a "phone" place. Nothing asks for it on its own.
+- Settings has a permissions screen listing each permission, whether it's on and what uses it.
+- The `phone` command is `omalauncher` now (`phone` still works), with exit codes that say why
+  there is no answer, and three more commands: `notify` (a phone notification on its own
+  "agents and scripts" channel), `share` (Android's share sheet for Linux files), `battery`
+  and `version`. It answers in about 35 ms rather than 170.
+- Linux follows the phone's DNS servers, a VPN's included, so tailnet and LAN names resolve;
+  8.8.8.8 and 1.1.1.1 stay the fallback. An edited resolv.conf is left alone.
+- Owl 19: `fps:` says how many frames a second a widget's animation needs; koi, the owl and the
+  controls panel run at 10 to 30 rather than 60, which saves battery while home shows.
+- Home can open on any page, a face too: `home.home-page` in style.toml (#270, #225).
+- Claude Code no longer warns about cross-session messaging on every start in Linux.
+- Fixes: an exited terminal tile stays stopped until tapped (#130); a widget's notification no
+  longer replaces one from before the launcher restarted; an agent whose install finishes
+  after the agents screen closed shows up right away; Voice sees phone storage turned on
+  while its agent runs, and keeps its log in ~/.cache.
+
 ## 0.20.0 (versionCode 31) – 2026-11-05
 
 - Omarchy 4.5: themes and configs come from v4.5.0. Jade Horse and Starship join the themes
