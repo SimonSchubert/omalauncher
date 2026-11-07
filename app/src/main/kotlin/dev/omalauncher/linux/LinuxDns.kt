@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.LinkProperties
 import android.net.Network
 import android.util.Log
+import dev.omalauncher.upgrade.writeAtomically
 import java.io.File
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -50,14 +51,8 @@ class LinuxDns(
         if (text == current) return
         // Written beside and renamed over, so a lookup in Linux never finds the file missing or half
         // written; the rename also replaces a symlink rather than writing through it.
-        val next = File(file.parentFile, ".resolv.conf.omalauncher")
-        runCatching {
-            next.writeText(text)
-            check(next.renameTo(file)) { "rename failed" }
-        }.onFailure {
-            next.delete()
-            Log.w(TAG, "can't write ${file.path}", it)
-        }
+        runCatching { writeAtomically(file, text.toByteArray()) }
+            .onFailure { Log.w(TAG, "can't write ${file.path}", it) }
     }
 
     companion object {

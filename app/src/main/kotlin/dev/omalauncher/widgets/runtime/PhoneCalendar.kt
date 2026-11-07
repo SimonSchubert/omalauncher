@@ -5,7 +5,6 @@ import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
@@ -37,6 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
 import java.util.TimeZone
+import dev.omalauncher.hasPermission
 
 /**
  * The events in the phone's calendars, local and synced, for widgets: `source c = android.calendar`, and
@@ -52,7 +52,7 @@ class PhoneCalendar(
     /** State, so a source that read it ungranted starts reading the moment it's granted. */
     private var granted by mutableStateOf(check())
 
-    private fun check() = context.checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+    private fun check() = context.hasPermission(Manifest.permission.READ_CALENDAR)
 
     /** Granted or taken back in Android's settings while away: each activity that shows widgets checks as it resumes. */
     fun recheck() {

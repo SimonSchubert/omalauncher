@@ -82,6 +82,9 @@ class Proot(
 
     private val storageReal by lazy { PhoneStorage.root.canonicalFile }
 
+    /** The empty directory in the rootfs that the phone's storage is bound over. */
+    private val storageMount get() = File(rootfs, PhoneStorage.GUEST.removePrefix("/"))
+
     /** The guest's files as it sees them; see [GuestFs]. */
     val guestFs by lazy { GuestFs(::hostFile, ::guestVisible) }
 
@@ -117,7 +120,7 @@ class Proot(
             if (rootfs.isDirectory) File(rootfs, guest.removePrefix("/")).mkdirs()
         }
         // Its mount point, so / lists it; without access, an empty one left from before goes (delete() leaves a full one).
-        if (rootfs.isDirectory) File(rootfs, PhoneStorage.GUEST.removePrefix("/")).let { if (PhoneStorage.granted()) it.mkdirs() else it.delete() }
+        if (rootfs.isDirectory) storageMount.let { if (PhoneStorage.granted()) it.mkdirs() else it.delete() }
         File(rootfs, "var/lib/pacman/db.lck").delete()
         // An empty stand-in, so fontconfig lists the bound font when it reads the directory.
         if (rootfs.isDirectory) {
@@ -146,7 +149,7 @@ class Proot(
 
     private fun command(script: String): List<String> {
         // Allowed since prepare(): / lists it from now on too.
-        if (PhoneStorage.granted() && rootfs.isDirectory) File(rootfs, PhoneStorage.GUEST.removePrefix("/")).mkdirs()
+        if (PhoneStorage.granted() && rootfs.isDirectory) storageMount.mkdirs()
         return listOf(
             File(nativeDir, "libproot.so").path,
             "--kill-on-exit",

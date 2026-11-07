@@ -2,7 +2,6 @@ package dev.omalauncher.ui
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -134,6 +133,7 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
+import dev.omalauncher.hasPermission
 
 /**
  * The voice screen: a spoken conversation with a coding agent ([VoiceSession]). It listens as it opens; a tap on
@@ -184,7 +184,7 @@ fun VoiceScreen(
     fun talk() {
         if (speech.listening) return speech.stop()
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) listen() else permission.launch(Manifest.permission.RECORD_AUDIO)
+        if (context.hasPermission(Manifest.permission.RECORD_AUDIO)) listen() else permission.launch(Manifest.permission.RECORD_AUDIO)
     }
 
     // Opening it is asking to talk: listen once the agent is up. With no agent there's no one to hear it.

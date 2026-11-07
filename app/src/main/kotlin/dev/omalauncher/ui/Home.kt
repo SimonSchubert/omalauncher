@@ -123,10 +123,11 @@ fun HomeScreen(
     // shift as the widgets' pages joined, with home turning to page 1 among them.
     val slots = if (engine.loaded) slotsOf(pageNumbers, per, ::full) else emptyList()
     fun slotOf(page: Int) = slots.indexOfFirst { page in it }
+    fun homePage() = homePageIn(engine.pages, LauncherStyle.homePage)
     // Home opens on home.home-page, page 1 unless set, or the first page after it if none is numbered so. Among the pages
     // that hold something: the empty ones waiting at either end aren't home.
     // Made again once the widgets have loaded, so it starts on that page among all of them.
-    val pager = key(engine.loaded) { rememberPagerState(initialPage = slotOf(homePageIn(engine.pages, LauncherStyle.homePage)).coerceAtLeast(0)) { slots.size } }
+    val pager = key(engine.loaded) { rememberPagerState(initialPage = slotOf(homePage()).coerceAtLeast(0)) { slots.size } }
     // A tile dropped on another page: show that page once the page list has caught up, by the list as it is then. The
     // list the request was made with could be one from before (a store add spilling onto page 2 showed a face). A swipe
     // meanwhile wins, and the request goes with it rather than firing later.
@@ -263,7 +264,7 @@ fun HomeScreen(
     val typing = terminals.active != null
     LaunchedEffect(typing) { if (!typing) terminals.keyboard?.hide() }
     DisposableEffect(state) {
-        state.onHomeAgain = { if (arrange.folder != null) arrange.folder = null else state.requestedPage = homePageIn(engine.pages, LauncherStyle.homePage) }
+        state.onHomeAgain = { if (arrange.folder != null) arrange.folder = null else state.requestedPage = homePage() }
         onDispose { state.onHomeAgain = {} }
     }
     LaunchedEffect(state.requestedPage) {

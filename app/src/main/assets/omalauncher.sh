@@ -121,25 +121,17 @@ while :; do
     IFS= read -r -d '' reply <"$inbox/$id.done"
     reply=${reply%$'\n'}
     rm -f "$inbox/$id.done" "$inbox/$id.ack"
-    status=${reply%%$'\n'*}
-    case $status in
+    case ${reply%%$'\n'*} in
       ok)
         [ "$reply" = ok ] || printf '%s\n' "${reply#*$'\n'}"
         exit 0
         ;;
-      usage:*)
-        echo "omalauncher: ${reply#usage: }" >&2
-        exit 2
-        ;;
-      denied:*)
-        echo "omalauncher: ${reply#denied: }" >&2
-        exit 3
-        ;;
-      *)
-        echo "omalauncher: ${reply#error: }" >&2
-        exit 1
-        ;;
+      usage:*) code=2 ;;
+      denied:*) code=3 ;;
+      *) code=1 ;;
     esac
+    echo "omalauncher: ${reply#*: }" >&2
+    exit $code
   fi
   [ -n "$acked" ] || [ ! -f "$inbox/$id.ack" ] || acked=$ms
   if [ -z "$acked" ] && ((ms >= 5000)); then

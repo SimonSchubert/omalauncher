@@ -115,13 +115,7 @@ class PhoneBridge(
                 Log.w(TAG, "phone ${args[0]} failed", e)
                 Answer.Error("${args[0]} failed: ${e.message}")
             }
-        val text =
-            when (reply) {
-                is Answer.Ok -> "ok" + (reply.value?.let { "\n" + (Json.write(it) ?: "null") } ?: "")
-                is Answer.Error -> "error: ${reply.message}"
-                is Answer.Usage -> "usage: ${reply.message}"
-                is Answer.Denied -> "denied: " + reply.message
-            }
+        val text = reply.text
         withContext(Dispatchers.IO) {
             // Its .ack gone, the script gave up waiting: nothing would read the answer.
             if (File(inbox, "$id.ack").exists()) runCatching { writeAtomically(File(inbox, "$id.done"), (text + "\n").toByteArray()) }
@@ -228,25 +222,29 @@ class PhoneBridge(
         return Answer.Ok(after.without("supported", "granted"))
     }
 
-    private sealed interface Answer {
+    /** What the script reads: its first line tells it the exit code. */
+    private sealed class Answer(
+        val text: String,
+    ) {
         /** [value] as JSON, or nothing. */
         class Ok(
-            val value: Value?,
-        ) : Answer
+            value: Value?,
+        ) : Answer("ok" + (value?.let { "\n" + (Json.write(it) ?: "null") } ?: ""))
 
+        /** Nothing to say: exit code 1. */
         class Error(
-            val message: String,
-        ) : Answer
+            message: String,
+        ) : Answer("error: $message")
 
         /** Wrong arguments: exit code 2. */
         class Usage(
-            val message: String,
-        ) : Answer
+            message: String,
+        ) : Answer("usage: $message")
 
         /** Not allowed: exit code 3. */
         class Denied(
-            val message: String,
-        ) : Answer
+            message: String,
+        ) : Answer("denied: $message")
     }
 
     private companion object {

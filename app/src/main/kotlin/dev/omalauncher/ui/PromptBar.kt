@@ -3,7 +3,6 @@ package dev.omalauncher.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import android.Manifest
-import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -82,6 +81,7 @@ import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.agentInvocation
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.gestures.detectTapGestures
+import dev.omalauncher.hasPermission
 
 /**
  * How the prompt bar was summoned from outside it; Send asks the agent with what's typed (the panel's ask row),
@@ -184,7 +184,7 @@ internal fun PromptBar(
 
     fun talk(hold: Boolean) {
         if (!linux) return offerLinux()
-        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+        if (context.hasPermission(Manifest.permission.RECORD_AUDIO)) {
             listen(hold)
         } else {
             permission.launch(Manifest.permission.RECORD_AUDIO)

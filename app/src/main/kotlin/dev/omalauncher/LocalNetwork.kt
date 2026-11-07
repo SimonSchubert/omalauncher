@@ -2,7 +2,6 @@ package dev.omalauncher
 
 import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import java.net.Inet6Address
 import java.net.InetAddress
@@ -20,7 +19,7 @@ object LocalNetwork {
     /** Whether local addresses are blocked for us: Android 17+ without the permission. */
     fun missing(context: Context): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN &&
-            context.checkSelfPermission(PERMISSION) != PackageManager.PERMISSION_GRANTED
+            !context.hasPermission(PERMISSION)
 
     /**
      * Why a widget's request to [url] may have failed, when it's on the local network and Android keeps us

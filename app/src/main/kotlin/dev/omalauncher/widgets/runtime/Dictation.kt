@@ -2,7 +2,6 @@ package dev.omalauncher.widgets.runtime
 
 import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -16,6 +15,7 @@ import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.bool
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onCompletion
+import dev.omalauncher.hasPermission
 
 /**
  * Dictation for widgets: `source said = android.speech` and `speech("start")`. One widget listens at a time, the one
@@ -87,7 +87,7 @@ class Dictation(
     }
 
     private fun start(owner: Any) {
-        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        if (!context.hasPermission(Manifest.permission.RECORD_AUDIO)) {
             val ask = askMic
             if (ask != null) {
                 ask { granted -> if (granted) listen(owner) else denied(owner) }

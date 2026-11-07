@@ -128,6 +128,7 @@ import dev.omalauncher.ui.BrowserView
 import dev.omalauncher.widgets.lang.Action
 import dev.omalauncher.widgets.lang.Builtins
 import dev.omalauncher.widgets.lang.Env
+import dev.omalauncher.widgets.lang.MAX_FPS
 import dev.omalauncher.widgets.lang.Gradient
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
@@ -247,11 +248,6 @@ val LocalLongPressClaim = staticCompositionLocalOf<LongPressClaim?> { null }
 /** Widget text, 13sp as widgets were made for, whatever size the launcher's own text is. */
 internal val WidgetMono get() = Mono.copy(fontSize = 13.sp)
 
-/** Animated widgets' frame rate: on a 120 Hz screen, twice it costs twice the battery for motion that looks the same. */
-private const val WIDGET_FPS = 60
-
-private const val TICK = 1_000_000_000L / WIDGET_FPS
-
 /** The widget's screen { } block, filling [modifier]; `screenWidth` and `screenHeight` follow its size. */
 @Composable
 fun WidgetScreen(
@@ -292,7 +288,8 @@ private fun ScreenNodes(
  * A frame clock for widgets that read `time`, only while they're on screen ([covered] is false)
  * and something still reads it: a `time` under an `if` that's false, like a backdrop drawn only
  * while music plays, stops it after a few frames, and the next read starts it again. At most
- * [WIDGET_FPS] frames a second, whatever the screen's rate, or fewer as the widget's `fps:` asks.
+ * [MAX_FPS] frames a second, whatever the screen's rate (on a 120 Hz screen, twice it costs twice the battery for
+ * motion that looks the same), or fewer as the widget's `fps:` asks.
  */
 @Composable
 private fun FrameClock(
@@ -312,8 +309,8 @@ private fun FrameClock(
                 inst.awaitTimeRead(start)
                 unread = 0
             }
-            // As often as the widget's fps: asks for now, at most WIDGET_FPS.
-            val tick = maxOf(TICK, (1e9 / inst.frameRate()).toLong())
+            // As often as the widget's fps: asks for now, at most MAX_FPS.
+            val tick = (1e9 / inst.frameRate()).toLong()
             withFrameNanos { now ->
                 if (now < due - tick / 4) return@withFrameNanos
                 // Behind by more than a tick (covered, or a long frame): the next one is a tick from now.

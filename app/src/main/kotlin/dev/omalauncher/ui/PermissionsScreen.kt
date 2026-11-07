@@ -3,9 +3,7 @@ package dev.omalauncher.ui
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import androidx.annotation.StringRes
@@ -28,6 +26,7 @@ import dev.omalauncher.LocalNetwork
 import dev.omalauncher.PhoneStorage
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
+import dev.omalauncher.hasPermission
 
 /** One thing Android lets the launcher do, as a row: whether it may, and the way to switch it. */
 private class Permission(
@@ -89,21 +88,21 @@ fun PermissionsScreen(
                 Permission(
                     R.string.permissions_mic,
                     stringResource(R.string.permissions_mic_uses),
-                    context.has(Manifest.permission.RECORD_AUDIO),
+                    context.hasPermission(Manifest.permission.RECORD_AUDIO),
                     askMic,
                     appDetails,
                 ),
                 Permission(
                     R.string.permissions_location,
                     stringResource(R.string.permissions_location_uses),
-                    context.has(Manifest.permission.ACCESS_COARSE_LOCATION),
+                    context.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION),
                     askLocation,
                     appDetails,
                 ),
                 Permission(
                     R.string.permissions_calendar,
                     stringResource(R.string.permissions_calendar_uses),
-                    context.has(Manifest.permission.READ_CALENDAR),
+                    context.hasPermission(Manifest.permission.READ_CALENDAR),
                     askCalendar,
                     appDetails,
                 ),
@@ -112,7 +111,7 @@ fun PermissionsScreen(
                     Permission(
                         R.string.permissions_bluetooth,
                         stringResource(R.string.permissions_bluetooth_uses),
-                        context.has(Manifest.permission.BLUETOOTH_CONNECT),
+                        context.hasPermission(Manifest.permission.BLUETOOTH_CONNECT),
                         askBluetooth,
                         appDetails,
                     )
@@ -126,7 +125,7 @@ fun PermissionsScreen(
                     notifications.areNotificationsEnabled(),
                     turnOn = {
                         @SuppressLint("InlinedApi")
-                        val ask = sdk >= Build.VERSION_CODES.TIRAMISU && !context.has(Manifest.permission.POST_NOTIFICATIONS)
+                        val ask = sdk >= Build.VERSION_CODES.TIRAMISU && !context.hasPermission(Manifest.permission.POST_NOTIFICATIONS)
                         if (ask) askNotifications() else runCatching { context.startActivity(notificationSettings) }
                     },
                     turnOff = { runCatching { context.startActivity(notificationSettings) } },
@@ -170,24 +169,31 @@ fun PermissionsScreen(
 
 @Composable
 private fun PermissionRow(row: Permission) {
+    SwitchRow(stringResource(row.title), stringResource(if (row.granted) R.string.permissions_on else R.string.permissions_off, row.uses), row.granted, row.turnOn, row.turnOff)
+}
+
+/** Something to turn on or off, as a card: [title], [status] in green while [on], and the button for the other way. */
+@Composable
+internal fun SwitchRow(
+    title: String,
+    status: String,
+    on: Boolean,
+    turnOn: () -> Unit,
+    turnOff: () -> Unit,
+) {
     ActionsRow(
         Modifier.card(),
         actions = {
-            if (row.granted) {
-                BracketAction(stringResource(R.string.linux_gpu_turn_off), Palette.red, onClick = row.turnOff)
+            if (on) {
+                BracketAction(stringResource(R.string.linux_gpu_turn_off), Palette.red, onClick = turnOff)
             } else {
-                BracketAction(stringResource(R.string.linux_gpu_turn_on), Palette.accent, onClick = row.turnOn)
+                BracketAction(stringResource(R.string.linux_gpu_turn_on), Palette.accent, onClick = turnOn)
             }
         },
     ) {
         Column {
-            BasicText(stringResource(row.title), style = Mono.copy(fontSize = TextSize.Item))
-            BasicText(
-                stringResource(if (row.granted) R.string.permissions_on else R.string.permissions_off, row.uses),
-                style = Mono.copy(color = if (row.granted) Palette.green else Palette.muted, fontSize = TextSize.Small),
-            )
+            BasicText(title, style = Mono.copy(fontSize = TextSize.Item))
+            BasicText(status, style = Mono.copy(color = if (on) Palette.green else Palette.muted, fontSize = TextSize.Small))
         }
     }
 }
-
-private fun Context.has(permission: String) = checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
