@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.ui.BrowserPages
+import dev.omalauncher.ui.Gestures
 import dev.omalauncher.ui.ImagePicker
 import dev.omalauncher.ui.WidgetAsks
 import dev.omalauncher.ui.Palette
@@ -239,6 +240,8 @@ class MainActivity : ComponentActivity() {
             KeyEvent.KEYCODE_DPAD_DOWN ->
                 if (state.pulled != null) {
                     state.closePull()
+                } else if (runtime.gestures.swipeDown == Gestures.NOTIFICATIONS) {
+                    runtime.gestures.expandNotifications()
                 } else {
                     state.openPull(runtime.panelOf(runtime.gestures.swipeDown) ?: return false)
                 }

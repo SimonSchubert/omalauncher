@@ -117,6 +117,7 @@
     <string name="gestures_swipe_up">nach oben wischen</string>
     <string name="gestures_swipe_down">nach unten wischen</string>
     <string name="gestures_nothing">nichts</string>
+    <string name="gestures_notifications">benachrichtigungen</string>
     <string name="gestures_has_errors">%1$s (hat fehler)</string>
     <string name="gestures_missing">%1$s (fehlt)</string>
     <string name="gestures_edit">bearbeiten</string>

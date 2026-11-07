@@ -119,6 +119,7 @@
     <string name="gestures_swipe_up">deslizar hacia arriba</string>
     <string name="gestures_swipe_down">deslizar hacia abajo</string>
     <string name="gestures_nothing">nada</string>
+    <string name="gestures_notifications">notificaciones</string>
     <string name="gestures_has_errors">%1$s (tiene errores)</string>
     <string name="gestures_missing">%1$s (falta)</string>
     <string name="gestures_edit">editar</string>
