@@ -197,8 +197,16 @@ class AgentStore(
         }.onFailure { Log.w("agents", "cannot save the default agent", it) }
     }
 
-    suspend fun install(agent: Agent) =
-        run(agent, R.string.linux_job_installing) { installScript(agent) }.also { ok -> if (ok) onInstalled(agent) }
+    /**
+     * The install runs on after its screen closes, which cancels this (the blocking job ignores that), so what
+     * mise left is read in finally: a finished install shows up without a restart.
+     */
+    suspend fun install(agent: Agent): Boolean =
+        try {
+            run(agent, R.string.linux_job_installing) { installScript(agent) }
+        } finally {
+            if (isInstalled(agent)) onInstalled(agent)
+        }
 
     /** Installs [agent] with mise, bootstrapping mise itself if needed. */
     fun installScript(agent: Agent) =
@@ -231,9 +239,14 @@ class AgentStore(
     suspend fun remove(agent: Agent): Boolean {
         // Its process ends on another thread: a moment, so mise doesn't find it still running.
         if (release(agent)) delay(1500)
-        val ok = run(agent, R.string.linux_job_removing) { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
-        refresh()
-        onChanged()
+        val ok =
+            try {
+                run(agent, R.string.linux_job_removing) { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
+            } finally {
+                // Also when its screen closed while mise worked, as with install.
+                refresh()
+                onChanged()
+            }
         if (ok && isInstalled(agent)) states[agent.bin] = JobState.Failed(listOf(text(R.string.agents_still_running, agent.name)))
         return ok && !isInstalled(agent)
     }
