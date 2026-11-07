@@ -1014,14 +1014,12 @@ class WidgetServices(
         context.shareText(text)
     }
 
-    private var notificationId = 1000
-
     /** notify(title, text): an Android notification that opens the home screen. Needs the notification permission. */
     private fun notify(
         title: String,
         text: String?,
     ) {
-        if (!context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.widgets_notify_channel), NOTIFY_CHANNEL, notificationId++, title, text)) {
+        if (!context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.widgets_notify_channel), title, text)) {
             Log.w("widgets", "notify: notifications are off for the launcher")
         }
     }

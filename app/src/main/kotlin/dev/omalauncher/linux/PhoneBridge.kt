@@ -145,7 +145,7 @@ class PhoneBridge(
         text: String?,
     ): Answer {
         if (title.isBlank()) return Answer.Usage("notify: a title")
-        val posted = context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.linux_notify_channel), NOTIFY_CHANNEL, nextId(), title, text)
+        val posted = context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.linux_notify_channel), title, text)
         return if (posted) Answer.Ok(null) else Answer.Denied(NO_NOTIFICATIONS)
     }
 
@@ -188,14 +188,6 @@ class PhoneBridge(
         } catch (e: ActivityNotFoundException) {
             Answer.Error("share: no app to share with")
         }
-    }
-
-    /** Its own id for each, so none replaces one still showing, from before a restart either. */
-    private var lastId = 0
-
-    private fun nextId(): Int {
-        lastId = maxOf(lastId + 1, (System.currentTimeMillis() / 1000 % Int.MAX_VALUE).toInt())
-        return lastId
     }
 
     /**

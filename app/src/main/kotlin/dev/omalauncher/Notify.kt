@@ -8,15 +8,12 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * A notification that opens the home screen, on [channel] (named [channelName] in Android's settings), under [tag] so
- * each poster counts its own ids. False when it can't be posted: notifications off for the launcher, or the channel.
- * Needs the notification permission.
+ * A notification that opens the home screen, on [channel] (named [channelName] in Android's settings). False when it
+ * can't be posted: notifications off for the launcher, or the channel. Needs the notification permission.
  */
 fun Context.postNotification(
     channel: String,
     channelName: String,
-    tag: String,
-    id: Int,
     title: String,
     text: String?,
 ): Boolean {
@@ -36,6 +33,17 @@ fun Context.postNotification(
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()
-    nm.notify(tag, id, n)
+    nm.notify(channel, NotificationIds.next(), n)
     return true
+}
+
+/** Its own id for each notification, so none replaces one still showing, from before a restart either. */
+private object NotificationIds {
+    private var last = 0
+
+    @Synchronized
+    fun next(): Int {
+        last = maxOf(last + 1, (System.currentTimeMillis() / 1000 % Int.MAX_VALUE).toInt())
+        return last
+    }
 }
