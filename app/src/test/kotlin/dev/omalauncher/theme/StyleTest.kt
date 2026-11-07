@@ -92,6 +92,12 @@ class StyleTest {
         assertEquals(ColorSpec.NONE, decoded.style[Style.NAVIGATION_BAR.border])
     }
 
+    @Test fun swipeDownTakesNotifications() {
+        val decoded = StyleFile.decode(mapOf("gestures.swipe-down" to "notifications"))
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertEquals("notifications", decoded.style[Style.SWIPE_DOWN])
+    }
+
     @Test fun eachBarHasItsOwnBorderWidth() {
         val decoded = StyleFile.decode(mapOf("status-bar.border-width" to 0.0, "navigation-bar.border-width" to 9.0))
         assertEquals(0.0, decoded.style[Style.STATUS_BAR.borderWidth], 0.0)

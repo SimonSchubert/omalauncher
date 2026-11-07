@@ -145,6 +145,8 @@
     <string name="gestures_swipe_down">swipe down</string>
     <!-- What a swipe opens when it opens no panel. -->
     <string name="gestures_nothing">nothing</string>
+    <!-- A swipe-down choice: Android's own notification shade. -->
+    <string name="gestures_notifications">notifications</string>
     <!-- %1$s is a panel's name. -->
     <string name="gestures_has_errors">%1$s (has errors)</string>
     <!-- %1$s is the file name of a panel that is gone. -->

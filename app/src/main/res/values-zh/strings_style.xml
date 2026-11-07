@@ -115,6 +115,7 @@
     <string name="gestures_swipe_up">上滑</string>
     <string name="gestures_swipe_down">下滑</string>
     <string name="gestures_nothing">无</string>
+    <string name="gestures_notifications">通知</string>
     <string name="gestures_has_errors">%1$s（有错误）</string>
     <string name="gestures_missing">%1$s（缺失）</string>
     <string name="gestures_edit">编辑</string>

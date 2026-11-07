@@ -216,7 +216,7 @@ class Style(
             Setting.Text(
                 "gestures.swipe-down",
                 "none",
-                "What swiping down on home opens: \"none\" nothing, or a panel's file name in ~/.config/omalauncher/widgets (\"my-panel.owl\"); one that's gone or doesn't compile opens nothing.",
+                "What swiping down on home opens: \"none\" nothing, \"notifications\" Android's notification shade, or a panel's file name in ~/.config/omalauncher/widgets (\"my-panel.owl\"); one that's gone or doesn't compile opens nothing.",
             )
     }
 

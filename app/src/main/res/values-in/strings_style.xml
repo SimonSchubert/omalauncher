@@ -115,6 +115,7 @@
     <string name="gestures_swipe_up">geser ke atas</string>
     <string name="gestures_swipe_down">geser ke bawah</string>
     <string name="gestures_nothing">tidak ada</string>
+    <string name="gestures_notifications">notifikasi</string>
     <string name="gestures_has_errors">%1$s (ada error)</string>
     <string name="gestures_missing">%1$s (hilang)</string>
     <string name="gestures_edit">edit</string>
