@@ -83,6 +83,14 @@
     <string name="prompt_enter_ask">⏎ perguntar</string>
     <string name="prompt_agent">agente</string>
     <string name="prompt_manage_agents">"  gerenciar agentes…"</string>
+    <string name="prompt_attach">anexar fotos ou arquivos</string>
+    <string name="prompt_attach_photos">escolher fotos</string>
+    <string name="prompt_attach_files">escolher arquivos</string>
+    <string name="prompt_attachment">arquivo</string>
+    <string name="prompt_attachment_failed">não foi possível anexar um ou mais arquivos</string>
+    <string name="prompt_attachment_prompt">Inspecione estes caminhos de arquivo do Linux:</string>
+    <string name="prompt_attachment_chip">× %1$s</string>
+    <string name="prompt_attachment_importing">copiando…</string>
 
     <string name="prompt_speech_no_recognizer">não há reconhecimento de fala neste telefone</string>
     <string name="prompt_speech_refused">o reconhecimento de fala do telefone não deixa outros apps usá-lo</string>

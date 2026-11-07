@@ -81,6 +81,14 @@
     <string name="prompt_enter_ask">⏎ fragen</string>
     <string name="prompt_agent">agent</string>
     <string name="prompt_manage_agents">"  agenten verwalten…"</string>
+    <string name="prompt_attach">Fotos oder Dateien anhängen</string>
+    <string name="prompt_attach_photos">Fotos auswählen</string>
+    <string name="prompt_attach_files">Dateien auswählen</string>
+    <string name="prompt_attachment">Datei</string>
+    <string name="prompt_attachment_failed">Datei(en) konnten nicht angehängt werden</string>
+    <string name="prompt_attachment_prompt">Bitte prüfe diese Linux-Dateipfade:</string>
+    <string name="prompt_attachment_chip">× %1$s</string>
+    <string name="prompt_attachment_importing">wird kopiert…</string>
 
     <string name="prompt_speech_no_recognizer">keine spracherkennung auf diesem smartphone</string>
     <string name="prompt_speech_refused">die spracherkennung des smartphones lässt andere apps nicht ran</string>

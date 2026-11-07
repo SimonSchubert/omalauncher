@@ -79,6 +79,14 @@
     <string name="prompt_enter_ask">⏎ tanya</string>
     <string name="prompt_agent">agen</string>
     <string name="prompt_manage_agents">"  kelola agen…"</string>
+    <string name="prompt_attach">lampirkan foto atau file</string>
+    <string name="prompt_attach_photos">pilih foto</string>
+    <string name="prompt_attach_files">pilih file</string>
+    <string name="prompt_attachment">file</string>
+    <string name="prompt_attachment_failed">satu atau beberapa file gagal dilampirkan</string>
+    <string name="prompt_attachment_prompt">Periksa jalur file Linux berikut:</string>
+    <string name="prompt_attachment_chip">× %1$s</string>
+    <string name="prompt_attachment_importing">menyalin…</string>
 
     <string name="prompt_speech_no_recognizer">tidak ada pengenal suara di ponsel ini</string>
     <string name="prompt_speech_refused">pengenal suara ponsel tidak mengizinkan aplikasi lain memakainya</string>

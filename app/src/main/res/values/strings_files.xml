@@ -107,6 +107,15 @@
     <string name="prompt_agent">agent</string>
     <!-- The leading spaces line it up with the agents above it. -->
     <string name="prompt_manage_agents">"  manage agents…"</string>
+    <!-- Files picked from the home prompt are copied into Linux's temporary directory. -->
+    <string name="prompt_attach">attach photos or files</string>
+    <string name="prompt_attach_photos">choose photos</string>
+    <string name="prompt_attach_files">choose files</string>
+    <string name="prompt_attachment">file</string>
+    <string name="prompt_attachment_failed">could not attach one or more files</string>
+    <string name="prompt_attachment_prompt">Please inspect these Linux file paths:</string>
+    <string name="prompt_attachment_chip">× %1$s</string>
+    <string name="prompt_attachment_importing">copying…</string>
 
     <!-- Speech input errors, in the prompt bar and to widgets. -->
     <string name="prompt_speech_no_recognizer">no speech recognizer on this phone</string>

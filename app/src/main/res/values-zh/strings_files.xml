@@ -79,6 +79,14 @@
     <string name="prompt_enter_ask">⏎ 提问</string>
     <string name="prompt_agent">智能体</string>
     <string name="prompt_manage_agents">"  管理智能体…"</string>
+    <string name="prompt_attach">添加照片或文件</string>
+    <string name="prompt_attach_photos">选择照片</string>
+    <string name="prompt_attach_files">选择文件</string>
+    <string name="prompt_attachment">文件</string>
+    <string name="prompt_attachment_failed">无法添加一个或多个文件</string>
+    <string name="prompt_attachment_prompt">请检查这些 Linux 文件路径：</string>
+    <string name="prompt_attachment_chip">× %1$s</string>
+    <string name="prompt_attachment_importing">正在复制…</string>
 
     <string name="prompt_speech_no_recognizer">这台手机上没有语音识别器</string>
     <string name="prompt_speech_refused">手机的语音识别器不允许其他应用使用</string>

@@ -4,6 +4,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,6 +81,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
@@ -82,7 +93,22 @@ import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.agentInvocation
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.gestures.detectTapGestures
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
+private data class PromptAttachment(val name: String, val path: String)
+
+private enum class AttachmentKind { Photos, Files }
+
+private data class AttachmentChoice(val kind: AttachmentKind, val label: String)
+
+private fun attachmentName(context: Context, uri: Uri, fallback: String): String =
+    runCatching {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
+    }.getOrNull() ?: fallback
 /**
  * How the prompt bar was summoned from outside it; Send asks the agent with what's typed (the panel's ask row),
  * Listen dictates into it (the landscape rail's mic).
@@ -119,6 +145,53 @@ internal fun PromptBar(
     val linuxState by runtime.bootstrap.state.collectAsState()
     // Agents run in Linux: without it, the bar offers to install it instead.
     val linux = linuxState == LinuxState.Installed
+    val attachments = remember { mutableStateListOf<PromptAttachment>() }
+    var attachmentMenuOpen by remember { mutableStateOf(false) }
+    var importingAttachments by remember { mutableStateOf(false) }
+    val attachmentScope = rememberCoroutineScope()
+
+    val attachmentLabel = stringResource(R.string.prompt_attachment)
+    fun importAttachments(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        attachmentScope.launch {
+            importingAttachments = true
+            try {
+                val added =
+                    withContext(Dispatchers.IO) {
+                        uris.mapNotNull { uri ->
+                            runCatching { runtime.savePromptAttachment(uri) }.getOrNull()?.let { path ->
+                                PromptAttachment(attachmentName(context, uri, attachmentLabel), path)
+                            }
+                        }
+                    }
+                attachments.addAll(added)
+                if (added.size != uris.size) Toast.makeText(context, R.string.prompt_attachment_failed, Toast.LENGTH_LONG).show()
+            } finally {
+                importingAttachments = false
+            }
+        }
+    }
+
+    val photoPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+            importAttachments(uris)
+        }
+    val filePicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            importAttachments(uris)
+        }
+
+    val photoLabel = stringResource(R.string.prompt_attach_photos)
+    val fileLabel = stringResource(R.string.prompt_attach_files)
+    val attachmentPrompt = stringResource(R.string.prompt_attachment_prompt)
+    val attachmentChoices =
+        remember(photoLabel, fileLabel) {
+            listOf(
+                AttachmentChoice(AttachmentKind.Photos, photoLabel),
+                AttachmentChoice(AttachmentKind.Files, fileLabel),
+            )
+        }
+
 
     fun offerLinux() {
         focusManager.clearFocus()
@@ -126,10 +199,9 @@ internal fun PromptBar(
         state.closeNow()
         state.show(SettingsPage.Linux)
     }
-
     fun send(prompt: String) {
         val p = prompt.trim()
-        if (p.isEmpty()) return
+        if (p.isEmpty() && attachments.isEmpty()) return
         if (!linux) return offerLinux()
         // Looked up now: speech results arrive after the bar may have recomposed.
         val target = runtime.agents.default
@@ -138,19 +210,31 @@ internal fun PromptBar(
             state.show(SettingsPage.Agents)
             return
         }
-        runtime.terminal("${agentInvocation(target.bin, p)}; exec bash", target.name, target)
+        val fullPrompt =
+            buildString {
+                if (p.isNotEmpty()) append(p)
+                if (attachments.isNotEmpty()) {
+                    if (isNotEmpty()) append("\n\n")
+                    append(attachmentPrompt)
+                    append('\n')
+                    append(attachments.joinToString("\n") { it.path })
+                }
+            }
+        runtime.terminal("${agentInvocation(target.bin, fullPrompt)}; exec bash", target.name, target)
         state.query = ""
+        attachments.clear()
         focusManager.clearFocus()
         keyboard?.hide()
         state.closeNow()
     }
+
 
     /** The drawer's panel, while it shows: what's typed, Enter and the arrow keys are its. */
     fun drawer() = if (panelShown) runtime.widgets.drawerPanel()?.let { runtime.widgets.panelInstance(it)?.second } else null
 
     /** Enter: what the drawer does with it (open the app it picked), or, from a drawer without onSubmit, the agent. */
     fun submit() {
-        if (drawer()?.submit(text) == true) state.query = "" else send(text)
+        if (attachments.isNotEmpty()) send(text) else if (drawer()?.submit(text) == true) state.query = "" else send(text)
     }
 
     /** The drawer gets [key] with its `onKey`, and moves its own highlight; false without one, and the key goes on. */
@@ -335,27 +419,61 @@ internal fun PromptBar(
                             },
                     // Padding inside the field, so the bar's full height takes taps.
                     decorationBox = { inner ->
-                        Box(Modifier.padding(vertical = 12.dp)) {
-                        if (shown.isEmpty()) {
-                            val hint =
-                                when {
-                                    listening -> stringResource(R.string.prompt_listening)
-                                    !linux || agent == null -> stringResource(R.string.prompt_hint_apps)
-                                    else -> stringResource(R.string.prompt_hint_ask, agent.bin)
+                        Column(Modifier.padding(vertical = 6.dp)) {
+                            if (attachments.isNotEmpty() || importingAttachments) {
+                                Row(
+                                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    attachments.forEachIndexed { index, attachment ->
+                                        Box(
+                                            Modifier
+                                                .clickable { attachments.removeAt(index) }
+                                                .padding(horizontal = 4.dp, vertical = 2.dp),
+                                        ) {
+                                            BasicText(
+                                                stringResource(R.string.prompt_attachment_chip, attachment.name),
+                                                style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.widthIn(max = 180.dp),
+                                            )
+                                        }
+                                    }
+                                    if (importingAttachments) {
+                                        BasicText(stringResource(R.string.prompt_attachment_importing), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                                    }
                                 }
-                            BasicText(hint, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Item), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                        inner()
+                            }
+                            Box(Modifier.padding(vertical = 4.dp)) {
+                                if (shown.isEmpty()) {
+                                    val hint =
+                                        when {
+                                            listening -> stringResource(R.string.prompt_listening)
+                                            !linux || agent == null -> stringResource(R.string.prompt_hint_apps)
+                                            else -> stringResource(R.string.prompt_hint_ask, agent.bin)
+                                        }
+                                    BasicText(hint, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Item), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                inner()
+                            }
                         }
                     },
                 )
-                // The drawer says what its Enter does, with its `enter`.
-                val enter = drawer()?.enterHint() ?: stringResource(R.string.prompt_enter_ask)
-                if (text.isNotBlank() && !listening && enter.isNotEmpty()) {
-                    // Says what Enter does, so opening an app instead of asking is never a surprise.
+                // With attachments Enter always sends to the agent; otherwise the drawer owns its Enter action.
+                val enter =
+                    if (attachments.isNotEmpty()) stringResource(R.string.prompt_enter_ask)
+                    else drawer()?.enterHint() ?: stringResource(R.string.prompt_enter_ask)
+                if ((text.isNotBlank() || attachments.isNotEmpty()) && !listening && enter.isNotEmpty()) {
                     Box(
                         Modifier.clickable(onClick = ::submit).padding(horizontal = 10.dp, vertical = 12.dp),
                     ) { BasicText(enter, style = Mono.copy(color = Palette.accent)) }
+                }
+                PanelIcon(Icons.Plus, stringResource(R.string.prompt_attach)) {
+                    if (!importingAttachments) {
+                        if (linux) attachmentMenuOpen = true else offerLinux()
+                    }
                 }
                 MicButton(
                     listening = listening,
@@ -369,6 +487,23 @@ internal fun PromptBar(
                         speech.cancel()
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     },
+                )
+            }
+            if (attachmentMenuOpen) {
+                val popupGap = with(LocalDensity.current) { 8.dp.roundToPx() }
+                ChoicePopup(
+                    options = attachmentChoices,
+                    selected = null,
+                    position = remember(popupGap) { AboveAnchor(popupGap) },
+                    onDismiss = { attachmentMenuOpen = false },
+                    onPick = { choice ->
+                        when (choice.kind) {
+                            AttachmentKind.Photos ->
+                                photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            AttachmentKind.Files -> filePicker.launch(arrayOf("*/*"))
+                        }
+                    },
+                    label = { it.label },
                 )
             }
             // Beside the bar's frame, not in it: the menu lines up with the frame, not with the agent's name inside.
