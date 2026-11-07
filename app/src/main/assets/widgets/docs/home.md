@@ -16,7 +16,7 @@ columns = 6   # the grid the cells are on; home.columns in ../style/style.toml s
 [[page]]                  # left of page 1: a face fills its page
 face = "terminal.owl"
 
-[[page]]                  # page 1, where home opens: the first page of tiles
+[[page]]                  # page 1, where home opens by default: the first page of tiles
 tiles = [
   { widget = "50-memory.owl", x = 0, y = 0, w = 3, h = 4 },
   { app = "org.mozilla.firefox", x = 3, y = 0 },
@@ -27,6 +27,9 @@ tiles = [
 
 - Pages are `[[page]]` blocks in order: move a block to move the page. The
   first one with tiles is page 1; faces before it are left of it.
+  Home opens on page 1 and returns to it when Home is pressed with nothing
+  open; `home.home-page` in ../style/style.toml picks another (0 is the face
+  left of page 1).
 - `x` and `y` count cells from the top left; `w` and `h` are a widget's size.
   Apps and folders are one cell. A tile off the grid or on top of one before it
   takes the first free spot instead.

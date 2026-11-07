@@ -139,6 +139,9 @@ object LauncherStyle {
     /** The empty page after home's last, always (true) or only while a tile is carried (false). */
     val emptyPageRight get() = style[Style.EMPTY_PAGE_RIGHT]
 
+    /** The page home opens on and returns to when Home is pressed; see [homePageIn]. */
+    val homePage get() = style[Style.HOME_PAGE]
+
     /** Forces one home page even on a screen [SideRail]'s auto-detect would otherwise split in two. */
     val forceSinglePage get() = style[Style.FORCE_SINGLE_PAGE]
 
