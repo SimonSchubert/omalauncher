@@ -82,7 +82,9 @@ widget "calendar month" {
           }
         }
       }
-      Text { text: "today"; font: mono; style: small; color: accent; onTap: { month = null; picked = null } }
+      if selected != today {
+        Text { text: "↺"; font: mono; style: small; color: accent; onTap: { month = null; picked = null } }
+      }
     }
 
     Spacer { width: 1; fill: height; background: alpha(border, 0.6) }
