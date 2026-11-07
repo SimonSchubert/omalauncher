@@ -4,6 +4,8 @@ widget "aurora" {
   size: 6x3
   minSize: 3x1
   padding: 0
+  meta { owl: 19 }
+  fps: 30
 
   // An AGSL shader (Android 13+). size and time are provided; declare your own
   // uniforms and pass them in `uniforms`. Theme colors follow theme changes.

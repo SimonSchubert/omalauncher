@@ -1504,7 +1504,7 @@ class LangTest {
         assertEquals(OwlKind.Widget, Compiler.compile("widget {\n Text { text: 1 } }").kind)
 
         assertTrue(compileError("app {\n Text { text: 1 } }").contains("needs owl 8"))
-        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon, back, edge and statusBar"))
+        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon, back, edge, statusBar and fps"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onTap: close()\n Text { text: 1 } }").contains("handlers go on the nodes"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n back: true\n Text { text: 1 } }").contains("back and onBack go together"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onBack: close()\n Text { text: 1 } }").contains("back and onBack go together"))
@@ -2163,6 +2163,29 @@ class LangTest {
         // A widget without one is as it was: no lock is no version to ask for.
         assertEquals(1, Compiler.compile("widget {\n Column {\n Button { text: \"x\"; onTap: refresh() }\n Text { text: \"y\" } }\n}").level)
         assertEquals(null, Compiler.compile("widget {\n Text { text: \"y\" }\n}").lock)
+    }
+
+    @Test fun fpsSetsHowOftenTimeTicks() {
+        val canvas = "state busy = false\n Canvas { circle(10, 10, 5 + sin(time)) }"
+        assertTrue(compileError("widget {\n fps: 10\n $canvas\n}").contains("fps needs owl 19: add meta { owl: 19 }"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n fps: 10\n $canvas\n}").contains("fps needs owl 19"))
+        val p = Compiler.compile("widget {\n meta { owl: 19 }\n fps: busy ? 30 : 10\n $canvas\n}")
+        assertEquals(19, p.level)
+        assertTrue(p.fps != null)
+        // A fixed one is checked as it's written: a number of frames a second, at most what the launcher draws.
+        assertEquals(Num(12.0), Compiler.compile("widget {\n meta { owl: 19 }\n fps: 12\n $canvas\n}").fps?.const)
+        for (wrong in listOf("0", "61", "-5", "\"fast\"", "true")) {
+            val e = compileError("widget {\n meta { owl: 19 }\n fps: $wrong\n $canvas\n}")
+            assertTrue(e, e.contains("fps is a number of frames a second, from 1 to 60"))
+        }
+        // Faces, apps and panels animate too.
+        assertTrue(Compiler.compile("face {\n meta { owl: 19 }\n fps: 20\n $canvas\n}").fps != null)
+        assertTrue(Compiler.compile("app {\n meta { owl: 19 }\n fps: 30\n Canvas { circle(10, 10, 5 + sin(time)) }\n}").fps != null)
+        assertTrue(Compiler.compile("panel {\n meta { owl: 19 }\n fps: 30\n Canvas { circle(10, 10, 5 + sin(time)) }\n}").fps != null)
+        // A key bar has no properties at all.
+        assertTrue(compileError("keybar {\n meta { owl: 19 }\n fps: 30\n Text { text: 1 }\n}").contains("takes no properties"))
+        // Without one, as it was.
+        assertEquals(null, Compiler.compile("widget {\n Text { text: \"y\" }\n}").fps)
     }
 
     private fun browserWidget(body: String) = Compiler.compile("widget {\n $owl18\n $body\n}")

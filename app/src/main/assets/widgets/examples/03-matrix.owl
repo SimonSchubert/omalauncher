@@ -1,7 +1,9 @@
 face "matrix" {
   // Digital rain in two depths, with the time carved out of it, transmissions, your programs and the two pills.
 
-  meta { owl: 10; description: "Digital rain in two depths with the time carved out of it, notifications as incoming transmissions, your apps as programs, and a red pill and a blue pill"; version: "2.0"; license: "MIT"; category: "fun" }
+  meta { owl: 19; description: "Digital rain in two depths with the time carved out of it, notifications as incoming transmissions, your apps as programs, and a red pill and a blue pill"; version: "2.1"; license: "MIT"; category: "fun" }
+  // The rain falls at most 16 rows a second, so 20 frames show every step.
+  fps: 20
 
   statusBar: true
 

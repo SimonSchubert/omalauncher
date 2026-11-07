@@ -1,7 +1,9 @@
 face "pixel" {
   // An 8-bit landscape that follows the day, with your phone as a game's HUD below it.
 
-  meta { owl: 10; description: "An 8-bit landscape that follows the day and the weather, with the battery as hearts, notifications as coins and your apps as an inventory"; version: "1.1"; license: "MIT"; category: "fun" }
+  meta { owl: 19; description: "An 8-bit landscape that follows the day and the weather, with the battery as hearts, notifications as coins and your apps as an inventory"; version: "1.2"; license: "MIT"; category: "fun" }
+  // Pixel art moves in whole art pixels; 20 frames a second keep the snow and birds smooth for less battery.
+  fps: 20
 
   statusBar: false
 

@@ -177,7 +177,9 @@ internal val SINCE =
         // owl 18: AirPods, read and set over their own link, with the Bluetooth permission.
         listOf("android.airpods", "airpods").associateWith { 18 } +
         // owl 18: events in the phone's calendars, only after a tap asks for read access.
-        listOf("android.calendar", "calendar").associateWith { 18 }
+        listOf("android.calendar", "calendar").associateWith { 18 } +
+        // owl 19: how many frames a second an animation needs, so a slow one costs the battery less.
+        mapOf(FRAME_RATE to 19)
 
 /** `strings { ... }`, named like this in [SINCE]. */
 internal const val STRINGS_DECL = "strings { }"
@@ -224,6 +226,12 @@ internal const val QUERY = "query"
 internal const val GRADIENT_BACKGROUND = "a gradient background"
 
 internal const val APP_STATUS_BAR = "an app's statusBar"
+
+/** `fps:` on a widget, face, app or panel, named like this in [SINCE]. */
+internal const val FRAME_RATE = "fps"
+
+/** The most frames a second `fps:` asks for, and what an animation gets without it. */
+const val MAX_FPS = 60
 
 /** A widget's or a face's `lock:`, named like this in [SINCE]. */
 internal const val HOME_LOCK = "lock"
@@ -391,7 +399,7 @@ internal val TILE = setOf("cols", "rows", "tileWidth", "tileHeight", "screenWidt
 /** Builtins that always give a number (or null, which reads as …). */
 internal val NUMBERS = setOf("int", "round", "floor", "ceil", "abs", "fixed", "len", "count", "sum", "min", "max", "clamp")
 
-internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding", "background", "lock")
+internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding", "background", "lock", "fps")
 
 /** A face has no tile's size; it says where it goes and whether the status bar stays over it. */
-internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge", "lock")
+internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge", "lock", "fps")

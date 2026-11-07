@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 18
+        const val LEVEL = 19
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -380,6 +380,7 @@ class Compiler private constructor(
                 since(HOME_LOCK, p.pos)
                 ex(p.value, root).also { if (it.const != null) fail("lock holds the home screen still while what it says is true, so it's something that changes, like lock: playing, not a fixed value", p.pos) }
             }
+        val fps = props["fps"]?.let(::frameRate)
         // Drawn under the status bar and a camera cutout: fixed in the file, since the whole face moves when it changes.
         val edge =
             props["edge"]?.let { p ->
@@ -395,6 +396,7 @@ class Compiler private constructor(
             size = props["size"]?.let { cells(it) },
             statusBar = statusBar,
             lock = lock,
+            fps = fps,
             edge = edge,
             kind = ast.kind,
             minSize = props["minSize"]?.let { cells(it) } ?: (1 to 1),
@@ -430,6 +432,19 @@ class Compiler private constructor(
     }
 
     /**
+     * `fps:`, how many frames a second the file's `time` animation needs, read as it changes: a pet that only
+     * blinks and breathes needs a few, and its hop after a tap more. A fixed number is checked here; one worked out
+     * as it runs is kept from 1 to [MAX_FPS] (see Program.fps).
+     */
+    private fun frameRate(p: Prop): Ev {
+        since(FRAME_RATE, p.pos)
+        val e = ex(p.value, root)
+        val c = e.const
+        if (c != null && (c !is Num || c.v < 1 || c.v > MAX_FPS)) fail("fps is a number of frames a second, from 1 to $MAX_FPS, like fps: 10 or fps: playing ? 30 : 10", p.pos)
+        return e
+    }
+
+    /**
      * An app: the file is a screen of its own, opened from the app drawer, so its nodes are the screen's and
      * there's no tile, no place on a page, and no screen { } inside it.
      */
@@ -442,7 +457,7 @@ class Compiler private constructor(
         triggers: List<Trigger>,
     ): Program {
         since("app \"…\" { }", 0)
-        for (p in body.props) if (p.name !in setOf("title", "icon", "back", "edge", "statusBar")) fail("an app only takes title, icon, back, edge and statusBar (no size or page: it isn't a tile)", p.pos)
+        for (p in body.props) if (p.name !in setOf("title", "icon", "back", "edge", "statusBar", "fps")) fail("an app only takes title, icon, back, edge, statusBar and fps (no size or page: it isn't a tile)", p.pos)
         // Whether the status bar stays over the app, read as it changes, as on a face.
         val statusBar = body.props.firstOrNull { it.name == "statusBar" }?.let { since(APP_STATUS_BAR, it.pos); ex(it.value, root) }
         // Drawn under the navigation bar: fixed in the file, since the whole view moves when it changes.
@@ -483,6 +498,7 @@ class Compiler private constructor(
         val title = body.props.firstOrNull { it.name == "title" }?.let { ex(it.value, root) }
         val back = backProp?.let { ex(it.value, root) }
         val onBack = onBackHandler?.let { handler(it, root) }
+        val fps = body.props.firstOrNull { it.name == "fps" }?.let(::frameRate)
         finish(level)
         return Program(
             name = ast.name ?: "app",
@@ -495,6 +511,7 @@ class Compiler private constructor(
             onBack = onBack,
             edge = edge,
             statusBar = statusBar,
+            fps = fps,
             triggers = triggers,
             commands = commands.toList(),
             secretHosts = secretHosts.mapValues { it.value.sorted() },
@@ -526,8 +543,8 @@ class Compiler private constructor(
         triggers: List<Trigger>,
     ): Program {
         since(PANEL_FILE, 0)
-        body.props.firstOrNull { it.name != "enter" && it.name != "opacity" && it.name != "keyboard" }?.let {
-            fail("a panel only takes enter (what the prompt bar says Enter does), opacity (how much it covers home) and keyboard (whether the keyboard comes up as it opens); the launcher frames it, and gesture settings pick which swipe opens it", it.pos)
+        body.props.firstOrNull { it.name !in setOf("enter", "opacity", "keyboard", "fps") }?.let {
+            fail("a panel only takes enter (what the prompt bar says Enter does), opacity (how much it covers home), keyboard (whether the keyboard comes up as it opens) and fps (how often it animates); the launcher frames it, and gesture settings pick which swipe opens it", it.pos)
         }
         body.handlers.firstOrNull { it.name != "onSubmit" && it.name != "onKey" }?.let {
             fail("handlers go on the nodes inside a panel; only onSubmit (Enter in the prompt bar) and onKey (its arrow and Tab keys) go at its top", it.pos)
@@ -557,6 +574,7 @@ class Compiler private constructor(
                 since(PANEL_KEYBOARD, it.pos)
                 ((it.value as? Expr.Lit)?.value as? Bool)?.v ?: fail("keyboard is true or false, not an expression", it.pos)
             } ?: true
+        val fps = body.props.firstOrNull { it.name == "fps" }?.let(::frameRate)
         finish(level)
         return Program(
             name = ast.name ?: "panel",
@@ -569,6 +587,7 @@ class Compiler private constructor(
             enter = enter,
             opacity = opacity,
             keyboard = keyboard,
+            fps = fps,
             triggers = triggers,
             commands = commands.toList(),
             secretHosts = secretHosts.mapValues { it.value.sorted() },

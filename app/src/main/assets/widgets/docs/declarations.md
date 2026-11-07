@@ -23,12 +23,13 @@ Part of the widget docs: README.md, one folder up, comes first, and paths here a
 | `strings { en { title: "today" } id { title: "hari ini" } }` | the text a person reads, in more than one language: `str.title` is the phone's language's, or en's where it has none. See Text in more languages (owl 16) |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see docs/sharing.md) |
-| `meta { owl: 12 }` | the language version the file needs (this launcher has 18; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
+| `meta { owl: 12 }` | the language version the file needs (this launcher has 19; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see docs/screens.md (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
 | `padding: 12` / `background: ...` | the tile's padding (dp) and background |
 | `lock: playing` | holds the home screen still while it's true and the tile shows: no page turn, swipe up or long press, so a game's or a drawing pad's swipes stay its own. Back and the chip it puts at the top let go until it turns false. Something that changes, never a fixed `true` (owl 18) |
+| `fps: hopping ? 30 : 10` | how many frames a second its `time` animation gets, 1 to 60 (60 without it): a pet that blinks and breathes needs 10, a slow drift 15 to 20, smooth swimming or a spinner 30, a game 60. Worked out as it changes, so it can rise for a moment after a tap and fall back. Fewer frames are less battery for as long as the page shows. A `time` in it doesn't keep the animation running on its own (owl 19; faces, apps and panels take it too) |
 
 Sources only run while their page (or a neighbour) is on screen, and
 identical commands in several widgets run once. A few commands run at the same

@@ -377,6 +377,8 @@ class Program(
     val statusBar: Ev? = null,
     /** A widget's or a face's `lock`: while it holds and the tile shows, the home screen holds still; null never does. */
     val lock: Ev? = null,
+    /** `fps`: how many frames a second its `time` animation gets, from 1 to [MAX_FPS]; null is [MAX_FPS]. */
+    val fps: Ev? = null,
     val page: Int = 1,
     val order: Int = 0,
     /** Tile padding in dp, and an optional tile background. */

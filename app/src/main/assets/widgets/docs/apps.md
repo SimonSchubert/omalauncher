@@ -6,7 +6,7 @@ A file can also be an app instead of a widget: a screen of its own, listed in th
 The nodes at the top are the whole view, with the room and limits of a `screen { }`, and it takes
 the same declarations as a widget (sources, state, lets, components, triggers, `requires`, `meta`).
 There's no tile, so no `size`, `minSize`, `page`, `order`, `padding`, `background`, `onTap` or
-`screen { }`; the properties are `title`, `icon`, `back` (with its `onBack`), `edge` and `statusBar`, and `close()` closes it. Apps need owl 8 and
+`screen { }`; the properties are `title`, `icon`, `back` (with its `onBack`), `edge`, `statusBar` and `fps` (owl 19, as on a widget: see docs/declarations.md), and `close()` closes it. Apps need owl 8 and
 run only while open.
 
 ```owl

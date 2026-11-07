@@ -36,7 +36,10 @@ Styles: `fill:` (a color or gradient), `stroke:`, `width:` (stroke width),
 the foreground. A widget that reads `time` animates while it's on screen, up to
 60 frames a second on any screen, and only while it reads it: a `time` under an `if` that's false, like a
 backdrop drawn only while music plays, costs nothing (older launchers
-animate whenever `time` appears at all).
+animate whenever `time` appears at all). Each frame costs battery for as long as the page shows, so say how many
+the animation needs with `fps:` (owl 19, see docs/declarations.md): `fps: 10` for a pet that blinks and breathes,
+`fps: tapped ? 30 : 10` for one that hops after a tap. Move things by `time`, not by counting frames, so they keep
+their speed at any rate.
 
 ## Shader
 
