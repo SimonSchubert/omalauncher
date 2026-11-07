@@ -12,7 +12,30 @@ data class LinuxApp(
     val wmClass: String?,
     /** Icon= value: a theme icon name or an absolute guest path. */
     val icon: String? = null,
+    /** The file types it opens (MimeType=). */
+    val mimeTypes: List<String> = emptyList(),
+    /** Exec= as written, field codes and all: [commandFor] fills in a file. */
+    val execTemplate: String = exec,
 )
+
+/** The command that opens [paths] (guest paths): the entry's file or URL field code filled in, else the paths appended. */
+fun LinuxApp.commandFor(paths: List<String>): String {
+    val files = paths.map(::shellQuote)
+    // file:///path, percent-encoded: URI("file", null, path, null) would give file:/path, which some apps refuse.
+    val urls = paths.map { shellQuote("file://" + java.net.URI(null, null, it, null).toASCIIString()) }
+    var used = false
+    val cmd =
+        FIELD_CODE.replace(execTemplate) { m ->
+            when (m.value) {
+                "%f" -> files.first().also { used = true }
+                "%F" -> files.joinToString(" ").also { used = true }
+                "%u" -> urls.first().also { used = true }
+                "%U" -> urls.joinToString(" ").also { used = true }
+                else -> ""
+            }
+        }.trim()
+    return if (used) cmd else (listOf(cmd) + files).joinToString(" ")
+}
 
 /** Whether a window with Wayland [appId] belongs to this app: by desktop id, StartupWMClass, or reverse-DNS tail. */
 fun LinuxApp.matches(appId: String): Boolean {
@@ -53,8 +76,10 @@ private fun parseDesktopEntry(file: File): LinuxApp? {
     if (fields["Type"] != "Application") return null
     if (fields["NoDisplay"] == "true" || fields["Hidden"] == "true") return null
     val name = fields["Name"] ?: return null
-    val exec = fields["Exec"]?.replace(FIELD_CODE, "")?.trim() ?: return null
-    return LinuxApp(name, exec, fields["Terminal"] == "true", file.nameWithoutExtension, fields["StartupWMClass"], fields["Icon"])
+    val template = fields["Exec"] ?: return null
+    val exec = template.replace(FIELD_CODE, "").trim()
+    val mimes = fields["MimeType"]?.split(';')?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+    return LinuxApp(name, exec, fields["Terminal"] == "true", file.nameWithoutExtension, fields["StartupWMClass"], fields["Icon"], mimes, template)
 }
 
 private val ICON_SIZES = listOf("256x256", "192x192", "128x128", "96x96", "72x72", "64x64", "48x48")
