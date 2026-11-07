@@ -47,6 +47,27 @@ agent can rewrite it. Here Grok sorts it into folders:
 
 <img src="art/drawer-folders.webp" width="360" alt="Grok rewrites drawer.owl, and the app drawer opens sorted into folders">
 
+### The `omalauncher` command
+
+Scripts and agents in Linux reach the phone through `omalauncher`:
+
+```sh
+omalauncher location          # approximate {lat, lon, accuracy, time}
+omalauncher calendar 7        # the events of the next 7 days (14 if not given)
+omalauncher battery           # level, charging, temperature, health...
+omalauncher airpods anc       # the connected AirPods: read them, or change a mode or setting
+omalauncher notify "build done" "all tests passed"
+omalauncher share report.pdf  # Android's share sheet, for you to pick an app
+omalauncher version           # the launcher's version and the commands it has
+```
+
+It prints JSON and only uses what the launcher was already allowed: it never
+asks for a permission itself. Exit codes: 1 nothing to say (no location fix
+yet, no AirPods connected), 2 wrong arguments, 3 the launcher isn't allowed
+it, 4 the launcher isn't running or didn't answer. `omalauncher --help` has the details. The
+coding agents are told about it, so you can ask one to tell you when a long
+task is done. `phone`, its name before 0.20, still works.
+
 Touch input in Linux windows: tap is a left click, long press is a right
 click, drag scrolls; apps with touch support (foot, GTK) get real touch.
 

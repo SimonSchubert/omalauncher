@@ -188,6 +188,16 @@ they cover, in `owl/src/test` or `app/src/test`.
 - **A stock widget** (`assets/widgets/*.owl`): these are `Seeded` files, so
   an edit reaches every install that hasn't changed its copy. Raise the
   `version` in its `meta { }` and keep its `strings { }` sets in every app language.
+- **An `omalauncher` command** (the guest's way to the phone): the script
+  `assets/omalauncher.sh` (its usage text and the argument check in its last
+  `case`), the answer in `linux/PhoneBridge.kt` (the `when (args[0])` and
+  `COMMANDS`, which `omalauncher version` lists), the paragraph about it in
+  the guest's AGENTS.md (`WidgetEngine.kt`) and the README.
+  `OmalauncherScriptTest.commandsAgree` fails until the script, its usage and
+  `PhoneBridge` list the same commands. Errors go back as `usage:`,
+  `denied:` or `error:` answers, which the script turns into exit codes 2, 3
+  and 1; keep those meanings, since scripts depend on them. Commands never
+  ask for permissions.
 - **UI text**: `res/values/strings_<area>.xml` and the same key in each
   `values-*` folder.
 - **What Linux gets set up with**: a rootfs step in `linux/Bootstrap.kt` (a
