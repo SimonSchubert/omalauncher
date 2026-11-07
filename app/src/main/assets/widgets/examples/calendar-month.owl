@@ -1,0 +1,147 @@
+widget "calendar month" {
+  page: 1
+  order: 4
+  size: 6x4
+  minSize: 4x3
+  meta { owl: 19; description: "Month and daily agenda from Android Calendar" }
+
+  source now = clock every 1m
+  source c = android.calendar
+  state month = null
+  state picked = null
+
+  let events = c.events ?? []
+  let today = fmtTime(now, "yyyy-MM-dd")
+  let selected = picked ?? today
+  let shownMonth = month ?? fmtTime(now, "yyyy-MM-01")
+  // Use noon so that moving by whole days remains on the same date across daylight-saving changes.
+  let first = parseTime(shownMonth) + 43200
+  let weekday = indexOf(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], fmtTime(first, "EEE", null, "en"))
+  let gridStart = first - weekday * 86400
+  let nextMonth = fmtTime(first + 32 * 86400, "yyyy-MM-01")
+  let days = num(fmtTime(parseTime(nextMonth) - 43200, "d"))
+  let weeks = ceil((weekday + days) / 7)
+  // Leave room for the title, weekday labels, gaps and the today link.
+  let cell = min(40, ((tileHeight ?? 400) - 160) / weeks)
+  let calendarWidth = (tileWidth ?? 600) * ((tileWidth ?? 600) < 320 ? 0.55 : 0.44)
+  // Seven cells and six gaps must fit inside the calendar column.
+  let circle = min(cell - 4, (calendarWidth - 18) / 7 - 3)
+  let dayFont = min(16, circle * 0.72)
+  let limit = fmtTime(parseTime(today) + 14 * 86400, "yyyy-MM-dd")
+  let tomorrow = fmtTime(parseTime(selected) + 129600, "yyyy-MM-dd")
+  let afterTomorrow = fmtTime(parseTime(tomorrow) + 129600, "yyyy-MM-dd")
+  let firstEvents = events.filter(e => e.start < parseTime(tomorrow) && e.end > parseTime(selected))
+  let nextEvents = events.filter(e => e.start < parseTime(afterTomorrow) && e.end > parseTime(tomorrow))
+
+  Row {
+    gap: 16
+    fill: true
+    padding: [0, 12]
+
+    Column {
+      gap: 8
+      justify: center
+      width: calendarWidth
+      Row {
+        align: center
+        gap: 8
+        Text { text: "‹"; font: mono; style: title; color: accent; onTap: { month = fmtTime(first - 86400, "yyyy-MM-01"); picked = null } }
+        Text { text: lower(fmtTime(first, "MMMM yyyy")); font: mono; fontSize: 18; bold: true; maxLines: 1; weight: 1 }
+        Text { text: "›"; font: mono; style: title; color: accent; onTap: { month = nextMonth; picked = null } }
+      }
+      Row {
+        for label in ["S", "M", "T", "W", "T", "F", "S"] {
+          Text { text: label; font: mono; style: small; color: muted; align: center; weight: 1 }
+        }
+      }
+      Spacer { height: 1; fill: width; background: alpha(border, 0.6) }
+      Column {
+        gap: 3
+        for w in range(weeks) {
+          Row {
+            gap: 3
+            for d in range(7) {
+              let day = gridStart + (w * 7 + d) * 86400
+              let date = fmtTime(day, "yyyy-MM-dd")
+              let inMonth = startsWith(date, sub(shownMonth, 0, 7))
+              Column {
+                weight: 1
+                height: cell
+                align: center
+                justify: center
+                onTap: picked = date
+                Box {
+                  size: circle
+                  align: center
+                  background: date == selected ? alpha(accent, 0.38) : date == today ? alpha(accent, 0.13) : transparent
+                  radius: circle / 2
+                  Text { text: fmtTime(day, "d"); font: mono; fontSize: dayFont; bold: date == selected; color: inMonth ? foreground : muted; align: center; maxLines: 1 }
+                }
+              }
+            }
+          }
+        }
+      }
+      Text { text: "today"; font: mono; style: small; color: accent; onTap: { month = null; picked = null } }
+    }
+
+    Spacer { width: 1; fill: height; background: alpha(border, 0.6) }
+
+    Column {
+      weight: 1
+      gap: 8
+      fill: height
+      Row {
+        align: center
+        Text { text: picked == null || selected == today ? "TODAY" : upper(fmtTime(parseTime(selected), "EEE d MMM")); font: mono; style: label; color: accent; weight: 1 }
+      }
+      if !c.granted {
+        Column {
+          gap: 10
+          Text { text: "Events from calendars on your phone"; font: mono; style: small; color: muted; maxLines: 3 }
+          Button { text: "allow calendar"; color: accent; onTap: calendar("request") }
+        }
+      } else {
+        Column {
+          weight: 1
+          scroll: true
+          gap: 12
+          if selected < today || selected >= limit {
+            Text { text: "Events available for the next 14 days"; font: mono; style: small; color: muted; maxLines: 2 }
+          } else if len(firstEvents) == 0 {
+            Text { text: "No events"; font: mono; style: small; color: muted }
+          } else {
+            for e in firstEvents key e.id {
+              Row {
+                Column {
+                  gap: 1
+                  weight: 1
+                  Text { text: e.allDay ? "all day" : fmtTime(e.start, "HH:mm") + "–" + fmtTime(e.end, "HH:mm"); font: mono; style: small; color: muted; maxLines: 1 }
+                  Text { text: e.title != "" ? e.title : "(untitled)"; font: mono; fontSize: 14; bold: true; maxLines: 2 }
+                }
+              }
+            }
+          }
+          Spacer { height: 1; fill: width; background: alpha(border, 0.6) }
+          Text { text: picked == null || selected == today ? "TOMORROW" : upper(fmtTime(parseTime(tomorrow), "EEE d MMM")); font: mono; style: label; color: accent }
+          if tomorrow < today || tomorrow >= limit {
+            Text { text: "Events available for the next 14 days"; font: mono; style: small; color: muted; maxLines: 2 }
+          } else if len(nextEvents) == 0 {
+            Text { text: "No events"; font: mono; style: small; color: muted }
+          } else {
+            for e in nextEvents key e.id {
+              Row {
+                Column {
+                  gap: 1
+                  weight: 1
+                  Text { text: e.allDay ? "all day" : fmtTime(e.start, "HH:mm") + "–" + fmtTime(e.end, "HH:mm"); font: mono; style: small; color: muted; maxLines: 1 }
+                  Text { text: e.title != "" ? e.title : "(untitled)"; font: mono; fontSize: 14; bold: true; maxLines: 2 }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
