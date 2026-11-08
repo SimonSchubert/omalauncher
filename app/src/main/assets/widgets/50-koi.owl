@@ -1,5 +1,5 @@
 widget "koi pond" {
-  meta { owl: 19; description: "A pixel-art koi pond in your theme's colors. Tap the water to feed the koi"; version: "1.3"; license: "MIT"; category: "fun" }
+  meta { owl: 19; description: "A pixel-art koi pond in your theme's colors. Tap the water to feed the koi; it swims for a minute and then rests"; version: "1.4"; license: "MIT"; category: "fun" }
   // Idle the koi move less than an art pixel a frame at 20; feeding, they dart, and 30 keeps that smooth.
   fps: feeding ? 30 : 20
   page: 1
@@ -9,7 +9,7 @@ widget "koi pond" {
   padding: 0
 
   // Pixel-art koi in theme colors. A Canvas keeps nothing between frames, so
-  // every koi is a function of `time`: the head swims a path, and the body is
+  // every koi is a function of the pond's clock: the head swims a path, and the body is
   // drawn where the head was a moment ago, as blocky discs on a pixel grid.
   //
   // Tap the water to feed them. A tap stores each koi's body and speed as they
@@ -17,11 +17,29 @@ widget "koi pond" {
   // in an arc from where it's facing, swim straight, and slip onto a circle
   // round the food. After a while it leaves along that circle the same way,
   // onto its home loop. Another tap starts a new route from wherever it is.
+  //
+  // The pond is still until tapped, and still again a minute after the last
+  // tap: `time` is read only while awake, so the launcher parks the tile's
+  // frame clock and a koi nobody plays with costs no frames at all.
   state fedAt = -100
   state foodX = 0
   state foodY = 0
   state fromK = []
   state plan = []
+  state awake = false
+  state wokeAt = 0
+  state frozen = 0
+  state sleepAt = 0
+  // Only to time the nap, not to draw: 5 s is close enough for a 60 s nap.
+  source now = clock every 5s
+
+  // The animation clock: frozen while asleep, and carrying on from where it
+  // stopped when woken, so the koi don't jump. A tile whose frame clock
+  // restarted (its page was off screen) starts `time` over; take that as now.
+  let anim = awake ? (time >= wokeAt ? frozen + time - wokeAt : frozen) : frozen
+  when (awake && time < wokeAt) { wokeAt = time }
+  // Read `anim` while still awake: once `awake` is false it is just `frozen`.
+  at sleepAt { if awake { frozen = anim; awake = false; sleepAt = 0 } }
 
   // Paths are in fractions of the tile: x = sin(t), y = cos(ratio * t + ph).
   // `spots` are [segment, side] pairs that get a patch in `spot`.
@@ -32,10 +50,10 @@ widget "koi pond" {
   // Body half-width per segment in art pixels, head first.
   let profile = [2, 3, 3, 3, 3, 3, 3, 2, 2, 2, 1, 1, 1, 1, 0]
 
-  // Seconds since the last tap. `time` starts again from 0 when the tile's
-  // frame clock restarts (say, after its page was off screen), so a tap that
-  // seems to be in the future was really long ago.
-  let since = time >= fedAt ? time - fedAt : 1000
+  // Seconds since the last tap. `anim` starts again from `frozen` when the
+  // tile's frame clock restarts (say, after its page was off screen), so a tap
+  // that seems to be in the future was really long ago.
+  let since = anim >= fedAt ? anim - fedAt : 1000
   // Long enough to swim there, eat, swim home and for the body to follow.
   let feeding = since < 30
 
@@ -69,7 +87,7 @@ widget "koi pond" {
   // Idle, the body is just the loop: step back along it directly, by the
   // loop's speed halfway back, so the body keeps its length where the loop
   // speeds up or slows down. From [rig, angle offset].
-  let loop = v => [v[0].f.ph + v[0].f.dir * time * v[0].f.speed + v[1]]
+  let loop = v => [v[0].f.ph + v[0].f.dir * anim * v[0].f.speed + v[1]]
     .map(th => range(len(profile) + 1).map(k => th - v[0].f.dir * k * ds / 2 / max(sqrt(pow(v[0].rx * cos(th), 2) + pow(v[0].ry * v[0].f.ratio * sin(v[0].f.ratio * th + v[0].f.ph), 2)), 1))
       .map((m, k) => th - v[0].f.dir * k * ds / max(sqrt(pow(v[0].rx * cos(m), 2) + pow(v[0].ry * v[0].f.ratio * sin(v[0].f.ratio * m + v[0].f.ph), 2)), 1))
       .map(t => [[v[0], t]].map(homeAt)[0]))[0]
@@ -174,7 +192,7 @@ widget "koi pond" {
   let live = rig.map((r, i) => plan[i] ?? {r: r, go: null, dh: 0})
 
   // Each head's speed in dp/s, over the last tenth of a second.
-  let speeds = live.map(t => [[t, time], [t, time - 0.1]].map(headAt))
+  let speeds = live.map(t => [[t, anim], [t, anim - 0.1]].map(headAt))
     .map(q => sqrt(pow(q[0][0] - q[1][0], 2) + pow(q[0][1] - q[1][1], 2)) / 0.1)
 
   // Feeding, the body lies along the head's path, a segment's length apart:
@@ -182,8 +200,8 @@ widget "koi pond" {
   // odometer, and put the segment where the head was then. Further back than
   // the tap it lies along the body as it was at the tap. Once it's all back on
   // the home loop, the idle body takes over.
-  let bodies = live.map((t, i) => !feeding || t.go == null || time > t.ret + 6 ? [[rig[i], t.dh]].map(loop)[0] :
-    [range(33).map(j => time - j * min(since, 25) / 32)]
+  let bodies = live.map((t, i) => !feeding || t.go == null || anim > t.ret + 6 ? [[rig[i], t.dh]].map(loop)[0] :
+    [range(33).map(j => anim - j * min(since, 25) / 32)]
       .map(ts => [ts, ts.map(tau => [t, tau]).map(odometer)])
       .map(w => [w[0], w[1].map(o => w[1][0] - o)])
       .map(w => range(len(profile) + 1).map(k => k * ds >= w[1][32] ?
@@ -225,12 +243,18 @@ widget "koi pond" {
     let fed = since
 
     onTap: {
-      // Before fedAt changes: bodies and speeds read it.
+      // Before fedAt (and awake) changes: bodies and speeds read them.
       fromK = bodies.map((b, i) => {body: b, speed: speeds[i]})
-      fedAt = time
+      fedAt = anim
       foodX = x
       foodY = y
       plan = trips
+      // Wake from the frozen frame and nap again a minute after the last tap.
+      if !awake {
+        awake = true
+        wokeAt = time
+      }
+      sleepAt = (now ?? 0) + 60
     }
 
     clip(0, 0, width, height) {
@@ -250,7 +274,7 @@ widget "koi pond" {
 
       for f, i in koi {
         let body = bodies[i]
-        let sway = sin(time * 4 + i * 2)
+        let sway = sin(anim * 4 + i * 2)
         let fin = mix(f.body, background, 0.25)
 
         // Tail first, so the head lands on top.
@@ -315,7 +339,7 @@ widget "koi pond" {
       }
 
       // The lily pad floats above the fish, drifting a pixel or two.
-      let drift = round(sin(time * 0.07) * 2) * p
+      let drift = round(sin(anim * 0.07) * 2) * p
       for r in padRects {
         rect(r[0] + drift, r[1], r[2], r[3], fill: r[4])
       }
