@@ -127,9 +127,6 @@
     <string name="linux_retry">reintentar</string>
     <string name="linux_gpu_turn_off">desactivar</string>
     <string name="linux_gpu_turn_on">activar</string>
-    <string name="linux_storage_title">almacenamiento del teléfono</string>
-    <string name="linux_storage_on">activado · en %1$s: descargas, fotos, documentos · para las apps que abras a partir de ahora</string>
-    <string name="linux_storage_offer">tus descargas, fotos y documentos en %1$s en linux; android te pide permitir el acceso a todos los archivos</string>
 
     <string name="linux_notification_channel">Sesión de Linux</string>
     <string name="linux_notify_channel">Agentes y scripts</string>

@@ -38,8 +38,17 @@
     <string name="settings_permissions">permissions</string>
     <string name="settings_permissions_subtitle">microphone, location, files, …</string>
 
-    <!-- The permissions screen (ui/PermissionsScreen.kt). Its rows reuse settings_local_network and linux_storage_title. -->
+    <!-- The permissions screen (ui/PermissionsScreen.kt). Its rows reuse settings_local_network. -->
     <string name="permissions_title">permissions</string>
+    <!-- The phone folders Linux reaches (PhoneFoldersRow, on top of this screen); Files is the app's name. -->
+    <string name="permissions_folders_title">phone folders</string>
+    <string name="permissions_folders_about">folders of your photos, downloads and documents for linux: in Files, and for agents and scripts through omalauncher</string>
+    <!-- After permissions_folders_about, on Android 11 and newer; %1$s: where Linux sees the phone's storage, /sdcard. -->
+    <string name="permissions_folders_sdcard">what linux saves in %1$s/Download or %1$s/Documents, other apps see too</string>
+    <string name="permissions_folders_add">add folder</string>
+    <string name="permissions_folders_remove">remove</string>
+    <string name="permissions_folders_cant_keep">android didn\'t let the launcher keep that folder</string>
+    <string name="permissions_folders_no_picker">this phone has no folder picker</string>
     <string name="permissions_note">widgets and agents can use whatever is on here. android keeps the switches: turn on asks, turn off opens android\'s settings for it</string>
     <!-- %1$s is what uses the permission, like "the prompt bar's mic". -->
     <string name="permissions_on">on · %1$s</string>
@@ -56,8 +65,6 @@
     <string name="permissions_notifications_uses">linux while it runs, widgets that notify you</string>
     <string name="permissions_notification_access">notification access</string>
     <string name="permissions_notification_access_uses">what\'s playing and do not disturb, for widgets</string>
-    <!-- %1$s is where Linux sees the storage, /sdcard. -->
-    <string name="permissions_storage_uses">your downloads, photos and documents at %1$s in linux · agents and linux apps, widgets that read files</string>
 
     <string name="settings_android">android settings</string>
     <string name="settings_android_subtitle">the phone\'s system settings</string>

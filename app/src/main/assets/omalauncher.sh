@@ -1,7 +1,7 @@
 #!/bin/bash
-# omalauncher: the phone's location, calendar, AirPods and battery as JSON, and
-# notifications and Android's share sheet, for agents and scripts (see
-# PhoneBridge.kt). Only what the launcher was already allowed; nothing here
+# omalauncher: the phone's location, calendar, AirPods and battery as JSON,
+# notifications and Android's share sheet, and the phone folders the user let
+# Linux reach, for agents and scripts (see PhoneBridge.kt). Only what the launcher was already allowed; nothing here
 # asks. Drops a request into the launcher's inbox and waits.
 # /usr/local/bin/phone, its name until 0.20, runs this too.
 set -u
@@ -31,18 +31,45 @@ usage: omalauncher location       {lat, lon, accuracy (metres), time}, approxima
        omalauncher share <file>...
                                   Android's share sheet for the files, for the
                                   user to pick an app; prints nothing
+       omalauncher folders        the phone folders you can reach: [{name}]; the
+                                  user adds them in the launcher's settings
+                                  (permissions)
+       omalauncher ls [folder[/path]]
+                                  what's in one: [{name, dir, size, modified}]
+       omalauncher get <folder/path>... <dest>
+                                  copies phone files or folders into Linux, as
+                                  cp -r does; prints the paths written
+       omalauncher put <file>... <folder[/path]>
+                                  copies Linux files or folders into a phone
+                                  folder, as cp -r does, leaving out links inside
+                                  a folder; prints the paths written
+       omalauncher pick [dir]     Android's file picker, for the user to choose
+                                  files from anywhere on the phone (Download
+                                  too); copies them into dir (~/Downloads) and
+                                  prints their paths
        omalauncher version        {version, versionCode, commands}
 
 Words that start with - are kept for options; put -- before one meant as
 a title, text or file (omalauncher notify -- "-5 degrees out").
+/sdcard holds only files Linux put there itself (any in Download and
+Documents); the rest of the phone's files are reached through the folders.
 Times are Unix seconds. Prints JSON and exits 0, or says why not on stderr:
-  1  nothing to say (no fix yet, no AirPods connected, Bluetooth off...)
+  1  nothing to say (no fix yet, no AirPods connected, no such file...)
   2  wrong arguments
   3  the launcher isn't allowed it: a widget showing it asks, or Android's
-     settings for the app (notifications: the launcher's settings, permissions)
+     settings for the app (notifications: the launcher's settings, permissions;
+     a phone folder: the launcher's settings, permissions)
   4  the launcher isn't running or didn't answer
 USAGE
   exit $code
+}
+
+# The launcher doesn't know where this runs: Linux paths go to it as absolute ones.
+absolute() {
+  case $1 in
+    /*) printf '%s' "$1" ;;
+    *) printf '%s' "$PWD/$1" ;;
+  esac
 }
 
 [ $# -ge 1 ] || usage
@@ -72,25 +99,42 @@ while [ $# -gt 0 ]; do
 done
 set -- "$cmd" ${words[@]+"${words[@]}"}
 case $1 in
-  location | battery | version) [ $# -eq 1 ] || usage ;;
+  location | battery | version | folders) [ $# -eq 1 ] || usage ;;
+  ls) [ $# -le 2 ] || usage ;;
   calendar) [ $# -le 2 ] || usage ;;
   airpods) [ $# -le 3 ] || usage ;;
   notify) [ $# -ge 2 ] && [ $# -le 3 ] && [ -n "$2" ] || usage ;;
   share)
     [ $# -ge 2 ] || usage
-    # The launcher doesn't know where this runs: paths go as absolute ones.
     args=(share)
     for f in "${@:2}"; do
       if [ ! -f "$f" ]; then
         echo "omalauncher: share: $f isn't a file" >&2
         exit 2
       fi
-      case $f in
-        /*) args+=("$f") ;;
-        *) args+=("$PWD/$f") ;;
-      esac
+      args+=("$(absolute "$f")")
     done
     set -- "${args[@]}"
+    ;;
+  get)
+    [ $# -ge 3 ] || usage
+    set -- "${@:1:$#-1}" "$(absolute "${!#}")"
+    ;;
+  put)
+    [ $# -ge 3 ] || usage
+    args=(put)
+    for f in "${@:2:$#-2}"; do
+      if [ ! -e "$f" ]; then
+        echo "omalauncher: put: no $f" >&2
+        exit 2
+      fi
+      args+=("$(absolute "$f")")
+    done
+    set -- "${args[@]}" "${!#}"
+    ;;
+  pick)
+    [ $# -le 2 ] || usage
+    [ $# -eq 1 ] || set -- pick "$(absolute "$2")"
     ;;
   *) usage ;;
 esac

@@ -4,6 +4,8 @@ import android.content.Context
 import android.os.FileObserver
 import android.util.Log
 import dev.omalauncher.BuildConfig
+import dev.omalauncher.PhoneFolders
+import dev.omalauncher.PickActivity
 import dev.omalauncher.R
 import dev.omalauncher.ui.mimeOf
 import dev.omalauncher.widgets.lang.Str
@@ -58,6 +60,7 @@ class PhoneBridge(
     private val location: PhoneLocation,
     private val calendar: PhoneCalendar,
     private val airpods: () -> AirPods,
+    private val folders: PhoneFolders,
     /** Main: the sources are read on the main thread, as widgets read them. */
     private val scope: CoroutineScope,
 ) {
@@ -109,6 +112,11 @@ class PhoneBridge(
                     "version" -> Answer.Ok(Obj(mapOf("version" to Str(BuildConfig.VERSION_NAME), "versionCode" to Num(BuildConfig.VERSION_CODE.toDouble()), "commands" to Lst(COMMANDS.map(::Str)))))
                     "notify" -> notify(args.getOrNull(1).orEmpty(), args.getOrNull(2)?.takeIf { it.isNotEmpty() })
                     "airpods" -> airpods(args.getOrNull(1)?.takeIf { it.isNotEmpty() }, args.getOrNull(2))
+                    "folders" -> withContext(Dispatchers.IO) { folders() }
+                    "ls" -> withContext(Dispatchers.IO) { ls(args.getOrNull(1).orEmpty()) }
+                    "get" -> withContext(Dispatchers.IO) { get(args.drop(1)) }
+                    "put" -> withContext(Dispatchers.IO) { put(args.drop(1)) }
+                    "pick" -> pick(args.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: DOWNLOADS)
                     else -> Answer.Usage("unknown command '${args[0]}'")
                 }
             } catch (e: Exception) {
@@ -190,6 +198,88 @@ class PhoneBridge(
         }
     }
 
+    /** The phone folders Linux may reach, by the names the other commands take. */
+    private fun folders(): Answer = Answer.Ok(Lst(folders.folders().map { Obj(mapOf("name" to Str(it.name))) }))
+
+    /** What's in a phone folder, or the one file [path] names. */
+    private fun ls(path: String): Answer {
+        if (path.isEmpty()) return folders()
+        val doc = folders.find(path) ?: return noSuch(path)
+        val docs = if (doc.isDir) folders.list(doc) else listOf(doc)
+        return Answer.Ok(
+            Lst(
+                docs.map {
+                    Obj(mapOf("name" to Str(it.name), "dir" to bool(it.isDir), "size" to Num(it.size.toDouble()), "modified" to Num((it.modified / 1000).toDouble())))
+                },
+            ),
+        )
+    }
+
+    /**
+     * Phone files or folders into Linux, as cp -r does: into [args]' last, a folder there, or as that name for one.
+     * Answers the Linux paths written.
+     */
+    private fun get(args: List<String>): Answer {
+        if (args.size < 2) return Answer.Usage("get: <folder>/<path>... <linux path>")
+        val all = folders.folders()
+        val docs = args.dropLast(1).map { folders.find(it, all) ?: return noSuch(it) }
+        val dest = proot.guestFs.normalize(args.last())
+        val destFile = proot.guestFile(dest) ?: return Answer.Error("get: $dest is out of Linux")
+        val into = destFile.isDirectory
+        if (docs.size > 1 && !into) return Answer.Usage("get: $dest isn't a folder")
+        val written = ArrayList<Value>()
+        for (doc in docs) {
+            val (file, path) = if (into) File(destFile, doc.name) to proot.guestFs.child(dest, doc.name) else destFile to dest
+            if (file.parentFile?.isDirectory != true) return Answer.Error("get: no folder ${dest.substringBeforeLast('/')}")
+            folders.copyIn(doc, file)
+            written += Str(path)
+        }
+        return Answer.Ok(Lst(written))
+    }
+
+    /** Linux files or folders into a phone folder, as cp -r does, the last of [args]. Answers the phone paths written. */
+    private fun put(args: List<String>): Answer {
+        if (args.size < 2) return Answer.Usage("put: <linux path>... <folder>[/path]")
+        val sources = args.dropLast(1).map { p -> (proot.guestFile(p)?.takeIf { it.exists() } ?: return Answer.Error("put: $p can't be read from Linux")) }
+        val dest = args.last().trim('/')
+        val all = folders.folders()
+        val there = folders.find(dest, all)
+        val written = ArrayList<Value>()
+        if (there?.isDir == true) {
+            for (src in sources) written += Str(folders.copyOut(src, there).path)
+        } else {
+            // A new name for the one file or folder, in a folder that's there.
+            val parent = dest.substringBeforeLast('/', "").takeIf { it.isNotEmpty() }?.let { folders.find(it, all) }
+            if (sources.size > 1 || parent == null || !parent.isDir) return noSuch(dest)
+            written += Str(folders.copyOut(sources[0], parent, dest.substringAfterLast('/')).path)
+        }
+        return Answer.Ok(Lst(written))
+    }
+
+    /** Android's file picker, for the user to choose files from anywhere on the phone; copied into [dir], as they're named. */
+    private suspend fun pick(dir: String): Answer {
+        val into = withContext(Dispatchers.IO) { proot.guestFile(dir)?.takeIf { it.isDirectory || (dir == DOWNLOADS && it.mkdirs()) } } ?: return Answer.Usage("pick: $dir isn't a folder")
+        val picked = PickActivity.picked()
+        try {
+            context.startActivity(Intent(context, PickActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: ActivityNotFoundException) {
+            return Answer.Error("pick: no file picker")
+        }
+        val uris = withTimeoutOrNull(PICK_MS) { picked.await() } ?: emptyList()
+        if (uris.isEmpty()) return Answer.Error("nothing picked")
+        val paths = withContext(Dispatchers.IO) { uris.map { Str(proot.guestFs.child(dir, folders.copyIn(it, into).name)) } }
+        return Answer.Ok(Lst(paths))
+    }
+
+    private fun noSuch(path: String): Answer {
+        val name = path.trim('/').substringBefore('/')
+        return if (folders.folders().none { it.name == name }) {
+            Answer.Denied("no phone folder '$name'; `omalauncher folders` lists them, and the launcher's settings (permissions) add one")
+        } else {
+            Answer.Error("no $path")
+        }
+    }
+
     /**
      * The AirPods connected to the phone, once their link is up and they've said their batteries; with [word], one of
      * airpods(...)'s controls first.
@@ -244,13 +334,16 @@ class PhoneBridge(
         const val OLD_COMMAND = "phone"
         const val SCRIPT = "$COMMAND.sh"
         /** What this launcher's `omalauncher` answers, for `omalauncher version`. */
-        val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "version")
+        val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "version")
         const val NOTIFY_CHANNEL = "linux"
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
         const val LOCATION_MS = 10_000L
         const val AIRPODS_MS = 12_000L
         const val CONTROL_MS = 2_000L
+        /** Under the script's 2 minutes, so a picker left open says nothing was picked. */
+        const val PICK_MS = 110_000L
+        const val DOWNLOADS = "/root/Downloads"
         const val DAYS = 14
         const val MAX_DAYS = 366
         const val MAX_EVENTS = 1000

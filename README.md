@@ -58,6 +58,10 @@ omalauncher battery           # level, charging, temperature, health...
 omalauncher airpods anc       # the connected AirPods: read them, or change a mode or setting
 omalauncher notify "build done" "all tests passed"
 omalauncher share report.pdf  # Android's share sheet, for you to pick an app
+omalauncher folders           # the phone folders you let Linux reach
+omalauncher get Camera/IMG_1.jpg .          # copy from one into Linux
+omalauncher put report.pdf Documents        # and back
+omalauncher pick              # Android's file picker; what you pick is copied to ~/Downloads
 omalauncher version           # the launcher's version and the commands it has
 ```
 
@@ -67,6 +71,18 @@ yet, no AirPods connected), 2 wrong arguments, 3 the launcher isn't allowed
 it, 4 the launcher isn't running or didn't answer. `omalauncher --help` has the details. The
 coding agents are told about it, so you can ask one to tell you when a long
 task is done. `phone`, its name before 0.20, still works.
+
+### Phone files
+
+The launcher asks for no storage permission. Linux has `/sdcard`, but Android
+shows it only the files Linux saved there itself: what it puts in
+`/sdcard/Download` or `/sdcard/Documents` (pictures in `/sdcard/Pictures`), your
+other apps see too (Android 11 and newer). For your own photos, downloads and
+documents, add folders at the top of settings, permissions, in Android's folder
+picker. Files shows them under "phone folders", where you can open, copy, move,
+rename and delete files and copy them to and from Linux; agents reach them
+through the `omalauncher` commands above. Android keeps the access until you
+remove the folder there.
 
 Touch input in Linux windows: tap is a left click, long press is a right
 click, drag scrolls; apps with touch support (foot, GTK) get real touch.

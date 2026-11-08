@@ -6,14 +6,17 @@ Dates are when the build was uploaded to Play.
 
 ## 1.0.0 (versionCode 32) – 2026-11-07
 
-- Phone storage: "phone storage" on the Linux screen (Android 11+) opens Android's all-files
-  page; while it is allowed, the phone's shared storage is at /sdcard in Linux, read and write,
-  and Files gets a "phone" place. Nothing asks for it on its own.
+- Phone folders: folders picked in Android's folder picker at the top of the permissions
+  screen show in Files, where their files can be opened, shared, renamed,
+  deleted and copied or moved to and from Linux; agents reach them with `omalauncher folders`,
+  `ls`, `get` and `put`, and `omalauncher pick` opens Android's file picker. No storage
+  permission: on Android 11+ Linux also has /sdcard, with the files it saved there itself, so
+  what it puts in Download or Documents other apps see.
 - Settings has a permissions screen listing each permission, whether it's on and what uses it.
 - The `phone` command is `omalauncher` now (`phone` still works), with exit codes that say why
-  there is no answer, and three more commands: `notify` (a phone notification on its own
-  "agents and scripts" channel), `share` (Android's share sheet for Linux files), `battery`
-  and `version`. It answers in about 35 ms rather than 170.
+  there is no answer, and more commands: `notify` (a phone notification on its own
+  "agents and scripts" channel), `share` (Android's share sheet for Linux files), `battery`,
+  `version`, and the phone folder commands. It answers in about 35 ms rather than 170.
 - Linux follows the phone's DNS servers, a VPN's included, so tailnet and LAN names resolve;
   8.8.8.8 and 1.1.1.1 stay the fallback. An edited resolv.conf is left alone.
 - Owl 19: `fps:` says how many frames a second a widget's animation needs; koi, the owl and the
@@ -22,8 +25,7 @@ Dates are when the build was uploaded to Play.
 - Claude Code no longer warns about cross-session messaging on every start in Linux.
 - Fixes: an exited terminal tile stays stopped until tapped (#130); a widget's notification no
   longer replaces one from before the launcher restarted; an agent whose install finishes
-  after the agents screen closed shows up right away; Voice sees phone storage turned on
-  while its agent runs, and keeps its log in ~/.cache.
+  after the agents screen closed shows up right away; Voice keeps its log in ~/.cache.
 
 ## 0.20.0 (versionCode 31) – 2026-11-05
 

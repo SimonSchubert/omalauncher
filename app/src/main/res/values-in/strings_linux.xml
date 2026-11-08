@@ -123,9 +123,6 @@
     <string name="linux_retry">coba lagi</string>
     <string name="linux_gpu_turn_off">nonaktifkan</string>
     <string name="linux_gpu_turn_on">aktifkan</string>
-    <string name="linux_storage_title">penyimpanan ponsel</string>
-    <string name="linux_storage_on">aktif · di %1$s: unduhan, foto, dokumen · untuk aplikasi yang dibuka mulai sekarang</string>
-    <string name="linux_storage_offer">unduhan, foto, dan dokumenmu di %1$s di linux; android memintamu mengizinkan akses ke semua file</string>
 
     <string name="linux_notification_channel">Sesi Linux</string>
     <string name="linux_notify_channel">Agen dan skrip</string>

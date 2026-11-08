@@ -123,9 +123,6 @@
     <string name="linux_retry">重试</string>
     <string name="linux_gpu_turn_off">关闭</string>
     <string name="linux_gpu_turn_on">开启</string>
-    <string name="linux_storage_title">手机存储</string>
-    <string name="linux_storage_on">已开启 · 位于 %1$s：下载、照片、文档 · 对之后打开的应用生效</string>
-    <string name="linux_storage_offer">在 linux 的 %1$s 访问你的下载、照片和文档；Android 会请你允许访问所有文件</string>
 
     <string name="linux_notification_channel">Linux 会话</string>
     <string name="linux_notify_channel">智能体和脚本</string>

@@ -1099,9 +1099,11 @@ class WidgetEngine(
                 "https://github.com/SimonSchubert/omalauncher, should you need to understand how the launcher works.\n\n" +
                 "It's Arch Linux ARM under proot, not a booted system: you are root already (no sudo needed), and there is " +
                 "no systemd (systemctl, services and timers don't work), no cron, no Docker and no kernel modules. Install " +
-                "packages with pacman or yay, command-line tools with mise. The phone's own storage (Download, DCIM, Pictures, " +
-                "Documents) is at /sdcard once it's turned on in the launcher's settings (linux, phone storage); otherwise " +
-                "there's no /sdcard. xdg-open opens http(s) links in Android's browser; `omarchy-edit <file>` opens a file in the " +
+                "packages with pacman or yay, command-line tools with mise. /sdcard is the phone's own storage, but it shows only " +
+                "the files Linux put there itself: save files for the user's other apps in /sdcard/Download or /sdcard/Documents " +
+                "(pictures in /sdcard/Pictures). The user's other files are in the phone folders they let Linux reach, which have " +
+                "no path: `omalauncher folders` lists them, `omalauncher ls`, `get` and `put` list and copy files in and out, and " +
+                "`omalauncher pick` lets the user choose any file on the phone. xdg-open opens http(s) links in Android's browser; `omarchy-edit <file>` opens a file in the " +
                 "launcher's editor and `omarchy-files [folder]` its file manager; GUI apps (Wayland) open as windows on the launcher.\n\n" +
                 "Home-screen widgets are `.owl` files in " +
                 "~/$GUEST_DIR, written in a small declarative language documented in README.md there (and docs/ next to it); so are apps for the " +

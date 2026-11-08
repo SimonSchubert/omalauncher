@@ -23,7 +23,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.omalauncher.LocalNetwork
-import dev.omalauncher.PhoneStorage
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.hasPermission
@@ -148,19 +147,10 @@ fun PermissionsScreen(
                     runtime.widgets.media::openAccessSettings,
                     runtime.widgets.media::openAccessSettings,
                 ),
-                if (PhoneStorage.supported()) {
-                    Permission(
-                        R.string.linux_storage_title,
-                        stringResource(R.string.permissions_storage_uses, PhoneStorage.GUEST),
-                        PhoneStorage.granted(),
-                        { PhoneStorage.openSettings(context) },
-                        { PhoneStorage.openSettings(context) },
-                    )
-                } else {
-                    null
-                },
             )
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // For Files and Linux, so only with Linux there.
+            if (runtime.bootstrap.wanted) PhoneFoldersRow(runtime.phoneFolders)
             BasicText(stringResource(R.string.permissions_note), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             for (row in rows) PermissionRow(row)
         }

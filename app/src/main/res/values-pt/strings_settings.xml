@@ -35,6 +35,13 @@
     <string name="settings_permissions_subtitle">microfone, localização, arquivos, …</string>
 
     <string name="permissions_title">permissões</string>
+    <string name="permissions_folders_title">pastas do telefone</string>
+    <string name="permissions_folders_about">pastas com suas fotos, downloads e documentos para o linux: em Arquivos, e para agentes e scripts pelo omalauncher</string>
+    <string name="permissions_folders_sdcard">o que o linux salva em %1$s/Download ou %1$s/Documents, outros apps também veem</string>
+    <string name="permissions_folders_add">adicionar pasta</string>
+    <string name="permissions_folders_remove">remover</string>
+    <string name="permissions_folders_cant_keep">o android não deixou o launcher manter essa pasta</string>
+    <string name="permissions_folders_no_picker">este telefone não tem seletor de pastas</string>
     <string name="permissions_note">widgets e agentes podem usar tudo o que estiver ativado aqui. os botões ficam no android: ativar pede a permissão, desativar abre as configurações do android para ela</string>
     <string name="permissions_on">ativada · %1$s</string>
     <string name="permissions_off">desativada · %1$s</string>
@@ -50,7 +57,6 @@
     <string name="permissions_notifications_uses">o linux enquanto roda, widgets que notificam</string>
     <string name="permissions_notification_access">acesso a notificações</string>
     <string name="permissions_notification_access_uses">o que está tocando e não perturbe, para widgets</string>
-    <string name="permissions_storage_uses">downloads, fotos e documentos em %1$s no linux · agentes e apps do linux, widgets que leem arquivos</string>
 
     <string name="settings_android">configurações do android</string>
     <string name="settings_android_subtitle">as configurações do sistema do telefone</string>

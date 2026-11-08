@@ -117,8 +117,11 @@ class Runtime(
     /** Widgets' android.calendar, calendar("request") and calendar("open"). */
     val calendar = PhoneCalendar(context)
 
-    /** `omalauncher` in the guest (and `phone`, its old name): location, calendar and AirPods for agents, as far as widgets were allowed them. */
-    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, scope) }
+    /** The phone's folders the user let Linux reach: in Files, and through `omalauncher`. */
+    val phoneFolders = PhoneFolders(context)
+
+    /** `omalauncher` in the guest (and `phone`, its old name): location, calendar and AirPods for agents, as far as widgets were allowed them; the phone folders. */
+    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, phoneFolders, scope) }
 
     /** The voice screen's replies, in the phone's voice. */
     val speaker = Speaker(context)

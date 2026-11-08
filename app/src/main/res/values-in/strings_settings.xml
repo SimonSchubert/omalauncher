@@ -33,6 +33,13 @@
     <string name="settings_permissions_subtitle">mikrofon, lokasi, file, …</string>
 
     <string name="permissions_title">izin</string>
+    <string name="permissions_folders_title">folder ponsel</string>
+    <string name="permissions_folders_about">folder berisi foto, unduhan, dan dokumenmu untuk linux: di File, dan untuk agen dan skrip lewat omalauncher</string>
+    <string name="permissions_folders_sdcard">yang disimpan linux di %1$s/Download atau %1$s/Documents juga terlihat oleh aplikasi lain</string>
+    <string name="permissions_folders_add">tambah folder</string>
+    <string name="permissions_folders_remove">hapus</string>
+    <string name="permissions_folders_cant_keep">android tidak mengizinkan launcher menyimpan folder itu</string>
+    <string name="permissions_folders_no_picker">ponsel ini tidak punya pemilih folder</string>
     <string name="permissions_note">widget dan agen bisa memakai semua yang aktif di sini. tombolnya ada di android: aktifkan akan meminta izin, nonaktifkan membuka setelan android untuk izin itu</string>
     <string name="permissions_on">aktif · %1$s</string>
     <string name="permissions_off">nonaktif · %1$s</string>
@@ -48,7 +55,6 @@
     <string name="permissions_notifications_uses">linux selama berjalan, widget yang memberi notifikasi</string>
     <string name="permissions_notification_access">akses notifikasi</string>
     <string name="permissions_notification_access_uses">yang sedang diputar dan jangan ganggu, untuk widget</string>
-    <string name="permissions_storage_uses">download, foto, dan dokumenmu di %1$s di linux · agen dan aplikasi linux, widget yang membaca file</string>
 
     <string name="settings_android">setelan android</string>
     <string name="settings_android_subtitle">setelan sistem ponsel</string>

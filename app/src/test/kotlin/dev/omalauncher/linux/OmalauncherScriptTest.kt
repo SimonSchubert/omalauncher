@@ -134,6 +134,30 @@ class OmalauncherScriptTest {
         assertEquals(listOf("share", File(dir, "a.txt").path, File(dir, "-b.txt").path, "/etc/hosts"), received)
     }
 
+    /** Linux paths go absolute, phone folder paths as given. */
+    @Test fun folderCopiesSendLinuxPathsAbsolute() {
+        File(dir, "a.txt").writeText("a")
+        File(dir, "sub").mkdir()
+        assertEquals(0, run("get", "Camera/a.jpg", "Camera/b.jpg", "sub").code)
+        assertEquals(listOf("get", "Camera/a.jpg", "Camera/b.jpg", File(dir, "sub").path), received)
+        assertEquals(0, run("put", "a.txt", "sub", "/etc/hosts", "Documents/notes").code)
+        assertEquals(listOf("put", File(dir, "a.txt").path, File(dir, "sub").path, "/etc/hosts", "Documents/notes"), received)
+        assertEquals(0, run("pick", "sub").code)
+        assertEquals(listOf("pick", File(dir, "sub").path), received)
+        assertEquals(0, run("pick").code)
+        assertEquals(listOf("pick"), received)
+        assertEquals(0, run("ls", "Camera").code)
+        assertEquals(listOf("ls", "Camera"), received)
+    }
+
+    @Test fun folderCopiesCheckTheirArguments() {
+        received = null
+        for (args in listOf(arrayOf("get", "Camera/a.jpg"), arrayOf("put", "a.txt"), arrayOf("put", "missing.txt", "Documents"), arrayOf("folders", "x"), arrayOf("pick", "a", "b"))) {
+            assertEquals(args.joinToString(" "), 2, run(*args).code)
+        }
+        assertEquals("nothing went to the launcher", null, received)
+    }
+
     @Test fun answersBecomeExitCodes() {
         for ((reply, code) in listOf("ok\n[1,2]" to 0, "usage: days: 1 to 366" to 2, "denied: not allowed" to 3, "error: no AirPods connected" to 1)) {
             answer = { reply }

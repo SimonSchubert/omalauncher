@@ -166,10 +166,6 @@
     <string name="linux_retry">retry</string>
     <string name="linux_gpu_turn_off">turn off</string>
     <string name="linux_gpu_turn_on">turn on</string>
-    <!-- The phone's shared storage in Linux (PhoneStorage); %1$s: where, /sdcard. -->
-    <string name="linux_storage_title">phone storage</string>
-    <string name="linux_storage_on">on · at %1$s: downloads, photos, documents · for apps opened from now on</string>
-    <string name="linux_storage_offer">your downloads, photos and documents at %1$s in linux; android asks you to allow access to all files</string>
 
     <!-- The ongoing notification while Linux runs. -->
     <string name="linux_notification_channel">Linux session</string>

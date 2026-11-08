@@ -3,7 +3,6 @@ package dev.omalauncher.ui
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.annotation.RequiresApi
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,8 +31,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.LifecycleResumeEffect
-import dev.omalauncher.PhoneStorage
 import dev.omalauncher.Runtime
 import dev.omalauncher.R
 import dev.omalauncher.linux.AGENTS
@@ -134,11 +131,6 @@ private fun Installed(runtime: Runtime) {
         Spacer(Modifier.height(8.dp))
         GpuRow(runtime)
     }
-    // PhoneStorage.supported(), spelled out for lint.
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        Spacer(Modifier.height(8.dp))
-        StorageRow()
-    }
     Spacer(Modifier.height(16.dp))
     // Keys go between remove linux and its cancel as they swap, and wait out the removal for the install it ends with.
     val ask = remember { FocusRequester() }
@@ -199,27 +191,6 @@ private fun GpuRow(runtime: Runtime) {
         }
         JobLog(state)
     }
-}
-
-/** The phone's storage at /sdcard in Linux; both buttons open Android's all-files switch, which decides. See [PhoneStorage]. */
-@RequiresApi(Build.VERSION_CODES.R)
-@Composable
-private fun StorageRow() {
-    val context = LocalContext.current
-    var granted by remember { mutableStateOf(PhoneStorage.granted()) }
-    // Switched in Android's settings, which is where both buttons go.
-    LifecycleResumeEffect(Unit) {
-        granted = PhoneStorage.granted()
-        onPauseOrDispose {}
-    }
-    val open = { PhoneStorage.openSettings(context) }
-    SwitchRow(
-        stringResource(R.string.linux_storage_title),
-        stringResource(if (granted) R.string.linux_storage_on else R.string.linux_storage_offer, PhoneStorage.GUEST),
-        granted,
-        open,
-        open,
-    )
 }
 
 /** Bytes in [dir], without following symlinks (the rootfs is full of absolute guest links). */

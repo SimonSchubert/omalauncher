@@ -24,13 +24,6 @@
         android:name="android.permission.BLUETOOTH"
         android:maxSdkVersion="30" />
 
-    <!-- The phone's shared storage (Download, DCIM, …) at /sdcard in Linux (PhoneStorage.kt). Never asked for on its own:
-         turned on from the Linux screen, on Android's all-files page. Linux runs any program on those files, which
-         a picker or MediaStore can't give it. -->
-    <uses-permission
-        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
-
     <!-- Uninstall from the app drawer's long-press menu (ACTION_DELETE). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
@@ -103,6 +96,14 @@
         <!-- Opens a speech app's "speak now" screen for Speech and hands the words back; shows nothing itself. -->
         <activity
             android:name=".SpeakNowActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
+        <!-- Android's file picker for `omalauncher pick` (PhoneBridge); shows nothing itself. -->
+        <activity
+            android:name=".PickActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:excludeFromRecents="true"
             android:exported="false"

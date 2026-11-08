@@ -57,11 +57,11 @@ class Proot(
 
     private val fixedBinds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
 
-    /** The phone's storage while Android allows it ([PhoneStorage]); allowed or taken back while away, for what starts next. */
-    private val storageBinds get() = if (PhoneStorage.grantedLately()) listOf(PhoneStorage.GUEST to PhoneStorage.root) else emptyList()
+    /** The phone's shared storage, as far as Android lets the launcher see it ([PhoneStorage]). */
+    private val storageBinds = if (PhoneStorage.supported()) listOf(PhoneStorage.GUEST to PhoneStorage.root) else emptyList()
 
     /** Host directories bound over guest paths by [command]. */
-    private val binds get() = fixedBinds + storageBinds
+    private val binds = fixedBinds + storageBinds
 
     /**
      * Where an absolute guest path lives on the Android side, following the
@@ -75,12 +75,10 @@ class Proot(
     }
 
     /** Where the guest can see: the rootfs and the binds, as real paths. */
-    private val visible by lazy { (listOf(rootfs) + fixedBinds.map { it.second }).map { it.canonicalFile } }
+    private val visible by lazy { (listOf(rootfs) + binds.map { it.second }).map { it.canonicalFile } }
 
     /** Whether [real], a canonical host file, is one the guest can see, rather than the launcher's own. */
-    fun guestVisible(real: File) = visible.any { real.startsWith(it) } || (PhoneStorage.grantedLately() && real.startsWith(storageReal))
-
-    private val storageReal by lazy { PhoneStorage.root.canonicalFile }
+    fun guestVisible(real: File) = visible.any { real.startsWith(it) }
 
     /** The empty directory in the rootfs that the phone's storage is bound over. */
     private val storageMount get() = File(rootfs, PhoneStorage.GUEST.removePrefix("/"))
@@ -119,8 +117,8 @@ class Proot(
             host.mkdirs()
             if (rootfs.isDirectory) File(rootfs, guest.removePrefix("/")).mkdirs()
         }
-        // Its mount point, so / lists it; without access, an empty one left from before goes (delete() leaves a full one).
-        if (rootfs.isDirectory) storageMount.let { if (PhoneStorage.granted()) it.mkdirs() else it.delete() }
+        // Its mount point, so / lists it; Android 10 has none (an empty one is all that's left there).
+        if (rootfs.isDirectory) storageMount.let { if (PhoneStorage.supported()) it.mkdirs() else it.delete() }
         File(rootfs, "var/lib/pacman/db.lck").delete()
         // An empty stand-in, so fontconfig lists the bound font when it reads the directory.
         if (rootfs.isDirectory) {
@@ -148,8 +146,6 @@ class Proot(
         listOf(Managed.asset(context, "bwrap-shim.sh", File(rootfs, "usr/local/bin/bwrap"), Policy.Owned, executable = true))
 
     private fun command(script: String): List<String> {
-        // Allowed since prepare(): / lists it from now on too.
-        if (PhoneStorage.granted() && rootfs.isDirectory) storageMount.mkdirs()
         return listOf(
             File(nativeDir, "libproot.so").path,
             "--kill-on-exit",

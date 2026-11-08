@@ -38,6 +38,13 @@
     <string name="settings_permissions_subtitle">mikrofon, standort, dateien, …</string>
 
     <string name="permissions_title">berechtigungen</string>
+    <string name="permissions_folders_title">smartphone-ordner</string>
+    <string name="permissions_folders_about">ordner mit deinen fotos, downloads und dokumenten für linux: in Dateien, und für agenten und skripte über omalauncher</string>
+    <string name="permissions_folders_sdcard">was linux in %1$s/Download oder %1$s/Documents speichert, sehen auch andere apps</string>
+    <string name="permissions_folders_add">ordner hinzufügen</string>
+    <string name="permissions_folders_remove">entfernen</string>
+    <string name="permissions_folders_cant_keep">android hat dem launcher den ordner nicht überlassen</string>
+    <string name="permissions_folders_no_picker">dieses smartphone hat keine ordnerauswahl</string>
     <string name="permissions_note">widgets und agenten können alles nutzen, was hier an ist. die schalter hat android: einschalten fragt nach, ausschalten öffnet die android-einstellungen dazu</string>
     <string name="permissions_on">an · %1$s</string>
     <string name="permissions_off">aus · %1$s</string>
@@ -53,7 +60,6 @@
     <string name="permissions_notifications_uses">linux, solange es läuft, widgets, die dich benachrichtigen</string>
     <string name="permissions_notification_access">benachrichtigungszugriff</string>
     <string name="permissions_notification_access_uses">was gerade läuft und bitte nicht stören, für widgets</string>
-    <string name="permissions_storage_uses">deine downloads, fotos und dokumente unter %1$s in linux · agenten und linux-apps, widgets, die dateien lesen</string>
 
     <string name="settings_android">android-einstellungen</string>
     <string name="settings_android_subtitle">die systemeinstellungen des smartphones</string>

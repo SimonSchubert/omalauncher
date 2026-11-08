@@ -33,6 +33,13 @@
     <string name="settings_permissions_subtitle">麦克风、位置、文件…</string>
 
     <string name="permissions_title">权限</string>
+    <string name="permissions_folders_title">手机文件夹</string>
+    <string name="permissions_folders_about">存放你的照片、下载和文档、供 linux 使用的文件夹：在“文件”中，以及供智能体和脚本通过 omalauncher 使用</string>
+    <string name="permissions_folders_sdcard">linux 保存在 %1$s/Download 或 %1$s/Documents 中的文件，其他应用也能看到</string>
+    <string name="permissions_folders_add">添加文件夹</string>
+    <string name="permissions_folders_remove">移除</string>
+    <string name="permissions_folders_cant_keep">Android 不允许启动器保留该文件夹</string>
+    <string name="permissions_folders_no_picker">这部手机没有文件夹选择器</string>
     <string name="permissions_note">这里开启的权限，小组件和智能体都可以使用。开关由 android 掌管：开启时会请求授权，关闭时打开 android 设置中的对应页面</string>
     <string name="permissions_on">已开启 · %1$s</string>
     <string name="permissions_off">已关闭 · %1$s</string>
@@ -48,7 +55,6 @@
     <string name="permissions_notifications_uses">linux 运行时的状态、发送通知的小组件</string>
     <string name="permissions_notification_access">通知使用权</string>
     <string name="permissions_notification_access_uses">正在播放的内容和勿扰模式，用于小组件</string>
-    <string name="permissions_storage_uses">你的下载、照片和文档，在 linux 中位于 %1$s · 智能体和 linux 应用、读取文件的小组件</string>
 
     <string name="settings_android">android 设置</string>
     <string name="settings_android_subtitle">手机的系统设置</string>
