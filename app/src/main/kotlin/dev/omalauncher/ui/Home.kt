@@ -217,7 +217,7 @@ fun HomeScreen(
         state.editing = null
         arrange.folder = null
         arrange.drop()
-        showPage = lastPage[screen] ?: 1
+        showPage = lastPage[screen] ?: homePage()
     }
     // The drawer pins apps to whichever page is showing (the left one of a pair); from a face, wherever it is, to page 1.
     // Pages appearing before the one showing don't move home off it, unless home was just sent to another page. At

@@ -129,7 +129,10 @@ private fun rememberRotation(): Int {
         displays.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
         onDispose { displays.unregisterDisplayListener(listener) }
     }
-    return rotation
+    // The state is only what recomposes when the display turns. A window's new size can arrive before the listener hears
+    // of the rotation, and a landscape window with a stale ROTATION_0 looks like a cover screen, so ask the display.
+    val heard = rotation
+    return view.display?.rotation ?: heard
 }
 
 /**
