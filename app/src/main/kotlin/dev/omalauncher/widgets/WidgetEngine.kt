@@ -331,20 +331,39 @@ class WidgetEngine(
     ) = layout.setPage(fileName, page)
 
     /**
-     * Home moves to [screen] (a foldable's cover screen, or back): the layout's cells and pages are that screen's from here on,
-     * and every widget is on the page it has there, its file's own `page:` where none was chosen. No file is compiled again.
+     * Home moves to [screen] (a foldable's cover screen or unfolded inner screen, or back): the layout's cells and pages
+     * are that screen's from here on, and every widget is on the page it has there, its file's own `page:` where none was
+     * chosen. No file is compiled again. The unfolded screen, the first time it shows once the widgets have loaded,
+     * starts from the main pages side by side, as home showed them there before (see [seedUnfolded]).
      */
     fun show(screen: Screen) {
-        if (layout.screen == screen) return
+        val seeding = screen == Screen.UNFOLDED && loaded && !layout.has(screen)
+        if (seeding) seedUnfoldedScreen()
+        if (layout.screen == screen) {
+            if (seeding) repage()
+            return
+        }
         layout.show(screen)
         repage()
+    }
+
+    private fun seedUnfoldedScreen() {
+        val main = itemsByPageOn(Screen.MAIN).values.flatten()
+        val minWidth = main.associate { it.key to it.minSize.first }
+        val seed =
+            seedUnfolded(
+                main.map { Triple(it.key, it.page, layout.cell(it.key, Screen.MAIN)) },
+                layout.columnsOf(Screen.MAIN),
+                layout.columnsOf(Screen.UNFOLDED),
+            ) { minWidth[it] ?: 1 }
+        layout.seed(Screen.UNFOLDED, seed)
     }
 
     /** Every widget onto the page the layout has for it on the screen shown, else its file's. */
     private fun repage() {
         for (i in specs.indices) {
             val spec = specs[i]
-            val page = layout.chosenPage(spec.file.name) ?: spec.program?.page ?: if (spec.isFace) FACE_PAGE else 1
+            val page = layout.pageOn(spec.file.name, spec.program?.page ?: if (spec.isFace) FACE_PAGE else 1)
             if (spec.page != page) specs[i] = spec.onPage(page)
         }
     }
@@ -526,7 +545,7 @@ class WidgetEngine(
      */
     fun itemsByPageOn(screen: Screen): Map<Int, List<HomeItem>> {
         if (screen == layout.screen) return itemsByPage
-        val widgets = specs.filter(::onHome).map { spec -> WidgetItem(spec.onPage(layout.chosenPage(spec.file.name, screen) ?: spec.program?.page ?: if (spec.isFace) FACE_PAGE else 1)) }
+        val widgets = specs.filter(::onHome).map { spec -> WidgetItem(spec.onPage(layout.pageOn(spec.file.name, spec.program?.page ?: if (spec.isFace) FACE_PAGE else 1, screen))) }
         return (widgets + shortcuts.onGrid(screen)).groupBy { it.page }
     }
 
@@ -618,7 +637,11 @@ class WidgetEngine(
                 }.also { it.startWatching() }
             launch {
                 snapshotFlow { loaded }.first { it }
-                snapshotFlow { runtime.style.style[Style.COLUMNS] }.collect { layout.regrid(it, pages.map(::itemsOn)) }
+                snapshotFlow { runtime.style.style[Style.COLUMNS] }.collect { layout.regrid(it, itemsByPageOn(Screen.MAIN).values.toList()) }
+            }
+            launch {
+                snapshotFlow { loaded }.first { it }
+                snapshotFlow { runtime.style.style[Style.UNFOLDED_COLUMNS] }.collect { layout.regrid(it, itemsByPageOn(Screen.UNFOLDED).values.toList(), Screen.UNFOLDED) }
             }
             // A new phone language, or one picked in settings: files with strings { } or lang() compile anew for it.
             launch { AppLanguage.language.drop(1).collect { changes.trySend(false) } }
@@ -942,7 +965,7 @@ class WidgetEngine(
             // Advice, after the clear and before the check result, so owl-check prints it with the rest.
             for (w in p.warnings) writeError(file, "warning: $w", append = true)
             writeCheck(file, hash, "ok")
-            WidgetSpec(file, p.name, layout.chosenPage(file.name) ?: p.page, p.order, p, null, p.size, p.minSize, stamp, p.kind)
+            WidgetSpec(file, p.name, layout.pageOn(file.name, p.page), p.order, p, null, p.size, p.minSize, stamp, p.kind)
         } catch (e: CompileError) {
             broken(file, previous, stamp, Source(text).format(e), hash, OwlKind.of(text))
         } catch (e: RuntimeException) {
@@ -961,7 +984,7 @@ class WidgetEngine(
     ): WidgetSpec {
         writeError(file, error)
         writeCheck(file, hash, "error")
-        return WidgetSpec(file, file.nameWithoutExtension, previous?.page ?: layout.chosenPage(file.name) ?: if (kind == OwlKind.Face) FACE_PAGE else 1, previous?.order ?: 999, null, error, previous?.size, previous?.minSize ?: (1 to 1), stamp, kind)
+        return WidgetSpec(file, file.nameWithoutExtension, previous?.page ?: layout.pageOn(file.name, if (kind == OwlKind.Face) FACE_PAGE else 1), previous?.order ?: 999, null, error, previous?.size, previous?.minSize ?: (1 to 1), stamp, kind)
     }
 
     /** Error files are written in order: a clear must never land after the error that follows it. */

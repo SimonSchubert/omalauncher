@@ -58,6 +58,21 @@ class HomeFileTest {
         assertEquals(cover.copy(pages = cover.pages.map { p -> if (p is TilePage) TilePage(p.tiles.map(::unsized)) else p }), decoded.screens[Screen.COVER])
     }
 
+    /** The unfolded screen's pages are an `[unfolded]` section beside the cover's, each on its own grid; a section without `columns` is on that screen's. */
+    @Test fun writesAndReadsAnUnfoldedSectionOnItsOwnGrid() {
+        val unfolded = HomeLayout(12, listOf(TilePage(listOf(WidgetTile("50-memory.owl", Cell(0, 0, 6, 4)), WidgetTile("60-owl.owl", Cell(6, 0, 6, 3))))))
+        val cover = HomeLayout(6, listOf(TilePage(listOf(WidgetTile("60-owl.owl", Cell(0, 0, 6, 3))))))
+        val text = Toml.write(HomeFile.encode(emptyMap(), layout, mapOf(Screen.COVER to cover, Screen.UNFOLDED to unfolded)), HomeFile.HEADER)
+        assertTrue(text, text.contains("[unfolded]\ncolumns = 12\n") && text.contains("[[unfolded.page]]"))
+        val decoded = HomeFile.decode(Toml.parse(text), 6)
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertEquals(unfolded, decoded.screens[Screen.UNFOLDED])
+        assertEquals(cover, decoded.screens[Screen.COVER])
+        val bare = HomeFile.decode(Toml.parse("[[page]]\nface = \"a.owl\"\n[[unfolded.page]]\ntiles = [ { widget = \"b.owl\", x = 6, y = 0, w = 6, h = 2 } ]\n"), 6) { if (it == Screen.UNFOLDED) 12 else 6 }
+        assertEquals(12, bare.screens.getValue(Screen.UNFOLDED).columns)
+        assertEquals(6, bare.layout.columns)
+    }
+
     /** Without the section the cover screen has no layout in the file; a bad one is a problem named after its section. */
     @Test fun aFileWithoutACoverSectionHasNoCoverLayout() {
         val decoded = HomeFile.decode(Toml.parse("[[page]]\nface = \"a.owl\"\n"), 6)

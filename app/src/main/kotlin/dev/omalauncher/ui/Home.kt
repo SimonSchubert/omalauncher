@@ -100,9 +100,15 @@ fun HomeScreen(
     val engine = runtime.widgets
     val linuxState by runtime.bootstrap.state.collectAsState()
     val arrange = remember { Arrange() }
-    // A foldable's cover screen has a layout of its own (its cells and pages in the layout, [cover] in layout.toml):
-    // home shows that one there, and the main one back on the inner screen. The pages below follow a frame later.
-    val screen = if (coverScreen()) Screen.COVER else Screen.MAIN
+    // A foldable's cover screen has a layout of its own (its cells and pages in the layout, [cover] in layout.toml), and
+    // with home.unfolded-layout so does a Fold's unfolded inner screen ([unfolded]): home shows that one there, and the
+    // main one back on the phone-shaped screen. The pages below follow a frame later.
+    val screen =
+        when {
+            coverScreen() -> Screen.COVER
+            unfoldedScreen() -> Screen.UNFOLDED
+            else -> Screen.MAIN
+        }
     SideEffect { engine.show(screen) }
     // One empty page always waits after the last one, to drop tiles on or pin apps to. Pages only exist
     // while they hold something, so it becomes a real page once used and a new empty one follows.
@@ -200,6 +206,19 @@ fun HomeScreen(
         shownPer = per
         if (i >= 0) pager.scrollToPage(i)
     }
+    // Switching screens (a fold or unfold with a home of its own there, or the cover screen) goes back to the page that
+    // screen last showed, page 1 the first time: the page numbers are another screen's. A drag the switch cuts short
+    // drops nothing, and carries nothing on.
+    val lastPage = remember { HashMap<Screen, Int>() }
+    var shownScreen by remember { mutableStateOf(screen) }
+    LaunchedEffect(screen) {
+        if (screen == shownScreen) return@LaunchedEffect
+        shownScreen = screen
+        state.editing = null
+        arrange.folder = null
+        arrange.drop()
+        showPage = lastPage[screen] ?: 1
+    }
     // The drawer pins apps to whichever page is showing (the left one of a pair); from a face, wherever it is, to page 1.
     // Pages appearing before the one showing don't move home off it, unless home was just sent to another page. At
     // start, pinned apps load before widgets, so page 1 may join after the faces and later pages: until widgets have
@@ -218,6 +237,7 @@ fun HomeScreen(
             }
         }
         engine.activePage = slots.getOrNull(pager.currentPage)?.first() ?: 1
+        if (engine.layout.screen == shownScreen && showPage == null) lastPage[shownScreen] = engine.activePage
         state.currentPage = engine.activePage.takeIf { it >= 1 && !full(it) } ?: 1
     }
     val shown = slots.getOrElse(pager.currentPage) { listOf(1) }

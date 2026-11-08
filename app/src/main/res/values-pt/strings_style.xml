@@ -30,6 +30,10 @@
     <string name="style_cover_screen">tela externa</string>
     <string name="style_cover_upright">vertical</string>
     <string name="style_cover_turned">girada</string>
+    <string name="style_unfolded">desdobrado</string>
+    <string name="style_unfolded_own">tela própria</string>
+    <string name="style_unfolded_pages">páginas</string>
+    <string name="style_unfolded_columns">colunas desdobrado</string>
     <string name="style_corners">cantos</string>
     <string name="style_corners_edge">retos</string>
     <string name="style_corners_soft">suaves</string>
