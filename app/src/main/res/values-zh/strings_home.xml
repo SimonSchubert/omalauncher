@@ -48,6 +48,7 @@
     <string name="home_prompt_hint_short">应用</string>
 
     <string name="home_folder_named">%1$s 文件夹</string>
+    <string name="home_app_has_notifications">%1$s，有通知</string>
     <string name="home_folder">文件夹</string>
     <string name="home_folder_tap_to_name">点按命名</string>
 

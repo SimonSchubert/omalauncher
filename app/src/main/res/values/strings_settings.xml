@@ -64,7 +64,7 @@
     <string name="permissions_notifications">notifications</string>
     <string name="permissions_notifications_uses">linux while it runs, widgets that notify you</string>
     <string name="permissions_notification_access">notification access</string>
-    <string name="permissions_notification_access_uses">what\'s playing and do not disturb, for widgets</string>
+    <string name="permissions_notification_access_uses">notification dots, what\'s playing and do not disturb for widgets</string>
 
     <string name="settings_android">android settings</string>
     <string name="settings_android_subtitle">the phone\'s system settings</string>

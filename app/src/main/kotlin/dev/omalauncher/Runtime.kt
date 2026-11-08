@@ -67,6 +67,7 @@ import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.runtime.Dictation
 import dev.omalauncher.widgets.runtime.PhoneLocation
 import dev.omalauncher.widgets.runtime.PhoneCalendar
+import dev.omalauncher.widgets.runtime.NotificationDots
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -540,6 +541,12 @@ class Runtime(
         androidKeyOf(shortcut)?.let { androidApps.labels[it] }
             ?: shortcut.owl?.let { widgets.specs.app(it)?.name }
             ?: shortcut.label
+
+    /** Whether a pinned Android app or shortcut has a notification dot. */
+    fun hasDot(shortcut: Shortcut) =
+        shortcut.component?.let { NotificationDots.has(it.packageName, shortcut.profile) }
+            ?: shortcut.androidShortcut?.let { NotificationDots.has(it.packageName, shortcut.profile, it.id) }
+            ?: false
 
     /** A pinned Android app's or shortcut's key in [androidApps]; null for a Linux app. */
     private fun androidKeyOf(shortcut: Shortcut) =

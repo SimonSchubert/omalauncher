@@ -59,7 +59,7 @@
     <string name="permissions_notifications">benachrichtigungen</string>
     <string name="permissions_notifications_uses">linux, solange es läuft, widgets, die dich benachrichtigen</string>
     <string name="permissions_notification_access">benachrichtigungszugriff</string>
-    <string name="permissions_notification_access_uses">was gerade läuft und bitte nicht stören, für widgets</string>
+    <string name="permissions_notification_access_uses">benachrichtigungspunkte, was gerade läuft und bitte nicht stören für widgets</string>
 
     <string name="settings_android">android-einstellungen</string>
     <string name="settings_android_subtitle">die systemeinstellungen des smartphones</string>

@@ -56,7 +56,7 @@
     <string name="permissions_notifications">notificações</string>
     <string name="permissions_notifications_uses">o linux enquanto roda, widgets que notificam</string>
     <string name="permissions_notification_access">acesso a notificações</string>
-    <string name="permissions_notification_access_uses">o que está tocando e não perturbe, para widgets</string>
+    <string name="permissions_notification_access_uses">pontos de notificação, o que está tocando e não perturbe para widgets</string>
 
     <string name="settings_android">configurações do android</string>
     <string name="settings_android_subtitle">as configurações do sistema do telefone</string>

@@ -734,6 +734,7 @@ private fun HomeTile(
                 onTap = open,
                 paused = runtime.androidApps.paused(item.profile),
                 clone = runtime.androidApps.cloned(item.profile),
+                dot = runtime.hasDot(item),
             )
         is Folder ->
             FolderTile(
@@ -743,6 +744,7 @@ private fun HomeTile(
                 focused = highlighted,
                 modifier = tile,
                 onTap = open,
+                dot = item.apps.any(runtime::hasDot),
             )
     }
 }

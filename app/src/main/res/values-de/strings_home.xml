@@ -50,6 +50,7 @@
     <string name="home_prompt_hint_short">apps</string>
 
     <string name="home_folder_named">ordner %1$s</string>
+    <string name="home_app_has_notifications">%1$s, hat benachrichtigungen</string>
     <string name="home_folder">ordner</string>
     <string name="home_folder_tap_to_name">zum benennen tippen</string>
 

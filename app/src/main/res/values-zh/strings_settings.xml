@@ -54,7 +54,7 @@
     <string name="permissions_notifications">通知</string>
     <string name="permissions_notifications_uses">linux 运行时的状态、发送通知的小组件</string>
     <string name="permissions_notification_access">通知使用权</string>
-    <string name="permissions_notification_access_uses">正在播放的内容和勿扰模式，用于小组件</string>
+    <string name="permissions_notification_access_uses">通知圆点，以及小组件用的正在播放内容和勿扰模式</string>
 
     <string name="settings_android">android 设置</string>
     <string name="settings_android_subtitle">手机的系统设置</string>

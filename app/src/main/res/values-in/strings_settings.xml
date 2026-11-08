@@ -54,7 +54,7 @@
     <string name="permissions_notifications">notifikasi</string>
     <string name="permissions_notifications_uses">linux selama berjalan, widget yang memberi notifikasi</string>
     <string name="permissions_notification_access">akses notifikasi</string>
-    <string name="permissions_notification_access_uses">yang sedang diputar dan jangan ganggu, untuk widget</string>
+    <string name="permissions_notification_access_uses">titik notifikasi, yang sedang diputar dan jangan ganggu untuk widget</string>
 
     <string name="settings_android">setelan android</string>
     <string name="settings_android_subtitle">setelan sistem ponsel</string>
