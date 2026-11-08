@@ -16,6 +16,7 @@ import dev.omalauncher.widgets.isFacePage
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.HomeItem
+import dev.omalauncher.widgets.Screen
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.WidgetItem
 import dev.omalauncher.widgets.WidgetSpec
@@ -99,6 +100,10 @@ fun HomeScreen(
     val engine = runtime.widgets
     val linuxState by runtime.bootstrap.state.collectAsState()
     val arrange = remember { Arrange() }
+    // A foldable's cover screen has a layout of its own (its cells and pages in the layout, [cover] in layout.toml):
+    // home shows that one there, and the main one back on the inner screen. The pages below follow a frame later.
+    val screen = if (coverScreen()) Screen.COVER else Screen.MAIN
+    SideEffect { engine.show(screen) }
     // One empty page always waits after the last one, to drop tiles on or pin apps to. Pages only exist
     // while they hold something, so it becomes a real page once used and a new empty one follows.
     // Left of page 1 the same, for faces: like a stock launcher's feed, but the user's own. An empty one waits left of

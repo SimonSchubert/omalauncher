@@ -72,8 +72,18 @@ private fun homeTurned(
     rotation: Int,
 ): Boolean {
     if (window.width <= window.height || showsTwoPages(window)) return false
-    return !isCoverScreen(window, rotation, with(LocalDensity.current) { window.height.toDp() }, LauncherStyle.coverScreen)
+    return !coverScreen(window, rotation)
 }
+
+/** Whether home is on a foldable's cover screen (see [isCoverScreen]), which has a layout of its own; home.cover-screen off, never. */
+@Composable
+internal fun coverScreen(): Boolean = coverScreen(windowSize(), rememberRotation())
+
+@Composable
+private fun coverScreen(
+    window: IntSize,
+    rotation: Int,
+): Boolean = !showsTwoPages(window) && isCoverScreen(window, rotation, with(LocalDensity.current) { window.height.toDp() }, LauncherStyle.coverScreen)
 
 /**
  * Whether a landscape-shaped [window] is a foldable's cover screen rather than a phone held sideways: the

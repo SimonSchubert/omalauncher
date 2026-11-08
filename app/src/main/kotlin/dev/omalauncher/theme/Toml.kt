@@ -3,11 +3,12 @@ package dev.omalauncher.theme
 /**
  * The part of TOML the launcher's files need: `[section]` headers, dotted
  * bare keys, string, number and boolean values, arrays (over several lines if
- * need be), one-line inline tables and top-level `[[name]]` arrays of tables,
- * with comments. Keys come out flattened ("widgets.gaps-in"), in file order.
- * Quoted keys, multi-line strings, dates and nested `[[a.b]]` aren't anything
- * these files hold, so they're errors; that way whatever [parse] reads,
- * [write] writes back readably.
+ * need be), one-line inline tables and `[[name]]` arrays of tables, at the top
+ * or one level down in a section (`[[cover.page]]`), with comments. Keys come
+ * out flattened ("widgets.gaps-in", "cover.page"), in file order. Quoted keys,
+ * multi-line strings, dates and deeper `[[a.b.c]]` aren't anything these files
+ * hold, so they're errors; that way whatever [parse] reads, [write] writes
+ * back readably.
  */
 object Toml {
     class Error(
@@ -25,7 +26,8 @@ object Toml {
 
     /**
      * Values are String, Double, Boolean, List (an array, or a `[[name]]`'s tables) or LinkedHashMap
-     * (an inline table, or one `[[name]]`, its keys flattened too). Throws [Error] at the first line it can't read.
+     * (an inline table, or one `[[name]]`, its keys flattened too). A `[[section.name]]` array is the
+     * value of "section.name", beside the section's other keys. Throws [Error] at the first line it can't read.
      */
     fun parse(text: String): LinkedHashMap<String, Any> = Reader(text).document()
 
@@ -94,18 +96,20 @@ object Toml {
 
         fun document(): LinkedHashMap<String, Any> {
             val out = LinkedHashMap<String, Any>()
-            /** Names of the `[[name]]` arrays: nothing else may go under them. */
+            /** Names of the `[[name]]` arrays, flattened: nothing else may go under them. */
             val arrays = HashSet<String>()
             var table: MutableMap<String, Any> = out
             var section = ""
-            fun underArray(key: String) = key.substringBefore('.') in arrays
+            fun underArray(key: String) = arrays.any { key == it || key.startsWith("$it.") }
             while (true) {
                 gaps()
                 if (peek() == null) return out
                 if (text.startsWith("[[", i)) {
                     i += 2
                     val name = key("]]", "missing ]]")
-                    if ('.' in name) fail("[[$name]]: only arrays of tables at the top are supported")
+                    if (name.count { it == '.' } > 1) fail("[[$name]]: an array of tables goes at the top or one section down")
+                    // Under a section, the tables' keys stay plain, so a [cover] page reads like a top-level one.
+                    if ('.' in name && underArray(name.substringBefore('.'))) fail("[[$name]]: ${name.substringBefore('.')} is an array of tables")
                     val list =
                         if (name in arrays) {
                             @Suppress("UNCHECKED_CAST")
@@ -121,12 +125,12 @@ object Toml {
                 } else if (peek() == '[') {
                     i++
                     section = key("]", "missing ]")
-                    if (underArray(section)) fail("[$section]: ${section.substringBefore('.')} is an array of tables")
+                    if (underArray(section)) fail("[$section]: ${arrays.first { section == it || section.startsWith("$it.") }} is an array of tables")
                     table = out
                     endOfLine("]")
                 } else {
                     val k = key("=", "expected key = value").let { if (section.isEmpty()) it else "$section.$it" }
-                    if (table === out && underArray(k)) fail("$k: ${k.substringBefore('.')} is an array of tables")
+                    if (table === out && underArray(k)) fail("$k: ${arrays.first { k == it || k.startsWith("$it.") }} is an array of tables")
                     blanks()
                     put(table, k, value())
                     endOfLine("the value")
@@ -252,9 +256,11 @@ object Toml {
     }
 
     /**
-     * [values] as TOML: top-level keys first, then a section per first key
-     * part, in the order given, then a `[[name]]` per table of a top-level list
-     * of tables. Whole numbers are written without a fraction.
+     * [values] as TOML: top-level keys first, then a `[[name]]` per table of a
+     * top-level list of tables, then a section per first key part, in the order
+     * given: its keys under `[section]`, then its own lists of tables ("cover.page")
+     * as `[[cover.page]]`, so a section with pages reads as one piece after home's
+     * own. Whole numbers are written without a fraction.
      */
     fun write(
         values: Map<String, Any>,
@@ -266,20 +272,28 @@ object Toml {
                 k: String,
                 v: Any,
             ) = append(k).append(" = ").append(format(v, block = true)).append('\n')
-            val arrays = values.filter { (k, v) -> '.' !in k && v is List<*> && v.isNotEmpty() && v.all { it is Map<*, *> } }
-            val (top, nested) = values.entries.filter { it.key !in arrays }.partition { '.' !in it.key }
-            for ((k, v) in top) entry(k, v)
-            for ((section, entries) in nested.groupBy { it.key.substringBefore('.') }) {
-                if (isNotEmpty()) append('\n')
-                append('[').append(section).append("]\n")
-                for ((k, v) in entries) entry(k.substringAfter('.'), v)
-            }
-            for ((name, tables) in arrays) {
-                for (table in tables as List<*>) {
+            fun tables(
+                name: String,
+                tables: List<*>,
+            ) {
+                for (table in tables) {
                     if (isNotEmpty()) append('\n')
                     append("[[").append(name).append("]]\n")
                     for ((k, v) in table as Map<*, *>) entry(k.toString(), v!!)
                 }
+            }
+            val arrays = values.filter { (k, v) -> k.count { it == '.' } <= 1 && v is List<*> && v.isNotEmpty() && v.all { it is Map<*, *> } }
+            val (top, nested) = values.entries.filter { it.key !in arrays }.partition { '.' !in it.key }
+            for ((k, v) in top) entry(k, v)
+            for ((name, t) in arrays) if ('.' !in name) tables(name, t as List<*>)
+            for (section in values.keys.filter { '.' in it }.map { it.substringBefore('.') }.distinct()) {
+                val plain = nested.filter { it.key.substringBefore('.') == section }
+                if (plain.isNotEmpty()) {
+                    if (isNotEmpty()) append('\n')
+                    append('[').append(section).append("]\n")
+                    for ((k, v) in plain) entry(k.substringAfter('.'), v)
+                }
+                for ((name, t) in arrays) if ('.' in name && name.substringBefore('.') == section) tables(name, t as List<*>)
             }
         }
 
