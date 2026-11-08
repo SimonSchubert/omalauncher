@@ -4,7 +4,7 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
-## 1.0.0 (versionCode 32) – 2026-11-07
+## 1.0.0 (versionCode 33) – 2026-11-08
 
 - Phone folders: folders picked in Android's folder picker at the top of the permissions
   screen show in Files, where their files can be opened, shared, renamed,
