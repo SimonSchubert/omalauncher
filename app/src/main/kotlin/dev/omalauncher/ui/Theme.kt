@@ -145,6 +145,9 @@ object LauncherStyle {
     /** Forces one home page even on a screen [SideRail]'s auto-detect would otherwise split in two. */
     val forceSinglePage get() = style[Style.FORCE_SINGLE_PAGE]
 
+    /** Keeps home upright on a foldable's cover screen, whose window is wider than tall while the phone stands upright. */
+    val coverScreen get() = style[Style.COVER_SCREEN]
+
     /** The outline of tiles, the prompt bar and the rails. */
     val tileBorder: Color get() = color(style[Style.TILE_BORDER], Palette.border)
 
