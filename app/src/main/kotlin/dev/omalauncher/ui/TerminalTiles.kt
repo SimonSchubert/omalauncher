@@ -101,6 +101,10 @@ class TerminalTiles(
     var field by mutableStateOf<TileField?>(null)
         private set
 
+    // Kept through a field-to-field handoff: the old field loses focus before the next gains it,
+    // so [field] is briefly null even when both belong to the same measured tile.
+    private var fieldWidget: Any? = null
+
     /** The page that has the touches, if any; a page's own fields raise the WebView's keyboard, not [keyboard]. */
     var browser by mutableStateOf<EmbeddedBrowser?>(null)
         private set
@@ -166,6 +170,7 @@ class TerminalTiles(
     fun activate(term: EmbeddedTerminal) {
         val window = term.window ?: return
         tile = null
+        fieldWidget = null
         // Unfolded, two pages of home show at once: the tile tapped is the one that takes the keyboard and the touches.
         releaseBrowser()
         wm.focus(window)
@@ -193,6 +198,7 @@ class TerminalTiles(
             wm.focus(null)
         }
         tile = null
+        fieldWidget = null
         keyboard?.hide()
         field?.release()
         field = null
@@ -203,7 +209,9 @@ class TerminalTiles(
     fun focused(f: TileField) {
         if (active != null) wm.focus(null)
         keyboard?.hide()
-        tile = null
+        // Switching fields doesn't change the tile's layout, so a new measurement may never arrive.
+        if (fieldWidget !== f.widget) tile = null
+        fieldWidget = f.widget
         // A page on another tile showing beside this one lets go.
         releaseBrowser()
         field = f
@@ -219,6 +227,7 @@ class TerminalTiles(
         if (active != null) wm.focus(null)
         keyboard?.hide()
         tile = null
+        fieldWidget = null
         field?.release()
         field = null
         browser = b
