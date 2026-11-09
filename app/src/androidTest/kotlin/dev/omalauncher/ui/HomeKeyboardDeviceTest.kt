@@ -49,6 +49,13 @@ class HomeKeyboardDeviceTest {
         """.trimIndent())
         scenario = ActivityScenario.launch(MainActivity::class.java)
         scenario.onActivity { activity = it }
+        // A resumed activity can still sit behind an emulator boot-error dialog. Its Compose
+        // tree accepts injected touches there, but Android correctly refuses to open its IME.
+        compose.waitUntil(15000) {
+            var focused = false
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { focused = activity.hasWindowFocus() }
+            focused
+        }
         compose.waitUntil(15000) { compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().size >= 2 }
     }
 
