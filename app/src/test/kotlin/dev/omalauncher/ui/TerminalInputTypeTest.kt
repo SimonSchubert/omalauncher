@@ -3,12 +3,12 @@ package dev.omalauncher.ui
 import android.text.InputType
 import dev.omalauncher.theme.Style
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class TerminalInputTypeTest {
-    @Test fun suggestionsAreOffByDefault() {
-        assertFalse(Style()[Style.TERMINAL_SUGGESTIONS])
+    @Test fun suggestionsAreOnByDefault() {
+        assertTrue(Style()[Style.TERMINAL_SUGGESTIONS])
     }
 
     @Test fun rawInputIsAPasswordFieldWithoutSuggestions() {
