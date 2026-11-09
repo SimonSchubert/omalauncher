@@ -96,6 +96,8 @@
     <string name="style_remove_background_title">hapus latar belakang?</string>
 
     <string name="style_terminal_hint">untuk terminal yang dibuka mulai sekarang · lebih banyak lewat pacman, misalnya ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">saran keyboard</string>
+    <string name="style_keyboard_suggestions_hint">saran, ketik geser, dan dikte; teks masuk ke terminal per kata · mulai saat keyboard dibuka berikutnya</string>
     <plurals name="style_terminal_size">
         <item quantity="other">%1$s pt · %2$d kolom saat potret</item>
     </plurals>

@@ -96,6 +96,8 @@
     <string name="style_remove_background_title">hintergrund entfernen?</string>
 
     <string name="style_terminal_hint">für ab jetzt geöffnete terminals · mehr mit pacman, z. b. ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">tastaturvorschläge</string>
+    <string name="style_keyboard_suggestions_hint">vorschläge, wischen und diktieren; text kommt wortweise im terminal an · ab dem nächsten öffnen der tastatur</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d spalte im hochformat</item>
         <item quantity="other">%1$s pt · %2$d spalten im hochformat</item>

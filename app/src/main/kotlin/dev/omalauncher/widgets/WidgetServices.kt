@@ -623,8 +623,8 @@ class WidgetServices(
         if (name == "run") return run(arg) { done() }
         // Keys go out as they're pressed, many a second while one repeats: nothing to refresh after them.
         when (name) {
-            "pressKey" -> return KeyNames.combo(arg)?.let(runtime.keyboard::press) ?: Unit
-            "typeText" -> return runtime.keyboard.type(arg)
+            "pressKey" -> return KeyNames.combo(arg)?.let { runtime.keyboard.flush(); runtime.keyboard.press(it) } ?: Unit
+            "typeText" -> return runtime.keyboard.run { flush(); type(arg) }
             "latch" -> return runtime.keyboard.latch(arg, args.getOrNull(1).textOrNull())
             "pickImages" -> return runtime.keyboard.pickImages()
             // Nothing to refresh: the source follows the grant itself.
