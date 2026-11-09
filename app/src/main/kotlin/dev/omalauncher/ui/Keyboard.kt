@@ -15,6 +15,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.TextAttribute
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -356,6 +357,24 @@ class KeyboardSink(
                 afterLength: Int,
             ): Boolean {
                 repeat(beforeLength.coerceAtLeast(1)) { bridge.tap(Keys.KEY_BACKSPACE) }
+                return true
+            }
+
+            /**
+             * A suggestion tapped that changes letters already typed, teh to the: Gboard replaces them here instead of
+             * composing. They end at the cursor, so they're backspaced over; the base class would only edit its own
+             * empty buffer, and the terminal would keep the old word.
+             */
+            override fun replaceText(
+                start: Int,
+                end: Int,
+                text: CharSequence,
+                newCursorPosition: Int,
+                textAttribute: TextAttribute?,
+            ): Boolean {
+                composing = ""
+                repeat(end - start) { bridge.tap(Keys.KEY_BACKSPACE) }
+                bridge.type(text)
                 return true
             }
 
