@@ -4,6 +4,25 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 1.1.0 (versionCode 34) – 2026-11-10
+
+- Linux commands under proot run 2-30x faster: proot keeps itself and processes making many
+  syscalls on one fast CPU. The Linux screen has a switch for it, on by default, for phones or
+  programs that do better without it.
+- Apps with notifications show a dot on their icon, on home, on folders and in the drawer;
+  Android's own dot settings decide, and it needs notification access. Owl 20: `dot` on the
+  apps of `android.drawer` (#239).
+- The terminal's input can be a normal text field, on by default, so the keyboard's suggestions,
+  glide typing, dictation and clipboard work there: `terminal.keyboard-suggestions`, also in
+  style › terminal (#271). Tapping a suggestion that changes letters already typed corrects the
+  word (#251).
+- Foldables: home stays upright on a cover screen, and the cover and unfolded inner screens can
+  have layouts of their own, as `[cover]` and `[unfolded]` sections in layout.toml (#256, #257,
+  #259).
+- Fixes: turning a phone sideways no longer sends home back to page 1; a notification whose
+  extras can't be read and a layout.toml tile placed past its own columns no longer crash the
+  launcher.
+
 ## 1.0.0 (versionCode 33) – 2026-11-08
 
 - Phone folders: folders picked in Android's folder picker at the top of the permissions
