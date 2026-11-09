@@ -27,6 +27,13 @@
     <string name="style_pages">seiten</string>
     <string name="style_pages_one">eine</string>
     <string name="style_pages_auto">auto</string>
+    <string name="style_cover_screen">frontdisplay</string>
+    <string name="style_cover_upright">aufrecht</string>
+    <string name="style_cover_turned">gedreht</string>
+    <string name="style_unfolded">aufgeklappt</string>
+    <string name="style_unfolded_own">eigener startbildschirm</string>
+    <string name="style_unfolded_pages">seiten</string>
+    <string name="style_unfolded_columns">spalten aufgeklappt</string>
     <string name="style_corners">ecken</string>
     <string name="style_corners_edge">eckig</string>
     <string name="style_corners_soft">weich</string>
@@ -131,5 +138,6 @@
     <string name="agents_intro">Installiert mit mise, wie bei Omarchy. Anmeldungen öffnen sich im Browser; füge Schlüssel über die Zwischenablage der Tastatur ein.</string>
     <string name="agents_open">öffnen</string>
     <string name="agents_remove">deinstallieren</string>
+    <string name="agents_still_running">%1$s läuft noch: schließ es und deinstalliere es dann noch mal</string>
     <string name="agents_install">installieren</string>
 </resources>

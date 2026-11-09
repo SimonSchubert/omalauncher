@@ -76,12 +76,25 @@ interface Host {
 /** Caps the work of one evaluation, so a widget can't freeze the launcher with nested maps over big lists. */
 class Budget(
     private val limit: Int = 200_000,
+    /**
+     * What match() and matchAll() may wait for in all, in one evaluation. Each gives up after half a second on its
+     * own, but a map of matches that each took a little under that held the main thread past Android's five seconds.
+     */
+    private val regexNanos: Long = 1_000_000_000L,
 ) {
     private var steps = 0
     private var depth = 0
+    private var regexLeft = 0L
+
+    private fun start() {
+        if (depth++ == 0) {
+            steps = 0
+            regexLeft = regexNanos
+        }
+    }
 
     fun <T> run(block: () -> T): T {
-        if (depth++ == 0) steps = 0
+        start()
         try {
             return block()
         } finally {
@@ -94,12 +107,19 @@ class Budget(
         ev: Ev,
         env: Env,
     ): Value {
-        if (depth++ == 0) steps = 0
+        start()
         try {
             return ev(env)
         } finally {
             depth--
         }
+    }
+
+    /** Nanoseconds the regexes of this evaluation may still take; outside one (folding at compile time) there's no limit but each match's own. */
+    fun regexLeft(): Long = if (depth == 0) Long.MAX_VALUE else regexLeft
+
+    fun regexSpent(nanos: Long) {
+        if (depth > 0) regexLeft -= nanos
     }
 
     fun tick(n: Int = 1) {
@@ -357,6 +377,8 @@ class Program(
     val statusBar: Ev? = null,
     /** A widget's or a face's `lock`: while it holds and the tile shows, the home screen holds still; null never does. */
     val lock: Ev? = null,
+    /** `fps`: how many frames a second its `time` animation gets, from 1 to [MAX_FPS]; null is [MAX_FPS]. */
+    val fps: Ev? = null,
     val page: Int = 1,
     val order: Int = 0,
     /** Tile padding in dp, and an optional tile background. */

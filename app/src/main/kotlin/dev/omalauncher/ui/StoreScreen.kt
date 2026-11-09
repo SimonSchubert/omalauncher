@@ -90,6 +90,7 @@ fun StoreScreen(
     val scope = rememberCoroutineScope()
     var open by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<StoreMessage?>(null) }
+    var viewing by remember { mutableStateOf<ImageBitmap?>(null) }
     // Each kind keeps its search, tab and scroll while the other shows.
     val filters = remember { OwlKind.entries.associateWith { StoreFilter() } }
     val filter = filters.getValue(kind)
@@ -138,6 +139,7 @@ fun StoreScreen(
                         page = page,
                         message = message,
                         modifier = modifier,
+                        onView = { viewing = it },
                         onOpen = { market.installedVersion(e)?.let { onOpenApp(it.file) } },
                         onInstall = {
                             pick()
@@ -183,6 +185,11 @@ fun StoreScreen(
                     else -> list(Modifier)
                 }
             }
+        }
+        // Over the panel too. Composed last, so Back closes it before anything else.
+        viewing?.let {
+            BackHandler { viewing = null }
+            ImageViewer(it, title = null) { viewing = null }
         }
     }
 }
@@ -573,24 +580,34 @@ private fun NewBadge() =
         style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
     )
 
-/** An app's [preview] and its other [screens] side by side, swiped through; each one loads as it scrolls into view. */
+/** An app's or face's [preview] and its other [screens] side by side, swiped through; each one loads as it scrolls into view, and a tap on one shows it full screen. */
 @Composable
 private fun Screens(
     market: Market,
     preview: ImageBitmap?,
     screens: List<String>,
+    onView: (ImageBitmap) -> Unit,
 ) {
     // Until one has loaded, a slot is phone-shaped.
     val ratio = preview?.let { it.width.toFloat() / it.height } ?: PHONE_RATIO
-    // Keys stop at each, so the arrows go through them, the row scrolling to follow.
-    val shot = Modifier.height(ScreenHeight).aspectRatio(ratio).frame(1.dp, Palette.border, radius = 8.dp).clip(RoundedCornerShape(8.dp)).keyScrolled()
+    val shot = Modifier.height(ScreenHeight).aspectRatio(ratio).frame(1.dp, Palette.border, radius = 8.dp).clip(RoundedCornerShape(8.dp))
     LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        item(key = "preview") { Box(shot.background(Palette.surface)) { preview?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) } } }
+        item(key = "preview") { Shot(preview, shot, onView) }
         items(screens, key = { it }) { path ->
             val img by produceState<ImageBitmap?>(null, path) { value = market.image(path) }
-            Box(shot.background(Palette.surface)) { img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) } }
+            Shot(img, shot, onView)
         }
     }
+}
+
+/** One of [Screens]. Keys stop at it, so the arrows go through them, the row scrolling to follow, and Enter opens it as a tap does. */
+@Composable
+private fun Shot(
+    image: ImageBitmap?,
+    modifier: Modifier,
+    onView: (ImageBitmap) -> Unit,
+) = Box(modifier.background(Palette.surface).clickable(enabled = image != null) { image?.let(onView) }) {
+    image?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
 }
 
 /** A widget's or app's page: a large preview, what it is, what it installs and runs, and the button that adds it. */
@@ -603,6 +620,7 @@ private fun Detail(
     page: Int,
     message: StoreMessage?,
     modifier: Modifier,
+    onView: (ImageBitmap) -> Unit,
     onOpen: () -> Unit,
     onInstall: () -> Unit,
     onAddPages: () -> Unit,
@@ -616,14 +634,16 @@ private fun Detail(
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         val screens = e.screensFor(theme)
         if (screens.isNotEmpty()) {
-            Screens(market, preview, screens)
+            Screens(market, preview, screens, onView)
         } else {
             preview?.let {
                 // As wide as the panel, but no taller than 320 dp, so a tall widget doesn't push its description off screen:
                 // narrowing the width keeps the image inside its slot instead of drawing over the text below.
                 val ratio = it.width.toFloat() / it.height
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Image(it, null, Modifier.widthIn(max = ScreenHeight * ratio).fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Fit)
+                    // A whole screen, an app's or a face's, is shown bigger on a tap; a widget is already its full size here.
+                    val tap = if (market.kind == OwlKind.Widget) Modifier else Modifier.clickable { onView(it) }
+                    Image(it, null, Modifier.widthIn(max = ScreenHeight * ratio).fillMaxWidth().aspectRatio(ratio).then(tap), contentScale = ContentScale.Fit)
                 }
             }
         }

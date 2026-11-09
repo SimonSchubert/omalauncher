@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 17+: widgets and Linux reaching 192.168.x and other local addresses. Asked for
          from a row in settings (LocalNetwork.kt). -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -94,6 +96,14 @@
         <!-- Opens a speech app's "speak now" screen for Speech and hands the words back; shows nothing itself. -->
         <activity
             android:name=".SpeakNowActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
+        <!-- Android's file picker for `omalauncher pick` (PhoneBridge); shows nothing itself. -->
+        <activity
+            android:name=".PickActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:excludeFromRecents="true"
             android:exported="false"
@@ -229,6 +239,55 @@
             android:exported="false"
             android:icon="@drawable/agent_kimi"
             android:label="Kimi"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".QwenWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_qwen"
+            android:label="Qwen Code"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".McodeWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_mcode"
+            android:label="MiniMax Code"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".KiroCliWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_kiro_cli"
+            android:label="Kiro CLI"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".KiloWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_kilo"
+            android:label="Kilo"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".DevinWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_devin"
+            android:label="Devin CLI"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".AmpWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_amp"
+            android:label="Amp"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".CommandcodeWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_commandcode"
+            android:label="Command Code"
             android:targetActivity=".LinuxWindowActivity" />
 
         <!-- One task per owl app, named after it; launched with its file name in the intent's data. -->

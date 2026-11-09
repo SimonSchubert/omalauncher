@@ -160,6 +160,7 @@ class Style(
                 true,
                 "The empty page after home's last, for new tiles; false shows it only while a tile is carried, to drop it on.",
             )
+        val HOME_PAGE = Setting.Count("home.home-page", 1, -99..99, "The page home opens on and Home returns to: 1 is the first page of tiles, 0 the face left of it, -1 the one left of that. A number with no page of its own takes the first page after it, or the last page when it is past them all.")
         val COLUMNS = Setting.Count("home.columns", 6, 4..9, "Columns of home's grid. Fewer make bigger cells, and apps show their names under their icons once a cell is tall enough.")
         val FORCE_SINGLE_PAGE =
             Setting.Flag(
@@ -167,6 +168,19 @@ class Style(
                 false,
                 "One page even on a screen shaped like an unfolded foldable's; false shows two there, auto-detected from the screen's shape and width.",
             )
+        val COVER_SCREEN =
+            Setting.Flag(
+                "home.cover-screen",
+                true,
+                "An upright grid and the bar below it on a foldable's cover screen, whose window is wider than tall while the phone stands upright; false turns the grid on its side there as in a phone's landscape.",
+            )
+        val UNFOLDED_LAYOUT =
+            Setting.Flag(
+                "home.unfolded-layout",
+                false,
+                "A home of its own on a foldable's unfolded inner screen, one wide page whose tiles can span the hinge, kept under [unfolded] in home/layout.toml; it starts from home's pages side by side. False shows home's pages there as home.single-page says.",
+            )
+        val UNFOLDED_COLUMNS = Setting.Count("home.unfolded-columns", 12, 6..12, "Columns of the unfolded inner screen's grid, with home.unfolded-layout.")
 
         val GAPS_IN = Setting.Number("widgets.gaps-in", 6.0, 0.0..24.0, "Space in dp between two of home's widgets (all of it, unlike Hyprland's gaps_in, which each window has on its side).")
         val GAPS_OUT = Setting.Number("widgets.gaps-out", 6.0, 0.0..48.0, "Space in dp from home's widgets, the strip and the prompt bar to the screen's edges.")
@@ -256,7 +270,7 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, EMPTY_PAGE_LEFT, EMPTY_PAGE_RIGHT, COLUMNS, FORCE_SINGLE_PAGE, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, EMPTY_PAGE_LEFT, EMPTY_PAGE_RIGHT, HOME_PAGE, COLUMNS, FORCE_SINGLE_PAGE, COVER_SCREEN, UNFOLDED_LAYOUT, UNFOLDED_COLUMNS, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, KEYBAR_GAPS_OUT, KEYBAR_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
                 listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, SWIPE_UP, SWIPE_DOWN)
         }

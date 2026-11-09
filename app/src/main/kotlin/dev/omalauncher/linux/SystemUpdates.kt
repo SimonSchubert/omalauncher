@@ -10,6 +10,7 @@ import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapObjects
 import dev.omalauncher.upgrade.strings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -146,7 +147,9 @@ class SystemUpdates(
     /** Upgrades everything: a full pacman sync, then mise's tools. Returns whether it worked. */
     suspend fun updateAll(): Boolean {
         if (job is JobState.Working) return false
-        val (ok, _) = proot.trackedJob(R.string.linux_job_updating, UPDATE_SCRIPT, pacman.lock) { job = it }
+        // mise's too, as agents install and remove with it: mise's first, as agent jobs never take pacman's.
+        job = JobState.Working(R.string.linux_job_waiting, emptyList())
+        val (ok, _) = agents.lock.withLock { proot.trackedJob(R.string.linux_job_updating, UPDATE_SCRIPT, pacman.lock) { job = it } }
         // Agents may have changed, and what's left to update is worth knowing either way.
         withContext(Dispatchers.IO) { agents.load() }
         check(force = true)

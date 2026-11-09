@@ -31,9 +31,36 @@
     <string name="settings_packages">pakete</string>
     <string name="settings_packages_subtitle">Linux-apps und -tools mit pacman und dem AUR installieren</string>
     <string name="settings_home_app">standard-start-app</string>
-    <string name="settings_home_app_subtitle">mach Omalauncher zu deinem startbildschirm · app-verknüpfungen brauchen das</string>
+    <string name="settings_home_app_subtitle">mach Omalauncher zu deinem startbildschirm</string>
     <string name="settings_local_network">lokales netzwerk</string>
     <string name="settings_local_network_subtitle">lässt widgets und linux deinen drucker, home assistant, … erreichen</string>
+    <string name="settings_permissions">berechtigungen</string>
+    <string name="settings_permissions_subtitle">mikrofon, standort, dateien, …</string>
+
+    <string name="permissions_title">berechtigungen</string>
+    <string name="permissions_folders_title">smartphone-ordner</string>
+    <string name="permissions_folders_about">ordner mit deinen fotos, downloads und dokumenten für linux: in Dateien, und für agenten und skripte über omalauncher</string>
+    <string name="permissions_folders_sdcard">was linux in %1$s/Download oder %1$s/Documents speichert, sehen auch andere apps</string>
+    <string name="permissions_folders_add">ordner hinzufügen</string>
+    <string name="permissions_folders_remove">entfernen</string>
+    <string name="permissions_folders_cant_keep">android hat dem launcher den ordner nicht überlassen</string>
+    <string name="permissions_folders_no_picker">dieses smartphone hat keine ordnerauswahl</string>
+    <string name="permissions_note">widgets und agenten können alles nutzen, was hier an ist. die schalter hat android: einschalten fragt nach, ausschalten öffnet die android-einstellungen dazu</string>
+    <string name="permissions_on">an · %1$s</string>
+    <string name="permissions_off">aus · %1$s</string>
+    <string name="permissions_mic">mikrofon</string>
+    <string name="permissions_mic_uses">das mikro in der eingabeleiste, Voice, widgets, die zuhören</string>
+    <string name="permissions_location">standort</string>
+    <string name="permissions_location_uses">ungefähr · widgets wie das wetter, solange sie zu sehen sind · agenten mit omalauncher location</string>
+    <string name="permissions_calendar">kalender</string>
+    <string name="permissions_calendar_uses">deine termine, nur lesen · kalender-widgets · agenten mit omalauncher calendar</string>
+    <string name="permissions_bluetooth">bluetooth</string>
+    <string name="permissions_bluetooth_uses">akkus und einstellungen deiner AirPods · AirPods-widgets · agenten mit omalauncher airpods</string>
+    <string name="permissions_notifications">benachrichtigungen</string>
+    <string name="permissions_notifications_uses">linux, solange es läuft, widgets, die dich benachrichtigen</string>
+    <string name="permissions_notification_access">benachrichtigungszugriff</string>
+    <string name="permissions_notification_access_uses">benachrichtigungspunkte, was gerade läuft und bitte nicht stören für widgets</string>
+
     <string name="settings_android">android-einstellungen</string>
     <string name="settings_android_subtitle">die systemeinstellungen des smartphones</string>
     <string name="settings_licenses">lizenzen</string>

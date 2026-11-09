@@ -46,31 +46,51 @@ import kotlinx.coroutines.withContext
 /**
  * Notification access, which the user grants in Android's settings. Android
  * requires it before an app may see other apps' media sessions (android.media),
- * and it lets widgets list notifications (android.notifications). Notifications
- * are only read when a widget asks; see [Notifications].
+ * and it lets widgets list notifications (android.notifications) and icons show
+ * notification dots ([NotificationDots]). The shade itself is only read when a
+ * widget asks; see [Notifications].
  */
 class MediaListener : NotificationListenerService() {
     override fun onListenerConnected() {
         connected = this
+        NotificationDots.connected(this)
         changes.update { it + 1 }
     }
 
     override fun onListenerDisconnected() {
-        if (connected === this) connected = null
+        gone()
         changes.update { it + 1 }
     }
 
-    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+    override fun onNotificationPosted(
+        sbn: StatusBarNotification?,
+        rankingMap: RankingMap?,
+    ) {
+        if (sbn != null && rankingMap != null) NotificationDots.posted(this, sbn, rankingMap)
         changes.update { it + 1 }
     }
 
-    override fun onNotificationRemoved(sbn: StatusBarNotification?) {
+    override fun onNotificationRemoved(
+        sbn: StatusBarNotification?,
+        rankingMap: RankingMap?,
+    ) {
+        if (sbn != null) NotificationDots.removed(sbn.key)
         changes.update { it + 1 }
+    }
+
+    override fun onNotificationRankingUpdate(rankingMap: RankingMap?) {
+        if (rankingMap != null) NotificationDots.ranked(rankingMap)
     }
 
     override fun onDestroy() {
-        if (connected === this) connected = null
+        gone()
         super.onDestroy()
+    }
+
+    private fun gone() {
+        if (connected !== this) return
+        connected = null
+        NotificationDots.disconnected()
     }
 
     companion object {

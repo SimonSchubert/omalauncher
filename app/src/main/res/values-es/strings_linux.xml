@@ -63,6 +63,13 @@
     <string name="linux_agent_ori">El agente de programación de OpenRouter</string>
     <string name="linux_agent_muse">El agente de programación de Meta</string>
     <string name="linux_agent_kimi">El agente de programación de Moonshot AI</string>
+    <string name="linux_agent_qwen">El agente de programación Qwen de Alibaba</string>
+    <string name="linux_agent_mcode">El agente de programación de MiniMax</string>
+    <string name="linux_agent_kiro">El agente de programación de Amazon</string>
+    <string name="linux_agent_kilo">Agente de código abierto basado en OpenCode</string>
+    <string name="linux_agent_devin">El agente de programación de Cognition</string>
+    <string name="linux_agent_amp">Agente de programación de ampcode.com</string>
+    <string name="linux_agent_commandcode">Agente de programación de commandcode.ai</string>
 
     <string name="linux_welcome_title">omarchy en tu pantalla principal</string>
     <string name="linux_welcome_body">Los temas y fondos de Omarchy, tus apps de Android y widgets en la pantalla principal. Arch Linux suma apps de terminal y agentes de programación, ahora o más tarde en configuración.</string>
@@ -122,6 +129,7 @@
     <string name="linux_gpu_turn_on">activar</string>
 
     <string name="linux_notification_channel">Sesión de Linux</string>
+    <string name="linux_notify_channel">Agentes y scripts</string>
     <string name="linux_notification_installing">Instalando Linux · %1$s</string>
     <string name="linux_notification_installing_percent">Instalando Linux · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">La instalación de Linux se detuvo · abre configuración › linux para reintentar</string>

@@ -32,6 +32,15 @@
     <string name="style_pages">pages</string>
     <string name="style_pages_one">one</string>
     <string name="style_pages_auto">auto</string>
+    <!-- A foldable's cover screen: home upright with the bar below (true), or turned on its side as in landscape. -->
+    <string name="style_cover_screen">cover screen</string>
+    <string name="style_cover_upright">upright</string>
+    <string name="style_cover_turned">turned</string>
+    <!-- A foldable's inner screen unfolded: a home of its own there, or the pages as on the phone. -->
+    <string name="style_unfolded">unfolded</string>
+    <string name="style_unfolded_own">own home</string>
+    <string name="style_unfolded_pages">pages</string>
+    <string name="style_unfolded_columns">unfolded columns</string>
     <string name="style_corners">corners</string>
     <string name="style_corners_edge">edge</string>
     <string name="style_corners_soft">soft</string>
@@ -166,5 +175,6 @@
     <string name="agents_intro">Installed with mise, like Omarchy. Logins open in your browser; paste keys with the keyboard\'s clipboard.</string>
     <string name="agents_open">open</string>
     <string name="agents_remove">remove</string>
+    <string name="agents_still_running">%1$s is still running: close it, then remove it again</string>
     <string name="agents_install">install</string>
 </resources>

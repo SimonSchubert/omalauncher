@@ -61,6 +61,13 @@
     <string name="linux_agent_ori">OpenRouter 的编程智能体</string>
     <string name="linux_agent_muse">Meta 的编程智能体</string>
     <string name="linux_agent_kimi">月之暗面的编程智能体</string>
+    <string name="linux_agent_qwen">阿里巴巴的 Qwen 编程智能体</string>
+    <string name="linux_agent_mcode">MiniMax 的编程智能体</string>
+    <string name="linux_agent_kiro">亚马逊的编程智能体</string>
+    <string name="linux_agent_kilo">基于 OpenCode 的开源智能体</string>
+    <string name="linux_agent_devin">Cognition 的编程智能体</string>
+    <string name="linux_agent_amp">来自 ampcode.com 的编程智能体</string>
+    <string name="linux_agent_commandcode">来自 commandcode.ai 的编程智能体</string>
 
     <string name="linux_welcome_title">把 omarchy 放上主屏幕</string>
     <string name="linux_welcome_body">Omarchy 的主题和壁纸、你的 Android 应用，以及主屏幕小组件。Arch Linux 再带来终端应用和编程智能体，现在装或以后在设置里装都行。</string>
@@ -118,6 +125,7 @@
     <string name="linux_gpu_turn_on">开启</string>
 
     <string name="linux_notification_channel">Linux 会话</string>
+    <string name="linux_notify_channel">智能体和脚本</string>
     <string name="linux_notification_installing">正在安装 Linux · %1$s</string>
     <string name="linux_notification_installing_percent">正在安装 Linux · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">Linux 安装已中止 · 打开 设置 › linux 重试</string>

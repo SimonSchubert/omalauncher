@@ -22,6 +22,10 @@ touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
 
 ## Source layout
 
+Paths are under `app/src/main/kotlin/dev/omalauncher/` unless they start with
+a module folder; the OWL language is under
+`owl/src/main/kotlin/dev/omalauncher/widgets/`.
+
 - `app/src/main/cpp/wlbridge.c`: JNI for unix sockets with fd passing, shm
   mapping, per-surface pixel stores, and compositing them into a window's
   `ANativeWindow`
@@ -33,7 +37,9 @@ touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
 - `linux/`: proot, the rootfs setup and its update steps, pacman, coding
   agents, and the bridges to Android (audio, URLs, /proc)
 - `ui/`: the Compose home screen, the bar and its app list, settings and Files
-- `widgets/`: the widget engine; the language itself is in the `owl` module.
+- `widgets/`: the widget engine (`render/` draws nodes, `runtime/` holds a
+  running widget and its `android.*` sources); the language itself, its
+  compiler (`lang/`) and the store's checks (`market/`) are in the `owl` module.
   A widget's state and sources live in its `WidgetInstance`, which runs while
   its page or a neighbour is on screen, but the pager composes only the
   current page: a node drawn in Kotlin loses its `remember` state when its
@@ -155,3 +161,48 @@ above.
 
 Guest processes die with the app (`--kill-on-exit`), so the Wayland protocol,
 the socket and the guest environment carry no state across an update.
+
+## Where to change what
+
+Each recipe lists what a complete change touches. Tests go next to the code
+they cover, in `owl/src/test` or `app/src/test`.
+
+- **A coding agent**: an `Agent` entry in `linux/Agents.kt`; its description
+  as `linux_agent_<id>` in every `strings_linux.xml`; an SVG in `art/icons/`,
+  turned into PNGs by `scripts/make-icons.sh`; an `activity-alias` in
+  `AndroidManifest.xml` so its window gets its own icon and label; a case in
+  `AgentsTest`. Voice talks to it only with an entry in `voice/AgentLink.kt`.
+- **OWL syntax, a node or a builtin**: the compiler in `lang/` (`Schema.kt`
+  for what's allowed where, plus `SINCE` with the level, `Compiler.kt`,
+  `Builtins.kt`); drawing in `widgets/render/`; state in
+  `widgets/runtime/WidgetInstance.kt`; the page in
+  `assets/widgets/docs/` and the line in `docs/versions.md`; `LangTest`.
+  See AGENTS.md for when to bump `Compiler.LEVEL`.
+- **An `android.*` source for widgets**: a file in `widgets/runtime/`, wired in
+  `WidgetServices.kt` and `WidgetInstance.kt`; its name in the compiler as
+  above; `assets/widgets/docs/android.md`. If it reads something private, add
+  a warning to `market/Review.kt` so store reviewers check the widget, and
+  update the privacy policy (`store/omalauncher.txt`). A new Android
+  permission is asked through `ui/AskPermission.kt` and listed on the
+  permissions screen (`ui/PermissionsScreen.kt`).
+- **A stock widget** (`assets/widgets/*.owl`): these are `Seeded` files, so
+  an edit reaches every install that hasn't changed its copy. Raise the
+  `version` in its `meta { }` and keep its `strings { }` sets in every app language.
+- **An `omalauncher` command** (the guest's way to the phone): the script
+  `assets/omalauncher.sh` (its usage text and the argument check in its last
+  `case`), the answer in `linux/PhoneBridge.kt` (the `when (args[0])` and
+  `COMMANDS`, which `omalauncher version` lists), the paragraph about it in
+  the guest's AGENTS.md (`WidgetEngine.kt`) and the README.
+  `OmalauncherScriptTest.commandsAgree` fails until the script, its usage and
+  `PhoneBridge` list the same commands. Errors go back as `usage:`,
+  `denied:` or `error:` answers, which the script turns into exit codes 2, 3
+  and 1; keep those meanings, since scripts depend on them. Commands never
+  ask for permissions.
+- **UI text**: `res/values/strings_<area>.xml` and the same key in each
+  `values-*` folder.
+- **What Linux gets set up with**: a rootfs step in `linux/Bootstrap.kt` (a
+  changed step needs a new id), or a file the launcher writes, listed in
+  a `managed()` list (like the one in `linux/Agents.kt`, collected in
+  `Runtime.kt`), synced by `upgrade/ManagedFiles.kt`. See "Updates" above.
+- **A saved format** (preferences, JSON in `files/`): it is stored through
+  `upgrade/Versioned.kt`: bump its version and add a migration; never drop the old reader.

@@ -141,6 +141,9 @@ fun StyleScreen(
             Flag(R.string.style_empty_page_right, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_RIGHT)
             CountOption(R.string.style_columns, Style.COLUMNS, style)
             Flag(R.string.style_pages, R.string.style_pages_one, R.string.style_pages_auto, style, Style.FORCE_SINGLE_PAGE)
+            Flag(R.string.style_cover_screen, R.string.style_cover_upright, R.string.style_cover_turned, style, Style.COVER_SCREEN)
+            Flag(R.string.style_unfolded, R.string.style_unfolded_own, R.string.style_unfolded_pages, style, Style.UNFOLDED_LAYOUT)
+            if (style.style[Style.UNFOLDED_LAYOUT]) CountOption(R.string.style_unfolded_columns, Style.UNFOLDED_COLUMNS, style)
             NumberOption(R.string.style_corners, Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
             HomePreview(runtime)
             // Like Hyprland's gaps_in, gaps_out and border_size; the colors are in style.toml.

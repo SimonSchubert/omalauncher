@@ -48,6 +48,7 @@
     <string name="home_prompt_hint_short">aplikasi</string>
 
     <string name="home_folder_named">folder %1$s</string>
+    <string name="home_app_has_notifications">%1$s, ada notifikasi</string>
     <string name="home_folder">folder</string>
     <string name="home_folder_tap_to_name">ketuk untuk memberi nama</string>
 

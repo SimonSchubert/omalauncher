@@ -10,6 +10,9 @@
     <string name="files_home">pessoal</string>
     <string name="files_place_config">config</string>
     <string name="files_place_downloads">downloads</string>
+    <string name="files_place_phone_folders">pastas do telefone</string>
+    <string name="files_add_phone_folder">adicionar pasta do telefone</string>
+    <string name="files_no_phone_folders">ainda não há pastas do telefone: adicione uma pelo menu</string>
     <string name="files_place_system">sistema</string>
     <string name="files_search">pesquisar</string>
     <string name="files_more">mais</string>

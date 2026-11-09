@@ -10,6 +10,9 @@
     <string name="files_home">persönlich</string>
     <string name="files_place_config">config</string>
     <string name="files_place_downloads">downloads</string>
+    <string name="files_place_phone_folders">smartphone-ordner</string>
+    <string name="files_add_phone_folder">smartphone-ordner hinzufügen</string>
+    <string name="files_no_phone_folders">noch keine smartphone-ordner: füg einen über das menü hinzu</string>
     <string name="files_place_system">system</string>
     <string name="files_search">suchen</string>
     <string name="files_more">mehr</string>

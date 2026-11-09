@@ -82,9 +82,48 @@ class AgentsTest {
     /** OpenCode installs from before 2 have no node, and mise needs it for OpenCode 2's postinstall. */
     @Test fun updatesAddNodeForOpencode() {
         assertEquals(
-            "if [ -z \"\$(mise ls -g node)\" ] && [ -n \"\$(mise ls -g 'opencode' 'npm:@xai-official/grok' 'npm:@moonshot-ai/kimi-code')\" ]; " +
+            "if [ -z \"\$(mise ls -g node)\" ] && [ -n \"\$(mise ls -g 'opencode' 'npm:@xai-official/grok' 'npm:@moonshot-ai/kimi-code' 'qwen' " +
+                "'npm:@minimax-ai/code[allow_builds=better-sqlite3]' 'npm:@kilocode/cli' 'amp[prerelease=true]' 'npm:command-code')\" ]; " +
                 "then mise use -g node@lts; fi",
             MISE_NODE_FOR_AGENTS,
         )
+    }
+
+    /** Omarchy 4.5's agents get the prompt whole, however it's quoted, in the form each one takes. */
+    @Test fun newAgentsReceiveThePromptLiterally() {
+        val prompt = "Explain \"it's quoted\"; \$(exit 17)\nand keep \$HOME literal."
+        val expected =
+            mapOf(
+                "qwen" to listOf("qwen", "--prompt-interactive=$prompt"),
+                "kilo" to listOf("kilo", "--prompt=$prompt"),
+                "kiro-cli" to listOf("kiro-cli", "chat", "--", prompt),
+                "mcode" to listOf("mcode", "--", prompt),
+                "devin" to listOf("devin", "--", prompt),
+                "commandcode" to listOf("commandcode", "--", prompt),
+            )
+        val dir = createTempDirectory("agents").toFile()
+        fun stub(
+            bin: String,
+            body: String,
+        ) = File(dir, bin).apply {
+            writeText("#!/bin/sh\n$body\n")
+            setExecutable(true)
+        }
+
+        fun run(command: String): String {
+            val pb = ProcessBuilder("sh", "-c", command)
+            pb.environment()["PATH"] = "${dir.path}:${System.getenv("PATH")}"
+            val p = pb.start()
+            return p.inputStream.bufferedReader().use { it.readText() }.also { assertEquals(command, 0, p.waitFor()) }
+        }
+        for ((bin, args) in expected) {
+            // Each agent prints its name and arguments, one per NUL-terminated field.
+            stub(bin, "printf '%s\\0' \"${'$'}(basename \"${'$'}0\")\" \"${'$'}@\"")
+            assertEquals(bin, args, run(agentInvocation(bin, prompt)).split('\u0000').dropLast(1))
+        }
+        // Amp reads its first message from stdin, then stays interactive.
+        stub("amp", "cat")
+        assertEquals(prompt + "\n", run(agentInvocation("amp", prompt)))
+        dir.deleteRecursively()
     }
 }

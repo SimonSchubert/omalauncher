@@ -87,7 +87,7 @@ object Builtins {
     val constants = mapOf("pi" to Num(PI), "transparent" to Col(null, 0))
 
     /** Handler-only calls; they reach [Host.act]. */
-    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..2, "notification" to 1..3, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "dnd" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2, "appAction" to 2..2, "workApps" to 1..1, "shortcuts" to 1..1, "send" to 2..2, "pressKey" to 1..1, "typeText" to 1..1, "latch" to 1..2, "settings" to 1..1, "pickImages" to 0..0, "speech" to 1..1, "web" to 1..1, "location" to 1..1, "airpods" to 1..2, "calendar" to 1..1)
+    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..2, "notification" to 1..3, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "dnd" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2, "appAction" to 2..2, "workApps" to 1..1, "shortcuts" to 1..1, "send" to 2..2, "pressKey" to 1..1, "typeText" to 1..1, "latch" to 1..2, "settings" to 1..1, "pickImages" to 0..0, "speech" to 1..1, "web" to 1..1, "location" to 1..1, "airpods" to 1..2, "calendar" to 1..2)
 
     private fun lst(items: List<Value>) = Lst(capped(items))
 
@@ -217,22 +217,33 @@ object Builtins {
     /** Patterns that ran over [REGEX_MS]: refused from then on, so each leaves at most one thread behind. */
     private val slowPatterns = Collections.synchronizedSet(HashSet<String>())
 
+    /** Each match waits [REGEX_MS] at most, and all of one evaluation's together what's left of its [budget]. */
     private fun <T> matching(
         p: String,
+        budget: Budget?,
         block: (Regex) -> T,
     ): T {
         val slow = "the pattern \"$p\" takes too long: a repeated group with a repeat inside, like (a+)+ or (.*x){5}, or .* " +
             "several times over long text, tries ever more ways to match; it's off until the launcher restarts"
+        val many = "match() and matchAll() take too long in all in one update; match fewer or shorter texts"
         if (p in slowPatterns) throw WidgetError(slow)
+        val own = TimeUnit.MILLISECONDS.toNanos(REGEX_MS)
+        val wait = minOf(own, budget?.regexLeft() ?: own)
+        if (wait <= 0) throw WidgetError(many)
         val r = regex(p)
+        val started = System.nanoTime()
         val task = regexThreads.submit(Callable { block(r) })
         try {
-            return task.get(REGEX_MS, TimeUnit.MILLISECONDS)
+            return task.get(wait, TimeUnit.NANOSECONDS)
         } catch (e: TimeoutException) {
+            // Cut short by the others' time, the pattern itself may be fine.
+            if (wait < own) throw WidgetError(many)
             slowPatterns.add(p)
             throw WidgetError(slow)
         } catch (e: ExecutionException) {
             throw e.cause ?: e
+        } finally {
+            budget?.regexSpent(System.nanoTime() - started)
         }
     }
 
@@ -704,12 +715,12 @@ object Builtins {
             "match" to
                 Builtin(2, 2) { a ->
                     val text = a.str(0)
-                    matching(a.str(1)) { r -> r.find(text)?.let { m -> if (m.groupValues.size > 1) lst(m.groupValues.drop(1).map(::Str)) else Str(m.value) } } ?: Null
+                    matching(a.str(1), a.host?.budget) { r -> r.find(text)?.let { m -> if (m.groupValues.size > 1) lst(m.groupValues.drop(1).map(::Str)) else Str(m.value) } } ?: Null
                 },
             "matchAll" to
                 Builtin(2, 2) { a ->
                     val text = a.str(0)
-                    lst(matching(a.str(1)) { r -> r.findAll(text).take(MAX_LIST).map { m -> if (m.groupValues.size > 1) Lst(m.groupValues.drop(1).map(::Str)) else Str(m.value) }.toList() })
+                    lst(matching(a.str(1), a.host?.budget) { r -> r.findAll(text).take(MAX_LIST).map { m -> if (m.groupValues.size > 1) Lst(m.groupValues.drop(1).map(::Str)) else Str(m.value) }.toList() })
                 },
             "parseJson" to Builtin(1, 1) { a -> Json.parseOrText(a.str(0)) },
             // Text as base64 and back; fromBase64 also reads base64url, with or without padding, and gives null for anything else.

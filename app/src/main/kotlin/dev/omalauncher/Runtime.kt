@@ -26,7 +26,9 @@ import dev.omalauncher.linux.FILES_COMMAND
 import dev.omalauncher.linux.VOICE_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
+import dev.omalauncher.linux.LinuxDns
 import dev.omalauncher.linux.OpenBridge
+import dev.omalauncher.linux.PhoneBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.SystemUpdates
@@ -65,6 +67,7 @@ import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.runtime.Dictation
 import dev.omalauncher.widgets.runtime.PhoneLocation
 import dev.omalauncher.widgets.runtime.PhoneCalendar
+import dev.omalauncher.widgets.runtime.NotificationDots
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -102,7 +105,7 @@ class Runtime(
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
     private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onOpenVoice = ::openVoice, onEdit = ::edit)
-    val agents = AgentStore(proot, onChanged = ::syncGuest)
+    val agents = AgentStore(proot, text = { id, arg -> context.getString(id, arg) }, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
 
@@ -112,16 +115,31 @@ class Runtime(
     /** Widgets' location("request") and android.location. */
     val location = PhoneLocation(context)
 
-    /** Widgets' calendar("request") and android.calendar. */
+    /** Widgets' android.calendar, calendar("request") and calendar("open"). */
     val calendar = PhoneCalendar(context)
+
+    /** The phone's folders the user let Linux reach: in Files, and through `omalauncher`. */
+    val phoneFolders = PhoneFolders(context)
+
+    /** `omalauncher` in the guest (and `phone`, its old name): location, calendar and AirPods for agents, as far as widgets were allowed them; the phone folders. */
+    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, phoneFolders, scope) }
 
     /** The voice screen's replies, in the phone's voice. */
     val speaker = Speaker(context)
 
     /** A spoken conversation with a coding agent: the voice screen's (VoiceActivity). */
-    val voice by lazy { VoiceSession(context, proot, agents, speaker) }
+    private val voiceSession = lazy { VoiceSession(context, proot, agents, speaker) }
+    val voice by voiceSession
+
+    init {
+        // Not started just for this: a Voice that never ran has nothing to stop.
+        agents.release = { agent -> voiceSession.isInitialized() && voice.release(agent.bin) }
+    }
     val updates = SystemUpdates(proot, pacman, agents)
     val gpu = Gpu(context, proot, pacman)
+
+    /** The guest's resolv.conf, on the phone's DNS servers while Linux is up. */
+    private val dns = LinuxDns(context, proot.rootfs)
 
     /** The launcher's own provided files (default widgets, their docs); see [Provisioner]. */
     private val launcherFiles = Provisioner(proot.filesDir, LauncherData.LAUNCHER_MANIFEST, listOf(widgets::managed, style::managed))
@@ -135,6 +153,7 @@ class Runtime(
                 { defaultApps(proot.applications) },
                 { bundledIcons(context, proot.home) },
                 openBridge::managed,
+                { phoneBridge.managed() },
                 proot::managed,
                 pacman::managed,
                 agents::managed,
@@ -340,6 +359,8 @@ class Runtime(
                 server.start()
                 proot.procShim.start()
                 openBridge.start()
+                phoneBridge.start()
+                dns.start()
             }
         } else {
             // Linux installed again: its new home has no foot-font.ini yet.
@@ -520,6 +541,12 @@ class Runtime(
         androidKeyOf(shortcut)?.let { androidApps.labels[it] }
             ?: shortcut.owl?.let { widgets.specs.app(it)?.name }
             ?: shortcut.label
+
+    /** Whether a pinned Android app or shortcut has a notification dot. */
+    fun hasDot(shortcut: Shortcut) =
+        shortcut.component?.let { NotificationDots.has(it.packageName, shortcut.profile) }
+            ?: shortcut.androidShortcut?.let { NotificationDots.has(it.packageName, shortcut.profile, it.id) }
+            ?: false
 
     /** A pinned Android app's or shortcut's key in [androidApps]; null for a Linux app. */
     private fun androidKeyOf(shortcut: Shortcut) =

@@ -2,13 +2,13 @@ package dev.omalauncher.ui
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -64,14 +64,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -125,9 +129,11 @@ import dev.omalauncher.voice.VoiceSession.Phase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.math.max
 import kotlin.math.min
+import dev.omalauncher.hasPermission
 
 /**
  * The voice screen: a spoken conversation with a coding agent ([VoiceSession]). It listens as it opens; a tap on
@@ -178,7 +184,7 @@ fun VoiceScreen(
     fun talk() {
         if (speech.listening) return speech.stop()
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) listen() else permission.launch(Manifest.permission.RECORD_AUDIO)
+        if (context.hasPermission(Manifest.permission.RECORD_AUDIO)) listen() else permission.launch(Manifest.permission.RECORD_AUDIO)
     }
 
     // Opening it is asking to talk: listen once the agent is up. With no agent there's no one to hear it.
@@ -227,14 +233,20 @@ fun VoiceScreen(
             else -> stringResource(R.string.voice_tap)
         }
 
-    // Newest first: the list runs from the bottom.
-    val items =
+    // Newest first: the list runs from the bottom. Read by the list alone, so words heard and a reply coming in
+    // don't run the whole screen again each frame; the screen only follows whether there's anything to show.
+    val items = {
         buildList {
             if (speech.listening && speech.text.isNotBlank()) add(VoiceSession.Entry("you", speech.text))
             if (session.reply.isNotBlank()) add(VoiceSession.Entry("agent", session.reply))
             addAll(session.transcript.asReversed())
         }
-    val talking = items.isNotEmpty()
+    }
+    val talking by remember(session, speech) {
+        derivedStateOf { (speech.listening && speech.text.isNotBlank()) || session.reply.isNotBlank() || session.transcript.isNotEmpty() }
+    }
+    // Pictures already decoded: a row moving up as a new one comes in shows its picture at once, not a gap.
+    val bitmaps = remember(session) { HashMap<String, ImageBitmap>() }
     // An agent picked that isn't installed yet has the screen: the one before (and its conversation) is left.
     val installing = session.installing
     val linux by runtime.bootstrap.state.collectAsState()
@@ -368,7 +380,8 @@ fun VoiceScreen(
                             verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         ) {
-                            items(items.size) { i -> Message(items[i]) { viewing = it } }
+                            val entries = items()
+                            items(entries.size) { i -> Message(entries[i], bitmaps) { viewing = it } }
                         }
                     }
                     val touch = remember { MutableInteractionSource() }
@@ -688,6 +701,7 @@ private fun RowScope.Answer(
 @Composable
 private fun Message(
     e: VoiceSession.Entry,
+    bitmaps: MutableMap<String, ImageBitmap>,
     onImage: (String) -> Unit,
 ) {
     when (e.who) {
@@ -703,7 +717,7 @@ private fun Message(
         "image" -> {
             val file = e.text.substringBefore('|')
             val name = e.text.substringAfterLast('|').substringAfterLast('/')
-            val bitmap = rememberBitmap(file, 600)
+            val bitmap = rememberBitmap(file, 600, bitmaps)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Box(Modifier.fillMaxWidth().heightIn(max = 260.dp).clip(LauncherStyle.shape(10.dp)).background(Palette.surface).clickable { onImage(file) }) {
                     bitmap?.let { Image(it, name, Modifier.fillMaxWidth().heightIn(max = 260.dp), contentScale = ContentScale.Fit) }
@@ -714,6 +728,22 @@ private fun Message(
         }
         else -> BasicText(e.text.ifBlank { "…" }, Modifier.fillMaxWidth(), style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Item))
     }
+}
+
+private class OrbLoops(
+    val turn: State<Float>,
+    val breath: State<Float>,
+    val ripple: State<Float>,
+)
+
+@Composable
+private fun orbLoops(): OrbLoops {
+    val loop = rememberInfiniteTransition(label = "orb")
+    return OrbLoops(
+        loop.animateFloat(0f, 360f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "turn"),
+        loop.animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breath"),
+        loop.animateFloat(0f, 1f, infiniteRepeatable(tween(2400, easing = LinearEasing)), label = "ripple"),
+    )
 }
 
 /** What's happening, as a shape: it follows your voice while listening, breathes while speaking, and is ringed while working. */
@@ -739,42 +769,53 @@ private fun Orb(
         tween(300),
         label = "color",
     )
-    val size by animateFloatAsState(
+    // The mic's level changes many times a second: it's followed here and read only as the orb is drawn,
+    // so listening doesn't compose the orb again for each one.
+    val speakingNow by rememberUpdatedState(speaking)
+    val sizeNow = {
         when {
             speech.listening -> 0.84f + 0.16f * speech.level
-            speaking -> 0.86f
-            waiting -> 0.8f
+            speakingNow -> 0.86f
+            session.approvals.isNotEmpty() -> 0.8f
             session.busy -> 0.74f
             else -> 0.7f
-        },
-        spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
-        label = "size",
-    )
+        }
+    }
+    val size = remember { Animatable(sizeNow()) }
+    val level = remember { Animatable(0f) }
+    LaunchedEffect(session, speech) {
+        launch { snapshotFlow(sizeNow).collect { launch { size.animateTo(it, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow)) } } }
+        snapshotFlow { if (speech.listening) speech.level else 0f }
+            .collect { launch { level.animateTo(it, spring(stiffness = Spring.StiffnessMediumLow)) } }
+    }
     val working = session.busy && !waiting
     val active = speech.listening || speaking || session.busy || waiting
     // Idle it's a hollow ring; anything going on fills it.
     val fill by animateFloatAsState(if (active) 1f else 0f, tween(450), label = "fill")
     // A finger on it: it gives a little and lights up at once, before the tap does anything.
     val press by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium), label = "press")
-    val level by animateFloatAsState(if (speech.listening) speech.level else 0f, spring(stiffness = Spring.StiffnessMediumLow), label = "level")
-    val loop = rememberInfiniteTransition(label = "orb")
-    val turn by loop.animateFloat(0f, 360f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "turn")
-    val breath by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breath")
-    val ripple by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(2400, easing = LinearEasing)), label = "ripple")
-    Canvas(modifier.graphicsLayer { scaleX = size * (1f - 0.07f * press); scaleY = size * (1f - 0.07f * press) }) {
+    // Only while one is drawn: idle, they'd wake the screen every frame for nothing.
+    val loops = if (working || speaking || waiting || speech.listening) orbLoops() else null
+    Canvas(modifier.graphicsLayer { scaleX = size.value * (1f - 0.07f * press); scaleY = size.value * (1f - 0.07f * press) }) {
+        val loud = level.value
+        val turn = loops?.turn?.value ?: 0f
+        val breath = loops?.breath?.value ?: 0f
+        val ripple = loops?.ripple?.value ?: 0f
         val fill = max(fill, 0.45f * press)
         val c = Offset(this.size.width / 2, this.size.height / 2)
         val r = min(this.size.width, this.size.height) / 2 - 10.dp.toPx()
+        // Squeezed smaller than its margin (a short window, the keyboard up) there's nothing to draw, and a radial gradient of radius ≤ 0 throws.
+        if (r <= 0f) return@Canvas
         val swell = if (speaking || waiting) breath else 0f
         val core = r * 0.72f * (1f + 0.035f * swell)
         // A soft light around it, brighter as it speaks or listens louder.
-        val glow = 0.06f + fill * (0.14f + 0.10f * swell + 0.16f * level) + 0.10f * press
+        val glow = 0.06f + fill * (0.14f + 0.10f * swell + 0.16f * loud) + 0.10f * press
         drawCircle(Brush.radialGradient(0.55f to color.copy(alpha = glow), 1f to Color.Transparent, center = c, radius = r), r, c)
         // Listening: rings leave the core and fade, stronger the louder you are.
         if (speech.listening) {
             for (k in 0..1) {
                 val p = (ripple + k * 0.5f) % 1f
-                val a = (1f - p) * (1f - p) * (0.25f + 0.55f * level)
+                val a = (1f - p) * (1f - p) * (0.25f + 0.55f * loud)
                 drawCircle(color.copy(alpha = a), core + (r - core) * p, c, style = Stroke(1.5.dp.toPx()))
             }
         }
@@ -828,14 +869,17 @@ private fun ImageViewer(
     }
 }
 
-/** A picture file, decoded off the main thread at about [maxSide] pixels. */
+/** A picture file, decoded off the main thread at about [maxSide] pixels; from [cache] when it's there. */
 @Composable
 private fun rememberBitmap(
     path: String,
     maxSide: Int,
-): ImageBitmap? =
-    produceState<ImageBitmap?>(null, path) {
-        value =
+    cache: MutableMap<String, ImageBitmap>? = null,
+): ImageBitmap? {
+    cache?.get(path)?.let { return it }
+    // With the path it's for: a row given another picture doesn't show the one before while this one decodes.
+    val decoded by produceState<Pair<String, ImageBitmap?>?>(null, path) {
+        value = path to
             withContext(Dispatchers.IO) {
                 runCatching {
                     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -844,8 +888,10 @@ private fun rememberBitmap(
                     while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
                     BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
                 }.getOrNull()
-            }
-    }.value
+            }.also { if (it != null) cache?.put(path, it) }
+    }
+    return decoded?.takeIf { it.first == path }?.second
+}
 
 /** An icon in the top row that does something, [label] for screen readers. */
 @Composable

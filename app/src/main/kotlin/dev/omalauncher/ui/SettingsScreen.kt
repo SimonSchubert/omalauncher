@@ -1,9 +1,7 @@
 package dev.omalauncher.ui
 
-import android.app.Activity
 import android.app.role.RoleManager
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -59,28 +57,21 @@ fun SettingsScreen(
     onLinux: () -> Unit,
     onLicenses: () -> Unit,
     onGestures: () -> Unit,
+    onPermissions: () -> Unit,
 ) {
     val context = LocalContext.current
     val linux by runtime.bootstrap.state.collectAsState()
     val installed = linux == LinuxState.Installed
     var localNetworkMissing by remember { mutableStateOf(LocalNetwork.missing(context)) }
-    val askLocalNetwork =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            localNetworkMissing = !granted
-            // After two refusals Android stops showing the dialog; the switch is then in the app's own settings.
-            if (!granted && (context as? Activity)?.shouldShowRequestPermissionRationale(LocalNetwork.PERMISSION) == false) {
-                context.startActivity(
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                )
-            }
-        }
+    // Once Android won't show its dialog any more, a tap opens the app's own settings, where the switch then is.
+    val askLocalNetwork = rememberAskPermission(LocalNetwork.PERMISSION) { localNetworkMissing = !it }
     val roles = remember { context.getSystemService(RoleManager::class.java) }
     val homeRoleMissing = { roles.isRoleAvailable(RoleManager.ROLE_HOME) && !roles.isRoleHeld(RoleManager.ROLE_HOME) }
     var notHome by remember { mutableStateOf(homeRoleMissing()) }
-    // Made the default (or not) in Android's settings while away.
+    // Made the default (or not), or the local network allowed, in Android's settings or the permissions screen while away.
     LifecycleResumeEffect(Unit) {
         notHome = homeRoleMissing()
+        localNetworkMissing = LocalNetwork.missing(context)
         onPauseOrDispose {}
     }
     val askHome =
@@ -131,11 +122,12 @@ fun SettingsScreen(
                 },
                 if (localNetworkMissing) {
                     SettingsRow(R.string.settings_local_network, stringResource(R.string.settings_local_network_subtitle)) {
-                        askLocalNetwork.launch(LocalNetwork.PERMISSION)
+                        askLocalNetwork()
                     }
                 } else {
                     null
                 },
+                SettingsRow(R.string.settings_permissions, stringResource(R.string.settings_permissions_subtitle), onPermissions),
                 SettingsRow(R.string.settings_android, stringResource(R.string.settings_android_subtitle)) {
                     context.startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 },

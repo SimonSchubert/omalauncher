@@ -62,22 +62,57 @@ internal fun windowSize(): IntSize {
     return if (portrait == size.width > size.height) IntSize(size.height, size.width) else size
 }
 
-/** Whether home turns portrait's grid on its side: landscape, unless the window shows two pages. */
+/** Whether home turns portrait's grid on its side: landscape, unless the window shows two pages, is unfolded with a home of its own, or is a cover screen. */
 @Composable
-internal fun homeTurned(): Boolean {
-    val window = windowSize()
-    return window.width > window.height && !showsTwoPages(window)
+internal fun homeTurned(): Boolean = homeTurned(windowSize(), rememberRotation())
+
+@Composable
+private fun homeTurned(
+    window: IntSize,
+    rotation: Int,
+): Boolean {
+    if (window.width <= window.height || showsTwoPages(window) || unfoldedScreen(window)) return false
+    return !coverScreen(window, rotation)
 }
 
-/**
- * The side for the strip and the bar where home turns its grid on its side; null in portrait. Only a phone's
- * landscape is too short for them below the grid: a tablet keeps them there, where a rail would stack its
- * prompt one letter at a time down a long edge.
- */
+/** Whether home is on a foldable's cover screen (see [isCoverScreen]), which has a layout of its own; home.cover-screen off, never. */
 @Composable
-internal fun homeSide(): HomeSide? {
+internal fun coverScreen(): Boolean = coverScreen(windowSize(), rememberRotation())
+
+@Composable
+private fun coverScreen(
+    window: IntSize,
+    rotation: Int,
+): Boolean = !showsTwoPages(window) && !unfoldedScreen(window) && isCoverScreen(window, rotation, with(LocalDensity.current) { window.height.toDp() }, LauncherStyle.coverScreen)
+
+/**
+ * Whether a landscape-shaped [window] is a foldable's cover screen rather than a phone held sideways: the
+ * display reports no rotation, and the window is phone-sized. Samsung letterboxes the launcher above the
+ * cameras of a Galaxy Z Flip's cover screen, so it gets a window wider than tall (948x835 px on a Flip 8,
+ * 474x418 dp) while the phone stands upright; turned, that grid read in portrait stacked the bar's prompt one
+ * letter per line down a rail. A phone in landscape reports ROTATION_90 or ROTATION_270, so it keeps its rail;
+ * a tablet in its natural landscape is [PHONE_MAX_SHORT_SIDE] or taller and keeps the bar below the grid as
+ * before (homeSide). A split-screen or freeform window of that shape on an upright phone counts too, and gets the
+ * same upright grid. [enabled] is home.cover-screen; off, every landscape window turns as it always did.
+ */
+internal fun isCoverScreen(
+    window: IntSize,
+    rotation: Int,
+    heightDp: Dp,
+    enabled: Boolean,
+): Boolean {
+    if (!enabled || window.width <= window.height) return false
+    if (rotation != Surface.ROTATION_0 && rotation != Surface.ROTATION_180) return false
+    return heightDp < PHONE_MAX_SHORT_SIDE
+}
+
+/** From this short side up a window is a tablet's: the bar stays below the grid in landscape, and no cover screen is this tall. */
+internal val PHONE_MAX_SHORT_SIDE = 600.dp
+
+/** The display's rotation, followed as it changes: turning straight from one landscape to the other changes no size. */
+@Composable
+private fun rememberRotation(): Int {
     val view = LocalView.current
-    // Turning straight from one landscape to the other changes no size, so nothing would recompose: ask the display.
     var rotation by remember(view) { mutableIntStateOf(view.display?.rotation ?: Surface.ROTATION_0) }
     DisposableEffect(view) {
         val displays = view.context.getSystemService(DisplayManager::class.java)
@@ -94,10 +129,24 @@ internal fun homeSide(): HomeSide? {
         displays.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
         onDispose { displays.unregisterDisplayListener(listener) }
     }
+    // The state is only what recomposes when the display turns. A window's new size can arrive before the listener hears
+    // of the rotation, and a landscape window with a stale ROTATION_0 looks like a cover screen, so ask the display.
+    val heard = rotation
+    return view.display?.rotation ?: heard
+}
+
+/**
+ * The side for the strip and the bar where home turns its grid on its side; null in portrait. Only a phone's
+ * landscape is too short for them below the grid: a tablet keeps them there, where a rail would stack its
+ * prompt one letter at a time down a long edge.
+ */
+@Composable
+internal fun homeSide(): HomeSide? {
+    val rotation = rememberRotation()
     val window = windowSize()
-    val tablet = with(LocalDensity.current) { minOf(window.width, window.height).toDp() } >= 600.dp
+    val tablet = with(LocalDensity.current) { minOf(window.width, window.height).toDp() } >= PHONE_MAX_SHORT_SIDE
     return when {
-        !homeTurned() || tablet -> null
+        !homeTurned(window, rotation) || tablet -> null
         rotation == Surface.ROTATION_270 -> HomeSide.Left
         else -> HomeSide.Right
     }
@@ -116,15 +165,27 @@ internal fun FocusProperties.toHome(
 }
 
 /**
- * Whether home shows two pages side by side: when each half of the window is phone-shaped and wide
- * enough to be worth a page of its own, as on a foldable's inner screen in either orientation. Phones,
- * tablets, phone landscape, and a square screen too narrow to split usefully show one; so does
- * [LauncherStyle.forceSinglePage]. A screen's shape alone can't tell a real foldable from a phone
- * that's merely square, which [TWO_PAGES_MIN_WIDTH] rules out by width.
+ * Whether home shows two pages side by side: on an unfolded screen (see [unfoldedShape]), unless
+ * [LauncherStyle.forceSinglePage] shows one there or [LauncherStyle.unfoldedLayout] a home of its own.
  */
 @Composable
-internal fun showsTwoPages(window: IntSize): Boolean {
-    if (LauncherStyle.forceSinglePage) return false
+internal fun showsTwoPages(window: IntSize): Boolean = !LauncherStyle.forceSinglePage && !LauncherStyle.unfoldedLayout && unfoldedShape(window)
+
+/** Whether home is on a foldable's unfolded inner screen with a home of its own there (home.unfolded-layout); see [unfoldedShape]. */
+@Composable
+internal fun unfoldedScreen(): Boolean = unfoldedScreen(windowSize())
+
+@Composable
+private fun unfoldedScreen(window: IntSize): Boolean = LauncherStyle.unfoldedLayout && unfoldedShape(window)
+
+/**
+ * Whether [window] is a foldable's unfolded inner screen, in either orientation: each half of it is phone-shaped and
+ * wide enough to be worth a page of its own. Phones, tablets, phone landscape, and a square screen too narrow to split
+ * usefully aren't. A screen's shape alone can't tell a real foldable from a phone that's merely square, which
+ * [TWO_PAGES_MIN_WIDTH] rules out by width.
+ */
+@Composable
+private fun unfoldedShape(window: IntSize): Boolean {
     if (window.width / 2f / window.height !in 0.4f..0.65f) return false
     return with(LocalDensity.current) { (window.width / 2).toDp() } >= TWO_PAGES_MIN_WIDTH
 }

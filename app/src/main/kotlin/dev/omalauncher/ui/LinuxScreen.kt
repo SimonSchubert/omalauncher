@@ -1,7 +1,6 @@
 package dev.omalauncher.ui
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,6 +45,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
+import dev.omalauncher.hasPermission
 
 /**
  * Everything about the optional Linux system in one place: what it adds and
@@ -84,7 +84,7 @@ fun rememberLinuxInstall(runtime: Runtime): (List<String>) -> Unit {
     return { bins ->
         runtime.installLinux(AGENTS.filter { it.bin in bins })
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            !context.hasPermission(Manifest.permission.POST_NOTIFICATIONS)
         ) {
             ask.launch(Manifest.permission.POST_NOTIFICATIONS)
         }

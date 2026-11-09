@@ -62,6 +62,13 @@
     <string name="linux_agent_ori">Coding-Agent von OpenRouter</string>
     <string name="linux_agent_muse">Coding-Agent von Meta</string>
     <string name="linux_agent_kimi">Coding-Agent von Moonshot AI</string>
+    <string name="linux_agent_qwen">Qwen-Coding-Agent von Alibaba</string>
+    <string name="linux_agent_mcode">Coding-Agent von MiniMax</string>
+    <string name="linux_agent_kiro">Coding-Agent von Amazon</string>
+    <string name="linux_agent_kilo">Open-Source-Agent auf Basis von OpenCode</string>
+    <string name="linux_agent_devin">Coding-Agent von Cognition</string>
+    <string name="linux_agent_amp">Coding-Agent von ampcode.com</string>
+    <string name="linux_agent_commandcode">Coding-Agent von commandcode.ai</string>
 
     <string name="linux_welcome_title">omarchy auf deinem startbildschirm</string>
     <string name="linux_welcome_body">Die Themes und Hintergründe von Omarchy, deine Android-Apps und Widgets für den Startbildschirm. Arch Linux bringt Terminal-Apps und Coding-Agenten dazu, jetzt oder später in den Einstellungen.</string>
@@ -120,6 +127,7 @@
     <string name="linux_gpu_turn_on">einschalten</string>
 
     <string name="linux_notification_channel">Linux-Sitzung</string>
+    <string name="linux_notify_channel">Agenten und Skripte</string>
     <string name="linux_notification_installing">Linux wird installiert · %1$s</string>
     <string name="linux_notification_installing_percent">Linux wird installiert · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">Linux-Einrichtung gestoppt · nochmal versuchen unter einstellungen › linux</string>

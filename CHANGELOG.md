@@ -4,8 +4,62 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
-## Unreleased
+## 1.0.0 (versionCode 33) – 2026-11-08
 
+- Phone folders: folders picked in Android's folder picker at the top of the permissions
+  screen show in Files, where their files can be opened, shared, renamed,
+  deleted and copied or moved to and from Linux; agents reach them with `omalauncher folders`,
+  `ls`, `get` and `put`, and `omalauncher pick` opens Android's file picker. No storage
+  permission: on Android 11+ Linux also has /sdcard, with the files it saved there itself, so
+  what it puts in Download or Documents other apps see.
+- Settings has a permissions screen listing each permission, whether it's on and what uses it.
+- The `phone` command is `omalauncher` now (`phone` still works), with exit codes that say why
+  there is no answer, and more commands: `notify` (a phone notification on its own
+  "agents and scripts" channel), `share` (Android's share sheet for Linux files), `battery`,
+  `version`, and the phone folder commands. It answers in about 35 ms rather than 170.
+- Linux follows the phone's DNS servers, a VPN's included, so tailnet and LAN names resolve;
+  8.8.8.8 and 1.1.1.1 stay the fallback. An edited resolv.conf is left alone.
+- Owl 19: `fps:` says how many frames a second a widget's animation needs; koi, the owl and the
+  controls panel run at 10 to 30 rather than 60, which saves battery while home shows.
+- Home can open on any page, a face too: `home.home-page` in style.toml (#270, #225).
+- Claude Code no longer warns about cross-session messaging on every start in Linux.
+- Fixes: an exited terminal tile stays stopped until tapped (#130); a widget's notification no
+  longer replaces one from before the launcher restarted; an agent whose install finishes
+  after the agents screen closed shows up right away; Voice keeps its log in ~/.cache.
+
+## 0.20.0 (versionCode 31) – 2026-11-05
+
+- Omarchy 4.5: themes and configs come from v4.5.0. Jade Horse and Starship join the themes
+  and Osaka Jade leaves them; whoever has it picked keeps it. The boot intro videos stay out
+  of the download.
+- Coding agents: Qwen Code, MiniMax Code, Kiro CLI, Kilo, Devin CLI, Amp and Command Code, as
+  in Omarchy 4.5's agent list. Voice talks to all of them but Amp (which has no ACP) over ACP,
+  and to Antigravity (`agy acp`) too.
+- Agents install one at a time, as two at once failed on mise's lock; a second one waits
+  ("waiting…"). Removing an agent that's running stops Voice's copy first, or says to close
+  it, instead of seeming to do nothing.
+- Agents and scripts in Linux can ask for the phone's location, calendar and AirPods with
+  `phone location`, `phone calendar [days]` and `phone airpods [control [value]]`, as far as
+  the launcher was already allowed them; nothing asks for a permission. AGENTS.md tells
+  agents what system they're in (Arch under proot, no systemd, pacman/yay and mise, what
+  opens where). `x-www-browser` opens links in Android's browser.
+- Voice does less work while it talks: only the conversation redraws, and the orb animates
+  only while it shows.
+- Fixes: an agent queued to install no longer stays "waiting…" after the Agents screen closes.
+
+## 0.19.0 (versionCode 30) – 2026-11-04
+
+- Browser tiles: a widget or face can show a web page in a tile of its own, drawn by
+  Android's System WebView, https only and only at hosts written in the file, script off
+  unless `js: true`. `onNavigate`, `onTitle` and `onProgress` follow the page and
+  `web("back" | "forward" | "reload" | "stop")` steers it; a page's script waits while
+  the launcher is behind another app or the screen is off (#255).
+- A widget or face can hold the home screen still with `lock: mode == "play"`: while it's
+  true the page turn, the swipe up and the long press stop, and a chip, Back or the widget
+  stopping always give the screen back (#254).
+- An `Input` takes `lines: 6`: what's typed wraps, the field grows up to that many lines and
+  then scrolls, as a chat's message box. With `onSubmit`, Enter sends and Shift+Enter starts
+  a new line (#248).
 - Widgets can show and change AirPods: owl 18's `android.airpods` has each bud's and
   the case's battery, which buds are in, the listening mode and the settings, read
   over the AirPods' own link as Apple's devices do, and `airpods(...)` switches
@@ -13,6 +67,21 @@ Dates are when the build was uploaded to Play.
   and the rest on and off; `examples/airpods.owl` shows them. `airpods("request")`
   from a tap asks for the Bluetooth permission, and only on Android 17 (16 QPR3 on a
   Pixel), which it needs; elsewhere `supported` is false and nothing asks.
+- Widgets can know roughly where the phone is: owl 18's `android.location` gives an
+  approximate place (a kilometre or two), only once `location("request")` from a tap
+  has allowed it, and only while the widget shows. The bundled today widget has "use my
+  location" for its weather; a typed city still wins.
+- Widgets can show the phone's calendars: owl 18's `android.calendar` lists the next 14
+  days of events, local and synced, each time of a repeating one on its own, without
+  cancelled ones or those you declined, once `calendar("request")` from a tap has
+  allowed it. All-day events run midnight to midnight wherever the phone is, each event
+  has its color, and `calendar("open", e)` opens one in the calendar app.
+  `examples/calendar.owl` shows the next events.
+- Voice talks to Oh My Pi (over ACP) and Pi (over its RPC mode) too.
+- Fixes: a widget command printing hundreds of megabytes no longer runs the launcher out of
+  memory (its output stops at 4 MB); many regex matches in one widget update can't add up to
+  a freeze; Voice no longer crashes in landscape with the keyboard up; a widget's preview is
+  saved off the main thread.
 
 ## 0.18.0 (versionCode 29) – 2026-11-01
 

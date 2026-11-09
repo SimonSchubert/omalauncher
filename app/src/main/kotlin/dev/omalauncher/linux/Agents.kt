@@ -9,7 +9,11 @@ import androidx.compose.runtime.setValue
 import dev.omalauncher.R
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.nio.file.Files
@@ -54,6 +58,33 @@ val AGENTS =
             "http:muse[url=https://api.meta.ai/muse-launcher.sh,bin=muse,version_list_url=https://api.meta.ai/muse-code/channels/muse-stable,version_json_path=.version]",
         ),
         Agent("kimi", "Kimi", R.string.linux_agent_kimi, "npm:@moonshot-ai/kimi-code"),
+        // mise installs Qwen Code from npm.
+        Agent("qwen", "Qwen Code", R.string.linux_agent_qwen, "qwen", node = true),
+        // Its postinstall builds better-sqlite3, which npm skips unless allowed.
+        Agent("mcode", "MiniMax Code", R.string.linux_agent_mcode, "npm:@minimax-ai/code[allow_builds=better-sqlite3]"),
+        Agent(
+            "kiro-cli",
+            "Kiro CLI",
+            R.string.linux_agent_kiro,
+            // Kiro publishes per-platform archives behind a manifest of the stable release.
+            "http:kiro-cli[platforms_linux_x64_url=https://prod.download.cli.kiro.dev/stable/{{version}}/kirocli-x86_64-linux.tar.gz," +
+                "platforms_linux_arm64_url=https://prod.download.cli.kiro.dev/stable/{{version}}/kirocli-aarch64-linux.tar.gz," +
+                "version_list_url=https://prod.download.cli.kiro.dev/stable/latest/manifest.json,version_json_path=.version]",
+            command = "kiro-cli chat",
+        ),
+        Agent("kilo", "Kilo", R.string.linux_agent_kilo, "npm:@kilocode/cli"),
+        Agent(
+            "devin",
+            "Devin CLI",
+            R.string.linux_agent_devin,
+            // Cognition publishes per-platform archives behind a manifest of the current release.
+            "http:devin[platforms_linux_x64_url=https://static.devin.ai/cli/{{ version }}/devin-{{ version }}-x86_64-unknown-linux.tar.gz," +
+                "platforms_linux_arm64_url=https://static.devin.ai/cli/{{ version }}/devin-{{ version }}-aarch64-unknown-linux.tar.gz," +
+                "bin_path=bin,version_list_url=https://static.devin.ai/cli/current/manifest.json,version_json_path=.version]",
+        ),
+        // From npm; every Amp release has a prerelease-style version (0.0.<n>-g<hash>), which mise skips unless told.
+        Agent("amp", "Amp", R.string.linux_agent_amp, "amp[prerelease=true]", node = true),
+        Agent("commandcode", "Command Code", R.string.linux_agent_commandcode, "npm:command-code"),
     )
 
 /**
@@ -91,7 +122,9 @@ val MISE_NODE_FOR_AGENTS =
  * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, Antigravity and Copilot as -i (they
  * refuse a bare argument), the others as an argument.
  * Ori's agent is `ori code`, which stays open only with --interactive. Kimi takes a prompt only in
- * print mode, so the session it ran in is continued after the answer.
+ * print mode, so the session it ran in is continued after the answer. Qwen Code and Kilo bind it to
+ * an option, MiniMax Code, Kiro, Devin and Command Code take it after --, and Amp reads its first
+ * message from stdin (an argument would be one turn that exits), as Omarchy's omarchy-agent starts them.
  * [readOnly], for reading something untrusted: Claude Code and Antigravity start in plan mode, where they
  * can read but not run commands or change files whatever the user's settings say. The others have no flag
  * for that we can rely on inside proot, and only have the prompt.
@@ -111,12 +144,19 @@ fun agentInvocation(
         agentBin == "kimi" -> "kimi --prompt $quoted && kimi --continue"
         agentBin == "agy" && readOnly -> "$agentBin --mode plan -i $quoted"
         agentBin == "agy" -> "$agentBin -i $quoted"
+        agentBin == "qwen" -> "qwen --prompt-interactive=$quoted"
+        agentBin == "kilo" -> "kilo --prompt=$quoted"
+        agentBin == "kiro-cli" -> "kiro-cli chat -- $quoted"
+        agentBin == "mcode" || agentBin == "devin" || agentBin == "commandcode" -> "$agentBin -- $quoted"
+        agentBin == "amp" -> "printf '%s\\n' $quoted | amp"
         else -> "$agentBin $quoted"
     }
 }
 
 class AgentStore(
     private val proot: Proot,
+    /** A string resource with one argument, in the app's language. */
+    private val text: (Int, String) -> String,
     /** Called when the set of installed agents changed, so their desktop entries follow. */
     private val onChanged: () -> Unit,
 ) {
@@ -157,8 +197,16 @@ class AgentStore(
         }.onFailure { Log.w("agents", "cannot save the default agent", it) }
     }
 
-    suspend fun install(agent: Agent) =
-        run(agent, R.string.linux_job_installing) { installScript(agent) }.also { ok -> if (ok) onInstalled(agent) }
+    /**
+     * The install runs on after its screen closes, which cancels this (the blocking job ignores that), so what
+     * mise left is read in finally: a finished install shows up without a restart.
+     */
+    suspend fun install(agent: Agent): Boolean =
+        try {
+            run(agent, R.string.linux_job_installing) { installScript(agent) }
+        } finally {
+            if (isInstalled(agent)) onInstalled(agent)
+        }
 
     /** Installs [agent] with mise, bootstrapping mise itself if needed. */
     fun installScript(agent: Agent) =
@@ -174,12 +222,34 @@ class AgentStore(
         onChanged()
     }
 
-    suspend fun remove(agent: Agent) =
-        run(agent, R.string.linux_job_removing) { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
-            .also {
+    /**
+     * mise locks its config and its installs while it works, and a second `mise use` at the same time fails on
+     * the lock: installs, removals and system updates take this first, one at a time, the others waiting.
+     */
+    val lock = Mutex()
+
+    /** Stops what the launcher itself keeps running of an agent, such as Voice's; whether something was stopped. */
+    var release: (Agent) -> Boolean = { false }
+
+    /**
+     * mise keeps a version that a running program started from, so an agent still open in a window or terminal
+     * stays installed, out of mise's config; the row then says to close it, instead of looking untouched. What
+     * the launcher runs itself (Voice) is stopped first.
+     */
+    suspend fun remove(agent: Agent): Boolean {
+        // Its process ends on another thread: a moment, so mise doesn't find it still running.
+        if (release(agent)) delay(1500)
+        val ok =
+            try {
+                run(agent, R.string.linux_job_removing) { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
+            } finally {
+                // Also when its screen closed while mise worked, as with install.
                 refresh()
                 onChanged()
             }
+        if (ok && isInstalled(agent)) states[agent.bin] = JobState.Failed(listOf(text(R.string.agents_still_running, agent.name)))
+        return ok && !isInstalled(agent)
+    }
 
     /** Drawer entries for the installed agents, with their logos (see [bundledIcons]); each opens in a terminal in the home directory. */
     fun managed(): List<Managed> =
@@ -214,7 +284,18 @@ class AgentStore(
         @StringRes action: Int,
         script: () -> String,
     ): Boolean {
-        val (ok, _) = proot.trackedJob(action, withContext(Dispatchers.IO) { script() }) { states[agent.bin] = it }
+        val publish: (JobState) -> Unit = { states[agent.bin] = it }
+        val waiting = JobState.Working(R.string.linux_job_waiting, emptyList())
+        publish(waiting)
+        // The script is made once it's this job's turn: the one before may have installed mise.
+        val (ok, _) =
+            try {
+                lock.withLock { proot.trackedJob(action, withContext(Dispatchers.IO) { script() }, publish = publish) }
+            } catch (e: CancellationException) {
+                // Its screen closed before its turn: the row isn't left "waiting…", which also blocks installing it again.
+                if (states[agent.bin] === waiting) states.remove(agent.bin)
+                throw e
+            }
         Log.i("agents", "${agent.bin}: ${if (ok) "ok" else "failed"}")
         return ok
     }

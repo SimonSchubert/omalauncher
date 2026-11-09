@@ -22,7 +22,8 @@ widget "calendar" {
     Column {
       gap: 6
       fill: true
-      Text { text: "calendar"; style: muted }
+      // The calendar app on today.
+      Text { text: "calendar"; style: muted; onTap: calendar("open") }
       if len(c.events) == 0 {
         Text { text: "nothing in the next two weeks"; style: small }
       }
@@ -31,14 +32,21 @@ widget "calendar" {
         weight: 1
         scroll: true
         for e in c.events key e.id {
-          // An all-day event has a date, not a time: shown in UTC, where its day is stored, so it doesn't slip a day.
-          let when = e.allDay ? fmtTime(e.start, "EEE d MMM", "UTC") : fmtTime(e.start, "EEE d MMM HH:mm")
-          Column {
-            gap: 0
-            Text { text: when + (e.calendar != "" ? " · " + e.calendar : ""); style: label; maxLines: 1 }
-            Text { text: e.title; bold: true; maxLines: 1 }
-            if e.location != "" {
-              Text { text: e.location; style: small; maxLines: 1 }
+          // An all-day event runs midnight to midnight here, so its day shows right in any time zone.
+          let when = e.allDay ? fmtTime(e.start, "EEE d MMM") : fmtTime(e.start, "EEE d MMM HH:mm")
+          // A tap opens it in the calendar app, at this time of a repeating one.
+          Row {
+            gap: 8
+            onTap: calendar("open", e)
+            Text { text: "●"; color: e.color }
+            Column {
+              gap: 0
+              weight: 1
+              Text { text: when + (e.calendar != "" ? " · " + e.calendar : ""); style: label; maxLines: 1 }
+              Text { text: e.title; bold: true; maxLines: 1 }
+              if e.location != "" {
+                Text { text: e.location; style: small; maxLines: 1 }
+              }
             }
           }
         }

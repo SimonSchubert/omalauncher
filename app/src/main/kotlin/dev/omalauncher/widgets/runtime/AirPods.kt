@@ -11,7 +11,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
@@ -38,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
+import dev.omalauncher.hasPermission
 
 /**
  * AirPods, for `source a = android.airpods`: each bud's and the case's battery, which buds are in, the listening mode and
@@ -81,6 +81,9 @@ class AirPods(
     /** Whether this phone can link to AirPods: Android 16 QPR3 or later, with Bluetooth, and aap.c loaded. */
     val supported: Boolean get() = constructor != null
 
+    /** Whether Bluetooth is on. */
+    val enabled: Boolean get() = adapter?.isEnabled == true
+
     /** Something worth looking for AirPods again for: one connecting or leaving, Bluetooth on, the permission, "connect". */
     private val nudges = Channel<Unit>(Channel.CONFLATED)
 
@@ -89,7 +92,7 @@ class AirPods(
 
     /** Bluetooth connect, a runtime permission since Android 12; before it, an install-time one. */
     val granted: Boolean
-        get() = Build.VERSION.SDK_INT < 31 || context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+        get() = Build.VERSION.SDK_INT < 31 || context.hasPermission(Manifest.permission.BLUETOOTH_CONNECT)
 
     fun value(): Value = state.value.value(supported, granted, alias)
 

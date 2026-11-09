@@ -139,6 +139,9 @@ class WidgetEngine(
     /** android.airpods and airpods(...), which ask the activity in front for Bluetooth. */
     val airpods get() = services.airpods
 
+    /** android.media, and android.modes' Do Not Disturb switch: both need notification access. */
+    val media get() = services.media
+
     /** The store's widgets, and its apps. */
     val market = Market(this, OwlKind.Widget)
     val faceMarket = Market(this, OwlKind.Face)
@@ -328,6 +331,44 @@ class WidgetEngine(
     ) = layout.setPage(fileName, page)
 
     /**
+     * Home moves to [screen] (a foldable's cover screen or unfolded inner screen, or back): the layout's cells and pages
+     * are that screen's from here on, and every widget is on the page it has there, its file's own `page:` where none was
+     * chosen. No file is compiled again. The unfolded screen, the first time it shows once the widgets have loaded,
+     * starts from the main pages side by side, as home showed them there before (see [seedUnfolded]).
+     */
+    fun show(screen: Screen) {
+        val seeding = screen == Screen.UNFOLDED && loaded && !layout.has(screen)
+        if (seeding) seedUnfoldedScreen()
+        if (layout.screen == screen) {
+            if (seeding) repage()
+            return
+        }
+        layout.show(screen)
+        repage()
+    }
+
+    private fun seedUnfoldedScreen() {
+        val main = itemsByPageOn(Screen.MAIN).values.flatten()
+        val minWidth = main.associate { it.key to it.minSize.first }
+        val seed =
+            seedUnfolded(
+                main.map { Triple(it.key, it.page, layout.cell(it.key, Screen.MAIN)) },
+                layout.columnsOf(Screen.MAIN),
+                layout.columnsOf(Screen.UNFOLDED),
+            ) { minWidth[it] ?: 1 }
+        layout.seed(Screen.UNFOLDED, seed)
+    }
+
+    /** Every widget onto the page the layout has for it on the screen shown, else its file's. */
+    private fun repage() {
+        for (i in specs.indices) {
+            val spec = specs[i]
+            val page = layout.pageOn(spec.file.name, spec.program?.page ?: if (spec.isFace) FACE_PAGE else 1)
+            if (spec.page != page) specs[i] = spec.onPage(page)
+        }
+    }
+
+    /**
      * The user put [item] where it is: an app they pinned, or a widget with a page chosen on the phone (a store add, a
      * share, a drag). A shipped widget is on its file's own `page:` until then.
      */
@@ -378,14 +419,15 @@ class WidgetEngine(
         arrangePages(pages)
     }
 
-    /** Puts [item] on [page]: a widget through its page override, a shortcut in place. */
+    /** Puts [item] on [page] of [screen] (the one shown unless said): a widget through its page override, a shortcut in place. */
     fun moveToPage(
         item: HomeItem,
         page: Int,
+        screen: Screen = layout.screen,
     ) {
         when (item) {
-            is WidgetItem -> placeOnPage(item.key, page)
-            is Shortcut, is Folder -> shortcuts.move(item.key, page)
+            is WidgetItem -> if (screen == layout.screen) placeOnPage(item.key, page) else layout.setPage(item.key, page, screen)
+            is Shortcut, is Folder -> shortcuts.move(item.key, page, screen)
         }
     }
 
@@ -497,6 +539,16 @@ class WidgetEngine(
     /** Widgets, pinned apps and folders on [page]. Wrappers compare by spec, so unchanged pages skip recomposition. */
     fun itemsOn(page: Int): List<HomeItem> = itemsByPage[page].orEmpty()
 
+    /**
+     * Home's items by page as [screen] has them, shown or not: a widget on the page the layout keeps for it there, else its
+     * file's; an app or folder on its page there. For layout.toml, which holds every screen; home draws from [itemsOn].
+     */
+    fun itemsByPageOn(screen: Screen): Map<Int, List<HomeItem>> {
+        if (screen == layout.screen) return itemsByPage
+        val widgets = specs.filter(::onHome).map { spec -> WidgetItem(spec.onPage(layout.pageOn(spec.file.name, spec.program?.page ?: if (spec.isFace) FACE_PAGE else 1, screen))) }
+        return (widgets + shortcuts.onGrid(screen)).groupBy { it.page }
+    }
+
     /** Built once per change rather than per call: home asks for every page on each recomposition, and drags ask often. */
     private val itemsByPage by derivedStateOf {
         (specs.filter(::onHome).map(::WidgetItem) + shortcuts.onGrid()).groupBy { it.page }
@@ -585,7 +637,11 @@ class WidgetEngine(
                 }.also { it.startWatching() }
             launch {
                 snapshotFlow { loaded }.first { it }
-                snapshotFlow { runtime.style.style[Style.COLUMNS] }.collect { layout.regrid(it, pages.map(::itemsOn)) }
+                snapshotFlow { runtime.style.style[Style.COLUMNS] }.collect { layout.regrid(it, itemsByPageOn(Screen.MAIN).values.toList()) }
+            }
+            launch {
+                snapshotFlow { loaded }.first { it }
+                snapshotFlow { runtime.style.style[Style.UNFOLDED_COLUMNS] }.collect { layout.regrid(it, itemsByPageOn(Screen.UNFOLDED).values.toList(), Screen.UNFOLDED) }
             }
             // A new phone language, or one picked in settings: files with strings { } or lang() compile anew for it.
             launch { AppLanguage.language.drop(1).collect { changes.trySend(false) } }
@@ -909,7 +965,7 @@ class WidgetEngine(
             // Advice, after the clear and before the check result, so owl-check prints it with the rest.
             for (w in p.warnings) writeError(file, "warning: $w", append = true)
             writeCheck(file, hash, "ok")
-            WidgetSpec(file, p.name, layout.page(file.name) ?: p.page, p.order, p, null, p.size, p.minSize, stamp, p.kind)
+            WidgetSpec(file, p.name, layout.pageOn(file.name, p.page), p.order, p, null, p.size, p.minSize, stamp, p.kind)
         } catch (e: CompileError) {
             broken(file, previous, stamp, Source(text).format(e), hash, OwlKind.of(text))
         } catch (e: RuntimeException) {
@@ -928,7 +984,7 @@ class WidgetEngine(
     ): WidgetSpec {
         writeError(file, error)
         writeCheck(file, hash, "error")
-        return WidgetSpec(file, file.nameWithoutExtension, previous?.page ?: layout.page(file.name) ?: if (kind == OwlKind.Face) FACE_PAGE else 1, previous?.order ?: 999, null, error, previous?.size, previous?.minSize ?: (1 to 1), stamp, kind)
+        return WidgetSpec(file, file.nameWithoutExtension, previous?.page ?: layout.pageOn(file.name, if (kind == OwlKind.Face) FACE_PAGE else 1), previous?.order ?: 999, null, error, previous?.size, previous?.minSize ?: (1 to 1), stamp, kind)
     }
 
     /** Error files are written in order: a clear must never land after the error that follows it. */
@@ -1093,7 +1149,15 @@ class WidgetEngine(
 
         private const val AGENT_POINTER =
             "# omalauncher\n\nThis Arch system runs inside an Android launcher, omalauncher; its source is at " +
-                "https://github.com/SimonSchubert/omalauncher, should you need to understand how the launcher works. " +
+                "https://github.com/SimonSchubert/omalauncher, should you need to understand how the launcher works.\n\n" +
+                "It's Arch Linux ARM under proot, not a booted system: you are root already (no sudo needed), and there is " +
+                "no systemd (systemctl, services and timers don't work), no cron, no Docker and no kernel modules. Install " +
+                "packages with pacman or yay, command-line tools with mise. /sdcard is the phone's own storage, but it shows only " +
+                "the files Linux put there itself: save files for the user's other apps in /sdcard/Download or /sdcard/Documents " +
+                "(pictures in /sdcard/Pictures). The user's other files are in the phone folders they let Linux reach, which have " +
+                "no path: `omalauncher folders` lists them, `omalauncher ls`, `get` and `put` list and copy files in and out, and " +
+                "`omalauncher pick` lets the user choose any file on the phone. xdg-open opens http(s) links in Android's browser; `omarchy-edit <file>` opens a file in the " +
+                "launcher's editor and `omarchy-files [folder]` its file manager; GUI apps (Wayland) open as windows on the launcher.\n\n" +
                 "Home-screen widgets are `.owl` files in " +
                 "~/$GUEST_DIR, written in a small declarative language documented in README.md there (and docs/ next to it); so are apps for the " +
                 "app drawer (`app \"name\" { }`) and panels that swiping up or down on home opens (`panel \"name\" { }`, picked with " +
@@ -1103,13 +1167,18 @@ class WidgetEngine(
                 "and .stock-keybar.owl the bar as shipped. " +
                 "Saved files show up on the phone within seconds. After saving, run `owl-check <file>`: it prints the errors " +
                 "and the path of a PNG of the tile or view, drawn with live data; look at it to check the layout. " +
-                "examples/ holds more widgets to learn from or move up to use. Scripts, cron jobs and hooks can set a running " +
+                "examples/ holds more widgets to learn from or move up to use. Scripts and hooks can set a running " +
                 "widget's state or refresh it with `owl-send <file> set <state> <value>` and `owl-send <file> refresh`.\n\n" +
                 "The launcher's look (theme, background, tile spacing and borders, corners, the system bars' colors, the " +
                 "terminals' font) is ~/${StyleStore.GUEST_DIR}/${StyleStore.FILE}; ${StyleStore.DEFAULTS} next to it lists every " +
                 "setting with its default and range. Changes show within a second; ${StyleStore.ERRORS} there says what was ignored and why.\n\n" +
                 "Where everything on home is (pages in order, faces, widgets, pinned apps and folders, each tile's cell) is " +
                 "~/${HomeStore.GUEST_DIR}/${HomeStore.FILE}; edit it to move, resize or pin things or reorder pages. " +
-                "docs/home.md in the widgets folder explains it.\n"
+                "docs/home.md in the widgets folder explains it.\n\n" +
+                "The phone's approximate location, its calendar, the AirPods connected to it and its battery are `omalauncher location`, " +
+                "`omalauncher calendar [days]`, `omalauncher airpods` and `omalauncher battery` (JSON; `omalauncher --help` says more), where the " +
+                "launcher was allowed them. `omalauncher notify <title> [text]` puts a notification on the phone, to tell the user something " +
+                "they should know while away, such as a long task being done; `omalauncher share <file>...` opens Android's share sheet for " +
+                "files, to send them on with an app the user picks.\n"
     }
 }

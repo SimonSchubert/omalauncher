@@ -28,7 +28,7 @@ class HomeStore(
 
     private val synced =
         SyncedFile(File(dir, FILE), File(dir, ERRORS), "home's layout") {
-            table = HomeFile.encode(table, snapshot())
+            table = HomeFile.encode(table, snapshot(Screen.MAIN), Screen.entries.filter { it != Screen.MAIN && layout.has(it) }.associateWith(::snapshot))
             Toml.write(table, HomeFile.HEADER)
         }
 
@@ -100,29 +100,37 @@ class HomeStore(
             synced.setProblems(listOf("$FILE: no [[page]]; home stays as it is"))
             return
         }
-        val decoded = HomeFile.decode(parsed, layout.columns)
+        val decoded = HomeFile.decode(parsed, layout.columnsOf(Screen.MAIN), layout::columnsOf)
         val problems = ArrayList(decoded.problems)
         val gone = apply(decoded.layout, problems)
+        // A screen's own section places its tiles there; which apps are on home is the main pages' say. A section taken
+        // out of the file forgets that screen's layout, so it starts from the main pages again.
+        for (screen in Screen.entries) {
+            if (screen == Screen.MAIN) continue
+            val section = decoded.screens[screen]
+            if (section != null) applyOn(screen, section, problems) else if (layout.has(screen)) layout.reset(screen)
+        }
         // At the start, a widget deleted while the launcher was off isn't a mistake in the file: it's left out, quietly.
         if (atStart && gone) problems.removeAll { it.endsWith(MISSING) }
         synced.setProblems(problems)
         // Cells on another grid than home's were moved onto it: the file says so, rather than which grid it was.
-        if ((atStart && gone) || decoded.layout.columns != layout.columns) synced.save()
+        if ((atStart && gone) || decoded.screens.any { (screen, l) -> l.columns != layout.columnsOf(screen) }) synced.save()
     }
 
-    /** Home as the file has it now, from what home draws. */
-    private fun snapshot(): HomeLayout {
+    /** Home on [screen] as the file has it now, from what home draws there. */
+    private fun snapshot(screen: Screen): HomeLayout {
         val pages = ArrayList<PageEntry>()
-        for (page in engine.pages) {
-            val items = engine.itemsOn(page)
+        val byPage = engine.itemsByPageOn(screen)
+        for (page in byPage.keys.sorted()) {
+            val items = byPage.getValue(page)
             // A face sharing its page with tiles is on its way to a page of its own; it goes before them.
             for (item in items) if (item is WidgetItem && item.isFace) pages += FacePage(item.key)
             val tiles =
                 items
                     .filterNot { it.isFace }
-                    .sortedWith(compareBy({ layout.cell(it.key)?.y ?: Int.MAX_VALUE }, { layout.cell(it.key)?.x ?: Int.MAX_VALUE }))
+                    .sortedWith(compareBy({ layout.cell(it.key, screen)?.y ?: Int.MAX_VALUE }, { layout.cell(it.key, screen)?.x ?: Int.MAX_VALUE }))
                     .map { item ->
-                        val cell = layout.cell(item.key)
+                        val cell = layout.cell(item.key, screen)
                         when (item) {
                             is WidgetItem -> WidgetTile(item.key, cell)
                             is Shortcut -> AppTile(fileKey(item.key), cell)
@@ -131,7 +139,87 @@ class HomeStore(
                     }
             if (tiles.isNotEmpty()) pages += TilePage(tiles)
         }
-        return HomeLayout(layout.columns, pages)
+        return HomeLayout(layout.columnsOf(screen), pages)
+    }
+
+    /**
+     * Puts home on [screen], another than the main one, as its [section] says: each tile the main pages pinned on the page
+     * and in the cell the section gives it there. A tile the section leaves out keeps its place there; one it names that
+     * isn't on home at all is noted in [problems], not pinned (the main pages decide what's on home).
+     */
+    private fun applyOn(
+        screen: Screen,
+        section: HomeLayout,
+        problems: MutableList<String>,
+    ) {
+        val numbers = HomeFile.numbers(section.pages)
+        val cols = layout.columnsOf(screen)
+        val onHome = engine.itemsByPageOn(Screen.MAIN).values.flatten().associateBy { it.key }
+        val specs = engine.specs.filter(engine::onHome).associateBy { it.file.name }
+        val placed = HashSet<String>()
+        val moves = ArrayList<Pair<HomeItem, Int>>()
+        val cells = HashMap<String, Cell?>()
+        val prefix = "${screen.key}."
+
+        /** The item the file's [tile] names, on home already; null, noted, when it isn't. */
+        fun item(
+            tile: Tile,
+            where: String,
+        ): HomeItem? {
+            val key =
+                when (tile) {
+                    is WidgetTile -> tile.file
+                    is AppTile -> shortcutKey(tile.app)
+                    is FolderTile -> tile.apps.firstNotNullOfOrNull(::shortcutKey)?.let { first -> shortcuts.items.firstOrNull { it.key == first }?.folder }
+                }
+            val item = key?.let(onHome::get)
+            return when {
+                item == null -> null.also { problems += "$where: ${(tile as? WidgetTile)?.file ?: (tile as? AppTile)?.app ?: "the folder"} isn't on home; the pages at the top put things on home" }
+                !placed.add(item.key) -> null.also { problems += "$where: ${item.key} is on this screen already; left out here" }
+                else -> item
+            }
+        }
+
+        section.pages.forEachIndexed { i, entry ->
+            val page = numbers[i]
+            val where = "${prefix}page ${i + 1}"
+            when (entry) {
+                is FacePage -> {
+                    val item = item(WidgetTile(entry.file), where) ?: return@forEachIndexed
+                    if (!item.isFace) problems += "$where: ${entry.file} isn't a face; write it as a tile" else moves += item to page
+                }
+                is TilePage -> {
+                    val taken = ArrayList<Cell>()
+                    entry.tiles.forEachIndexed { j, tile ->
+                        val at = "$where, tile ${j + 1}"
+                        val item = item(tile, at) ?: return@forEachIndexed
+                        if (item.isFace) {
+                            problems += "$at: ${item.key} is a face; write it as a page, face = \"${item.key}\""
+                            return@forEachIndexed
+                        }
+                        moves += item to page
+                        val size = layout.cell(item.key, screen)?.let { it.w to it.h } ?: specs[item.key]?.size ?: (cols / 2 to 3)
+                        val c = tile.cell?.let { c -> rescaled(c, size, section.columns, cols, item.resizable) }
+                        cells[item.key] =
+                            when {
+                                c == null -> null
+                                c.x + c.w > cols -> null.also { problems += "$at: off the grid's $cols columns; it took the first free spot" }
+                                taken.any { it.overlaps(c) } -> null.also { problems += "$at: overlaps a tile before it; it took the first free spot" }
+                                else -> c.also { taken += it }
+                            }
+                    }
+                }
+            }
+        }
+
+        applying = true
+        try {
+            for ((item, page) in moves) if (layout.page(item.key, screen) != page) engine.moveToPage(item, page, screen)
+            for ((key, cell) in cells) if (cell == null) layout.clearCell(key, screen) else layout.set(key, cell, screen)
+            layout.save()
+        } finally {
+            applying = false
+        }
     }
 
     /**
@@ -144,7 +232,7 @@ class HomeStore(
     ): Boolean {
         val numbers = HomeFile.numbers(file.pages)
         val specs = engine.specs.filter(engine::onHome).associateBy { it.file.name }
-        val cols = layout.columns
+        val cols = layout.columnsOf(Screen.MAIN)
         var gone = false
         val placed = HashSet<String>()
         val widgets = ArrayList<Pair<WidgetSpec, Int>>()
@@ -206,7 +294,7 @@ class HomeStore(
                             is WidgetTile -> {
                                 if (!widget(tile.file, page, face = false, at)) return@forEachIndexed
                                 key = tile.file
-                                size = layout.cell(key)?.let { it.w to it.h } ?: specs[key]?.size ?: (cols / 2 to 3)
+                                size = layout.cell(key, Screen.MAIN)?.let { it.w to it.h } ?: specs[key]?.size ?: (cols / 2 to 3)
                             }
                             is AppTile -> {
                                 key = app(tile.app, page, null, at)?.key ?: return@forEachIndexed
@@ -239,9 +327,10 @@ class HomeStore(
 
         applying = true
         try {
-            for ((spec, page) in widgets) if (spec.page != page || layout.page(spec.file.name) != page) engine.moveToPage(WidgetItem(spec), page)
+            // The main screen's, said so: the file may come in while home is on the cover screen.
+            for ((spec, page) in widgets) if (layout.page(spec.file.name, Screen.MAIN) != page) engine.moveToPage(WidgetItem(spec), page, Screen.MAIN)
             shortcuts.replace(apps, folders)
-            for ((key, cell) in cells) if (cell == null) layout.clearCell(key) else layout.set(key, cell)
+            for ((key, cell) in cells) if (cell == null) layout.clearCell(key, Screen.MAIN) else layout.set(key, cell, Screen.MAIN)
             layout.save()
         } finally {
             applying = false

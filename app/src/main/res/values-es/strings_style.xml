@@ -27,6 +27,13 @@
     <string name="style_pages">páginas</string>
     <string name="style_pages_one">una</string>
     <string name="style_pages_auto">auto</string>
+    <string name="style_cover_screen">pantalla externa</string>
+    <string name="style_cover_upright">vertical</string>
+    <string name="style_cover_turned">girada</string>
+    <string name="style_unfolded">desplegado</string>
+    <string name="style_unfolded_own">pantalla propia</string>
+    <string name="style_unfolded_pages">páginas</string>
+    <string name="style_unfolded_columns">columnas desplegado</string>
     <string name="style_corners">esquinas</string>
     <string name="style_corners_edge">rectas</string>
     <string name="style_corners_soft">suaves</string>
@@ -133,5 +140,6 @@
     <string name="agents_intro">Se instalan con mise, como en Omarchy. Los inicios de sesión se abren en tu navegador; pega las claves con el portapapeles del teclado.</string>
     <string name="agents_open">abrir</string>
     <string name="agents_remove">desinstalar</string>
+    <string name="agents_still_running">%1$s sigue abierto: ciérralo y vuelve a desinstalarlo</string>
     <string name="agents_install">instalar</string>
 </resources>

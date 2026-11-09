@@ -16,7 +16,7 @@ ARCH LINUX（可选）
 • Omalauncher 就是 Wayland 合成器，所以 foot 等图形应用都能运行
 • 搜索并安装 Arch Linux ARM 和 AUR 中的软件包
 • 在主屏幕上运行命令的终端小组件
-• Files：管理 Linux 主目录的文件管理器
+• Files：文件管理器，管理 Linux 主目录，也能管理你选择的手机文件夹：复制、移动、重命名、删除、打开和分享文件
 • 你的主题也会应用到 Linux 应用上
 
 编程智能体

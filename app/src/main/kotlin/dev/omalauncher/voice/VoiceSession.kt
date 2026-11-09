@@ -177,6 +177,7 @@ class VoiceSession(
 
     private var link: AgentLink? = null
     private var process: Process? = null
+
     private var session: String? = null
     private val always = HashSet<String>()
     private var buffer = ""
@@ -205,15 +206,16 @@ class VoiceSession(
     val dir get() = File(context.filesDir, "voice")
 
     /**
-     * What went to and came from the agent, for finding out why it misbehaves: /tmp/voice-agent.log in Linux,
-     * readable from a terminal, cut in half when it passes 1 MB; /tmp is emptied as the launcher starts.
+     * What went to and came from the agent, for finding out why it misbehaves: ~/.cache/omalauncher/voice-agent.log in
+     * Linux, readable from a terminal, cut in half when it passes 1 MB. Not in /tmp, which is emptied as the launcher
+     * starts: an update or Android ending the process took the log of what went wrong with it.
      */
     private fun trace(
         way: Char,
         line: String,
     ) = files.execute {
         runCatching {
-            val log = proot.hostFile("/tmp/voice-agent.log")
+            val log = File(proot.home, ".cache/omalauncher/voice-agent.log").apply { parentFile?.mkdirs() }
             if (log.length() > 1_000_000) log.writeText(log.readText().takeLast(500_000))
             log.appendText("${System.currentTimeMillis() % 100_000_000} $way ${line.take(4000)}\n")
         }
@@ -407,6 +409,13 @@ class VoiceSession(
         transcript += Entry("note", if (on) str(R.string.voice_note_allow_all, name) else str(R.string.voice_note_ask_again))
         saveTranscript()
         if (on) for (a in approvals.toList()) answer(a.id, true)
+    }
+
+    /** [bin] is being removed: its process stops if it's the agent here, as mise won't delete a running one. */
+    fun release(bin: String): Boolean {
+        if (agent?.bin != bin || process == null) return false
+        stopAgent()
+        return true
     }
 
     /** Talks to [to] instead: the conversation so far is put aside and [to]'s comes back. */

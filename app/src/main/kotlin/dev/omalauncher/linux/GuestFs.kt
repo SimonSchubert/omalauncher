@@ -197,7 +197,8 @@ class GuestFs(
         }
     }
 
-    private fun freeName(
+    /** [name] in [dir], a resolved guest folder, or "name (copy)" and on beside one already there. */
+    fun freeName(
         dir: String,
         name: String,
     ): String {

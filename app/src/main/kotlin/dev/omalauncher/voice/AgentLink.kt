@@ -105,7 +105,10 @@ const val VOICE_PROMPT =
         "offers of further help. Answer in the language the user speaks. Never use markdown, lists, headings, code " +
         "blocks, tables, emoji or URLs; say numbers, paths and symbols the way you'd say them out loud. For a task " +
         "with tools, say once in a few words what you're going to do, then work without talking about each step, " +
-        "and at the end say the outcome in a sentence or two, not everything you did."
+        "and at the end say the outcome in a sentence or two, not everything you did. Names are what speech-to-text " +
+        "gets wrong most: the launcher you run in, and its command `omalauncher` (`omalauncher --help`), often come " +
+        "as \"all my launcher\", \"home alarm show\" or the like. Take what they most likely meant and go ahead; ask " +
+        "only when it could be quite different things, rather than searching for words that were misheard."
 
 /** Where agents work in Linux, unless one needs a folder of its own. */
 const val GUEST_HOME = "/root"
@@ -123,6 +126,15 @@ val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
         "kimi" to { w -> AcpLink(w, "kimi acp") },
         "cursor-agent" to { w -> AcpLink(w, "cursor-agent acp") },
         "omp" to { w -> AcpLink(w, "omp acp") },
+        "qwen" to { w -> AcpLink(w, "qwen --acp") },
+        "mcode" to { w -> AcpLink(w, "mcode acp") },
+        // Kiro can't load a session, so a conversation picked up later starts a new one.
+        "kiro-cli" to { w -> AcpLink(w, "kiro-cli acp") },
+        // Kilo is OpenCode underneath, with its snapshots: the widgets, as for OpenCode.
+        "kilo" to { w -> AcpLink(w, "kilo acp", "$GUEST_HOME/${WidgetEngine.GUEST_DIR}") },
+        "devin" to { w -> AcpLink(w, "devin acp") },
+        "commandcode" to { w -> AcpLink(w, "commandcode acp") },
+        "agy" to { w -> AcpLink(w, "agy acp") },
         "pi" to ::PiLink,
     )
 

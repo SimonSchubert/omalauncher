@@ -37,6 +37,7 @@ widget "memory" {
   size: 3x4               // size in grid cells when first placed: columns x rows
   minSize: 2x3            // users can't shrink it below this
   // lock: playing        // holds the home screen still while true, for a game or a drawing pad (owl 18)
+  // fps: busy ? 30 : 10  // frames a second a `time` animation needs, up to 60; fewer save battery (owl 19)
 
   source mem = cmd("free -b | awk '/Mem:/ {print $2, $3}'") every 5s
   let used = num(words(mem)[1])
@@ -78,7 +79,7 @@ A file holds declarations, then the nodes it shows:
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 18.
+  it's 1. This launcher has 20.
 - Text is written in the language of whoever uses the widget. One meant for the store keeps its text in
   `strings { en { ... } id { ... } }` and shows `str.name`, the phone's language's (owl 16, see Text in more
   languages in docs/declarations.md).

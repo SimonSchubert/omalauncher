@@ -10,6 +10,9 @@
     <string name="files_home">主目录</string>
     <string name="files_place_config">配置</string>
     <string name="files_place_downloads">下载</string>
+    <string name="files_place_phone_folders">手机文件夹</string>
+    <string name="files_add_phone_folder">添加手机文件夹</string>
+    <string name="files_no_phone_folders">还没有手机文件夹：从菜单添加一个</string>
     <string name="files_place_system">系统</string>
     <string name="files_search">搜索</string>
     <string name="files_more">更多</string>

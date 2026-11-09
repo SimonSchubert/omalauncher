@@ -16,7 +16,7 @@ El launcher funciona sin él. Si lo quieres, Omalauncher descarga Arch Linux ARM
 • Omalauncher es el compositor Wayland, así que funcionan apps gráficas como foot
 • Busca e instala paquetes de Arch Linux ARM y del AUR
 • Widgets de terminal que ejecutan comandos en tu pantalla de inicio
-• Files, un administrador de archivos para la carpeta personal de Linux
+• Files, un administrador de archivos para la carpeta personal de Linux y las carpetas del teléfono que elijas: copia, mueve, renombra, borra, abre y comparte archivos
 • Tu tema también se aplica a las apps de Linux
 
 AGENTES DE PROGRAMACIÓN

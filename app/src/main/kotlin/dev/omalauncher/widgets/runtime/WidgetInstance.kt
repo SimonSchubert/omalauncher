@@ -3,6 +3,7 @@ package dev.omalauncher.widgets.runtime
 import android.graphics.Bitmap
 import android.util.Log
 import dev.omalauncher.upgrade.writeAtomically
+import dev.omalauncher.widgets.lang.MAX_FPS
 import dev.omalauncher.widgets.lang.PersistedValues
 import dev.omalauncher.widgets.lang.TriggerKind
 import kotlinx.coroutines.channels.Channel
@@ -47,6 +48,7 @@ import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.TRUE
 import dev.omalauncher.widgets.lang.FALSE
 import dev.omalauncher.widgets.lang.Program
+import dev.omalauncher.widgets.lang.ASKS
 import dev.omalauncher.widgets.lang.SPEECH_ANYWHERE
 import dev.omalauncher.widgets.lang.Sprite
 import dev.omalauncher.widgets.lang.Str
@@ -582,19 +584,17 @@ class WidgetInstance(
         }
         // An agent or an app opening on its own, from a timer or a fetched value, over whatever the user is doing: like
         // sound(...), a trigger does it only while the app or screen is open.
-        if ((name == "ask" || name == "open") && inTrigger && !foreground()) return report("$name(...) in a trigger works only while the app or screen is open")
+        val key = args.firstOrNull().textOrNull()
+        if ((name == "ask" || name == "open" || (name == "calendar" && key == "open")) && inTrigger && !foreground()) return report("$name(...) in a trigger works only while the app or screen is open")
         // Keys go to whatever window has the keyboard: only from a touch, never on a timer or a fetched value. Or from
         // what the user just said, to this widget's dictation a tap started: on said.final { typeText(value) }.
         if ((name == "pressKey" || name == "typeText" || name == "latch") && inTrigger && !byDictation) {
             return report("$name(...) works in handlers like onPress, or in on said.final for what android.speech heard, not in another trigger")
         }
         if (name == "pickImages" && inTrigger) return report("pickImages() works in onTap, not in a trigger")
-        // The permission dialog, like the microphone's, only for a touch.
-        if (name == "location" && inTrigger) return report("location(\"request\") works in onTap, not in a trigger")
-        if (name == "calendar" && inTrigger) return report("calendar(\"request\") works in onTap, not in a trigger")
-        val key = args.firstOrNull().textOrNull()
+        // A permission dialog, like the microphone's, only for a touch.
+        if (name in ASKS && key == "request" && inTrigger) return report("$name(\"request\") works in onTap, not in a trigger")
         // The microphone, like the keys, only from a touch; stopping it from anywhere.
-        if (name == "airpods" && key == "request" && inTrigger) return report("airpods(\"request\") works in onTap, not in a trigger")
         if (name == "speech" && inTrigger && key !in SPEECH_ANYWHERE) return report("speech(\"$key\") works in onTap, not in a trigger")
         if (name == "speech") return key?.let { services.speech(this, it) } ?: Unit
         // Names built from values, which the compiler couldn't check: say so rather than press nothing.
@@ -1189,6 +1189,18 @@ class WidgetInstance(
 
     /** Whether a face or an app keeps the status bar over it now: its `statusBar`, true unless it says otherwise. */
     fun showsStatusBar() = program.statusBar?.let { eval(it, root, "statusBar").truthy } ?: true
+
+    /**
+     * How many frames a second the `time` animation gets now: its `fps`, kept from 1 to [MAX_FPS], else [MAX_FPS]. A
+     * `time` in it doesn't count as a read, or a clock nothing else reads would never stop.
+     */
+    fun frameRate(): Double {
+        val ev = program.fps ?: return MAX_FPS.toDouble()
+        val read = timeRead
+        val n = (eval(ev, root, "fps") as? Num)?.v
+        timeRead = read
+        return if (n == null || n.isNaN()) MAX_FPS.toDouble() else n.coerceIn(1.0, MAX_FPS.toDouble())
+    }
 
     /** Whether a widget or a face holds the home screen still now: its `lock`, false unless it says otherwise. */
     fun holdsHome() = program.lock?.let { eval(it, root, "lock").truthy } == true

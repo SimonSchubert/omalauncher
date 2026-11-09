@@ -5,6 +5,7 @@ everforest 1-tree-tops.webp
 flexoki-light 1-orb.webp
 gruvbox 1-the-backwater.jpg
 hackerman 1-synth-scape.jpg
+jade-horse 01-mountain-horses.webp
 kanagawa 1-kanagawa.jpg
 last-horizon 1-eyes-wide.webp
 lumon 01-united-in-severance.webp
@@ -12,11 +13,11 @@ lupine 01-cherry-blossom-bokeh.webp
 matte-black 0-ship-at-sea.jpg
 miasma 01-nature-of-fear.webp
 nord 0-black-moon.jpg
-osaka-jade 1-glowing-city.webp
 retro-82 1-in-the-groove.webp
 ristretto 0-launch.webp
 rose-pine 1-funky-shapes.webp
 solitude 1-on-pole.webp
-tokyo-night 0-winding-road.webp
+starship 1-starbase.webp
+tokyo-night 0-liftoff.webp
 vantablack 0-dot-hands.webp
 white 1-white.webp

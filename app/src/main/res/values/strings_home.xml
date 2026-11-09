@@ -66,6 +66,7 @@
 
     <!-- What screen readers say for a folder on home. %1$s is its name. -->
     <string name="home_folder_named">%1$s folder</string>
+    <string name="home_app_has_notifications">%1$s, has notifications</string>
     <string name="home_folder">folder</string>
     <!-- An open folder's name while it has none. -->
     <string name="home_folder_tap_to_name">tap to name</string>

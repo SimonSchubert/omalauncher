@@ -61,6 +61,13 @@
     <string name="linux_agent_ori">Agen coding dari OpenRouter</string>
     <string name="linux_agent_muse">Agen coding dari Meta</string>
     <string name="linux_agent_kimi">Agen coding dari Moonshot AI</string>
+    <string name="linux_agent_qwen">Agen coding Qwen dari Alibaba</string>
+    <string name="linux_agent_mcode">Agen coding dari MiniMax</string>
+    <string name="linux_agent_kiro">Agen coding dari Amazon</string>
+    <string name="linux_agent_kilo">Agen open source berbasis OpenCode</string>
+    <string name="linux_agent_devin">Agen coding dari Cognition</string>
+    <string name="linux_agent_amp">Agen coding dari ampcode.com</string>
+    <string name="linux_agent_commandcode">Agen coding dari commandcode.ai</string>
 
     <string name="linux_welcome_title">omarchy di layar utamamu</string>
     <string name="linux_welcome_body">Tema dan wallpaper Omarchy, aplikasi Android-mu, dan widget layar utama. Arch Linux menambahkan aplikasi terminal dan agen coding, sekarang atau nanti di setelan.</string>
@@ -118,6 +125,7 @@
     <string name="linux_gpu_turn_on">aktifkan</string>
 
     <string name="linux_notification_channel">Sesi Linux</string>
+    <string name="linux_notify_channel">Agen dan skrip</string>
     <string name="linux_notification_installing">Menginstal Linux · %1$s</string>
     <string name="linux_notification_installing_percent">Menginstal Linux · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">Penyiapan Linux berhenti · buka setelan › linux untuk mencoba lagi</string>

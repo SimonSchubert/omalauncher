@@ -27,6 +27,13 @@
     <string name="style_pages">páginas</string>
     <string name="style_pages_one">uma</string>
     <string name="style_pages_auto">auto</string>
+    <string name="style_cover_screen">tela externa</string>
+    <string name="style_cover_upright">vertical</string>
+    <string name="style_cover_turned">girada</string>
+    <string name="style_unfolded">desdobrado</string>
+    <string name="style_unfolded_own">tela própria</string>
+    <string name="style_unfolded_pages">páginas</string>
+    <string name="style_unfolded_columns">colunas desdobrado</string>
     <string name="style_corners">cantos</string>
     <string name="style_corners_edge">retos</string>
     <string name="style_corners_soft">suaves</string>
@@ -133,5 +140,6 @@
     <string name="agents_intro">Instalados com o mise, como no Omarchy. Os logins abrem no navegador; cole chaves com a área de transferência do teclado.</string>
     <string name="agents_open">abrir</string>
     <string name="agents_remove">remover</string>
+    <string name="agents_still_running">%1$s ainda está aberto: feche e remova de novo</string>
     <string name="agents_install">instalar</string>
 </resources>

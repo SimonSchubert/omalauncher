@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.IntentFilter
-import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -28,6 +27,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import dev.omalauncher.hasPermission
 
 /**
  * Where the phone roughly is, for widgets: `source here = android.location` and `location("request")`. Approximate
@@ -46,7 +46,7 @@ class PhoneLocation(
     /** State, so a source that read it ungranted starts listening the moment it's granted. */
     private var granted by mutableStateOf(check())
 
-    private fun check() = context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    private fun check() = context.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
 
     /** Granted or taken back in Android's settings while away: each activity that shows widgets checks as it resumes. */
     fun recheck() {

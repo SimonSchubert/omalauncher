@@ -821,6 +821,38 @@ class LangTest {
         assertEquals("[1, 2, 3]", text("matchAll(s, \"\\\\d\")", "state s = \"1a2b3\""))
     }
 
+    /** Many matches in one update share one allowance: a map of them, each well under half a second, held home past Android's five seconds. */
+    @Test fun regexesShareOneUpdatesTime() {
+        val p =
+            Compiler.compile(
+                "widget \"t\" {\nstate n = 10\nstate k = 1\n" +
+                    "Text { text: map(range(k), i => match(pad(\"\", n, \"a\"), \"(.*a){4}b\")) }\n}",
+            )
+        val host = TestHost(p)
+        val ev = (p.root.single() as WNode.Element).props["text"]!!
+
+        fun timed(): Long {
+            val started = System.nanoTime()
+            host.budget.eval(ev, Env.root(host))
+            return (System.nanoTime() - started) / 1_000_000
+        }
+        // A text long enough that one match takes a while, on this machine, but gives up on its own.
+        while (timed() < 60) host.slots[0] = Num((host.slots[0] as Num).v + 4)
+        host.slots[1] = Num(40.0)
+        val started = System.nanoTime()
+        try {
+            host.budget.eval(ev, Env.root(host))
+            fail("expected the matches to give up together")
+        } catch (e: WidgetError) {
+            assertTrue(e.message, e.message!!.contains("in all in one update"))
+        }
+        // Over 40 times 60 ms before.
+        assertTrue((System.nanoTime() - started) / 1_000_000 < 1800)
+        // The pattern isn't refused, and the next update has its own allowance.
+        host.slots[1] = Num(1.0)
+        assertEquals("[null]", host.budget.eval(ev, Env.root(host)).toString())
+    }
+
     /** A font in spans is listed for review like a `font:`, in a Text and in a Canvas text. */
     @Test fun fontsInSpansAreListed() {
         val p =
@@ -1241,10 +1273,19 @@ class LangTest {
         // The permission dialog only for a tap: not as the finger goes down, not on a timer or a fetched value.
         for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
         assertTrue(compileError(src.replace(" Text {", " every 1m { location(\"request\") }\n Text {")).contains("not in a trigger"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n Text { text: \"where?\"; onTap: location(\"request\") } }").contains("declare it"))
         // A widget's own name for something else still compiles.
         Compiler.compile("widget {\n meta { owl: 18 }\n let location = \"home\"\n Text { text: location } }")
         // The store's reviewer sees it flagged.
         assertEquals(listOf("knows roughly where the phone is; check where it sends that"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
+    }
+
+    @Test fun reviewFlagsThePhonesStorage() {
+        val why = "reaches the phone's own files (photos, downloads); check nothing sends them elsewhere"
+        for (cmd in listOf("ls /sdcard/DCIM", "read file /sdcard/Download/notes.txt", "cp x \"/storage/emulated/0/Download\"", "cd /sdcard")) {
+            assertEquals(cmd, listOf(why), Review.risks(listOf(cmd)).map { it.removePrefix("command ").substringBefore(": ") })
+        }
+        for (cmd in listOf("ls ~/sdcards", "echo /sdcardish", "cat /root/sdcard")) assertTrue(cmd, Review.risks(listOf(cmd)).isEmpty())
     }
 
     @Test fun androidCalendarAskedForOnATap() {
@@ -1256,7 +1297,15 @@ class LangTest {
         (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
         assertEquals(listOf("calendar request"), host.actions)
         assertTrue(compileError(src.replace("owl: 18", "owl: 17")).contains("needs owl 18"))
-        assertTrue(compileError(src.replace("\"request\"", "\"open\"")).contains("calendar takes request"))
+        assertTrue(compileError(src.replace("\"request\"", "\"close\"")).contains("calendar takes request or open"))
+        // Opening needs no permission, and works with an event or without, on today.
+        val open = Compiler.compile(src.replace("calendar(\"request\")", "calendar(\"open\", agenda.events[0])"))
+        val openHost = TestHost(open)
+        (open.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(openHost), listOf(Num(0.0), Num(0.0)))
+        assertEquals(1, openHost.actions.size)
+        assertTrue(openHost.actions.single().startsWith("calendar open"))
+        Compiler.compile(src.replace("calendar(\"request\")", "calendar(\"open\")"))
+        Compiler.compile(src.replace(" source agenda = android.calendar\n", "").replace("agenda.granted", "true").replace("\"request\"", "\"open\""))
         for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
         assertTrue(compileError(src.replace(" Text {", " every 1m { calendar(\"request\") }\n Text {")).contains("not in a trigger"))
         assertTrue(compileError(src.replace(" source agenda = android.calendar\n", "").replace("agenda.granted", "true")).contains("declare it"))
@@ -1274,6 +1323,7 @@ class LangTest {
         // The permission dialog only for a tap: not as the finger goes down, not on a timer or a fetched value.
         for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
         assertTrue(compileError(src.replace(" Text {", " every 1m { airpods(\"request\") }\n Text {")).contains("not in a trigger"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n Text { text: \"allow\"; onTap: airpods(\"request\") } }").contains("declare it"))
         // The rest switch the AirPods from anywhere, a trigger too: they never ask.
         Compiler.compile(src.replace(" Text {", " on a { airpods(\"anc\") }\n Text {").replace("onTap: airpods(\"request\")", "onPress: airpods(\"next\")"))
         // airpods(...) alone, without the source, is listed too; and the store's reviewer sees it flagged.
@@ -1454,7 +1504,7 @@ class LangTest {
         assertEquals(OwlKind.Widget, Compiler.compile("widget {\n Text { text: 1 } }").kind)
 
         assertTrue(compileError("app {\n Text { text: 1 } }").contains("needs owl 8"))
-        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon, back, edge and statusBar"))
+        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon, back, edge, statusBar and fps"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onTap: close()\n Text { text: 1 } }").contains("handlers go on the nodes"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n back: true\n Text { text: 1 } }").contains("back and onBack go together"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onBack: close()\n Text { text: 1 } }").contains("back and onBack go together"))
@@ -2113,6 +2163,29 @@ class LangTest {
         // A widget without one is as it was: no lock is no version to ask for.
         assertEquals(1, Compiler.compile("widget {\n Column {\n Button { text: \"x\"; onTap: refresh() }\n Text { text: \"y\" } }\n}").level)
         assertEquals(null, Compiler.compile("widget {\n Text { text: \"y\" }\n}").lock)
+    }
+
+    @Test fun fpsSetsHowOftenTimeTicks() {
+        val canvas = "state busy = false\n Canvas { circle(10, 10, 5 + sin(time)) }"
+        assertTrue(compileError("widget {\n fps: 10\n $canvas\n}").contains("fps needs owl 19: add meta { owl: 19 }"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n fps: 10\n $canvas\n}").contains("fps needs owl 19"))
+        val p = Compiler.compile("widget {\n meta { owl: 19 }\n fps: busy ? 30 : 10\n $canvas\n}")
+        assertEquals(19, p.level)
+        assertTrue(p.fps != null)
+        // A fixed one is checked as it's written: a number of frames a second, at most what the launcher draws.
+        assertEquals(Num(12.0), Compiler.compile("widget {\n meta { owl: 19 }\n fps: 12\n $canvas\n}").fps?.const)
+        for (wrong in listOf("0", "61", "-5", "\"fast\"", "true")) {
+            val e = compileError("widget {\n meta { owl: 19 }\n fps: $wrong\n $canvas\n}")
+            assertTrue(e, e.contains("fps is a number of frames a second, from 1 to 60"))
+        }
+        // Faces, apps and panels animate too.
+        assertTrue(Compiler.compile("face {\n meta { owl: 19 }\n fps: 20\n $canvas\n}").fps != null)
+        assertTrue(Compiler.compile("app {\n meta { owl: 19 }\n fps: 30\n Canvas { circle(10, 10, 5 + sin(time)) }\n}").fps != null)
+        assertTrue(Compiler.compile("panel {\n meta { owl: 19 }\n fps: 30\n Canvas { circle(10, 10, 5 + sin(time)) }\n}").fps != null)
+        // A key bar has no properties at all.
+        assertTrue(compileError("keybar {\n meta { owl: 19 }\n fps: 30\n Text { text: 1 }\n}").contains("takes no properties"))
+        // Without one, as it was.
+        assertEquals(null, Compiler.compile("widget {\n Text { text: \"y\" }\n}").fps)
     }
 
     private fun browserWidget(body: String) = Compiler.compile("widget {\n $owl18\n $body\n}")
