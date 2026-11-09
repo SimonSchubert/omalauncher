@@ -3,11 +3,13 @@
 # aarch64 runtime deps, placing them in app/src/main/jniLibs/arm64-v8a as lib*.so so Android
 # extracts them into nativeLibraryDir, the only place an app targeting API 29+ may exec from.
 # Needs the Android NDK (NDK_VERSION below, in the SDK at ANDROID_HOME or local.properties) and bsdtar.
+# For benchmarking (scripts/proot-bench), PROOT_SRC builds an already patched source tree instead,
+# and OUT puts the libraries elsewhere.
 set -euo pipefail
 
 REPO=https://packages.termux.dev/apt/termux-main
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/app/src/main/jniLibs/arm64-v8a"
+OUT="${OUT:-$ROOT/app/src/main/jniLibs/arm64-v8a}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -41,16 +43,20 @@ fetch libtalloc pool/main/libt/libtalloc/libtalloc_${TALLOC}_aarch64.deb \
 fetch libandroid-shmem pool/main/liba/libandroid-shmem/libandroid-shmem_${SHMEM}_aarch64.deb \
   0da3a24d558b93c92bcf8d611e0826a99ff96e396b148e6cdf33b47c47c57ff6
 
-echo "fetching proot $PROOT source"
-curl -fsSL "https://github.com/termux/proot/archive/v$PROOT.zip" -o "$WORK/proot.zip"
-echo "75f654fe60dea92dabff2bf083ae8bfe4f91baa6a1a374786a6bf391015eebaa  $WORK/proot.zip" |
-  shasum -a 256 -c --status || { echo "proot $PROOT source: SHA256 mismatch" >&2; exit 1; }
-(cd "$WORK" && bsdtar xf proot.zip)
 SRC="$WORK/proot-$PROOT"
-for p in "$ROOT"/patches/proot/*.patch; do
-  echo "applying $(basename "$p")"
-  patch -d "$SRC" -p1 --quiet < "$p"
-done
+if [ -n "${PROOT_SRC:-}" ]; then
+  mkdir -p "$SRC" && (cd "$PROOT_SRC" && tar cf - --exclude .git .) | (cd "$SRC" && tar xf -)
+else
+  echo "fetching proot $PROOT source"
+  curl -fsSL "https://github.com/termux/proot/archive/v$PROOT.zip" -o "$WORK/proot.zip"
+  echo "75f654fe60dea92dabff2bf083ae8bfe4f91baa6a1a374786a6bf391015eebaa  $WORK/proot.zip" |
+    shasum -a 256 -c --status || { echo "proot $PROOT source: SHA256 mismatch" >&2; exit 1; }
+  (cd "$WORK" && bsdtar xf proot.zip)
+  for p in "$ROOT"/patches/proot/*.patch; do
+    echo "applying $(basename "$p")"
+    patch -d "$SRC" -p1 --quiet < "$p"
+  done
+fi
 
 SDK="${ANDROID_HOME:-$(sed -n 's/^sdk\.dir=//p' "$ROOT/local.properties" 2>/dev/null)}"
 # Not ANDROID_NDK_HOME: CI runners point it at an older default NDK.
