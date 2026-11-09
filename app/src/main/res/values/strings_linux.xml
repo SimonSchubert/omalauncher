@@ -166,6 +166,9 @@
     <string name="linux_retry">retry</string>
     <string name="linux_gpu_turn_off">turn off</string>
     <string name="linux_gpu_turn_on">turn on</string>
+    <string name="linux_cpu_pinning_title">fast system calls</string>
+    <string name="linux_cpu_pinning_on">on · keeps Linux on one fast CPU core · for programs started from now on</string>
+    <string name="linux_cpu_pinning_off">off · for programs started from now on</string>
 
     <!-- The ongoing notification while Linux runs. -->
     <string name="linux_notification_channel">Linux session</string>

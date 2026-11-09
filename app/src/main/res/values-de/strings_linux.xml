@@ -125,6 +125,9 @@
     <string name="linux_retry">nochmal versuchen</string>
     <string name="linux_gpu_turn_off">ausschalten</string>
     <string name="linux_gpu_turn_on">einschalten</string>
+    <string name="linux_cpu_pinning_title">schnelle systemaufrufe</string>
+    <string name="linux_cpu_pinning_on">an · hält linux auf einem schnellen cpu-kern · für ab jetzt gestartete programme</string>
+    <string name="linux_cpu_pinning_off">aus · für ab jetzt gestartete programme</string>
 
     <string name="linux_notification_channel">Linux-Sitzung</string>
     <string name="linux_notify_channel">Agenten und Skripte</string>

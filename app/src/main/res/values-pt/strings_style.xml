@@ -96,6 +96,8 @@
     <string name="style_remove_background_title">remover o fundo?</string>
 
     <string name="style_terminal_hint">terminais abertos a partir de agora · mais com o pacman, como ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">sugestões do teclado</string>
+    <string name="style_keyboard_suggestions_hint">sugestões, digitação por deslizar e ditado; o texto chega ao terminal palavra por palavra · a partir da próxima vez que o teclado abrir</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d coluna na vertical</item>
         <item quantity="many">%1$s pt · %2$d colunas na vertical</item>

@@ -1,6 +1,9 @@
 package dev.omalauncher.linux
 
 import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import dev.omalauncher.LauncherData
 import dev.omalauncher.PhoneStorage
 import dev.omalauncher.upgrade.Managed
@@ -37,6 +40,20 @@ class Proot(
 
     /** How guest apps render OpenGL and Vulkan: in software, or on the GPU once [Gpu] turns it on. */
     @Volatile var graphicsEnv: List<String> = SOFTWARE_ENV
+
+    private val prefs = LauncherData.prefs(context)
+
+    /**
+     * proot keeping itself and programs making many syscalls on one fast CPU (patches/proot/0002): Linux runs
+     * several times faster. On unless the user turned it off; applies to what starts after a change.
+     */
+    var cpuPinning by mutableStateOf(prefs.getBoolean(CPU_PINNING, true))
+        private set
+
+    fun changeCpuPinning(on: Boolean) {
+        cpuPinning = on
+        prefs.edit().putBoolean(CPU_PINNING, on).apply()
+    }
 
     /** Launcher data the guest sees in its home, kept outside the rootfs; see [LauncherData]. */
     private val dataBinds =
@@ -228,11 +245,14 @@ class Proot(
                 put("PROOT_LOADER", File(nativeDir, "libproot-loader.so").path)
                 put("PROOT_TMP_DIR", tmpDir.path)
                 put("LD_LIBRARY_PATH", nativeDir.path)
+                if (!cpuPinning) put("PROOT_HOME_CPU", "off")
             }
             redirectErrorStream(true)
         }
 
     companion object {
+        private const val CPU_PINNING = "proot_cpu_pinning"
+
         const val GUEST_HOME = "/root"
 
         /** XDG_RUNTIME_DIR in the guest, bound to [runtimeDir]. */

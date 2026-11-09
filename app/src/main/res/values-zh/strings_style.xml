@@ -96,6 +96,8 @@
     <string name="style_remove_background_title">移除背景？</string>
 
     <string name="style_terminal_hint">对之后打开的终端生效 · 用 pacman 安装更多字体，比如 ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">键盘建议</string>
+    <string name="style_keyboard_suggestions_hint">支持建议、滑动输入和语音输入；文字按词送到终端 · 下次打开键盘时生效</string>
     <plurals name="style_terminal_size">
         <item quantity="other">%1$s pt · 竖屏 %2$d 列</item>
     </plurals>

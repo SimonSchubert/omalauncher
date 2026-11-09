@@ -21,8 +21,8 @@ android {
         applicationId = "dev.omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 33
-        versionName = "1.0.0"
+        versionCode = 34
+        versionName = "1.1.0"
         ndk { abiFilters += providers.gradleProperty("keyboardTestAbi").getOrElse("arm64-v8a") }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

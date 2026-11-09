@@ -131,6 +131,8 @@ private fun Installed(runtime: Runtime) {
         Spacer(Modifier.height(8.dp))
         GpuRow(runtime)
     }
+    Spacer(Modifier.height(8.dp))
+    CpuPinningRow(runtime)
     Spacer(Modifier.height(16.dp))
     // Keys go between remove linux and its cancel as they swap, and wait out the removal for the install it ends with.
     val ask = remember { FocusRequester() }
@@ -190,6 +192,28 @@ private fun GpuRow(runtime: Runtime) {
             }
         }
         JobLog(state)
+    }
+}
+
+/** The switch for proot's CPU pinning; see [dev.omalauncher.linux.Proot.cpuPinning]. */
+@Composable
+private fun CpuPinningRow(runtime: Runtime) {
+    val proot = runtime.proot
+    val on = proot.cpuPinning
+    Row(Modifier.card(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            BasicText(stringResource(R.string.linux_cpu_pinning_title), style = Mono.copy(fontSize = TextSize.Item))
+            BasicText(
+                stringResource(if (on) R.string.linux_cpu_pinning_on else R.string.linux_cpu_pinning_off),
+                style = Mono.copy(color = if (on) Palette.green else Palette.muted, fontSize = TextSize.Small),
+            )
+        }
+        val passed = Modifier.takesPassedKeys().passesKeys()
+        if (on) {
+            BracketAction(stringResource(R.string.linux_gpu_turn_off), Palette.red, passed) { proot.changeCpuPinning(false) }
+        } else {
+            BracketAction(stringResource(R.string.linux_gpu_turn_on), Palette.accent, passed) { proot.changeCpuPinning(true) }
+        }
     }
 }
 

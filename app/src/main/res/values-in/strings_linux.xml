@@ -123,6 +123,9 @@
     <string name="linux_retry">coba lagi</string>
     <string name="linux_gpu_turn_off">nonaktifkan</string>
     <string name="linux_gpu_turn_on">aktifkan</string>
+    <string name="linux_cpu_pinning_title">panggilan sistem cepat</string>
+    <string name="linux_cpu_pinning_on">aktif · menjaga Linux di satu inti CPU cepat · untuk program yang dijalankan mulai sekarang</string>
+    <string name="linux_cpu_pinning_off">nonaktif · untuk program yang dijalankan mulai sekarang</string>
 
     <string name="linux_notification_channel">Sesi Linux</string>
     <string name="linux_notify_channel">Agen dan skrip</string>
