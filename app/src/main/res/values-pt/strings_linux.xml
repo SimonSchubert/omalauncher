@@ -127,6 +127,9 @@
     <string name="linux_retry">tentar de novo</string>
     <string name="linux_gpu_turn_off">desativar</string>
     <string name="linux_gpu_turn_on">ativar</string>
+    <string name="linux_cpu_pinning_title">chamadas de sistema rápidas</string>
+    <string name="linux_cpu_pinning_on">ativadas · mantém o Linux em um núcleo de CPU rápido · para programas iniciados a partir de agora</string>
+    <string name="linux_cpu_pinning_off">desativadas · para programas iniciados a partir de agora</string>
 
     <string name="linux_notification_channel">Sessão Linux</string>
     <string name="linux_notify_channel">Agentes e scripts</string>

@@ -123,6 +123,9 @@
     <string name="linux_retry">重试</string>
     <string name="linux_gpu_turn_off">关闭</string>
     <string name="linux_gpu_turn_on">开启</string>
+    <string name="linux_cpu_pinning_title">快速系统调用</string>
+    <string name="linux_cpu_pinning_on">已开启 · 让 Linux 运行在一个高性能 CPU 核心上 · 对之后启动的程序生效</string>
+    <string name="linux_cpu_pinning_off">已关闭 · 对之后启动的程序生效</string>
 
     <string name="linux_notification_channel">Linux 会话</string>
     <string name="linux_notify_channel">智能体和脚本</string>
