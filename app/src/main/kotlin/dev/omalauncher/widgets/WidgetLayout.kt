@@ -33,7 +33,8 @@ data class Cell(
     ): Cell {
         if (from == to) return this
         val x = x * to / from
-        val w = maxOf((w * to / from).coerceIn(1, to - x), minWidth.coerceAtMost(to))
+        // A tile in layout.toml can start past its own columns, so x can be at or past the new edge.
+        val w = maxOf((w * to / from).coerceIn(1, (to - x).coerceAtLeast(1)), minWidth.coerceAtMost(to))
         return copy(x = x.coerceAtMost(to - w), w = w)
     }
 }

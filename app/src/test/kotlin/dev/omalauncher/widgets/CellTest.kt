@@ -18,4 +18,10 @@ class CellTest {
         assertEquals(Cell(1, 0, 3, 3), Cell(3, 0, 3, 3).rescaled(6, 4, minWidth = 3))
         assertEquals(Cell(0, 0, 4, 2), Cell(1, 0, 5, 2).rescaled(6, 4, minWidth = 5))
     }
+
+    @Test fun aCellPastItsOwnColumnsEndsUpAtTheNewEdge() {
+        assertEquals(Cell(11, 0, 1, 1), Cell(8, 0, 1, 1).rescaled(6, 12))
+        assertEquals(Cell(3, 0, 1, 2), Cell(7, 0, 2, 2).rescaled(6, 4))
+        assertEquals(Cell(9, 0, 3, 1), Cell(6, 0, 1, 1).rescaled(6, 12, minWidth = 3))
+    }
 }

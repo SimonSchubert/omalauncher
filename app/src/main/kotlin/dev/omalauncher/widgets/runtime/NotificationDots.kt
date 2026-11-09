@@ -10,9 +10,11 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.NotificationListenerService.Ranking
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -84,7 +86,7 @@ internal class DotTable {
  */
 object NotificationDots {
     /** One at a time and in order, so a notification that comes during the first read is applied after it. */
-    private val worker = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
+    private val worker = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1) + CoroutineExceptionHandler { _, e -> Log.w("widgets", "notification dots", e) })
 
     private val table = DotTable()
 
@@ -139,7 +141,9 @@ object NotificationDots {
         val out = Ranking()
         val ranked = ranking.getRanking(sbn.key, out)
         val n = sbn.notification
-        if (countsForDot(n.flags, out.channel?.id, n.extras.getCharSequence(Notification.EXTRA_TITLE), n.extras.getCharSequence(Notification.EXTRA_TEXT))) {
+        // Another app's extras can fail to unparcel; such a notification just gets no dot.
+        val counts = runCatching { countsForDot(n.flags, out.channel?.id, n.extras.getCharSequence(Notification.EXTRA_TITLE), n.extras.getCharSequence(Notification.EXTRA_TEXT)) }.getOrDefault(false)
+        if (counts) {
             table.post(sbn.key, DotKey(sbn.packageName, profileOf(context, sbn.user), n.shortcutId), ranked && out.canShowBadge())
         } else {
             table.remove(sbn.key)
