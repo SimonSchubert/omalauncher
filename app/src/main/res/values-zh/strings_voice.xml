@@ -73,6 +73,7 @@
     <string name="voice_language">语言</string>
     <string name="voice_language_launcher">默认（%1$s）</string>
     <string name="voice_default">默认</string>
+    <string name="voice_default_named">默认（%1$s）</string>
     <string name="voice_online">在线</string>
     <string name="voice_speed">语速</string>
     <string name="voice_tts_settings">文字转语音设置</string>

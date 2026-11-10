@@ -613,9 +613,18 @@ private fun VoiceSettings(
                     }
                 }
             val current = voices.firstOrNull { it.name == session.voice }
+            // With none picked, the one the engine chose, as the list names it; else its region, for a stand-in
+            // like Google's "de-DE-language" that the list leaves out.
+            val chosen =
+                remember(voices, current, session.language) {
+                    if (current != null) return@remember null
+                    val v = speaker.current() ?: return@remember null
+                    labels[v.name] ?: v.locale.getDisplayCountry(launcher).ifEmpty { null }
+                }
+            val default = chosen?.let { stringResource(R.string.voice_default_named, it) } ?: stringResource(R.string.voice_default)
             Setting(stringResource(R.string.voice_voice)) {
                 Box {
-                    Pick(current?.let { labels[it.name] } ?: stringResource(R.string.voice_default)) { pickVoice = true }
+                    Pick(current?.let { labels[it.name] } ?: default) { pickVoice = true }
                     if (pickVoice) {
                         ChoicePopup(
                             options = listOf<android.speech.tts.Voice?>(null) + voices,
@@ -623,7 +632,7 @@ private fun VoiceSettings(
                             position = BelowAnchorStart,
                             onDismiss = { pickVoice = false },
                             onPick = { use(voice = it?.name) },
-                            label = { v -> v?.let { labels[it.name] } ?: resources.getString(R.string.voice_default) },
+                            label = { v -> v?.let { labels[it.name] } ?: default },
                             sublabel = { v -> v?.name.orEmpty() },
                         )
                     }

@@ -162,6 +162,18 @@ class Speaker(
             .orEmpty()
             .sortedWith(compareBy({ TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED in it.features }, { it.isNetworkConnectionRequired }, { it.locale.toLanguageTag() }, { it.name }))
 
+    /**
+     * The voice the engine reads in now, for the voice screen's default to say which one it is: with none picked,
+     * what it chose for [locale]. Null before it's [ready] or when it won't say.
+     */
+    fun current(): Voice? =
+        tts?.takeIf { ready }?.let { engine ->
+            runCatching {
+                apply()
+                engine.voice
+            }.getOrNull()
+        }
+
     /** Whether it has a voice for [locale]; true until it's [ready], as it can't say. */
     fun reads(locale: Locale) = tts?.takeIf { ready }?.let { runCatching { it.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE }.getOrDefault(true) } ?: true
 

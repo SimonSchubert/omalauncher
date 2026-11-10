@@ -97,6 +97,7 @@
     <!-- The language picked in the launcher, which Voice uses unless another is picked; %1$s is its name. -->
     <string name="voice_language_launcher">default (%1$s)</string>
     <string name="voice_default">default</string>
+    <string name="voice_default_named">default (%1$s)</string>
     <!-- After a voice that needs the internet. -->
     <string name="voice_online">online</string>
     <string name="voice_speed">speed</string>
