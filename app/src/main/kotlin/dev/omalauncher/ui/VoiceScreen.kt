@@ -119,6 +119,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.max as maxDp
 import androidx.compose.ui.unit.min as minDp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.omalauncher.AppLanguage
 import dev.omalauncher.R
 import dev.omalauncher.linux.LinuxState
@@ -167,7 +168,11 @@ fun VoiceScreen(
     val typing = session.typing
 
     DisposableEffect(Unit) { onDispose { speech.cancel() } }
-    LaunchedEffect(Unit) { speaker.warmUp() }
+    // Again on each return: the phone's text-to-speech engine may have been changed meanwhile.
+    LifecycleResumeEffect(Unit) {
+        speaker.warmUp()
+        onPauseOrDispose {}
+    }
     // Looked at again each time it comes back: a recognizer may have been installed or picked meanwhile.
     val canHear = remember(shown) { speech.available }
     LaunchedEffect(shown) { if (!shown) speech.cancel() }
@@ -545,19 +550,25 @@ private fun VoiceSettings(
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val resources = LocalResources.current
-    LaunchedEffect(Unit) { speaker.warmUp() }
-    // Read again once the engine is up: before, it can't say what it has.
+    // Again on each return: the phone's text-to-speech engine may have been changed, or a voice installed, meanwhile.
+    var returns by remember { mutableIntStateOf(0) }
+    LifecycleResumeEffect(Unit) {
+        speaker.warmUp()
+        returns++
+        onPauseOrDispose {}
+    }
+    // Read again once the engine is up (before, it can't say what it has) and on each return.
     val ready = speaker.ready
     val language = session.language
     val launcher = configuration.locales[0]
     val shown = language ?: launcher.language
     val languages =
-        remember(ready) {
+        remember(ready, returns) {
             (speaker.languages() + AppLanguage.supported.map { Locale.forLanguageTag(it).language })
                 .distinct()
                 .sortedBy { AppLanguage.name(it).lowercase(launcher) }
         }
-    val voices = remember(ready, shown) { speaker.voices(shown) }
+    val voices = remember(ready, shown, returns) { speaker.voices(shown) }
 
     /** A sentence in the language replies are read in: its own words when the launcher has them, else its name. */
     fun sample() {
