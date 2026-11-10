@@ -79,7 +79,7 @@ A file holds declarations, then the nodes it shows:
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 20.
+  it's 1. This launcher has 21.
 - Text is written in the language of whoever uses the widget. One meant for the store keeps its text in
   `strings { en { ... } id { ... } }` and shows `str.name`, the phone's language's (owl 16, see Text in more
   languages in docs/declarations.md).
@@ -91,7 +91,7 @@ declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a pan
 
 | read | for |
 |---|---|
-| docs/declarations.md | sources (`cmd`, `http`, `ws`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `at`, `when`, `on`, `on … each`), putting values into commands and URLs, `requires` and working without Linux |
+| docs/declarations.md | sources (`cmd`, `http`, `ws`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `every frame`, `at`, `when`, `on`, `on … each`), putting values into commands and URLs, `requires` and working without Linux |
 | docs/android.md | the phone's data: battery, media, notifications, volume, the next alarm, modes, apps, the drawer, agents, AirPods |
 | docs/expressions.md | operators and every function, dates and times, numbers, changing lists and maps, chance |
 | docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal, Browser |
@@ -140,6 +140,7 @@ docs say what's current.
 | the phone's own data | `examples/40-battery` (Ring), `examples/85-quick` (alarm, modes, torch), `examples/97-now-playing` (media, album art), `examples/98-notifications`, `examples/99-volume` (Slider), `examples/airpods` (AirPods' batteries and settings, a screen), `examples/calendar` (the phone's calendars, asked for on a tap), `20-fetch` (with or without Linux) |
 | state, buttons and timers | `examples/91-focus` (persist, `at`, notify), `examples/87-breathe` (a session paced by the clock), `examples/88-notes` (Input, a saved list) |
 | drawing | `examples/90-analog-clock` (Canvas), `50-koi` (pixel art, taps), `60-owl` (sprites, a pet that keeps its state), `examples/92-aurora` and `examples/89-lava` (Shader) |
+| a game | `examples/space-bounce` (an app: `every frame` moving things by their speed, steering by tilting with `android.motion`, aiming with a finger, a Shader grid behind a Canvas) |
 | faces, a whole page | `examples/00-start` (frost, Grid, spans), `examples/01-minimal`, `examples/02-pixel`, `examples/03-matrix` |
 | panels and the prompt bar | `drawer.owl` (lazy lists, search with rank, Popup), `examples/65-ai-bar` (android.agents, ask, open) |
 | the terminal key bar | `keybar.owl`, `examples/keybar-layers` (latch, layers), `examples/keybar-vim`, `examples/keybar-gamepad`, `examples/keybar-commands` (typeText) |

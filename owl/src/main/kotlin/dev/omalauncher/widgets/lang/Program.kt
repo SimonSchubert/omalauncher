@@ -338,6 +338,9 @@ enum class TriggerKind(
     AT("at"),
     WHEN("when"),
     ON("on"),
+
+    /** `every frame { }` (owl 21): each frame the widget draws while it shows, with `dt`; run by the frame clock. */
+    FRAME("every frame"),
     ;
 
     companion object {

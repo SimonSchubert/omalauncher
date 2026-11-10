@@ -303,9 +303,11 @@ private fun FrameClock(
         // When the next tick is due. A frame up to a quarter of a tick early takes it, so a 60 Hz screen ticks on each
         // frame, 90 Hz on two in three and 120 Hz on every other one.
         var due = start
+        var last = start
         while (true) {
             if (covered()) snapshotFlow { covered() }.first { !it }
-            if (unread >= 3) {
+            // An `every frame` widget moves things each frame, whether or not anything reads `time`.
+            if (unread >= 3 && !inst.runsEachFrame) {
                 inst.awaitTimeRead(start)
                 unread = 0
             }
@@ -320,6 +322,8 @@ private fun FrameClock(
                 unread = if (inst.timeRead) 0 else unread + 1
                 inst.timeRead = false
                 inst.time = (now - start) / 1e9
+                inst.frame((now - last) / 1e9)
+                last = now
             }
         }
     }

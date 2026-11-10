@@ -1288,6 +1288,25 @@ class LangTest {
         for (cmd in listOf("ls ~/sdcards", "echo /sdcardish", "cat /root/sdcard")) assertTrue(cmd, Review.risks(listOf(cmd)).isEmpty())
     }
 
+    @Test fun androidMotion() {
+        val src = "widget {\n meta { owl: 21 }\n source m = android.motion\n Text { text: m.available ? \"\${m.roll}° \${m.pitch}°\" : \"no sensor\" } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.motion", (p.globals.single() as Global.Source).kind)
+        assertTrue(!p.needsLinux)
+        assertEquals(listOf("read how the phone is tilted while it shows"), p.commands)
+        assertTrue(compileError(src.replace("owl: 21", "owl: 20")).contains("android.motion needs owl 21"))
+    }
+
+    @Test fun everyFrame() {
+        val src = "widget {\n meta { owl: 21 }\n state x = 0\n every frame { x = x + 100 * dt }\n Text { text: x } }"
+        val p = Compiler.compile(src)
+        assertEquals(TriggerKind.FRAME, p.triggers.single().kind)
+        assertEquals(listOf("dt"), p.triggers.single().action.params)
+        // The frame clock runs it, which only an animated widget has.
+        assertTrue(p.animated)
+        assertTrue(compileError(src.replace("owl: 21", "owl: 20")).contains("every frame needs owl 21"))
+    }
+
     @Test fun androidCalendarAskedForOnATap() {
         val src = "widget {\n meta { owl: 18 }\n source agenda = android.calendar\n Text { text: agenda.granted ? \"events\" : \"allow\"; onTap: calendar(\"request\") } }"
         val p = Compiler.compile(src)

@@ -179,7 +179,14 @@ internal val SINCE =
         // owl 18: events in the phone's calendars, only after a tap asks for read access.
         listOf("android.calendar", "calendar").associateWith { 18 } +
         // owl 19: how many frames a second an animation needs, so a slow one costs the battery less.
-        mapOf(FRAME_RATE to 19)
+        mapOf(FRAME_RATE to 19) +
+        // owl 21: how the phone is tilted, for tilt games and spirit levels.
+        mapOf("android.motion" to 21) +
+        // owl 21: statements each frame, for games that move things by what they were a frame before.
+        mapOf(EVERY_FRAME to 21)
+
+/** `every frame { }`, named like this in [SINCE]. */
+internal const val EVERY_FRAME = "every frame"
 
 /** `strings { ... }`, named like this in [SINCE]. */
 internal const val STRINGS_DECL = "strings { }"
@@ -317,7 +324,7 @@ val SPEECH_ANYWHERE = setOf("stop", "cancel")
 val ASKS = setOf("location", "calendar", "airpods")
 
 /** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar")
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar", "motion")
 
 /**
  * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the

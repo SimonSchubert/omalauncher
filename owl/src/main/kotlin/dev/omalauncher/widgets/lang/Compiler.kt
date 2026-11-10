@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 20
+        const val LEVEL = 21
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -950,6 +950,7 @@ class Compiler private constructor(
                 if (e.name == "location") commands += "read the phone's approximate location, once you allow it"
                 if (e.name == "calendar") commands += "read events in the phone's calendars, once you allow it"
                 if (e.name == "airpods") commands += AIRPODS_COMMAND
+                if (e.name == "motion") commands += "read how the phone is tilted while it shows"
                 Global.Source(d.name, "android.${e.name}", null, (every ?: 60.0).coerceAtLeast(1.0), false, 0)
             }
             else -> fail("a source is cmd(\"...\"), stream(\"...\"), http(\"...\"), file(\"...\"), clock, or android.${ANDROID.joinToString("/")}", e.pos)
@@ -1048,9 +1049,15 @@ class Compiler private constructor(
 
     private fun trigger(d: Decl.Trigger): Trigger {
         since(d.kind, d.pos)
+        if (d.kind == "every" && (d.expr as? Expr.Name)?.name == "frame") {
+            since(EVERY_FRAME, d.pos)
+            // Run by the frame clock, which only runs for an animated widget.
+            animated = true
+            return Trigger(TriggerKind.FRAME, Ev.of(Null), handler(Handler(d.kind, d.stmts, d.pos), root, listOf("dt")), d.pos)
+        }
         val expr =
             if (d.kind == "every") {
-                val seconds = constant(d.expr, "every").num() ?: fail("every takes an interval, like every 10s { ... }", d.expr.pos)
+                val seconds = constant(d.expr, "every").num() ?: fail("every takes an interval, like every 10s { ... }, or frame: every frame { ... }", d.expr.pos)
                 if (!(seconds >= 1)) fail("every runs at most once a second", d.expr.pos)
                 Ev.of(Num(seconds))
             } else {

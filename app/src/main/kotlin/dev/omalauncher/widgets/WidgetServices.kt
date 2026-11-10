@@ -91,6 +91,7 @@ import dev.omalauncher.widgets.runtime.AirPods
 import dev.omalauncher.widgets.runtime.Alarm
 import dev.omalauncher.widgets.runtime.Media
 import dev.omalauncher.widgets.runtime.Modes
+import dev.omalauncher.widgets.runtime.Motion
 import dev.omalauncher.widgets.runtime.Notifications
 import dev.omalauncher.widgets.runtime.Services
 import dev.omalauncher.widgets.runtime.Sim
@@ -179,6 +180,7 @@ class WidgetServices(
     private val alarm = Alarm(context)
     private val modes = Modes(context)
     private val sim = Sim(context)
+    private val motion = Motion(context)
     /** android.airpods and airpods(...); each activity that shows widgets lets it ask for Bluetooth while it's in front. */
     val airpods = AirPods(context, scope)
     private val panels = SystemPanels(context)
@@ -250,6 +252,7 @@ class WidgetServices(
             "alarm" -> alarm.updates()
             "modes" -> modes.updates()
             "sim" -> sim.updates()
+            "motion" -> motion.updates()
             "location" -> runtime.location.updates()
             "calendar" -> runtime.calendar.updates()
             "airpods" -> airpods.updates()
