@@ -247,7 +247,9 @@ widget "shell" {
 }
 ```
 
-- The tile is inert until tapped, so swipes still turn pages. Tapping it gives it
+- A vertical drag on an unfocused terminal scrolls it immediately without opening
+  the keyboard. A sideways swipe still turns pages, and swiping outside the terminal
+  opens the drawer. Long press still arranges a home tile. Tapping it gives it
   the keyboard and its touches (drag scrolls, hold-and-drag selects). A tap
   outside it, Back or another page lets go. The ⌨ button toggles the soft keyboard,
   and a tap on the line with the terminal's cursor (its prompt) brings it back.
