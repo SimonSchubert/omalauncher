@@ -89,7 +89,9 @@ fun SettingsScreen(
                         ?: stringResource(R.string.settings_linux_installing, stringResource(l.stage.label))
                 is LinuxState.Failed -> stringResource(R.string.settings_linux_failed)
                 LinuxState.Removing -> stringResource(R.string.settings_linux_removing)
-                else -> stringResource(R.string.settings_linux_not_installed)
+                // Linux starting up: saying "not installed" here made users think it was gone.
+                LinuxState.Checking -> stringResource(R.string.settings_checking)
+                LinuxState.NotInstalled -> stringResource(R.string.settings_linux_not_installed)
             }
         val needsLinux = stringResource(R.string.settings_needs_linux)
         val rows =

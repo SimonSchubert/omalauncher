@@ -1,6 +1,7 @@
 package dev.omalauncher.linux
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,6 +10,7 @@ import dev.omalauncher.PhoneStorage
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import java.io.File
+import kotlin.concurrent.thread
 
 /** Paths and process launching for the proot'd Arch rootfs. */
 class Proot(
@@ -124,10 +126,9 @@ class Proot(
      * stand-ins every guest command needs. Call once, before any guest runs.
      */
     fun prepare() {
-        for (dir in listOf(tmpDir, runtimeDir)) {
-            LauncherData.deleteTree(dir)
-            dir.mkdirs()
-        }
+        discardTmp()
+        LauncherData.deleteTree(runtimeDir)
+        runtimeDir.mkdirs()
         // proot skips a bind whose host directory is missing, and the guest would then write into the rootfs.
         // The empty mount points make the bound directories show up in listings of their parents.
         for ((guest, host) in dataBinds) {
@@ -153,6 +154,23 @@ class Proot(
         // bwrap is never empty.
         File(rootfs, "usr/bin/bwrap").takeIf { it.isFile && it.length() == 0L }?.delete()
         File(filesDir, "bwrap-shim").delete()
+    }
+
+    /** Old /tmp contents waiting to be deleted; see [discardTmp]. */
+    private val discardedTmp = File(filesDir, "tmp-discarded")
+
+    /**
+     * Starts the guest with an empty /tmp. A day of agent work can leave hundreds of thousands of files there (a
+     * cloned repo with node_modules), and deleting them takes long enough on a phone that Linux looked uninstalled
+     * meanwhile. So the old one moves aside and is deleted in the background, along with any a killed process left.
+     */
+    private fun discardTmp() {
+        discardedTmp.mkdirs()
+        if (tmpDir.exists() && !tmpDir.renameTo(File(discardedTmp, System.nanoTime().toString()))) LauncherData.deleteTree(tmpDir)
+        tmpDir.mkdirs()
+        thread(name = "tmp-discard", isDaemon = true) {
+            runCatching { LauncherData.deleteTree(discardedTmp) }.onFailure { Log.w("proot", "old /tmp", it) }
+        }
     }
 
     /**

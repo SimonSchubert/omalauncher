@@ -61,7 +61,7 @@ fun LinuxScreen(
     OverlayPanel(stringResource(R.string.linux_title), onDismiss, contentWidth = ReadingWidth) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 4.dp)) {
             when (val s = state) {
-                LinuxState.Checking -> {}
+                LinuxState.Checking -> BasicText(stringResource(R.string.settings_checking), style = Mono.copy(color = Palette.muted))
                 LinuxState.NotInstalled -> InstallOffer(runtime)
                 is LinuxState.Installing, is LinuxState.Failed -> LinuxProgress(s, runtime.bootstrap.chosenAgents, runtime::retryLinux, runtime::cancelLinux.takeIf { runtime.bootstrap.cancellable })
                 LinuxState.Installed -> Installed(runtime)
