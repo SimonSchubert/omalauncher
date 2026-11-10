@@ -48,6 +48,8 @@ app "sky raid" {
   state bombAt = -10
   state clearAt = 0
   state overAt = 0
+  // set by the store's screenshots (screens.txt) to hold a scene still while it's drawn in each theme
+  state still = false
 
   let W = screenWidth ?? 400
   let H = screenHeight ?? 800
@@ -140,171 +142,173 @@ app "sky raid" {
   let shadows = ink < 1500
 
   every frame {
-    gt = gt + dt
-    scroll = scroll + SPD * dt
-    bank = bank * pow(0.01, dt)
-    booms = booms.map(b => merge(b, {t: b.t + dt, y: b.y + b.vy * dt})).filter(b => b.t < 0.62)
-    scorch = scorch.map(s => merge(s, {y: s.y + SPD * dt})).filter(s => s.y < H + 60)
-    pops = pops.map(q => merge(q, {t: q.t + dt})).filter(q => q.t < 1)
+    if !still {
+      gt = gt + dt
+      scroll = scroll + SPD * dt
+      bank = bank * pow(0.01, dt)
+      booms = booms.map(b => merge(b, {t: b.t + dt, y: b.y + b.vy * dt})).filter(b => b.t < 0.62)
+      scorch = scorch.map(s => merge(s, {y: s.y + SPD * dt})).filter(s => s.y < H + 60)
+      pops = pops.map(q => merge(q, {t: q.t + dt})).filter(q => q.t < 1)
 
-    if mode == "clear" && gt - clearAt > 4 {
-      if level >= 5 {
-        mode = "won"
-        overAt = gt
-        best = max(best, score)
-      } else {
-        level = level + 1
-        stageFrom = score
-        // each stage starts with the simple gun again; power-ups are found anew
-        power = 1
-        bombs = min(5, bombs + 1)
-        // times are on the stage's clock, which starts again: none may be left from the last stage
-        gt = 0
-        scroll = 0
-        fireAt = 0
-        safeUntil = 0
-        bombAt = -10
-        spawnAt = 3
-        bossOut = false
-        foes = []
-        eshots = []
-        items = []
-        scorch = []
-        mode = "play"
-      }
-    }
-
-    // things keep flying while a stage ends and after the game is lost
-    if mode == "play" || mode == "clear" || mode == "over" {
-      shots = shots.map(b => merge(b, {x: b.x + b.vx * dt, y: b.y + b.vy * dt})).filter(b => b.y > -20 && b.x > -20 && b.x < W + 20)
-      eshots = eshots.map(b => merge(b, {x: b.x + b.vx * dt, y: b.y + b.vy * dt})).filter(b => b.y > -30 && b.y < H + 30 && b.x > -30 && b.x < W + 30)
-      items = items.map(i => merge(i, {t: i.t + dt, y: i.y + 55 * dt, x: clamp(i.x + sin(i.t * 3) * 30 * dt, 16, W - 16)})).filter(i => i.y < H + 30)
-
-      // Everyone moves on their own path; the boss stops near the top and sways.
-      foes = foes
-        .map(f => merge(f, {t: f.t + dt, ox: f.x, oy: f.y}))
-        .map(f => merge(f, {
-          x: f.x0 + f.vx * f.t + sin(f.t * f.fr + f.ph) * f.amp,
-          y: f.k == "boss" ? min(f.y0 + f.vy * f.t, TOP + 130) : f.y0 + f.vy * f.t + cos(f.t * f.fr + f.ph) * f.ampy
-        }))
-        .map(f => merge(f, {hx: f.ox < -90 ? 0 : lerp(f.hx, f.x - f.ox, 0.3), hy: f.oy < -90 ? 1 : lerp(f.hy, f.y - f.oy, 0.3)}))
-        .filter(f => f.y < H + 80 && f.x > -60 - abs(f.vx) * 2 && f.x < W + 60 + abs(f.vx) * 2)
-
-    }
-
-    if mode == "play" {
-      // The guns: more barrels and a wider spread with each power-up.
-      // fireAt is at most 0.1 s ahead; one further ahead is from an older clock, and doesn't hold the guns
-      if gt >= fireAt || fireAt - gt > 0.2 {
-        let lanes = power == 1 ? [[-6, 0], [6, 0]] : (power == 2 ? [[-6, 0], [6, 0], [0, -140], [0, 140]] : (power == 3 ? [[-8, 0], [0, 0], [8, 0], [-4, -200], [4, 200]] : [[-9, 0], [-3, 0], [3, 0], [9, 0], [-6, -170], [6, 170], [-12, -330], [12, 330]]))
-        let more = shots + lanes.map((l, i) => {id: nextId + i, x: px + l[0], y: py - 20, vx: l[1], vy: -760})
-        shots = drop(more, max(0, len(more) - 60))
-        nextId = nextId + len(lanes)
-        fireAt = gt + 0.1
-      }
-      // A new wave, sooner on later stages, until the boss comes.
-      if !bossOut && gt >= LEN {
-        bossOut = true
-        foes = foes + [{id: nextId, k: "boss", g: false, x0: W / 2, y0: -110, vx: 0, vy: 60, fr: 0.55, ph: 0, amp: W * 0.3, ampy: 0, t: 0, x: W / 2, y: -110, hx: 0, hy: 1, hp: 140 * diff, max: 140 * diff, r: 44, sc: 5000, fire: 1.05 / diff, fireAt: 3, drop: "H", hit: -1}]
-        nextId = nextId + 1
-      }
-      if !bossOut && gt >= spawnAt && len(foes) < 22 && ink < 1250 {
-        let roll = random()
-        let pick = roll < 0.3 ? "v" : (roll < 0.48 ? "swoop" : (roll < 0.63 ? "tank" : (roll < 0.76 ? "troops" : (roll < 0.88 ? "flak" : "bomber"))))
-        // Ground units need land: try a few places, with the same sines as the Shader.
-        let wy = -30 - scroll
-        let landX = range(6).map(i => 40 + random() * (W - 80)).find(cx => 0.5 + 0.22 * sin(cx * 0.011 + 1.7 * sin(wy * 0.006)) + 0.17 * sin(wy * 0.0093 + 1.3 * sin(cx * 0.013 + 2)) + 0.08 * sin((cx + wy) * 0.023) + 0.05 * sin((cx - wy) * 0.041 + 1) > lv.sea + 0.05)
-        let ground = pick == "tank" || pick == "troops" || pick == "flak"
-        let wave = ground && landX == null ? "v" : (pick == "bomber" && gt < 12 ? "swoop" : (pick == "flak" && level < 2 ? "tank" : pick))
-        let n = wave == "v" ? 5 : (wave == "swoop" ? 4 + floor(level / 2) : (wave == "tank" ? (level >= 3 ? 2 : 1) : (wave == "troops" ? 6 : 1)))
-        let cx = wave == "v" ? 70 + random() * (W - 140) : (landX ?? W / 2)
-        let side = random() < 0.5 ? -1 : 1
-        let swoopY = 70 + random() * H * 0.25
-        let leaderDrop = random() < 0.4 ? "P" : ""
-        foes = foes + range(n).map(i => [random()].map(r =>
-          wave == "v" ? {id: nextId + i, k: "f", g: false, x0: cx + (i - 2) * 34, y0: -30 - abs(i - 2) * 24, vx: 0, vy: 120 + level * 14, fr: 1.4, ph: 0, amp: 46, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(2 * diff), max: 2, r: 15, sc: 100, fire: level >= 2 && i % 2 == 0 ? 2.6 / diff : 0, fireAt: 0.8 + r * 1.5, drop: i == 2 ? leaderDrop : "", hit: -1}
-          : (wave == "swoop" ? {id: nextId + i, k: "f", g: false, x0: side < 0 ? -30 - i * 44 : W + 30 + i * 44, y0: swoopY, vx: -side * (150 + level * 12), vy: 34, fr: 2.2, ph: i * 0.6, amp: 0, ampy: 34, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(2 * diff), max: 2, r: 15, sc: 120, fire: level >= 3 && i == 1 ? 1.4 : 0, fireAt: 1 + r, drop: "", hit: -1}
-          : (wave == "tank" ? {id: nextId + i, k: "t", g: true, x0: clamp(cx + i * 46, 30, W - 30), y0: -30 - i * 40, vx: 0, vy: SPD, fr: 0, ph: 0, amp: 0, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(6 * diff), max: 6, r: 16, sc: 300, fire: 2.3 / diff, fireAt: 1 + r, drop: r < 0.25 ? "P" : "", hit: -1}
-          : (wave == "troops" ? {id: nextId + i, k: "s", g: true, x0: cx + (i % 3) * 13 - 13, y0: -20 - floor(i / 3) * 15, vx: 0, vy: SPD, fr: 1.3, ph: i * 1.1 + (side > 0 ? 0 : 3.1), amp: 9, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: 1, max: 1, r: 9, sc: 50, fire: level >= 2 && i % 3 == 0 ? 3.2 / diff : 0, fireAt: 1.5 + r * 2, drop: "", hit: -1}
-          : (wave == "flak" ? {id: nextId + i, k: "g", g: true, x0: cx, y0: -34, vx: 0, vy: SPD, fr: 0, ph: 0, amp: 0, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(10 * diff), max: 10, r: 18, sc: 400, fire: 2.2 / diff, fireAt: 1.2, drop: r < 0.35 ? "B" : "", hit: -1}
-          : {id: nextId + i, k: "b", g: false, x0: 70 + r * (W - 140), y0: -70, vx: 0, vy: 42, fr: 0.5, ph: 0, amp: 30, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(22 * diff), max: 22, r: 30, sc: 800, fire: 1.9 / diff, fireAt: 1.4, drop: "P", hit: -1})))))[0])
-        nextId = nextId + n
-        spawnAt = gt + max(0.8, (2.5 - level * 0.25) * (0.7 + random() * 0.6))
-      }
-
-      // Enemy fire: aimed shots, a bomber's fan, the flak's spread, and the boss's three patterns.
-      let shooters = foes.filter(f => f.fire > 0 && f.t >= f.fireAt && f.y > 30 && f.y < H * 0.7 && f.x > 0 && f.x < W)
-      if len(shooters) > 0 {
-        let bs = 140 + level * 18
-        let fresh = eshots + flatten(shooters.map(f =>
-          (f.k == "boss"
-            ? (floor(f.t / 3) % 3 == 0 ? range(12 + level * 2).map(i => i * 6.283 / (12 + level * 2) + f.t)
-              : (floor(f.t / 3) % 3 == 1 ? [-0.36, -0.18, 0, 0.18, 0.36].map(a => a + atan2(py - f.y, px - f.x))
-                : [0, 2.094, 4.189].map(a => a + f.t * 2.3)))
-            : (f.k == "b" ? [-0.6, -0.3, 0, 0.3, 0.6].map(a => a + 1.5708)
-              : (f.k == "g" ? [-0.2, 0, 0.2].map(a => a + atan2(py - f.y, px - f.x)) : [atan2(py - f.y, px - f.x)])))
-          .map(a => {x: f.x, y: f.y + (f.k == "boss" ? 30 : 0), vx: cos(a) * bs, vy: sin(a) * bs})
-        ))
-        eshots = drop(fresh, max(0, len(fresh) - 110))
-        foes = foes.map(f => f.fire > 0 && f.t >= f.fireAt && f.y > 30 && f.y < H * 0.7 && f.x > 0 && f.x < W ? merge(f, {fireAt: f.t + f.fire * (f.k == "boss" && floor(f.t / 3) % 3 == 2 ? 0.3 : 0.75 + random() * 0.5)}) : f)
-      }
-
-      // Our bullets: each one that touches an enemy is spent on it.
-      let hitsBy = foes.map(f => shots.filter(b => abs(b.x - f.x) < f.r + 3 && abs(b.y - f.y) < (f.k == "boss" ? f.r * 0.8 : f.r) + 8))
-      if any(hitsBy, h => len(h) > 0) {
-        let used = flatten(hitsBy).map(b => b.id)
-        shots = shots.filter(b => !any(used, u => u == b.id))
-        foes = foes.map((f, i) => len(hitsBy[i]) > 0 ? merge(f, {hp: f.hp - len(hitsBy[i]), hit: gt}) : f)
-      }
-
-      // The dead explode, leave a scorch mark on the ground, and sometimes something to pick up.
-      let dead = foes.filter(f => f.hp <= 0)
-      if len(dead) > 0 {
-        foes = foes.filter(f => f.hp > 0)
-        score = score + sum(dead.map(f => f.sc))
-        let blasts = booms + flatten(dead.map(f => f.k == "boss"
-          ? range(14).map(j => [random(), random()].map(r => {x: f.x + (r[0] - 0.5) * 120, y: f.y + (r[1] - 0.5) * 80, t: -j * 0.08, s: 2 + r[0] * 1.5, vy: 20})[0])
-          : (f.k == "b" ? range(4).map(j => {x: f.x + (j % 2 - 0.5) * 40, y: f.y + (floor(j / 2) - 0.5) * 30, t: -j * 0.07, s: 1.6, vy: 30}) : [{x: f.x, y: f.y, t: 0, s: f.r / 12, vy: f.g ? SPD : 40}])))
-        booms = drop(blasts, max(0, len(blasts) - 24))
-        let marks = scorch + dead.filter(f => f.g && f.k != "s").map(f => {x: f.x, y: f.y})
-        scorch = drop(marks, max(0, len(marks) - 8))
-        items = items + dead.map(f => [random()].map(r => {k: f.drop != "" ? f.drop : (r < 0.045 ? "M" : (r < 0.065 ? "B" : (r < 0.08 ? "H" : ""))), x: f.x, y: f.y, t: 0})[0]).filter(i => i.k != "")
-        if any(dead, f => f.k == "boss") {
-          mode = "clear"
-          clearAt = gt
-          score = score + 5000 * level
-          cleared = max(cleared, level)
-          stageBest = set(range(5).map(i => stageBest[i] ?? 0), level - 1, max(stageBest[level - 1] ?? 0, score - stageFrom))
-          let wreck = booms + foes.map(f => {x: f.x, y: f.y, t: -0.3, s: f.r / 12, vy: 40})
-          booms = drop(wreck, max(0, len(wreck) - 30))
+      if mode == "clear" && gt - clearAt > 4 {
+        if level >= 5 {
+          mode = "won"
+          overAt = gt
+          best = max(best, score)
+        } else {
+          level = level + 1
+          stageFrom = score
+          // each stage starts with the simple gun again; power-ups are found anew
+          power = 1
+          bombs = min(5, bombs + 1)
+          // times are on the stage's clock, which starts again: none may be left from the last stage
+          gt = 0
+          scroll = 0
+          fireAt = 0
+          safeUntil = 0
+          bombAt = -10
+          spawnAt = 3
+          bossOut = false
           foes = []
           eshots = []
+          items = []
+          scorch = []
+          mode = "play"
         }
       }
 
-      // Pick-ups: power, bombs, hearts and medals.
-      let got = items.filter(i => abs(i.x - px) < 26 && abs(i.y - py) < 28)
-      if len(got) > 0 {
-        items = items.filter(i => !(abs(i.x - px) < 26 && abs(i.y - py) < 28))
-        power = min(4, power + count(got, i => i.k == "P"))
-        bombs = min(5, bombs + count(got, i => i.k == "B"))
-        hp = min(5, hp + count(got, i => i.k == "H"))
-        score = score + count(got, i => i.k == "M") * 1000 * level
-        pops = pops + got.map(i => {x: i.x, y: i.y - 20, t: 0, s: i.k == "P" ? (power >= 4 ? "MAX POWER" : "POWER UP") : (i.k == "B" ? "+1 BOMB" : (i.k == "H" ? "+1 LIFE" : "+${1000 * level}")), c: i.k == "M" ? #ffcd75 : (i.k == "H" ? #ef7d57 : #a7f070)})
+      // things keep flying while a stage ends and after the game is lost
+      if mode == "play" || mode == "clear" || mode == "over" {
+        shots = shots.map(b => merge(b, {x: b.x + b.vx * dt, y: b.y + b.vy * dt})).filter(b => b.y > -20 && b.x > -20 && b.x < W + 20)
+        eshots = eshots.map(b => merge(b, {x: b.x + b.vx * dt, y: b.y + b.vy * dt})).filter(b => b.y > -30 && b.y < H + 30 && b.x > -30 && b.x < W + 30)
+        items = items.map(i => merge(i, {t: i.t + dt, y: i.y + 55 * dt, x: clamp(i.x + sin(i.t * 3) * 30 * dt, 16, W - 16)})).filter(i => i.y < H + 30)
+
+        // Everyone moves on their own path; the boss stops near the top and sways.
+        foes = foes
+          .map(f => merge(f, {t: f.t + dt, ox: f.x, oy: f.y}))
+          .map(f => merge(f, {
+            x: f.x0 + f.vx * f.t + sin(f.t * f.fr + f.ph) * f.amp,
+            y: f.k == "boss" ? min(f.y0 + f.vy * f.t, TOP + 130) : f.y0 + f.vy * f.t + cos(f.t * f.fr + f.ph) * f.ampy
+          }))
+          .map(f => merge(f, {hx: f.ox < -90 ? 0 : lerp(f.hx, f.x - f.ox, 0.3), hy: f.oy < -90 ? 1 : lerp(f.hy, f.y - f.oy, 0.3)}))
+          .filter(f => f.y < H + 80 && f.x > -60 - abs(f.vx) * 2 && f.x < W + 60 + abs(f.vx) * 2)
+
       }
 
-      // Hit by a bullet or a plane: a heart and a power level gone, and a moment to get clear.
-      if (gt >= safeUntil || safeUntil - gt > 2.5) && (any(eshots, b => abs(b.x - px) < 7 && abs(b.y - py) < 9) || any(foes, f => !f.g && abs(f.x - px) < f.r * 0.7 + 8 && abs(f.y - py) < f.r * 0.7 + 10)) {
-        hp = hp - 1
-        power = max(1, power - 1)
-        eshots = []
-        safeUntil = gt + 2.2
-        let ouch = booms + [{x: px, y: py, t: 0, s: 2.2, vy: 0}, {x: px - 14, y: py + 8, t: -0.1, s: 1.2, vy: 0}, {x: px + 12, y: py - 6, t: -0.2, s: 1.2, vy: 0}]
-        booms = drop(ouch, max(0, len(ouch) - 24))
-        if hp <= 0 {
-          mode = "over"
-          overAt = gt
-          best = max(best, score)
+      if mode == "play" {
+        // The guns: more barrels and a wider spread with each power-up.
+        // fireAt is at most 0.1 s ahead; one further ahead is from an older clock, and doesn't hold the guns
+        if gt >= fireAt || fireAt - gt > 0.2 {
+          let lanes = power == 1 ? [[-6, 0], [6, 0]] : (power == 2 ? [[-6, 0], [6, 0], [0, -140], [0, 140]] : (power == 3 ? [[-8, 0], [0, 0], [8, 0], [-4, -200], [4, 200]] : [[-9, 0], [-3, 0], [3, 0], [9, 0], [-6, -170], [6, 170], [-12, -330], [12, 330]]))
+          let more = shots + lanes.map((l, i) => {id: nextId + i, x: px + l[0], y: py - 20, vx: l[1], vy: -760})
+          shots = drop(more, max(0, len(more) - 60))
+          nextId = nextId + len(lanes)
+          fireAt = gt + 0.1
+        }
+        // A new wave, sooner on later stages, until the boss comes.
+        if !bossOut && gt >= LEN {
+          bossOut = true
+          foes = foes + [{id: nextId, k: "boss", g: false, x0: W / 2, y0: -110, vx: 0, vy: 60, fr: 0.55, ph: 0, amp: W * 0.3, ampy: 0, t: 0, x: W / 2, y: -110, hx: 0, hy: 1, hp: 140 * diff, max: 140 * diff, r: 44, sc: 5000, fire: 1.05 / diff, fireAt: 3, drop: "H", hit: -1}]
+          nextId = nextId + 1
+        }
+        if !bossOut && gt >= spawnAt && len(foes) < 22 && ink < 1250 {
+          let roll = random()
+          let pick = roll < 0.3 ? "v" : (roll < 0.48 ? "swoop" : (roll < 0.63 ? "tank" : (roll < 0.76 ? "troops" : (roll < 0.88 ? "flak" : "bomber"))))
+          // Ground units need land: try a few places, with the same sines as the Shader.
+          let wy = -30 - scroll
+          let landX = range(6).map(i => 40 + random() * (W - 80)).find(cx => 0.5 + 0.22 * sin(cx * 0.011 + 1.7 * sin(wy * 0.006)) + 0.17 * sin(wy * 0.0093 + 1.3 * sin(cx * 0.013 + 2)) + 0.08 * sin((cx + wy) * 0.023) + 0.05 * sin((cx - wy) * 0.041 + 1) > lv.sea + 0.05)
+          let ground = pick == "tank" || pick == "troops" || pick == "flak"
+          let wave = ground && landX == null ? "v" : (pick == "bomber" && gt < 12 ? "swoop" : (pick == "flak" && level < 2 ? "tank" : pick))
+          let n = wave == "v" ? 5 : (wave == "swoop" ? 4 + floor(level / 2) : (wave == "tank" ? (level >= 3 ? 2 : 1) : (wave == "troops" ? 6 : 1)))
+          let cx = wave == "v" ? 70 + random() * (W - 140) : (landX ?? W / 2)
+          let side = random() < 0.5 ? -1 : 1
+          let swoopY = 70 + random() * H * 0.25
+          let leaderDrop = random() < 0.4 ? "P" : ""
+          foes = foes + range(n).map(i => [random()].map(r =>
+            wave == "v" ? {id: nextId + i, k: "f", g: false, x0: cx + (i - 2) * 34, y0: -30 - abs(i - 2) * 24, vx: 0, vy: 120 + level * 14, fr: 1.4, ph: 0, amp: 46, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(2 * diff), max: 2, r: 15, sc: 100, fire: level >= 2 && i % 2 == 0 ? 2.6 / diff : 0, fireAt: 0.8 + r * 1.5, drop: i == 2 ? leaderDrop : "", hit: -1}
+            : (wave == "swoop" ? {id: nextId + i, k: "f", g: false, x0: side < 0 ? -30 - i * 44 : W + 30 + i * 44, y0: swoopY, vx: -side * (150 + level * 12), vy: 34, fr: 2.2, ph: i * 0.6, amp: 0, ampy: 34, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(2 * diff), max: 2, r: 15, sc: 120, fire: level >= 3 && i == 1 ? 1.4 : 0, fireAt: 1 + r, drop: "", hit: -1}
+            : (wave == "tank" ? {id: nextId + i, k: "t", g: true, x0: clamp(cx + i * 46, 30, W - 30), y0: -30 - i * 40, vx: 0, vy: SPD, fr: 0, ph: 0, amp: 0, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(6 * diff), max: 6, r: 16, sc: 300, fire: 2.3 / diff, fireAt: 1 + r, drop: r < 0.25 ? "P" : "", hit: -1}
+            : (wave == "troops" ? {id: nextId + i, k: "s", g: true, x0: cx + (i % 3) * 13 - 13, y0: -20 - floor(i / 3) * 15, vx: 0, vy: SPD, fr: 1.3, ph: i * 1.1 + (side > 0 ? 0 : 3.1), amp: 9, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: 1, max: 1, r: 9, sc: 50, fire: level >= 2 && i % 3 == 0 ? 3.2 / diff : 0, fireAt: 1.5 + r * 2, drop: "", hit: -1}
+            : (wave == "flak" ? {id: nextId + i, k: "g", g: true, x0: cx, y0: -34, vx: 0, vy: SPD, fr: 0, ph: 0, amp: 0, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(10 * diff), max: 10, r: 18, sc: 400, fire: 2.2 / diff, fireAt: 1.2, drop: r < 0.35 ? "B" : "", hit: -1}
+            : {id: nextId + i, k: "b", g: false, x0: 70 + r * (W - 140), y0: -70, vx: 0, vy: 42, fr: 0.5, ph: 0, amp: 30, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(22 * diff), max: 22, r: 30, sc: 800, fire: 1.9 / diff, fireAt: 1.4, drop: "P", hit: -1})))))[0])
+          nextId = nextId + n
+          spawnAt = gt + max(0.8, (2.5 - level * 0.25) * (0.7 + random() * 0.6))
+        }
+
+        // Enemy fire: aimed shots, a bomber's fan, the flak's spread, and the boss's three patterns.
+        let shooters = foes.filter(f => f.fire > 0 && f.t >= f.fireAt && f.y > 30 && f.y < H * 0.7 && f.x > 0 && f.x < W)
+        if len(shooters) > 0 {
+          let bs = 140 + level * 18
+          let fresh = eshots + flatten(shooters.map(f =>
+            (f.k == "boss"
+              ? (floor(f.t / 3) % 3 == 0 ? range(12 + level * 2).map(i => i * 6.283 / (12 + level * 2) + f.t)
+                : (floor(f.t / 3) % 3 == 1 ? [-0.36, -0.18, 0, 0.18, 0.36].map(a => a + atan2(py - f.y, px - f.x))
+                  : [0, 2.094, 4.189].map(a => a + f.t * 2.3)))
+              : (f.k == "b" ? [-0.6, -0.3, 0, 0.3, 0.6].map(a => a + 1.5708)
+                : (f.k == "g" ? [-0.2, 0, 0.2].map(a => a + atan2(py - f.y, px - f.x)) : [atan2(py - f.y, px - f.x)])))
+            .map(a => {x: f.x, y: f.y + (f.k == "boss" ? 30 : 0), vx: cos(a) * bs, vy: sin(a) * bs})
+          ))
+          eshots = drop(fresh, max(0, len(fresh) - 110))
+          foes = foes.map(f => f.fire > 0 && f.t >= f.fireAt && f.y > 30 && f.y < H * 0.7 && f.x > 0 && f.x < W ? merge(f, {fireAt: f.t + f.fire * (f.k == "boss" && floor(f.t / 3) % 3 == 2 ? 0.3 : 0.75 + random() * 0.5)}) : f)
+        }
+
+        // Our bullets: each one that touches an enemy is spent on it.
+        let hitsBy = foes.map(f => shots.filter(b => abs(b.x - f.x) < f.r + 3 && abs(b.y - f.y) < (f.k == "boss" ? f.r * 0.8 : f.r) + 8))
+        if any(hitsBy, h => len(h) > 0) {
+          let used = flatten(hitsBy).map(b => b.id)
+          shots = shots.filter(b => !any(used, u => u == b.id))
+          foes = foes.map((f, i) => len(hitsBy[i]) > 0 ? merge(f, {hp: f.hp - len(hitsBy[i]), hit: gt}) : f)
+        }
+
+        // The dead explode, leave a scorch mark on the ground, and sometimes something to pick up.
+        let dead = foes.filter(f => f.hp <= 0)
+        if len(dead) > 0 {
+          foes = foes.filter(f => f.hp > 0)
+          score = score + sum(dead.map(f => f.sc))
+          let blasts = booms + flatten(dead.map(f => f.k == "boss"
+            ? range(14).map(j => [random(), random()].map(r => {x: f.x + (r[0] - 0.5) * 120, y: f.y + (r[1] - 0.5) * 80, t: -j * 0.08, s: 2 + r[0] * 1.5, vy: 20})[0])
+            : (f.k == "b" ? range(4).map(j => {x: f.x + (j % 2 - 0.5) * 40, y: f.y + (floor(j / 2) - 0.5) * 30, t: -j * 0.07, s: 1.6, vy: 30}) : [{x: f.x, y: f.y, t: 0, s: f.r / 12, vy: f.g ? SPD : 40}])))
+          booms = drop(blasts, max(0, len(blasts) - 24))
+          let marks = scorch + dead.filter(f => f.g && f.k != "s").map(f => {x: f.x, y: f.y})
+          scorch = drop(marks, max(0, len(marks) - 8))
+          items = items + dead.map(f => [random()].map(r => {k: f.drop != "" ? f.drop : (r < 0.045 ? "M" : (r < 0.065 ? "B" : (r < 0.08 ? "H" : ""))), x: f.x, y: f.y, t: 0})[0]).filter(i => i.k != "")
+          if any(dead, f => f.k == "boss") {
+            mode = "clear"
+            clearAt = gt
+            score = score + 5000 * level
+            cleared = max(cleared, level)
+            stageBest = set(range(5).map(i => stageBest[i] ?? 0), level - 1, max(stageBest[level - 1] ?? 0, score - stageFrom))
+            let wreck = booms + foes.map(f => {x: f.x, y: f.y, t: -0.3, s: f.r / 12, vy: 40})
+            booms = drop(wreck, max(0, len(wreck) - 30))
+            foes = []
+            eshots = []
+          }
+        }
+
+        // Pick-ups: power, bombs, hearts and medals.
+        let got = items.filter(i => abs(i.x - px) < 26 && abs(i.y - py) < 28)
+        if len(got) > 0 {
+          items = items.filter(i => !(abs(i.x - px) < 26 && abs(i.y - py) < 28))
+          power = min(4, power + count(got, i => i.k == "P"))
+          bombs = min(5, bombs + count(got, i => i.k == "B"))
+          hp = min(5, hp + count(got, i => i.k == "H"))
+          score = score + count(got, i => i.k == "M") * 1000 * level
+          pops = pops + got.map(i => {x: i.x, y: i.y - 20, t: 0, s: i.k == "P" ? (power >= 4 ? "MAX POWER" : "POWER UP") : (i.k == "B" ? "+1 BOMB" : (i.k == "H" ? "+1 LIFE" : "+${1000 * level}")), c: i.k == "M" ? #ffcd75 : (i.k == "H" ? #ef7d57 : #a7f070)})
+        }
+
+        // Hit by a bullet or a plane: a heart and a power level gone, and a moment to get clear.
+        if (gt >= safeUntil || safeUntil - gt > 2.5) && (any(eshots, b => abs(b.x - px) < 7 && abs(b.y - py) < 9) || any(foes, f => !f.g && abs(f.x - px) < f.r * 0.7 + 8 && abs(f.y - py) < f.r * 0.7 + 10)) {
+          hp = hp - 1
+          power = max(1, power - 1)
+          eshots = []
+          safeUntil = gt + 2.2
+          let ouch = booms + [{x: px, y: py, t: 0, s: 2.2, vy: 0}, {x: px - 14, y: py + 8, t: -0.1, s: 1.2, vy: 0}, {x: px + 12, y: py - 6, t: -0.2, s: 1.2, vy: 0}]
+          booms = drop(ouch, max(0, len(ouch) - 24))
+          if hp <= 0 {
+            mode = "over"
+            overAt = gt
+            best = max(best, score)
+          }
         }
       }
     }
