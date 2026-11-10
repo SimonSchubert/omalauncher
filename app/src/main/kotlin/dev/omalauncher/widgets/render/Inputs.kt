@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.input.key.Key
@@ -214,6 +215,7 @@ internal fun InputNode(
     val onChange = p.el.handlers["onChange"]
     val onSubmit = p.el.handlers["onSubmit"]
     val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     val inputMode = LocalInputModeManager.current
     val want = LocalInputFocus.current && p.observe("focus")?.truthy == true
     val requester = remember { FocusRequester() }
@@ -224,7 +226,15 @@ internal fun InputNode(
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     // On a home tile: home lifts the tile above the keyboard while this has it, and takes the focus back on a tap outside.
     val tiles = LocalHomeTiles.current
-    val tile = remember(tiles, p.inst) { tiles?.let { TileField(p.inst) { focus.clearFocus() } } }
+    val tile = remember(tiles, p.inst, focus, keyboard) {
+        tiles?.let {
+            TileField(p.inst) {
+                focus.clearFocus()
+                // The terminal's KeyboardSink did not open this field's IME, so its hide() is a no-op.
+                keyboard?.hide()
+            }
+        }
+    }
     DisposableEffect(tile) { onDispose { tile?.let { tiles?.unfocused(it) } } }
     LaunchedEffect(given) { if (given != null && given != field.text) field = TextFieldValue(given, TextRange(given.length)) }
 
