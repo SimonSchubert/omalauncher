@@ -93,6 +93,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.key.Key
@@ -132,7 +134,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.sin
 import kotlin.math.min
 import dev.omalauncher.hasPermission
 
@@ -754,6 +759,7 @@ private class OrbLoops(
     val turn: State<Float>,
     val breath: State<Float>,
     val ripple: State<Float>,
+    val drift: State<Float>,
 )
 
 @Composable
@@ -763,7 +769,36 @@ private fun orbLoops(): OrbLoops {
         loop.animateFloat(0f, 360f, infiniteRepeatable(tween(1400, easing = LinearEasing)), label = "turn"),
         loop.animateFloat(0f, 1f, infiniteRepeatable(tween(1600, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "breath"),
         loop.animateFloat(0f, 1f, infiniteRepeatable(tween(2400, easing = LinearEasing)), label = "ripple"),
+        // One full turn in radians: the blobs' waves move at whole multiples of it, so the loop has no seam.
+        loop.animateFloat(0f, 2f * PI.toFloat(), infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "drift"),
     )
+}
+
+/** [c] turned round the colour wheel by [degrees]; a grey stays grey. */
+private fun hue(c: Color, degrees: Float): Color {
+    val hsv = FloatArray(3)
+    android.graphics.Color.colorToHSV(c.toArgb(), hsv)
+    hsv[0] = (hsv[0] + degrees + 360f) % 360f
+    return Color(android.graphics.Color.HSVToColor(hsv)).copy(alpha = c.alpha)
+}
+
+/** The points round a blob's edge, and their angles' cosines and sines: the same each frame, so worked out once. */
+private const val BLOB_POINTS = 96
+private val blobAngle = FloatArray(BLOB_POINTS) { it * 2f * PI.toFloat() / BLOB_POINTS }
+private val blobCos = FloatArray(BLOB_POINTS) { cos(blobAngle[it]) }
+private val blobSin = FloatArray(BLOB_POINTS) { sin(blobAngle[it]) }
+
+/** A circle of radius [r] round [c] whose edge rolls in two waves of [a] (a share of r), [k1] and [k2] crests round it. */
+private fun Path.blob(c: Offset, r: Float, a: Float, k1: Int, p1: Float, k2: Int, p2: Float) {
+    reset()
+    for (i in 0 until BLOB_POINTS) {
+        val t = blobAngle[i]
+        val d = r * (1f + a * (0.6f * sin(k1 * t + p1) + 0.4f * sin(k2 * t - p2)))
+        val x = c.x + d * blobCos[i]
+        val y = c.y + d * blobSin[i]
+        if (i == 0) moveTo(x, y) else lineTo(x, y)
+    }
+    close()
 }
 
 /** What's happening, as a shape: it follows your voice while listening, breathes while speaking, and is ringed while working. */
@@ -812,15 +847,28 @@ private fun Orb(
     val active = speech.listening || speaking || session.busy || waiting
     // Idle it's a hollow ring; anything going on fills it.
     val fill by animateFloatAsState(if (active) 1f else 0f, tween(450), label = "fill")
+    // How much its edge moves: livelier listening and speaking, calm while it works or waits, still when idle.
+    val wobble by animateFloatAsState(
+        when {
+            speech.listening -> 0.03f
+            speaking -> 0.035f
+            waiting || session.busy -> 0.02f
+            else -> 0f
+        },
+        tween(600),
+        label = "wobble",
+    )
     // A finger on it: it gives a little and lights up at once, before the tap does anything.
     val press by animateFloatAsState(if (pressed) 1f else 0f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium), label = "press")
     // Only while one is drawn: idle, they'd wake the screen every frame for nothing.
     val loops = if (working || speaking || waiting || speech.listening) orbLoops() else null
+    val shape = remember { Path() }
     Canvas(modifier.graphicsLayer { scaleX = size.value * (1f - 0.07f * press); scaleY = size.value * (1f - 0.07f * press) }) {
         val loud = level.value
         val turn = loops?.turn?.value ?: 0f
         val breath = loops?.breath?.value ?: 0f
         val ripple = loops?.ripple?.value ?: 0f
+        val drift = loops?.drift?.value ?: 0f
         val fill = max(fill, 0.45f * press)
         val c = Offset(this.size.width / 2, this.size.height / 2)
         val r = min(this.size.width, this.size.height) / 2 - 10.dp.toPx()
@@ -828,9 +876,14 @@ private fun Orb(
         if (r <= 0f) return@Canvas
         val swell = if (speaking || waiting) breath else 0f
         val core = r * 0.72f * (1f + 0.035f * swell)
-        // A soft light around it, brighter as it speaks or listens louder.
+        val warm = hue(color, -32f)
+        val cool = hue(color, 32f)
+        // A soft light around it in its colours, brighter as it speaks or listens louder.
         val glow = 0.06f + fill * (0.14f + 0.10f * swell + 0.16f * loud) + 0.10f * press
-        drawCircle(Brush.radialGradient(0.55f to color.copy(alpha = glow), 1f to Color.Transparent, center = c, radius = r), r, c)
+        drawCircle(
+            Brush.radialGradient(0f to color.copy(alpha = glow), 0.5f to lerp(color, cool, 0.5f).copy(alpha = glow), 1f to Color.Transparent, center = c, radius = r),
+            r, c,
+        )
         // Listening: rings leave the core and fade, stronger the louder you are.
         if (speech.listening) {
             for (k in 0..1) {
@@ -839,13 +892,38 @@ private fun Orb(
                 drawCircle(color.copy(alpha = a), core + (r - core) * p, c, style = Stroke(1.5.dp.toPx()))
             }
         }
-        // The core: lit from the top, a touch deeper at the bottom.
-        drawCircle(
-            Brush.linearGradient(listOf(lerp(color, Color.White, 0.22f), color, lerp(color, Color.Black, 0.14f)), Offset(c.x - core * 0.5f, c.y - core), Offset(c.x + core * 0.5f, c.y + core)),
-            core, c, alpha = fill,
-        )
-        drawCircle(color.copy(alpha = 0.05f * (1f - fill)), core, c)
-        drawCircle(color.copy(alpha = 1f - fill), core, c, style = Stroke(1.5.dp.toPx()))
+        if (fill > 0f) {
+            // Behind the core, two softer blobs a little round the colour wheel either way, rolling against each
+            // other and out past its edge: the core never quite sits still in its own light.
+            val a = wobble + 0.04f * loud
+            shape.blob(c, core * (1f + 0.6f * a), a * 1.4f, 2, drift * 2f, 3, drift)
+            drawPath(shape, Brush.radialGradient(listOf(warm, warm.copy(alpha = 0f)), c, core * 1.15f), alpha = 0.55f * fill)
+            shape.blob(c, core * (1f + 0.4f * a), a * 1.4f, 3, -drift, 2, drift * 3f)
+            drawPath(shape, Brush.radialGradient(listOf(cool, cool.copy(alpha = 0f)), c, core * 1.15f), alpha = 0.55f * fill)
+            // The core itself: lit from the top left, deeper towards the bottom right, its edge rolling gently.
+            shape.blob(c, core, a, 3, drift * 2f, 5, drift)
+            drawPath(
+                shape,
+                Brush.linearGradient(
+                    listOf(lerp(warm, Color.White, 0.3f), color, lerp(cool, Color.Black, 0.25f)),
+                    Offset(c.x - core * 0.7f, c.y - core), Offset(c.x + core * 0.7f, c.y + core),
+                ),
+                alpha = fill,
+            )
+            // A sheen near the top, like light on glass, and a fine bright rim.
+            // The blob filled with the sheen, not a clip to it: a clip to a path isn't anti-aliased on every GPU.
+            val spot = Offset(c.x - core * 0.3f, c.y - core * 0.45f)
+            drawPath(shape, Brush.radialGradient(listOf(Color.White.copy(alpha = 0.24f), Color.White.copy(alpha = 0f)), spot, core * 0.9f), alpha = fill)
+            drawPath(shape, Color.White.copy(alpha = 0.14f), alpha = fill, style = Stroke(1.dp.toPx()))
+        }
+        // Idle: a hollow ring, lit from the top like the core.
+        if (fill < 1f) {
+            drawCircle(color.copy(alpha = 0.05f * (1f - fill)), core, c)
+            drawCircle(
+                Brush.linearGradient(listOf(lerp(color, Color.White, 0.25f), color.copy(alpha = 0.45f)), Offset(c.x, c.y - core), Offset(c.x, c.y + core)),
+                core, c, alpha = 1f - fill, style = Stroke(1.5.dp.toPx()),
+            )
+        }
         // Working: one comet circling just outside, its tail fading away.
         if (working) {
             val ring = r * 0.9f
