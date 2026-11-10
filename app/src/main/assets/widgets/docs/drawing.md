@@ -62,3 +62,11 @@ Shader {
   """
 }
 ```
+
+The code runs for every pixel of every frame, so keep its loops small: a pixel
+may take at most 1000 loop turns, counting a loop inside another as the outer
+loop's turns times the inner one's, and a call to your own function as that
+function's turns: a loop of 16 turns inside one of 8 takes 128. Over that, the shader
+isn't drawn (the tile shows `fallback`), the widget's error says how many it
+took, and the store won't take it. Count with fixed numbers or a `const`:
+`for (int i = 0; i < 8; i++)` or `i < STEPS` after `const int STEPS = 8;`.

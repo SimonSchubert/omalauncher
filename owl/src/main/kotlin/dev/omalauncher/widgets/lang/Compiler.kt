@@ -64,6 +64,9 @@ class Compiler private constructor(
         /** Each Browser is a web view of its own: a tile has room for two. */
         private const val MAX_BROWSERS = 2
 
+        /** Texts [shaderTexts] gives at most for one Shader: a few picked between, not every combination of many. */
+        private const val MAX_SHADER_TEXTS = 64
+
         private val TIME_WORD = Regex("""\btime\b""")
 
         /** Whether a Shader's code reads its `time` uniform: only then does it need a frame clock. */
@@ -236,6 +239,8 @@ class Compiler private constructor(
     private var animated = false
     private var terminal = false
     private var browser = false
+    /** Each text a Shader's code can be, null for one worked out while the widget runs. */
+    private val shaders = ArrayList<String?>()
 
     /** Browsers so far, against [MAX_BROWSERS]. */
     private var browsers = 0
@@ -420,6 +425,7 @@ class Compiler private constructor(
             animated = animated,
             terminal = terminal,
             browser = browser,
+            shaders = shaders,
             nodeCount = tileNodes,
         )
     }
@@ -522,6 +528,7 @@ class Compiler private constructor(
             animated = animated,
             terminal = terminal,
             browser = browser,
+            shaders = shaders,
             nodeCount = nodes,
             kind = ast.kind,
             icon = icon,
@@ -846,6 +853,24 @@ class Compiler private constructor(
         val c = ex(e, s).const ?: (e as? Expr.Name)?.let { n -> (lookup(n.name, s) as? Ref.Slot)?.let { (globals[it.index] as? Global.Let)?.value?.const } }
         return if (c is Str || c is Num) c.toString() else null
     }
+
+    /**
+     * Every text a Shader's code can be, when each is fixed: a literal or a top-level let (`code: print`), joined
+     * (`lib + city`) or picked (`night ? dark : day`); null when any is worked out while the widget runs.
+     */
+    private fun shaderTexts(
+        e: Expr,
+        s: Scope,
+    ): List<String>? =
+        when {
+            e is Expr.Cond -> (shaderTexts(e.a, s) ?: return null) + (shaderTexts(e.b, s) ?: return null)
+            e is Expr.Binary && e.op == "+" -> {
+                val a = shaderTexts(e.a, s) ?: return null
+                val b = shaderTexts(e.b, s) ?: return null
+                a.flatMap { x -> b.map { x + it } }.take(MAX_SHADER_TEXTS)
+            }
+            else -> constText(e, s)?.let(::listOf)
+        }
 
     private fun constant(
         e: Expr,
@@ -1250,6 +1275,7 @@ class Compiler private constructor(
         // A shader animates only if its code reads `time`; code that's worked out at run time might.
         if (n.type == "Shader") {
             val code = props["code"]?.const
+            body.props.firstOrNull { it.name == "code" }?.let { p -> shaders += shaderTexts(p.value, scope) ?: listOf(null) }
             if (code == null || shaderReadsTime(code.toString())) animated = true
         }
         if (kind.children == Children.NONE && body.items.isNotEmpty()) fail("${n.type} can't hold other nodes", body.items[0].pos)

@@ -60,6 +60,7 @@ import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
+import dev.omalauncher.widgets.lang.ShaderCost
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WNode
 import dev.omalauncher.widgets.lang.WidgetError
@@ -739,7 +740,15 @@ internal fun ShaderNode(
 ) {
     val inst = p.inst
     val code = p.observe("code")?.toString().orEmpty()
-    val shader = remember(code) { runCatching { RuntimeShader(SHADER_HEADER + code) }.onFailure { inst.report("Shader: ${it.message}") }.getOrNull() }
+    val shader =
+        remember(code) {
+            // Code that would hang the GPU isn't drawn: its frame would freeze the screen every time the page shows.
+            ShaderCost.problem(code)?.let {
+                inst.report("Shader: $it")
+                return@remember null
+            }
+            runCatching { RuntimeShader(SHADER_HEADER + code) }.onFailure { inst.report("Shader: ${it.message}") }.getOrNull()
+        }
     val fallback = p.color("fallback") { Palette.surface }
     if (shader == null) {
         Spacer(modifier.drawBehind { drawRect(fallback()) })
