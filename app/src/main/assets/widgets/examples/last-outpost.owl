@@ -253,7 +253,7 @@ app "last outpost" {
   // What a frame costs to draw, in Canvas drawing calls (a sprite costs one per run of a color
   // along a row), out of 2000: past 1500 health bars, shadows and the outlines of towers' heads are left out.
   let ink = 300 + len(towers) * 28 + (sum(foes.map(e => e.k == "B" ? 70 : (e.k == "b" ? 32 : (e.k == "f" ? 24 : 16)))) ?? 0)
-    + (sum(booms.map(b => b.s >= 1 ? 45 : 2)) ?? 0) + len(fx) * 8 + len(shells) * 2
+    + (sum(booms.map(b => b.s >= 1 ? 45 : 2)) ?? 0) + len(fx) * 8 + len(shells) * 3
     + (sum(labels.map(l => len(l.s) * (l.p >= 3 ? 14 : 7))) ?? 0)
   let rich = ink < 1500
 
@@ -500,13 +500,17 @@ app "last outpost" {
           }
         }
       }
-      // cannon shells in flight, high in the middle of their arc, and their shadows
+      // cannon shells in flight: one arc up and down (sin takes radians), the ball a little bigger at
+      // the top, and its shadow on the ground smaller and fainter the higher it is
       for s in shells {
         let u = clamp(s.t / s.T, 0, 1)
+        let lift = sin(u * 3.1416)
         let sx = OX + (lerp(s.x0, s.x1, u) + 0.5) * C
         let sy = OY + (lerp(s.y0, s.y1, u) + 0.5) * C
-        circle(sx, sy, 1.4 * P, fill: alpha(#16130f, 0.3))
-        circle(sx, sy - sin(u * 180) * C * 0.7, 1.6 * P * (1 + sin(u * 180) * 0.4), fill: #16130f)
+        let r = 1.7 * P * (1 + lift * 0.35)
+        circle(sx, sy, 1.5 * P * (1 - lift * 0.4), fill: alpha(#16130f, 0.35 - lift * 0.15))
+        circle(sx, sy - lift * C * 0.6, r, fill: #16130f)
+        circle(sx - r * 0.35, sy - lift * C * 0.6 - r * 0.35, r * 0.35, fill: #7a6a52)
       }
       // flyers, over everything on the ground
       for e in foes {
