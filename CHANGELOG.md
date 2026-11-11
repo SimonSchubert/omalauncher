@@ -4,6 +4,20 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 1.3.0 (versionCode 36) – 2026-11-11
+
+- Owl 22 brings 3D: a Canvas `scene(camera)` draws lit, fogged and textured models from cubes,
+  spheres, cylinders, cones, planes, terrain, your own meshes or OBJ files, with vector math for
+  games. `onTouch` sees every finger at once, and a Shader can sample images and take array
+  uniforms. New example apps: sunset heist, a 3D city to drive, run missions in and escape the
+  police, and canyon run, a low-poly flight down an endless canyon; plus boomtown, a city builder,
+  sky forge, a shooter with a hangar of upgrades, and last outpost, tower defense.
+- The store has two sections, widgets and apps; faces are now called full-screen widgets, with a
+  tab of their own in the store.
+- Apps that ask for 60 frames a second keep them however long they take to draw, and widgets that
+  read fixed values draw faster.
+- today, what's new, ntfy and github inbox refresh when their list is pulled down.
+
 ## 1.2.0 (versionCode 35) – 2026-11-10
 
 - Owl 21: `android.motion` gives the phone's tilt from the gyroscope and accelerometer, and
