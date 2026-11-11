@@ -232,7 +232,7 @@ class AirPods(
             } finally {
                 context.unregisterReceiver(receiver)
                 synchronized(profiles) {
-                    for ((p, proxy) in profiles) runCatching { adapter?.closeProfileProxy(p, proxy) }
+                    for ((p, proxy) in profiles.toList()) runCatching { adapter?.closeProfileProxy(p, proxy) }
                     profiles.clear()
                 }
             }
