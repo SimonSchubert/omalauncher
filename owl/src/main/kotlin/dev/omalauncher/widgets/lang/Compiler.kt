@@ -186,7 +186,7 @@ class Compiler private constructor(
     ): List<String> {
         if (e is Expr.Cond) return servers(e.a, s, name) + servers(e.b, s, name)
         // A URL that's null pauses its source: it goes nowhere.
-        if (ex(e, s).const == Null) return emptyList()
+        if (reviewed(e, s) == Null) return emptyList()
         val host = server(e, s) ?: fail("$name is a secret, so the server it goes to is written out: \"https://api.example.com/…\", not a value", e.pos)
         if (host.startsWith("http://")) fail("$name is a secret, so it goes only to an https:// server, where nothing on the way can read it", e.pos)
         if (host.startsWith("ws://")) fail("$name is a secret, so it goes only to a wss:// server, where nothing on the way can read it", e.pos)
@@ -280,6 +280,9 @@ class Compiler private constructor(
 
     /** While a scene's body is compiled: it holds model(...) calls, and only it does. */
     private var inScene = false
+
+    /** While [reviewed] works out a command or URL: lets read as values again, not as what they folded to. */
+    private var reviewing = false
 
     /** The newest feature used, from [SINCE], and where: the widget must declare at least its version. */
     private var needs: Triple<Int, String, Int>? = null
@@ -693,7 +696,7 @@ class Compiler private constructor(
         what: String,
         prefix: String = "",
     ) {
-        (ev.const as? Str)?.v?.let {
+        (reviewed(e, s) as? Str)?.v?.let {
             scripts += it
             commands += prefix + it
             return
@@ -719,7 +722,7 @@ class Compiler private constructor(
         s: Scope,
         value: String = "sh",
     ): List<String>? {
-        ex(e, s).const?.let { c ->
+        reviewed(e, s)?.let { c ->
             // A URL that's null pauses its source: no shape.
             return if (c is Str || c is Num) listOf(c.toString()) else if (c == Null && value == "enc") emptyList() else null
         }
@@ -853,7 +856,7 @@ class Compiler private constructor(
         s: Scope,
     ): String? {
         if (e is Expr.Interp) return e.parts.map { constText(it, s) ?: return null }.joinToString("")
-        val c = ex(e, s).const ?: (e as? Expr.Name)?.let { n -> (lookup(n.name, s) as? Ref.Slot)?.let { (globals[it.index] as? Global.Let)?.value?.const } }
+        val c = reviewed(e, s) ?: (e as? Expr.Name)?.let { n -> (lookup(n.name, s) as? Ref.Slot)?.let { (globals[it.index] as? Global.Let)?.value?.const } }
         return if (c is Str || c is Num) c.toString() else null
     }
 
@@ -1691,7 +1694,7 @@ class Compiler private constructor(
                 p is Expr.Binary && p.op == "+" -> bad(p.a, false) ?: bad(p.b, false)
                 p is Expr.Cond -> bad(p.a, top) ?: bad(p.b, top)
                 p is Expr.Call && (p.name == "enc" || p.name in NUMBERS) -> null
-                ex(p, s).const == Null -> null
+                reviewed(p, s) == Null -> null
                 else -> p.also { whole = top }
             }
         val value = bad(e, true)
@@ -1713,7 +1716,7 @@ class Compiler private constructor(
             return "a value in this URL isn't put through enc(), so the store's review can't show where it goes: write $fix (a number can go through int(n) or fixed(n, 4) instead; a path with / in it can't, so write its fixed parts out and enc() only the values between them)" to value.pos
         }
         // Every value is encoded: so either the server comes from one, or the URL has too many ways to turn out to list.
-        fun fixed(p: Expr): Boolean = if (p is Expr.Cond) fixed(p.a) && fixed(p.b) else ex(p, s).const == Null || server(p, s) != null
+        fun fixed(p: Expr): Boolean = if (p is Expr.Cond) fixed(p.a) && fixed(p.b) else reviewed(p, s) == Null || server(p, s) != null
         if (fixed(e)) {
             return "this URL can turn out more than $MAX_SHAPES ways, more than the store's review lists: write fewer ternaries into it, " +
                 "or pass the parts that vary through enc() as one value" to e.pos
@@ -1772,6 +1775,23 @@ class Compiler private constructor(
     ) = e is Expr.Name && e.name in secrets && lookup(e.name, s) is Ref.Slot
 
     private fun isUnset(e: Expr) = e is Expr.Lit && (e.value == Null || e.value == Str(""))
+
+    /**
+     * [e]'s constant as the store's review sees it: a let stays a value, as it did before lets folded, so
+     * `sh(script)` is one value in a command and not the script's whole text, which would no longer be listable.
+     */
+    private fun reviewed(
+        e: Expr,
+        s: Scope,
+    ): Value? {
+        val was = reviewing
+        reviewing = true
+        try {
+            return ex(e, s).const
+        } finally {
+            reviewing = was
+        }
+    }
 
     private fun ex(
         e: Expr,
@@ -1891,10 +1911,12 @@ class Compiler private constructor(
                 // A let folded to a constant (`let C = 32`, `let BOX = cube()`) and an asset (a fixed name) read as their
                 // value: no read through the host, which in the app goes through Compose's state on every use, and what
                 // uses them folds too.
-                when (val g = globals.getOrNull(ref.index)) {
-                    is Global.Let -> g.value.const?.let { return Ev.of(it) }
-                    is Global.Asset -> return Ev.of(g.value)
-                    else -> {}
+                if (!reviewing) {
+                    when (val g = globals.getOrNull(ref.index)) {
+                        is Global.Let -> g.value.const?.let { return Ev.of(it) }
+                        is Global.Asset -> return Ev.of(g.value)
+                        else -> {}
+                    }
                 }
                 return Ev(null) { env -> env.host.read(ref.index) }
             }

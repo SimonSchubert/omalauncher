@@ -1769,6 +1769,12 @@ class LangTest {
         assertEquals(listOf("sed -i ${Compiler.NUMBER}d ~/todo.md"), commands("onTap: run(\"sed -i ${'$'}{int(n)}d ~/todo.md\")"))
         assertEquals(listOf("true", "curl -d ${Compiler.VALUE} https://ha.local"), commands("onTap: run(n > 1 ? \"true\" : \"curl -d ${'$'}{sh(v)} https://ha.local\")"))
         assertEquals(listOf("echo ${Compiler.VALUE}x"), commands("source o = cmd(\"echo \" + sh(v) + \"x\") every 1m"))
+        // A script kept in a let stays one value, as before lets folded: its text has quotes and # in it, which
+        // would make the command unlistable, and the store would drop the widget.
+        assertEquals(
+            listOf("bash -c ${Compiler.VALUE} x ${Compiler.VALUE}"),
+            commands("let script = \"echo 'hi' # a comment\"\n onTap: run(\"bash -c ${'$'}{sh(script)} x ${'$'}{sh(v)}\")"),
+        )
         // Unquoted, or quoted where bash would undo it: it could run anything.
         for (bad in listOf("echo ${'$'}{v}", "echo \\\"${'$'}{sh(v)}\\\"", "echo '${'$'}{sh(v)}'", "echo ok # ${'$'}{sh(v)}", "cat <<E\\n${'$'}{sh(v)}\\nE")) {
             assertEquals(bad, listOf("run(…) built from widget values"), commands("onTap: run(\"$bad\")"))
