@@ -62,7 +62,7 @@
     <string name="store_installed">✓ installed</string>
     <string name="store_needs_newer">needs a newer launcher</string>
     <string name="store_needs_linux">needs linux</string>
-    <!-- Full-screen widgets (faces), a whole home page each: their tab, the row of them, and their shape on a card where a widget's size goes ("clock · full screen"). -->
+    <!-- Full-screen widgets (faces), a whole home page each: their tab and their shape on a card where a widget's size goes ("clock · full screen"). -->
     <string name="store_full_screen">full screen</string>
     <!-- A face's page count, after its category: "clock · 3 pages". -->
     <plurals name="store_pages">

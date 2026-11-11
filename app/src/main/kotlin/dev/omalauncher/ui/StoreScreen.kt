@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
@@ -80,8 +79,8 @@ import kotlinx.coroutines.launch
 
 /**
  * The store, with a toggle between widgets and apps. Widgets: built-in terminal tiles (a plain shell,
- * and one per installed coding agent), a row of full-screen widgets (faces), then reviewed widgets from the
- * marketplace repo as a grid of previews, with search and category tabs (one for the newest, one for full screen).
+ * and one per installed coding agent), then reviewed widgets from the marketplace repo as a grid of previews, with search
+ * and category tabs (one for the newest, one for full-screen widgets, faces, as portrait screenshots).
  * Apps: the reviewed ones, the same way.
  * Tapping one opens its page, which shows what it installs and runs; from there a widget goes on the current page,
  * a face left of page 1 and an app in the drawer (or any of them updates). An installed app opens from its page too.
@@ -285,7 +284,8 @@ private fun StoreList(
         val installed = all.filter { it.market.installedVersion(it.e) != null }
         val tabs =
             buildList {
-                add(ALL to all.size)
+                // Full-screen widgets have their own tab, not a place in all, until a search looks through everything.
+                add(ALL to market.entries.size)
                 // There even when nothing is new.
                 if (!apps) add(NEW to all.count { it.e.new })
                 // Faces have a tab of their own rather than their categories, which are the widgets'.
@@ -357,24 +357,6 @@ private fun StoreList(
                         }
                     }
                 }
-                // Full-screen widgets, a whole page each, in a row of their own above the grid, taller than its cards.
-                if (faces != null && faces.entries.isNotEmpty()) {
-                    item(key = "full-screen", span = { GridItemSpan(maxLineSpan) }) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Caption(stringResource(R.string.store_full_screen))
-                            LazyRow(
-                                Modifier.bleed(PanelPadding),
-                                contentPadding = PaddingValues(horizontal = PanelPadding),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                items(faces.entries, key = { it.id }) { e ->
-                                    val l = Listed(faces, e)
-                                    FullScreenCard(faces, e, theme, engine.linux, selected = l.key == selected) { onOpen(l) }
-                                }
-                            }
-                        }
-                    }
-                }
             }
             item(key = "catalog", span = { GridItemSpan(maxLineSpan) }) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -393,8 +375,13 @@ private fun StoreList(
                     }
                 }
             }
-            // On the full screen tab they all are, so their cards leave it out.
-            items(shown, key = { it.key }) { l -> Card(l.market, l.e, theme, engine.linux, selected = l.key == selected, shape = filter.tab != FULL_SCREEN) { onOpen(l) } }
+            items(shown, key = { it.key }) { l ->
+                if (filter.tab == FULL_SCREEN) {
+                    FullScreenCard(l.market, l.e, theme, engine.linux, selected = l.key == selected) { onOpen(l) }
+                } else {
+                    Card(l.market, l.e, theme, engine.linux, selected = l.key == selected) { onOpen(l) }
+                }
+            }
         }
     }
 }
@@ -628,8 +615,6 @@ private fun Card(
     theme: String?,
     linux: Boolean,
     selected: Boolean,
-    /** Whether its status says what shape it is, as [cardStatus] does. */
-    shape: Boolean = true,
     onOpen: () -> Unit,
 ) {
     val preview = rememberCardPreview(market, e, theme)
@@ -653,7 +638,7 @@ private fun Card(
                 }
             }
         }
-        val (status, color) = cardStatus(market, e, linux, shape)
+        val (status, color) = cardStatus(market, e, linux)
         // An app's icon goes before its name and status, as in the drawer; widgets have none.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (e.icon != null || e.iconFile != null) {
@@ -692,8 +677,8 @@ private fun cardStatus(
 }
 
 /**
- * A card in the full screen row: a face's preview, most of its screen, the height of a short phone, with its name and status
- * under it. The grid's cards show only a screen's top; here it reads as a whole page.
+ * A grid cell on the full screen tab: a face's preview as a portrait screenshot, most of its screen, with its name and status
+ * under it. The other tabs' cards show only a screen's top; here it reads as a whole page.
  */
 @Composable
 private fun FullScreenCard(
@@ -704,23 +689,23 @@ private fun FullScreenCard(
     selected: Boolean,
     onOpen: () -> Unit,
 ) {
-    val (w, h) = with(LocalDensity.current) { FullScreenPreviewWidth.roundToPx() to FullScreenPreviewHeight.roundToPx() }
-    val preview by produceState<ImageBitmap?>(null, e.previewFor(theme), w, h) {
-        value = market.thumbnail(e, theme, w, h, FullScreenPreviewHeight / FullScreenPreviewWidth)
-    }
+    // As wide as the widest cell, the screen's top [FullScreenPreviewTop] of its width high.
+    val w = with(LocalDensity.current) { CardPreviewWidth.roundToPx() }
+    val h = (w * FullScreenPreviewTop).toInt()
+    val preview by produceState<ImageBitmap?>(null, e.previewFor(theme), w, h) { value = market.thumbnail(e, theme, w, h, FullScreenPreviewTop) }
     Column(
         Modifier
-            .width(FullScreenPreviewWidth + 16.dp)
+            .fillMaxWidth()
             .frame(1.dp, if (selected) Palette.accent else Palette.border, radius = 12.dp)
             .clickable(onClick = onOpen)
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Box(Modifier.size(FullScreenPreviewWidth, FullScreenPreviewHeight).clip(RoundedCornerShape(6.dp)).background(Palette.surface), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1 / FullScreenPreviewTop).clip(RoundedCornerShape(6.dp)).background(Palette.surface), contentAlignment = Alignment.Center) {
             preview?.let { Image(it, null, Modifier.fillMaxSize(), alignment = Alignment.TopCenter, contentScale = ContentScale.FillWidth) }
                 ?: BasicText(e.name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
         }
-        // The row says they're full screen, so their status leaves it out and fits the narrow card.
+        // The tab says they're full screen, so their status leaves it out.
         val (status, color) = cardStatus(market, e, linux, shape = false)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -730,8 +715,8 @@ private fun FullScreenCard(
     }
 }
 
-private val FullScreenPreviewWidth = 112.dp
-private val FullScreenPreviewHeight = 200.dp
+/** A full-screen card's preview is twice as high as it's wide: a phone screen less a little of its bottom. */
+private const val FullScreenPreviewTop = 2f
 
 /** Marks an entry added to the store in the last few days, beside its name; its status stays as it is. */
 @Composable
