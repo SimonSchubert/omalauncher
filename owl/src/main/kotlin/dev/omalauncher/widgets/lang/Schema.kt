@@ -434,7 +434,7 @@ internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding",
 internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge", "lock", "fps")
 
 /** `uniform shader name;` in a Shader's code; see [SHADER_IMAGE]. */
-internal val SHADER_IMAGE_RE = Regex("""\buniform\s+shader\s+\w+""")
+internal val SHADER_IMAGE_RE = Regex("""\buniform\s+shader\s+(\w+)""")
 
 /** `uniform float3 name[8];` in a Shader's code; see [SHADER_ARRAY]. */
 internal val SHADER_ARRAY_RE = Regex("""\buniform\s+\w+\s+\w+\s*\[""")

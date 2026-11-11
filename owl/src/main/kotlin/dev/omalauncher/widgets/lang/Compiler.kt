@@ -72,6 +72,9 @@ class Compiler private constructor(
         /** Whether a Shader's code reads its `time` uniform: only then does it need a frame clock. */
         fun shaderReadsTime(code: String) = TIME_WORD.containsMatchIn(code)
 
+        /** The names of a Shader's `uniform shader name;` lines, the images it samples (owl 22). */
+        fun shaderImages(code: String): Set<String> = SHADER_IMAGE_RE.findAll(code).map { it.groupValues[1] }.toSet()
+
         /**
          * A URL's scheme, host and port, written out so no value can send it elsewhere: what a secret is bound to. No
          * `user@` before the host to hide where it goes, and the host ends where the text does or at a `/`, `?` or `#`.

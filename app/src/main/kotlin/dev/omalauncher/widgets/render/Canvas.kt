@@ -106,9 +106,8 @@ private class Kept {
     /** A scene's triangles, its arrays reused from frame to frame; see [Scene3d]. */
     val scene by lazy { Scene3d() }
 
-    /** Images models are textured with, as shaders, by the bitmap they're of; SVGs drawn into a bitmap first. */
-    val textures = IdentityHashMap<android.graphics.Bitmap, android.graphics.BitmapShader>()
-    val svgTextures = IdentityHashMap<android.graphics.Picture, android.graphics.Bitmap>()
+    /** Images models are textured with. */
+    val textures = Textures(unit = false)
     val vertexPaint by lazy { android.graphics.Paint().apply { isFilterBitmap = true } }
 }
 
@@ -820,13 +819,8 @@ private class Painter(
 
     /** The image at [src] as a repeating shader for a model, and its bitmap; null while it loads. */
     private fun texture(src: String): Pair<android.graphics.BitmapShader, android.graphics.Bitmap>? {
-        val bitmap =
-            when (val image = inst.image(src) ?: return null) {
-                is WidgetImage.Raster -> image.bitmap.asAndroidBitmap()
-                is WidgetImage.Vector -> svgBitmap(image.picture, kept.svgTextures) ?: return null
-            }
-        if (kept.textures.size >= MAX_KEPT) kept.textures.clear()
-        return kept.textures.getOrPut(bitmap) { android.graphics.BitmapShader(bitmap, android.graphics.Shader.TileMode.REPEAT, android.graphics.Shader.TileMode.REPEAT) } to bitmap
+        val bitmap = kept.textures.bitmap(inst.image(src) ?: return null) ?: return null
+        return kept.textures.shader(bitmap) to bitmap
     }
 
     /**
@@ -860,26 +854,48 @@ private class Painter(
         }
 }
 
-/** [picture] drawn into a bitmap, [SVG_TEXTURE_SIDE] on its longer side, kept in [cache]: a texture is sampled as pixels. */
-private fun svgBitmap(
-    picture: android.graphics.Picture,
-    cache: IdentityHashMap<android.graphics.Picture, android.graphics.Bitmap>,
-): android.graphics.Bitmap? {
-    cache[picture]?.let { return it }
-    if (picture.width <= 0 || picture.height <= 0) return null
-    val scale = SVG_TEXTURE_SIDE.toFloat() / maxOf(picture.width, picture.height)
-    val bitmap = android.graphics.Bitmap.createBitmap(maxOf(1, (picture.width * scale).toInt()), maxOf(1, (picture.height * scale).toInt()), android.graphics.Bitmap.Config.ARGB_8888)
-    drawPicture(android.graphics.Canvas(bitmap), picture, 0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
-    if (cache.size >= MAX_KEPT) cache.clear()
-    cache[picture] = bitmap
-    return bitmap
+/**
+ * Images as repeating shaders to texture with, kept by the bitmap they're of, for a Canvas's models and a Shader's
+ * images. A texture is sampled as pixels, so an SVG is drawn into a bitmap first.
+ */
+private class Textures(
+    /** Whether a shader runs from 0 to 1 across its image, as a Shader samples it, rather than in its pixels. */
+    private val unit: Boolean,
+) {
+    private val shaders = IdentityHashMap<android.graphics.Bitmap, android.graphics.BitmapShader>()
+    private val svgs = IdentityHashMap<android.graphics.Picture, android.graphics.Bitmap>()
+
+    /** [image]'s pixels; an SVG's drawn [SVG_TEXTURE_SIDE] on its longer side, null for one of no size. */
+    fun bitmap(image: WidgetImage): android.graphics.Bitmap? =
+        when (image) {
+            is WidgetImage.Raster -> image.bitmap.asAndroidBitmap()
+            is WidgetImage.Vector -> svgBitmap(image.picture)
+        }
+
+    /** [bitmap] as a shader that repeats it past its edges. */
+    fun shader(bitmap: android.graphics.Bitmap): android.graphics.BitmapShader {
+        if (shaders.size >= MAX_KEPT) shaders.clear()
+        return shaders.getOrPut(bitmap) {
+            android.graphics.BitmapShader(bitmap, android.graphics.Shader.TileMode.REPEAT, android.graphics.Shader.TileMode.REPEAT).apply {
+                if (unit) setLocalMatrix(android.graphics.Matrix().apply { setScale(1f / bitmap.width, 1f / bitmap.height) })
+            }
+        }
+    }
+
+    private fun svgBitmap(picture: android.graphics.Picture): android.graphics.Bitmap? {
+        svgs[picture]?.let { return it }
+        if (picture.width <= 0 || picture.height <= 0) return null
+        val scale = SVG_TEXTURE_SIDE.toFloat() / maxOf(picture.width, picture.height)
+        val bitmap = android.graphics.Bitmap.createBitmap(maxOf(1, (picture.width * scale).toInt()), maxOf(1, (picture.height * scale).toInt()), android.graphics.Bitmap.Config.ARGB_8888)
+        drawPicture(android.graphics.Canvas(bitmap), picture, 0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
+        if (svgs.size >= MAX_KEPT) svgs.clear()
+        svgs[picture] = bitmap
+        return bitmap
+    }
 }
 
 /** Declared for every shader; widget code must not declare them again. */
 private const val SHADER_HEADER = "uniform float2 size;\nuniform float time;\n"
-
-/** `uniform shader name;` in a Shader's code. */
-private val SHADER_IMAGE_UNIFORM = Regex("""\buniform\s+shader\s+(\w+)""")
 
 /** What an image uniform samples while it has no image: one clear pixel. */
 private val CLEAR_PIXEL: android.graphics.Bitmap by lazy { android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888) }
@@ -920,9 +936,9 @@ internal fun ShaderNode(
     }
     val brush = remember(shader) { ShaderBrush(shader) }
     // `uniform shader name;`: images it samples, by name (owl 22).
-    val images = remember(code) { SHADER_IMAGE_UNIFORM.findAll(code).map { it.groupValues[1] }.toSet() }
-    val imageShaders = remember(shader) { IdentityHashMap<android.graphics.Bitmap, android.graphics.BitmapShader>() }
-    val svgImages = remember(shader) { IdentityHashMap<android.graphics.Picture, android.graphics.Bitmap>() }
+    val images = remember(code) { Compiler.shaderImages(code) }
+    // From 0 to 1 across each image, repeating past it, whatever its size in pixels.
+    val textures = remember(shader) { Textures(unit = true) }
     // Reading time keeps the widget's frame clock running, so a shader that never uses it isn't redrawn every frame.
     val readsTime = remember(code) { Compiler.shaderReadsTime(code) }
     // One that doesn't is kept in its own layer, drawn again only when its uniforms change: otherwise every frame of
@@ -937,20 +953,7 @@ internal fun ShaderNode(
                 // Every image needs a shader before drawing: one not given, or still loading, samples clear.
                 for (name in images) {
                     val src = uniforms[name]?.takeIf { it != Null }?.toString()
-                    val bitmap =
-                        when (val image = src?.let(inst::image)) {
-                            is WidgetImage.Raster -> image.bitmap.asAndroidBitmap()
-                            is WidgetImage.Vector -> svgBitmap(image.picture, svgImages)
-                            null -> null
-                        } ?: CLEAR_PIXEL
-                    if (imageShaders.size >= MAX_KEPT) imageShaders.clear()
-                    val sampler =
-                        imageShaders.getOrPut(bitmap) {
-                            // From 0 to 1 across the image, repeating past it, whatever its size in pixels.
-                            android.graphics.BitmapShader(bitmap, android.graphics.Shader.TileMode.REPEAT, android.graphics.Shader.TileMode.REPEAT).apply {
-                                setLocalMatrix(android.graphics.Matrix().apply { setScale(1f / bitmap.width, 1f / bitmap.height) })
-                            }
-                        }
+                    val sampler = textures.shader(src?.let(inst::image)?.let(textures::bitmap) ?: CLEAR_PIXEL)
                     // The name was found by a regex, which also matches one in a comment: one the code doesn't declare throws.
                     try {
                         shader.setInputShader(name, sampler)

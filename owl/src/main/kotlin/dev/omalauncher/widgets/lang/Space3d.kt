@@ -15,6 +15,31 @@ const val MAX_MESH_TRIANGLES = 65_536
 const val MAX_SCENE_TRIANGLES = 60_000
 
 /**
+ * Triangle [t]'s normal, counterclockwise seen from outside, into [out]: the cross product of its edges, not made unit.
+ * Returns its length, which is twice the triangle's area.
+ */
+private fun faceCross(
+    points: FloatArray,
+    tris: IntArray,
+    t: Int,
+    out: FloatArray,
+): Float {
+    val a = 3 * tris[3 * t]
+    val b = 3 * tris[3 * t + 1]
+    val c = 3 * tris[3 * t + 2]
+    val ux = points[b] - points[a]
+    val uy = points[b + 1] - points[a + 1]
+    val uz = points[b + 2] - points[a + 2]
+    val vx = points[c] - points[a]
+    val vy = points[c + 1] - points[a + 1]
+    val vz = points[c + 2] - points[a + 2]
+    out[0] = uy * vz - uz * vy
+    out[1] = uz * vx - ux * vz
+    out[2] = ux * vy - uy * vx
+    return sqrt(out[0] * out[0] + out[1] * out[1] + out[2] * out[2])
+}
+
+/**
  * A 3D model for a Canvas's `scene(camera) { model(mesh, ...) }` (owl 22): points, triangles and what colors
  * them, built once by cube(), sphere(), parseObj() and the like and drawn many times. Opaque to widgets, and not
  * a list, so it isn't held to MAX_LIST's 1000 items. Compared by identity: the same let gives the same mesh until
@@ -41,6 +66,9 @@ class Mesh internal constructor(
     /** The unit normal of each triangle, three per triangle; zero for a degenerate one. */
     val faceNormals = FloatArray(tris.size)
 
+    /** Each triangle's size, for weighing its normal in [cornerNormals]: twice its area. */
+    private val areas = FloatArray(triangles)
+
     /** The bounding sphere, for skipping a model that's out of view. */
     val cx: Float
     val cy: Float
@@ -48,24 +76,14 @@ class Mesh internal constructor(
     val radius: Float
 
     init {
+        val n = FloatArray(3)
         for (t in 0 until triangles) {
-            val a = 3 * tris[3 * t]
-            val b = 3 * tris[3 * t + 1]
-            val c = 3 * tris[3 * t + 2]
-            val ux = points[b] - points[a]
-            val uy = points[b + 1] - points[a + 1]
-            val uz = points[b + 2] - points[a + 2]
-            val vx = points[c] - points[a]
-            val vy = points[c + 1] - points[a + 1]
-            val vz = points[c + 2] - points[a + 2]
-            val nx = uy * vz - uz * vy
-            val ny = uz * vx - ux * vz
-            val nz = ux * vy - uy * vx
-            val l = sqrt(nx * nx + ny * ny + nz * nz)
+            val l = faceCross(points, tris, t, n)
+            areas[t] = l
             if (l > 0f) {
-                faceNormals[3 * t] = nx / l
-                faceNormals[3 * t + 1] = ny / l
-                faceNormals[3 * t + 2] = nz / l
+                faceNormals[3 * t] = n[0] / l
+                faceNormals[3 * t + 1] = n[1] / l
+                faceNormals[3 * t + 2] = n[2] / l
             }
         }
         var minX = Float.MAX_VALUE
@@ -120,7 +138,7 @@ class Mesh internal constructor(
                 for (o in at.getValue(key(tris[3 * t + k]))) {
                     val d = faceNormals[3 * o] * faceNormals[3 * t] + faceNormals[3 * o + 1] * faceNormals[3 * t + 1] + faceNormals[3 * o + 2] * faceNormals[3 * t + 2]
                     if (d < 0.5f) continue
-                    val w = area(o)
+                    val w = areas[o]
                     nx += faceNormals[3 * o] * w
                     ny += faceNormals[3 * o + 1] * w
                     nz += faceNormals[3 * o + 2] * w
@@ -139,22 +157,6 @@ class Mesh internal constructor(
             }
         }
         out
-    }
-
-    private fun area(t: Int): Float {
-        val a = 3 * tris[3 * t]
-        val b = 3 * tris[3 * t + 1]
-        val c = 3 * tris[3 * t + 2]
-        val ux = points[b] - points[a]
-        val uy = points[b + 1] - points[a + 1]
-        val uz = points[b + 2] - points[a + 2]
-        val vx = points[c] - points[a]
-        val vy = points[c + 1] - points[a + 1]
-        val vz = points[c + 2] - points[a + 2]
-        val nx = uy * vz - uz * vy
-        val ny = uz * vx - ux * vz
-        val nz = ux * vy - uy * vx
-        return sqrt(nx * nx + ny * ny + nz * nz)
     }
 
     override fun toString() = "<mesh of $triangles triangles>"
@@ -236,20 +238,13 @@ internal class MeshBuilder {
         val t = tris.copyOf(3 * nt)
         val uv = uvs?.let { u -> FloatArray(6 * nt).also { System.arraycopy(u, 0, it, 0, minOf(u.size, 6 * nt)) } }
         if (orient || up) {
+            val n = FloatArray(3)
             for (i in 0 until nt) {
                 val a = 3 * t[3 * i]
                 val b = 3 * t[3 * i + 1]
                 val c = 3 * t[3 * i + 2]
-                val ux = points[b] - points[a]
-                val uy = points[b + 1] - points[a + 1]
-                val uz = points[b + 2] - points[a + 2]
-                val vx = points[c] - points[a]
-                val vy = points[c + 1] - points[a + 1]
-                val vz = points[c + 2] - points[a + 2]
-                val nx = uy * vz - uz * vy
-                val ny = uz * vx - ux * vz
-                val nz = ux * vy - uy * vx
-                val facing = if (up) ny else nx * (points[a] + points[b] + points[c]) + ny * (points[a + 1] + points[b + 1] + points[c + 1]) + nz * (points[a + 2] + points[b + 2] + points[c + 2])
+                faceCross(points, t, i, n)
+                val facing = if (up) n[1] else n[0] * (points[a] + points[b] + points[c]) + n[1] * (points[a + 1] + points[b + 1] + points[c + 1]) + n[2] * (points[a + 2] + points[b + 2] + points[c + 2])
                 if (facing < 0f) {
                     val s = t[3 * i + 1]
                     t[3 * i + 1] = t[3 * i + 2]
