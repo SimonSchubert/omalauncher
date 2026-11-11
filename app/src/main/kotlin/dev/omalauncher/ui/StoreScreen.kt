@@ -2,6 +2,11 @@ package dev.omalauncher.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -45,8 +50,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -381,7 +393,8 @@ private fun StoreList(
                     }
                 }
             }
-            items(shown, key = { it.key }) { l -> Card(l.market, l.e, theme, engine.linux, selected = l.key == selected) { onOpen(l) } }
+            // On the full screen tab they all are, so their cards leave it out.
+            items(shown, key = { it.key }) { l -> Card(l.market, l.e, theme, engine.linux, selected = l.key == selected, shape = filter.tab != FULL_SCREEN) { onOpen(l) } }
         }
     }
 }
@@ -488,19 +501,52 @@ private fun Caption(text: String) = BasicText(text, style = Mono.copy(color = Pa
 private fun Chip(
     label: String,
     selected: Boolean,
-    /** In the accent even when not selected, so it stands out among the others. */
+    /** Draws the eye while not selected: a short line in the accent runs around its frame. */
     highlight: Boolean = false,
     onClick: () -> Unit,
 ) {
     BasicText(
         label,
+        // Outside the frame, so the line draws over its border.
         Modifier
-            .frame(1.dp, if (selected || highlight) Palette.accent else Palette.border, if (selected) Palette.accent.copy(alpha = 0.15f) else Color.Transparent, radius = 14.dp)
+            .then(if (highlight && !selected) Modifier.runningLine(Palette.accent, 14.dp) else Modifier)
+            .frame(1.dp, if (selected) Palette.accent else Palette.border, if (selected) Palette.accent.copy(alpha = 0.15f) else Color.Transparent, radius = 14.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        style = Mono.copy(color = if (selected || highlight) Palette.accent else Palette.foreground, fontSize = TextSize.Small),
+        style = Mono.copy(color = if (selected) Palette.accent else Palette.foreground, fontSize = TextSize.Small),
     )
 }
+
+/**
+ * A line a quarter of the frame long that runs around it once every few seconds, over a 1 dp [frame] of the same [radius]
+ * in the theme's shape; it goes before the frame, which would otherwise draw its border over it.
+ */
+@Composable
+private fun Modifier.runningLine(
+    color: Color,
+    radius: Dp,
+): Modifier {
+    val at = rememberInfiniteTransition(label = "running line").animateFloat(0f, 1f, infiniteRepeatable(tween(RUNNING_LINE_MS, easing = LinearEasing)), label = "running line")
+    return drawWithContent {
+        drawContent()
+        // A little thicker than the frame and inside it, its outer edge on the frame's.
+        val w = 1.5.dp.toPx()
+        val inner = Size(size.width - w, size.height - w)
+        val frame = Path().apply { addOutline(LauncherStyle.shape(radius).createOutline(inner, layoutDirection, this@drawWithContent)) }
+        frame.translate(Offset(w / 2, w / 2))
+        val measure = PathMeasure().apply { setPath(frame, false) }
+        val length = measure.length
+        // Read only here, so each frame redraws the line and recomposes nothing.
+        val start = at.value * length
+        val end = start + length / 4
+        val line = Path()
+        measure.getSegment(start, minOf(end, length), line, true)
+        if (end > length) measure.getSegment(0f, end - length, line, true)
+        drawPath(line, color, style = Stroke(w))
+    }
+}
+
+private const val RUNNING_LINE_MS = 2400
 
 /** A built-in entry, a card in the built-in row: a terminal tile, plain or running an agent's CLI, straight from the launcher rather than the catalog. */
 @Composable
@@ -582,6 +628,8 @@ private fun Card(
     theme: String?,
     linux: Boolean,
     selected: Boolean,
+    /** Whether its status says what shape it is, as [cardStatus] does. */
+    shape: Boolean = true,
     onOpen: () -> Unit,
 ) {
     val preview = rememberCardPreview(market, e, theme)
@@ -605,7 +653,7 @@ private fun Card(
                 }
             }
         }
-        val (status, color) = cardStatus(market, e, linux)
+        val (status, color) = cardStatus(market, e, linux, shape)
         // An app's icon goes before its name and status, as in the drawer; widgets have none.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (e.icon != null || e.iconFile != null) {
@@ -629,6 +677,8 @@ private fun cardStatus(
     market: Market,
     e: CatalogEntry,
     linux: Boolean,
+    /** Whether it says what shape [e] is, its size or full screen, after its category. */
+    shape: Boolean = true,
 ): Pair<String, Color> {
     val busy = market.busy[e.id]
     return when {
@@ -637,7 +687,7 @@ private fun cardStatus(
         market.installedVersion(e) != null -> stringResource(R.string.store_installed) to Palette.green
         !e.supported -> stringResource(R.string.store_needs_newer) to Palette.red
         !linux && e.needsLinux -> stringResource(R.string.store_needs_linux) to Palette.muted
-        else -> "${category(e)}${shapeText(market, e)}" to Palette.muted
+        else -> "${category(e)}${if (shape) shapeText(market, e) else pagesText(e)}" to Palette.muted
     }
 }
 
@@ -670,7 +720,8 @@ private fun FullScreenCard(
             preview?.let { Image(it, null, Modifier.fillMaxSize(), alignment = Alignment.TopCenter, contentScale = ContentScale.FillWidth) }
                 ?: BasicText(e.name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
         }
-        val (status, color) = cardStatus(market, e, linux)
+        // The row says they're full screen, so their status leaves it out and fits the narrow card.
+        val (status, color) = cardStatus(market, e, linux, shape = false)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (e.new) NewBadge()
