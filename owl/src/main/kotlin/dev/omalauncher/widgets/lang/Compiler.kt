@@ -1888,6 +1888,14 @@ class Compiler private constructor(
                         e.pos,
                     )
                 }
+                // A let folded to a constant (`let C = 32`, `let BOX = cube()`) and an asset (a fixed name) read as their
+                // value: no read through the host, which in the app goes through Compose's state on every use, and what
+                // uses them folds too.
+                when (val g = globals.getOrNull(ref.index)) {
+                    is Global.Let -> g.value.const?.let { return Ev.of(it) }
+                    is Global.Asset -> return Ev.of(g.value)
+                    else -> {}
+                }
                 return Ev(null) { env -> env.host.read(ref.index) }
             }
             null -> {}

@@ -322,7 +322,10 @@ sealed interface Global {
     class Asset(
         override val name: String,
         val bytes: ByteArray,
-    ) : Global
+    ) : Global {
+        /** What the asset's name reads as: an image, font or sound source the app looks up by name. */
+        val value = Str("asset:$name")
+    }
 }
 
 /**

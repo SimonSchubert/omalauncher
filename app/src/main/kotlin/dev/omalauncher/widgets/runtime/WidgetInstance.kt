@@ -283,7 +283,7 @@ class WidgetInstance(
                 when (g) {
                     is Global.Let -> derivedStateOf(structuralEqualityPolicy()) { eval(g.value, root, g.name) }
                     is Global.Sampled -> mutableStateOf(if (g.prev) Null else Lst(emptyList()), structuralEqualityPolicy())
-                    is Global.Asset -> mutableStateOf(Str("asset:${g.name}"))
+                    is Global.Asset -> mutableStateOf(g.value)
                     else -> mutableStateOf(Null, structuralEqualityPolicy())
                 }
         }
