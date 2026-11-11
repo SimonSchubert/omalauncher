@@ -364,6 +364,7 @@ widget "today" {
     } else {
       Column {
         scroll: true
+        onPull: refresh()
         gap: 14
         // Now.
         Row {

@@ -3,7 +3,7 @@ widget "what's new" {
   order: 9
   size: 3x2
   minSize: 2x2
-  meta { description: "What's new in the launcher, from its changelog on GitHub. Tap it for every release"; version: "1.0"; license: "MIT"; category: "news"; owl: 5 }
+  meta { description: "What's new in the launcher, from its changelog on GitHub. Tap it for every release"; version: "1.1"; license: "MIT"; category: "news"; owl: 17 }
 
   source log = http("https://raw.githubusercontent.com/SimonSchubert/omalauncher/main/CHANGELOG.md") every 6h timeout 10s status
   source sys = android.system every 1h
@@ -45,6 +45,7 @@ widget "what's new" {
     } else {
       Column {
         scroll: true
+        onPull: refresh()
         gap: 18
         for r in releases key r.version {
           let installed = r.version == sys.launcher

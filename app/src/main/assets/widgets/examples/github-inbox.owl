@@ -3,7 +3,7 @@ app "github inbox" {
   // kept encrypted on the phone, never in this file), sent in a header to the one server written out, and
   // post with method: "PATCH", which GitHub's API takes to mark a thread read. Make a token at
   // github.com/settings/tokens: a classic one with the notifications scope.
-  meta { description: "Your GitHub notifications, marked read with a tap, with a token kept encrypted on the phone"; version: "1.0"; license: "MIT"; category: "dev"; owl: 12 }
+  meta { description: "Your GitHub notifications, marked read with a tap, with a token kept encrypted on the phone"; version: "1.1"; license: "MIT"; category: "dev"; owl: 17 }
   title: "inbox"
   icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M6 28l6-18h24l6 18v10H6z"/>
@@ -40,6 +40,7 @@ app "github inbox" {
       if problem != "" { Text { text: problem; color: red; style: small } }
       Column {
         scroll: true
+        onPull: refresh()
         weight: 1
         gap: 8
         if inbox.ok == true && len(threads) == 0 { Text { text: "Nothing unread."; style: muted } }
