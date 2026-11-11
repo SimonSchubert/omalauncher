@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 21
+        const val LEVEL = 22
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -277,6 +277,9 @@ class Compiler private constructor(
 
     /** Where a handler calls screen(), which an app has no use for. */
     private var openScreen: Int? = null
+
+    /** While a scene's body is compiled: it holds model(...) calls, and only it does. */
+    private var inScene = false
 
     /** The newest feature used, from [SINCE], and where: the widget must declare at least its version. */
     private var needs: Triple<Int, String, Int>? = null
@@ -1174,6 +1177,17 @@ class Compiler private constructor(
         if (op.group && it.body == null) fail("${c.name}(...) wraps drawing calls: ${c.name}(...) { ... }", c.pos)
         if (!op.group && it.body != null) fail("${c.name}(...) takes no { } body", c.pos)
         for ((k, v) in c.named) if (k !in DRAW_NAMED) fail("unknown option '$k' (${DRAW_NAMED.joinToString()})", v.pos)
+        // A scene's and a model's options are theirs alone, and theirs are only those.
+        val own = if (c.name == "scene") SCENE_NAMED else if (c.name == "model") MODEL_NAMED else null
+        for ((k, v) in c.named) {
+            if (own != null && k !in own) fail("${c.name} takes ${own.joinToString()}, not '$k'", v.pos)
+            if (own == null && k != "color" && (k in SCENE_NAMED || k in MODEL_NAMED)) fail("'$k' is an option of scene(...) or model(...)", v.pos)
+        }
+        when {
+            c.name == "model" && !inScene -> fail("model(...) draws in 3D, so it goes inside scene(camera) { ... }", c.pos)
+            c.name == "scene" && inScene -> fail("a scene can't hold another scene", c.pos)
+            inScene && c.name != "model" -> fail("a scene holds model(...) calls; draw ${c.name}(...) on the Canvas after the scene, over it", c.pos)
+        }
         since(c.name, c.pos)
         if (c.name == "image") webFile(c.args[0], scope, "image")
         if (c.name == "text" && c.named.any { it.first in TEXT_STYLE }) since(CANVAS_TEXT_STYLE, c.pos)
@@ -1186,7 +1200,13 @@ class Compiler private constructor(
             c.named.associate { (k, v) -> k to (enumOrNull(k, v) ?: ex(v, scope)) },
             it.body?.let { b ->
                 noProps(b, c.name)
-                items(b.items, scope, Children.DRAW)
+                val scene = c.name == "scene"
+                if (scene) inScene = true
+                try {
+                    items(b.items, scope, Children.DRAW)
+                } finally {
+                    if (scene) inScene = false
+                }
             },
             it.pos,
         )
@@ -1282,7 +1302,15 @@ class Compiler private constructor(
         // A shader animates only if its code reads `time`; code that's worked out at run time might.
         if (n.type == "Shader") {
             val code = props["code"]?.const
-            body.props.firstOrNull { it.name == "code" }?.let { p -> shaders += shaderTexts(p.value, scope) ?: listOf(null) }
+            body.props.firstOrNull { it.name == "code" }?.let { p ->
+                val texts = shaderTexts(p.value, scope)
+                shaders += texts ?: listOf(null)
+                // An image to sample, or an array uniform: older launchers pass neither.
+                for (t in texts.orEmpty()) {
+                    if (SHADER_IMAGE_RE.containsMatchIn(t)) since(SHADER_IMAGE, p.pos)
+                    if (SHADER_ARRAY_RE.containsMatchIn(t)) since(SHADER_ARRAY, p.pos)
+                }
+            }
             if (code == null || shaderReadsTime(code.toString())) animated = true
         }
         if (kind.children == Children.NONE && body.items.isNotEmpty()) fail("${n.type} can't hold other nodes", body.items[0].pos)

@@ -79,7 +79,7 @@ A file holds declarations, then the nodes it shows:
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 21.
+  it's 1. This launcher has 22.
 - Text is written in the language of whoever uses the widget. One meant for the store keeps its text in
   `strings { en { ... } id { ... } }` and shows `str.name`, the phone's language's (owl 16, see Text in more
   languages in docs/declarations.md).
@@ -96,7 +96,7 @@ declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a pan
 | docs/expressions.md | operators and every function, dates and times, numbers, changing lists and maps, chance |
 | docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal, Browser |
 | docs/handlers.md | handlers, every action, sending to web APIs with `post`, tokens and passwords, sounds |
-| docs/drawing.md | Canvas and Shader |
+| docs/drawing.md | Canvas, 3D scenes and Shader |
 | docs/screens.md | a widget's full-screen view behind its tile |
 | docs/faces.md | faces: a whole home page |
 | docs/apps.md | apps in the app drawer, and their icons |

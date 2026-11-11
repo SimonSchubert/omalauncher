@@ -89,8 +89,16 @@ internal val DRAW: Map<String, DrawOp> =
         "layer" to DrawOp(1..1, group = true),
         // owl 3: pixel art from rows of letters, one color per letter.
         "sprite" to DrawOp(4..4),
+        // owl 22: 3D, models seen through a camera.
+        "scene" to DrawOp(1..1, group = true),
+        "model" to DrawOp(1..1),
     )
-internal val DRAW_NAMED = setOf("fill", "stroke", "width", "cap", "radius", "closed", "size", "color", "align", "bold", "palette") + TEXT_STYLE
+
+/** The options of scene(...) and model(...), which take only these (owl 22). */
+internal val SCENE_NAMED = setOf("light", "ambient", "fog")
+internal val MODEL_NAMED = setOf("at", "turn", "scale", "color", "image", "ambient", "smooth", "twoSided")
+
+internal val DRAW_NAMED = setOf("fill", "stroke", "width", "cap", "radius", "closed", "size", "color", "align", "bold", "palette") + TEXT_STYLE + SCENE_NAMED + MODEL_NAMED
 
 /** What needs a newer language than 1, with the version: using one without `meta { owl: N }` is an error. */
 internal val SINCE =
@@ -183,7 +191,19 @@ internal val SINCE =
         // owl 21: how the phone is tilted, for tilt games and spirit levels.
         mapOf("android.motion" to 21) +
         // owl 21: statements each frame, for games that move things by what they were a frame before.
-        mapOf(EVERY_FRAME to 21)
+        mapOf(EVERY_FRAME to 21) +
+        // owl 22: every finger at once, for a game's two thumbs.
+        mapOf("onTouch" to 22) +
+        // owl 22: 3D scenes in a Canvas, the meshes they draw and the vector math of a 3D game.
+        listOf("scene", "model", "cube", "plane", "sphere", "cylinder", "cone", "terrain", "mesh", "parseObj", "project", "turn", "dot", "cross", "norm", "dist").associateWith { 22 } +
+        // owl 22: Shader images to sample, and uniforms that are arrays.
+        listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 }
+
+/** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
+internal const val SHADER_IMAGE = "uniform shader"
+
+/** A Shader's array uniform, like `uniform float3 enemies[8];`, named like this in [SINCE]. */
+internal const val SHADER_ARRAY = "an array uniform"
 
 /** `every frame { }`, named like this in [SINCE]. */
 internal const val EVERY_FRAME = "every frame"
@@ -282,6 +302,8 @@ internal val HANDLER_PARAMS =
         "onDrag" to listOf("dx", "dy", "x", "y"),
         // How fast the finger was moving as it let go, in dp a second: a flick dismisses what a slow drag puts back.
         "onDragEnd" to listOf("vx", "vy"),
+        // owl 22: every finger down, as {id, x, y, startX, startY}, on each change; [] once they've all lifted.
+        "onTouch" to listOf("touches"),
         // A Column or Grid that scrolls, pulled down past its top and let go there: refresh(), mostly.
         "onPull" to emptyList(),
         "onChange" to listOf("value"),
@@ -410,3 +432,9 @@ internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding",
 
 /** A face has no tile's size; it says where it goes and whether the status bar stays over it. */
 internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge", "lock", "fps")
+
+/** `uniform shader name;` in a Shader's code; see [SHADER_IMAGE]. */
+internal val SHADER_IMAGE_RE = Regex("""\buniform\s+shader\s+\w+""")
+
+/** `uniform float3 name[8];` in a Shader's code; see [SHADER_ARRAY]. */
+internal val SHADER_ARRAY_RE = Regex("""\buniform\s+\w+\s+\w+\s*\[""")

@@ -910,7 +910,9 @@ object Builtins {
             "tween" to Builtin(0, 2) { a -> Obj(mapOf("type" to Str("tween"), "duration" to n(a.num(0, 0.3)), "easing" to Str(if (a.size > 1) a.str(1) else "ease"))) },
             "linear" to Builtin(5, 5) { a -> gradient(false, a, 4) },
             "radial" to Builtin(4, 4) { a -> gradient(true, a, 3) },
-        )
+        ) +
+            // owl 22: meshes for a Canvas scene, and the vector math of a 3D game.
+            Meshes.builtins
 
     /** `a.b` on objects, `list.0` on lists, `len` on anything. Missing is null, never an error. */
     fun member(

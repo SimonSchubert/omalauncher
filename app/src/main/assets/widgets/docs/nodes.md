@@ -47,7 +47,12 @@ Every node also takes:
   keys repeat: `repeat` is 0 for the press and counts up from there; `Slider` and `Input` also take
   `onChange`, and `Input` `onSubmit`, both with `value`; `Popup` takes `onDismiss`; a Column with `scroll` or `lazy`, or a
   Grid with `lazy`, takes `onPull`, run when it's pulled down past its top and let go there: `onPull: refresh()`. The
-  launcher draws the refresh icon coming down with the pull and spins it while the sources fetch (owl 17). In pages, apps and a widget's `screen { }`,
+  launcher draws the refresh icon coming down with the pull and spins it while the sources fetch (owl 17). `onTouch` (owl 22) sees
+  every finger at once, for a game's two thumbs: it runs as any finger goes down, moves or lifts, with `touches`, the
+  fingers down as `{id, x, y, startX, startY}` (where each went down), and `[]` once the last one lifts. Keep it in a state,
+  `onTouch: fingers = touches`, and read it in `every frame`: a joystick is where a finger went down and how far it's
+  moved from there, `first(fingers)`, and a second finger can be on a button at the same time (see `examples/sunset-heist`).
+  A node with `onTouch` keeps the moves, so nothing around it scrolls with them. In pages, apps and a widget's `screen { }`,
   `onLongPress` (with `x`, `y`, owl 10); on a tile, long-press belongs to the home screen, which uses it
   to move and resize tiles. A node with `onTap` or `onLongPress` ripples from where it's pressed, within its `radius`, in apps, panels, faces and screens; on a widget's tile and in a key bar it stays still.
   `ripple: false` (owl 14) leaves one still anywhere, for a node that shows its press itself, as with `onPress`.
