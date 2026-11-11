@@ -153,7 +153,7 @@ docs say what's current.
 A widget has at most 500 nodes (a page 1000), 2000 drawing calls per frame, lists of 1000
 items, 32 images and 128 SVGs on show at once (a view with more draws only those, and says so
 in `.errors/`), and a step budget per update. A widget that draws slowly animates at
-half rate. Errors never take the home screen down: the failing value shows `…`
+half rate (an app with `fps: 60` keeps its 60). Errors never take the home screen down: the failing value shows `…`
 and the message goes to `.errors/`.
 
 ## Tips

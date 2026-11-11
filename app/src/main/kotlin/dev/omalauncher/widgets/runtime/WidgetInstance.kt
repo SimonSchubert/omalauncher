@@ -652,15 +652,22 @@ class WidgetInstance(
             return
         }
         drawAverage = drawAverage * 0.9 + frame * 0.1
-        if (!slow && drawAverage > SLOW_DRAW_NANOS) {
+        if (!slow && drawAverage > SLOW_DRAW_NANOS && !keepsFullRate()) {
             slow = true
             // Once: a widget that hovers around the budget would otherwise report every time it crosses it.
             if (!reportedSlow) report("drawing takes %.1f ms per frame; animating at half rate".format(drawAverage / 1e6))
             reportedSlow = true
-        } else if (slow && drawAverage < SLOW_DRAW_NANOS / 2) {
+        } else if (slow && (drawAverage < SLOW_DRAW_NANOS / 2 || keepsFullRate())) {
             slow = false
         }
     }
+
+    /**
+     * An app that asks for `fps: 60` keeps it however long it draws: it has the screen to itself while it's used, and a
+     * game at half rate lags behind the finger. Widgets, faces and panels on home keep the governor, which holds the home
+     * screen smooth and the battery spared.
+     */
+    private fun keepsFullRate() = program.kind == OwlKind.App && program.fps != null && frameRate() >= MAX_FPS
 
     /** Evaluates [ev], turning errors into null plus a report; a broken binding never takes the launcher down. */
     fun eval(
