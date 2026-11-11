@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The store of widgets, faces and apps (ui/StoreScreen.kt), sharing a widget (ui/ShareWidgetScreen.kt), a widget shared
+<!-- The store of widgets (full-screen ones too) and apps (ui/StoreScreen.kt), sharing a widget (ui/ShareWidgetScreen.kt), a widget shared
      with you (ui/SharedWidgetScreen.kt), adding an app's shortcut (ui/PinShortcutDialog.kt) and the community themes
      (ui/ThemeCatalogScreen.kt). -->
 <resources>
@@ -7,20 +7,20 @@
 
     <!-- What the store holds, one of; the toggle in the store's header, and the %s in the store's sentences below. -->
     <string name="store_kind_widgets">widgets</string>
-    <string name="store_kind_faces">faces</string>
+    <string name="store_kind_faces">full-screen widgets</string>
     <string name="store_kind_apps">apps</string>
     <string name="store_kind_panels">panels</string>
     <string name="store_kind_keybars">keybars</string>
     <!-- One of them, in the title of a widget shared with you: "shared widget". -->
     <string name="store_kind_widget">widget</string>
-    <string name="store_kind_face">face</string>
+    <string name="store_kind_face">full-screen widget</string>
     <string name="store_kind_app">app</string>
     <string name="store_kind_panel">panel</string>
     <string name="store_kind_keybar">keybar</string>
 
     <!-- Beside the grid on a wide screen, before one is picked. -->
     <string name="store_pick_widget">pick a widget to see what it installs and runs</string>
-    <string name="store_pick_face">pick a face to see what it installs and runs</string>
+    <string name="store_pick_face">pick a full-screen widget to see what it installs and runs</string>
     <string name="store_pick_app">pick an app to see what it installs and runs</string>
     <string name="store_pick_panel">pick a panel to see what it installs and runs</string>
     <string name="store_pick_keybar">pick a keybar to see what it installs and runs</string>
@@ -62,6 +62,8 @@
     <string name="store_installed">✓ installed</string>
     <string name="store_needs_newer">needs a newer launcher</string>
     <string name="store_needs_linux">needs linux</string>
+    <!-- Full-screen widgets (faces), a whole home page each: their tab, the row of them, and their shape on a card where a widget's size goes ("clock · full screen"). -->
+    <string name="store_full_screen">full screen</string>
     <!-- A face's page count, after its category: "clock · 3 pages". -->
     <plurals name="store_pages">
         <item quantity="one">%1$d page</item>
@@ -83,7 +85,7 @@
         <item quantity="other">add its %1$d missing pages</item>
     </plurals>
     <string name="store_add_to_page">add to page %1$d</string>
-    <string name="store_add_as_face">add as a face</string>
+    <string name="store_add_as_face">add as a full-screen widget</string>
     <string name="store_install">install</string>
     <string name="store_uninstall">uninstall</string>
     <string name="store_remove">remove</string>

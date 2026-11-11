@@ -105,7 +105,7 @@
     </plurals>
 
     <string name="pages_title">páginas</string>
-    <string name="pages_intro">Las páginas de inicio, de izquierda a derecha. Arrastra una por ≡ para moverla, o con el teclado toma ≡ con Enter y muévela con las flechas. Inicio se abre en la primera con widgets o apps; los faces antes de ella quedan a su izquierda.</string>
+    <string name="pages_intro">Las páginas de inicio, de izquierda a derecha. Arrastra una por ≡ para moverla, o con el teclado toma ≡ con Enter y muévela con las flechas. Inicio se abre en la primera con widgets o apps; los widgets de pantalla completa antes de ella quedan a su izquierda.</string>
     <string name="pages_loading">cargando…</string>
     <string name="pages_remove_named">¿quitar %1$s?</string>
     <string name="pages_remove_page">¿quitar esta página?</string>
@@ -119,7 +119,7 @@
     </plurals>
     <string name="pages_empty">vacía</string>
     <string name="pages_doesnt_compile">no compila</string>
-    <string name="pages_face">face</string>
+    <string name="pages_face">pantalla completa</string>
     <string name="pages_home">inicio</string>
     <string name="pages_edit">editar</string>
     <string name="pages_share">compartir</string>

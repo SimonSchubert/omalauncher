@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
@@ -66,9 +67,10 @@ import dev.omalauncher.widgets.market.CatalogEntry
 import kotlinx.coroutines.launch
 
 /**
- * The store, with a toggle between widgets, faces and apps. Widgets: built-in terminal tiles (a plain shell,
- * and one per installed coding agent), then reviewed widgets from the marketplace repo as a grid of
- * previews, with search and category tabs (and one for the newest). Faces and apps: the reviewed ones, the same way.
+ * The store, with a toggle between widgets and apps. Widgets: built-in terminal tiles (a plain shell,
+ * and one per installed coding agent), a row of full-screen widgets (faces), then reviewed widgets from the
+ * marketplace repo as a grid of previews, with search and category tabs (one for the newest, one for full screen).
+ * Apps: the reviewed ones, the same way.
  * Tapping one opens its page, which shows what it installs and runs; from there a widget goes on the current page,
  * a face left of page 1 and an app in the drawer (or any of them updates). An installed app opens from its page too.
  */
@@ -80,22 +82,29 @@ fun StoreScreen(
     /** The Omarchy theme in use, so previews show widgets in its colors. */
     theme: String?,
     onDismiss: () -> Unit,
-    /** The kind it opens on. */
+    /** The kind it opens on; faces open the widgets on their full screen tab. */
     initialKind: OwlKind = OwlKind.Widget,
     /** Opens the installed app in this file, as the drawer does. */
     onOpenApp: (String) -> Unit = {},
 ) {
-    var kind by remember { mutableStateOf(initialKind) }
+    var kind by remember { mutableStateOf(if (initialKind == OwlKind.Face) OwlKind.Widget else initialKind) }
     val market = engine.market(kind)
+    // Faces are full-screen widgets: they show among the widgets, from their own catalog.
+    val faces = engine.faceMarket.takeIf { kind == OwlKind.Widget }
+    val shelves = listOfNotNull(market, faces)
     val scope = rememberCoroutineScope()
-    var open by remember { mutableStateOf<String?>(null) }
+    // The kind and id of the entry whose page shows.
+    var open by remember { mutableStateOf<Pair<OwlKind, String>?>(null) }
     var message by remember { mutableStateOf<StoreMessage?>(null) }
     var viewing by remember { mutableStateOf<ImageBitmap?>(null) }
     // Each kind keeps its search, tab and scroll while the other shows.
-    val filters = remember { OwlKind.entries.associateWith { StoreFilter() } }
+    val filters =
+        remember {
+            OwlKind.entries.associateWith { StoreFilter() }.also { if (initialKind == OwlKind.Face) it.getValue(OwlKind.Widget).tab = FULL_SCREEN }
+        }
     val filter = filters.getValue(kind)
-    LaunchedEffect(market) { market.refresh() }
-    val detail = open?.let { id -> market.entries.firstOrNull { it.id == id } }
+    LaunchedEffect(kind) { for (m in shelves) launch { m.refresh() } }
+    val detail = open?.let { (k, id) -> shelves.firstOrNull { it.kind == k }?.let { m -> m.entries.firstOrNull { it.id == id }?.let { Listed(m, it) } } }
     val back = {
         open = null
         message = null
@@ -106,31 +115,32 @@ fun StoreScreen(
         // On its own, an entry's page takes the header: a chevron back to the grid and its name, nothing else.
         val alone = detail?.takeIf { !wide }
         OverlayPanel(
-            alone?.name ?: stringResource(R.string.store_title),
+            alone?.e?.name ?: stringResource(R.string.store_title),
             onDismiss,
             onBack = if (alone != null) back else LocalPanelBack.current,
             actions = {
                 if (alone == null) {
-                    KindToggle(kind, engine.markets.map { it.kind }) {
+                    KindToggle(kind, engine.markets.map { it.kind }.filter { it != OwlKind.Face }) {
                         kind = it
                         open = null
                         message = null
                     }
-                    RefreshButton(market.loading) { scope.launch { market.refresh() } }
+                    RefreshButton(shelves.any { it.loading }) { for (m in shelves) scope.launch { m.refresh() } }
                 }
             },
         ) {
             BoxWithConstraints {
                 val paneWidth = (maxWidth * 0.42f).coerceIn(340.dp, 520.dp)
                 // Side by side, the pane is never empty: until one is tapped, the grid's first entry shows in it.
-                val picked = if (wide) detail ?: shownEntries(market, filter).firstOrNull() else detail
-                val select = { id: String ->
-                    open = id
+                val picked = if (wide) detail ?: shownEntries(market, faces, filter).firstOrNull() else detail
+                val select = { l: Listed ->
+                    open = l.market.kind to l.e.id
                     message = null
                 }
-                val showDetail = @Composable { e: CatalogEntry, modifier: Modifier ->
+                val showDetail = @Composable { l: Listed, modifier: Modifier ->
+                    val (market, e) = l
                     // Acting on the preselected entry picks it, so its message stays with it when the grid's first entry changes.
-                    val pick = { open = e.id }
+                    val pick = { open = market.kind to e.id }
                     Detail(
                         market = market,
                         e = e,
@@ -161,7 +171,7 @@ fun StoreScreen(
                     )
                 }
                 val list = @Composable { modifier: Modifier ->
-                    StoreList(engine, market, agents, page, theme, filter, if (wide) picked?.id else null, modifier, select, onDismiss)
+                    StoreList(engine, market, faces, agents, page, theme, filter, if (wide) picked?.key else null, modifier, select, onDismiss)
                 }
                 when {
                     // Side by side: the grid, and the picked widget's page beside it.
@@ -226,18 +236,31 @@ private class StoreFilter {
     val grid = LazyGridState()
 }
 
-/** The store's search, category tabs and grid for [market]'s kind; [selected] is the entry whose page shows beside it. */
+/** An entry with the market it's from: among the widgets, a face's is the faces'. */
+private data class Listed(
+    val market: Market,
+    val e: CatalogEntry,
+) {
+    /** Unique across both markets, where a widget and a face may share an id. */
+    val key get() = "${market.kind}:${e.id}"
+}
+
+/**
+ * The store's search, category tabs and grid for [market]'s kind, with [faces], full-screen widgets, among the widgets;
+ * [selected] is the key of the entry whose page shows beside it.
+ */
 @Composable
 private fun StoreList(
     engine: WidgetEngine,
     market: Market,
+    faces: Market?,
     agents: List<Agent>,
     page: Int,
     theme: String?,
     filter: StoreFilter,
     selected: String?,
     modifier: Modifier,
-    onOpen: (String) -> Unit,
+    onOpen: (Listed) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val apps = market.kind == OwlKind.App
@@ -246,12 +269,15 @@ private fun StoreList(
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     Column(modifier) {
-        val installed = market.entries.filter { market.installedVersion(it) != null }
+        val all = listed(market, faces)
+        val installed = all.filter { it.market.installedVersion(it.e) != null }
         val tabs =
             buildList {
-                add(ALL to market.entries.size)
+                add(ALL to all.size)
                 // There even when nothing is new.
-                if (!apps) add(NEW to market.entries.count { it.new })
+                if (!apps) add(NEW to all.count { it.e.new })
+                // Faces have a tab of their own rather than their categories, which are the widgets'.
+                if (faces != null) add(FULL_SCREEN to faces.entries.size)
                 // The biggest categories first, ties in the catalog's order. Ones the store added after this launcher was built
                 // get a tab too, so a new category doesn't wait for an update.
                 val known = { c: String -> Catalog.CATEGORIES.indexOf(c).takeIf { it >= 0 } ?: Int.MAX_VALUE }
@@ -263,16 +289,18 @@ private fun StoreList(
                 add(INSTALLED to installed.size)
             }
         val q = filter.query.trim().lowercase()
-        val shown = shownEntries(market, filter)
-        val updates = installed.count { market.hasUpdate(it) }
+        val shown = shownEntries(market, faces, filter)
+        val updates = installed.count { it.market.hasUpdate(it.e) }
+        val loading = market.loading || faces?.loading == true
+        val error = market.error ?: faces?.error
 
-        SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = stringResource(R.string.store_search, market.entries.size, noun))
+        SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = stringResource(R.string.store_search, all.size, noun))
         Spacer(Modifier.height(8.dp))
         // Scrolls under the panel's padding, up to its frame or, side by side, the divider.
         Row(Modifier.bleed(PanelPadding).horizontalScroll(rememberScrollState()).padding(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((name, n) in tabs) {
                 val label = if (name == INSTALLED && updates > 0) stringResource(R.string.store_tab_updates, tabName(name), n, updates) else stringResource(R.string.store_tab, tabName(name), n)
-                Chip(label, selected = filter.tab == name) { filter.tab = name }
+                Chip(label, selected = filter.tab == name, highlight = name == FULL_SCREEN) { filter.tab = name }
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -317,48 +345,80 @@ private fun StoreList(
                         }
                     }
                 }
+                // Full-screen widgets, a whole page each, in a row of their own above the grid, taller than its cards.
+                if (faces != null && faces.entries.isNotEmpty()) {
+                    item(key = "full-screen", span = { GridItemSpan(maxLineSpan) }) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Caption(stringResource(R.string.store_full_screen))
+                            LazyRow(
+                                Modifier.bleed(PanelPadding),
+                                contentPadding = PaddingValues(horizontal = PanelPadding),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(faces.entries, key = { it.id }) { e ->
+                                    val l = Listed(faces, e)
+                                    FullScreenCard(faces, e, theme, engine.linux, selected = l.key == selected) { onOpen(l) }
+                                }
+                            }
+                        }
+                    }
+                }
             }
             item(key = "catalog", span = { GridItemSpan(maxLineSpan) }) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Caption(stringResource(R.string.store_reviewed, noun, Market.REPO))
                     when {
-                        market.loading && market.entries.isEmpty() -> BasicText(stringResource(R.string.store_loading), style = Mono.copy(color = Palette.muted))
-                        market.error != null && market.entries.isEmpty() -> BasicText(market.error?.resolve().orEmpty(), style = Mono.copy(color = Palette.red))
-                        market.entries.isEmpty() -> BasicText(stringResource(R.string.store_empty, noun), style = Mono.copy(color = Palette.muted))
+                        loading && all.isEmpty() -> BasicText(stringResource(R.string.store_loading), style = Mono.copy(color = Palette.muted))
+                        error != null && all.isEmpty() -> BasicText(error.resolve(), style = Mono.copy(color = Palette.red))
+                        all.isEmpty() -> BasicText(stringResource(R.string.store_empty, noun), style = Mono.copy(color = Palette.muted))
                         shown.isEmpty() && q.isEmpty() && filter.tab == NEW -> BasicText(stringResource(R.string.store_no_new, noun), style = Mono.copy(color = Palette.muted))
                         shown.isEmpty() && q.isEmpty() && filter.tab == INSTALLED -> BasicText(stringResource(R.string.store_none_installed, noun), style = Mono.copy(color = Palette.muted))
-                        shown.isEmpty() -> BasicText(stringResource(R.string.store_no_match, filter.query.trim()), style = Mono.copy(color = Palette.muted))
+                        // Its own catalog: loading or failed while the widgets' is there.
+                        shown.isEmpty() && q.isEmpty() && filter.tab == FULL_SCREEN ->
+                            faces?.error?.let { BasicText(it.resolve(), style = Mono.copy(color = Palette.red)) }
+                                ?: BasicText(stringResource(R.string.store_loading), style = Mono.copy(color = Palette.muted))
+                        shown.isEmpty() && q.isNotEmpty() -> BasicText(stringResource(R.string.store_no_match, filter.query.trim()), style = Mono.copy(color = Palette.muted))
                     }
                 }
             }
-            items(shown, key = { it.id }) { e -> Card(market, e, theme, engine.linux, selected = e.id == selected) { onOpen(e.id) } }
+            items(shown, key = { it.key }) { l -> Card(l.market, l.e, theme, engine.linux, selected = l.key == selected) { onOpen(l) } }
         }
     }
 }
 
-/** The entries [filter]'s tab and search leave of [market]'s, in the order the grid shows them. */
+/** [market]'s entries, then [faces]', each with its market. */
+private fun listed(
+    market: Market,
+    faces: Market?,
+): List<Listed> = market.entries.map { Listed(market, it) } + faces?.entries.orEmpty().map { Listed(faces!!, it) }
+
+/** The entries [filter]'s tab and search leave of [market]'s and [faces]', in the order the grid shows them. */
 private fun shownEntries(
     market: Market,
+    faces: Market?,
     filter: StoreFilter,
-): List<CatalogEntry> {
+): List<Listed> {
     val q = filter.query.trim().lowercase()
     // In the catalog's order, which the store repo sets in order.txt.
-    return market.entries
-        .filter { e ->
+    return listed(market, faces)
+        .filter { (m, e) ->
             when (filter.tab) {
-                ALL -> true
+                // Faces have their row above the grid, until a search looks through everything.
+                ALL -> m === market || q.isNotEmpty()
                 NEW -> e.new
-                INSTALLED -> market.installedVersion(e) != null
-                OTHER -> e.category == null
-                else -> e.category == filter.tab
+                INSTALLED -> m.installedVersion(e) != null
+                FULL_SCREEN -> m === faces
+                OTHER -> m === market && e.category == null
+                else -> m === market && e.category == filter.tab
             }
-        }.filter { e -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { q in it.lowercase() } }
+        }.filter { (_, e) -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { q in it.lowercase() } }
         // Newest first; a stable sort, so a day's widgets keep the catalog's order.
-        .let { l -> if (filter.tab == NEW) l.sortedByDescending { it.added } else l }
+        .let { l -> if (filter.tab == NEW) l.sortedByDescending { it.e.added } else l }
 }
 
 private const val ALL = "all"
 private const val NEW = "new"
+private const val FULL_SCREEN = "full screen"
 private const val OTHER = "other"
 private const val INSTALLED = "installed"
 
@@ -370,6 +430,7 @@ private fun tabName(tab: String) =
         NEW -> stringResource(R.string.store_tab_new)
         OTHER -> stringResource(R.string.store_category_other)
         INSTALLED -> stringResource(R.string.store_tab_installed)
+        FULL_SCREEN -> stringResource(R.string.store_full_screen)
         else -> tab
     }
 
@@ -427,15 +488,17 @@ private fun Caption(text: String) = BasicText(text, style = Mono.copy(color = Pa
 private fun Chip(
     label: String,
     selected: Boolean,
+    /** In the accent even when not selected, so it stands out among the others. */
+    highlight: Boolean = false,
     onClick: () -> Unit,
 ) {
     BasicText(
         label,
         Modifier
-            .frame(1.dp, if (selected) Palette.accent else Palette.border, if (selected) Palette.accent.copy(alpha = 0.15f) else Color.Transparent, radius = 14.dp)
+            .frame(1.dp, if (selected || highlight) Palette.accent else Palette.border, if (selected) Palette.accent.copy(alpha = 0.15f) else Color.Transparent, radius = 14.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
-        style = Mono.copy(color = if (selected) Palette.accent else Palette.foreground, fontSize = TextSize.Small),
+        style = Mono.copy(color = if (selected || highlight) Palette.accent else Palette.foreground, fontSize = TextSize.Small),
     )
 }
 
@@ -522,9 +585,6 @@ private fun Card(
     onOpen: () -> Unit,
 ) {
     val preview = rememberCardPreview(market, e, theme)
-    val busy = market.busy[e.id]
-    val update = market.hasUpdate(e)
-    val installed = market.installedVersion(e) != null
     Column(
         Modifier
             .fillMaxWidth()
@@ -545,15 +605,7 @@ private fun Card(
                 }
             }
         }
-        val (status, color) =
-            when {
-                busy != null -> stringResource(busy) to Palette.accent
-                update -> stringResource(R.string.store_update_available) to Palette.accent
-                installed -> stringResource(R.string.store_installed) to Palette.green
-                !e.supported -> stringResource(R.string.store_needs_newer) to Palette.red
-                !linux && e.needsLinux -> stringResource(R.string.store_needs_linux) to Palette.muted
-                else -> "${category(e)}${e.size?.let { " · ${it.first}x${it.second}" } ?: pagesText(e)}" to Palette.muted
-            }
+        val (status, color) = cardStatus(market, e, linux)
         // An app's icon goes before its name and status, as in the drawer; widgets have none.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (e.icon != null || e.iconFile != null) {
@@ -570,6 +622,65 @@ private fun Card(
         }
     }
 }
+
+/** A card's status line and its color: what's happening to [e], whether it's installed, or what it is. */
+@Composable
+private fun cardStatus(
+    market: Market,
+    e: CatalogEntry,
+    linux: Boolean,
+): Pair<String, Color> {
+    val busy = market.busy[e.id]
+    return when {
+        busy != null -> stringResource(busy) to Palette.accent
+        market.hasUpdate(e) -> stringResource(R.string.store_update_available) to Palette.accent
+        market.installedVersion(e) != null -> stringResource(R.string.store_installed) to Palette.green
+        !e.supported -> stringResource(R.string.store_needs_newer) to Palette.red
+        !linux && e.needsLinux -> stringResource(R.string.store_needs_linux) to Palette.muted
+        else -> "${category(e)}${shapeText(market, e)}" to Palette.muted
+    }
+}
+
+/**
+ * A card in the full screen row: a face's preview, most of its screen, the height of a short phone, with its name and status
+ * under it. The grid's cards show only a screen's top; here it reads as a whole page.
+ */
+@Composable
+private fun FullScreenCard(
+    market: Market,
+    e: CatalogEntry,
+    theme: String?,
+    linux: Boolean,
+    selected: Boolean,
+    onOpen: () -> Unit,
+) {
+    val (w, h) = with(LocalDensity.current) { FullScreenPreviewWidth.roundToPx() to FullScreenPreviewHeight.roundToPx() }
+    val preview by produceState<ImageBitmap?>(null, e.previewFor(theme), w, h) {
+        value = market.thumbnail(e, theme, w, h, FullScreenPreviewHeight / FullScreenPreviewWidth)
+    }
+    Column(
+        Modifier
+            .width(FullScreenPreviewWidth + 16.dp)
+            .frame(1.dp, if (selected) Palette.accent else Palette.border, radius = 12.dp)
+            .clickable(onClick = onOpen)
+            .padding(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Box(Modifier.size(FullScreenPreviewWidth, FullScreenPreviewHeight).clip(RoundedCornerShape(6.dp)).background(Palette.surface), contentAlignment = Alignment.Center) {
+            preview?.let { Image(it, null, Modifier.fillMaxSize(), alignment = Alignment.TopCenter, contentScale = ContentScale.FillWidth) }
+                ?: BasicText(e.name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        }
+        val (status, color) = cardStatus(market, e, linux)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (e.new) NewBadge()
+        }
+        BasicText(status, style = Mono.copy(color = color, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private val FullScreenPreviewWidth = 112.dp
+private val FullScreenPreviewHeight = 200.dp
 
 /** Marks an entry added to the store in the last few days, beside its name; its status stays as it is. */
 @Composable
@@ -658,8 +769,7 @@ private fun Detail(
                     BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Title))
                     if (e.new) NewBadge()
                 }
-                val size = e.size?.let { " · ${it.first}x${it.second}" } ?: pagesText(e)
-                BasicText("${category(e)} · ${e.author} · v${e.version} · ${e.license}$size", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                BasicText("${category(e)} · ${e.author} · v${e.version} · ${e.license}${shapeText(market, e)}", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
         }
         BasicText(e.description, style = Mono.copy(fontSize = TextSize.Body))
@@ -739,6 +849,13 @@ private fun Detail(
         }
     }
 }
+
+/** What shape [e] is, after its category: " · 4x2" for a widget, " · full screen" for a face, with " · 2 pages" when it has several. */
+@Composable
+private fun shapeText(
+    market: Market,
+    e: CatalogEntry,
+) = e.size?.let { " · ${it.first}x${it.second}" } ?: ((if (market.kind == OwlKind.Face) " · " + stringResource(R.string.store_full_screen) else "") + pagesText(e))
 
 /** " · 2 pages" for a face with several, else nothing. */
 @Composable

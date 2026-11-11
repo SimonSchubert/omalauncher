@@ -7,20 +7,20 @@
 
     <!-- What the store holds, one of; the toggle in the store's header, and the %s in the store's sentences below. -->
     <string name="store_kind_widgets">widgets</string>
-    <string name="store_kind_faces">faces</string>
+    <string name="store_kind_faces">vollbild-widgets</string>
     <string name="store_kind_apps">apps</string>
     <string name="store_kind_panels">panels</string>
     <string name="store_kind_keybars">tastenleisten</string>
     <!-- One of them, in the title of a widget shared with you: "shared widget". -->
     <string name="store_kind_widget">widget</string>
-    <string name="store_kind_face">face</string>
+    <string name="store_kind_face">vollbild-widget</string>
     <string name="store_kind_app">app</string>
     <string name="store_kind_panel">panel</string>
     <string name="store_kind_keybar">tastenleiste</string>
 
     <!-- Beside the grid on a wide screen, before one is picked. -->
     <string name="store_pick_widget">tipp ein widget an und sieh, was es installiert und ausführt</string>
-    <string name="store_pick_face">tipp ein face an und sieh, was es installiert und ausführt</string>
+    <string name="store_pick_face">tipp ein vollbild-widget an und sieh, was es installiert und ausführt</string>
     <string name="store_pick_app">tipp eine app an und sieh, was sie installiert und ausführt</string>
     <string name="store_pick_panel">tipp ein panel an und sieh, was es installiert und ausführt</string>
     <string name="store_pick_keybar">tipp eine tastenleiste an und sieh, was sie installiert und ausführt</string>
@@ -62,6 +62,7 @@
     <string name="store_installed">✓ installiert</string>
     <string name="store_needs_newer">braucht neueren launcher</string>
     <string name="store_needs_linux">braucht linux</string>
+    <string name="store_full_screen">vollbild</string>
     <!-- A face's page count, after its category: "clock · 3 pages". -->
     <plurals name="store_pages">
         <item quantity="one">%1$d seite</item>
@@ -83,7 +84,7 @@
         <item quantity="other">%1$d fehlende seiten hinzufügen</item>
     </plurals>
     <string name="store_add_to_page">zu seite %1$d hinzufügen</string>
-    <string name="store_add_as_face">als face hinzufügen</string>
+    <string name="store_add_as_face">als vollbild-widget hinzufügen</string>
     <string name="store_install">installieren</string>
     <string name="store_uninstall">deinstallieren</string>
     <string name="store_remove">entfernen</string>
