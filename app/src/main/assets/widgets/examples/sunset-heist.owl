@@ -48,6 +48,8 @@ app "sunset heist" {
   state mode = "title"
   state cash = 0 persist
   state gt = 0
+  // set by the store's screenshots (screens.txt) to hold a scene still while it's drawn in each theme
+  state still = false
   // every finger down, from onTouch
   state fingers = []
   // the player, in world units; heading in degrees, 0 toward +z (south, down the screen), 90 toward +x (east)
@@ -403,664 +405,666 @@ app "sunset heist" {
       + drop(split(msg, " · "), 1).map((m, i) => {s: upper(m), x: W / 2, y: H * 0.36 + 40 + i * 26, size: 20, c: white, a: "center"}) : [])
 
   every frame {
-    gt = gt + (mode == "list" ? 0 : dt)
-    let T = TYPES[ptype]
-    if !inCar && (py != 0 || air != null) {
-      py = 0
-      pvy = 0
-      air = null
-    }
-    // Lost off the map (no position, or past its edge): back on the street by a parked car, so the game never shows
-    // only sky.
-    if px == null || pz == null || camX == null || camZ == null || px < -60 || pz < -60 || px > 12 * C + 60 || pz > 16 * C + 60 {
-      px = 112
-      pz = 318
-      camX = 112
-      camZ = 318
-      inCar = false
-      pv = 0
-      pvx = 0
-      pvz = 0
-      parked = parked + [{id: nextId, t: 1, x: 112, z: 322.5, h: 90, c: pcol ?? 1, dmg: 0, wreck: false}]
-      nextId = nextId + 1
-    }
-    if mode == "play" {
-      if inCar {
-        // The car turns to face where the stick points and speeds up to how far it's pushed; let go and it rolls to a
-        // stop. Its velocity keeps going the way it went, the tires pulling it round to where the car points, much
-        // less in a sharp turn at speed: a drift, which leaves marks.
-        let fx0 = sin(rad(ph))
-        let fz0 = cos(rad(ph))
-        let fwd = pvx * fx0 + pvz * fz0
-        let lat = pvz * fx0 - pvx * fz0
-        // How far the car must turn to face where the stick points; the further it's pushed, the faster it goes.
-        // In the air off a ramp nothing steers, brakes or grips: it flies on as it left.
-        let turnBy = push == 0 || air != null ? 0 : ((deg(atan2(sdx, sdy)) - ph + 540) % 360) - 180
-        // Each kind its own: top speed, pick-up, how it turns and how well its tires hold.
-        let drift = fwd > T.top * 0.42 && abs(turnBy) > 50
-        let want = push * T.top * (abs(turnBy) > 110 ? 0.35 : 1)
-        let f1 = air != null ? fwd : clamp((fwd + (fwd < want ? T.acc : (push > 0 ? -30 : 0)) * dt) * pow(push > 0 ? 0.92 : 0.6, dt), -4, T.top)
-        let l1 = air != null ? lat : lat * pow(drift ? T.drift : T.grip, dt)
-        let vx1 = fx0 * f1 - fz0 * l1
-        let vz1 = fz0 * f1 + fx0 * l1
-        let nx = px + vx1 * dt
-        let nz = pz + vz1 * dt
-        // Walls: a move into one keeps the part along it, so the car slides along buildings instead of stopping dead;
-        // straight into one, it bounces. A bump or a ram can shove the car into a wall's reach: from there, any move
-        // out is let through.
-        let stuck = any(CELLS[floor(pz / C) * 12 + floor(px / C)].b ?? [], b => b.k != "water" && b.h >= py && abs(px - b.x) < b.w / 2 + T.wid / 2 + 0.3 && abs(pz - b.z) < b.d / 2 + T.wid / 2 + 0.3)
-        let hitXZ = !stuck && any(CELLS[floor(nz / C) * 12 + floor(nx / C)].b ?? [], b => b.k != "water" && b.h >= py && abs(nx - b.x) < b.w / 2 + T.wid / 2 + 0.3 && abs(nz - b.z) < b.d / 2 + T.wid / 2 + 0.3)
-        let hitX = hitXZ && (!stuck && any(CELLS[floor(pz / C) * 12 + floor(nx / C)].b ?? [], b => b.k != "water" && b.h >= py && abs(nx - b.x) < b.w / 2 + T.wid / 2 + 0.3 && abs(pz - b.z) < b.d / 2 + T.wid / 2 + 0.3))
-        let hitZ = hitXZ && (!stuck && any(CELLS[floor(nz / C) * 12 + floor(px / C)].b ?? [], b => b.k != "water" && b.h >= py && abs(px - b.x) < b.w / 2 + T.wid / 2 + 0.3 && abs(nz - b.z) < b.d / 2 + T.wid / 2 + 0.3))
-        let both = hitX && hitZ
-        // How fast it met the wall: what of its speed the wall took.
-        let impact = !hitXZ ? 0 : (both ? dist([vx1, vz1]) : (hitX ? abs(vx1) : abs(vz1)))
-        if impact > 18 {
-          haptic()
-          dmg = dmg + impact * 0.2 * T.armor
-          fx = drop(fx, max(0, len(fx) - 30)) + range(8).map(i => {k: "spark", x: px + fx0 * 2, y: 0.8, z: pz + fz0 * 2, vx: random() * 16 - 8, vy: random() * 8, vz: random() * 16 - 8, life: 0.4 + random() * 0.3})
-        }
-        let vx2 = !hitXZ || !hitX ? vx1 : -vx1 * 0.2
-        let vz2 = !hitXZ || !both && hitX ? vz1 : -vz1 * 0.2
-        ph = ph + clamp(turnBy, -1, 1) * min(abs(turnBy), (drift ? 230 : 190) * T.turn * clamp(abs(f1) / 6, 0.4, 1) * dt)
-        pvx = vx2
-        pvz = vz2
-        pv = vx2 * fx0 + vz2 * fz0
-        px = !hitXZ || !hitX ? nx : px
-        pz = !hitXZ || !both && hitX ? nz : pz
-        if air == null && abs(l1) > 3.5 && gt - skidAt > 0.05 {
-          skids = drop(skids, max(0, len(skids) - 50)) + [{x: px - fx0 * T.len * 0.3, z: pz - fz0 * T.len * 0.3, h: ph, t: gt, w: T.wid}]
-          skidAt = gt
-        }
-        // Ramps: on one the car rides up the slope, and leaving the top fast enough it flies until gravity brings it
-        // down. A long jump pays; one that comes down in the canal or the sea goes under, as driving in does.
-        if air == null {
-          let ramp = first(RAMPS.filter(r => abs((px - r.x) * cos(rad(r.h)) - (pz - r.z) * sin(rad(r.h))) < 2.4 && abs((px - r.x) * sin(rad(r.h)) + (pz - r.z) * cos(rad(r.h))) < 3.2))
-          let along = ramp == null ? 0 : (px - ramp.x) * sin(rad(ramp.h)) + (pz - ramp.z) * cos(rad(ramp.h))
-          let up = ramp == null ? 0 : pvx * sin(rad(ramp.h)) + pvz * cos(rad(ramp.h))
-          py = ramp == null ? 0 : clamp((along + 3) / 6, 0, 1) * ramp.y
-          if ramp != null && along > 2.4 && up > 8 {
-            air = {t: gt, x: px, z: pz, rx: ramp.x, rz: ramp.z}
-            pvy = up * ramp.k
-          }
-        } else {
-          py = py + pvy * dt
-          pvy = pvy - 24 * dt
-          if py <= 0 {
-            let span = dist([px, pz], [air.x, air.z])
-            let airT = gt - air.t
-            let wet = any(CELLS[floor(pz / C) * 12 + floor(px / C)].b ?? [], b => b.k == "water" && abs(px - b.x) < b.w / 2 && abs(pz - b.z) < b.d / 2) || !(px > -E - 3.3 && px < 12 * C && pz > -E && pz < 16 * C + E + 3.4 && (pz > 0 || px < 11 * C + E) || any(nearShore, s => !s.flat && pow((px - s.x) * 2 / s.w, 2) + pow((pz - s.z) * 2 / s.d, 2) < 1))
-            landed = {rx: air.rx, rz: air.rz, t: airT, wet: wet}
-            py = 0
-            pvy = 0
-            air = null
+    if !still {
+      gt = gt + (mode == "list" ? 0 : dt)
+      let T = TYPES[ptype]
+      if !inCar && (py != 0 || air != null) {
+        py = 0
+        pvy = 0
+        air = null
+      }
+      // Lost off the map (no position, or past its edge): back on the street by a parked car, so the game never shows
+      // only sky.
+      if px == null || pz == null || camX == null || camZ == null || px < -60 || pz < -60 || px > 12 * C + 60 || pz > 16 * C + 60 {
+        px = 112
+        pz = 318
+        camX = 112
+        camZ = 318
+        inCar = false
+        pv = 0
+        pvx = 0
+        pvz = 0
+        parked = parked + [{id: nextId, t: 1, x: 112, z: 322.5, h: 90, c: pcol ?? 1, dmg: 0, wreck: false}]
+        nextId = nextId + 1
+      }
+      if mode == "play" {
+        if inCar {
+          // The car turns to face where the stick points and speeds up to how far it's pushed; let go and it rolls to a
+          // stop. Its velocity keeps going the way it went, the tires pulling it round to where the car points, much
+          // less in a sharp turn at speed: a drift, which leaves marks.
+          let fx0 = sin(rad(ph))
+          let fz0 = cos(rad(ph))
+          let fwd = pvx * fx0 + pvz * fz0
+          let lat = pvz * fx0 - pvx * fz0
+          // How far the car must turn to face where the stick points; the further it's pushed, the faster it goes.
+          // In the air off a ramp nothing steers, brakes or grips: it flies on as it left.
+          let turnBy = push == 0 || air != null ? 0 : ((deg(atan2(sdx, sdy)) - ph + 540) % 360) - 180
+          // Each kind its own: top speed, pick-up, how it turns and how well its tires hold.
+          let drift = fwd > T.top * 0.42 && abs(turnBy) > 50
+          let want = push * T.top * (abs(turnBy) > 110 ? 0.35 : 1)
+          let f1 = air != null ? fwd : clamp((fwd + (fwd < want ? T.acc : (push > 0 ? -30 : 0)) * dt) * pow(push > 0 ? 0.92 : 0.6, dt), -4, T.top)
+          let l1 = air != null ? lat : lat * pow(drift ? T.drift : T.grip, dt)
+          let vx1 = fx0 * f1 - fz0 * l1
+          let vz1 = fz0 * f1 + fx0 * l1
+          let nx = px + vx1 * dt
+          let nz = pz + vz1 * dt
+          // Walls: a move into one keeps the part along it, so the car slides along buildings instead of stopping dead;
+          // straight into one, it bounces. A bump or a ram can shove the car into a wall's reach: from there, any move
+          // out is let through.
+          let stuck = any(CELLS[floor(pz / C) * 12 + floor(px / C)].b ?? [], b => b.k != "water" && b.h >= py && abs(px - b.x) < b.w / 2 + T.wid / 2 + 0.3 && abs(pz - b.z) < b.d / 2 + T.wid / 2 + 0.3)
+          let hitXZ = !stuck && any(CELLS[floor(nz / C) * 12 + floor(nx / C)].b ?? [], b => b.k != "water" && b.h >= py && abs(nx - b.x) < b.w / 2 + T.wid / 2 + 0.3 && abs(nz - b.z) < b.d / 2 + T.wid / 2 + 0.3)
+          let hitX = hitXZ && (!stuck && any(CELLS[floor(pz / C) * 12 + floor(nx / C)].b ?? [], b => b.k != "water" && b.h >= py && abs(nx - b.x) < b.w / 2 + T.wid / 2 + 0.3 && abs(pz - b.z) < b.d / 2 + T.wid / 2 + 0.3))
+          let hitZ = hitXZ && (!stuck && any(CELLS[floor(nz / C) * 12 + floor(px / C)].b ?? [], b => b.k != "water" && b.h >= py && abs(px - b.x) < b.w / 2 + T.wid / 2 + 0.3 && abs(nz - b.z) < b.d / 2 + T.wid / 2 + 0.3))
+          let both = hitX && hitZ
+          // How fast it met the wall: what of its speed the wall took.
+          let impact = !hitXZ ? 0 : (both ? dist([vx1, vz1]) : (hitX ? abs(vx1) : abs(vz1)))
+          if impact > 18 {
             haptic()
-            msgAt = gt
-            if !wet {
-              dmg = dmg + 4 * T.armor
-              let bonus = airT > 0.5 ? round(span + airT * 20) : 0
-              cash = cash + bonus
-              msg = bonus > 0 ? "stunt · ${round(span)} m · +$${bonus}" : msg
-              msgAt = bonus > 0 ? gt : msgAt
+            dmg = dmg + impact * 0.2 * T.armor
+            fx = drop(fx, max(0, len(fx) - 30)) + range(8).map(i => {k: "spark", x: px + fx0 * 2, y: 0.8, z: pz + fz0 * 2, vx: random() * 16 - 8, vy: random() * 8, vz: random() * 16 - 8, life: 0.4 + random() * 0.3})
+          }
+          let vx2 = !hitXZ || !hitX ? vx1 : -vx1 * 0.2
+          let vz2 = !hitXZ || !both && hitX ? vz1 : -vz1 * 0.2
+          ph = ph + clamp(turnBy, -1, 1) * min(abs(turnBy), (drift ? 230 : 190) * T.turn * clamp(abs(f1) / 6, 0.4, 1) * dt)
+          pvx = vx2
+          pvz = vz2
+          pv = vx2 * fx0 + vz2 * fz0
+          px = !hitXZ || !hitX ? nx : px
+          pz = !hitXZ || !both && hitX ? nz : pz
+          if air == null && abs(l1) > 3.5 && gt - skidAt > 0.05 {
+            skids = drop(skids, max(0, len(skids) - 50)) + [{x: px - fx0 * T.len * 0.3, z: pz - fz0 * T.len * 0.3, h: ph, t: gt, w: T.wid}]
+            skidAt = gt
+          }
+          // Ramps: on one the car rides up the slope, and leaving the top fast enough it flies until gravity brings it
+          // down. A long jump pays; one that comes down in the canal or the sea goes under, as driving in does.
+          if air == null {
+            let ramp = first(RAMPS.filter(r => abs((px - r.x) * cos(rad(r.h)) - (pz - r.z) * sin(rad(r.h))) < 2.4 && abs((px - r.x) * sin(rad(r.h)) + (pz - r.z) * cos(rad(r.h))) < 3.2))
+            let along = ramp == null ? 0 : (px - ramp.x) * sin(rad(ramp.h)) + (pz - ramp.z) * cos(rad(ramp.h))
+            let up = ramp == null ? 0 : pvx * sin(rad(ramp.h)) + pvz * cos(rad(ramp.h))
+            py = ramp == null ? 0 : clamp((along + 3) / 6, 0, 1) * ramp.y
+            if ramp != null && along > 2.4 && up > 8 {
+              air = {t: gt, x: px, z: pz, rx: ramp.x, rz: ramp.z}
+              pvy = up * ramp.k
+            }
+          } else {
+            py = py + pvy * dt
+            pvy = pvy - 24 * dt
+            if py <= 0 {
+              let span = dist([px, pz], [air.x, air.z])
+              let airT = gt - air.t
+              let wet = any(CELLS[floor(pz / C) * 12 + floor(px / C)].b ?? [], b => b.k == "water" && abs(px - b.x) < b.w / 2 && abs(pz - b.z) < b.d / 2) || !(px > -E - 3.3 && px < 12 * C && pz > -E && pz < 16 * C + E + 3.4 && (pz > 0 || px < 11 * C + E) || any(nearShore, s => !s.flat && pow((px - s.x) * 2 / s.w, 2) + pow((pz - s.z) * 2 / s.d, 2) < 1))
+              landed = {rx: air.rx, rz: air.rz, t: airT, wet: wet}
+              py = 0
+              pvy = 0
+              air = null
+              haptic()
+              msgAt = gt
+              if !wet {
+                dmg = dmg + 4 * T.armor
+                let bonus = airT > 0.5 ? round(span + airT * 20) : 0
+                cash = cash + bonus
+                msg = bonus > 0 ? "stunt · ${round(span)} m · +$${bonus}" : msg
+                msgAt = bonus > 0 ? gt : msgAt
+              }
             }
           }
+          // Off the land into the sea, or over the quay into the canal: the car goes under, and you with it.
+          if air == null && (any(CELLS[floor(pz / C) * 12 + floor(px / C)].b ?? [], b => b.k == "water" && abs(px - b.x) < b.w / 2 && abs(pz - b.z) < b.d / 2) || !(px > -E - 3.3 && px < 12 * C && pz > -E && pz < 16 * C + E + 3.4 && (pz > 0 || px < 11 * C + E) || any(nearShore, s => !s.flat && pow((px - s.x) * 2 / s.w, 2) + pow((pz - s.z) * 2 / s.d, 2) < 1))) {
+            sunk = {at: gt, x: px, z: pz, h: ph, t: ptype, c: pcol}
+            fx = drop(fx, max(0, len(fx) - 30)) + range(16).map(i => {k: "drop", x: px, y: 0.5, z: pz, vx: random() * 10 - 5, vy: 5 + random() * 7, vz: random() * 10 - 5, life: 0.6 + random() * 0.5})
+            haptic()
+            inCar = false
+            firing = false
+            pv = 0
+            pvx = 0
+            pvz = 0
+          }
+          // A damaged car smokes, more the worse it is.
+          if dmg > 45 && gt - fxAt > 0.25 - dmg / 600 {
+            fx = drop(fx, max(0, len(fx) - 30)) + [{k: "smoke", x: px + fx0 * 1.6, y: 1, z: pz + fz0 * 1.6, vx: random() - 0.5, vy: 2.5, vz: random() - 0.5, life: 1.4}]
+            fxAt = gt
+          }
+        } else if sunk != null {
+          if gt - sunk.at > 1.6 {
+            hp = 0
+          }
+        } else {
+          let nx = px + sdx * 10 * dt
+          let nz = pz + sdy * 10 * dt
+          if abs(sdx) + abs(sdy) > 0.15 {
+            ph = deg(atan2(sdx, sdy))
+          }
+          px = !(nx > -E - 3.3 && nx < 12 * C && pz > -E && pz < 16 * C + E + 3.4 && (pz > 0 || nx < 11 * C + E) || any(nearShore, s => !s.flat && pow((nx - s.x) * 2 / s.w, 2) + pow((pz - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(pz / C) * 12 + floor(nx / C)].b ?? [], b => abs(nx - b.x) < b.w / 2 + 0.5 && abs(pz - b.z) < b.d / 2 + 0.5) ? px : nx
+          pz = !(px > -E - 3.3 && px < 12 * C && nz > -E && nz < 16 * C + E + 3.4 && (nz > 0 || px < 11 * C + E) || any(nearShore, s => !s.flat && pow((px - s.x) * 2 / s.w, 2) + pow((nz - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(nz / C) * 12 + floor(px / C)].b ?? [], b => abs(px - b.x) < b.w / 2 + 0.5 && abs(nz - b.z) < b.d / 2 + 0.5) ? pz : nz
         }
-        // Off the land into the sea, or over the quay into the canal: the car goes under, and you with it.
-        if air == null && (any(CELLS[floor(pz / C) * 12 + floor(px / C)].b ?? [], b => b.k == "water" && abs(px - b.x) < b.w / 2 && abs(pz - b.z) < b.d / 2) || !(px > -E - 3.3 && px < 12 * C && pz > -E && pz < 16 * C + E + 3.4 && (pz > 0 || px < 11 * C + E) || any(nearShore, s => !s.flat && pow((px - s.x) * 2 / s.w, 2) + pow((pz - s.z) * 2 / s.d, 2) < 1))) {
-          sunk = {at: gt, x: px, z: pz, h: ph, t: ptype, c: pcol}
-          fx = drop(fx, max(0, len(fx) - 30)) + range(16).map(i => {k: "drop", x: px, y: 0.5, z: pz, vx: random() * 10 - 5, vy: 5 + random() * 7, vz: random() * 10 - 5, life: 0.6 + random() * 0.5})
-          haptic()
-          inCar = false
-          firing = false
+        if mis.k == "race" && gt < mis.go {
+          px = mis.sx
+          pz = mis.sz
+          ph = mis.sh
           pv = 0
           pvx = 0
           pvz = 0
         }
-        // A damaged car smokes, more the worse it is.
-        if dmg > 45 && gt - fxAt > 0.25 - dmg / 600 {
-          fx = drop(fx, max(0, len(fx) - 30)) + [{k: "smoke", x: px + fx0 * 1.6, y: 1, z: pz + fz0 * 1.6, vx: random() - 0.5, vy: 2.5, vz: random() - 0.5, life: 1.4}]
-          fxAt = gt
-        }
-      } else if sunk != null {
-        if gt - sunk.at > 1.6 {
-          hp = 0
-        }
-      } else {
-        let nx = px + sdx * 10 * dt
-        let nz = pz + sdy * 10 * dt
-        if abs(sdx) + abs(sdy) > 0.15 {
-          ph = deg(atan2(sdx, sdy))
-        }
-        px = !(nx > -E - 3.3 && nx < 12 * C && pz > -E && pz < 16 * C + E + 3.4 && (pz > 0 || nx < 11 * C + E) || any(nearShore, s => !s.flat && pow((nx - s.x) * 2 / s.w, 2) + pow((pz - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(pz / C) * 12 + floor(nx / C)].b ?? [], b => abs(nx - b.x) < b.w / 2 + 0.5 && abs(pz - b.z) < b.d / 2 + 0.5) ? px : nx
-        pz = !(px > -E - 3.3 && px < 12 * C && nz > -E && nz < 16 * C + E + 3.4 && (nz > 0 || px < 11 * C + E) || any(nearShore, s => !s.flat && pow((px - s.x) * 2 / s.w, 2) + pow((nz - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(nz / C) * 12 + floor(px / C)].b ?? [], b => abs(px - b.x) < b.w / 2 + 0.5 && abs(nz - b.z) < b.d / 2 + 0.5) ? pz : nz
+        // The camera keeps you in the middle: close behind on foot, with a look ahead in the car.
+        camX = camX + (px + (inCar ? pvx * 0.45 : 0) - camX) * min(1, (inCar ? 5 : 14) * dt)
+        camZ = camZ + (pz + (inCar ? pvz * 0.45 : 0) - camZ) * min(1, (inCar ? 5 : 14) * dt)
       }
-      if mis.k == "race" && gt < mis.go {
-        px = mis.sx
-        pz = mis.sz
-        ph = mis.sh
-        pv = 0
-        pvx = 0
-        pvz = 0
-      }
-      // The camera keeps you in the middle: close behind on foot, with a look ahead in the car.
-      camX = camX + (px + (inCar ? pvx * 0.45 : 0) - camX) * min(1, (inCar ? 5 : 14) * dt)
-      camZ = camZ + (pz + (inCar ? pvz * 0.45 : 0) - camZ) * min(1, (inCar ? 5 : 14) * dt)
-    }
-    if mode == "title" {
-      // The title drifts over the city.
-      camX = 190 + sin(gt * 0.07) * 120
-      camZ = 270 + cos(gt * 0.05) * 160
-    }
-
-    // Traffic: slow behind the car just ahead in the lane (or you), move, and turn where the planned turn meets the new lane.
-    // Each car keeps its heading's direction, (dx, dz) = (round(sin), round(cos)), and the planned turn's, (ndx, ndz),
-    // worked out once when they change; the lane is 2.5 to the right of the direction, (-dz, dx).
-    // Only a car going the same way holds one up: two waiting on each other across a junction would wait forever.
-    let lanes = groupBy(cars, c => c.h)
-    cars = cars.map(c => [TYPES[c.t].len / 2 + 6].map(gap => [c.v + (((any(lanes[c.h] ?? [], o => o.id != c.id && (o.x - c.x) * c.dx + (o.z - c.z) * c.dz > 0 && (o.x - c.x) * c.dx + (o.z - c.z) * c.dz < gap && abs((o.x - c.x) * c.dz - (o.z - c.z) * c.dx) < 2) || (px - c.x) * c.dx + (pz - c.z) * c.dz > 0 && (px - c.x) * c.dx + (pz - c.z) * c.dz < gap && abs((px - c.x) * c.dz - (pz - c.z) * c.dx) < 2) ? 0 : min(12, TYPES[c.t].top * 0.4)) - c.v) * min(1, 3 * dt)].map(v => merge(c, {v: v, x: c.x + c.dx * v * dt, z: c.z + c.dz * v * dt, vh: c.vh + ((c.h - c.vh + 540) % 360 - 180) * min(1, 8 * dt)}))[0])[0])
-    cars = cars.map(c => (c.x - (c.mx * C - (c.dz + c.ndz) * 2.5)) * c.dx + (c.z - (c.mz * C + (c.dx + c.ndx) * 2.5)) * c.dz >= 0
-      ? merge(c, {h: c.nh, dx: c.ndx, dz: c.ndz, x: c.ndx != 0 ? c.x : c.mx * C - c.ndz * 2.5, z: c.ndx != 0 ? c.mz * C + c.ndx * 2.5 : c.z, mx: c.mx + c.ndx, mz: c.mz + c.ndz, plan: true})
-      : c)
-    // At the next corner: on, left or right where a road goes on (on more often), else back.
-    cars = cars.map(c => c.plan ? [[[c.h, c.h, (c.h + 90) % 360, (c.h + 270) % 360].filter(d => d == 90 ? c.mx < 11 : (d == 270 ? c.mx > 0 : (d == 0 ? c.mz < 16 : c.mz > 0)))].map(o => len(o) > 0 ? o[random(len(o))] : (c.h + 180) % 360)[0]].map(nh => merge(c, {plan: false, nh: nh, ndx: round(sin(rad(nh))), ndz: round(cos(rad(nh)))}))[0] : c)
-    // Traffic stays around you, as in the big city games: new cars start at a crossing a block or two off, just out of
-    // view, mostly heading your way so they drive into the picture; once well behind you they're gone.
-    cars = cars.filter(c => dist([c.x, c.z], [camX, camZ]) < 120)
-    if len(cars) < 28 {
-      let sx0 = clamp(round(camX / C) + random(-2, 2), 0, 11)
-      let sz0 = clamp(round(camZ / C) + random(-3, 2), 0, 16)
-      let opts = sortBy([0, 90, 180, 270].filter(d => d == 90 ? sx0 < 11 : (d == 270 ? sx0 > 0 : (d == 0 ? sz0 < 16 : sz0 > 0))), d => dist([(sx0 + round(sin(rad(d)))) * C, (sz0 + round(cos(rad(d)))) * C], [camX, camZ]))
-      let sh = random() < 0.75 ? opts[0] : opts[random(len(opts))]
-      let sp = [sx0 * C - round(cos(rad(sh))) * 2.5 + round(sin(rad(sh))) * 6, sz0 * C + round(sin(rad(sh))) * 2.5 + round(cos(rad(sh))) * 6]
-      if (abs(sp[0] - camX) > W / H * D * 0.5 + 6 || sp[1] < camZ - D * 0.75 - 6 || sp[1] > camZ + D * 0.35 + 6) && !any(cars, o => dist([o.x, o.z], sp) < 7) {
-        cars = cars + [{id: nextId, x: sp[0], z: sp[1], h: sh, vh: sh, nh: sh, dx: round(sin(rad(sh))), dz: round(cos(rad(sh))), ndx: round(sin(rad(sh))), ndz: round(cos(rad(sh))), mx: sx0 + round(sin(rad(sh))), mz: sz0 + round(cos(rad(sh))), v: 10, c: random(len(PAINT)), t: SPAWN[random(len(SPAWN))], plan: true}]
-        nextId = nextId + 1
-      }
-    }
-
-    // A car left in a lane is shoved toward the curb by the traffic it's in the way of (traffic is only near the camera).
-    parked = parked.map(p => abs(p.x - camX) > 125 || abs(p.z - camZ) > 125 ? p : [first(cars.filter(c => dist([c.x, c.z], [p.x, p.z]) < TYPES[c.t ?? 1].r + TYPES[p.t ?? 1].r))].map(c => c == null ? p : merge(p, {x: p.x - round(cos(rad(c.h))) * 6 * dt, z: p.z + round(sin(rad(c.h))) * 6 * dt}))[0])
-
-    // People on the sidewalks, now and then turning back; knocked over, they lie still, then get up and hurry on.
-    peds = peds.map(p => p.down > 0 && ((p.gone ?? false) || gt - p.down < 3) ? p : merge(p, {x: p.x + round(sin(rad(p.h))) * p.v * dt, z: p.z + round(cos(rad(p.h))) * p.v * dt, h: random() < 0.002 || abs(p.z + round(cos(rad(p.h))) * 1.2 - (10 * C + 16)) < 9.5 ? (p.h + 180) % 360 : p.h}))
-    peds = peds.filter(p => dist([p.x, p.z], [camX, camZ]) < 140 && (!(p.gone ?? false) || gt - p.down < 8))
-    if len(peds) < 14 {
-      let qx = clamp(floor(camX / C) + random(-3, 3), 0, 10)
-      let qz = clamp(floor(camZ / C) + random(-3, 3), 0, 15)
-      let side = random(4)
-      let along = 6 + random() * 20
-      let sp = side == 0 ? [qx * C + along, qz * C + 6] : (side == 1 ? [qx * C + along, qz * C + 26] : (side == 2 ? [qx * C + 6, qz * C + along] : [qx * C + 26, qz * C + along]))
-      if dist(sp, [camX, camZ]) > 50 && abs(sp[1] - (10 * C + 16)) > 10 {
-        peds = peds + [{id: nextId, x: sp[0], z: sp[1], h: side < 2 ? (random() < 0.5 ? 90 : 270) : (random() < 0.5 ? 0 : 180), v: 1.3 + random() * 0.6, c: random(5), down: 0}]
-        nextId = nextId + 1
-      }
-    }
-
-    fx = fx.map(f => merge(f, {x: f.x + f.vx * dt, y: f.y + f.vy * dt, z: f.z + f.vz * dt, vy: f.k == "spark" || f.k == "drop" ? f.vy - 20 * dt : f.vy * (f.k == "fire" ? pow(0.3, dt) : 1), life: f.life - dt})).filter(f => f.life > 0)
-    shots = shots.filter(t => gt - t.t < 0.08)
-    booms = booms.filter(b => gt - b.t < 1.2)
-    if len(skids) > 0 && gt - skids[0].t > 8 {
-      skids = drop(skids, 1)
-    }
-
-    if mode == "play" {
-      // Driving into people knocks them over: that's a crime, and the police take note.
-      if inCar && py < 1 && abs(pv) > 6 && any(peds, p => p.down == 0 && dist([p.x, p.z], [px, pz]) < T.r * 0.8 + 0.3) {
-        peds = peds.map(p => p.down == 0 && dist([p.x, p.z], [px, pz]) < T.r * 0.8 + 0.3 ? merge(p, {down: gt, v: 4.5, h: (p.h + 180) % 360}) : p)
-        haptic()
-        if gt - crimeAt > 1 {
-          heat = min(5, heat + 1)
-          crimeAt = gt
-        }
-      }
-      // Officers on foot go down the same way, and that's a crime too.
-      if inCar && py < 1 && abs(pv) > 6 && any(officers, o => o.down == 0 && dist([o.x, o.z], [px, pz]) < T.r * 0.8 + 0.3) {
-        officers = officers.map(o => o.down == 0 && dist([o.x, o.z], [px, pz]) < T.r * 0.8 + 0.3 ? merge(o, {down: gt, hp: 0}) : o)
-        haptic()
-        if gt - crimeAt > 1 {
-          heat = min(5, heat + 1)
-          crimeAt = gt
-        }
-      }
-      // Bumping traffic: driving into it slows you and dents the car; the other car is shoved out of the way and
-      // waits a moment. Only a move toward it bounces, so you can always drive off again.
-      // A hit needs real overlap, not just closeness.
-      let bump = first(cars.filter(c => dist([c.x, c.z], [px, pz]) < (T.r + TYPES[c.t].r) * 0.75))
-      if inCar && py < 1 && bump != null {
-        let bd = max(0.1, dist([bump.x, bump.z], [px, pz]))
-        if (bump.x - px) * pvx + (bump.z - pz) * pvz > 0 {
-          if gt - hitAt > 0.4 {
-            dmg = dmg + dist([pvx, pvz]) * 0.2 * T.armor
-            hitAt = gt
-            haptic()
-          }
-          pv = pv * 0.5
-          pvx = pvx * 0.5
-          pvz = pvz * 0.5
-        }
-        cars = cars.map(c => c.id == bump.id ? merge(c, {v: 0, x: c.x + (c.x - px) / bd * ((T.r + TYPES[c.t].r) * 0.75 + 0.1 - bd), z: c.z + (c.z - pz) / bd * ((T.r + TYPES[c.t].r) * 0.75 + 0.1 - bd)}) : c)
+      if mode == "title" {
+        // The title drifts over the city.
+        camX = 190 + sin(gt * 0.07) * 120
+        camZ = 270 + cos(gt * 0.05) * 160
       }
 
-      // Police: as many as the heat, up to four, coming from a crossing out of view. Far off they drive the roads, taking
-      // at each crossing the turn that brings them nearest you; close by they drive straight at you, sliding along
-      // buildings and swerving out of corners; lose them by far enough and they go back to the roads. No heat left,
-      // they turn away and leave.
-      if len(cops) < min(heat, 4) && gt - copAt > 1.5 {
-        let qx = clamp(round(px / C) + random(-4, 4), 0, 11)
-        let qz = clamp(round(pz / C) + random(-4, 4), 0, 16)
-        let qopts = sortBy([0, 90, 180, 270].filter(d => (d == 90 ? qx < 11 : (d == 270 ? qx > 0 : (d == 0 ? qz < 16 : qz > 0)))), d => dist([(qx + round(sin(rad(d)))) * C, (qz + round(cos(rad(d)))) * C], [px, pz]))
-        if dist([qx * C, qz * C], [px, pz]) > 80 && len(qopts) > 0 {
-          let qh = qopts[0]
-          cops = cops + [{id: nextId, x: qx * C - round(cos(rad(qh))) * 2.5 + round(sin(rad(qh))) * 3, z: qz * C + round(sin(rad(qh))) * 2.5 + round(cos(rad(qh))) * 3, h: qh, nh: qh, mx: qx + round(sin(rad(qh))), mz: qz + round(cos(rad(qh))), v: 14, road: true, plan: true}]
-          nextId = nextId + 1
-          copAt = gt
-        }
-      }
-      // Their top speed: faster with more stars, but in a car never quite as fast as yours, so any car can get away.
-      let copTop = inCar ? min(28 + heat * 2, max(20, T.top * 0.9)) : 28 + heat * 2
-      // Close enough to chase directly; far enough to go back to the roads, from the nearest crossing.
-      cops = cops.map(c => c.road && heat > 0 && dist([c.x, c.z], [px, pz]) < 26 ? merge(c, {road: false}) : c)
-      cops = cops.map(c => !c.road && !(c.out ?? false) && dist([c.x, c.z], [px, pz]) > 70 ? [[round(c.x / C), round(c.z / C)]].map(n => [sortBy([0, 90, 180, 270].filter(d => (d == 90 ? n[0] < 11 : (d == 270 ? n[0] > 0 : (d == 0 ? n[1] < 16 : n[1] > 0)))), d => dist([(n[0] + round(sin(rad(d)))) * C, (n[1] + round(cos(rad(d)))) * C], [px, pz]))[0]].map(h => merge(c, {road: true, plan: true, h: h, nh: h, x: n[0] * C - round(cos(rad(h))) * 2.5, z: n[1] * C + round(sin(rad(h))) * 2.5, mx: n[0] + round(sin(rad(h))), mz: n[1] + round(cos(rad(h)))}))[0])[0] : c)
-      // On the roads: along the lane, turning where the planned turn meets the new lane, as traffic does.
-      cops = cops.map(c => !c.road || (c.out ?? false) ? c : [c.v + (copTop - c.v) * min(1, 2 * dt)].map(v => merge(c, {v: v, x: c.x + round(sin(rad(c.h))) * v * dt, z: c.z + round(cos(rad(c.h))) * v * dt}))[0])
-      cops = cops.map(c => c.road && !(c.out ?? false) && (c.x - (c.mx * C - (round(cos(rad(c.h))) + round(cos(rad(c.nh)))) * 2.5)) * round(sin(rad(c.h))) + (c.z - (c.mz * C + (round(sin(rad(c.h))) + round(sin(rad(c.nh)))) * 2.5)) * round(cos(rad(c.h))) >= 0
-        ? merge(c, {h: c.nh, x: round(sin(rad(c.nh))) != 0 ? c.x : c.mx * C - round(cos(rad(c.nh))) * 2.5, z: round(sin(rad(c.nh))) != 0 ? c.mz * C + round(sin(rad(c.nh))) * 2.5 : c.z, mx: c.mx + round(sin(rad(c.nh))), mz: c.mz + round(cos(rad(c.nh))), plan: true})
+      // Traffic: slow behind the car just ahead in the lane (or you), move, and turn where the planned turn meets the new lane.
+      // Each car keeps its heading's direction, (dx, dz) = (round(sin), round(cos)), and the planned turn's, (ndx, ndz),
+      // worked out once when they change; the lane is 2.5 to the right of the direction, (-dz, dx).
+      // Only a car going the same way holds one up: two waiting on each other across a junction would wait forever.
+      let lanes = groupBy(cars, c => c.h)
+      cars = cars.map(c => [TYPES[c.t].len / 2 + 6].map(gap => [c.v + (((any(lanes[c.h] ?? [], o => o.id != c.id && (o.x - c.x) * c.dx + (o.z - c.z) * c.dz > 0 && (o.x - c.x) * c.dx + (o.z - c.z) * c.dz < gap && abs((o.x - c.x) * c.dz - (o.z - c.z) * c.dx) < 2) || (px - c.x) * c.dx + (pz - c.z) * c.dz > 0 && (px - c.x) * c.dx + (pz - c.z) * c.dz < gap && abs((px - c.x) * c.dz - (pz - c.z) * c.dx) < 2) ? 0 : min(12, TYPES[c.t].top * 0.4)) - c.v) * min(1, 3 * dt)].map(v => merge(c, {v: v, x: c.x + c.dx * v * dt, z: c.z + c.dz * v * dt, vh: c.vh + ((c.h - c.vh + 540) % 360 - 180) * min(1, 8 * dt)}))[0])[0])
+      cars = cars.map(c => (c.x - (c.mx * C - (c.dz + c.ndz) * 2.5)) * c.dx + (c.z - (c.mz * C + (c.dx + c.ndx) * 2.5)) * c.dz >= 0
+        ? merge(c, {h: c.nh, dx: c.ndx, dz: c.ndz, x: c.ndx != 0 ? c.x : c.mx * C - c.ndz * 2.5, z: c.ndx != 0 ? c.mz * C + c.ndx * 2.5 : c.z, mx: c.mx + c.ndx, mz: c.mz + c.ndz, plan: true})
         : c)
-      cops = cops.map(c => c.road && c.plan ? merge(c, {plan: false, nh: [sortBy([c.h, (c.h + 90) % 360, (c.h + 270) % 360].filter(d => (d == 90 ? c.mx < 11 : (d == 270 ? c.mx > 0 : (d == 0 ? c.mz < 16 : c.mz > 0)))), d => dist([(c.mx + round(sin(rad(d)))) * C, (c.mz + round(cos(rad(d)))) * C], [px, pz]) * (heat > 0 ? 1 : -1))].map(o => len(o) > 0 ? o[0] : (c.h + 180) % 360)[0]}) : c)
-      // Chasing: straight at you (or away, with no heat), sliding along buildings.
-      cops = cops.map(c => c.road || (c.out ?? false) ? merge(c, {ox: c.x, oz: c.z}) : [((deg(atan2(px - c.x, pz - c.z)) + (heat > 0 ? 0 : 180) - c.h + 540) % 360) - 180].map(t => merge(c, {h: c.h + clamp(t, -200 * dt, 200 * dt), v: c.v + ((gt < (c.stun ?? 0) ? 0 : copTop) * (1 - abs(t) / 300) - c.v) * min(1, 2 * dt)}))[0])
-      cops = cops.map(c => c.road || (c.out ?? false) ? c : merge(c, {ox: c.x, oz: c.z, nx: c.x + sin(rad(c.h)) * c.v * dt, nz: c.z + cos(rad(c.h)) * c.v * dt}))
-      cops = cops.map(c => c.road || (c.out ?? false) ? c : merge(c, {x: !(c.nx > -E - 3.3 && c.nx < 12 * C && c.z > -E && c.z < 16 * C + E + 3.4 && (c.z > 0 || c.nx < 11 * C + E) || any(nearShore, s => !s.flat && pow((c.nx - s.x) * 2 / s.w, 2) + pow((c.z - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(c.z / C) * 12 + floor(c.nx / C)].b ?? [], b => abs(c.nx - b.x) < b.w / 2 + 1.6 && abs(c.z - b.z) < b.d / 2 + 1.6) ? c.x : c.nx}))
-      cops = cops.map(c => c.road || (c.out ?? false) ? c : merge(c, {z: !(c.x > -E - 3.3 && c.x < 12 * C && c.nz > -E && c.nz < 16 * C + E + 3.4 && (c.nz > 0 || c.x < 11 * C + E) || any(nearShore, s => !s.flat && pow((c.x - s.x) * 2 / s.w, 2) + pow((c.nz - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(c.nz / C) * 12 + floor(c.x / C)].b ?? [], b => abs(c.x - b.x) < b.w / 2 + 1.6 && abs(c.nz - b.z) < b.d / 2 + 1.6) ? c.z : c.nz}))
-      // Wedged in a corner (trying to drive, going nowhere): swerve off at an angle and try again from there.
-      cops = cops.map(c => !c.road && !(c.out ?? false) && c.v > 3 && c.x == c.ox && c.z == c.oz ? merge(c, {h: c.h + 100 + random() * 60, v: c.v * 0.6}) : c)
-      // Left far behind, a car whose officer got out is gone too, so it doesn't keep another from taking up the chase.
-      cops = cops.filter(c => heat > 0 && !(c.out ?? false) || dist([c.x, c.z], [px, pz]) < 130)
-      if any(cops, c => dist([c.x, c.z], [px, pz]) < 70) {
-        seenAt = gt
-      }
-      // Out of their sight for a while, the heat drops a star.
-      if heat > 0 && gt - seenAt > 8 && gt - crimeAt > 8 {
-        heat = heat - 1
-        seenAt = gt
-      }
-      let ram = first(cops.filter(c => dist([c.x, c.z], [px, pz]) < (inCar ? T.r + 0.9 : 2.6)))
-      if ram != null && heat > 0 && py < 1 && sunk == null && inCar {
-        // A ram dents the car and slows it a little; the police car falls back and needs a moment before it can ram
-        // again, so a car that keeps going gets away.
-        if gt - hitAt > 0.5 && gt >= (ram.stun ?? 0) {
-          dmg = dmg + 4 * T.armor
-          hitAt = gt
-          haptic()
-          pv = pv * 0.85
-          pvx = pvx * 0.85
-          pvz = pvz * 0.85
-        }
-        let rd = max(0.1, dist([ram.x, ram.z], [px, pz]))
-        cops = cops.map(c => c.id == ram.id ? merge(c, {v: -6, stun: gt >= (c.stun ?? 0) ? gt + 1.5 : c.stun, x: c.x + (c.x - px) / rd * (T.r + 1 - rd), z: c.z + (c.z - pz) / rd * (T.r + 1 - rd)}) : c)
-      }
-      // Caught on foot, by a police car or, at low heat, an officer: busted. They keep a quarter of the cash, and you
-      // start again by the station.
-      if !inCar && (ram != null && heat > 0 && sunk == null || heat <= 2 && any(officers, o => o.down == 0 && dist([o.x, o.z], [px, pz]) < 1.8)) {
-        msg = "busted · -$" + fmtNum(floor(cash / 4))
-        msgAt = gt
-        cash = cash - floor(cash / 4)
-        heat = 0
-        cops = []
-        officers = []
-        ammo = [0, 0, 0]
-        gun = -1
-        px = 5 * C + 6
-        pz = 9 * C + 16
-        mis = null
-      }
-      // Too much damage and the car is done for: you climb out of the wreck.
-      if inCar && dmg >= 100 {
-        parked = drop(parked, max(0, len(parked) - 5)) + [{id: nextId, t: ptype, x: px, z: pz, h: ph, c: pcol, dmg: dmg, wreck: true}]
-        nextId = nextId + 1
-        inCar = false
-        pv = 0
-        pvx = 0
-        pvz = 0
-        px = px + cos(rad(ph)) * (TYPES[ptype].wid / 2 + 1.4)
-        pz = pz - sin(rad(ph)) * (TYPES[ptype].wid / 2 + 1.4)
-        msg = "wrecked"
-        msgAt = gt
-      }
-
-      // Police on foot: a police car that reaches you while you're on foot stops and lets an officer out, who runs at
-      // you and shoots about once a second when near; caught by one at low heat, you're busted. No heat, no officers.
-      if !inCar && sunk == null && heat > 0 {
-        let arrived = first(cops.filter(c => !(c.out ?? false) && dist([c.x, c.z], [px, pz]) < 18))
-        if arrived != null {
-          cops = cops.map(c => c.id == arrived.id ? merge(c, {out: true, v: 0}) : c)
-          officers = officers + [{id: nextId, x: arrived.x + sin(rad(arrived.h + 90)) * 2, z: arrived.z + cos(rad(arrived.h + 90)) * 2, h: arrived.h, hp: 40, down: 0, shotAt: gt + random()}]
+      // At the next corner: on, left or right where a road goes on (on more often), else back.
+      cars = cars.map(c => c.plan ? [[[c.h, c.h, (c.h + 90) % 360, (c.h + 270) % 360].filter(d => d == 90 ? c.mx < 11 : (d == 270 ? c.mx > 0 : (d == 0 ? c.mz < 16 : c.mz > 0)))].map(o => len(o) > 0 ? o[random(len(o))] : (c.h + 180) % 360)[0]].map(nh => merge(c, {plan: false, nh: nh, ndx: round(sin(rad(nh))), ndz: round(cos(rad(nh)))}))[0] : c)
+      // Traffic stays around you, as in the big city games: new cars start at a crossing a block or two off, just out of
+      // view, mostly heading your way so they drive into the picture; once well behind you they're gone.
+      cars = cars.filter(c => dist([c.x, c.z], [camX, camZ]) < 120)
+      if len(cars) < 28 {
+        let sx0 = clamp(round(camX / C) + random(-2, 2), 0, 11)
+        let sz0 = clamp(round(camZ / C) + random(-3, 2), 0, 16)
+        let opts = sortBy([0, 90, 180, 270].filter(d => d == 90 ? sx0 < 11 : (d == 270 ? sx0 > 0 : (d == 0 ? sz0 < 16 : sz0 > 0))), d => dist([(sx0 + round(sin(rad(d)))) * C, (sz0 + round(cos(rad(d)))) * C], [camX, camZ]))
+        let sh = random() < 0.75 ? opts[0] : opts[random(len(opts))]
+        let sp = [sx0 * C - round(cos(rad(sh))) * 2.5 + round(sin(rad(sh))) * 6, sz0 * C + round(sin(rad(sh))) * 2.5 + round(cos(rad(sh))) * 6]
+        if (abs(sp[0] - camX) > W / H * D * 0.5 + 6 || sp[1] < camZ - D * 0.75 - 6 || sp[1] > camZ + D * 0.35 + 6) && !any(cars, o => dist([o.x, o.z], sp) < 7) {
+          cars = cars + [{id: nextId, x: sp[0], z: sp[1], h: sh, vh: sh, nh: sh, dx: round(sin(rad(sh))), dz: round(cos(rad(sh))), ndx: round(sin(rad(sh))), ndz: round(cos(rad(sh))), mx: sx0 + round(sin(rad(sh))), mz: sz0 + round(cos(rad(sh))), v: 10, c: random(len(PAINT)), t: SPAWN[random(len(SPAWN))], plan: true}]
           nextId = nextId + 1
         }
       }
-      if heat == 0 {
-        officers = []
-      }
-      officers = officers.filter(o => (o.down == 0 || gt - o.down < 6) && dist([o.x, o.z], [px, pz]) < 120)
-      officers = officers.map(o => o.down > 0 ? o : merge(o, {h: deg(atan2(px - o.x, pz - o.z))}))
-      officers = officers.map(o => o.down > 0 ? o : merge(o, {nx: o.x + (dist([o.x, o.z], [px, pz]) > 8 ? sin(rad(o.h)) * 5.5 * dt : 0), nz: o.z + (dist([o.x, o.z], [px, pz]) > 8 ? cos(rad(o.h)) * 5.5 * dt : 0)}))
-      // Stepped out into a wall's reach, an officer may walk out of it.
-      officers = officers.map(o => o.down > 0 ? o : merge(o, {x: !(any(CELLS[floor(o.z / C) * 12 + floor(o.x / C)].b ?? [], b => abs(o.x - b.x) < b.w / 2 + 0.5 && abs(o.z - b.z) < b.d / 2 + 0.5)) && (!(o.nx > -E - 3.3 && o.nx < 12 * C && o.z > -E && o.z < 16 * C + E + 3.4 && (o.z > 0 || o.nx < 11 * C + E) || any(nearShore, s => !s.flat && pow((o.nx - s.x) * 2 / s.w, 2) + pow((o.z - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(o.z / C) * 12 + floor(o.nx / C)].b ?? [], b => abs(o.nx - b.x) < b.w / 2 + 0.5 && abs(o.z - b.z) < b.d / 2 + 0.5)) ? o.x : o.nx}))
-      officers = officers.map(o => o.down > 0 ? o : merge(o, {z: !(any(CELLS[floor(o.z / C) * 12 + floor(o.x / C)].b ?? [], b => abs(o.x - b.x) < b.w / 2 + 0.5 && abs(o.z - b.z) < b.d / 2 + 0.5)) && (!(o.x > -E - 3.3 && o.x < 12 * C && o.nz > -E && o.nz < 16 * C + E + 3.4 && (o.nz > 0 || o.x < 11 * C + E) || any(nearShore, s => !s.flat && pow((o.x - s.x) * 2 / s.w, 2) + pow((o.nz - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(o.nz / C) * 12 + floor(o.x / C)].b ?? [], b => abs(o.x - b.x) < b.w / 2 + 0.5 && abs(o.nz - b.z) < b.d / 2 + 0.5)) ? o.z : o.nz}))
-      let shooters = officers.filter(o => o.down == 0 && gt - o.shotAt > 1.1 && dist([o.x, o.z], [px, pz]) < 16)
-      if len(shooters) > 0 {
-        officers = officers.map(o => o.down == 0 && gt - o.shotAt > 1.1 && dist([o.x, o.z], [px, pz]) < 16 ? merge(o, {shotAt: gt + random() * 0.4}) : o)
-        let hits = count(shooters, o => random() < 0.5)
-        shots = drop(shots, max(0, len(shots) - 16)) + shooters.map(o => {x0: o.x, z0: o.z, x1: px + random() * 2 - 1, z1: pz + random() * 2 - 1, t: gt, c: 1})
-        if inCar {
-          dmg = dmg + hits * 4 * T.armor
-        } else {
-          hurt = hurt + hits * (6 + heat * 1.5)
+
+      // A car left in a lane is shoved toward the curb by the traffic it's in the way of (traffic is only near the camera).
+      parked = parked.map(p => abs(p.x - camX) > 125 || abs(p.z - camZ) > 125 ? p : [first(cars.filter(c => dist([c.x, c.z], [p.x, p.z]) < TYPES[c.t ?? 1].r + TYPES[p.t ?? 1].r))].map(c => c == null ? p : merge(p, {x: p.x - round(cos(rad(c.h))) * 6 * dt, z: p.z + round(sin(rad(c.h))) * 6 * dt}))[0])
+
+      // People on the sidewalks, now and then turning back; knocked over, they lie still, then get up and hurry on.
+      peds = peds.map(p => p.down > 0 && ((p.gone ?? false) || gt - p.down < 3) ? p : merge(p, {x: p.x + round(sin(rad(p.h))) * p.v * dt, z: p.z + round(cos(rad(p.h))) * p.v * dt, h: random() < 0.002 || abs(p.z + round(cos(rad(p.h))) * 1.2 - (10 * C + 16)) < 9.5 ? (p.h + 180) % 360 : p.h}))
+      peds = peds.filter(p => dist([p.x, p.z], [camX, camZ]) < 140 && (!(p.gone ?? false) || gt - p.down < 8))
+      if len(peds) < 14 {
+        let qx = clamp(floor(camX / C) + random(-3, 3), 0, 10)
+        let qz = clamp(floor(camZ / C) + random(-3, 3), 0, 15)
+        let side = random(4)
+        let along = 6 + random() * 20
+        let sp = side == 0 ? [qx * C + along, qz * C + 6] : (side == 1 ? [qx * C + along, qz * C + 26] : (side == 2 ? [qx * C + 6, qz * C + along] : [qx * C + 26, qz * C + along]))
+        if dist(sp, [camX, camZ]) > 50 && abs(sp[1] - (10 * C + 16)) > 10 {
+          peds = peds + [{id: nextId, x: sp[0], z: sp[1], h: side < 2 ? (random() < 0.5 ? 90 : 270) : (random() < 0.5 ? 0 : 180), v: 1.3 + random() * 0.6, c: random(5), down: 0}]
+          nextId = nextId + 1
         }
       }
 
-      // Firing: the nearest target in front of you (police on foot first, then their cars, people, traffic), most shots
-      // hitting; with nothing there, straight ahead. People shot stay down, cars shot enough blow up; both are crimes.
-      // With no gun in hand, the same button punches.
-      if firing && !inCar && (gun < 0 || ammo[gun] > 0) && gt - shotAt > 1 / (gun < 0 ? FIST : WEAPONS[gun]).rate {
-        let w = gun < 0 ? FIST : WEAPONS[gun]
-        let aims = officers.filter(o => o.down == 0).map(o => {k: "o", id: o.id, x: o.x, z: o.z, pri: 0}) + peds.filter(p => p.down == 0).map(p => {k: "p", id: p.id, x: p.x, z: p.z, pri: 30}) + (gun < 0 ? [] : cops.map(c => {k: "k", id: c.id, x: c.x, z: c.z, pri: 10}) + cars.map(c => {k: "c", id: c.id, x: c.x, z: c.z, pri: 40}))
-        let tgt = first(sortBy(aims.filter(a => dist([a.x, a.z], [px, pz]) < w.range && abs(((deg(atan2(a.x - px, a.z - pz)) - ph + 540) % 360) - 180) < w.cone), a => a.pri + dist([a.x, a.z], [px, pz])))
-        let hit = tgt != null && random() < 0.85
-        let aimH = tgt != null ? deg(atan2(tgt.x - px, tgt.z - pz)) : ph
-        ph = aimH
-        shotAt = gt
-        if gun >= 0 {
-          ammo = set(ammo, gun, ammo[gun] - 1)
-        }
-        shots = gun < 0 ? shots : drop(shots, max(0, len(shots) - 16)) + [{x0: px + sin(rad(aimH)) * 0.9, z0: pz + cos(rad(aimH)) * 0.9, x1: tgt != null ? tgt.x + (hit ? 0 : random() * 3 - 1.5) : px + sin(rad(aimH)) * w.range, z1: tgt != null ? tgt.z + (hit ? 0 : random() * 3 - 1.5) : pz + cos(rad(aimH)) * w.range, t: gt, c: 0}]
-        if hit && tgt.k == "o" {
-          officers = officers.map(o => o.id == tgt.id ? merge(o, {hp: o.hp - w.dmg, down: o.hp - w.dmg <= 0 ? gt : 0}) : o)
-          heat = min(5, max(2, heat + (gt - crimeAt > 2 ? 1 : 0)))
-          crimeAt = gt
-        }
-        if hit && tgt.k == "p" {
-          // Punched, they fall and get up again, hurrying off; shot, they stay down.
-          peds = peds.map(p => p.id == tgt.id ? merge(p, gun < 0 ? {down: gt, v: 4.5, h: (p.h + 180) % 360} : {down: gt, gone: true}) : p)
-          heat = min(5, heat + (gt - crimeAt > 1 ? 1 : 0))
-          crimeAt = gt
-        }
-        if hit && tgt.k == "k" {
-          let wreck = first(cops.filter(c => c.id == tgt.id && (c.hp ?? 80) - w.dmg <= 0))
-          cops = cops.map(c => c.id == tgt.id ? merge(c, {hp: (c.hp ?? 80) - w.dmg}) : c).filter(c => (c.hp ?? 1) > 0)
-          if wreck != null {
-            blasts = blasts + [{x: wreck.x, z: wreck.z}]
-            parked = drop(parked, max(0, len(parked) - 5)) + [{id: nextId, t: 1, x: wreck.x, z: wreck.z, h: wreck.h, c: 0, dmg: 100, wreck: true}]
-            nextId = nextId + 1
-          }
-          heat = min(5, max(2, heat + (gt - crimeAt > 2 ? 1 : 0)))
-          crimeAt = gt
-        }
-        if hit && tgt.k == "c" {
-          let wreck = first(cars.filter(c => c.id == tgt.id && (c.hp ?? 60) - w.dmg <= 0))
-          cars = cars.map(c => c.id == tgt.id ? merge(c, {hp: (c.hp ?? 60) - w.dmg, v: 0}) : c).filter(c => (c.hp ?? 1) > 0)
-          if wreck != null {
-            blasts = blasts + [{x: wreck.x, z: wreck.z}]
-            parked = drop(parked, max(0, len(parked) - 5)) + [{id: nextId, t: wreck.t ?? 1, x: wreck.x, z: wreck.z, h: wreck.h, c: wreck.c, dmg: 100, wreck: true}]
-            nextId = nextId + 1
-            heat = min(5, heat + (gt - crimeAt > 1 ? 1 : 0))
+      fx = fx.map(f => merge(f, {x: f.x + f.vx * dt, y: f.y + f.vy * dt, z: f.z + f.vz * dt, vy: f.k == "spark" || f.k == "drop" ? f.vy - 20 * dt : f.vy * (f.k == "fire" ? pow(0.3, dt) : 1), life: f.life - dt})).filter(f => f.life > 0)
+      shots = shots.filter(t => gt - t.t < 0.08)
+      booms = booms.filter(b => gt - b.t < 1.2)
+      if len(skids) > 0 && gt - skids[0].t > 8 {
+        skids = drop(skids, 1)
+      }
+
+      if mode == "play" {
+        // Driving into people knocks them over: that's a crime, and the police take note.
+        if inCar && py < 1 && abs(pv) > 6 && any(peds, p => p.down == 0 && dist([p.x, p.z], [px, pz]) < T.r * 0.8 + 0.3) {
+          peds = peds.map(p => p.down == 0 && dist([p.x, p.z], [px, pz]) < T.r * 0.8 + 0.3 ? merge(p, {down: gt, v: 4.5, h: (p.h + 180) % 360}) : p)
+          haptic()
+          if gt - crimeAt > 1 {
+            heat = min(5, heat + 1)
             crimeAt = gt
           }
         }
-      }
-      if gun >= 0 && ammo[gun] <= 0 {
-        // Out of ammo: the next gun that has some, or none.
-        gun = first(range(3).map(i => (gun + 1 + i) % 3).filter(i => ammo[i] > 0)) ?? -1
-      }
-
-      // Explosions: fire and smoke, people close by knocked flat, and you hurt (or your car dented) by how near you are.
-      if len(blasts) > 0 {
-        let nearest = min(blasts.map(b => dist([b.x, b.z], [px, pz])))
-        if nearest < 8 {
-          if inCar {
-            dmg = dmg + 40 * (1 - nearest / 8) * T.armor
-          } else {
-            hurt = hurt + 55 * (1 - nearest / 8)
-          }
-        }
-        peds = peds.map(p => p.down == 0 && any(blasts, b => dist([b.x, b.z], [p.x, p.z]) < 6) ? merge(p, {down: gt, gone: true}) : p)
-        officers = officers.map(o => o.down == 0 && any(blasts, b => dist([b.x, b.z], [o.x, o.z]) < 6) ? merge(o, {down: gt, hp: 0}) : o)
-        fx = drop(fx, max(0, len(fx) - 40)) + flatten(blasts.map(b => range(14).map(i => {k: i % 3 == 0 ? "smoke" : "fire", x: b.x, y: 1, z: b.z, vx: random() * 10 - 5, vy: 3 + random() * 6, vz: random() * 10 - 5, life: 0.6 + random() * 0.8})))
-        booms = booms + blasts.map(b => merge(b, {t: gt}))
-        blasts = []
-        haptic()
-      }
-
-      // Pickups: walk or drive through one to take it; it comes back after a minute and a half.
-      let got = first(nearPicks.filter(p => dist([p.x, p.z], [px, pz]) < (inCar ? 3.2 : 2)))
-      if got != null {
-        taken = drop(taken, max(0, len(taken) - 40)) + [{id: got.id, t: gt}]
-        haptic()
-        msgAt = gt
-        if got.k == 0 {
-          hp = min(100, hp + 50)
-          msg = "+ health"
-        }
-        if got.k == 1 {
-          armor = min(100, armor + 50)
-          msg = "+ armor"
-        }
-        if got.k >= 2 && got.k <= 4 {
-          ammo = set(ammo, got.k - 2, ammo[got.k - 2] + WEAPONS[got.k - 2].give)
-          gun = gun < 0 ? got.k - 2 : gun
-          msg = WEAPONS[got.k - 2].name + " · " + fmtNum(ammo[got.k - 2])
-        }
-        if got.k == 5 {
-          cash = cash + 100
-          msg = "+$100"
-        }
-      }
-
-      // Damage taken this frame: armor first, then health; at none, wasted: you wake by the hospital without your guns.
-      if hurt > 0 {
-        let fromArmor = min(armor, hurt)
-        armor = armor - fromArmor
-        hp = hp - (hurt - fromArmor)
-        hurt = 0
-        haptic()
-      }
-      if hp <= 0 {
-        msg = (sunk != null ? "wasted · drowned · -$" : "wasted · -$") + fmtNum(min(cash, 100))
-        sunk = null
-        msgAt = gt
-        cash = max(0, cash - 100)
-        hp = 100
-        armor = 0
-        ammo = [0, 0, 0]
-        gun = -1
-        heat = 0
-        cops = []
-        officers = []
-        inCar = false
-        pv = 0
-        pvx = 0
-        pvz = 0
-        px = HOSPITAL[0]
-        pz = HOSPITAL[1]
-        camX = px
-        camZ = pz
-        mis = null
-      }
-
-      // Missions. Each kind runs here; a mission ends passed (the pay, a message) or failed (a message why).
-      if mis == null && (len(rivals) > 0 || prey != null) {
-        rivals = []
-        prey = null
-      }
-      // A race: the rivals drive the course at their own pace, slower into corners, holding back when far ahead and
-      // pushing when far behind, each in its own line, eased round the corners; you go through the checkpoints.
-      if mis.k == "race" && gt >= mis.go {
-        let rp = RACE
-        let cum = RCUM[mis.r]
-        let total = last(cum)
-        let ps = raceS
-        rivals = rivals.map(r => [clamp(count(cum, c => c <= r.s) - 1, 0, len(rp) - 2)].map(i => merge(r, {v: r.v + ((r.s >= total ? 0 : (cum[i + 1] - r.s < 14 && i + 2 < len(rp) ? 17 : r.top * clamp(1 - (r.s - ps) / 400, 0.82, 1.15))) * (gt < r.slow ? 0.5 : 1) - r.v) * min(1, 2 * dt)}))[0])
-        rivals = rivals.map(r => [min(r.s + r.v * dt, total)].map(s => [clamp(count(cum, c => c <= s) - 1, 0, len(rp) - 2)].map(i => [[rp[i], rp[i + 1], min(1, (s - cum[i]) / max(1, cum[i + 1] - cum[i]))]].map(g => [[g[0][0] + (g[1][0] - g[0][0]) * g[2] - sign(g[1][1] - g[0][1]) * r.lane, g[0][1] + (g[1][1] - g[0][1]) * g[2] + sign(g[1][0] - g[0][0]) * r.lane]].map(p => merge(r, {s: s, x: r.x + (p[0] - r.x) * min(1, 5 * dt), z: r.z + (p[1] - r.z) * min(1, 5 * dt), h: dist([p[0] - r.x, p[1] - r.z]) > 0.2 ? deg(atan2(p[0] - r.x, p[1] - r.z)) : r.h}))[0])[0])[0])[0])
-        // Rubbing a rival slows it a moment and knocks you about.
-        let rub = first(rivals.filter(r => dist([r.x, r.z], [px, pz]) < T.r + 1.6))
-        if rub != null && inCar {
-          rivals = rivals.map(r => r.id == rub.id ? merge(r, {slow: gt + 0.8}) : r)
-          if gt - hitAt > 0.4 {
-            haptic()
-            hitAt = gt
-            dmg = dmg + 2 * T.armor
-            pvx = pvx * 0.85 + (px - rub.x) * 2
-            pvz = pvz * 0.85 + (pz - rub.z) * 2
-          }
-        }
-        if dist(rp[mis.i], [px, pz]) < 11 {
+        // Officers on foot go down the same way, and that's a crime too.
+        if inCar && py < 1 && abs(pv) > 6 && any(officers, o => o.down == 0 && dist([o.x, o.z], [px, pz]) < T.r * 0.8 + 0.3) {
+          officers = officers.map(o => o.down == 0 && dist([o.x, o.z], [px, pz]) < T.r * 0.8 + 0.3 ? merge(o, {down: gt, hp: 0}) : o)
           haptic()
-          if mis.i == len(rp) - 1 {
-            let pl = 1 + count(rivals, r => r.s >= total)
-            let secs = gt - mis.go
-            let prize = [500, 250, 120, 0][min(3, pl - 1)]
-            let rname = RACES[mis.r].name
-            let record = secs < get(best, rname, 9999)
-            cash = cash + prize
-            best = record ? set(best, rname, secs) : best
-            msg = (pl == 1 ? "1st place" : (pl == 2 ? "2nd place" : (pl == 3 ? "3rd place" : "failed · 4th place"))) + " · " + fmtTime(secs, "m:ss", "UTC") + (record ? " · new best" : "") + (prize > 0 ? " · +$" + fmtNum(prize) : "")
-            msgAt = gt
-            done = pl <= 3 && indexOf(done, mis.g) < 0 ? done + [mis.g] : done
-            mis = null
-          } else {
-            mis = merge(mis, {i: mis.i + 1})
+          if gt - crimeAt > 1 {
+            heat = min(5, heat + 1)
+            crimeAt = gt
           }
         }
-      }
-      // A takedown: the car drives the roads at speed, at each crossing taking the turn that leads away from you,
-      // easing off when it's well ahead. Every ram dents it by how hard you hit and slows it a moment; wrecked, it blows up.
-      if mis.k == "takedown" && prey != null {
-        prey = [prey].map(c => [c.v + ((gt < c.slow ? 9 : (dist([c.x, c.z], [px, pz]) > 140 ? 19 : 27)) - c.v) * min(1, 1.5 * dt)].map(v => merge(c, {v: v, x: c.x + round(sin(rad(c.h))) * v * dt, z: c.z + round(cos(rad(c.h))) * v * dt, vh: c.vh + clamp(((c.h - c.vh + 540) % 360) - 180, -360 * dt, 360 * dt)}))[0])[0]
-        prey = [prey].map(c => (c.x - (c.mx * C - (round(cos(rad(c.h))) + round(cos(rad(c.nh)))) * 2.5)) * round(sin(rad(c.h))) + (c.z - (c.mz * C + (round(sin(rad(c.h))) + round(sin(rad(c.nh)))) * 2.5)) * round(cos(rad(c.h))) >= 0
-          ? merge(c, {h: c.nh, x: round(sin(rad(c.nh))) != 0 ? c.x : c.mx * C - round(cos(rad(c.nh))) * 2.5, z: round(sin(rad(c.nh))) != 0 ? c.mz * C + round(sin(rad(c.nh))) * 2.5 : c.z, mx: c.mx + round(sin(rad(c.nh))), mz: c.mz + round(cos(rad(c.nh))), plan: true})
-          : c)[0]
-        prey = [prey].map(c => c.plan ? merge(c, {plan: false, nh: [sortBy([c.h, (c.h + 90) % 360, (c.h + 270) % 360].filter(d => (d == 90 ? c.mx < 11 : (d == 270 ? c.mx > 1 : (d == 0 ? c.mz < 15 : c.mz > 1)))), d => random() * 50 - dist([(c.mx + round(sin(rad(d)))) * C, (c.mz + round(cos(rad(d)))) * C], [px, pz]))].map(o => len(o) > 0 ? o[0] : (c.h + 180) % 360)[0]}) : c)[0]
-        let pd = dist([prey.x, prey.z], [px, pz])
-        if inCar && py < 1 && pd < T.r + 2.3 && gt - prey.hitAt > 0.6 {
-          let hard = clamp(dist([pvx - sin(rad(prey.h)) * prey.v, pvz - cos(rad(prey.h)) * prey.v]) * 1.6, 8, 40)
-          let hpLeft = prey.hp - hard
-          haptic()
-          dmg = dmg + 3 * T.armor
-          pv = pv * 0.6
-          pvx = pvx * 0.6
-          pvz = pvz * 0.6
-          fx = drop(fx, max(0, len(fx) - 30)) + range(8).map(i => {k: "spark", x: (px + prey.x) / 2, y: 0.8, z: (pz + prey.z) / 2, vx: random() * 16 - 8, vy: random() * 8, vz: random() * 16 - 8, life: 0.4 + random() * 0.3})
-          if hpLeft <= 0 {
-            blasts = blasts + [{x: prey.x, z: prey.z}]
-            parked = drop(parked, max(0, len(parked) - 5)) + [{id: nextId, t: 2, x: prey.x, z: prey.z, h: prey.vh, c: 1, dmg: 100, wreck: true}]
+        // Bumping traffic: driving into it slows you and dents the car; the other car is shoved out of the way and
+        // waits a moment. Only a move toward it bounces, so you can always drive off again.
+        // A hit needs real overlap, not just closeness.
+        let bump = first(cars.filter(c => dist([c.x, c.z], [px, pz]) < (T.r + TYPES[c.t].r) * 0.75))
+        if inCar && py < 1 && bump != null {
+          let bd = max(0.1, dist([bump.x, bump.z], [px, pz]))
+          if (bump.x - px) * pvx + (bump.z - pz) * pvz > 0 {
+            if gt - hitAt > 0.4 {
+              dmg = dmg + dist([pvx, pvz]) * 0.2 * T.armor
+              hitAt = gt
+              haptic()
+            }
+            pv = pv * 0.5
+            pvx = pvx * 0.5
+            pvz = pvz * 0.5
+          }
+          cars = cars.map(c => c.id == bump.id ? merge(c, {v: 0, x: c.x + (c.x - px) / bd * ((T.r + TYPES[c.t].r) * 0.75 + 0.1 - bd), z: c.z + (c.z - pz) / bd * ((T.r + TYPES[c.t].r) * 0.75 + 0.1 - bd)}) : c)
+        }
+
+        // Police: as many as the heat, up to four, coming from a crossing out of view. Far off they drive the roads, taking
+        // at each crossing the turn that brings them nearest you; close by they drive straight at you, sliding along
+        // buildings and swerving out of corners; lose them by far enough and they go back to the roads. No heat left,
+        // they turn away and leave.
+        if len(cops) < min(heat, 4) && gt - copAt > 1.5 {
+          let qx = clamp(round(px / C) + random(-4, 4), 0, 11)
+          let qz = clamp(round(pz / C) + random(-4, 4), 0, 16)
+          let qopts = sortBy([0, 90, 180, 270].filter(d => (d == 90 ? qx < 11 : (d == 270 ? qx > 0 : (d == 0 ? qz < 16 : qz > 0)))), d => dist([(qx + round(sin(rad(d)))) * C, (qz + round(cos(rad(d)))) * C], [px, pz]))
+          if dist([qx * C, qz * C], [px, pz]) > 80 && len(qopts) > 0 {
+            let qh = qopts[0]
+            cops = cops + [{id: nextId, x: qx * C - round(cos(rad(qh))) * 2.5 + round(sin(rad(qh))) * 3, z: qz * C + round(sin(rad(qh))) * 2.5 + round(cos(rad(qh))) * 3, h: qh, nh: qh, mx: qx + round(sin(rad(qh))), mz: qz + round(cos(rad(qh))), v: 14, road: true, plan: true}]
             nextId = nextId + 1
-            cash = cash + 350
-            msg = "target down · +$350"
+            copAt = gt
+          }
+        }
+        // Their top speed: faster with more stars, but in a car never quite as fast as yours, so any car can get away.
+        let copTop = inCar ? min(28 + heat * 2, max(20, T.top * 0.9)) : 28 + heat * 2
+        // Close enough to chase directly; far enough to go back to the roads, from the nearest crossing.
+        cops = cops.map(c => c.road && heat > 0 && dist([c.x, c.z], [px, pz]) < 26 ? merge(c, {road: false}) : c)
+        cops = cops.map(c => !c.road && !(c.out ?? false) && dist([c.x, c.z], [px, pz]) > 70 ? [[round(c.x / C), round(c.z / C)]].map(n => [sortBy([0, 90, 180, 270].filter(d => (d == 90 ? n[0] < 11 : (d == 270 ? n[0] > 0 : (d == 0 ? n[1] < 16 : n[1] > 0)))), d => dist([(n[0] + round(sin(rad(d)))) * C, (n[1] + round(cos(rad(d)))) * C], [px, pz]))[0]].map(h => merge(c, {road: true, plan: true, h: h, nh: h, x: n[0] * C - round(cos(rad(h))) * 2.5, z: n[1] * C + round(sin(rad(h))) * 2.5, mx: n[0] + round(sin(rad(h))), mz: n[1] + round(cos(rad(h)))}))[0])[0] : c)
+        // On the roads: along the lane, turning where the planned turn meets the new lane, as traffic does.
+        cops = cops.map(c => !c.road || (c.out ?? false) ? c : [c.v + (copTop - c.v) * min(1, 2 * dt)].map(v => merge(c, {v: v, x: c.x + round(sin(rad(c.h))) * v * dt, z: c.z + round(cos(rad(c.h))) * v * dt}))[0])
+        cops = cops.map(c => c.road && !(c.out ?? false) && (c.x - (c.mx * C - (round(cos(rad(c.h))) + round(cos(rad(c.nh)))) * 2.5)) * round(sin(rad(c.h))) + (c.z - (c.mz * C + (round(sin(rad(c.h))) + round(sin(rad(c.nh)))) * 2.5)) * round(cos(rad(c.h))) >= 0
+          ? merge(c, {h: c.nh, x: round(sin(rad(c.nh))) != 0 ? c.x : c.mx * C - round(cos(rad(c.nh))) * 2.5, z: round(sin(rad(c.nh))) != 0 ? c.mz * C + round(sin(rad(c.nh))) * 2.5 : c.z, mx: c.mx + round(sin(rad(c.nh))), mz: c.mz + round(cos(rad(c.nh))), plan: true})
+          : c)
+        cops = cops.map(c => c.road && c.plan ? merge(c, {plan: false, nh: [sortBy([c.h, (c.h + 90) % 360, (c.h + 270) % 360].filter(d => (d == 90 ? c.mx < 11 : (d == 270 ? c.mx > 0 : (d == 0 ? c.mz < 16 : c.mz > 0)))), d => dist([(c.mx + round(sin(rad(d)))) * C, (c.mz + round(cos(rad(d)))) * C], [px, pz]) * (heat > 0 ? 1 : -1))].map(o => len(o) > 0 ? o[0] : (c.h + 180) % 360)[0]}) : c)
+        // Chasing: straight at you (or away, with no heat), sliding along buildings.
+        cops = cops.map(c => c.road || (c.out ?? false) ? merge(c, {ox: c.x, oz: c.z}) : [((deg(atan2(px - c.x, pz - c.z)) + (heat > 0 ? 0 : 180) - c.h + 540) % 360) - 180].map(t => merge(c, {h: c.h + clamp(t, -200 * dt, 200 * dt), v: c.v + ((gt < (c.stun ?? 0) ? 0 : copTop) * (1 - abs(t) / 300) - c.v) * min(1, 2 * dt)}))[0])
+        cops = cops.map(c => c.road || (c.out ?? false) ? c : merge(c, {ox: c.x, oz: c.z, nx: c.x + sin(rad(c.h)) * c.v * dt, nz: c.z + cos(rad(c.h)) * c.v * dt}))
+        cops = cops.map(c => c.road || (c.out ?? false) ? c : merge(c, {x: !(c.nx > -E - 3.3 && c.nx < 12 * C && c.z > -E && c.z < 16 * C + E + 3.4 && (c.z > 0 || c.nx < 11 * C + E) || any(nearShore, s => !s.flat && pow((c.nx - s.x) * 2 / s.w, 2) + pow((c.z - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(c.z / C) * 12 + floor(c.nx / C)].b ?? [], b => abs(c.nx - b.x) < b.w / 2 + 1.6 && abs(c.z - b.z) < b.d / 2 + 1.6) ? c.x : c.nx}))
+        cops = cops.map(c => c.road || (c.out ?? false) ? c : merge(c, {z: !(c.x > -E - 3.3 && c.x < 12 * C && c.nz > -E && c.nz < 16 * C + E + 3.4 && (c.nz > 0 || c.x < 11 * C + E) || any(nearShore, s => !s.flat && pow((c.x - s.x) * 2 / s.w, 2) + pow((c.nz - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(c.nz / C) * 12 + floor(c.x / C)].b ?? [], b => abs(c.x - b.x) < b.w / 2 + 1.6 && abs(c.nz - b.z) < b.d / 2 + 1.6) ? c.z : c.nz}))
+        // Wedged in a corner (trying to drive, going nowhere): swerve off at an angle and try again from there.
+        cops = cops.map(c => !c.road && !(c.out ?? false) && c.v > 3 && c.x == c.ox && c.z == c.oz ? merge(c, {h: c.h + 100 + random() * 60, v: c.v * 0.6}) : c)
+        // Left far behind, a car whose officer got out is gone too, so it doesn't keep another from taking up the chase.
+        cops = cops.filter(c => heat > 0 && !(c.out ?? false) || dist([c.x, c.z], [px, pz]) < 130)
+        if any(cops, c => dist([c.x, c.z], [px, pz]) < 70) {
+          seenAt = gt
+        }
+        // Out of their sight for a while, the heat drops a star.
+        if heat > 0 && gt - seenAt > 8 && gt - crimeAt > 8 {
+          heat = heat - 1
+          seenAt = gt
+        }
+        let ram = first(cops.filter(c => dist([c.x, c.z], [px, pz]) < (inCar ? T.r + 0.9 : 2.6)))
+        if ram != null && heat > 0 && py < 1 && sunk == null && inCar {
+          // A ram dents the car and slows it a little; the police car falls back and needs a moment before it can ram
+          // again, so a car that keeps going gets away.
+          if gt - hitAt > 0.5 && gt >= (ram.stun ?? 0) {
+            dmg = dmg + 4 * T.armor
+            hitAt = gt
+            haptic()
+            pv = pv * 0.85
+            pvx = pvx * 0.85
+            pvz = pvz * 0.85
+          }
+          let rd = max(0.1, dist([ram.x, ram.z], [px, pz]))
+          cops = cops.map(c => c.id == ram.id ? merge(c, {v: -6, stun: gt >= (c.stun ?? 0) ? gt + 1.5 : c.stun, x: c.x + (c.x - px) / rd * (T.r + 1 - rd), z: c.z + (c.z - pz) / rd * (T.r + 1 - rd)}) : c)
+        }
+        // Caught on foot, by a police car or, at low heat, an officer: busted. They keep a quarter of the cash, and you
+        // start again by the station.
+        if !inCar && (ram != null && heat > 0 && sunk == null || heat <= 2 && any(officers, o => o.down == 0 && dist([o.x, o.z], [px, pz]) < 1.8)) {
+          msg = "busted · -$" + fmtNum(floor(cash / 4))
+          msgAt = gt
+          cash = cash - floor(cash / 4)
+          heat = 0
+          cops = []
+          officers = []
+          ammo = [0, 0, 0]
+          gun = -1
+          px = 5 * C + 6
+          pz = 9 * C + 16
+          mis = null
+        }
+        // Too much damage and the car is done for: you climb out of the wreck.
+        if inCar && dmg >= 100 {
+          parked = drop(parked, max(0, len(parked) - 5)) + [{id: nextId, t: ptype, x: px, z: pz, h: ph, c: pcol, dmg: dmg, wreck: true}]
+          nextId = nextId + 1
+          inCar = false
+          pv = 0
+          pvx = 0
+          pvz = 0
+          px = px + cos(rad(ph)) * (TYPES[ptype].wid / 2 + 1.4)
+          pz = pz - sin(rad(ph)) * (TYPES[ptype].wid / 2 + 1.4)
+          msg = "wrecked"
+          msgAt = gt
+        }
+
+        // Police on foot: a police car that reaches you while you're on foot stops and lets an officer out, who runs at
+        // you and shoots about once a second when near; caught by one at low heat, you're busted. No heat, no officers.
+        if !inCar && sunk == null && heat > 0 {
+          let arrived = first(cops.filter(c => !(c.out ?? false) && dist([c.x, c.z], [px, pz]) < 18))
+          if arrived != null {
+            cops = cops.map(c => c.id == arrived.id ? merge(c, {out: true, v: 0}) : c)
+            officers = officers + [{id: nextId, x: arrived.x + sin(rad(arrived.h + 90)) * 2, z: arrived.z + cos(rad(arrived.h + 90)) * 2, h: arrived.h, hp: 40, down: 0, shotAt: gt + random()}]
+            nextId = nextId + 1
+          }
+        }
+        if heat == 0 {
+          officers = []
+        }
+        officers = officers.filter(o => (o.down == 0 || gt - o.down < 6) && dist([o.x, o.z], [px, pz]) < 120)
+        officers = officers.map(o => o.down > 0 ? o : merge(o, {h: deg(atan2(px - o.x, pz - o.z))}))
+        officers = officers.map(o => o.down > 0 ? o : merge(o, {nx: o.x + (dist([o.x, o.z], [px, pz]) > 8 ? sin(rad(o.h)) * 5.5 * dt : 0), nz: o.z + (dist([o.x, o.z], [px, pz]) > 8 ? cos(rad(o.h)) * 5.5 * dt : 0)}))
+        // Stepped out into a wall's reach, an officer may walk out of it.
+        officers = officers.map(o => o.down > 0 ? o : merge(o, {x: !(any(CELLS[floor(o.z / C) * 12 + floor(o.x / C)].b ?? [], b => abs(o.x - b.x) < b.w / 2 + 0.5 && abs(o.z - b.z) < b.d / 2 + 0.5)) && (!(o.nx > -E - 3.3 && o.nx < 12 * C && o.z > -E && o.z < 16 * C + E + 3.4 && (o.z > 0 || o.nx < 11 * C + E) || any(nearShore, s => !s.flat && pow((o.nx - s.x) * 2 / s.w, 2) + pow((o.z - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(o.z / C) * 12 + floor(o.nx / C)].b ?? [], b => abs(o.nx - b.x) < b.w / 2 + 0.5 && abs(o.z - b.z) < b.d / 2 + 0.5)) ? o.x : o.nx}))
+        officers = officers.map(o => o.down > 0 ? o : merge(o, {z: !(any(CELLS[floor(o.z / C) * 12 + floor(o.x / C)].b ?? [], b => abs(o.x - b.x) < b.w / 2 + 0.5 && abs(o.z - b.z) < b.d / 2 + 0.5)) && (!(o.x > -E - 3.3 && o.x < 12 * C && o.nz > -E && o.nz < 16 * C + E + 3.4 && (o.nz > 0 || o.x < 11 * C + E) || any(nearShore, s => !s.flat && pow((o.x - s.x) * 2 / s.w, 2) + pow((o.nz - s.z) * 2 / s.d, 2) < 1)) || any(CELLS[floor(o.nz / C) * 12 + floor(o.x / C)].b ?? [], b => abs(o.x - b.x) < b.w / 2 + 0.5 && abs(o.nz - b.z) < b.d / 2 + 0.5)) ? o.z : o.nz}))
+        let shooters = officers.filter(o => o.down == 0 && gt - o.shotAt > 1.1 && dist([o.x, o.z], [px, pz]) < 16)
+        if len(shooters) > 0 {
+          officers = officers.map(o => o.down == 0 && gt - o.shotAt > 1.1 && dist([o.x, o.z], [px, pz]) < 16 ? merge(o, {shotAt: gt + random() * 0.4}) : o)
+          let hits = count(shooters, o => random() < 0.5)
+          shots = drop(shots, max(0, len(shots) - 16)) + shooters.map(o => {x0: o.x, z0: o.z, x1: px + random() * 2 - 1, z1: pz + random() * 2 - 1, t: gt, c: 1})
+          if inCar {
+            dmg = dmg + hits * 4 * T.armor
+          } else {
+            hurt = hurt + hits * (6 + heat * 1.5)
+          }
+        }
+
+        // Firing: the nearest target in front of you (police on foot first, then their cars, people, traffic), most shots
+        // hitting; with nothing there, straight ahead. People shot stay down, cars shot enough blow up; both are crimes.
+        // With no gun in hand, the same button punches.
+        if firing && !inCar && (gun < 0 || ammo[gun] > 0) && gt - shotAt > 1 / (gun < 0 ? FIST : WEAPONS[gun]).rate {
+          let w = gun < 0 ? FIST : WEAPONS[gun]
+          let aims = officers.filter(o => o.down == 0).map(o => {k: "o", id: o.id, x: o.x, z: o.z, pri: 0}) + peds.filter(p => p.down == 0).map(p => {k: "p", id: p.id, x: p.x, z: p.z, pri: 30}) + (gun < 0 ? [] : cops.map(c => {k: "k", id: c.id, x: c.x, z: c.z, pri: 10}) + cars.map(c => {k: "c", id: c.id, x: c.x, z: c.z, pri: 40}))
+          let tgt = first(sortBy(aims.filter(a => dist([a.x, a.z], [px, pz]) < w.range && abs(((deg(atan2(a.x - px, a.z - pz)) - ph + 540) % 360) - 180) < w.cone), a => a.pri + dist([a.x, a.z], [px, pz])))
+          let hit = tgt != null && random() < 0.85
+          let aimH = tgt != null ? deg(atan2(tgt.x - px, tgt.z - pz)) : ph
+          ph = aimH
+          shotAt = gt
+          if gun >= 0 {
+            ammo = set(ammo, gun, ammo[gun] - 1)
+          }
+          shots = gun < 0 ? shots : drop(shots, max(0, len(shots) - 16)) + [{x0: px + sin(rad(aimH)) * 0.9, z0: pz + cos(rad(aimH)) * 0.9, x1: tgt != null ? tgt.x + (hit ? 0 : random() * 3 - 1.5) : px + sin(rad(aimH)) * w.range, z1: tgt != null ? tgt.z + (hit ? 0 : random() * 3 - 1.5) : pz + cos(rad(aimH)) * w.range, t: gt, c: 0}]
+          if hit && tgt.k == "o" {
+            officers = officers.map(o => o.id == tgt.id ? merge(o, {hp: o.hp - w.dmg, down: o.hp - w.dmg <= 0 ? gt : 0}) : o)
+            heat = min(5, max(2, heat + (gt - crimeAt > 2 ? 1 : 0)))
+            crimeAt = gt
+          }
+          if hit && tgt.k == "p" {
+            // Punched, they fall and get up again, hurrying off; shot, they stay down.
+            peds = peds.map(p => p.id == tgt.id ? merge(p, gun < 0 ? {down: gt, v: 4.5, h: (p.h + 180) % 360} : {down: gt, gone: true}) : p)
+            heat = min(5, heat + (gt - crimeAt > 1 ? 1 : 0))
+            crimeAt = gt
+          }
+          if hit && tgt.k == "k" {
+            let wreck = first(cops.filter(c => c.id == tgt.id && (c.hp ?? 80) - w.dmg <= 0))
+            cops = cops.map(c => c.id == tgt.id ? merge(c, {hp: (c.hp ?? 80) - w.dmg}) : c).filter(c => (c.hp ?? 1) > 0)
+            if wreck != null {
+              blasts = blasts + [{x: wreck.x, z: wreck.z}]
+              parked = drop(parked, max(0, len(parked) - 5)) + [{id: nextId, t: 1, x: wreck.x, z: wreck.z, h: wreck.h, c: 0, dmg: 100, wreck: true}]
+              nextId = nextId + 1
+            }
+            heat = min(5, max(2, heat + (gt - crimeAt > 2 ? 1 : 0)))
+            crimeAt = gt
+          }
+          if hit && tgt.k == "c" {
+            let wreck = first(cars.filter(c => c.id == tgt.id && (c.hp ?? 60) - w.dmg <= 0))
+            cars = cars.map(c => c.id == tgt.id ? merge(c, {hp: (c.hp ?? 60) - w.dmg, v: 0}) : c).filter(c => (c.hp ?? 1) > 0)
+            if wreck != null {
+              blasts = blasts + [{x: wreck.x, z: wreck.z}]
+              parked = drop(parked, max(0, len(parked) - 5)) + [{id: nextId, t: wreck.t ?? 1, x: wreck.x, z: wreck.z, h: wreck.h, c: wreck.c, dmg: 100, wreck: true}]
+              nextId = nextId + 1
+              heat = min(5, heat + (gt - crimeAt > 1 ? 1 : 0))
+              crimeAt = gt
+            }
+          }
+        }
+        if gun >= 0 && ammo[gun] <= 0 {
+          // Out of ammo: the next gun that has some, or none.
+          gun = first(range(3).map(i => (gun + 1 + i) % 3).filter(i => ammo[i] > 0)) ?? -1
+        }
+
+        // Explosions: fire and smoke, people close by knocked flat, and you hurt (or your car dented) by how near you are.
+        if len(blasts) > 0 {
+          let nearest = min(blasts.map(b => dist([b.x, b.z], [px, pz])))
+          if nearest < 8 {
+            if inCar {
+              dmg = dmg + 40 * (1 - nearest / 8) * T.armor
+            } else {
+              hurt = hurt + 55 * (1 - nearest / 8)
+            }
+          }
+          peds = peds.map(p => p.down == 0 && any(blasts, b => dist([b.x, b.z], [p.x, p.z]) < 6) ? merge(p, {down: gt, gone: true}) : p)
+          officers = officers.map(o => o.down == 0 && any(blasts, b => dist([b.x, b.z], [o.x, o.z]) < 6) ? merge(o, {down: gt, hp: 0}) : o)
+          fx = drop(fx, max(0, len(fx) - 40)) + flatten(blasts.map(b => range(14).map(i => {k: i % 3 == 0 ? "smoke" : "fire", x: b.x, y: 1, z: b.z, vx: random() * 10 - 5, vy: 3 + random() * 6, vz: random() * 10 - 5, life: 0.6 + random() * 0.8})))
+          booms = booms + blasts.map(b => merge(b, {t: gt}))
+          blasts = []
+          haptic()
+        }
+
+        // Pickups: walk or drive through one to take it; it comes back after a minute and a half.
+        let got = first(nearPicks.filter(p => dist([p.x, p.z], [px, pz]) < (inCar ? 3.2 : 2)))
+        if got != null {
+          taken = drop(taken, max(0, len(taken) - 40)) + [{id: got.id, t: gt}]
+          haptic()
+          msgAt = gt
+          if got.k == 0 {
+            hp = min(100, hp + 50)
+            msg = "+ health"
+          }
+          if got.k == 1 {
+            armor = min(100, armor + 50)
+            msg = "+ armor"
+          }
+          if got.k >= 2 && got.k <= 4 {
+            ammo = set(ammo, got.k - 2, ammo[got.k - 2] + WEAPONS[got.k - 2].give)
+            gun = gun < 0 ? got.k - 2 : gun
+            msg = WEAPONS[got.k - 2].name + " · " + fmtNum(ammo[got.k - 2])
+          }
+          if got.k == 5 {
+            cash = cash + 100
+            msg = "+$100"
+          }
+        }
+
+        // Damage taken this frame: armor first, then health; at none, wasted: you wake by the hospital without your guns.
+        if hurt > 0 {
+          let fromArmor = min(armor, hurt)
+          armor = armor - fromArmor
+          hp = hp - (hurt - fromArmor)
+          hurt = 0
+          haptic()
+        }
+        if hp <= 0 {
+          msg = (sunk != null ? "wasted · drowned · -$" : "wasted · -$") + fmtNum(min(cash, 100))
+          sunk = null
+          msgAt = gt
+          cash = max(0, cash - 100)
+          hp = 100
+          armor = 0
+          ammo = [0, 0, 0]
+          gun = -1
+          heat = 0
+          cops = []
+          officers = []
+          inCar = false
+          pv = 0
+          pvx = 0
+          pvz = 0
+          px = HOSPITAL[0]
+          pz = HOSPITAL[1]
+          camX = px
+          camZ = pz
+          mis = null
+        }
+
+        // Missions. Each kind runs here; a mission ends passed (the pay, a message) or failed (a message why).
+        if mis == null && (len(rivals) > 0 || prey != null) {
+          rivals = []
+          prey = null
+        }
+        // A race: the rivals drive the course at their own pace, slower into corners, holding back when far ahead and
+        // pushing when far behind, each in its own line, eased round the corners; you go through the checkpoints.
+        if mis.k == "race" && gt >= mis.go {
+          let rp = RACE
+          let cum = RCUM[mis.r]
+          let total = last(cum)
+          let ps = raceS
+          rivals = rivals.map(r => [clamp(count(cum, c => c <= r.s) - 1, 0, len(rp) - 2)].map(i => merge(r, {v: r.v + ((r.s >= total ? 0 : (cum[i + 1] - r.s < 14 && i + 2 < len(rp) ? 17 : r.top * clamp(1 - (r.s - ps) / 400, 0.82, 1.15))) * (gt < r.slow ? 0.5 : 1) - r.v) * min(1, 2 * dt)}))[0])
+          rivals = rivals.map(r => [min(r.s + r.v * dt, total)].map(s => [clamp(count(cum, c => c <= s) - 1, 0, len(rp) - 2)].map(i => [[rp[i], rp[i + 1], min(1, (s - cum[i]) / max(1, cum[i + 1] - cum[i]))]].map(g => [[g[0][0] + (g[1][0] - g[0][0]) * g[2] - sign(g[1][1] - g[0][1]) * r.lane, g[0][1] + (g[1][1] - g[0][1]) * g[2] + sign(g[1][0] - g[0][0]) * r.lane]].map(p => merge(r, {s: s, x: r.x + (p[0] - r.x) * min(1, 5 * dt), z: r.z + (p[1] - r.z) * min(1, 5 * dt), h: dist([p[0] - r.x, p[1] - r.z]) > 0.2 ? deg(atan2(p[0] - r.x, p[1] - r.z)) : r.h}))[0])[0])[0])[0])
+          // Rubbing a rival slows it a moment and knocks you about.
+          let rub = first(rivals.filter(r => dist([r.x, r.z], [px, pz]) < T.r + 1.6))
+          if rub != null && inCar {
+            rivals = rivals.map(r => r.id == rub.id ? merge(r, {slow: gt + 0.8}) : r)
+            if gt - hitAt > 0.4 {
+              haptic()
+              hitAt = gt
+              dmg = dmg + 2 * T.armor
+              pvx = pvx * 0.85 + (px - rub.x) * 2
+              pvz = pvz * 0.85 + (pz - rub.z) * 2
+            }
+          }
+          if dist(rp[mis.i], [px, pz]) < 11 {
+            haptic()
+            if mis.i == len(rp) - 1 {
+              let pl = 1 + count(rivals, r => r.s >= total)
+              let secs = gt - mis.go
+              let prize = [500, 250, 120, 0][min(3, pl - 1)]
+              let rname = RACES[mis.r].name
+              let record = secs < get(best, rname, 9999)
+              cash = cash + prize
+              best = record ? set(best, rname, secs) : best
+              msg = (pl == 1 ? "1st place" : (pl == 2 ? "2nd place" : (pl == 3 ? "3rd place" : "failed · 4th place"))) + " · " + fmtTime(secs, "m:ss", "UTC") + (record ? " · new best" : "") + (prize > 0 ? " · +$" + fmtNum(prize) : "")
+              msgAt = gt
+              done = pl <= 3 && indexOf(done, mis.g) < 0 ? done + [mis.g] : done
+              mis = null
+            } else {
+              mis = merge(mis, {i: mis.i + 1})
+            }
+          }
+        }
+        // A takedown: the car drives the roads at speed, at each crossing taking the turn that leads away from you,
+        // easing off when it's well ahead. Every ram dents it by how hard you hit and slows it a moment; wrecked, it blows up.
+        if mis.k == "takedown" && prey != null {
+          prey = [prey].map(c => [c.v + ((gt < c.slow ? 9 : (dist([c.x, c.z], [px, pz]) > 140 ? 19 : 27)) - c.v) * min(1, 1.5 * dt)].map(v => merge(c, {v: v, x: c.x + round(sin(rad(c.h))) * v * dt, z: c.z + round(cos(rad(c.h))) * v * dt, vh: c.vh + clamp(((c.h - c.vh + 540) % 360) - 180, -360 * dt, 360 * dt)}))[0])[0]
+          prey = [prey].map(c => (c.x - (c.mx * C - (round(cos(rad(c.h))) + round(cos(rad(c.nh)))) * 2.5)) * round(sin(rad(c.h))) + (c.z - (c.mz * C + (round(sin(rad(c.h))) + round(sin(rad(c.nh)))) * 2.5)) * round(cos(rad(c.h))) >= 0
+            ? merge(c, {h: c.nh, x: round(sin(rad(c.nh))) != 0 ? c.x : c.mx * C - round(cos(rad(c.nh))) * 2.5, z: round(sin(rad(c.nh))) != 0 ? c.mz * C + round(sin(rad(c.nh))) * 2.5 : c.z, mx: c.mx + round(sin(rad(c.nh))), mz: c.mz + round(cos(rad(c.nh))), plan: true})
+            : c)[0]
+          prey = [prey].map(c => c.plan ? merge(c, {plan: false, nh: [sortBy([c.h, (c.h + 90) % 360, (c.h + 270) % 360].filter(d => (d == 90 ? c.mx < 11 : (d == 270 ? c.mx > 1 : (d == 0 ? c.mz < 15 : c.mz > 1)))), d => random() * 50 - dist([(c.mx + round(sin(rad(d)))) * C, (c.mz + round(cos(rad(d)))) * C], [px, pz]))].map(o => len(o) > 0 ? o[0] : (c.h + 180) % 360)[0]}) : c)[0]
+          let pd = dist([prey.x, prey.z], [px, pz])
+          if inCar && py < 1 && pd < T.r + 2.3 && gt - prey.hitAt > 0.6 {
+            let hard = clamp(dist([pvx - sin(rad(prey.h)) * prey.v, pvz - cos(rad(prey.h)) * prey.v]) * 1.6, 8, 40)
+            let hpLeft = prey.hp - hard
+            haptic()
+            dmg = dmg + 3 * T.armor
+            pv = pv * 0.6
+            pvx = pvx * 0.6
+            pvz = pvz * 0.6
+            fx = drop(fx, max(0, len(fx) - 30)) + range(8).map(i => {k: "spark", x: (px + prey.x) / 2, y: 0.8, z: (pz + prey.z) / 2, vx: random() * 16 - 8, vy: random() * 8, vz: random() * 16 - 8, life: 0.4 + random() * 0.3})
+            if hpLeft <= 0 {
+              blasts = blasts + [{x: prey.x, z: prey.z}]
+              parked = drop(parked, max(0, len(parked) - 5)) + [{id: nextId, t: 2, x: prey.x, z: prey.z, h: prey.vh, c: 1, dmg: 100, wreck: true}]
+              nextId = nextId + 1
+              cash = cash + 350
+              msg = "target down · +$350"
+              msgAt = gt
+              prey = null
+              done = indexOf(done, mis.g) < 0 ? done + [mis.g] : done
+              mis = null
+            } else {
+              prey = merge(prey, {hp: hpLeft, slow: gt + 1.2, hitAt: gt})
+              msg = "hit · its car " + round(hpLeft) + "%"
+              msgAt = gt - 1.4
+            }
+          }
+          if prey != null && pd > 320 {
+            msg = "failed · it got away"
             msgAt = gt
-            prey = null
+            mis = null
+          }
+        }
+        // A getaway: into the garage with no stars on you.
+        if mis.k == "getaway" && inCar && dist([mis.gx, mis.gz], [px, pz]) < 9 {
+          if heat == 0 {
+            cash = cash + 500
+            msg = "clean getaway · +$500"
+            msgAt = gt
             done = indexOf(done, mis.g) < 0 ? done + [mis.g] : done
             mis = null
           } else {
-            prey = merge(prey, {hp: hpLeft, slow: gt + 1.2, hitAt: gt})
-            msg = "hit · its car " + round(hpLeft) + "%"
-            msgAt = gt - 1.4
+            if gt - msgAt > 3 {
+              msg = "they're still on you · lose them first"
+              msgAt = gt
+            }
           }
         }
-        if prey != null && pd > 320 {
-          msg = "failed · it got away"
-          msgAt = gt
-          mis = null
-        }
-      }
-      // A getaway: into the garage with no stars on you.
-      if mis.k == "getaway" && inCar && dist([mis.gx, mis.gz], [px, pz]) < 9 {
-        if heat == 0 {
-          cash = cash + 500
-          msg = "clean getaway · +$500"
-          msgAt = gt
-          done = indexOf(done, mis.g) < 0 ? done + [mis.g] : done
-          mis = null
-        } else {
-          if gt - msgAt > 3 {
-            msg = "they're still on you · lose them first"
+        // A stunt tour: a jump counts when it's off the marked ramp, long enough, and doesn't end in the canal.
+        if mis.k == "stunt" && landed != null {
+          let r = STUNT[mis.i]
+          if landed.rx == r.x && landed.rz == r.z && !landed.wet && landed.t > 0.4 {
+            cash = cash + 150
+            haptic()
+            if mis.i == 2 {
+              cash = cash + 100
+              msg = "stunt tour done · +$550"
+              done = indexOf(done, mis.g) < 0 ? done + [mis.g] : done
+              mis = null
+            } else {
+              msg = "jump ${mis.i + 1} of 3 · +$150 · on to the next ramp"
+              mis = merge(mis, {i: mis.i + 1})
+            }
             msgAt = gt
           }
         }
-      }
-      // A stunt tour: a jump counts when it's off the marked ramp, long enough, and doesn't end in the canal.
-      if mis.k == "stunt" && landed != null {
-        let r = STUNT[mis.i]
-        if landed.rx == r.x && landed.rz == r.z && !landed.wet && landed.t > 0.4 {
-          cash = cash + 150
+        if landed != null {
+          landed = null
+        }
+        // Fragile cargo: delivered, it pays for the bottles still whole.
+        if mis.k == "cargo" {
+          if cargo <= 0 {
+            msg = "failed · the champagne's all broken"
+            msgAt = gt
+            mis = null
+          } else {
+            if inCar && dist([mis.gx, mis.gz], [px, pz]) < 8 {
+              let pay = round(mis.pay * cargo / 100)
+              cash = cash + pay
+              msg = "delivered · ${cargo}% whole · +$" + fmtNum(pay)
+              msgAt = gt
+              done = indexOf(done, mis.g) < 0 ? done + [mis.g] : done
+              mis = null
+            }
+          }
+        }
+        // A courier run: each parcel delivered sends you to the next door, with more time on the clock.
+        if mis.k == "courier" && dist([mis.gx, mis.gz], [px, pz]) < 7 {
+          cash = cash + 80
           haptic()
           if mis.i == 2 {
-            cash = cash + 100
-            msg = "stunt tour done · +$550"
+            let bonus = round(left * 2)
+            cash = cash + bonus
+            msg = "all three delivered · +$" + fmtNum(80 + bonus)
             done = indexOf(done, mis.g) < 0 ? done + [mis.g] : done
             mis = null
           } else {
-            msg = "jump ${mis.i + 1} of 3 · +$150 · on to the next ramp"
-            mis = merge(mis, {i: mis.i + 1})
+            let opts = DROPS.filter(p => dist(p, [px, pz]) > 120 && dist(p, [px, pz]) < 230)
+            let np = opts[random(len(opts))]
+            msg = "parcel ${mis.i + 1} delivered · +$80 · on to the next"
+            mis = merge(mis, {i: mis.i + 1, gx: np[0], gz: np[1], until: mis.until + dist(np, [px, pz]) * 1.3 / 15 + 10})
           }
           msgAt = gt
         }
-      }
-      if landed != null {
-        landed = null
-      }
-      // Fragile cargo: delivered, it pays for the bottles still whole.
-      if mis.k == "cargo" {
-        if cargo <= 0 {
-          msg = "failed · the champagne's all broken"
+        // Out of the car a mission needs, or out of time: failed.
+        if mis != null && (GIVERS[mis.g].car || mis.k == "getaway") && !inCar && sunk == null {
+          msg = "failed · you lost the car"
           msgAt = gt
           mis = null
-        } else {
-          if inCar && dist([mis.gx, mis.gz], [px, pz]) < 8 {
-            let pay = round(mis.pay * cargo / 100)
-            cash = cash + pay
-            msg = "delivered · ${cargo}% whole · +$" + fmtNum(pay)
-            msgAt = gt
-            done = indexOf(done, mis.g) < 0 ? done + [mis.g] : done
-            mis = null
-          }
         }
-      }
-      // A courier run: each parcel delivered sends you to the next door, with more time on the clock.
-      if mis.k == "courier" && dist([mis.gx, mis.gz], [px, pz]) < 7 {
-        cash = cash + 80
-        haptic()
-        if mis.i == 2 {
-          let bonus = round(left * 2)
-          cash = cash + bonus
-          msg = "all three delivered · +$" + fmtNum(80 + bonus)
-          done = indexOf(done, mis.g) < 0 ? done + [mis.g] : done
+        if mis != null && mis.until > 0 && gt > mis.until {
+          msg = "failed · out of time"
+          msgAt = gt
           mis = null
-        } else {
-          let opts = DROPS.filter(p => dist(p, [px, pz]) > 120 && dist(p, [px, pz]) < 230)
-          let np = opts[random(len(opts))]
-          msg = "parcel ${mis.i + 1} delivered · +$80 · on to the next"
-          mis = merge(mis, {i: mis.i + 1, gx: np[0], gz: np[1], until: mis.until + dist(np, [px, pz]) * 1.3 / 15 + 10})
         }
-        msgAt = gt
-      }
-      // Out of the car a mission needs, or out of time: failed.
-      if mis != null && (GIVERS[mis.g].car || mis.k == "getaway") && !inCar && sunk == null {
-        msg = "failed · you lost the car"
-        msgAt = gt
-        mis = null
-      }
-      if mis != null && mis.until > 0 && gt > mis.until {
-        msg = "failed · out of time"
-        msgAt = gt
-        mis = null
-      }
-      // The paint shop: a new color and the police lose you, for $40.
-      if inCar && heat > 0 && mis.k != "getaway" && dist(SPRAY, [px, pz]) < 6 {
-        heat = 0
-        cash = max(0, cash - 40)
-        pcol = (pcol + 1 + random(6)) % len(PAINT)
-        msg = "fresh paint · they've lost you"
-        msgAt = gt
+        // The paint shop: a new color and the police lose you, for $40.
+        if inCar && heat > 0 && mis.k != "getaway" && dist(SPRAY, [px, pz]) < 6 {
+          heat = 0
+          cash = max(0, cash - 40)
+          pcol = (pcol + 1 + random(6)) % len(PAINT)
+          msg = "fresh paint · they've lost you"
+          msgAt = gt
+        }
       }
     }
   }
