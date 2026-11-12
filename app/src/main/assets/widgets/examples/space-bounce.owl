@@ -1,0 +1,320 @@
+app "space bounce" {
+  meta { owl: 21; description: "A neon arena shooter: tilt the phone to fly, hold a finger where to fire, and bounce off the walls as the swarm grows"; version: "1.0"; license: "MIT"; category: "games" }
+  // How it works: `every frame` moves everything by its speed times `dt`, the seconds since the
+  // last frame, so the game runs at the same speed at any frame rate. android.motion's x and y
+  // are how far the phone leans right and towards you; a new game takes the way it's held as
+  // level. Shots bounce off a wall once; enemies bounce off them all.
+  title: ""
+  statusBar: false
+  edge: true
+  fps: mode == "title" ? 30 : 60
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect width="256" height="256" rx="56" fill="#0b0d1a"/>
+    <path d="M0 64H256M0 128H256M0 192H256M64 0V256M128 0V256M192 0V256" stroke="#2b3a7a" stroke-width="3"/>
+    <circle cx="128" cy="140" r="64" fill="#ffd166" fill-opacity="0.12"/>
+    <path d="M128 92L162 168L128 150L94 168Z" fill="none" stroke="#ffd166" stroke-width="10" stroke-linejoin="round"/>
+    <path d="M52 52L84 84M84 52L52 84" stroke="#ff4fd8" stroke-width="9" stroke-linecap="round"/>
+    <path d="M204 176L222 200L204 224L186 200Z" fill="none" stroke="#3ce0ff" stroke-width="9" stroke-linejoin="round"/>
+    <path d="M128 76V40" stroke="#ffd166" stroke-width="8" stroke-linecap="round" stroke-dasharray="10 12"/>
+  </svg>"""
+
+  source m = android.motion
+
+  state mode = "title"
+  state best = 0 persist
+  state score = 0
+  state lives = 3
+  // kills since the ship was last hit: every 20 of them add one to the multiplier
+  state chain = 0
+  // game time, in seconds
+  state gt = 0
+  // the ship, and how fast it goes (dp a second); not x, y or vx, which handlers' values would hide
+  state sx = 200
+  state sy = 400
+  state svx = 0
+  state svy = 0
+  // the tilt that counts as level
+  state restX = 0
+  state restY = 0
+  state aiming = false
+  state aimX = 0
+  state aimY = 0
+  state shots = []
+  state foes = []
+  state bits = []
+  state nextId = 0
+  state fireAt = 0
+  state spawnAt = 0
+  state safeUntil = 0
+  state overAt = 0
+  // the last blast, which ripples the grid: x, y and when
+  state shock = [0, 0, -10]
+  // set by the store's screenshots (screens.txt) to hold a scene still while it's drawn in each theme
+  state still = false
+
+  let W = screenWidth ?? 400
+  let H = screenHeight ?? 800
+  let TOP = max(screenTop ?? 0, 12)
+  let mult = min(1 + floor(chain / 20), 9)
+  let tilted = m.available == true
+
+  every frame {
+    if !still {
+      gt = gt + dt
+      // sparks fly on after the game ends too
+      bits = bits.map(p => merge(p, {x: p.x + p.vx * dt, y: p.y + p.vy * dt, vx: p.vx * (1 - 2 * dt), vy: p.vy * (1 - 2 * dt), life: p.life - dt})).filter(p => p.life > 0)
+      if mode == "play" {
+        // The tilt pushes the ship; without a motion sensor the finger pulls it.
+        let tx = tilted ? clamp((m.x - restX) * 3, -1, 1) : (aiming ? clamp((aimX - sx) / 120, -1, 1) : 0)
+        let ty = tilted ? clamp((m.y - restY) * 3, -1, 1) : (aiming ? clamp((aimY - sy) / 120, -1, 1) : 0)
+        let drag = pow(0.05, dt)
+        let nvx = (svx + tx * 1600 * dt) * drag
+        let nvy = (svy + ty * 1600 * dt) * drag
+        let px = sx + nvx * dt
+        let py = sy + nvy * dt
+        sx = clamp(px, 14, W - 14)
+        sy = clamp(py, 14, H - 14)
+        svx = px < 14 ? abs(nvx) * 0.8 : (px > W - 14 ? -abs(nvx) * 0.8 : nvx)
+        svy = py < 14 ? abs(nvy) * 0.8 : (py > H - 14 ? -abs(nvy) * 0.8 : nvy)
+
+        // Two shots at a time towards the finger, ten times a second.
+        if aiming && gt >= fireAt {
+          let ang = atan2(aimY - sy, aimX - sx)
+          let more = shots + [-0.05, 0.05].map((s, i) => {id: nextId + i, x: sx, y: sy, vx: cos(ang + s) * 760, vy: sin(ang + s) * 760, hop: 1, life: 1.4})
+          shots = drop(more, max(0, len(more) - 40))
+          nextId = nextId + 2
+          fireAt = gt + 0.1
+        }
+        shots = shots
+          .map(b => merge(b, {x: b.x + b.vx * dt, y: b.y + b.vy * dt, life: b.life - dt}))
+          .map(b => merge(b, {
+            x: clamp(b.x, 0, W), y: clamp(b.y, 0, H),
+            vx: b.x < 0 ? abs(b.vx) : (b.x > W ? -abs(b.vx) : b.vx),
+            vy: b.y < 0 ? abs(b.vy) : (b.y > H ? -abs(b.vy) : b.vy),
+            hop: b.hop - (b.x < 0 || b.x > W || b.y < 0 || b.y > H ? 1 : 0)
+          }))
+          .filter(b => b.hop >= 0 && b.life > 0)
+
+        // A new group from the corner farthest from the ship, sooner and bigger as the game goes on.
+        if gt >= spawnAt {
+          if len(foes) < 70 {
+            let roll = random()
+            let kind = gt < 12 ? "w" : (roll < 0.45 ? "c" : (gt > 30 && roll < 0.7 ? "s" : "w"))
+            let n = kind == "s" ? 1 + floor(gt / 60) : (kind == "c" ? 3 + floor(gt / 30) : 2 + floor(gt / 25))
+            let cx = sx < W / 2 ? W - 50 : 50
+            let cy = sy < H / 2 ? H - 70 : 70
+            let speed = kind == "s" ? 70 : 110
+            foes = foes + range(n).map(i => {
+              id: nextId + i, k: kind, x: cx + (random() - 0.5) * 90, y: cy + (random() - 0.5) * 90,
+              vx: (random() - 0.5) * 2 * speed, vy: (random() - 0.5) * 2 * speed,
+              r: kind == "s" ? 18 : (kind == "c" ? 13 : 12), born: gt
+            })
+            nextId = nextId + n
+          }
+          spawnAt = gt + max(0.7, 2.6 - gt / 45)
+        }
+
+        // Chasers steer for the ship; everything bounces off the walls.
+        let steer = 1 - pow(0.2, dt)
+        foes = foes
+          .map(f => f.k != "c" ? f : merge(f, {vx: lerp(f.vx, cos(atan2(sy - f.y, sx - f.x)) * 175, steer), vy: lerp(f.vy, sin(atan2(sy - f.y, sx - f.x)) * 175, steer)}))
+          .map(f => merge(f, {x: f.x + f.vx * dt, y: f.y + f.vy * dt}))
+          .map(f => merge(f, {
+            x: clamp(f.x, f.r, W - f.r), y: clamp(f.y, f.r, H - f.r),
+            vx: f.x < f.r ? abs(f.vx) : (f.x > W - f.r ? -abs(f.vx) : f.vx),
+            vy: f.y < f.r ? abs(f.vy) : (f.y > H - f.r ? -abs(f.vy) : f.vy)
+          }))
+
+        // The first shot to touch each enemy ends it; a big square breaks into three small ones.
+        let hits = foes.map(f => shots.find(b => (b.x - f.x) * (b.x - f.x) + (b.y - f.y) * (b.y - f.y) < (f.r + 6) * (f.r + 6)))
+        let killed = foes.filter((f, i) => hits[i] != null)
+        if len(killed) > 0 {
+          let used = hits.filter(h => h != null).map(h => h.id)
+          shots = shots.filter(b => !any(used, u => u == b.id))
+          let splits = flatten(killed.filter(f => f.k == "s").map((f, i) => range(3).map(j => {
+            id: nextId + i * 3 + j, k: "m", x: f.x, y: f.y, vx: cos(j * 2.1 + gt) * 150, vy: sin(j * 2.1 + gt) * 150, r: 8, born: gt - 1
+          })))
+          foes = foes.filter((f, i) => hits[i] == null) + splits
+          nextId = nextId + len(splits)
+          score = score + sum(killed.map(f => f.k == "s" ? 100 : (f.k == "c" ? 50 : 25))) * mult
+          chain = chain + len(killed)
+          let sparks = bits + flatten(killed.map(f => range(12).map(j => [random() * 6.283, 80 + random() * 260].map(a => {
+            x: f.x, y: f.y, vx: cos(a[0]) * a[1], vy: sin(a[0]) * a[1], life: 0.4 + random() * 0.5,
+            c: f.k == "c" ? cyan : (f.k == "w" ? magenta : green)
+          })[0])))
+          bits = drop(sparks, max(0, len(sparks) - 360))
+          shock = [killed[0].x, killed[0].y, gt]
+        }
+
+        // Touched by an enemy that has finished appearing: a life gone, and the blast clears the arena.
+        if gt >= safeUntil && any(foes, f => gt - f.born > 0.6 && (f.x - sx) * (f.x - sx) + (f.y - sy) * (f.y - sy) < (f.r + 9) * (f.r + 9)) {
+          lives = lives - 1
+          chain = 0
+          let blast = bits + range(60).map(j => [random() * 6.283, 60 + random() * 420].map(a => {
+            x: sx, y: sy, vx: cos(a[0]) * a[1], vy: sin(a[0]) * a[1], life: 0.6 + random() * 0.9, c: j % 2 == 0 ? yellow : foreground
+          })[0])
+          bits = drop(blast, max(0, len(blast) - 360))
+          foes = []
+          shots = []
+          shock = [sx, sy, gt]
+          safeUntil = gt + 2.5
+          spawnAt = gt + 1.5
+          if lives <= 0 {
+            mode = "over"
+            overAt = gt
+            aiming = false
+            best = max(best, score)
+          }
+        }
+      }
+    }
+  }
+
+  Box {
+    fill: true
+    background: background
+    // Geometry under the game: a grid that bends around the ship and ripples out from the last blast.
+    Shader {
+      fill: true
+      fallback: background
+      uniforms: {
+        ship: mode == "title" ? [W / 2 + sin(time * 0.7) * W * 0.3, H / 2 + cos(time * 0.5) * H * 0.25] : [sx, sy],
+        shock: [shock[0], shock[1], clamp(gt - shock[2], 0, 5)],
+        dpw: W,
+        line: blue,
+        hot: accent,
+        bg: background
+      }
+      code: """
+        uniform float2 ship;
+        uniform float3 shock;
+        uniform float dpw;
+        uniform half4 line;
+        uniform half4 hot;
+        uniform half4 bg;
+        half4 main(float2 p) {
+          float2 q = p * (dpw / size.x);
+          float2 d = q - ship;
+          float r = length(d) + 1.0;
+          q -= d * 0.35 * exp(-r * r / 9000.0);
+          float2 e = q - shock.xy;
+          float re = length(e) + 1.0;
+          float ring = exp(-abs(re - shock.z * 520.0) / 36.0) * exp(-shock.z * 1.6);
+          q += e / re * 30.0 * ring;
+          float2 g = (0.5 - abs(fract(q / 44.0) - 0.5)) * 44.0;
+          float l = 1.0 - smoothstep(0.0, 1.4, min(g.x, g.y));
+          float glow = exp(-r / 170.0);
+          half4 c = mix(line, hot, half(clamp(glow + ring, 0.0, 1.0)));
+          return mix(bg, c, half(l * (0.18 + 0.5 * glow + 0.7 * ring)));
+        }
+      """
+    }
+    Canvas {
+      fill: true
+      ripple: false
+      // shots
+      for b in shots {
+        line(b.x, b.y, b.x - b.vx * 0.025, b.y - b.vy * 0.025, stroke: yellow, width: 3, cap: round)
+      }
+      // enemies: magenta pinwheels, cyan diamonds that chase, green squares that split
+      for f in foes {
+        let fade = clamp((gt - f.born) / 0.6, 0.15, 1)
+        let tint = f.k == "c" ? cyan : (f.k == "w" ? magenta : green)
+        circle(f.x, f.y, f.r * 1.8, fill: alpha(tint, 0.12 * fade))
+        if f.k == "w" {
+          rotate(gt * 220 + f.id * 37, f.x, f.y) {
+            path([[f.x - f.r, f.y - f.r], [f.x + f.r, f.y + f.r], [f.x + f.r, f.y - f.r], [f.x - f.r, f.y + f.r]], closed: true, stroke: alpha(tint, fade), width: 2.5)
+          }
+        } else if f.k == "c" {
+          let s = 1 + sin(gt * 9 + f.id) * 0.12
+          path([[f.x, f.y - f.r * 1.3 * s], [f.x + f.r * s, f.y], [f.x, f.y + f.r * 1.3 * s], [f.x - f.r * s, f.y]], closed: true, stroke: alpha(tint, fade), width: 2.5)
+        } else {
+          rotate(gt * 90 + f.id * 23, f.x, f.y) {
+            rect(f.x - f.r, f.y - f.r, f.r * 2, f.r * 2, stroke: alpha(tint, fade), width: 2.5)
+            if f.k == "s" { rect(f.x - f.r / 2, f.y - f.r / 2, f.r, f.r, stroke: alpha(tint, fade * 0.7), width: 2) }
+          }
+        }
+      }
+      // sparks
+      for p in bits {
+        line(p.x, p.y, p.x - p.vx * 0.03, p.y - p.vy * 0.03, stroke: alpha(p.c, clamp(p.life * 1.6, 0, 1)), width: 2, cap: round)
+      }
+      // the ship, pointing where it flies; it blinks while it can't be hit
+      if mode == "play" && (gt >= safeUntil || floor(gt * 12) % 2 == 0) {
+        circle(sx, sy, 26, fill: alpha(yellow, 0.14))
+        rotate(abs(svx) + abs(svy) < 5 ? 0 : deg(atan2(svx, -svy)), sx, sy) {
+          path([[sx, sy - 13], [sx + 10, sy + 9], [sx, sy + 3], [sx - 10, sy + 9]], closed: true, stroke: yellow, width: 2.5)
+        }
+      }
+      if mode == "play" && aiming {
+        circle(aimX, aimY, 20, stroke: alpha(yellow, 0.45), width: 2)
+      }
+
+      onPress: {
+        aiming = mode == "play"
+        aimX = x
+        aimY = y
+      }
+      onDrag: {
+        aiming = mode == "play"
+        aimX = x
+        aimY = y
+      }
+      // onRelease also runs as a drag takes the touch over, and onDrag starts aiming again; onDragEnd is the lift.
+      onRelease: aiming = false
+      onDragEnd: aiming = false
+      onTap: {
+        if mode == "title" || (mode == "over" && gt - overAt > 1) {
+          // however the phone is held now is level
+          restX = m.x ?? 0
+          restY = m.y ?? 0
+          mode = "play"
+          score = 0
+          lives = 3
+          chain = 0
+          gt = 0
+          sx = W / 2
+          sy = H / 2
+          svx = 0
+          svy = 0
+          shots = []
+          foes = []
+          bits = []
+          aiming = false
+          fireAt = 0
+          spawnAt = 1
+          safeUntil = 1.5
+          shock = [W / 2, H / 2, 0]
+        }
+      }
+    }
+    // score, multiplier and lives
+    if mode == "play" {
+      Row {
+        fill: width
+        padding: [16, TOP + 4, 16, 0]
+        align: center
+        Text { text: fmtNum(score); style: title; color: foreground; weight: 1 }
+        Text { text: "×${mult}"; style: title; color: mult > 1 ? accent : muted }
+        Text { text: lives > 0 ? join(range(lives).map(i => "▲"), " ") : ""; color: yellow }
+      }
+    }
+    if mode != "play" {
+      Column {
+        fill: true
+        align: center
+        justify: center
+        gap: 12
+        padding: 24
+        Text { text: mode == "title" ? "space bounce" : "game over"; style: huge; color: mode == "title" ? yellow : red; align: center }
+        if mode == "over" {
+          Text { text: fmtNum(score); style: title; align: center }
+        }
+        Text { text: best > 0 ? "best ${fmtNum(best)}" : ""; style: muted; align: center }
+        Spacer { height: 12 }
+        Text { text: tilted ? "tilt to fly · hold a finger where to fire" : "this phone has no motion sensor: the ship follows your finger"; align: center }
+        Text { text: "hold the phone the way you want to play, then tap"; style: muted; align: center }
+      }
+    }
+  }
+}

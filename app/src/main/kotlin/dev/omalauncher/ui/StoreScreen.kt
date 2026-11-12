@@ -2,6 +2,11 @@ package dev.omalauncher.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
@@ -44,8 +50,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -66,9 +79,10 @@ import dev.omalauncher.widgets.market.CatalogEntry
 import kotlinx.coroutines.launch
 
 /**
- * The store, with a toggle between widgets, faces and apps. Widgets: built-in terminal tiles (a plain shell,
- * and one per installed coding agent), then reviewed widgets from the marketplace repo as a grid of
- * previews, with search and category tabs (and one for the newest). Faces and apps: the reviewed ones, the same way.
+ * The store, with a toggle between widgets and apps. Widgets: built-in terminal tiles (a plain shell,
+ * and one per installed coding agent), then reviewed widgets from the marketplace repo as a grid of previews, with search
+ * and category tabs (one for the newest, one for full-screen widgets, faces, as portrait screenshots).
+ * Apps: the reviewed ones, the same way.
  * Tapping one opens its page, which shows what it installs and runs; from there a widget goes on the current page,
  * a face left of page 1 and an app in the drawer (or any of them updates). An installed app opens from its page too.
  */
@@ -80,21 +94,29 @@ fun StoreScreen(
     /** The Omarchy theme in use, so previews show widgets in its colors. */
     theme: String?,
     onDismiss: () -> Unit,
-    /** The kind it opens on. */
+    /** The kind it opens on; faces open the widgets on their full screen tab. */
     initialKind: OwlKind = OwlKind.Widget,
     /** Opens the installed app in this file, as the drawer does. */
     onOpenApp: (String) -> Unit = {},
 ) {
-    var kind by remember { mutableStateOf(initialKind) }
+    var kind by remember { mutableStateOf(if (initialKind == OwlKind.Face) OwlKind.Widget else initialKind) }
     val market = engine.market(kind)
+    // Faces are full-screen widgets: they show among the widgets, from their own catalog.
+    val faces = engine.faceMarket.takeIf { kind == OwlKind.Widget }
+    val shelves = listOfNotNull(market, faces)
     val scope = rememberCoroutineScope()
-    var open by remember { mutableStateOf<String?>(null) }
+    // The kind and id of the entry whose page shows.
+    var open by remember { mutableStateOf<Pair<OwlKind, String>?>(null) }
     var message by remember { mutableStateOf<StoreMessage?>(null) }
+    var viewing by remember { mutableStateOf<ImageBitmap?>(null) }
     // Each kind keeps its search, tab and scroll while the other shows.
-    val filters = remember { OwlKind.entries.associateWith { StoreFilter() } }
+    val filters =
+        remember {
+            OwlKind.entries.associateWith { StoreFilter() }.also { if (initialKind == OwlKind.Face) it.getValue(OwlKind.Widget).tab = FULL_SCREEN }
+        }
     val filter = filters.getValue(kind)
-    LaunchedEffect(market) { market.refresh() }
-    val detail = open?.let { id -> market.entries.firstOrNull { it.id == id } }
+    LaunchedEffect(kind) { for (m in shelves) launch { m.refresh() } }
+    val detail = open?.let { (k, id) -> shelves.firstOrNull { it.kind == k }?.let { m -> m.entries.firstOrNull { it.id == id }?.let { Listed(m, it) } } }
     val back = {
         open = null
         message = null
@@ -105,31 +127,32 @@ fun StoreScreen(
         // On its own, an entry's page takes the header: a chevron back to the grid and its name, nothing else.
         val alone = detail?.takeIf { !wide }
         OverlayPanel(
-            alone?.name ?: stringResource(R.string.store_title),
+            alone?.e?.name ?: stringResource(R.string.store_title),
             onDismiss,
             onBack = if (alone != null) back else LocalPanelBack.current,
             actions = {
                 if (alone == null) {
-                    KindToggle(kind, engine.markets.map { it.kind }) {
+                    KindToggle(kind, engine.markets.map { it.kind }.filter { it != OwlKind.Face }) {
                         kind = it
                         open = null
                         message = null
                     }
-                    RefreshButton(market.loading) { scope.launch { market.refresh() } }
+                    RefreshButton(shelves.any { it.loading }) { for (m in shelves) scope.launch { m.refresh() } }
                 }
             },
         ) {
             BoxWithConstraints {
                 val paneWidth = (maxWidth * 0.42f).coerceIn(340.dp, 520.dp)
                 // Side by side, the pane is never empty: until one is tapped, the grid's first entry shows in it.
-                val picked = if (wide) detail ?: shownEntries(market, filter).firstOrNull() else detail
-                val select = { id: String ->
-                    open = id
+                val picked = if (wide) detail ?: shownEntries(market, faces, filter).firstOrNull() else detail
+                val select = { l: Listed ->
+                    open = l.market.kind to l.e.id
                     message = null
                 }
-                val showDetail = @Composable { e: CatalogEntry, modifier: Modifier ->
+                val showDetail = @Composable { l: Listed, modifier: Modifier ->
+                    val (market, e) = l
                     // Acting on the preselected entry picks it, so its message stays with it when the grid's first entry changes.
-                    val pick = { open = e.id }
+                    val pick = { open = market.kind to e.id }
                     Detail(
                         market = market,
                         e = e,
@@ -138,6 +161,7 @@ fun StoreScreen(
                         page = page,
                         message = message,
                         modifier = modifier,
+                        onView = { viewing = it },
                         onOpen = { market.installedVersion(e)?.let { onOpenApp(it.file) } },
                         onInstall = {
                             pick()
@@ -159,7 +183,7 @@ fun StoreScreen(
                     )
                 }
                 val list = @Composable { modifier: Modifier ->
-                    StoreList(engine, market, agents, page, theme, filter, if (wide) picked?.id else null, modifier, select, onDismiss)
+                    StoreList(engine, market, faces, agents, page, theme, filter, if (wide) picked?.key else null, modifier, select, onDismiss)
                 }
                 when {
                     // Side by side: the grid, and the picked widget's page beside it.
@@ -183,6 +207,11 @@ fun StoreScreen(
                     else -> list(Modifier)
                 }
             }
+        }
+        // Over the panel too. Composed last, so Back closes it before anything else.
+        viewing?.let {
+            BackHandler { viewing = null }
+            ImageViewer(it, title = null) { viewing = null }
         }
     }
 }
@@ -219,18 +248,31 @@ private class StoreFilter {
     val grid = LazyGridState()
 }
 
-/** The store's search, category tabs and grid for [market]'s kind; [selected] is the entry whose page shows beside it. */
+/** An entry with the market it's from: among the widgets, a face's is the faces'. */
+private data class Listed(
+    val market: Market,
+    val e: CatalogEntry,
+) {
+    /** Unique across both markets, where a widget and a face may share an id. */
+    val key get() = "${market.kind}:${e.id}"
+}
+
+/**
+ * The store's search, category tabs and grid for [market]'s kind, with [faces], full-screen widgets, among the widgets;
+ * [selected] is the key of the entry whose page shows beside it.
+ */
 @Composable
 private fun StoreList(
     engine: WidgetEngine,
     market: Market,
+    faces: Market?,
     agents: List<Agent>,
     page: Int,
     theme: String?,
     filter: StoreFilter,
     selected: String?,
     modifier: Modifier,
-    onOpen: (String) -> Unit,
+    onOpen: (Listed) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val apps = market.kind == OwlKind.App
@@ -239,12 +281,16 @@ private fun StoreList(
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     Column(modifier) {
-        val installed = market.entries.filter { market.installedVersion(it) != null }
+        val all = listed(market, faces)
+        val installed = all.filter { it.market.installedVersion(it.e) != null }
         val tabs =
             buildList {
+                // Full-screen widgets have their own tab, not a place in all, until a search looks through everything.
                 add(ALL to market.entries.size)
                 // There even when nothing is new.
-                if (!apps) add(NEW to market.entries.count { it.new })
+                if (!apps) add(NEW to all.count { it.e.new })
+                // Faces have a tab of their own rather than their categories, which are the widgets'.
+                if (faces != null) add(FULL_SCREEN to faces.entries.size)
                 // The biggest categories first, ties in the catalog's order. Ones the store added after this launcher was built
                 // get a tab too, so a new category doesn't wait for an update.
                 val known = { c: String -> Catalog.CATEGORIES.indexOf(c).takeIf { it >= 0 } ?: Int.MAX_VALUE }
@@ -256,16 +302,18 @@ private fun StoreList(
                 add(INSTALLED to installed.size)
             }
         val q = filter.query.trim().lowercase()
-        val shown = shownEntries(market, filter)
-        val updates = installed.count { market.hasUpdate(it) }
+        val shown = shownEntries(market, faces, filter)
+        val updates = installed.count { it.market.hasUpdate(it.e) }
+        val loading = market.loading || faces?.loading == true
+        val error = market.error ?: faces?.error
 
-        SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = stringResource(R.string.store_search, market.entries.size, noun))
+        SearchField(filter.query, { filter.query = it }, onGo = { keyboard?.hide() }, placeholder = stringResource(R.string.store_search, all.size, noun))
         Spacer(Modifier.height(8.dp))
         // Scrolls under the panel's padding, up to its frame or, side by side, the divider.
         Row(Modifier.bleed(PanelPadding).horizontalScroll(rememberScrollState()).padding(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((name, n) in tabs) {
                 val label = if (name == INSTALLED && updates > 0) stringResource(R.string.store_tab_updates, tabName(name), n, updates) else stringResource(R.string.store_tab, tabName(name), n)
-                Chip(label, selected = filter.tab == name) { filter.tab = name }
+                Chip(label, selected = filter.tab == name, highlight = name == FULL_SCREEN) { filter.tab = name }
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -315,43 +363,63 @@ private fun StoreList(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Caption(stringResource(R.string.store_reviewed, noun, Market.REPO))
                     when {
-                        market.loading && market.entries.isEmpty() -> BasicText(stringResource(R.string.store_loading), style = Mono.copy(color = Palette.muted))
-                        market.error != null && market.entries.isEmpty() -> BasicText(market.error?.resolve().orEmpty(), style = Mono.copy(color = Palette.red))
-                        market.entries.isEmpty() -> BasicText(stringResource(R.string.store_empty, noun), style = Mono.copy(color = Palette.muted))
+                        loading && all.isEmpty() -> BasicText(stringResource(R.string.store_loading), style = Mono.copy(color = Palette.muted))
+                        error != null && all.isEmpty() -> BasicText(error.resolve(), style = Mono.copy(color = Palette.red))
+                        all.isEmpty() -> BasicText(stringResource(R.string.store_empty, noun), style = Mono.copy(color = Palette.muted))
                         shown.isEmpty() && q.isEmpty() && filter.tab == NEW -> BasicText(stringResource(R.string.store_no_new, noun), style = Mono.copy(color = Palette.muted))
                         shown.isEmpty() && q.isEmpty() && filter.tab == INSTALLED -> BasicText(stringResource(R.string.store_none_installed, noun), style = Mono.copy(color = Palette.muted))
-                        shown.isEmpty() -> BasicText(stringResource(R.string.store_no_match, filter.query.trim()), style = Mono.copy(color = Palette.muted))
+                        // Its own catalog: loading or failed while the widgets' is there.
+                        shown.isEmpty() && q.isEmpty() && filter.tab == FULL_SCREEN ->
+                            faces?.error?.let { BasicText(it.resolve(), style = Mono.copy(color = Palette.red)) }
+                                ?: BasicText(stringResource(R.string.store_loading), style = Mono.copy(color = Palette.muted))
+                        shown.isEmpty() && q.isNotEmpty() -> BasicText(stringResource(R.string.store_no_match, filter.query.trim()), style = Mono.copy(color = Palette.muted))
                     }
                 }
             }
-            items(shown, key = { it.id }) { e -> Card(market, e, theme, engine.linux, selected = e.id == selected) { onOpen(e.id) } }
+            items(shown, key = { it.key }) { l ->
+                if (filter.tab == FULL_SCREEN) {
+                    FullScreenCard(l.market, l.e, theme, engine.linux, selected = l.key == selected) { onOpen(l) }
+                } else {
+                    Card(l.market, l.e, theme, engine.linux, selected = l.key == selected) { onOpen(l) }
+                }
+            }
         }
     }
 }
 
-/** The entries [filter]'s tab and search leave of [market]'s, in the order the grid shows them. */
+/** [market]'s entries, then [faces]', each with its market. */
+private fun listed(
+    market: Market,
+    faces: Market?,
+): List<Listed> = market.entries.map { Listed(market, it) } + faces?.let { f -> f.entries.map { Listed(f, it) } }.orEmpty()
+
+/** The entries [filter]'s tab and search leave of [market]'s and [faces]', in the order the grid shows them. */
 private fun shownEntries(
     market: Market,
+    faces: Market?,
     filter: StoreFilter,
-): List<CatalogEntry> {
+): List<Listed> {
     val q = filter.query.trim().lowercase()
     // In the catalog's order, which the store repo sets in order.txt.
-    return market.entries
-        .filter { e ->
+    return listed(market, faces)
+        .filter { (m, e) ->
             when (filter.tab) {
-                ALL -> true
+                // Faces have their own tab, until a search looks through everything.
+                ALL -> m === market || q.isNotEmpty()
                 NEW -> e.new
-                INSTALLED -> market.installedVersion(e) != null
-                OTHER -> e.category == null
-                else -> e.category == filter.tab
+                INSTALLED -> m.installedVersion(e) != null
+                FULL_SCREEN -> m === faces
+                OTHER -> m === market && e.category == null
+                else -> m === market && e.category == filter.tab
             }
-        }.filter { e -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { q in it.lowercase() } }
+        }.filter { (_, e) -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { q in it.lowercase() } }
         // Newest first; a stable sort, so a day's widgets keep the catalog's order.
-        .let { l -> if (filter.tab == NEW) l.sortedByDescending { it.added } else l }
+        .let { l -> if (filter.tab == NEW) l.sortedByDescending { it.e.added } else l }
 }
 
 private const val ALL = "all"
 private const val NEW = "new"
+private const val FULL_SCREEN = "full screen"
 private const val OTHER = "other"
 private const val INSTALLED = "installed"
 
@@ -363,6 +431,7 @@ private fun tabName(tab: String) =
         NEW -> stringResource(R.string.store_tab_new)
         OTHER -> stringResource(R.string.store_category_other)
         INSTALLED -> stringResource(R.string.store_tab_installed)
+        FULL_SCREEN -> stringResource(R.string.store_full_screen)
         else -> tab
     }
 
@@ -420,17 +489,52 @@ private fun Caption(text: String) = BasicText(text, style = Mono.copy(color = Pa
 private fun Chip(
     label: String,
     selected: Boolean,
+    /** Draws the eye while not selected: a short line in the accent runs around its frame. */
+    highlight: Boolean = false,
     onClick: () -> Unit,
 ) {
     BasicText(
         label,
+        // Outside the frame, so the line draws over its border.
         Modifier
+            .then(if (highlight && !selected) Modifier.runningLine(Palette.accent, 14.dp) else Modifier)
             .frame(1.dp, if (selected) Palette.accent else Palette.border, if (selected) Palette.accent.copy(alpha = 0.15f) else Color.Transparent, radius = 14.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         style = Mono.copy(color = if (selected) Palette.accent else Palette.foreground, fontSize = TextSize.Small),
     )
 }
+
+/**
+ * A line a quarter of the frame long that runs around it once every few seconds, over a 1 dp [frame] of the same [radius]
+ * in the theme's shape; it goes before the frame, which would otherwise draw its border over it.
+ */
+@Composable
+private fun Modifier.runningLine(
+    color: Color,
+    radius: Dp,
+): Modifier {
+    val at = rememberInfiniteTransition(label = "running line").animateFloat(0f, 1f, infiniteRepeatable(tween(RUNNING_LINE_MS, easing = LinearEasing)), label = "running line")
+    return drawWithContent {
+        drawContent()
+        // A little thicker than the frame and inside it, its outer edge on the frame's.
+        val w = 1.5.dp.toPx()
+        val inner = Size(size.width - w, size.height - w)
+        val frame = Path().apply { addOutline(LauncherStyle.shape(radius).createOutline(inner, layoutDirection, this@drawWithContent)) }
+        frame.translate(Offset(w / 2, w / 2))
+        val measure = PathMeasure().apply { setPath(frame, false) }
+        val length = measure.length
+        // Read only here, so each frame redraws the line and recomposes nothing.
+        val start = at.value * length
+        val end = start + length / 4
+        val line = Path()
+        measure.getSegment(start, minOf(end, length), line, true)
+        if (end > length) measure.getSegment(0f, end - length, line, true)
+        drawPath(line, color, style = Stroke(w))
+    }
+}
+
+private const val RUNNING_LINE_MS = 2400
 
 /** A built-in entry, a card in the built-in row: a terminal tile, plain or running an agent's CLI, straight from the launcher rather than the catalog. */
 @Composable
@@ -493,9 +597,16 @@ private fun rememberCardPreview(
     market: Market,
     e: CatalogEntry,
     theme: String?,
+    /** As a portrait screenshot, [FullScreenPreviewTop] of its width high, for the full screen tab. */
+    fullScreen: Boolean = false,
 ): ImageBitmap? {
-    val (w, h) = with(LocalDensity.current) { CardPreviewWidth.roundToPx() to CardPreviewHeight.roundToPx() }
-    val top = if (market.kind == OwlKind.Widget) null else CardPreviewHeight / CardPreviewMinWidth
+    val density = LocalDensity.current
+    val w = with(density) { CardPreviewWidth.roundToPx() }
+    val (h, top) =
+        when {
+            fullScreen -> (w * FullScreenPreviewTop).toInt() to FullScreenPreviewTop
+            else -> with(density) { CardPreviewHeight.roundToPx() } to (if (market.kind == OwlKind.Widget) null else CardPreviewHeight / CardPreviewMinWidth)
+        }
     val preview by produceState<ImageBitmap?>(null, e.previewFor(theme), w, h) { value = market.thumbnail(e, theme, w, h, top) }
     return preview
 }
@@ -515,17 +626,7 @@ private fun Card(
     onOpen: () -> Unit,
 ) {
     val preview = rememberCardPreview(market, e, theme)
-    val busy = market.busy[e.id]
-    val update = market.hasUpdate(e)
-    val installed = market.installedVersion(e) != null
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .frame(1.dp, if (selected) Palette.accent else Palette.border, radius = 12.dp)
-            .clickable(onClick = onOpen)
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
+    CardFrame(selected, onOpen) {
         Box(Modifier.fillMaxWidth().height(CardPreviewHeight), contentAlignment = Alignment.Center) {
             if (preview != null && market.kind != OwlKind.Widget) {
                 // A whole phone screen would be a sliver this high: its top, as wide as the card, reads as the app or face.
@@ -538,31 +639,98 @@ private fun Card(
                 }
             }
         }
-        val (status, color) =
-            when {
-                busy != null -> stringResource(busy) to Palette.accent
-                update -> stringResource(R.string.store_update_available) to Palette.accent
-                installed -> stringResource(R.string.store_installed) to Palette.green
-                !e.supported -> stringResource(R.string.store_needs_newer) to Palette.red
-                !linux && e.needsLinux -> stringResource(R.string.store_needs_linux) to Palette.muted
-                else -> "${category(e)}${e.size?.let { " · ${it.first}x${it.second}" } ?: pagesText(e)}" to Palette.muted
-            }
         // An app's icon goes before its name and status, as in the drawer; widgets have none.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (e.icon != null || e.iconFile != null) {
                 val icon = rememberIcon(market, e, CardIconSize)
                 Box(Modifier.size(CardIconSize)) { icon?.let { Image(it, null, Modifier.fillMaxSize()) } }
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (e.new) NewBadge()
-                }
-                BasicText(status, style = Mono.copy(color = color, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            CardLabel(market, e, linux, Modifier.weight(1f))
         }
     }
 }
+
+/** A grid cell's frame, accented while [selected], with [content] in a column. */
+@Composable
+private fun CardFrame(
+    selected: Boolean,
+    onOpen: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) = Column(
+    Modifier
+        .fillMaxWidth()
+        .frame(1.dp, if (selected) Palette.accent else Palette.border, radius = 12.dp)
+        .clickable(onClick = onOpen)
+        .padding(8.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+    content = content,
+)
+
+/** A card's name, marked when it's new, and its [cardStatus] under it. */
+@Composable
+private fun CardLabel(
+    market: Market,
+    e: CatalogEntry,
+    linux: Boolean,
+    modifier: Modifier = Modifier,
+    shape: Boolean = true,
+) {
+    val (status, color) = cardStatus(market, e, linux, shape)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (e.new) NewBadge()
+        }
+        BasicText(status, style = Mono.copy(color = color, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** A card's status line and its color: what's happening to [e], whether it's installed, or what it is. */
+@Composable
+private fun cardStatus(
+    market: Market,
+    e: CatalogEntry,
+    linux: Boolean,
+    /** Whether it says what shape [e] is, its size or full screen, after its category. */
+    shape: Boolean = true,
+): Pair<String, Color> {
+    val busy = market.busy[e.id]
+    return when {
+        busy != null -> stringResource(busy) to Palette.accent
+        market.hasUpdate(e) -> stringResource(R.string.store_update_available) to Palette.accent
+        market.installedVersion(e) != null -> stringResource(R.string.store_installed) to Palette.green
+        !e.supported -> stringResource(R.string.store_needs_newer) to Palette.red
+        !linux && e.needsLinux -> stringResource(R.string.store_needs_linux) to Palette.muted
+        else -> "${category(e)}${if (shape) shapeText(market, e) else pagesText(e)}" to Palette.muted
+    }
+}
+
+/**
+ * A grid cell on the full screen tab: a face's preview as a portrait screenshot, most of its screen, with its name and status
+ * under it. The other tabs' cards show only a screen's top; here it reads as a whole page.
+ */
+@Composable
+private fun FullScreenCard(
+    market: Market,
+    e: CatalogEntry,
+    theme: String?,
+    linux: Boolean,
+    selected: Boolean,
+    onOpen: () -> Unit,
+) {
+    val preview = rememberCardPreview(market, e, theme, fullScreen = true)
+    CardFrame(selected, onOpen) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1 / FullScreenPreviewTop).clip(RoundedCornerShape(6.dp)).background(Palette.surface), contentAlignment = Alignment.Center) {
+            preview?.let { Image(it, null, Modifier.fillMaxSize(), alignment = Alignment.TopCenter, contentScale = ContentScale.FillWidth) }
+                ?: BasicText(e.name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        }
+        // The tab says they're full screen, so their status leaves it out.
+        CardLabel(market, e, linux, shape = false)
+    }
+}
+
+/** A full-screen card's preview is twice as high as it's wide: a phone screen less a little of its bottom. */
+private const val FullScreenPreviewTop = 2f
 
 /** Marks an entry added to the store in the last few days, beside its name; its status stays as it is. */
 @Composable
@@ -573,24 +741,34 @@ private fun NewBadge() =
         style = Mono.copy(color = Palette.accent, fontSize = TextSize.Small),
     )
 
-/** An app's [preview] and its other [screens] side by side, swiped through; each one loads as it scrolls into view. */
+/** An app's or face's [preview] and its other [screens] side by side, swiped through; each one loads as it scrolls into view, and a tap on one shows it full screen. */
 @Composable
 private fun Screens(
     market: Market,
     preview: ImageBitmap?,
     screens: List<String>,
+    onView: (ImageBitmap) -> Unit,
 ) {
     // Until one has loaded, a slot is phone-shaped.
     val ratio = preview?.let { it.width.toFloat() / it.height } ?: PHONE_RATIO
-    // Keys stop at each, so the arrows go through them, the row scrolling to follow.
-    val shot = Modifier.height(ScreenHeight).aspectRatio(ratio).frame(1.dp, Palette.border, radius = 8.dp).clip(RoundedCornerShape(8.dp)).keyScrolled()
+    val shot = Modifier.height(ScreenHeight).aspectRatio(ratio).frame(1.dp, Palette.border, radius = 8.dp).clip(RoundedCornerShape(8.dp))
     LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        item(key = "preview") { Box(shot.background(Palette.surface)) { preview?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) } } }
+        item(key = "preview") { Shot(preview, shot, onView) }
         items(screens, key = { it }) { path ->
             val img by produceState<ImageBitmap?>(null, path) { value = market.image(path) }
-            Box(shot.background(Palette.surface)) { img?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) } }
+            Shot(img, shot, onView)
         }
     }
+}
+
+/** One of [Screens]. Keys stop at it, so the arrows go through them, the row scrolling to follow, and Enter opens it as a tap does. */
+@Composable
+private fun Shot(
+    image: ImageBitmap?,
+    modifier: Modifier,
+    onView: (ImageBitmap) -> Unit,
+) = Box(modifier.background(Palette.surface).clickable(enabled = image != null) { image?.let(onView) }) {
+    image?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit) }
 }
 
 /** A widget's or app's page: a large preview, what it is, what it installs and runs, and the button that adds it. */
@@ -603,6 +781,7 @@ private fun Detail(
     page: Int,
     message: StoreMessage?,
     modifier: Modifier,
+    onView: (ImageBitmap) -> Unit,
     onOpen: () -> Unit,
     onInstall: () -> Unit,
     onAddPages: () -> Unit,
@@ -616,14 +795,16 @@ private fun Detail(
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         val screens = e.screensFor(theme)
         if (screens.isNotEmpty()) {
-            Screens(market, preview, screens)
+            Screens(market, preview, screens, onView)
         } else {
             preview?.let {
                 // As wide as the panel, but no taller than 320 dp, so a tall widget doesn't push its description off screen:
                 // narrowing the width keeps the image inside its slot instead of drawing over the text below.
                 val ratio = it.width.toFloat() / it.height
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Image(it, null, Modifier.widthIn(max = ScreenHeight * ratio).fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Fit)
+                    // A whole screen, an app's or a face's, is shown bigger on a tap; a widget is already its full size here.
+                    val tap = if (market.kind == OwlKind.Widget) Modifier else Modifier.clickable { onView(it) }
+                    Image(it, null, Modifier.widthIn(max = ScreenHeight * ratio).fillMaxWidth().aspectRatio(ratio).then(tap), contentScale = ContentScale.Fit)
                 }
             }
         }
@@ -638,8 +819,7 @@ private fun Detail(
                     BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Title))
                     if (e.new) NewBadge()
                 }
-                val size = e.size?.let { " · ${it.first}x${it.second}" } ?: pagesText(e)
-                BasicText("${category(e)} · ${e.author} · v${e.version} · ${e.license}$size", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                BasicText("${category(e)} · ${e.author} · v${e.version} · ${e.license}${shapeText(market, e)}", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
         }
         BasicText(e.description, style = Mono.copy(fontSize = TextSize.Body))
@@ -719,6 +899,13 @@ private fun Detail(
         }
     }
 }
+
+/** What shape [e] is, after its category: " · 4x2" for a widget, " · full screen" for a face, with " · 2 pages" when it has several. */
+@Composable
+private fun shapeText(
+    market: Market,
+    e: CatalogEntry,
+) = e.size?.let { " · ${it.first}x${it.second}" } ?: ((if (market.kind == OwlKind.Face) " · " + stringResource(R.string.store_full_screen) else "") + pagesText(e))
 
 /** " · 2 pages" for a face with several, else nothing. */
 @Composable

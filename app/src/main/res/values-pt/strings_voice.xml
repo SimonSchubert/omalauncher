@@ -75,6 +75,7 @@
     <string name="voice_language">idioma</string>
     <string name="voice_language_launcher">padrão (%1$s)</string>
     <string name="voice_default">padrão</string>
+    <string name="voice_default_named">padrão (%1$s)</string>
     <string name="voice_online">online</string>
     <string name="voice_speed">velocidade</string>
     <string name="voice_tts_settings">configurações de texto para fala</string>

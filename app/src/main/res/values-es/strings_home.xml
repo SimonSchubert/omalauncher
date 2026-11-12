@@ -11,15 +11,15 @@
     <string name="home_create_app">app</string>
     <string name="home_create_panel">panel</string>
 
-    <string name="home_face_invite_title">un face propio</string>
-    <string name="home_face_invite_text">Llena esta página con un face: un feed, un dashboard, una página de inicio, un juego. Di lo que quieres y %1$s lo crea aquí, a pantalla completa.</string>
-    <string name="home_face_invite_text_no_agent">Llena esta página con un face: un feed, un dashboard, una página de inicio, un juego. Di lo que quieres y un agente lo crea aquí, a pantalla completa.</string>
+    <string name="home_face_invite_title">un widget de pantalla completa propio</string>
+    <string name="home_face_invite_text">Llena esta página con un widget de pantalla completa: un feed, un dashboard, una página de inicio, un juego. Di lo que quieres y %1$s lo crea aquí.</string>
+    <string name="home_face_invite_text_no_agent">Llena esta página con un widget de pantalla completa: un feed, un dashboard, una página de inicio, un juego. Di lo que quieres y un agente lo crea aquí.</string>
     <string name="home_widget_invite_title">espacio para widgets</string>
     <string name="home_widget_invite_text">Aún no hay nada en esta página. Llénala de widgets: un reloj, el clima, una lista de tareas, tus agentes trabajando. Di lo que quieres y %1$s lo crea.</string>
     <string name="home_widget_invite_text_no_agent">Aún no hay nada en esta página. Llénala de widgets: un reloj, el clima, una lista de tareas, tus agentes trabajando. Di lo que quieres y un agente lo crea.</string>
 
     <string name="home_drop_here">suelta aquí</string>
-    <string name="home_drop_face_only">aquí solo va un face</string>
+    <string name="home_drop_face_only">aquí solo va un widget de pantalla completa</string>
     <!-- The cue over a locked home screen. -->
     <string name="home_lock_locked">pantalla bloqueada</string>
     <string name="home_lock_unlock">desbloquear</string>
@@ -52,6 +52,7 @@
     <string name="home_prompt_hint_short">apps</string>
 
     <string name="home_folder_named">carpeta %1$s</string>
+    <string name="home_app_has_notifications">%1$s, tiene notificaciones</string>
     <string name="home_folder">carpeta</string>
     <string name="home_folder_tap_to_name">toca para nombrar</string>
 

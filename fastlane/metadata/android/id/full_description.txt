@@ -16,7 +16,7 @@ Launcher-nya tetap jalan tanpa Linux. Kalau mau, Omalauncher mengunduh Arch Linu
 • Omalauncher adalah compositor Wayland, jadi aplikasi grafis seperti foot bisa jalan
 • Cari dan instal paket dari Arch Linux ARM dan AUR
 • Widget terminal yang menjalankan perintah di layar utama
-• Files, pengelola file untuk folder home Linux
+• Files, pengelola file untuk folder home Linux dan folder ponsel yang kamu pilih: salin, pindahkan, ganti nama, hapus, buka, dan bagikan file
 • Temamu juga dipakai di aplikasi Linux
 
 AGEN CODING

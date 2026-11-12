@@ -11,15 +11,15 @@
     <string name="home_create_app">aplikasi</string>
     <string name="home_create_panel">panel</string>
 
-    <string name="home_face_invite_title">face milikmu sendiri</string>
-    <string name="home_face_invite_text">Halaman ini bisa kamu isi dengan sebuah face: feed, dasbor, halaman awal, atau game. Sebutkan yang kamu mau dan %1$s membuatnya di sini, layar penuh.</string>
-    <string name="home_face_invite_text_no_agent">Halaman ini bisa kamu isi dengan sebuah face: feed, dasbor, halaman awal, atau game. Sebutkan yang kamu mau dan agen membuatnya di sini, layar penuh.</string>
+    <string name="home_face_invite_title">widget layar penuh milikmu sendiri</string>
+    <string name="home_face_invite_text">Halaman ini bisa kamu isi dengan widget layar penuh: feed, dasbor, halaman awal, atau game. Sebutkan yang kamu mau dan %1$s membuatnya di sini.</string>
+    <string name="home_face_invite_text_no_agent">Halaman ini bisa kamu isi dengan widget layar penuh: feed, dasbor, halaman awal, atau game. Sebutkan yang kamu mau dan agen membuatnya di sini.</string>
     <string name="home_widget_invite_title">ruang untuk widget</string>
     <string name="home_widget_invite_text">Halaman ini masih kosong. Isi dengan widget: jam, cuaca, daftar tugas, agenmu yang sedang bekerja. Sebutkan yang kamu mau dan %1$s membuatnya.</string>
     <string name="home_widget_invite_text_no_agent">Halaman ini masih kosong. Isi dengan widget: jam, cuaca, daftar tugas, agenmu yang sedang bekerja. Sebutkan yang kamu mau dan agen membuatnya.</string>
 
     <string name="home_drop_here">lepas di sini</string>
-    <string name="home_drop_face_only">hanya face yang bisa ditaruh di sini</string>
+    <string name="home_drop_face_only">hanya widget layar penuh yang bisa ditaruh di sini</string>
     <!-- The cue over a locked home screen. -->
     <string name="home_lock_locked">layar terkunci</string>
     <string name="home_lock_unlock">buka</string>
@@ -48,6 +48,7 @@
     <string name="home_prompt_hint_short">aplikasi</string>
 
     <string name="home_folder_named">folder %1$s</string>
+    <string name="home_app_has_notifications">%1$s, ada notifikasi</string>
     <string name="home_folder">folder</string>
     <string name="home_folder_tap_to_name">ketuk untuk memberi nama</string>
 

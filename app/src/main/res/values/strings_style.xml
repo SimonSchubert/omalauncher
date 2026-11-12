@@ -32,6 +32,15 @@
     <string name="style_pages">pages</string>
     <string name="style_pages_one">one</string>
     <string name="style_pages_auto">auto</string>
+    <!-- A foldable's cover screen: home upright with the bar below (true), or turned on its side as in landscape. -->
+    <string name="style_cover_screen">cover screen</string>
+    <string name="style_cover_upright">upright</string>
+    <string name="style_cover_turned">turned</string>
+    <!-- A foldable's inner screen unfolded: a home of its own there, or the pages as on the phone. -->
+    <string name="style_unfolded">unfolded</string>
+    <string name="style_unfolded_own">own home</string>
+    <string name="style_unfolded_pages">pages</string>
+    <string name="style_unfolded_columns">unfolded columns</string>
     <string name="style_corners">corners</string>
     <string name="style_corners_edge">edge</string>
     <string name="style_corners_soft">soft</string>
@@ -108,6 +117,8 @@
     <string name="style_remove_background_title">remove background?</string>
 
     <string name="style_terminal_hint">terminals opened from now on · more with pacman, like ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">keyboard suggestions</string>
+    <string name="style_keyboard_suggestions_hint">suggestions, glide typing and dictation; text reaches the terminal a word at a time · from the next time the keyboard opens</string>
     <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d column in portrait</item>
@@ -116,9 +127,9 @@
 
     <!-- Settings › pages (ui/PagesScreen.kt). -->
     <string name="pages_title">pages</string>
-    <string name="pages_intro">Home\'s pages, left to right. Drag one by ≡ to move it, or with keys pick ≡ up with Enter and move it with the arrows. Home opens on the first with tiles; faces before it sit left of it.</string>
+    <string name="pages_intro">Home\'s pages, left to right. Drag one by ≡ to move it, or with keys pick ≡ up with Enter and move it with the arrows. Home opens on the first with tiles; full-screen widgets before it sit left of it.</string>
     <string name="pages_loading">loading…</string>
-    <!-- %1$s is a face's name. -->
+    <!-- %1$s is a full-screen widget's name. -->
     <string name="pages_remove_named">remove %1$s?</string>
     <string name="pages_remove_page">remove this page?</string>
     <string name="pages_remove_face_message">Its file goes to .removed/ in the widgets folder.</string>
@@ -134,7 +145,7 @@
     <string name="pages_empty">empty</string>
     <!-- Beside a page's name: what it is. -->
     <string name="pages_doesnt_compile">doesn\'t compile</string>
-    <string name="pages_face">face</string>
+    <string name="pages_face">full screen</string>
     <string name="pages_home">home</string>
     <string name="pages_edit">edit</string>
     <string name="pages_share">share</string>

@@ -15,11 +15,11 @@
     <string name="home_create_app">app</string>
     <string name="home_create_panel">panel</string>
 
-    <!-- The empty page left of home's first, where a stock launcher has its news feed. A face is a full-screen widget. -->
-    <string name="home_face_invite_title">a face of your own</string>
+    <!-- The empty page left of home's first, where a stock launcher has its news feed. A face is a full-screen widget, and the UI calls it that. -->
+    <string name="home_face_invite_title">a full-screen widget of your own</string>
     <!-- %1$s is a coding agent's name, like "Claude Code". -->
-    <string name="home_face_invite_text">This page is yours to fill with a face: a feed, a dashboard, a start page, a game. Say what you want and %1$s builds it here, full screen.</string>
-    <string name="home_face_invite_text_no_agent">This page is yours to fill with a face: a feed, a dashboard, a start page, a game. Say what you want and an agent builds it here, full screen.</string>
+    <string name="home_face_invite_text">This page is yours to fill with a full-screen widget: a feed, a dashboard, a start page, a game. Say what you want and %1$s builds it here.</string>
+    <string name="home_face_invite_text_no_agent">This page is yours to fill with a full-screen widget: a feed, a dashboard, a start page, a game. Say what you want and an agent builds it here.</string>
     <!-- An empty page of home's tiles. -->
     <string name="home_widget_invite_title">room for widgets</string>
     <!-- %1$s is a coding agent's name, like "Claude Code". -->
@@ -28,7 +28,7 @@
 
     <!-- On an empty page while a tile is dragged. -->
     <string name="home_drop_here">drop here</string>
-    <string name="home_drop_face_only">only a face goes here</string>
+    <string name="home_drop_face_only">only a full-screen widget goes here</string>
     <!-- The cue over a locked home screen. -->
     <string name="home_lock_locked">screen locked</string>
     <string name="home_lock_unlock">unlock</string>
@@ -66,6 +66,7 @@
 
     <!-- What screen readers say for a folder on home. %1$s is its name. -->
     <string name="home_folder_named">%1$s folder</string>
+    <string name="home_app_has_notifications">%1$s, has notifications</string>
     <string name="home_folder">folder</string>
     <!-- An open folder's name while it has none. -->
     <string name="home_folder_tap_to_name">tap to name</string>

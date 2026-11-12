@@ -74,6 +74,8 @@ fun FolderTile(
     focused: Boolean,
     modifier: Modifier,
     onTap: () -> Unit,
+    /** Any app inside has a notification dot, also one past the four shown. */
+    dot: Boolean = false,
 ) {
     val spoken = folder.name?.let { stringResource(R.string.home_folder_named, it) } ?: stringResource(R.string.home_folder)
     BoxWithConstraints(
@@ -92,7 +94,7 @@ fun FolderTile(
         ) {
             // Straight on the tile, filling an app icon's room.
             val mini = badge * 0.47f
-            Column(verticalArrangement = Arrangement.spacedBy(badge * 0.06f)) {
+            Column(Modifier.notificationDot(dot), verticalArrangement = Arrangement.spacedBy(badge * 0.06f)) {
                 for (row in 0 until 2) {
                     Row(horizontalArrangement = Arrangement.spacedBy(badge * 0.06f)) {
                         for (col in 0 until 2) {

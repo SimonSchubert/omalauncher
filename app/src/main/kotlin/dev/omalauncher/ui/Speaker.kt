@@ -4,6 +4,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
@@ -49,7 +50,34 @@ class Speaker(
         private set
 
     /** Starts the engine ahead of the first reply: sooner speech, and [problem] known before anything's said. */
-    fun warmUp() = start()
+    fun warmUp() {
+        followPick()
+        start()
+    }
+
+    /** The phone's text-to-speech pick when the engine started, to notice it being changed. */
+    private var startedWith: String? = null
+
+    /** Engines started, so a dropped one's late start-up can be told apart. */
+    private var starts = 0
+
+    private fun picked() = runCatching { Settings.Secure.getString(context.contentResolver, Settings.Secure.TTS_DEFAULT_SYNTH) }.getOrNull()
+
+    /**
+     * Drops the engine when another one has been picked in the phone's settings since it started: a TextToSpeech stays
+     * with the engine it bound, so without this the old one went on reading until the launcher restarted. Not while
+     * it's reading; the next [start] binds the new one.
+     */
+    private fun followPick() {
+        val engine = tts ?: return
+        if (speaking || picked() == startedWith) return
+        Log.i(TAG, "text-to-speech engine changed to ${picked()}")
+        engine.shutdown()
+        tts = null
+        ready = false
+        applied = null
+        problem = null
+    }
 
     /** What was asked before the engine was ready, said once it is. */
     private val waiting = ArrayDeque<String>()
@@ -61,6 +89,7 @@ class Speaker(
 
     fun speak(text: String) {
         if (text.isBlank()) return
+        followPick()
         speaking = true
         if (!ready) {
             waiting += text
@@ -79,10 +108,14 @@ class Speaker(
 
     private fun start() {
         if (tts != null) return
+        startedWith = picked()
+        val started = ++starts
         // With no engine at all, Android reports the failure from inside the constructor, before it returns.
         var failed = false
         val engine =
             TextToSpeech(context.applicationContext) { status ->
+                // One dropped by [followPick] before it was up: the current one is another.
+                if (started != starts) return@TextToSpeech
                 if (status != TextToSpeech.SUCCESS) {
                     Log.w(TAG, "text-to-speech failed to start: $status")
                     failed = true
@@ -161,6 +194,18 @@ class Speaker(
             .getOrNull()
             .orEmpty()
             .sortedWith(compareBy({ TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED in it.features }, { it.isNetworkConnectionRequired }, { it.locale.toLanguageTag() }, { it.name }))
+
+    /**
+     * The voice the engine reads in now, for the voice screen's default to say which one it is: with none picked,
+     * what it chose for [locale]. Null before it's [ready] or when it won't say.
+     */
+    fun current(): Voice? =
+        tts?.takeIf { ready }?.let { engine ->
+            runCatching {
+                apply()
+                engine.voice
+            }.getOrNull()
+        }
 
     /** Whether it has a voice for [locale]; true until it's [ready], as it can't say. */
     fun reads(locale: Locale) = tts?.takeIf { ready }?.let { runCatching { it.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE }.getOrDefault(true) } ?: true

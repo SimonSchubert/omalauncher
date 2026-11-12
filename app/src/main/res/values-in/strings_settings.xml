@@ -26,9 +26,36 @@
     <string name="settings_packages">paket</string>
     <string name="settings_packages_subtitle">instal aplikasi dan alat Linux dengan pacman dan AUR</string>
     <string name="settings_home_app">aplikasi beranda default</string>
-    <string name="settings_home_app_subtitle">jadikan Omalauncher layar utama kamu · pintasan aplikasi memerlukannya</string>
+    <string name="settings_home_app_subtitle">jadikan Omalauncher layar utama kamu</string>
     <string name="settings_local_network">jaringan lokal</string>
     <string name="settings_local_network_subtitle">izinkan widget dan linux mengakses printer, home assistant, …</string>
+    <string name="settings_permissions">izin</string>
+    <string name="settings_permissions_subtitle">mikrofon, lokasi, file, …</string>
+
+    <string name="permissions_title">izin</string>
+    <string name="permissions_folders_title">folder ponsel</string>
+    <string name="permissions_folders_about">folder berisi foto, unduhan, dan dokumenmu untuk linux: di File, dan untuk agen dan skrip lewat omalauncher</string>
+    <string name="permissions_folders_sdcard">yang disimpan linux di %1$s/Download atau %1$s/Documents juga terlihat oleh aplikasi lain</string>
+    <string name="permissions_folders_add">tambah folder</string>
+    <string name="permissions_folders_remove">hapus</string>
+    <string name="permissions_folders_cant_keep">android tidak mengizinkan launcher menyimpan folder itu</string>
+    <string name="permissions_folders_no_picker">ponsel ini tidak punya pemilih folder</string>
+    <string name="permissions_note">widget dan agen bisa memakai semua yang aktif di sini. tombolnya ada di android: aktifkan akan meminta izin, nonaktifkan membuka setelan android untuk izin itu</string>
+    <string name="permissions_on">aktif · %1$s</string>
+    <string name="permissions_off">nonaktif · %1$s</string>
+    <string name="permissions_mic">mikrofon</string>
+    <string name="permissions_mic_uses">mikrofon di bilah prompt, Voice, widget yang mendengarkan</string>
+    <string name="permissions_location">lokasi</string>
+    <string name="permissions_location_uses">perkiraan · widget seperti cuaca, saat tampil di layar · agen dengan omalauncher location</string>
+    <string name="permissions_calendar">kalender</string>
+    <string name="permissions_calendar_uses">acaramu, hanya dibaca · widget kalender · agen dengan omalauncher calendar</string>
+    <string name="permissions_bluetooth">bluetooth</string>
+    <string name="permissions_bluetooth_uses">baterai dan setelan AirPods-mu · widget AirPods · agen dengan omalauncher airpods</string>
+    <string name="permissions_notifications">notifikasi</string>
+    <string name="permissions_notifications_uses">linux selama berjalan, widget yang memberi notifikasi</string>
+    <string name="permissions_notification_access">akses notifikasi</string>
+    <string name="permissions_notification_access_uses">titik notifikasi, yang sedang diputar dan jangan ganggu untuk widget</string>
+
     <string name="settings_android">setelan android</string>
     <string name="settings_android_subtitle">setelan sistem ponsel</string>
     <string name="settings_licenses">lisensi</string>

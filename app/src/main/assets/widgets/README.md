@@ -37,6 +37,7 @@ widget "memory" {
   size: 3x4               // size in grid cells when first placed: columns x rows
   minSize: 2x3            // users can't shrink it below this
   // lock: playing        // holds the home screen still while true, for a game or a drawing pad (owl 18)
+  // fps: busy ? 30 : 10  // frames a second a `time` animation needs, up to 60; fewer save battery (owl 19)
 
   source mem = cmd("free -b | awk '/Mem:/ {print $2, $3}'") every 5s
   let used = num(words(mem)[1])
@@ -78,7 +79,7 @@ A file holds declarations, then the nodes it shows:
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 18.
+  it's 1. This launcher has 22.
 - Text is written in the language of whoever uses the widget. One meant for the store keeps its text in
   `strings { en { ... } id { ... } }` and shows `str.name`, the phone's language's (owl 16, see Text in more
   languages in docs/declarations.md).
@@ -90,12 +91,12 @@ declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a pan
 
 | read | for |
 |---|---|
-| docs/declarations.md | sources (`cmd`, `http`, `ws`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `at`, `when`, `on`, `on … each`), putting values into commands and URLs, `requires` and working without Linux |
+| docs/declarations.md | sources (`cmd`, `http`, `ws`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `every frame`, `at`, `when`, `on`, `on … each`), putting values into commands and URLs, `requires` and working without Linux |
 | docs/android.md | the phone's data: battery, media, notifications, volume, the next alarm, modes, apps, the drawer, agents, AirPods |
 | docs/expressions.md | operators and every function, dates and times, numbers, changing lists and maps, chance |
 | docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal, Browser |
 | docs/handlers.md | handlers, every action, sending to web APIs with `post`, tokens and passwords, sounds |
-| docs/drawing.md | Canvas and Shader |
+| docs/drawing.md | Canvas, 3D scenes and Shader |
 | docs/screens.md | a widget's full-screen view behind its tile |
 | docs/faces.md | faces: a whole home page |
 | docs/apps.md | apps in the app drawer, and their icons |
@@ -139,6 +140,7 @@ docs say what's current.
 | the phone's own data | `examples/40-battery` (Ring), `examples/85-quick` (alarm, modes, torch), `examples/97-now-playing` (media, album art), `examples/98-notifications`, `examples/99-volume` (Slider), `examples/airpods` (AirPods' batteries and settings, a screen), `examples/calendar` (the phone's calendars, asked for on a tap), `20-fetch` (with or without Linux) |
 | state, buttons and timers | `examples/91-focus` (persist, `at`, notify), `examples/87-breathe` (a session paced by the clock), `examples/88-notes` (Input, a saved list) |
 | drawing | `examples/90-analog-clock` (Canvas), `50-koi` (pixel art, taps), `60-owl` (sprites, a pet that keeps its state), `examples/92-aurora` and `examples/89-lava` (Shader) |
+| a game | `examples/space-bounce` (an app: `every frame` moving things by their speed, steering by tilting with `android.motion`, aiming with a finger, a Shader grid behind a Canvas), `examples/sky-raid` (a pixel-art scrolling shooter: sprites in one palette, a pixel font drawn with `sprite`, scrolling ground from a Shader, stages and a boss, keeping under the 2000 drawing calls), `examples/sky-forge` (the same shooter with a hangar between rounds: persisted upgrades, a weight limit on what's fitted, sectors that get harder without end), `examples/sunset-heist` (a 3D city seen from above, made from a seed: two scenes on one camera, the ground first; traffic on a road grid, police that chase, getting in and out of seven kinds of vehicle, each a convex body made with `mesh` so it never sorts wrong, jobs, guns with auto-aim and a held fire button, health and armor, pickups placed from the seed that come back after a while, police that follow the road grid and get out to chase on foot, a minimap; a joystick wherever the thumb goes down, from `onTouch`), `examples/canyon-run` (3D: a Canvas `scene` of terrain tiles laid end to end, models spawned ahead and dropped behind, hits as distances, a camera following the ship, `project` for a sun behind the scene), `examples/boomtown` (a city builder on an isometric map: a weekly simulation in `every frame` over the map kept in persisted lists, slow numbers in lets per block of tiles, a Shader for the ground and only the tiles on screen drawn, with less detail the more there are), `examples/last-outpost` (tower defense on a grid of tiles: a road as a list of corners that the Shader draws and enemies walk by how far along they are, towers that fire when their time comes round with hits summed per enemy once a frame, taps on the map and a bar of buttons, research at command that persists between battles) |
 | faces, a whole page | `examples/00-start` (frost, Grid, spans), `examples/01-minimal`, `examples/02-pixel`, `examples/03-matrix` |
 | panels and the prompt bar | `drawer.owl` (lazy lists, search with rank, Popup), `examples/65-ai-bar` (android.agents, ask, open) |
 | the terminal key bar | `keybar.owl`, `examples/keybar-layers` (latch, layers), `examples/keybar-vim`, `examples/keybar-gamepad`, `examples/keybar-commands` (typeText) |
@@ -151,7 +153,7 @@ docs say what's current.
 A widget has at most 500 nodes (a page 1000), 2000 drawing calls per frame, lists of 1000
 items, 32 images and 128 SVGs on show at once (a view with more draws only those, and says so
 in `.errors/`), and a step budget per update. A widget that draws slowly animates at
-half rate. Errors never take the home screen down: the failing value shows `…`
+half rate (an app with `fps: 60` keeps its 60). Errors never take the home screen down: the failing value shows `…`
 and the message goes to `.errors/`.
 
 ## Tips

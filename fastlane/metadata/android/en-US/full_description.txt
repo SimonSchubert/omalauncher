@@ -16,7 +16,7 @@ The launcher works without it. If you want it, Omalauncher downloads Arch Linux 
 • Omalauncher is the Wayland compositor, so graphical apps like foot work
 • Search and install packages from Arch Linux ARM and the AUR
 • Terminal widgets that run commands on your home screen
-• Files, a file manager for the Linux home folder
+• Files, a file manager for the Linux home folder and the phone folders you pick: copy, move, rename, delete, open and share files
 • Your theme is applied to the Linux apps too
 
 CODING AGENTS

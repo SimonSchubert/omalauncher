@@ -29,4 +29,16 @@ class PagerPagesTest {
     @Test fun anEmptyHomeKeepsItsOnePage() {
         assertEquals(listOf(1), pagerPages(listOf(1), lastEmpty = true, emptyPageLeft = false, emptyPageRight = false))
     }
+
+    @Test fun homeIsTheNamedPageOrTheNextOneAfterIt() {
+        assertEquals(1, homePageIn(listOf(-1, 0, 1, 2), 1))
+        assertEquals(0, homePageIn(listOf(-1, 0, 1, 2), 0))
+        assertEquals(2, homePageIn(listOf(0, 2, 3), 1))
+        assertEquals(-1, homePageIn(listOf(-1, 0, 1), -5))
+    }
+
+    @Test fun homeBeyondThePagesIsTheLastOne() {
+        assertEquals(2, homePageIn(listOf(1, 2), 9))
+        assertEquals(0, homePageIn(listOf(-1, 0), 1))
+    }
 }

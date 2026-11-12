@@ -21,6 +21,18 @@ class MarketTest {
         }
         """.trimIndent()
 
+    @Test fun aHeavyShaderIsRefused() {
+        fun shader(n: Int) =
+            good.replace(
+                "Text { text: df }",
+                "let lib = \"float f(float x) { float a = 0.0; for (int i = 0; i < $n; i++) a += x; return a; }\"\n" +
+                    "  Shader { code: lib + \"half4 main(float2 p) { float a = 0.0; for (int j = 0; j < 100; j++) a += f(p.x); return half4(a); }\" }",
+            )
+        // Through a let and +, as the store's faces write it: 100 x 5 is fine, 100 x 20 isn't.
+        assertEquals(emptyList<String>(), Review("widgets/simon/disk/widget.owl", shader(5)).errors)
+        assertTrue(Review("widgets/simon/disk/widget.owl", shader(20)).errors.single().contains("2,000 turns"))
+    }
+
     @Test fun aGoodWidgetPasses() {
         val r = Review("widgets/simon/disk/widget.owl", good)
         assertEquals(emptyList<String>(), r.errors)

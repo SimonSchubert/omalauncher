@@ -1,5 +1,6 @@
 widget "lava lamp" {
-  meta { description: "A pixel lava lamp in your theme's colors. Tap it for another wax color"; version: "1.0"; license: "MIT"; category: "fun" }
+  meta { owl: 19; description: "A pixel lava lamp in your theme's colors. Tap it for another wax color"; version: "1.1"; license: "MIT"; category: "fun" }
+  fps: 30
   page: 2
   order: 2
   size: 3x3

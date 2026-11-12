@@ -27,6 +27,13 @@
     <string name="style_pages">seiten</string>
     <string name="style_pages_one">eine</string>
     <string name="style_pages_auto">auto</string>
+    <string name="style_cover_screen">frontdisplay</string>
+    <string name="style_cover_upright">aufrecht</string>
+    <string name="style_cover_turned">gedreht</string>
+    <string name="style_unfolded">aufgeklappt</string>
+    <string name="style_unfolded_own">eigener startbildschirm</string>
+    <string name="style_unfolded_pages">seiten</string>
+    <string name="style_unfolded_columns">spalten aufgeklappt</string>
     <string name="style_corners">ecken</string>
     <string name="style_corners_edge">eckig</string>
     <string name="style_corners_soft">weich</string>
@@ -89,13 +96,15 @@
     <string name="style_remove_background_title">hintergrund entfernen?</string>
 
     <string name="style_terminal_hint">für ab jetzt geöffnete terminals · mehr mit pacman, z. b. ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">tastaturvorschläge</string>
+    <string name="style_keyboard_suggestions_hint">vorschläge, wischen und diktieren; text kommt wortweise im terminal an · ab dem nächsten öffnen der tastatur</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d spalte im hochformat</item>
         <item quantity="other">%1$s pt · %2$d spalten im hochformat</item>
     </plurals>
 
     <string name="pages_title">seiten</string>
-    <string name="pages_intro">Die Seiten des Startbildschirms, von links nach rechts. Zieh eine an ≡, um sie zu verschieben, oder nimm ≡ per Tastatur mit Enter auf und verschieb sie mit den Pfeiltasten. Der Startbildschirm öffnet mit der ersten Seite mit Kacheln; Faces davor liegen links davon.</string>
+    <string name="pages_intro">Die Seiten des Startbildschirms, von links nach rechts. Zieh eine an ≡, um sie zu verschieben, oder nimm ≡ per Tastatur mit Enter auf und verschieb sie mit den Pfeiltasten. Der Startbildschirm öffnet mit der ersten Seite mit Kacheln; Vollbild-Widgets davor liegen links davon.</string>
     <string name="pages_loading">lädt…</string>
     <string name="pages_remove_named">%1$s entfernen?</string>
     <string name="pages_remove_page">diese seite entfernen?</string>
@@ -108,7 +117,7 @@
     </plurals>
     <string name="pages_empty">leer</string>
     <string name="pages_doesnt_compile">kompiliert nicht</string>
-    <string name="pages_face">face</string>
+    <string name="pages_face">vollbild</string>
     <string name="pages_home">start</string>
     <string name="pages_edit">bearbeiten</string>
     <string name="pages_share">teilen</string>

@@ -16,7 +16,7 @@ Der Launcher läuft auch ohne. Wenn du willst, lädt Omalauncher Arch Linux ARM 
 • Omalauncher ist der Wayland-Compositor, also laufen grafische Apps wie foot
 • Pakete aus Arch Linux ARM und dem AUR suchen und installieren
 • Terminal-Widgets, die Befehle auf deinem Startbildschirm ausführen
-• Files, ein Dateimanager für den Linux-Home-Ordner
+• Files, ein Dateimanager für den Linux-Home-Ordner und die Ordner deines Handys, die du auswählst: Dateien kopieren, verschieben, umbenennen, löschen, öffnen und teilen
 • Dein Theme gilt auch für die Linux-Apps
 
 CODING-AGENTEN

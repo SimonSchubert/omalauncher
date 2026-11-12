@@ -10,6 +10,9 @@
     <string name="files_home">home</string>
     <string name="files_place_config">config</string>
     <string name="files_place_downloads">unduhan</string>
+    <string name="files_place_phone_folders">folder ponsel</string>
+    <string name="files_add_phone_folder">tambah folder ponsel</string>
+    <string name="files_no_phone_folders">belum ada folder ponsel: tambahkan dari menu</string>
     <string name="files_place_system">sistem</string>
     <string name="files_search">cari</string>
     <string name="files_more">lainnya</string>

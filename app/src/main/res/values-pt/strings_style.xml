@@ -27,6 +27,13 @@
     <string name="style_pages">páginas</string>
     <string name="style_pages_one">uma</string>
     <string name="style_pages_auto">auto</string>
+    <string name="style_cover_screen">tela externa</string>
+    <string name="style_cover_upright">vertical</string>
+    <string name="style_cover_turned">girada</string>
+    <string name="style_unfolded">desdobrado</string>
+    <string name="style_unfolded_own">tela própria</string>
+    <string name="style_unfolded_pages">páginas</string>
+    <string name="style_unfolded_columns">colunas desdobrado</string>
     <string name="style_corners">cantos</string>
     <string name="style_corners_edge">retos</string>
     <string name="style_corners_soft">suaves</string>
@@ -89,6 +96,8 @@
     <string name="style_remove_background_title">remover o fundo?</string>
 
     <string name="style_terminal_hint">terminais abertos a partir de agora · mais com o pacman, como ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">sugestões do teclado</string>
+    <string name="style_keyboard_suggestions_hint">sugestões, digitação por deslizar e ditado; o texto chega ao terminal palavra por palavra · a partir da próxima vez que o teclado abrir</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d coluna na vertical</item>
         <item quantity="many">%1$s pt · %2$d colunas na vertical</item>
@@ -96,7 +105,7 @@
     </plurals>
 
     <string name="pages_title">páginas</string>
-    <string name="pages_intro">As páginas do início, da esquerda para a direita. Arraste uma por ≡ para movê-la, ou pelo teclado pegue o ≡ com Enter e mova com as setas. O início abre na primeira com blocos; as faces antes dela ficam à sua esquerda.</string>
+    <string name="pages_intro">As páginas do início, da esquerda para a direita. Arraste uma por ≡ para movê-la, ou pelo teclado pegue o ≡ com Enter e mova com as setas. O início abre na primeira com blocos; os widgets de tela cheia antes dela ficam à sua esquerda.</string>
     <string name="pages_loading">carregando…</string>
     <string name="pages_remove_named">remover %1$s?</string>
     <string name="pages_remove_page">remover esta página?</string>
@@ -110,7 +119,7 @@
     </plurals>
     <string name="pages_empty">vazia</string>
     <string name="pages_doesnt_compile">não compila</string>
-    <string name="pages_face">face</string>
+    <string name="pages_face">tela cheia</string>
     <string name="pages_home">início</string>
     <string name="pages_edit">editar</string>
     <string name="pages_share">compartilhar</string>

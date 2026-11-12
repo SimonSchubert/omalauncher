@@ -3,18 +3,18 @@
     <string name="store_title">商店</string>
 
     <string name="store_kind_widgets">小组件</string>
-    <string name="store_kind_faces">face</string>
+    <string name="store_kind_faces">全屏小组件</string>
     <string name="store_kind_apps">应用</string>
     <string name="store_kind_panels">面板</string>
     <string name="store_kind_keybars">按键栏</string>
     <string name="store_kind_widget">小组件</string>
-    <string name="store_kind_face">face</string>
+    <string name="store_kind_face">全屏小组件</string>
     <string name="store_kind_app">应用</string>
     <string name="store_kind_panel">面板</string>
     <string name="store_kind_keybar">按键栏</string>
 
     <string name="store_pick_widget">选一个小组件，看看它会安装和运行什么</string>
-    <string name="store_pick_face">选一个 face，看看它会安装和运行什么</string>
+    <string name="store_pick_face">选一个全屏小组件，看看它会安装和运行什么</string>
     <string name="store_pick_app">选一个应用，看看它会安装和运行什么</string>
     <string name="store_pick_panel">选一个面板，看看它会安装和运行什么</string>
     <string name="store_pick_keybar">选一个按键栏，看看它会安装和运行什么</string>
@@ -28,6 +28,7 @@
     <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
 
     <string name="store_builtin">内置</string>
+
     <string name="store_terminal">终端</string>
     <string name="store_terminal_details">6x4 · 一个 shell</string>
     <string name="store_agent_details">6x6 · 运行 %1$s</string>
@@ -45,6 +46,7 @@
     <string name="store_installed">✓ 已安装</string>
     <string name="store_needs_newer">需要新版启动器</string>
     <string name="store_needs_linux">需要 linux</string>
+    <string name="store_full_screen">全屏</string>
     <plurals name="store_pages">
         <item quantity="other">%1$d 页</item>
     </plurals>
@@ -60,7 +62,7 @@
         <item quantity="other">添加缺少的 %1$d 页</item>
     </plurals>
     <string name="store_add_to_page">添加到第 %1$d 页</string>
-    <string name="store_add_as_face">添加为 face</string>
+    <string name="store_add_as_face">添加为全屏小组件</string>
     <string name="store_install">安装</string>
     <string name="store_uninstall">卸载</string>
     <string name="store_remove">移除</string>

@@ -38,7 +38,7 @@ private const val TAG = "linux-media"
 
 /**
  * What a Linux player plays, in Android's media controls. Guest audio already plays as Android media (AudioBridge);
- * `phone media set` adds the rest of what makes it a player to the phone: a media session and its notification, so
+ * `omalauncher media set` adds the rest of what makes it a player to the phone: a media session and its notification, so
  * the lock screen, the notification shade's player, a car's display and steering-wheel buttons over Bluetooth,
  * headset and AirPods buttons and a watch show what plays and steer it. Their presses run the player's `command` in
  * the guest with the action after it: `play`, `pause`, `next`, `previous`, `stop`, or `seek` and the second to go to.
@@ -63,7 +63,7 @@ class LinuxMedia(
     private var artSrc: String? = null
     private var artJob: Job? = null
 
-    /** What's set, as `phone media` shows it, the position as of now. */
+    /** What's set, as `omalauncher media` shows it, the position as of now. */
     fun current(): Value = now?.let { Obj(it.fields + ("position" to Num(position(it)))) } ?: Null
 
     /** Publishes [v] (merged into what's set unless it names a new track); the error to answer with, or null. */

@@ -20,6 +20,12 @@
     <!-- Quick jumps to /root/.config, /root/Downloads and / -->
     <string name="files_place_config">config</string>
     <string name="files_place_downloads">downloads</string>
+    <!-- Where Linux sees the phone's storage (PhoneStorage.GUEST), a path's name. -->
+    <string name="files_place_sdcard" translatable="false">sdcard</string>
+    <!-- The phone folders the user granted (PhoneFolders), and the list of them. -->
+    <string name="files_place_phone_folders">phone folders</string>
+    <string name="files_add_phone_folder">add phone folder</string>
+    <string name="files_no_phone_folders">no phone folders yet: add one from the menu</string>
     <string name="files_place_system">system</string>
     <string name="files_search">search</string>
     <string name="files_more">more</string>

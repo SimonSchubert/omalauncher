@@ -16,7 +16,7 @@ O launcher funciona sem ele. Se quiser, o Omalauncher baixa o Arch Linux ARM e r
 • O Omalauncher é o compositor Wayland, então apps gráficos como o foot funcionam
 • Busque e instale pacotes do Arch Linux ARM e do AUR
 • Widgets de terminal que rodam comandos na tela inicial
-• Files, um gerenciador de arquivos para a pasta pessoal do Linux
+• Files, um gerenciador de arquivos para a pasta pessoal do Linux e as pastas do celular que você escolher: copie, mova, renomeie, apague, abra e compartilhe arquivos
 • O tema também vale para os apps do Linux
 
 AGENTES DE PROGRAMAÇÃO

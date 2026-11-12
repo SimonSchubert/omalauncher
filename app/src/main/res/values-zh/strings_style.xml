@@ -27,6 +27,13 @@
     <string name="style_pages">页数</string>
     <string name="style_pages_one">一页</string>
     <string name="style_pages_auto">自动</string>
+    <string name="style_cover_screen">外屏</string>
+    <string name="style_cover_upright">竖向</string>
+    <string name="style_cover_turned">横向</string>
+    <string name="style_unfolded">展开</string>
+    <string name="style_unfolded_own">独立主屏幕</string>
+    <string name="style_unfolded_pages">页面</string>
+    <string name="style_unfolded_columns">展开列数</string>
     <string name="style_corners">圆角</string>
     <string name="style_corners_edge">直角</string>
     <string name="style_corners_soft">微圆</string>
@@ -89,12 +96,14 @@
     <string name="style_remove_background_title">移除背景？</string>
 
     <string name="style_terminal_hint">对之后打开的终端生效 · 用 pacman 安装更多字体，比如 ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">键盘建议</string>
+    <string name="style_keyboard_suggestions_hint">支持建议、滑动输入和语音输入；文字按词送到终端 · 下次打开键盘时生效</string>
     <plurals name="style_terminal_size">
         <item quantity="other">%1$s pt · 竖屏 %2$d 列</item>
     </plurals>
 
     <string name="pages_title">页面</string>
-    <string name="pages_intro">主屏幕的各个页面，从左到右排列。拖动 ≡ 来移动页面；用键盘的话，按 Enter 拿起 ≡，再用方向键移动。主屏幕默认停在第一个有小组件或应用的页面；排在它前面的 face 在它左边。</string>
+    <string name="pages_intro">主屏幕的各个页面，从左到右排列。拖动 ≡ 来移动页面；用键盘的话，按 Enter 拿起 ≡，再用方向键移动。主屏幕默认停在第一个有小组件或应用的页面；排在它前面的全屏小组件在它左边。</string>
     <string name="pages_loading">正在加载…</string>
     <string name="pages_remove_named">移除 %1$s？</string>
     <string name="pages_remove_page">移除这个页面？</string>
@@ -106,7 +115,7 @@
     </plurals>
     <string name="pages_empty">空</string>
     <string name="pages_doesnt_compile">无法编译</string>
-    <string name="pages_face">face</string>
+    <string name="pages_face">全屏</string>
     <string name="pages_home">主屏幕</string>
     <string name="pages_edit">编辑</string>
     <string name="pages_share">分享</string>

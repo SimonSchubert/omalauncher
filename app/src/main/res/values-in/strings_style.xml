@@ -27,6 +27,13 @@
     <string name="style_pages">halaman</string>
     <string name="style_pages_one">satu</string>
     <string name="style_pages_auto">otomatis</string>
+    <string name="style_cover_screen">layar luar</string>
+    <string name="style_cover_upright">tegak</string>
+    <string name="style_cover_turned">diputar</string>
+    <string name="style_unfolded">terbuka</string>
+    <string name="style_unfolded_own">layar sendiri</string>
+    <string name="style_unfolded_pages">halaman</string>
+    <string name="style_unfolded_columns">kolom terbuka</string>
     <string name="style_corners">sudut</string>
     <string name="style_corners_edge">tajam</string>
     <string name="style_corners_soft">lembut</string>
@@ -89,12 +96,14 @@
     <string name="style_remove_background_title">hapus latar belakang?</string>
 
     <string name="style_terminal_hint">untuk terminal yang dibuka mulai sekarang · lebih banyak lewat pacman, misalnya ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">saran keyboard</string>
+    <string name="style_keyboard_suggestions_hint">saran, ketik geser, dan dikte; teks masuk ke terminal per kata · mulai saat keyboard dibuka berikutnya</string>
     <plurals name="style_terminal_size">
         <item quantity="other">%1$s pt · %2$d kolom saat potret</item>
     </plurals>
 
     <string name="pages_title">halaman</string>
-    <string name="pages_intro">Halaman layar utama, dari kiri ke kanan. Seret lewat ≡ untuk memindahkannya, atau dengan keyboard angkat ≡ dengan Enter lalu pindahkan dengan tombol panah. Layar utama terbuka di halaman pertama yang berisi widget atau aplikasi; face sebelumnya berada di sebelah kirinya.</string>
+    <string name="pages_intro">Halaman layar utama, dari kiri ke kanan. Seret lewat ≡ untuk memindahkannya, atau dengan keyboard angkat ≡ dengan Enter lalu pindahkan dengan tombol panah. Layar utama terbuka di halaman pertama yang berisi widget atau aplikasi; widget layar penuh sebelumnya berada di sebelah kirinya.</string>
     <string name="pages_loading">memuat…</string>
     <string name="pages_remove_named">hapus %1$s?</string>
     <string name="pages_remove_page">hapus halaman ini?</string>
@@ -106,7 +115,7 @@
     </plurals>
     <string name="pages_empty">kosong</string>
     <string name="pages_doesnt_compile">tidak bisa dikompilasi</string>
-    <string name="pages_face">face</string>
+    <string name="pages_face">layar penuh</string>
     <string name="pages_home">layar utama</string>
     <string name="pages_edit">edit</string>
     <string name="pages_share">bagikan</string>

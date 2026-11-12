@@ -1,0 +1,616 @@
+app "sky raid" {
+  meta { owl: 21; description: "A pixel-art plane shooter: fly over islands, jungle, desert, ice and volcanoes, shoot down fighters, bombers, tanks and troops, pick up power-ups and beat the boss of each of five stages"; version: "1.0"; license: "MIT"; category: "games" }
+  // How it works: `every frame` moves everything by its speed times `dt`. The ground is a Shader:
+  // a height made of a few sines, cut into sea, shore, land and forest by the stage's colors, in
+  // blocks the size of an art pixel, so it looks drawn. The same sines in OWL tell where land is,
+  // so tanks and troops only come on land. Planes, tanks and letters are sprites in one palette.
+  // Every enemy flies on one formula: x0 + vx * t + sin(t * fr + ph) * amp, and y likewise.
+  title: ""
+  statusBar: false
+  edge: true
+  fps: mode == "play" || mode == "clear" ? 60 : 30
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" shape-rendering="crispEdges">
+    <clipPath id="t"><rect width="256" height="256" rx="56"/></clipPath>
+    <g clip-path="url(#t)"><path fill="#3b5dc9" d="M0 0h16v16h-16zM16 16h16v16h-16zM32 32h16v16h-16zM32 48h16v16h-16zM144 48h32v16h-32zM32 64h16v16h-16zM16 80h16v16h-16zM208 80h16v16h-16zM16 96h16v16h-16zM128 96h16v16h-16zM208 96h32v16h-32zM16 112h16v16h-16zM96 112h16v16h-16zM144 112h80v16h-80zM0 128h16v16h-16zM144 128h16v16h-16zM192 128h16v16h-16zM96 144h16v16h-16zM144 144h16v16h-16zM48 160h16v16h-16zM96 160h32v16h-32zM144 160h32v16h-32zM48 176h16v16h-16zM112 176h112v16h-112zM48 192h16v16h-16zM112 192h16v16h-16zM160 192h16v16h-16zM224 192h16v16h-16zM32 208h48v16h-48zM128 208h48v16h-48zM16 224h80v16h-80zM160 224h16v16h-16zM208 224h16v16h-16zM32 240h80v16h-80zM176 240h16v16h-16zM98 98h12v12h-12zM146 98h12v12h-12zM86 110h24v12h-24zM146 110h24v12h-24zM74 122h24v12h-24zM158 122h24v12h-24zM62 134h24v12h-24zM170 134h24v12h-24zM62 146h12v12h-12zM182 146h12v12h-12zM98 158h12v12h-12zM146 158h12v12h-12zM98 182h12v12h-12zM146 182h12v12h-12zM86 194h24v12h-24zM146 194h24v12h-24z"/><path fill="#38b764" d="M16 0h16v16h-16zM32 16h16v16h-16zM160 16h16v16h-16zM48 32h16v16h-16zM128 32h32v16h-32zM48 48h16v16h-16zM128 48h16v16h-16zM48 64h16v16h-16zM32 80h32v16h-32zM112 80h16v16h-16zM32 96h16v16h-16zM80 96h32v16h-32zM32 112h16v16h-16zM80 112h16v16h-16zM32 128h64v16h-64zM160 128h32v16h-32zM0 144h80v16h-80zM160 144h32v16h-32zM16 160h32v16h-32zM16 176h32v16h-32zM0 192h32v16h-32zM0 208h16v16h-16zM0 224h16v16h-16zM224 224h16v16h-16zM16 240h16v16h-16zM208 240h32v16h-32z"/><path fill="#257179" d="M32 0h128v16h-128zM48 16h112v16h-112zM64 32h64v16h-64zM64 48h64v16h-64zM64 64h64v16h-64zM64 80h48v16h-48zM48 96h32v16h-32zM48 112h32v16h-32zM0 160h16v16h-16zM0 176h16v16h-16zM240 208h16v16h-16zM240 224h16v16h-16zM0 240h16v16h-16zM240 240h16v16h-16z"/><path fill="#ffcd75" d="M160 0h16v16h-16zM160 32h16v16h-16zM128 64h16v16h-16zM128 80h16v16h-16zM112 96h16v16h-16zM16 128h16v16h-16zM80 144h16v16h-16zM192 144h16v16h-16zM176 160h32v16h-32zM32 192h16v16h-16zM128 192h32v16h-32zM240 192h16v16h-16zM16 208h16v16h-16zM224 208h16v16h-16zM192 240h16v16h-16zM122 206h12v12h-12z"/><path fill="#29366f" d="M176 0h80v16h-80zM0 16h16v16h-16zM176 16h80v16h-80zM0 32h32v16h-32zM176 32h80v16h-80zM0 48h32v16h-32zM176 48h80v16h-80zM0 64h32v16h-32zM144 64h112v16h-112zM0 80h16v16h-16zM144 80h64v16h-64zM224 80h32v16h-32zM0 96h16v16h-16zM144 96h64v16h-64zM240 96h16v16h-16zM0 112h16v16h-16zM112 112h32v16h-32zM224 112h32v16h-32zM96 128h48v16h-48zM208 128h48v16h-48zM112 144h32v16h-32zM208 144h48v16h-48zM64 160h32v16h-32zM128 160h16v16h-16zM208 160h48v16h-48zM64 176h48v16h-48zM224 176h32v16h-32zM64 192h48v16h-48zM176 192h48v16h-48zM80 208h48v16h-48zM176 208h48v16h-48zM96 224h64v16h-64zM176 224h32v16h-32zM112 240h64v16h-64z"/><path fill="#0d0e18" fill-opacity="0.35" d="M125.4 50h10.2v10.2h-10.2zM115.2 60.2h30.6v10.2h-30.6zM115.2 70.4h30.6v10.2h-30.6zM105 80.6h51v10.2h-51zM105 90.8h51v10.2h-51zM105 101h51v10.2h-51zM94.8 111.2h71.4v10.2h-71.4zM84.6 121.4h91.8v10.2h-91.8zM74.4 131.6h112.2v10.2h-112.2zM64.2 141.8h132.6v10.2h-132.6zM54 152h153v10.2h-153zM54 162.2h153v10.2h-153zM105 172.4h51v10.2h-51zM94.8 182.6h71.4v10.2h-71.4zM84.6 192.8h91.8v10.2h-91.8zM84.6 203h91.8v10.2h-91.8zM125.4 213.2h10.2v10.2h-10.2z"/><path fill="#1a1c2c" d="M122 26h12v12h-12zM110 38h12v12h-12zM134 38h12v12h-12zM110 50h12v12h-12zM134 50h12v12h-12zM98 62h12v12h-12zM146 62h12v12h-12zM98 74h12v12h-12zM146 74h12v12h-12zM98 86h12v12h-12zM146 86h12v12h-12zM86 98h12v12h-12zM158 98h12v12h-12zM74 110h12v12h-12zM170 110h12v12h-12zM62 122h12v12h-12zM182 122h12v12h-12zM50 134h12v12h-12zM194 134h12v12h-12zM38 146h12v12h-12zM206 146h12v12h-12zM38 158h60v12h-60zM158 158h60v12h-60zM98 170h12v12h-12zM146 170h12v12h-12zM86 182h12v12h-12zM110 182h12v12h-12zM134 182h12v12h-12zM158 182h12v12h-12zM74 194h12v12h-12zM110 194h12v12h-12zM134 194h12v12h-12zM170 194h12v12h-12zM74 206h48v12h-48zM134 206h48v12h-48z"/><path fill="#f4f4f4" d="M122 38h12v12h-12zM122 74h12v12h-12z"/><path fill="#94b0c2" d="M122 50h12v12h-12zM110 62h12v12h-12zM134 62h12v12h-12zM110 86h12v12h-12zM134 86h12v12h-12zM110 98h36v12h-36zM110 110h36v12h-36zM110 122h36v12h-36zM110 134h36v12h-36zM110 146h36v12h-36zM110 158h36v12h-36zM110 170h36v12h-36zM122 182h12v12h-12zM122 194h12v12h-12z"/><path fill="#73eff7" d="M122 62h12v12h-12zM110 74h12v12h-12zM134 74h12v12h-12zM122 86h12v12h-12z"/><path fill="#41a6f6" d="M98 122h12v12h-12zM146 122h12v12h-12zM86 134h24v12h-24zM146 134h24v12h-24zM74 146h36v12h-36zM146 146h36v12h-36z"/><path fill="#b13e53" d="M50 146h12v12h-12zM194 146h12v12h-12z"/><path fill="#ef7d57" d="M122 218h12v12h-12z"/></g>
+  </svg>"""
+
+  state mode = "title"
+  state level = 1
+  state best = 0 persist
+  // how many stages are cleared, which opens the next one in the stage list, and each stage's best score
+  state cleared = 0 persist
+  state stageBest = [0, 0, 0, 0, 0] persist
+  // the score as the stage started, so a stage's own score is score - stageFrom
+  state stageFrom = 0
+  state score = 0
+  state hp = 3
+  state power = 1
+  state bombs = 2
+  // stage time and how far the ground has scrolled, in seconds and dp
+  state gt = 0
+  state scroll = 0
+  // the player's plane, and how far it leans into a turn
+  state px = 200
+  state py = 600
+  state bank = 0
+  state shots = []
+  state eshots = []
+  state foes = []
+  state items = []
+  state booms = []
+  state scorch = []
+  state pops = []
+  state nextId = 0
+  state fireAt = 0
+  state spawnAt = 0
+  state bossOut = false
+  state safeUntil = 0
+  state bombAt = -10
+  state clearAt = 0
+  state overAt = 0
+  // set by the store's screenshots (screens.txt) to hold a scene still while it's drawn in each theme
+  state still = false
+
+  let W = screenWidth ?? 400
+  let H = screenHeight ?? 800
+  let TOP = max(screenTop ?? 0, 10)
+  let BOT = screenInset ?? 0
+  // one art pixel, in dp
+  let P = W / 140
+  let SPD = 38
+  let LEN = 46 + level * 6
+  let diff = 1 + (level - 1) * 0.3
+  let LEVELS = [
+    {name: "CORAL COAST", sea: 0.5, deep: #29366f, shal: #3b5dc9, shore: #ffcd75, low: #38b764, high: #257179, hi: #a7f070},
+    {name: "JUNGLE RIVER", sea: 0.36, deep: #257179, shal: #41a6f6, shore: #94824a, low: #38b764, high: #1d5a3c, hi: #a7f070},
+    {name: "DESERT STORM", sea: 0.3, deep: #257179, shal: #41a6f6, shore: #38b764, low: #ffcd75, high: #ef7d57, hi: #fff1c4},
+    {name: "FROZEN FJORD", sea: 0.46, deep: #29366f, shal: #566c86, shore: #94b0c2, low: #f4f4f4, high: #333c57, hi: #73eff7},
+    {name: "VOLCANO", sea: 0.42, deep: #b13e53, shal: #ef7d57, shore: #1a1c2c, low: #333c57, high: #5d275d, hi: #ffcd75}
+  ]
+  let lv = LEVELS[clamp(level, 1, 5) - 1]
+  let boss = foes.find(f => f.k == "boss")
+  // the stage list on the title screen: a row per stage
+  let gridTop = TOP + 200
+  let ROW = 74
+
+  // The art: one letter per pixel, colored by PAL.
+  let PAL = {B: #3b5dc9, C: #73eff7, D: #333c57, F: #ef7d57, G: #a7f070, K: #1a1c2c, L: #41a6f6, N: #29366f, O: #ef7d57, P: #5d275d, R: #b13e53, S: #94b0c2, T: #257179, W: #f4f4f4, Y: #ffcd75, f: #ffcd75, g: #38b764, p: #94b0c2, s: #566c86, u: #333c57, v: #566c86}
+  let SHADOW = {B: alpha(#0d0e18, 0.3), C: alpha(#0d0e18, 0.3), D: alpha(#0d0e18, 0.3), F: alpha(#0d0e18, 0.3), G: alpha(#0d0e18, 0.3), K: alpha(#0d0e18, 0.3), L: alpha(#0d0e18, 0.3), N: alpha(#0d0e18, 0.3), O: alpha(#0d0e18, 0.3), P: alpha(#0d0e18, 0.3), R: alpha(#0d0e18, 0.3), S: alpha(#0d0e18, 0.3), T: alpha(#0d0e18, 0.3), W: alpha(#0d0e18, 0.3), Y: alpha(#0d0e18, 0.3), f: alpha(#0d0e18, 0.3), g: alpha(#0d0e18, 0.3), p: alpha(#0d0e18, 0.12), s: alpha(#0d0e18, 0.3), u: alpha(#0d0e18, 0.3), v: alpha(#0d0e18, 0.3)}
+  let FLASH = {B: #f4f4f4, C: #f4f4f4, D: #f4f4f4, F: #f4f4f4, G: #f4f4f4, K: #ffcd75, L: #f4f4f4, N: #f4f4f4, O: #f4f4f4, P: #f4f4f4, R: #f4f4f4, S: #f4f4f4, T: #f4f4f4, W: #f4f4f4, Y: #f4f4f4, f: #f4f4f4, g: #f4f4f4, s: #f4f4f4, u: #f4f4f4, v: #f4f4f4}
+  let JET = [".......K.......", "......KWK......", "......KSK......", ".....KSCSK.....", ".....KCWCK.....", ".....KSCSK.....", "....KBSSSBK....", "...KBBSSSBBK...", "..KBBLSSSLBBK..", ".KBBLLSSSLLBBK.", "KRBLLLSSSLLLBRK", "KKKKKBSSSBKKKKK", ".....KSSSK.....", "....KBKSKBK....", "...KBBKSKBBK...", "...KKKKfKKKK...", ".......F......."]
+  let FIGHTER = ["...KKKKKKK...", "..KPPPRPPPK..", "..KRRRRRRRK..", "...KKRRRKK...", ".KKKKRRRKKKK.", "KPPPPPRPPPPPK", "KRRRRRCRRRRRK", "KRYRRRCRRRYRK", ".KKKKRRRKKKK.", "....KRRRK....", ".....KOK.....", "..ppppppppp.."]
+  let BOMBER = [".......................", ".....KKKKKKKKKKKKK.....", "....KTTTTTTTTTTTTTK....", "....KgggggggggggggK....", "....KgggggggggggggK....", ".....KKKKgggggKKKK.....", "...KKK..KgggggK..KKK...", "KKKTTTKKKgggggKKKTTTKKK", "TTTTsTTTTgggggTTTTsTTTT", "gggTsTgggggggggggTsTggg", "gWgTsTWgggggggggWTsTgWg", "gggTsTgggggGgggggTsTggg", "KKKTsTKKKggGggKKKTsTKKK", "..KTsTK.KgggggK.KTsTK..", "..KTsTK.KgggggK.KTsTK..", "..KDDDK.KggCggK.KDDDK..", "..ppppp.KggCggK.ppppp..", ".........KCCCK........."]
+  let BOSS = ["................K................", ".........KKKKKKKsKKKKKKK.........", "........KDDDDDDDDDDDDDDDK........", "........KsssssssssssssssK........", "........KsssssssssssssssK........", "........KsssssssssssssssK........", ".........KKKKsssSsssKKKK.........", "............KsssSsssK............", "............KssRRRssK............", "............KssRRRssK............", "KKKKKKKKKKKKKsssSsssKKKKKKKKKKKKK", "DDDDDDDDDDDDDsssSsssDDDDDDDDDDDDD", "DDDDDDDDDDDDDsssSsssDDDDDDDDDDDDD", "ssDSDsRRDSDsssssSsssssDSDRRsDSDss", "ssDSDsRRDSDsssssSsssssDSDRRsDSDss", "ssDSDsssDSDsssssSsssssDSDsssDSDss", "sSDSDSSSDSDSSssRRRssSSDSDSSSDSDSs", "KKDSDKKKDSDKKssRRRssKKDSDKKKDSDKK", ".KDSDK.KDSDKKsssSsssKKDSDK.KDSDK.", ".KDSDK.KDSDKKsssSsssKKDSDK.KDSDK.", ".KDSDK.KDSDKKsssssssKKDSDK.KDSDK.", ".ppppp.pppppKsssssssKppppp.ppppp.", "............KsssWsssK............", "............KsCCCCCsK............", "............KsCCCCCsK............", ".............KKCCCKK............."]
+  let HULL = ["KKKKKKKKKKK", "KuKTTTTTKuK", "KvKTgggTKvK", "KuKTgggTKuK", "KvKTgGgTKvK", "KuKTgggTKuK", "KvKTgggTKvK", "KuKTgggTKuK", "KvKTgggTKvK", "KuKTgggTKuK", "KvKTTTTTKvK", "KuKKKKKKKuK", "KKK.....KKK"]
+  let TURRET = ["...K...", "..KSK..", "..KSK..", "..KSK..", ".KKsKK.", "KgggggK", "KgGgGgK", "KgggggK", ".KKKKK."]
+  let NEST = ["...KKKKK...", ".KKYOYOYKK.", ".KYOYOYOYK.", "KYOsssssOYK", "KOsDDDDDsOK", "KYsDDDDDsYK", "KOsDDDDDsOK", "KYOsssssOYK", ".KYOYOYOYK.", ".KKYOYOYKK.", "...KKKKK..."]
+  let FLAK = [".K.K.", ".S.S.", ".S.S.", ".S.S.", "KsKsK", "KDsDK", "KDsDK", ".KKK."]
+  let TROOP = [[".KKK.", "KgGgK", "KgggK", "KTTTS", ".KTKS", ".K.K."], [".KKK.", "KgGgK", "KgggK", "KTTTS", ".KTKS", "K...K"]]
+  let ITEM = {P: [".KKKKKKK.", "KRRRRRRRK", "KRWWWWRRK", "KRWRRRWRK", "KRWWWWRRK", "KRWRRRRRK", "KRWRRRRRK", "KRRRRRRRK", ".KKKKKKK."], B: [".KKKKKKK.", "KBBBBBBBK", "KBWWWWBBK", "KBWBBBWBK", "KBWWWWBBK", "KBWBBBWBK", "KBWWWWBBK", "KBBBBBBBK", ".KKKKKKK."], H: [".KK...KK.", "KRRK.KRRK", "KRWRKRRRK", "KRRRRRRRK", ".KRRRRRK.", "..KRRRK..", "...KRK...", "....K...."], M: ["..KKKKK..", ".KYWYYYK.", "KYYYOYYYK", "KYOOOOOYK", "KYYOOOYYK", "KYYOYOYYK", ".KYYYYOK.", "..KKKKK.."]}
+  let BOOM = [[".............", ".............", ".............", ".............", ".............", ".....OO......", ".....YWY.....", ".....ORY.....", ".............", ".............", ".............", ".............", "............."], [".............", ".............", "......R......", "......OO.....", "...OOYYYO....", "...OYYWWOO...", "...OOYWWYOR..", "...ROWWWY....", "...ROYOYR....", ".....RO.R....", "......R......", ".............", "............."], [".............", "....RR.......", "...RRROROR...", "..ROOYYYOO...", "..OYYYYYYYR..", "..OOYWWYWYR..", "..RYWWWWWYR..", "..OOYWWWYOO..", "..ROYYWWOOR..", "..ROOYOYORR..", "....ROORO....", ".....RR......", "............."], [".............", ".....Ds......", "..DDDsssDD...", "..ssssOOOsD..", "..ssO..Osss..", ".DsOO...OOs..", ".sss.....Oss.", "DsssO....Os..", "..DOO..OOsss.", ".DsssOOOsss..", "...ssssssDD..", "....sDsD.D...", "............."], [".............", ".....Ds......", "...D..ss..s..", "...sss..s....", ".ss.......D..", "...........s.", ".s.........D.", "..........ssD", ".ss......DsD.", "..DD....DsD..", "..D....s.Ds..", "...ssDDDs....", ".....D......."]]
+  let CLOUD = ["..............", ".....WWWW.....", "..WWWWWWWWWW..", ".WWWWWWWWWWWW.", ".SSWWWSWWWWSS.", "..SSSSSSSSSSS.", "........SS...."]
+  let LOCK = ["..KKK..", ".KsssK.", ".Ks.sK.", "KKKKKKK", "KSSSSSK", "KSSKSSK", "KSSKSSK", "KsssssK", "KKKKKKK"]
+  // a 3x5 pixel font
+  let FONT = {"A": ["aaa", "a.a", "aaa", "a.a", "a.a"], "B": ["aa.", "a.a", "aaa", "a.a", "aaa"], "C": ["aaa", "a..", "a..", "a..", "aaa"], "D": ["aa.", "a.a", "a.a", "a.a", "aa."], "E": ["aaa", "a..", "aa.", "a..", "aaa"], "F": ["aaa", "a..", "aa.", "a..", "a.."], "G": ["aaa", "a..", "a.a", "a.a", "aaa"], "H": ["a.a", "a.a", "aaa", "a.a", "a.a"], "I": ["aaa", ".a.", ".a.", ".a.", "aaa"], "J": ["..a", "..a", "..a", "a.a", ".a."], "K": ["a.a", "aa.", "a..", "aa.", "a.a"], "L": ["a..", "a..", "a..", "a..", "aaa"], "M": ["a.a", "aaa", "a.a", "a.a", "a.a"], "N": ["aaa", "a.a", "a.a", "a.a", "a.a"], "O": ["aaa", "a.a", "a.a", "a.a", "aaa"], "P": ["aaa", "a.a", "aaa", "a..", "a.."], "Q": ["aaa", "a.a", "a.a", "aaa", "..a"], "R": ["aaa", "a.a", "aa.", "a.a", "a.a"], "S": ["aaa", "a..", "aaa", "..a", "aaa"], "T": ["aaa", ".a.", ".a.", ".a.", ".a."], "U": ["a.a", "a.a", "a.a", "a.a", "aaa"], "V": ["a.a", "a.a", "a.a", "a.a", ".a."], "W": ["a.a", "a.a", "a.a", "aaa", "a.a"], "X": ["a.a", "a.a", ".a.", "a.a", "a.a"], "Y": ["a.a", "a.a", ".a.", ".a.", ".a."], "Z": ["aaa", "..a", ".a.", "a..", "aaa"], "0": ["aaa", "a.a", "a.a", "a.a", "aaa"], "1": [".a.", "aa.", ".a.", ".a.", "aaa"], "2": ["aaa", "..a", "aaa", "a..", "aaa"], "3": ["aaa", "..a", "aaa", "..a", "aaa"], "4": ["a.a", "a.a", "aaa", "..a", "..a"], "5": ["aaa", "a..", "aaa", "..a", "aaa"], "6": ["aaa", "a..", "aaa", "a.a", "aaa"], "7": ["aaa", "..a", "..a", "..a", "..a"], "8": ["aaa", "a.a", "aaa", "a.a", "aaa"], "9": ["aaa", "a.a", "aaa", "..a", "aaa"], "-": ["...", "...", "aaa", "...", "..."], "+": ["...", ".a.", "aaa", ".a.", "..."], "!": [".a.", ".a.", ".a.", "...", ".a."], ".": ["...", "...", "...", "...", ".a."], ":": ["...", ".a.", "...", ".a.", "..."], "x": ["...", "a.a", ".a.", "a.a", "..."], "/": ["..a", "..a", ".a.", "a..", "a.."], "?": ["aa.", "..a", ".a.", "...", ".a."]}
+
+  let flick = floor(gt * 20) % 2
+  let pal = merge(PAL, {f: flick == 0 ? #ffcd75 : #ef7d57, F: flick == 0 ? #ef7d57 : #b13e53, p: alpha(#94b0c2, flick == 0 ? 0.9 : 0.35), u: flick == 0 ? #333c57 : #566c86, v: flick == 0 ? #566c86 : #333c57})
+
+  // Every line of text, drawn in the pixel font: s, x, y, size, color, and a from 0 (left) to 1 (right).
+  let playing = mode == "play" || mode == "clear"
+  let labels = (playing ? [
+    {s: pad(str(score), 7, "0"), x: 14, y: TOP + 8, p: 3.2, c: #f4f4f4, a: 0},
+    {s: "HI " + pad(str(max(best, score)), 7, "0"), x: 14, y: TOP + 30, p: 2, c: #94b0c2, a: 0},
+    {s: "STAGE ${level}", x: W / 2, y: TOP + 8, p: 2.4, c: #ffcd75, a: 0.5},
+    {s: "x${bombs}", x: W - 30, y: H - BOT - 36, p: 2.5, c: #f4f4f4, a: 1}
+  ] : []) + (mode == "play" && gt < 3.2 ? [
+    {s: "STAGE ${level}", x: W / 2, y: H * 0.36, p: 8, c: #ffcd75, a: 0.5},
+    {s: lv.name, x: W / 2, y: H * 0.36 + 56, p: 4, c: #f4f4f4, a: 0.5}
+  ] : []) + (mode == "play" && boss != null && boss.t < 2.5 && floor(boss.t * 4) % 2 == 0 ? [
+    {s: "WARNING", x: W / 2, y: H * 0.42, p: 8, c: #b13e53, a: 0.5}
+  ] : []) + (mode == "clear" ? [
+    {s: level == 5 ? "MISSION" : "STAGE", x: W / 2, y: H * 0.34, p: 8, c: #ffcd75, a: 0.5},
+    {s: level == 5 ? "COMPLETE" : "CLEAR", x: W / 2, y: H * 0.34 + 54, p: 8, c: #ffcd75, a: 0.5},
+    {s: "BONUS +${5000 * level}", x: W / 2, y: H * 0.34 + 120, p: 3.5, c: #f4f4f4, a: 0.5}
+  ] : []) + (mode == "title" ? [
+    {s: "SKY", x: W / 2, y: TOP + 20, p: 11, c: #ffcd75, a: 0.5},
+    {s: "RAID", x: W / 2, y: TOP + 88, p: 11, c: #ef7d57, a: 0.5},
+    {s: best > 0 ? "HI " + pad(str(best), 7, "0") : "PICK A STAGE", x: W / 2, y: TOP + 160, p: 2.5, c: #f4f4f4, a: 0.5},
+    {s: "DRAG TO STEER - GUNS FIRE ON THEIR OWN", x: W / 2, y: gridTop + 5 * ROW + 6, p: 2, c: #94b0c2, a: 0.5}
+  ] + flatten(range(5).map(i => [
+    {s: "STAGE ${i + 1}", x: 100, y: gridTop + i * ROW + 13, p: 2.5, c: i <= cleared ? #ffcd75 : #566c86, a: 0},
+    {s: i <= cleared ? LEVELS[i].name : "LOCKED", x: 100, y: gridTop + i * ROW + 37, p: 2, c: i <= cleared ? #f4f4f4 : #566c86, a: 0},
+    {s: (stageBest[i] ?? 0) > 0 ? pad(str(stageBest[i]), 7, "0") : (i == cleared && floor(gt * 2) % 2 == 0 ? "NEW" : ""), x: W - 38, y: gridTop + i * ROW + 39, p: 2, c: (stageBest[i] ?? 0) > 0 ? #94b0c2 : #a7f070, a: 1}
+  ])) : []) + (mode == "over" ? [
+    {s: "GAME", x: W / 2, y: H * 0.26, p: 12, c: #b13e53, a: 0.5},
+    {s: "OVER", x: W / 2, y: H * 0.26 + 76, p: 12, c: #b13e53, a: 0.5},
+    {s: pad(str(score), 7, "0"), x: W / 2, y: H * 0.26 + 170, p: 5, c: #f4f4f4, a: 0.5},
+    {s: score >= best && score > 0 ? "NEW HIGH SCORE!" : "HI " + pad(str(best), 7, "0"), x: W / 2, y: H * 0.26 + 214, p: 2.5, c: #ffcd75, a: 0.5},
+    {s: gt - overAt > 1.2 ? "TAP TO CONTINUE" : "", x: W / 2, y: H * 0.62, p: 3.5, c: #f4f4f4, a: 0.5}
+  ] : []) + (mode == "won" ? [
+    {s: "YOU WIN", x: W / 2, y: H * 0.24, p: 11, c: #a7f070, a: 0.5},
+    {s: "ALL FIVE STAGES CLEARED", x: W / 2, y: H * 0.24 + 70, p: 2.5, c: #f4f4f4, a: 0.5},
+    {s: pad(str(score), 7, "0"), x: W / 2, y: H * 0.24 + 120, p: 5, c: #ffcd75, a: 0.5},
+    {s: gt - overAt > 1.2 ? "TAP TO CONTINUE" : "", x: W / 2, y: H * 0.62, p: 3.5, c: #f4f4f4, a: 0.5}
+  ] : []) + pops.map(q => {s: q.s, x: q.x, y: q.y - q.t * 40, p: 2, c: q.c, a: 0.5})
+
+  // What a frame costs to draw, in Canvas drawing calls (a sprite costs one per run of a color
+  // along a row), out of 2000: past 1500 shadows are left out, and new waves wait.
+  let ink = 420 + len(shots) + len(eshots) * 2 + len(booms) * 40 + len(items) * 38 + len(scorch) * 30
+    + sum(foes.map(f => f.k == "f" ? 56 : (f.k == "b" ? 154 : (f.k == "boss" ? 282 : (f.k == "t" ? 123 : (f.k == "g" ? 93 : 18))))))
+    + sum(labels.map(l => len(l.s) * (l.p >= 3 ? 14 : 7)))
+  let shadows = ink < 1500
+
+  every frame {
+    if !still {
+      gt = gt + dt
+      scroll = scroll + SPD * dt
+      bank = bank * pow(0.01, dt)
+      booms = booms.map(b => merge(b, {t: b.t + dt, y: b.y + b.vy * dt})).filter(b => b.t < 0.62)
+      scorch = scorch.map(s => merge(s, {y: s.y + SPD * dt})).filter(s => s.y < H + 60)
+      pops = pops.map(q => merge(q, {t: q.t + dt})).filter(q => q.t < 1)
+
+      if mode == "clear" && gt - clearAt > 4 {
+        if level >= 5 {
+          mode = "won"
+          overAt = gt
+          best = max(best, score)
+        } else {
+          level = level + 1
+          stageFrom = score
+          // each stage starts with the simple gun again; power-ups are found anew
+          power = 1
+          bombs = min(5, bombs + 1)
+          // times are on the stage's clock, which starts again: none may be left from the last stage
+          gt = 0
+          scroll = 0
+          fireAt = 0
+          safeUntil = 0
+          bombAt = -10
+          spawnAt = 3
+          bossOut = false
+          foes = []
+          eshots = []
+          items = []
+          scorch = []
+          mode = "play"
+        }
+      }
+
+      // things keep flying while a stage ends and after the game is lost
+      if mode == "play" || mode == "clear" || mode == "over" {
+        shots = shots.map(b => merge(b, {x: b.x + b.vx * dt, y: b.y + b.vy * dt})).filter(b => b.y > -20 && b.x > -20 && b.x < W + 20)
+        eshots = eshots.map(b => merge(b, {x: b.x + b.vx * dt, y: b.y + b.vy * dt})).filter(b => b.y > -30 && b.y < H + 30 && b.x > -30 && b.x < W + 30)
+        items = items.map(i => merge(i, {t: i.t + dt, y: i.y + 55 * dt, x: clamp(i.x + sin(i.t * 3) * 30 * dt, 16, W - 16)})).filter(i => i.y < H + 30)
+
+        // Everyone moves on their own path; the boss stops near the top and sways.
+        foes = foes
+          .map(f => merge(f, {t: f.t + dt, ox: f.x, oy: f.y}))
+          .map(f => merge(f, {
+            x: f.x0 + f.vx * f.t + sin(f.t * f.fr + f.ph) * f.amp,
+            y: f.k == "boss" ? min(f.y0 + f.vy * f.t, TOP + 130) : f.y0 + f.vy * f.t + cos(f.t * f.fr + f.ph) * f.ampy
+          }))
+          .map(f => merge(f, {hx: f.ox < -90 ? 0 : lerp(f.hx, f.x - f.ox, 0.3), hy: f.oy < -90 ? 1 : lerp(f.hy, f.y - f.oy, 0.3)}))
+          .filter(f => f.y < H + 80 && f.x > -60 - abs(f.vx) * 2 && f.x < W + 60 + abs(f.vx) * 2)
+
+      }
+
+      if mode == "play" {
+        // The guns: more barrels and a wider spread with each power-up.
+        // fireAt is at most 0.1 s ahead; one further ahead is from an older clock, and doesn't hold the guns
+        if gt >= fireAt || fireAt - gt > 0.2 {
+          let lanes = power == 1 ? [[-6, 0], [6, 0]] : (power == 2 ? [[-6, 0], [6, 0], [0, -140], [0, 140]] : (power == 3 ? [[-8, 0], [0, 0], [8, 0], [-4, -200], [4, 200]] : [[-9, 0], [-3, 0], [3, 0], [9, 0], [-6, -170], [6, 170], [-12, -330], [12, 330]]))
+          let more = shots + lanes.map((l, i) => {id: nextId + i, x: px + l[0], y: py - 20, vx: l[1], vy: -760})
+          shots = drop(more, max(0, len(more) - 60))
+          nextId = nextId + len(lanes)
+          fireAt = gt + 0.1
+        }
+        // A new wave, sooner on later stages, until the boss comes.
+        if !bossOut && gt >= LEN {
+          bossOut = true
+          foes = foes + [{id: nextId, k: "boss", g: false, x0: W / 2, y0: -110, vx: 0, vy: 60, fr: 0.55, ph: 0, amp: W * 0.3, ampy: 0, t: 0, x: W / 2, y: -110, hx: 0, hy: 1, hp: 140 * diff, max: 140 * diff, r: 44, sc: 5000, fire: 1.05 / diff, fireAt: 3, drop: "H", hit: -1}]
+          nextId = nextId + 1
+        }
+        if !bossOut && gt >= spawnAt && len(foes) < 22 && ink < 1250 {
+          let roll = random()
+          let pick = roll < 0.3 ? "v" : (roll < 0.48 ? "swoop" : (roll < 0.63 ? "tank" : (roll < 0.76 ? "troops" : (roll < 0.88 ? "flak" : "bomber"))))
+          // Ground units need land: try a few places, with the same sines as the Shader.
+          let wy = -30 - scroll
+          let landX = range(6).map(i => 40 + random() * (W - 80)).find(cx => 0.5 + 0.22 * sin(cx * 0.011 + 1.7 * sin(wy * 0.006)) + 0.17 * sin(wy * 0.0093 + 1.3 * sin(cx * 0.013 + 2)) + 0.08 * sin((cx + wy) * 0.023) + 0.05 * sin((cx - wy) * 0.041 + 1) > lv.sea + 0.05)
+          let ground = pick == "tank" || pick == "troops" || pick == "flak"
+          let wave = ground && landX == null ? "v" : (pick == "bomber" && gt < 12 ? "swoop" : (pick == "flak" && level < 2 ? "tank" : pick))
+          let n = wave == "v" ? 5 : (wave == "swoop" ? 4 + floor(level / 2) : (wave == "tank" ? (level >= 3 ? 2 : 1) : (wave == "troops" ? 6 : 1)))
+          let cx = wave == "v" ? 70 + random() * (W - 140) : (landX ?? W / 2)
+          let side = random() < 0.5 ? -1 : 1
+          let swoopY = 70 + random() * H * 0.25
+          let leaderDrop = random() < 0.4 ? "P" : ""
+          foes = foes + range(n).map(i => [random()].map(r =>
+            wave == "v" ? {id: nextId + i, k: "f", g: false, x0: cx + (i - 2) * 34, y0: -30 - abs(i - 2) * 24, vx: 0, vy: 120 + level * 14, fr: 1.4, ph: 0, amp: 46, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(2 * diff), max: 2, r: 15, sc: 100, fire: level >= 2 && i % 2 == 0 ? 2.6 / diff : 0, fireAt: 0.8 + r * 1.5, drop: i == 2 ? leaderDrop : "", hit: -1}
+            : (wave == "swoop" ? {id: nextId + i, k: "f", g: false, x0: side < 0 ? -30 - i * 44 : W + 30 + i * 44, y0: swoopY, vx: -side * (150 + level * 12), vy: 34, fr: 2.2, ph: i * 0.6, amp: 0, ampy: 34, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(2 * diff), max: 2, r: 15, sc: 120, fire: level >= 3 && i == 1 ? 1.4 : 0, fireAt: 1 + r, drop: "", hit: -1}
+            : (wave == "tank" ? {id: nextId + i, k: "t", g: true, x0: clamp(cx + i * 46, 30, W - 30), y0: -30 - i * 40, vx: 0, vy: SPD, fr: 0, ph: 0, amp: 0, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(6 * diff), max: 6, r: 16, sc: 300, fire: 2.3 / diff, fireAt: 1 + r, drop: r < 0.25 ? "P" : "", hit: -1}
+            : (wave == "troops" ? {id: nextId + i, k: "s", g: true, x0: cx + (i % 3) * 13 - 13, y0: -20 - floor(i / 3) * 15, vx: 0, vy: SPD, fr: 1.3, ph: i * 1.1 + (side > 0 ? 0 : 3.1), amp: 9, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: 1, max: 1, r: 9, sc: 50, fire: level >= 2 && i % 3 == 0 ? 3.2 / diff : 0, fireAt: 1.5 + r * 2, drop: "", hit: -1}
+            : (wave == "flak" ? {id: nextId + i, k: "g", g: true, x0: cx, y0: -34, vx: 0, vy: SPD, fr: 0, ph: 0, amp: 0, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(10 * diff), max: 10, r: 18, sc: 400, fire: 2.2 / diff, fireAt: 1.2, drop: r < 0.35 ? "B" : "", hit: -1}
+            : {id: nextId + i, k: "b", g: false, x0: 70 + r * (W - 140), y0: -70, vx: 0, vy: 42, fr: 0.5, ph: 0, amp: 30, ampy: 0, t: 0, x: -99, y: -99, hx: 0, hy: 1, hp: round(22 * diff), max: 22, r: 30, sc: 800, fire: 1.9 / diff, fireAt: 1.4, drop: "P", hit: -1})))))[0])
+          nextId = nextId + n
+          spawnAt = gt + max(0.8, (2.5 - level * 0.25) * (0.7 + random() * 0.6))
+        }
+
+        // Enemy fire: aimed shots, a bomber's fan, the flak's spread, and the boss's three patterns.
+        let shooters = foes.filter(f => f.fire > 0 && f.t >= f.fireAt && f.y > 30 && f.y < H * 0.7 && f.x > 0 && f.x < W)
+        if len(shooters) > 0 {
+          let bs = 140 + level * 18
+          let fresh = eshots + flatten(shooters.map(f =>
+            (f.k == "boss"
+              ? (floor(f.t / 3) % 3 == 0 ? range(12 + level * 2).map(i => i * 6.283 / (12 + level * 2) + f.t)
+                : (floor(f.t / 3) % 3 == 1 ? [-0.36, -0.18, 0, 0.18, 0.36].map(a => a + atan2(py - f.y, px - f.x))
+                  : [0, 2.094, 4.189].map(a => a + f.t * 2.3)))
+              : (f.k == "b" ? [-0.6, -0.3, 0, 0.3, 0.6].map(a => a + 1.5708)
+                : (f.k == "g" ? [-0.2, 0, 0.2].map(a => a + atan2(py - f.y, px - f.x)) : [atan2(py - f.y, px - f.x)])))
+            .map(a => {x: f.x, y: f.y + (f.k == "boss" ? 30 : 0), vx: cos(a) * bs, vy: sin(a) * bs})
+          ))
+          eshots = drop(fresh, max(0, len(fresh) - 110))
+          foes = foes.map(f => f.fire > 0 && f.t >= f.fireAt && f.y > 30 && f.y < H * 0.7 && f.x > 0 && f.x < W ? merge(f, {fireAt: f.t + f.fire * (f.k == "boss" && floor(f.t / 3) % 3 == 2 ? 0.3 : 0.75 + random() * 0.5)}) : f)
+        }
+
+        // Our bullets: each one that touches an enemy is spent on it.
+        let hitsBy = foes.map(f => shots.filter(b => abs(b.x - f.x) < f.r + 3 && abs(b.y - f.y) < (f.k == "boss" ? f.r * 0.8 : f.r) + 8))
+        if any(hitsBy, h => len(h) > 0) {
+          let used = flatten(hitsBy).map(b => b.id)
+          shots = shots.filter(b => !any(used, u => u == b.id))
+          foes = foes.map((f, i) => len(hitsBy[i]) > 0 ? merge(f, {hp: f.hp - len(hitsBy[i]), hit: gt}) : f)
+        }
+
+        // The dead explode, leave a scorch mark on the ground, and sometimes something to pick up.
+        let dead = foes.filter(f => f.hp <= 0)
+        if len(dead) > 0 {
+          foes = foes.filter(f => f.hp > 0)
+          score = score + sum(dead.map(f => f.sc))
+          let blasts = booms + flatten(dead.map(f => f.k == "boss"
+            ? range(14).map(j => [random(), random()].map(r => {x: f.x + (r[0] - 0.5) * 120, y: f.y + (r[1] - 0.5) * 80, t: -j * 0.08, s: 2 + r[0] * 1.5, vy: 20})[0])
+            : (f.k == "b" ? range(4).map(j => {x: f.x + (j % 2 - 0.5) * 40, y: f.y + (floor(j / 2) - 0.5) * 30, t: -j * 0.07, s: 1.6, vy: 30}) : [{x: f.x, y: f.y, t: 0, s: f.r / 12, vy: f.g ? SPD : 40}])))
+          booms = drop(blasts, max(0, len(blasts) - 24))
+          let marks = scorch + dead.filter(f => f.g && f.k != "s").map(f => {x: f.x, y: f.y})
+          scorch = drop(marks, max(0, len(marks) - 8))
+          items = items + dead.map(f => [random()].map(r => {k: f.drop != "" ? f.drop : (r < 0.045 ? "M" : (r < 0.065 ? "B" : (r < 0.08 ? "H" : ""))), x: f.x, y: f.y, t: 0})[0]).filter(i => i.k != "")
+          if any(dead, f => f.k == "boss") {
+            mode = "clear"
+            clearAt = gt
+            score = score + 5000 * level
+            cleared = max(cleared, level)
+            stageBest = set(range(5).map(i => stageBest[i] ?? 0), level - 1, max(stageBest[level - 1] ?? 0, score - stageFrom))
+            let wreck = booms + foes.map(f => {x: f.x, y: f.y, t: -0.3, s: f.r / 12, vy: 40})
+            booms = drop(wreck, max(0, len(wreck) - 30))
+            foes = []
+            eshots = []
+          }
+        }
+
+        // Pick-ups: power, bombs, hearts and medals.
+        let got = items.filter(i => abs(i.x - px) < 26 && abs(i.y - py) < 28)
+        if len(got) > 0 {
+          items = items.filter(i => !(abs(i.x - px) < 26 && abs(i.y - py) < 28))
+          power = min(4, power + count(got, i => i.k == "P"))
+          bombs = min(5, bombs + count(got, i => i.k == "B"))
+          hp = min(5, hp + count(got, i => i.k == "H"))
+          score = score + count(got, i => i.k == "M") * 1000 * level
+          pops = pops + got.map(i => {x: i.x, y: i.y - 20, t: 0, s: i.k == "P" ? (power >= 4 ? "MAX POWER" : "POWER UP") : (i.k == "B" ? "+1 BOMB" : (i.k == "H" ? "+1 LIFE" : "+${1000 * level}")), c: i.k == "M" ? #ffcd75 : (i.k == "H" ? #ef7d57 : #a7f070)})
+        }
+
+        // Hit by a bullet or a plane: a heart and a power level gone, and a moment to get clear.
+        if (gt >= safeUntil || safeUntil - gt > 2.5) && (any(eshots, b => abs(b.x - px) < 7 && abs(b.y - py) < 9) || any(foes, f => !f.g && abs(f.x - px) < f.r * 0.7 + 8 && abs(f.y - py) < f.r * 0.7 + 10)) {
+          hp = hp - 1
+          power = max(1, power - 1)
+          eshots = []
+          safeUntil = gt + 2.2
+          let ouch = booms + [{x: px, y: py, t: 0, s: 2.2, vy: 0}, {x: px - 14, y: py + 8, t: -0.1, s: 1.2, vy: 0}, {x: px + 12, y: py - 6, t: -0.2, s: 1.2, vy: 0}]
+          booms = drop(ouch, max(0, len(ouch) - 24))
+          if hp <= 0 {
+            mode = "over"
+            overAt = gt
+            best = max(best, score)
+          }
+        }
+      }
+    }
+  }
+
+  Box {
+    fill: true
+    background: lv.deep
+    // The ground, drawn in art pixels that move with the scroll.
+    Shader {
+      fill: true
+      fallback: lv.deep
+      uniforms: {
+        scroll: scroll,
+        dpw: W,
+        px: P,
+        sea: lv.sea,
+        t: gt,
+        deep: lv.deep,
+        shal: lv.shal,
+        shore: lv.shore,
+        low: lv.low,
+        high: lv.high,
+        hi: lv.hi
+      }
+      code: """
+        uniform float scroll;
+        uniform float dpw;
+        uniform float px;
+        uniform float sea;
+        uniform float t;
+        uniform half4 deep;
+        uniform half4 shal;
+        uniform half4 shore;
+        uniform half4 low;
+        uniform half4 high;
+        uniform half4 hi;
+        float hgt(float2 q) {
+          return 0.5 + 0.22 * sin(q.x * 0.011 + 1.7 * sin(q.y * 0.006)) + 0.17 * sin(q.y * 0.0093 + 1.3 * sin(q.x * 0.013 + 2.0))
+            + 0.08 * sin((q.x + q.y) * 0.023) + 0.05 * sin((q.x - q.y) * 0.041 + 1.0);
+        }
+        float rnd(float2 c) { return fract(sin(dot(c, float2(12.9898, 78.233))) * 43758.5453); }
+        half4 main(float2 p) {
+          float2 q = p * (dpw / size.x);
+          float2 cell = floor(float2(q.x, q.y - scroll) / px);
+          float2 w = cell * px;
+          float h = hgt(w);
+          float d = h - sea;
+          float n = rnd(cell);
+          float chk = mod(cell.x + cell.y, 2.0);
+          // light from the top left: brighter where the ground rises towards it
+          float slope = hgt(w - float2(px * 2.0, px * 2.0)) - h;
+          float shade = slope < -0.004 ? 1.0 : (slope > 0.004 ? -1.0 : 0.0);
+          half4 c;
+          if (d < -0.07 || (d < -0.05 && chk > 0.5)) {
+            c = deep;
+            float glint = rnd(cell + floor(t * 1.5));
+            if (glint > 0.992) { c = mix(deep, hi, 0.55); }
+          } else if (d < 0.0) {
+            c = shal;
+            if (d > -0.012 && rnd(cell + floor(t * 3.0)) > 0.5) { c = mix(shal, half4(1.0), 0.55); }
+          } else if (d < 0.03 || (d < 0.04 && chk > 0.5)) {
+            c = shore;
+          } else if (d < 0.15 || (d < 0.17 && chk > 0.5)) {
+            c = low;
+            if (n > 0.93) { c = mix(low, hi, 0.6); }
+            c.rgb *= half(1.0 + shade * 0.08);
+          } else {
+            // tree tops or rock: blobs on a three-pixel grid
+            float2 m = mod(cell, 3.0);
+            float tree = rnd(floor(cell / 3.0));
+            c = high;
+            if (m.x + m.y < 1.5 && tree > 0.3) { c = mix(high, hi, 0.35); }
+            if (m.x + m.y > 3.5) { c = mix(high, half4(0.0, 0.0, 0.0, 1.0), 0.3); }
+            c.rgb *= half(1.0 + shade * 0.1);
+          }
+          return c;
+        }
+      """
+    }
+    Canvas {
+      fill: true
+      ripple: false
+      // scorch marks, and cloud shadows on the ground
+      for s in scorch {
+        sprite(BOOM[4], s.x - 6.5 * P * 1.4, s.y - 6.5 * P * 1.4, P * 1.4, palette: {s: alpha(#1a1c2c, 0.5), D: alpha(#1a1c2c, 0.35)})
+      }
+      for i in range(3) {
+        let lapLen = H + 420
+        let at = scroll * 1.7 + i * lapLen / 3
+        let cy = at % lapLen - 210
+        let cx = hash(i, floor(at / lapLen)) * (W + 80) - 40 - 7 * P * 4.6
+        sprite(CLOUD, cx + 34, cy + 60, P * 4.6, palette: {W: alpha(#1a1c2c, 0.16), S: alpha(#1a1c2c, 0.16)})
+      }
+      // ground units: tanks turn their turrets to you, flak guns their barrels, troops march
+      for f in foes {
+        if f.g {
+          let aim = deg(atan2(px - f.x, -(py - f.y)))
+          let lit = gt - f.hit < 0.06
+          if f.k == "t" {
+            sprite(HULL, f.x - 5.5 * P, f.y - 6.5 * P, P, palette: lit ? FLASH : pal)
+            rotate(aim, f.x, f.y) { sprite(TURRET, f.x - 3.5 * P, f.y - 6.5 * P, P, palette: lit ? FLASH : pal) }
+          } else if f.k == "g" {
+            sprite(NEST, f.x - 5.5 * P, f.y - 5.5 * P, P, palette: lit ? FLASH : pal)
+            rotate(aim, f.x, f.y) { sprite(FLAK, f.x - 2.5 * P, f.y - 6 * P, P, palette: lit ? FLASH : pal) }
+          } else {
+            sprite(TROOP[floor(f.t * 6 + f.id) % 2], f.x - 2.5 * P, f.y - 3 * P, P, palette: lit ? FLASH : pal)
+          }
+        }
+      }
+      // things to pick up, bobbing and glowing
+      for i in items {
+        let bob = sin(i.t * 5) * 3
+        circle(i.x, i.y + bob, 17 + sin(i.t * 8) * 2, fill: alpha(i.k == "P" ? #b13e53 : (i.k == "B" ? #3b5dc9 : (i.k == "H" ? #ef7d57 : #ffcd75)), 0.3))
+        sprite(ITEM[i.k], i.x - 4.5 * P, i.y + bob - 4.5 * P, P, palette: pal)
+      }
+      // shadows of everything in the air, while the sky isn't too full to draw them
+      for f in foes {
+        if !f.g && (shadows || f.k == "boss") {
+          let art = f.k == "boss" ? BOSS : (f.k == "b" ? BOMBER : FIGHTER)
+          let aw = len(art[0])
+          let ah = len(art)
+          let sp = P * 0.8
+          rotate(f.k == "f" ? deg(atan2(-f.hx, f.hy)) : 0, f.x + 8 * P, f.y + 12 * P) {
+            sprite(art, f.x + 8 * P - aw * sp / 2, f.y + 12 * P - ah * sp / 2, sp, palette: SHADOW)
+          }
+        }
+      }
+      if playing {
+        sprite(JET, px + 8 * P - 15 * P * 0.4, py + 14 * P - 17 * P * 0.4, P * 0.8, palette: SHADOW)
+      }
+      // planes
+      for f in foes {
+        if !f.g {
+          let art = f.k == "boss" ? BOSS : (f.k == "b" ? BOMBER : FIGHTER)
+          let aw = len(art[0])
+          let ah = len(art)
+          let lit = gt - f.hit < 0.06 && (f.k != "boss" || floor(gt * 10) % 3 == 0)
+          rotate(f.k == "f" ? deg(atan2(-f.hx, f.hy)) : 0, f.x, f.y) {
+            sprite(art, f.x - aw * P / 2, f.y - ah * P / 2, P, palette: lit ? FLASH : pal)
+          }
+        }
+      }
+      // our bullets
+      for b in shots {
+        rect(b.x - 1.5, b.y - 8, 3, 14, fill: #ffcd75)
+      }
+      // the player's jet, leaning into turns and blinking while it can't be hit
+      if (mode == "play" || mode == "clear" || mode == "title") && (gt >= safeUntil || safeUntil - gt > 2.5 || flick == 0 || mode != "play") {
+        let jx = mode == "title" ? W / 2 + sin(gt * 0.9) * W * 0.18 : px
+        let jy = mode == "title" ? max(gridTop + 5 * ROW + 70, H - BOT - 80) + sin(gt * 1.7) * 8 : py
+        let lean = mode == "title" ? cos(gt * 0.9) * 0.6 : bank
+        if mode == "title" {
+          sprite(JET, jx + 8 * P - 15 * P * 0.4, jy + 14 * P - 17 * P * 0.4, P * 0.8, palette: SHADOW)
+        }
+        scale(1 - abs(lean) * 0.32, 1, jx, jy) {
+          sprite(JET, jx - 7.5 * P, jy - 8.5 * P, P, palette: pal)
+        }
+      }
+      // enemy bullets, pulsing (circles: a sprite would cost a drawing call per run)
+      for b in eshots {
+        circle(b.x, b.y, 5.5, fill: #1a1c2c)
+        circle(b.x, b.y, 3.6, fill: flick == 0 ? #ef7d57 : #ffcd75)
+      }
+      // explosions
+      for b in booms {
+        if b.t >= 0 {
+          sprite(BOOM[min(4, floor(b.t / 0.125))], b.x - 6.5 * P * b.s, b.y - 6.5 * P * b.s, P * b.s, palette: pal)
+        }
+      }
+      // clouds over everything
+      for i in range(3) {
+        let lapLen = H + 420
+        let at = scroll * 1.7 + i * lapLen / 3
+        let cy = at % lapLen - 210
+        let cx = hash(i, floor(at / lapLen)) * (W + 80) - 40 - 7 * P * 4.6
+        sprite(CLOUD, cx, cy, P * 4.6, palette: {W: alpha(#f4f4f4, 0.72), S: alpha(#94b0c2, 0.72)})
+      }
+      // a bomb's white flash
+      if gt >= bombAt && gt - bombAt < 0.5 {
+        rect(0, 0, W, H, fill: alpha(#f4f4f4, 0.7 * (1 - (gt - bombAt) / 0.5)))
+      }
+      if mode == "over" || mode == "won" || mode == "title" {
+        rect(0, 0, W, H, fill: alpha(#1a1c2c, mode == "title" ? 0.25 : 0.55))
+      }
+
+      // the heads-up display: hearts, power, the boss's health and the bomb button
+      if playing {
+        for i in range(min(hp, 5)) {
+          sprite(ITEM.H, W - 14 - (i + 1) * 10 * P * 0.9, TOP + 8, P * 0.9, palette: pal)
+        }
+        for i in range(4) {
+          rect(14 + i * 14, H - BOT - 30, 10, 14, fill: i < power ? #a7f070 : alpha(#1a1c2c, 0.5), radius: 2)
+        }
+        if boss != null {
+          rect(14, TOP + 52, W - 28, 8, fill: alpha(#1a1c2c, 0.6), radius: 2)
+          rect(16, TOP + 54, (W - 32) * clamp(boss.hp / boss.max, 0, 1), 4, fill: #b13e53)
+        }
+        circle(W - 62, H - BOT - 52, 34, fill: alpha(#1a1c2c, bombs > 0 ? 0.55 : 0.3))
+        circle(W - 62, H - BOT - 52, 34, stroke: alpha(#f4f4f4, bombs > 0 ? 0.5 : 0.15), width: 2)
+        layer(bombs > 0 ? 1 : 0.4) { sprite(ITEM.B, W - 62 - 4.5 * P * 1.4, H - BOT - 60 - 4.5 * P * 1.4, P * 1.4, palette: pal) }
+      }
+      // the stage list: cleared stages have a medal, the next one is open, later ones locked
+      if mode == "title" {
+        for i in range(5) {
+          let ty = gridTop + i * ROW
+          let unlocked = i <= cleared
+          let L = LEVELS[i]
+          rect(24, ty, W - 48, ROW - 10, fill: alpha(#1a1c2c, unlocked ? 0.75 : 0.55), radius: 6)
+          rect(24, ty, W - 48, ROW - 10, stroke: alpha(i < cleared ? #ffcd75 : #f4f4f4, unlocked ? 0.45 : 0.12), width: 2, radius: 6)
+          for j in range(5) {
+            rect(38 + j * 9, ty + 12, 9, ROW - 34, fill: alpha([L.deep, L.shal, L.shore, L.low, L.high][j], unlocked ? 1 : 0.25))
+          }
+          if i < cleared {
+            sprite(ITEM.M, W - 38 - 9 * 2.2, ty + 8, 2.2, palette: pal)
+          } else if !unlocked {
+            sprite(LOCK, W - 38 - 7 * 2.4, ty + 14, 2.4, palette: pal)
+          }
+        }
+      }
+      for l in labels {
+        for i in range(len(l.s)) {
+          let ch = sub(l.s, i, i + 1)
+          let lx = l.x - (len(l.s) * 4 - 1) * l.p * l.a + i * 4 * l.p
+          if ch != " " {
+            if l.p >= 3 && (shadows || mode == "title") {
+              sprite(get(FONT, ch, FONT["?"]), lx + l.p / 3, l.y + l.p / 3, l.p, palette: {a: #1a1c2c})
+            }
+            sprite(get(FONT, ch, FONT["?"]), lx, l.y, l.p, palette: {a: l.c})
+          }
+        }
+      }
+
+      onDrag: {
+        if mode == "play" || mode == "clear" {
+          px = clamp(px + dx * 1.3, 18, W - 18)
+          py = clamp(py + dy * 1.3, TOP + 40, H - BOT - 30)
+          bank = clamp(bank + dx * 0.04, -1, 1)
+        }
+      }
+      onTap: {
+        let pick = floor((y - gridTop) / ROW)
+        if (mode == "over" || mode == "won") && gt - overAt > 1.2 {
+          mode = "title"
+          foes = []
+          eshots = []
+          shots = []
+          items = []
+          booms = []
+          pops = []
+        } else if mode == "title" && y >= gridTop && (y - gridTop) % ROW < ROW - 10 && x > 24 && x < W - 24 && pick <= min(cleared, 4) {
+          mode = "play"
+          level = pick + 1
+          stageFrom = 0
+          score = 0
+          hp = 3
+          power = 1
+          bombs = 2
+          gt = 0
+          scroll = 0
+          px = W / 2
+          py = H * 0.78
+          bank = 0
+          shots = []
+          eshots = []
+          foes = []
+          items = []
+          booms = []
+          scorch = []
+          pops = []
+          fireAt = 0
+          spawnAt = 3
+          bossOut = false
+          safeUntil = 2
+          bombAt = -10
+        }
+      }
+    }
+    // the bomb button: clears the sky of bullets and hurts everything on screen
+    if playing {
+      Column {
+        fill: true
+        Spacer { weight: 1 }
+        Row {
+          fill: width
+          padding: [0, 0, 28, BOT + 18]
+          Spacer { weight: 1 }
+          Box {
+            width: 68
+            height: 68
+            radius: 34
+            onPress: {
+              if mode == "play" && bombs > 0 {
+                bombs = bombs - 1
+                bombAt = gt
+                eshots = []
+                foes = foes.map(f => merge(f, {hp: f.hp - (f.k == "boss" ? 25 : 60), hit: gt}))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

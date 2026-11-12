@@ -26,6 +26,7 @@ import dev.omalauncher.linux.FILES_COMMAND
 import dev.omalauncher.linux.VOICE_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
+import dev.omalauncher.linux.LinuxDns
 import dev.omalauncher.linux.LinuxMedia
 import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.PhoneBridge
@@ -67,6 +68,7 @@ import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.runtime.Dictation
 import dev.omalauncher.widgets.runtime.PhoneLocation
 import dev.omalauncher.widgets.runtime.PhoneCalendar
+import dev.omalauncher.widgets.runtime.NotificationDots
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -117,11 +119,14 @@ class Runtime(
     /** Widgets' android.calendar, calendar("request") and calendar("open"). */
     val calendar = PhoneCalendar(context)
 
-    /** Linux players in Android's media controls, through `phone media`. */
+    /** The phone's folders the user let Linux reach: in Files, and through `omalauncher`. */
+    val phoneFolders = PhoneFolders(context)
+
+    /** Linux players in Android's media controls, through `omalauncher media`. */
     private val linuxMedia by lazy { LinuxMedia(context, proot, scope) }
 
-    /** `phone` in the guest: location, calendar and AirPods for agents, as far as widgets were allowed them. */
-    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, linuxMedia, scope) }
+    /** `omalauncher` in the guest (and `phone`, its old name): location, calendar and AirPods for agents, as far as widgets were allowed them; the phone folders. */
+    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, phoneFolders, linuxMedia, scope) }
 
     /** The voice screen's replies, in the phone's voice. */
     val speaker = Speaker(context)
@@ -136,6 +141,9 @@ class Runtime(
     }
     val updates = SystemUpdates(proot, pacman, agents)
     val gpu = Gpu(context, proot, pacman)
+
+    /** The guest's resolv.conf, on the phone's DNS servers while Linux is up. */
+    private val dns = LinuxDns(context, proot.rootfs)
 
     /** The launcher's own provided files (default widgets, their docs); see [Provisioner]. */
     private val launcherFiles = Provisioner(proot.filesDir, LauncherData.LAUNCHER_MANIFEST, listOf(widgets::managed, style::managed))
@@ -357,6 +365,7 @@ class Runtime(
                 proot.procShim.start()
                 openBridge.start()
                 phoneBridge.start()
+                dns.start()
             }
         } else {
             // Linux installed again: its new home has no foot-font.ini yet.
@@ -537,6 +546,12 @@ class Runtime(
         androidKeyOf(shortcut)?.let { androidApps.labels[it] }
             ?: shortcut.owl?.let { widgets.specs.app(it)?.name }
             ?: shortcut.label
+
+    /** Whether a pinned Android app or shortcut has a notification dot. */
+    fun hasDot(shortcut: Shortcut) =
+        shortcut.component?.let { NotificationDots.has(it.packageName, shortcut.profile) }
+            ?: shortcut.androidShortcut?.let { NotificationDots.has(it.packageName, shortcut.profile, it.id) }
+            ?: false
 
     /** A pinned Android app's or shortcut's key in [androidApps]; null for a Linux app. */
     private fun androidKeyOf(shortcut: Shortcut) =

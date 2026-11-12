@@ -27,6 +27,13 @@
     <string name="style_pages">páginas</string>
     <string name="style_pages_one">una</string>
     <string name="style_pages_auto">auto</string>
+    <string name="style_cover_screen">pantalla externa</string>
+    <string name="style_cover_upright">vertical</string>
+    <string name="style_cover_turned">girada</string>
+    <string name="style_unfolded">desplegado</string>
+    <string name="style_unfolded_own">pantalla propia</string>
+    <string name="style_unfolded_pages">páginas</string>
+    <string name="style_unfolded_columns">columnas desplegado</string>
     <string name="style_corners">esquinas</string>
     <string name="style_corners_edge">rectas</string>
     <string name="style_corners_soft">suaves</string>
@@ -89,6 +96,8 @@
     <string name="style_remove_background_title">¿quitar el fondo?</string>
 
     <string name="style_terminal_hint">para las terminales que abras a partir de ahora · más con pacman, como ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">sugerencias del teclado</string>
+    <string name="style_keyboard_suggestions_hint">sugerencias, escritura deslizante y dictado; el texto llega a la terminal palabra por palabra · desde la próxima vez que se abra el teclado</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d columna en vertical</item>
         <item quantity="many">%1$s pt · %2$d columnas en vertical</item>
@@ -96,7 +105,7 @@
     </plurals>
 
     <string name="pages_title">páginas</string>
-    <string name="pages_intro">Las páginas de inicio, de izquierda a derecha. Arrastra una por ≡ para moverla, o con el teclado toma ≡ con Enter y muévela con las flechas. Inicio se abre en la primera con widgets o apps; los faces antes de ella quedan a su izquierda.</string>
+    <string name="pages_intro">Las páginas de inicio, de izquierda a derecha. Arrastra una por ≡ para moverla, o con el teclado toma ≡ con Enter y muévela con las flechas. Inicio se abre en la primera con widgets o apps; los widgets de pantalla completa antes de ella quedan a su izquierda.</string>
     <string name="pages_loading">cargando…</string>
     <string name="pages_remove_named">¿quitar %1$s?</string>
     <string name="pages_remove_page">¿quitar esta página?</string>
@@ -110,7 +119,7 @@
     </plurals>
     <string name="pages_empty">vacía</string>
     <string name="pages_doesnt_compile">no compila</string>
-    <string name="pages_face">face</string>
+    <string name="pages_face">pantalla completa</string>
     <string name="pages_home">inicio</string>
     <string name="pages_edit">editar</string>
     <string name="pages_share">compartir</string>

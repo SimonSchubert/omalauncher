@@ -53,6 +53,10 @@ import androidx.compose.ui.unit.sp
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.widgets.lang.Builtins
+import dev.omalauncher.widgets.lang.Camera
+import dev.omalauncher.widgets.lang.Mesh
+import dev.omalauncher.widgets.lang.Meshes
+import dev.omalauncher.widgets.lang.Scene3d
 import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.Env
 import dev.omalauncher.widgets.lang.Gradient
@@ -60,6 +64,7 @@ import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
+import dev.omalauncher.widgets.lang.ShaderCost
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WNode
 import dev.omalauncher.widgets.lang.WidgetError
@@ -69,6 +74,7 @@ import dev.omalauncher.widgets.runtime.WidgetImage
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import dev.omalauncher.widgets.runtime.drawPicture
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.asAndroidBitmap
 import java.util.IdentityHashMap
 
 /** Drawing calls per frame; beyond this a Canvas stops and reports. */
@@ -96,7 +102,20 @@ private class Kept {
     /** A sprite palette's brushes by letter; they follow the theme, so they're dropped when it changes. */
     val palettes = IdentityHashMap<Obj, HashMap<Char, Brush?>>()
     var theme: Any? = null
+
+    /** A scene's triangles, its arrays reused from frame to frame; see [Scene3d]. */
+    val scene by lazy { Scene3d() }
+
+    /** Images models are textured with. */
+    val textures = Textures(unit = false)
+    val vertexPaint by lazy { android.graphics.Paint().apply { isFilterBitmap = true } }
 }
+
+/** The side of the bitmap an SVG texture is drawn into. */
+private const val SVG_TEXTURE_SIDE = 256
+
+/** Where a scene's light comes from without `light:`: above, a little right and in front. */
+private val DEFAULT_LIGHT = floatArrayOf(0.4f, 1f, 0.6f)
 
 /** How many frames an op that read `time` is drawn as it is before it's tried in a run again. */
 private const val MOVING_FRAMES = 60L
@@ -249,7 +268,7 @@ internal fun CanvasNode(
         runs.begin(p, size, d)
         // Only an animated canvas keeps runs: one that isn't is only drawn when something it reads changes.
         val keeping = runs.animating
-        val painter = Painter(inst, measurer, this, d, kept, if (keeping) runs else null)
+        val painter = Painter(inst, measurer, this, d, kept, if (keeping) runs else null, size.width / d, size.height / d)
         val reads = inst.timeReads
         val started = System.nanoTime()
         inst.drawing {
@@ -275,7 +294,17 @@ private class Painter(
     val kept: Kept,
     /** Null for a canvas that doesn't animate; see [paintKept]. */
     val runs: Runs?,
+    /** The canvas's size in dp, which a scene's camera fills. */
+    val width: Float,
+    val height: Float,
 ) {
+    /** The scene whose body is painted: its model(...) calls go into it. */
+    private var scene: Scene3d? = null
+
+    private val at = FloatArray(3)
+    private val turn = FloatArray(3)
+    private val scale3 = FloatArray(3)
+
     var ops = 0
 
     /** Set while a moving op with ops inside it is drawn where runs are kept: its ops are painted the same way; see [inside]. */
@@ -538,12 +567,14 @@ private class Painter(
         // The first argument of these is a value (points, text, a src, art); every other one is a number,
         // read straight off the numeric fast path into a buffer every op shares. That's safe: an op reads
         // its numbers before drawing the ops nested in it.
-        val values = if (n.op == "path" || n.op == "text" || n.op == "image" || n.op == "sprite") 1 else 0
+        val values = if (n.op == "path" || n.op == "text" || n.op == "image" || n.op == "sprite" || n.op == "scene" || n.op == "model") 1 else 0
         val first = if (values > 0) eval(n.args[0], env) else Null
         val v = numbers
         for (i in values until n.args.size) v[i] = n.args[i].num(env, 0.0).toFloat()
         // Transforms take no paint: skip evaluating it (this runs per op, per frame).
         when (n.op) {
+            "scene" -> return scene(n, env, first)
+            "model" -> return model(n, env, first)
             "translate" -> return translate(v[0], v[1]) { inside(n.children!!, env) }
             "rotate" -> return rotate(v[0], Offset(v.opt(n, 1), v.opt(n, 2))) { inside(n.children!!, env) }
             "scale" -> {
@@ -697,6 +728,102 @@ private class Painter(
     }
 
     /**
+     * A scene: its models, gathered from its body, turned into triangles sorted far to near and drawn with
+     * one drawVertices call per image they're textured with.
+     */
+    private fun DrawScope.scene(
+        n: WNode.Draw,
+        env: Env,
+        camera: Value,
+    ) {
+        val named = NamedArgs(n.named, env)
+        val s = kept.scene
+        val light = named["light"]?.let { Meshes.vec3(it, 0f, FloatArray(3)) } ?: DEFAULT_LIGHT
+        s.begin(Camera.of(camera), width, height, light, named["ambient"]?.num()?.toFloat() ?: 0.35f, named["fog"]?.let { Builtins.argb(it, inst) })
+        // Models are gathered, not drawn: nothing in here goes into runs of its own.
+        keptInside = null
+        scene = s
+        try {
+            paint(n.children!!, env)
+        } finally {
+            scene = null
+        }
+        s.finish()
+        if (s.triangles == 0) return
+        drawIntoCanvas { c ->
+            val canvas = c.nativeCanvas
+            val paint = kept.vertexPaint
+            paint.alpha = (alpha * 255).toInt()
+            for (b in 0 until s.batches) {
+                val t = s.batchTexture[b]
+                paint.shader = if (t >= 0) s.textures[t] as android.graphics.Shader else null
+                val start = s.batchStart[b]
+                canvas.drawVertices(
+                    android.graphics.Canvas.VertexMode.TRIANGLES,
+                    s.batchCount[b] * 6,
+                    s.verts,
+                    start * 6,
+                    // Always given, even untextured (no shader, so they're unused): hwui takes the texture pointer as
+                    // the array's plus the *vertex* offset, so a null array past the first triangle is a native crash.
+                    s.texs,
+                    start * 6,
+                    s.colors,
+                    start * 3,
+                    null,
+                    0,
+                    0,
+                    paint,
+                )
+            }
+            paint.shader = null
+        }
+    }
+
+    /** A model in the scene being painted: see [scene]. */
+    private fun model(
+        n: WNode.Draw,
+        env: Env,
+        first: Value,
+    ) {
+        val s = scene ?: return
+        // A mesh still loading, from a file or the web, draws nothing yet.
+        val mesh = first as? Mesh ?: if (first == Null) return else throw WidgetError("model(...) takes a mesh, like cube() or parseObj(text), not ${first.text().take(40)}")
+        val named = NamedArgs(n.named, env)
+        val color = named["color"]?.let { Builtins.argb(it, inst) } ?: Palette.foreground.toArgb()
+        val palette = if (mesh.palette.isEmpty()) null else IntArray(mesh.palette.size) { Builtins.argb(mesh.palette[it], inst) ?: color }
+        var shader: android.graphics.Shader? = null
+        var tw = 0f
+        var th = 0f
+        named["image"]?.takeIf { it != Null }?.let { src ->
+            texture(src.toString())?.let { (sh, bitmap) ->
+                shader = sh
+                tw = bitmap.width.toFloat()
+                th = bitmap.height.toFloat()
+            }
+        }
+        s.add(
+            mesh,
+            Meshes.vec3(named["at"], 0f, at),
+            Meshes.vec3(named["turn"], 0f, turn),
+            Meshes.vec3(named["scale"], 1f, scale3),
+            color,
+            palette,
+            named["ambient"]?.num()?.toFloat() ?: Float.NaN,
+            named["smooth"]?.truthy ?: mesh.smooth,
+            named["twoSided"]?.truthy == true,
+            shader,
+            tw,
+            th,
+        )
+    }
+
+    /** The image at [src] as a repeating shader for a model, and its bitmap; null while it loads. */
+    private fun texture(src: String): Pair<android.graphics.BitmapShader, android.graphics.Bitmap>? {
+        val bitmap = kept.textures.bitmap(inst.image(src) ?: return null) ?: return null
+        return kept.textures.shader(bitmap) to bitmap
+    }
+
+    /**
      * Whether [n] looks the same drawn at an alpha as in a layer at that alpha: it has no ops
      * inside it and paints each pixel once. A shape with both a fill and a stroke paints its
      * edge twice, so the fill would show through the stroke, and text's letters can overlap
@@ -727,8 +854,62 @@ private class Painter(
         }
 }
 
+/**
+ * Images as repeating shaders to texture with, kept by the bitmap they're of, for a Canvas's models and a Shader's
+ * images. A texture is sampled as pixels, so an SVG is drawn into a bitmap first.
+ */
+private class Textures(
+    /** Whether a shader runs from 0 to 1 across its image, as a Shader samples it, rather than in its pixels. */
+    private val unit: Boolean,
+) {
+    private val shaders = IdentityHashMap<android.graphics.Bitmap, android.graphics.BitmapShader>()
+    private val svgs = IdentityHashMap<android.graphics.Picture, android.graphics.Bitmap>()
+
+    /** [image]'s pixels; an SVG's drawn [SVG_TEXTURE_SIDE] on its longer side, null for one of no size. */
+    fun bitmap(image: WidgetImage): android.graphics.Bitmap? =
+        when (image) {
+            is WidgetImage.Raster -> image.bitmap.asAndroidBitmap()
+            is WidgetImage.Vector -> svgBitmap(image.picture)
+        }
+
+    /** [bitmap] as a shader that repeats it past its edges. */
+    fun shader(bitmap: android.graphics.Bitmap): android.graphics.BitmapShader {
+        if (shaders.size >= MAX_KEPT) shaders.clear()
+        return shaders.getOrPut(bitmap) {
+            android.graphics.BitmapShader(bitmap, android.graphics.Shader.TileMode.REPEAT, android.graphics.Shader.TileMode.REPEAT).apply {
+                if (unit) setLocalMatrix(android.graphics.Matrix().apply { setScale(1f / bitmap.width, 1f / bitmap.height) })
+            }
+        }
+    }
+
+    private fun svgBitmap(picture: android.graphics.Picture): android.graphics.Bitmap? {
+        svgs[picture]?.let { return it }
+        if (picture.width <= 0 || picture.height <= 0) return null
+        val scale = SVG_TEXTURE_SIDE.toFloat() / maxOf(picture.width, picture.height)
+        val bitmap = android.graphics.Bitmap.createBitmap(maxOf(1, (picture.width * scale).toInt()), maxOf(1, (picture.height * scale).toInt()), android.graphics.Bitmap.Config.ARGB_8888)
+        drawPicture(android.graphics.Canvas(bitmap), picture, 0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat())
+        if (svgs.size >= MAX_KEPT) svgs.clear()
+        svgs[picture] = bitmap
+        return bitmap
+    }
+}
+
 /** Declared for every shader; widget code must not declare them again. */
 private const val SHADER_HEADER = "uniform float2 size;\nuniform float time;\n"
+
+/** What an image uniform samples while it has no image: one clear pixel. */
+private val CLEAR_PIXEL: android.graphics.Bitmap by lazy { android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888) }
+
+/** [v]'s numbers in order, lists inside it flattened, at most 4096 of them. */
+private fun flatFloats(v: Lst): FloatArray {
+    val out = ArrayList<Float>()
+    fun walk(x: Value) {
+        if (out.size >= 4096) return
+        if (x is Lst) x.items.forEach(::walk) else out += x.num()?.toFloat() ?: 0f
+    }
+    walk(v)
+    return out.toFloatArray()
+}
 
 /** A full-bleed AGSL fragment shader: `half4 main(float2 fragCoord)`, redrawn every frame it reads time. */
 @RequiresApi(33)
@@ -739,13 +920,25 @@ internal fun ShaderNode(
 ) {
     val inst = p.inst
     val code = p.observe("code")?.toString().orEmpty()
-    val shader = remember(code) { runCatching { RuntimeShader(SHADER_HEADER + code) }.onFailure { inst.report("Shader: ${it.message}") }.getOrNull() }
+    val shader =
+        remember(code) {
+            // Code that would hang the GPU isn't drawn: its frame would freeze the screen every time the page shows.
+            ShaderCost.problem(code)?.let {
+                inst.report("Shader: $it")
+                return@remember null
+            }
+            runCatching { RuntimeShader(SHADER_HEADER + code) }.onFailure { inst.report("Shader: ${it.message}") }.getOrNull()
+        }
     val fallback = p.color("fallback") { Palette.surface }
     if (shader == null) {
         Spacer(modifier.drawBehind { drawRect(fallback()) })
         return
     }
     val brush = remember(shader) { ShaderBrush(shader) }
+    // `uniform shader name;`: images it samples, by name (owl 22).
+    val images = remember(code) { Compiler.shaderImages(code) }
+    // From 0 to 1 across each image, repeating past it, whatever its size in pixels.
+    val textures = remember(shader) { Textures(unit = true) }
     // Reading time keeps the widget's frame clock running, so a shader that never uses it isn't redrawn every frame.
     val readsTime = remember(code) { Compiler.shaderReadsTime(code) }
     // One that doesn't is kept in its own layer, drawn again only when its uniforms change: otherwise every frame of
@@ -756,10 +949,24 @@ internal fun ShaderNode(
             inst.drawing {
                 shader.setFloatUniform("size", size.width, size.height)
                 if (readsTime) shader.setFloatUniform("time", inst.time().toFloat())
-                (p.now("uniforms") as? Obj)?.fields?.forEach { (name, v) ->
+                val uniforms = (p.now("uniforms") as? Obj)?.fields.orEmpty()
+                // Every image needs a shader before drawing: one not given, or still loading, samples clear.
+                for (name in images) {
+                    val src = uniforms[name]?.takeIf { it != Null }?.toString()
+                    val sampler = textures.shader(src?.let(inst::image)?.let(textures::bitmap) ?: CLEAR_PIXEL)
+                    // The name was found by a regex, which also matches one in a comment: one the code doesn't declare throws.
+                    try {
+                        shader.setInputShader(name, sampler)
+                    } catch (e: IllegalArgumentException) {
+                        inst.report("Shader image '$name': ${e.message}")
+                    }
+                }
+                uniforms.forEach { (name, v) ->
+                    if (name in images) return@forEach
                     try {
                         when {
-                            v is Lst -> shader.setFloatUniform(name, v.items.map { f -> f.num()?.toFloat() ?: 0f }.toFloatArray())
+                            // Nested lists, like a list of [x, y, z], fill an array uniform in order.
+                            v is Lst -> shader.setFloatUniform(name, flatFloats(v))
                             v.num() != null -> shader.setFloatUniform(name, v.num()!!.toFloat())
                             else ->
                                 Builtins.argb(v, inst)?.let { c ->

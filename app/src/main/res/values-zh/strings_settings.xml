@@ -26,9 +26,36 @@
     <string name="settings_packages">软件包</string>
     <string name="settings_packages_subtitle">用 pacman 和 AUR 安装 Linux 应用和工具</string>
     <string name="settings_home_app">默认主屏幕应用</string>
-    <string name="settings_home_app_subtitle">将 Omalauncher 设为主屏幕 · 应用快捷方式需要它</string>
+    <string name="settings_home_app_subtitle">将 Omalauncher 设为主屏幕</string>
     <string name="settings_local_network">局域网</string>
     <string name="settings_local_network_subtitle">让小组件和 linux 访问你的打印机、Home Assistant…</string>
+    <string name="settings_permissions">权限</string>
+    <string name="settings_permissions_subtitle">麦克风、位置、文件…</string>
+
+    <string name="permissions_title">权限</string>
+    <string name="permissions_folders_title">手机文件夹</string>
+    <string name="permissions_folders_about">存放你的照片、下载和文档、供 linux 使用的文件夹：在“文件”中，以及供智能体和脚本通过 omalauncher 使用</string>
+    <string name="permissions_folders_sdcard">linux 保存在 %1$s/Download 或 %1$s/Documents 中的文件，其他应用也能看到</string>
+    <string name="permissions_folders_add">添加文件夹</string>
+    <string name="permissions_folders_remove">移除</string>
+    <string name="permissions_folders_cant_keep">Android 不允许启动器保留该文件夹</string>
+    <string name="permissions_folders_no_picker">这部手机没有文件夹选择器</string>
+    <string name="permissions_note">这里开启的权限，小组件和智能体都可以使用。开关由 android 掌管：开启时会请求授权，关闭时打开 android 设置中的对应页面</string>
+    <string name="permissions_on">已开启 · %1$s</string>
+    <string name="permissions_off">已关闭 · %1$s</string>
+    <string name="permissions_mic">麦克风</string>
+    <string name="permissions_mic_uses">输入栏的麦克风、Voice、会聆听的小组件</string>
+    <string name="permissions_location">位置</string>
+    <string name="permissions_location_uses">大致位置 · 天气等小组件，仅在显示时 · 智能体用 omalauncher location</string>
+    <string name="permissions_calendar">日历</string>
+    <string name="permissions_calendar_uses">你的日程，只读 · 日历小组件 · 智能体用 omalauncher calendar</string>
+    <string name="permissions_bluetooth">蓝牙</string>
+    <string name="permissions_bluetooth_uses">AirPods 的电量和设置 · AirPods 小组件 · 智能体用 omalauncher airpods</string>
+    <string name="permissions_notifications">通知</string>
+    <string name="permissions_notifications_uses">linux 运行时的状态、发送通知的小组件</string>
+    <string name="permissions_notification_access">通知使用权</string>
+    <string name="permissions_notification_access_uses">通知圆点，以及小组件用的正在播放内容和勿扰模式</string>
+
     <string name="settings_android">android 设置</string>
     <string name="settings_android_subtitle">手机的系统设置</string>
     <string name="settings_licenses">开源许可</string>

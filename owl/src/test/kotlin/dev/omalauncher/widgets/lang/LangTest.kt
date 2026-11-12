@@ -183,6 +183,17 @@ class LangTest {
         assertEquals(Str("a2"), (p.root[0] as WNode.Element).props["text"]!!.const)
     }
 
+    /** A let that folded to a constant is used as its value, so what reads it folds too; one that reads a state isn't. */
+    @Test fun constantLetsFoldWhereTheyAreRead() {
+        val p = Compiler.compile("widget { let C = 32\n let D = C * 2\n state s = 1\n let E = s * C\n Text { text: \"${'$'}{C + 1} ${'$'}{E}\" } }")
+        assertEquals(Num(64.0), (p.globals.first { it.name == "D" } as Global.Let).value.const)
+        assertEquals(null, (p.globals.first { it.name == "E" } as Global.Let).value.const)
+        assertEquals(null, (p.root[0] as WNode.Element).props["text"]!!.const)
+        assertEquals("33 32", text("\"${'$'}{C + 1} ${'$'}{E}\"", "let C = 32\n state s = 1\n let E = s * C"))
+        val a = Compiler.compile("widget { asset logo = base64\"AAAA\"\n Image { src: logo } }")
+        assertEquals(Str("asset:logo"), (a.root[0] as WNode.Element).props["src"]!!.const)
+    }
+
     @Test fun interpolationAndNulls() {
         assertEquals("cpu 42%", text("\"cpu ${'$'}{x}%\"", "state x = 42"))
         assertEquals("…", text("\"${'$'}{s}\"", "source s = cmd('date')"))
@@ -1280,6 +1291,33 @@ class LangTest {
         assertEquals(listOf("knows roughly where the phone is; check where it sends that"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
     }
 
+    @Test fun reviewFlagsThePhonesStorage() {
+        val why = "reaches the phone's own files (photos, downloads); check nothing sends them elsewhere"
+        for (cmd in listOf("ls /sdcard/DCIM", "read file /sdcard/Download/notes.txt", "cp x \"/storage/emulated/0/Download\"", "cd /sdcard")) {
+            assertEquals(cmd, listOf(why), Review.risks(listOf(cmd)).map { it.removePrefix("command ").substringBefore(": ") })
+        }
+        for (cmd in listOf("ls ~/sdcards", "echo /sdcardish", "cat /root/sdcard")) assertTrue(cmd, Review.risks(listOf(cmd)).isEmpty())
+    }
+
+    @Test fun androidMotion() {
+        val src = "widget {\n meta { owl: 21 }\n source m = android.motion\n Text { text: m.available ? \"\${m.roll}° \${m.pitch}°\" : \"no sensor\" } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.motion", (p.globals.single() as Global.Source).kind)
+        assertTrue(!p.needsLinux)
+        assertEquals(listOf("read how the phone is tilted while it shows"), p.commands)
+        assertTrue(compileError(src.replace("owl: 21", "owl: 20")).contains("android.motion needs owl 21"))
+    }
+
+    @Test fun everyFrame() {
+        val src = "widget {\n meta { owl: 21 }\n state x = 0\n every frame { x = x + 100 * dt }\n Text { text: x } }"
+        val p = Compiler.compile(src)
+        assertEquals(TriggerKind.FRAME, p.triggers.single().kind)
+        assertEquals(listOf("dt"), p.triggers.single().action.params)
+        // The frame clock runs it, which only an animated widget has.
+        assertTrue(p.animated)
+        assertTrue(compileError(src.replace("owl: 21", "owl: 20")).contains("every frame needs owl 21"))
+    }
+
     @Test fun androidCalendarAskedForOnATap() {
         val src = "widget {\n meta { owl: 18 }\n source agenda = android.calendar\n Text { text: agenda.granted ? \"events\" : \"allow\"; onTap: calendar(\"request\") } }"
         val p = Compiler.compile(src)
@@ -1496,7 +1534,7 @@ class LangTest {
         assertEquals(OwlKind.Widget, Compiler.compile("widget {\n Text { text: 1 } }").kind)
 
         assertTrue(compileError("app {\n Text { text: 1 } }").contains("needs owl 8"))
-        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon, back, edge and statusBar"))
+        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon, back, edge, statusBar and fps"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onTap: close()\n Text { text: 1 } }").contains("handlers go on the nodes"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n back: true\n Text { text: 1 } }").contains("back and onBack go together"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onBack: close()\n Text { text: 1 } }").contains("back and onBack go together"))
@@ -1731,6 +1769,12 @@ class LangTest {
         assertEquals(listOf("sed -i ${Compiler.NUMBER}d ~/todo.md"), commands("onTap: run(\"sed -i ${'$'}{int(n)}d ~/todo.md\")"))
         assertEquals(listOf("true", "curl -d ${Compiler.VALUE} https://ha.local"), commands("onTap: run(n > 1 ? \"true\" : \"curl -d ${'$'}{sh(v)} https://ha.local\")"))
         assertEquals(listOf("echo ${Compiler.VALUE}x"), commands("source o = cmd(\"echo \" + sh(v) + \"x\") every 1m"))
+        // A script kept in a let stays one value, as before lets folded: its text has quotes and # in it, which
+        // would make the command unlistable, and the store would drop the widget.
+        assertEquals(
+            listOf("bash -c ${Compiler.VALUE} x ${Compiler.VALUE}"),
+            commands("let script = \"echo 'hi' # a comment\"\n onTap: run(\"bash -c ${'$'}{sh(script)} x ${'$'}{sh(v)}\")"),
+        )
         // Unquoted, or quoted where bash would undo it: it could run anything.
         for (bad in listOf("echo ${'$'}{v}", "echo \\\"${'$'}{sh(v)}\\\"", "echo '${'$'}{sh(v)}'", "echo ok # ${'$'}{sh(v)}", "cat <<E\\n${'$'}{sh(v)}\\nE")) {
             assertEquals(bad, listOf("run(…) built from widget values"), commands("onTap: run(\"$bad\")"))
@@ -2155,6 +2199,29 @@ class LangTest {
         // A widget without one is as it was: no lock is no version to ask for.
         assertEquals(1, Compiler.compile("widget {\n Column {\n Button { text: \"x\"; onTap: refresh() }\n Text { text: \"y\" } }\n}").level)
         assertEquals(null, Compiler.compile("widget {\n Text { text: \"y\" }\n}").lock)
+    }
+
+    @Test fun fpsSetsHowOftenTimeTicks() {
+        val canvas = "state busy = false\n Canvas { circle(10, 10, 5 + sin(time)) }"
+        assertTrue(compileError("widget {\n fps: 10\n $canvas\n}").contains("fps needs owl 19: add meta { owl: 19 }"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n fps: 10\n $canvas\n}").contains("fps needs owl 19"))
+        val p = Compiler.compile("widget {\n meta { owl: 19 }\n fps: busy ? 30 : 10\n $canvas\n}")
+        assertEquals(19, p.level)
+        assertTrue(p.fps != null)
+        // A fixed one is checked as it's written: a number of frames a second, at most what the launcher draws.
+        assertEquals(Num(12.0), Compiler.compile("widget {\n meta { owl: 19 }\n fps: 12\n $canvas\n}").fps?.const)
+        for (wrong in listOf("0", "61", "-5", "\"fast\"", "true")) {
+            val e = compileError("widget {\n meta { owl: 19 }\n fps: $wrong\n $canvas\n}")
+            assertTrue(e, e.contains("fps is a number of frames a second, from 1 to 60"))
+        }
+        // Faces, apps and panels animate too.
+        assertTrue(Compiler.compile("face {\n meta { owl: 19 }\n fps: 20\n $canvas\n}").fps != null)
+        assertTrue(Compiler.compile("app {\n meta { owl: 19 }\n fps: 30\n Canvas { circle(10, 10, 5 + sin(time)) }\n}").fps != null)
+        assertTrue(Compiler.compile("panel {\n meta { owl: 19 }\n fps: 30\n Canvas { circle(10, 10, 5 + sin(time)) }\n}").fps != null)
+        // A key bar has no properties at all.
+        assertTrue(compileError("keybar {\n meta { owl: 19 }\n fps: 30\n Text { text: 1 }\n}").contains("takes no properties"))
+        // Without one, as it was.
+        assertEquals(null, Compiler.compile("widget {\n Text { text: \"y\" }\n}").fps)
     }
 
     private fun browserWidget(body: String) = Compiler.compile("widget {\n $owl18\n $body\n}")

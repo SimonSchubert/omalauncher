@@ -7,6 +7,8 @@
     <files-path name="xdg" path="xdg/" />
     <files-path name="omarchy" path="omarchy/" />
     <files-path name="widgets" path="widgets/" />
+    <!-- The phone's storage, at /sdcard in Linux (PhoneStorage): the files Linux saved there. -->
+    <external-path name="phone" path="." />
     <!-- QR codes of widgets, for sharing as an image. -->
     <cache-path name="share" path="share/" />
 </paths>

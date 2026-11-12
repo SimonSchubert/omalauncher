@@ -25,10 +25,26 @@ class SettingsActivity : InstantActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        open(intent)
+        // Brought back on its own after Android killed the process (turning phone storage off on its page does), the
+        // Linux screen would otherwise wait on Linux's check forever; home starts it too, once.
+        runtime.start()
+        // Android ends the process when a permission is turned off on its page: back from it, the same screens show.
+        val saved = savedInstanceState?.getStringArrayList(STATE_STACK)?.mapNotNull { name -> SettingsPage.entries.firstOrNull { it.name == name } }
+        if (saved.isNullOrEmpty()) {
+            open(intent)
+        } else {
+            homePage = savedInstanceState.getInt(EXTRA_HOME_PAGE, homePage)
+            stack += saved
+        }
         setInstantContent {
             SettingsPages(runtime, stack, homePage, onClose = ::closeInstantly)
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putStringArrayList(STATE_STACK, ArrayList(stack.map { it.name }))
+        outState.putInt(EXTRA_HOME_PAGE, homePage)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -52,6 +68,7 @@ class SettingsActivity : InstantActivity() {
     companion object {
         private const val EXTRA_PAGE = "page"
         private const val EXTRA_HOME_PAGE = "home_page"
+        private const val STATE_STACK = "stack"
 
         fun intent(
             context: Context,

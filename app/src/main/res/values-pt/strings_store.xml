@@ -3,18 +3,18 @@
     <string name="store_title">loja</string>
 
     <string name="store_kind_widgets">widgets</string>
-    <string name="store_kind_faces">faces</string>
+    <string name="store_kind_faces">widgets de tela cheia</string>
     <string name="store_kind_apps">apps</string>
     <string name="store_kind_panels">painéis</string>
     <string name="store_kind_keybars">barras de teclas</string>
     <string name="store_kind_widget">widget</string>
-    <string name="store_kind_face">face</string>
+    <string name="store_kind_face">widget de tela cheia</string>
     <string name="store_kind_app">app</string>
     <string name="store_kind_panel">painel</string>
     <string name="store_kind_keybar">barra de teclas</string>
 
     <string name="store_pick_widget">escolha um widget para ver o que ele instala e executa</string>
-    <string name="store_pick_face">escolha uma face para ver o que ela instala e executa</string>
+    <string name="store_pick_face">escolha um widget de tela cheia para ver o que ele instala e executa</string>
     <string name="store_pick_app">escolha um app para ver o que ele instala e executa</string>
     <string name="store_pick_panel">escolha um painel para ver o que ele instala e executa</string>
     <string name="store_pick_keybar">escolha uma barra de teclas para ver o que ela instala e executa</string>
@@ -28,6 +28,7 @@
     <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
 
     <string name="store_builtin">incluídos</string>
+
     <string name="store_terminal">terminal</string>
     <string name="store_terminal_details">6x4 · um shell</string>
     <string name="store_agent_details">6x6 · executa %1$s</string>
@@ -45,6 +46,7 @@
     <string name="store_installed">✓ instalado</string>
     <string name="store_needs_newer">requer um launcher mais novo</string>
     <string name="store_needs_linux">requer linux</string>
+    <string name="store_full_screen">tela cheia</string>
     <plurals name="store_pages">
         <item quantity="one">%1$d página</item>
         <item quantity="many">%1$d páginas</item>
@@ -64,7 +66,7 @@
         <item quantity="other">adicionar as %1$d páginas que faltam</item>
     </plurals>
     <string name="store_add_to_page">adicionar à página %1$d</string>
-    <string name="store_add_as_face">adicionar como face</string>
+    <string name="store_add_as_face">adicionar como widget de tela cheia</string>
     <string name="store_install">instalar</string>
     <string name="store_uninstall">desinstalar</string>
     <string name="store_remove">remover</string>

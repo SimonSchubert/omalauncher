@@ -4,13 +4,76 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
-## Unreleased
+## 1.3.0 (versionCode 36) – 2026-11-11
 
-- A Linux player can show what it plays in Android's media controls: `phone media set` with
-  the track's title, artist, cover, length and position puts it on the lock screen and in the
-  notification shade's player, on a car's display over Bluetooth and on a watch, and their
-  buttons, a headset's and AirPods' too, run the player's command in Linux (`<command> pause`,
-  `<command> seek 120`). `phone media clear` takes it away.
+- Owl 22 brings 3D: a Canvas `scene(camera)` draws lit, fogged and textured models from cubes,
+  spheres, cylinders, cones, planes, terrain, your own meshes or OBJ files, with vector math for
+  games. `onTouch` sees every finger at once, and a Shader can sample images and take array
+  uniforms. New example apps: sunset heist, a 3D city to drive, run missions in and escape the
+  police, and canyon run, a low-poly flight down an endless canyon; plus boomtown, a city builder,
+  sky forge, a shooter with a hangar of upgrades, and last outpost, tower defense.
+- The store has two sections, widgets and apps; faces are now called full-screen widgets, with a
+  tab of their own in the store.
+- Apps that ask for 60 frames a second keep them however long they take to draw, and widgets that
+  read fixed values draw faster.
+- today, what's new, ntfy and github inbox refresh when their list is pulled down.
+
+## 1.2.0 (versionCode 35) – 2026-11-10
+
+- Owl 21: `android.motion` gives the phone's tilt from the gyroscope and accelerometer, and
+  `every frame { }` runs each frame with `dt`. New example apps: space bounce, a tilt-to-fly
+  arena shooter, and sky raid, a pixel-art plane shooter over five stages.
+- Voice: the orb is a glossy blob in shades of its colour whose edge moves while it listens,
+  speaks or works, more as you talk louder. Replies use the text-to-speech engine picked in
+  Android's settings without a launcher restart, and voice settings say which voice the default
+  is, like "default (Germany)".
+- Linux no longer looks uninstalled after the launcher restarts: the old /tmp is deleted in the
+  background, and while Linux starts, settings and the Linux screen say checking.
+- Fixes: a widget Shader whose loops take over 1000 turns a pixel isn't drawn (the store review
+  turns it away), so it can't freeze the screen; past 256 Wayland clients at once new ones are
+  turned away, so a runaway Linux program can't run the launcher out of memory.
+
+## 1.1.0 (versionCode 34) – 2026-11-10
+
+- Linux commands under proot run 2-30x faster: proot keeps itself and processes making many
+  syscalls on one fast CPU. The Linux screen has a switch for it, on by default, for phones or
+  programs that do better without it.
+- Apps with notifications show a dot on their icon, on home, on folders and in the drawer;
+  Android's own dot settings decide, and it needs notification access. Owl 20: `dot` on the
+  apps of `android.drawer` (#239).
+- The terminal's input can be a normal text field, on by default, so the keyboard's suggestions,
+  glide typing, dictation and clipboard work there: `terminal.keyboard-suggestions`, also in
+  style › terminal (#271). Tapping a suggestion that changes letters already typed corrects the
+  word (#251).
+- Foldables: home stays upright on a cover screen, and the cover and unfolded inner screens can
+  have layouts of their own, as `[cover]` and `[unfolded]` sections in layout.toml (#256, #257,
+  #259).
+- Fixes: turning a phone sideways no longer sends home back to page 1; a notification whose
+  extras can't be read and a layout.toml tile placed past its own columns no longer crash the
+  launcher.
+
+## 1.0.0 (versionCode 33) – 2026-11-08
+
+- Phone folders: folders picked in Android's folder picker at the top of the permissions
+  screen show in Files, where their files can be opened, shared, renamed,
+  deleted and copied or moved to and from Linux; agents reach them with `omalauncher folders`,
+  `ls`, `get` and `put`, and `omalauncher pick` opens Android's file picker. No storage
+  permission: on Android 11+ Linux also has /sdcard, with the files it saved there itself, so
+  what it puts in Download or Documents other apps see.
+- Settings has a permissions screen listing each permission, whether it's on and what uses it.
+- The `phone` command is `omalauncher` now (`phone` still works), with exit codes that say why
+  there is no answer, and more commands: `notify` (a phone notification on its own
+  "agents and scripts" channel), `share` (Android's share sheet for Linux files), `battery`,
+  `version`, and the phone folder commands. It answers in about 35 ms rather than 170.
+- Linux follows the phone's DNS servers, a VPN's included, so tailnet and LAN names resolve;
+  8.8.8.8 and 1.1.1.1 stay the fallback. An edited resolv.conf is left alone.
+- Owl 19: `fps:` says how many frames a second a widget's animation needs; koi, the owl and the
+  controls panel run at 10 to 30 rather than 60, which saves battery while home shows.
+- Home can open on any page, a face too: `home.home-page` in style.toml (#270, #225).
+- Claude Code no longer warns about cross-session messaging on every start in Linux.
+- Fixes: an exited terminal tile stays stopped until tapped (#130); a widget's notification no
+  longer replaces one from before the launcher restarted; an agent whose install finishes
+  after the agents screen closed shows up right away; Voice keeps its log in ~/.cache.
 
 ## 0.20.0 (versionCode 31) – 2026-11-05
 
