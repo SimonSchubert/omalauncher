@@ -12,6 +12,7 @@ the same way. Save a file and it appears within a second. Then run `owl-check <f
 $ owl-check 50-memory.owl
 50-memory.owl: compiles
   preview: ~/.config/omalauncher/widgets/.preview/50-memory.owl.png (3x4 cells, 528x712 px, with live data); look at it to check the layout
+  on home: 3x4 cells at x=0 y=2, as ~/.config/omalauncher/home/layout.toml has it; change it there, not with size:
 ```
 
 A widget with a `screen { }` (docs/screens.md) gets a second picture, of the screen as it opens. An
@@ -21,14 +22,17 @@ It waits until the launcher has loaded the file as saved, prints compile errors
 and problems found while running, and exits 1 if there are any. The preview is
 the tile as it looks on the home screen, at its size there, after its sources
 have loaded: open it to see whether text fits and the layout works, since you
-can't see the phone. Terminal and Browser tiles aren't previewed. Errors also
+can't see the phone. It's the running tile, so to see another state, set it and check again:
+`owl-send <file> set <state> <value>` (docs/home.md), then `owl-check <file>`; set it back when
+you're done, since that's the tile on the user's home. Terminal and Browser tiles aren't previewed. Errors also
 go to `.errors/<file>.txt`, and the tile shows them.
 
 Widgets sit on a grid of roughly square cells, 6 columns by default (a phone
 has about 12 rows), bordered like Omarchy windows and colored by the current
 Omarchy theme. Users move and resize them on the phone; where everything is
 lives in ~/.config/omalauncher/home/layout.toml, which you can edit too (see
-docs/home.md).
+docs/home.md). The launcher puts a new file on home itself, by its `page:`, `order:` and `size:`:
+don't add it to layout.toml, move it there afterwards if it should be elsewhere.
 
 ```owl
 widget "memory" {

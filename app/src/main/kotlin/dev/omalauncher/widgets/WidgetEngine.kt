@@ -40,6 +40,7 @@ import dev.omalauncher.widgets.market.Shared
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -668,6 +669,9 @@ class WidgetEngine(
 
     private fun widgetFiles() = dir.listFiles { f -> (!f.name.startsWith(".") || f.name == STOCK_DRAWER || f.name == STOCK_KEYBAR) && f.extension == "owl" }.orEmpty().sortedBy { it.name }
 
+    /** New files that haven't compiled yet: home placed them at the default size. Main thread. */
+    private val unsized = HashSet<String>()
+
     private suspend fun reload(files: List<File>) {
         // Compiled for another language, a file's texts would stay in it.
         val relanguaged = phoneLanguage() != language
@@ -678,6 +682,16 @@ class WidgetEngine(
             withContext(Dispatchers.IO) {
                 files.map { f -> async { old[f.name]?.takeIf { !relanguaged && it.stamp == f.lastModified() } ?: compile(f, old[f.name]) } }.awaitAll()
             }
+        // A new file that didn't compile was placed with no size: to go by; once it compiles, its page places it again, at its size.
+        unsized.retainAll(parsed.mapTo(HashSet()) { it.file.name })
+        for (spec in parsed) {
+            val name = spec.file.name
+            if (spec.program == null) {
+                if (old[name] == null && Screen.entries.none { layout.cell(name, it) != null }) unsized += name
+            } else if (unsized.remove(name) && spec.size != null) {
+                for (screen in Screen.entries) layout.clearCell(name, screen)
+            }
+        }
         val changed = parsed.filter { old[it.file.name] !== it }.map { it.file.name }
         specs.clear()
         specs += parsed.sortedWith(compareBy({ it.page }, { it.order }, { it.file.name }))
@@ -763,6 +777,8 @@ class WidgetEngine(
                 parts.getOrNull(1) == "set" -> inst.setState(parts.getOrNull(2).orEmpty(), Json.parseOrText(parts.getOrNull(3).orEmpty()))?.let { "error: $it" } ?: "ok"
                 else -> "error: unknown command '${parts.getOrNull(1).orEmpty()}'"
             }
+        // The picture owl-check has is of the widget before this: without its preview line, the next check asks for a new one.
+        if (reply == "ok") hashes[name]?.let { writeCheck(spec!!.file, it, "ok").join() }
         withContext(Dispatchers.IO) {
             runCatching { writeAtomically(File(inboxDir, "$id.done"), (reply + "\n").toByteArray()) }
         }
@@ -802,7 +818,10 @@ class WidgetEngine(
                 instance(spec) == null -> "it isn't running"
                 else -> null
             }
-        if (skip != null) return writeCheck(spec.file, hash, "ok", "preview-skipped $hash $skip")
+        if (skip != null) {
+            writeCheck(spec.file, hash, "ok", "preview-skipped $hash $skip")
+            return
+        }
         val inst = instance(spec)!!
         if (program.kind == OwlKind.App || program.kind == OwlKind.Panel || program.kind == OwlKind.Keybar) return previewView(spec, inst, hash)
         val cells = tileCells(spec)
@@ -827,7 +846,9 @@ class WidgetEngine(
         // The file may have changed while this rendered; its own preview follows.
         if (hashes[name] != hash) return
         val line = if (ok) shownCells(cells).let { (c, r) -> "preview $hash ${c}x$r ${w}x$h" } else "preview-skipped $hash rendering failed"
-        writeCheck(spec.file, hash, "ok", listOfNotNull(line, screen).joinToString("\n"))
+        // Where home put the tile, which the file's size: only decides the first time.
+        val home = if (spec.isFace) null else layout.cell(name)?.let { "home $hash ${it.x} ${it.y} ${it.w} ${it.h}" }
+        writeCheck(spec.file, hash, "ok", listOfNotNull(line, screen, home).joinToString("\n"))
     }
 
     /** The tile's cells as it's laid out on home, else as the file sizes it; a face's are the whole grid. */
@@ -1020,7 +1041,8 @@ class WidgetEngine(
     /**
      * Writes .check/<file>.txt for `owl-check`: `sha256 <hash>`, `result ok` or
      * `result error`, and once rendered, `preview <hash> <cells> <pixels>` or
-     * `preview-skipped <hash> <why>`, then `screen <hash> <pixels>` for a screen { }. After the error file, in the same order,
+     * `preview-skipped <hash> <why>`, then `screen <hash> <pixels>` for a screen { } and `home <hash> <x> <y> <w> <h>`
+     * for a tile's cell on home. After the error file, in the same order,
      * so a check that sees the hash also sees that version's errors.
      */
     private fun writeCheck(
@@ -1028,9 +1050,9 @@ class WidgetEngine(
         hash: String,
         result: String,
         preview: String? = null,
-    ) {
+    ): Job {
         val text = "sha256 $hash\nresult $result\n" + (preview?.let { "$it\n" } ?: "")
-        scope.launch(errorWriter) {
+        return scope.launch(errorWriter) {
             runCatching { writeAtomically(File(checkDir, "${file.name}.txt"), text.toByteArray()) }
         }
     }
