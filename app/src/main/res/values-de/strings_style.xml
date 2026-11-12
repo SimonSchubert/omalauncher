@@ -90,7 +90,7 @@
     <string name="style_retry">nochmal versuchen</string>
     <string name="style_download_themes">themes herunterladen</string>
 
-    <string name="style_add_image">+ bild</string>
+    <string name="style_add_image">bild verwenden</string>
     <string name="style_wallpaper_active">✓ android-hintergrund &amp; systemfarben folgen dem theme (systemfarben ändern sich, sobald der bildschirm einmal aus war)</string>
     <string name="style_wallpaper_use">als android-hintergrund + systemfarben nutzen</string>
     <string name="style_remove_background_title">hintergrund entfernen?</string>
@@ -150,9 +150,16 @@
     <string name="style_wallpaper_x">horizontale position</string>
     <string name="style_wallpaper_y">vertikale position</string>
     <string name="style_wallpaper_zoom">zoom</string>
-    <string name="style_wallpaper_position_hint">0 = links / oben · 1 = rechts / unten</string>
+    <string name="style_wallpaper_position_hint" formatted="false">0% = links / oben · 100% = rechts / unten</string>
     <string name="style_wallpaper_scroll_hint">Wähle den Bildbereich, der sich mit den Seiten bewegt.</string>
     <string name="style_wallpaper_start">anfang</string>
     <string name="style_wallpaper_middle">mitte</string>
     <string name="style_wallpaper_end">ende</string>
+    <string name="style_wallpaper_sizing">bildgröße</string>
+    <string name="style_wallpaper_whole">ganzes bild</string>
+    <string name="style_wallpaper_fill">ausfüllen</string>
+    <string name="style_wallpaper_disabled_hint">Zoome hinein, um ausgegraute Positionen anzupassen. Du kannst ihre gespeicherten Werte trotzdem zurücksetzen.</string>
+    <string name="style_wallpaper_loading">bild wird geladen…</string>
+    <string name="style_wallpaper_choose">Wähle ein Bild, um den Ausschnitt anzupassen.</string>
+    <string name="style_wallpaper_unreadable">Dieses Bild konnte nicht geöffnet werden. Wähle ein anderes.</string>
 </resources>

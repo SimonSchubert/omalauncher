@@ -90,7 +90,7 @@
     <string name="style_retry">重试</string>
     <string name="style_download_themes">下载主题</string>
 
-    <string name="style_add_image">+ 图片</string>
+    <string name="style_add_image">使用图片</string>
     <string name="style_wallpaper_active">✓ android 壁纸和系统颜色跟随主题（系统颜色在屏幕关闭后更新）</string>
     <string name="style_wallpaper_use">用作 android 壁纸 + 系统颜色</string>
     <string name="style_remove_background_title">移除背景？</string>
@@ -148,9 +148,16 @@
     <string name="style_wallpaper_x">水平位置</string>
     <string name="style_wallpaper_y">垂直位置</string>
     <string name="style_wallpaper_zoom">缩放</string>
-    <string name="style_wallpaper_position_hint">0 = 左 / 上 · 1 = 右 / 下</string>
+    <string name="style_wallpaper_position_hint" formatted="false">0% = 左 / 上 · 100% = 右 / 下</string>
     <string name="style_wallpaper_scroll_hint">选择随页面移动的图像区域。</string>
     <string name="style_wallpaper_start">起点</string>
     <string name="style_wallpaper_middle">中间</string>
     <string name="style_wallpaper_end">终点</string>
+    <string name="style_wallpaper_sizing">图像大小</string>
+    <string name="style_wallpaper_whole">完整图像</string>
+    <string name="style_wallpaper_fill">填充</string>
+    <string name="style_wallpaper_disabled_hint">放大图像以调整灰显的位置。仍可重置其已保存的值。</string>
+    <string name="style_wallpaper_loading">正在加载图像…</string>
+    <string name="style_wallpaper_choose">选择图像以调整取景。</string>
+    <string name="style_wallpaper_unreadable">无法打开此图像。请选择其他图像。</string>
 </resources>

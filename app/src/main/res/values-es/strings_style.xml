@@ -90,7 +90,7 @@
     <string name="style_retry">reintentar</string>
     <string name="style_download_themes">descargar temas</string>
 
-    <string name="style_add_image">+ imagen</string>
+    <string name="style_add_image">usar imagen</string>
     <string name="style_wallpaper_active">✓ el fondo de android y los colores del sistema siguen al tema (los colores del sistema se actualizan después de que se apague la pantalla)</string>
     <string name="style_wallpaper_use">usar como fondo de android + colores del sistema</string>
     <string name="style_remove_background_title">¿quitar el fondo?</string>
@@ -152,9 +152,16 @@
     <string name="style_wallpaper_x">posición horizontal</string>
     <string name="style_wallpaper_y">posición vertical</string>
     <string name="style_wallpaper_zoom">zoom</string>
-    <string name="style_wallpaper_position_hint">0 = izquierda / arriba · 1 = derecha / abajo</string>
+    <string name="style_wallpaper_position_hint" formatted="false">0% = izquierda / arriba · 100% = derecha / abajo</string>
     <string name="style_wallpaper_scroll_hint">Elige la región de la imagen que acompaña a las páginas.</string>
     <string name="style_wallpaper_start">inicio</string>
     <string name="style_wallpaper_middle">medio</string>
     <string name="style_wallpaper_end">fin</string>
+    <string name="style_wallpaper_sizing">encuadre</string>
+    <string name="style_wallpaper_whole">imagen completa</string>
+    <string name="style_wallpaper_fill">rellenar</string>
+    <string name="style_wallpaper_disabled_hint">Amplía la imagen para ajustar las posiciones desactivadas. Puedes restablecer sus valores guardados.</string>
+    <string name="style_wallpaper_loading">Cargando imagen…</string>
+    <string name="style_wallpaper_choose">Elige una imagen para ajustar el encuadre.</string>
+    <string name="style_wallpaper_unreadable">No se pudo abrir esta imagen. Elige otra.</string>
 </resources>

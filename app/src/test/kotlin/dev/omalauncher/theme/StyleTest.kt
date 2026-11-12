@@ -160,11 +160,12 @@ class StyleTest {
             x = 0.2
             y = 0.8
             zoom = 1.7
+            fit = true
         """.trimIndent()
         val table = Toml.parse(text)
         val decoded = StyleFile.decode(table)
         assertEquals(emptyList<String>(), decoded.problems)
-        assertEquals(WallpaperFraming(false, 0.2f, 0.8f, 1.7f), decoded.style.wallpaperFraming)
+        assertEquals(WallpaperFraming(false, 0.2f, 0.8f, 1.7f, true), decoded.style.wallpaperFraming)
         assertEquals("photo.jpg", decoded.style[Style.BACKGROUND])
         assertEquals(decoded.style, StyleFile.decode(Toml.parse(Toml.write(StyleFile.encode(table, decoded.style)))).style)
     }

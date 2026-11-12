@@ -107,8 +107,10 @@ class OmarchyWallpaperService : WallpaperService() {
             try {
                 canvas.drawColor(color("background", Color.BLACK))
                 bitmap?.let { bmp ->
-                    val src = framing.crop(bmp.width, bmp.height, canvas.width, canvas.height, xOffset)
-                    canvas.drawBitmap(bmp, Rect(src.left, src.top, src.right, src.bottom), Rect(0, 0, canvas.width, canvas.height), paint)
+                    val placement = framing.placement(bmp.width.toFloat(), bmp.height.toFloat(), canvas.width.toFloat(), canvas.height.toFloat(), xOffset)
+                    val src = placement.sourcePixels(bmp.width, bmp.height)
+                    val dst = placement.destinationPixels(canvas.width, canvas.height)
+                    canvas.drawBitmap(bmp, Rect(src.left, src.top, src.right, src.bottom), Rect(dst.left, dst.top, dst.right, dst.bottom), paint)
                 }
             } finally {
                 holder.unlockCanvasAndPost(canvas)

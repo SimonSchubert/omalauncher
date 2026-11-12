@@ -28,16 +28,20 @@ window opens as its own Android task, with its own card in Recents.
   Copilot, opencode and others, which open in a terminal
 - No account, no ads, no tracking
 
-In settings › style › background, add your own image, keep it fixed or let it
-scroll with the home pages, and adjust its horizontal and vertical position
-and zoom with a preview. While scrolling, start / middle / end show how the
-crop changes across pages; positions with no room to move are disabled until
-the image, zoom or window gives them room again. Preview choices only affect
-the preview. The same crop shows on home and in Omalauncher's
-Android live wallpaper. Agents can change these through `[wallpaper]`
-(`scroll`, `x`, `y`, `zoom`) in `~/.config/omalauncher/style/style.toml`;
-`defaults.toml` beside it documents the ranges. Existing installs keep scrolling
-until these settings are changed.
+In settings › style › background, use your own image or pick a theme background.
+Choose **fill** to crop it to the screen or **whole image** to show it entirely,
+with the theme's background color in the borders. Changing sizing resets zoom to
+1×. Position and zoom show in a responsive preview; start / middle / end show
+how a scrolling wallpaper moves across pages. Controls with no room to move
+are dimmed, with a hint; saved values can still be reset.
+
+Each image remembers its sizing, position, zoom and scrolling mode, so choosing
+another starts at its own framing. These profiles live in the versioned
+`~/.config/omalauncher/style/wallpapers.json`. The active choices stay in
+`style.toml` under `[wallpaper]` (`fit`, `scroll`, `x`, `y`, `zoom`); an external
+edit applies as written and is remembered for that image. `defaults.toml` beside
+it documents the ranges. Existing installs keep their current framing. Home,
+Android's Omalauncher live wallpaper and frosted widgets use the same placement.
 
 Needs an arm64 phone with Android 10 or newer. Without Linux, the launcher still
 has the themes, wallpapers, Android apps and the widgets that don't run commands.

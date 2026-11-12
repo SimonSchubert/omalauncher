@@ -9,6 +9,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -71,6 +73,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -104,6 +112,7 @@ import dev.omalauncher.theme.Toml
 import dev.omalauncher.widgets.WidgetEngine
 import dev.omalauncher.widgets.editWidgetCommand
 import java.io.File
+import kotlin.math.roundToInt
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlinx.coroutines.Dispatchers
@@ -363,7 +372,9 @@ private fun BackgroundSection(
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch { store.addBackground(uri) }
     }
-    Heading(R.string.style_background)
+    Heading(R.string.style_background) {
+        BracketAction(stringResource(R.string.style_add_image), Palette.accent) { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+    }
     LazyRow(Modifier.bleed(PanelPadding), contentPadding = PaddingValues(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(backgrounds, key = { it.path }) { file ->
             Thumbnail(
@@ -375,19 +386,11 @@ private fun BackgroundSection(
                 onLongClick = if (theme.isExtraBackground(file)) ({ removing = file }) else null,
             )
         }
-        // Omarchy's Install > Style > Background, with Android's image picker instead of a folder.
-        item(key = "add") {
-            Box(
-                Modifier
-                    .width(120.dp)
-                    .aspectRatio(16f / 10f)
-                    .frame(2.dp, Palette.border, Palette.surface, radius = 12.dp)
-                    .clickable { pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                contentAlignment = Alignment.Center,
-            ) {
-                BasicText("[ ${stringResource(R.string.style_add_image)} ]", style = Mono.copy(color = Palette.accent))
-            }
-        }
+    }
+    StyleOption(R.string.style_wallpaper_sizing,
+        listOf(stringResource(R.string.style_wallpaper_whole), stringResource(R.string.style_wallpaper_fill)),
+        if (style.style[Style.BACKGROUND_FIT]) 0 else 1) { choice ->
+        style.update { it.with(Style.BACKGROUND_FIT, choice == 0).with(Style.BACKGROUND_ZOOM, 1.0) }
     }
     Flag(R.string.style_wallpaper_motion, R.string.style_wallpaper_scroll, R.string.style_wallpaper_fixed, style, Style.BACKGROUND_SCROLL)
     WallpaperOptions(store.background, style)
@@ -425,37 +428,62 @@ private fun BackgroundSection(
     }
 }
 
-/** Framing controls and the current window's crop, with a local page preview when scrolling is on. */
+/** Framing controls share a responsive editor with the same placement home and Android use. */
 @Composable
 private fun WallpaperOptions(file: File?, style: StyleStore) {
+    var loaded by remember(file) { mutableStateOf(false) }
     val image by produceState<ImageBitmap?>(null, file) {
         value = null
+        loaded = false
         value = file?.let { withContext(Dispatchers.IO) { decodeSampled(it, 480, 480)?.asImageBitmap() } }
+        loaded = true
     }
     val window = windowSize()
     val framing = style.style.wallpaperFraming
     val available = image?.let { framing.adjustments(it.width, it.height, window.width, window.height) } ?: WallpaperFraming.Adjustments()
-    NumberSlider(R.string.style_wallpaper_x, style, Style.BACKGROUND_X, enabled = available.horizontal)
-    NumberSlider(R.string.style_wallpaper_y, style, Style.BACKGROUND_Y, enabled = available.vertical)
-    NumberSlider(R.string.style_wallpaper_zoom, style, Style.BACKGROUND_ZOOM, enabled = image != null)
-    OptionHint(stringResource(R.string.style_wallpaper_position_hint))
-    if (framing.scroll) OptionHint(stringResource(R.string.style_wallpaper_scroll_hint))
-    val bmp = image ?: return
     var previewPage by remember(file) { mutableIntStateOf(1) }
-    if (framing.scroll) {
-        StyleOption(
-            R.string.style_preview,
-            listOf(stringResource(R.string.style_wallpaper_start), stringResource(R.string.style_wallpaper_middle), stringResource(R.string.style_wallpaper_end)),
-            previewPage,
-            enabled = available.scrolling,
-        ) { previewPage = it }
-    }
     val previewOffset by animateFloatAsState(previewPage / 2f, label = "wallpaper preview")
-    val ratio = window.width.toFloat() / window.height.coerceAtLeast(1)
-    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.width(140.dp).aspectRatio(ratio).frame(1.dp, Palette.border, Palette.surface)) {
-            val src = style.style.wallpaperFraming.crop(bmp.width, bmp.height, size.width.toInt(), size.height.toInt(), previewOffset)
-            drawImage(bmp, srcOffset = IntOffset(src.left, src.top), srcSize = IntSize(src.width, src.height), dstSize = IntSize(size.width.toInt(), size.height.toInt()), filterQuality = FilterQuality.Medium)
+
+    @Composable fun Controls() {
+        NumberSlider(R.string.style_wallpaper_x, style, Style.BACKGROUND_X, available.horizontal) { "${(it * 100).roundToInt()}%" }
+        NumberSlider(R.string.style_wallpaper_y, style, Style.BACKGROUND_Y, available.vertical) { "${(it * 100).roundToInt()}%" }
+        NumberSlider(R.string.style_wallpaper_zoom, style, Style.BACKGROUND_ZOOM, image != null) { "${Toml.format(it)}×" }
+        OptionHint(stringResource(R.string.style_wallpaper_position_hint))
+        if (image != null && (!available.horizontal || !available.vertical)) OptionHint(stringResource(R.string.style_wallpaper_disabled_hint))
+        if (framing.scroll) OptionHint(stringResource(R.string.style_wallpaper_scroll_hint))
+    }
+
+    @Composable fun Preview() {
+        if (framing.scroll) {
+            StyleOption(R.string.style_preview,
+                listOf(stringResource(R.string.style_wallpaper_start), stringResource(R.string.style_wallpaper_middle), stringResource(R.string.style_wallpaper_end)),
+                previewPage, enabled = available.scrolling) { previewPage = it }
+        }
+        val bmp = image
+        if (bmp == null) {
+            OptionHint(stringResource(if (!loaded) R.string.style_wallpaper_loading else if (file == null) R.string.style_wallpaper_choose else R.string.style_wallpaper_unreadable))
+        } else {
+            val ratio = window.width.toFloat().coerceAtLeast(1f) / window.height.coerceAtLeast(1)
+            val previewHeight = with(LocalDensity.current) { window.height.toDp() * 0.26f }.coerceIn(140.dp, 220.dp)
+            BoxWithConstraints(Modifier.fillMaxWidth().height(previewHeight).padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                val width = minOf(maxWidth, maxHeight * ratio)
+                Canvas(Modifier.width(width).aspectRatio(ratio).frame(1.dp, Palette.border, Palette.background)) {
+                    val placement = style.style.wallpaperFraming.placement(bmp.width.toFloat(), bmp.height.toFloat(), size.width, size.height, previewOffset)
+                    val src = placement.sourcePixels(bmp.width, bmp.height)
+                    val dst = placement.destinationPixels(size.width.toInt(), size.height.toInt())
+                    drawImage(bmp, srcOffset = IntOffset(src.left, src.top), srcSize = IntSize(src.width, src.height), dstOffset = IntOffset(dst.left, dst.top), dstSize = IntSize(dst.width, dst.height), filterQuality = FilterQuality.Medium)
+                }
+            }
+        }
+    }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth >= 600.dp) {
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                Column(Modifier.weight(1f)) { Preview() }
+                Column(Modifier.weight(1f)) { Controls() }
+            }
+        } else {
+            Column { Preview(); Controls() }
         }
     }
 }
@@ -749,7 +777,12 @@ private fun OptionLabel(
 private fun OptionHint(
     text: String,
     modifier: Modifier = Modifier,
-) = BasicText(text, modifier.padding(start = LabelWidth), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val indent = if (maxWidth < 340.dp || LocalDensity.current.fontScale > 1.2f) 0.dp else LabelWidth
+        BasicText(text, Modifier.padding(start = indent), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+    }
+}
 
 /**
  * [Style] numbers stepped together by 1 within their range, from the first one's value; a value set
@@ -800,74 +833,67 @@ private fun Stepper(
     if (style.style.common(all) == null) OptionHint(stringResource(R.string.style_differ_step), Modifier.padding(bottom = 4.dp))
 }
 
-/**
- * A [Style] number dragged or tapped across its range in steps of 0.01, applied as it moves
- * (style.toml is saved once it settles).
- */
+/** A keyboard-, touch- and accessibility-adjustable number; dormant values can still be reset. */
 @Composable
 private fun NumberSlider(
     @StringRes label: Int,
     style: StyleStore,
     setting: Setting.Number,
     enabled: Boolean = true,
+    format: (Double) -> String = Toml::format,
 ) {
     val value = style.style[setting]
     val range = setting.range
-    fun set(
-        x: Float,
-        width: Int,
-    ) {
-        val f = (x / width.coerceAtLeast(1)).coerceIn(0f, 1f)
-        val v = Math.round((range.start + f * (range.endInclusive - range.start)) * 100) / 100.0
-        style.update { it.with(setting, v) }
+    val labelText = stringResource(label)
+    val shown = format(value)
+    fun set(v: Double): Boolean {
+        if (!enabled) return false
+        val next = (Math.round(v.coerceIn(range) * 100) / 100.0).coerceIn(range)
+        if (next == style.style[setting]) return false
+        style.update { it.with(setting, next) }
+        return true
     }
-    val interaction =
-        if (enabled) {
-            Modifier
-                // Keys step it, a twentieth of its range or with Shift a hundredth.
-                .keyStepped(vertical = false) { by, fine ->
-                    val span = range.endInclusive - range.start
-                    val v = Math.round((value + by * span / (if (fine) 100 else 20)).coerceIn(range.start, range.endInclusive) * 100) / 100.0
-                    // At the end, the arrow goes on, to reset.
-                    if (v == value) return@keyStepped false
-                    style.update { it.with(setting, v) }
-                    true
-                }.pointerInput(setting) { detectTapGestures { set(it.x, size.width) } }
-                .pointerInput(setting) {
-                    detectHorizontalDragGestures { change, _ ->
-                        change.consume()
-                        set(change.position.x, size.width)
-                    }
-                }
-        } else {
-            Modifier.semantics { disabled() }
-        }
+    val interaction = if (enabled) {
+        Modifier.keyStepped(vertical = false) { by, fine -> set(value + by * (range.endInclusive - range.start) / (if (fine) 100 else 20)) }
+            .pointerInput(setting) { detectTapGestures { set(range.start + (it.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f) * (range.endInclusive - range.start)) } }
+            .pointerInput(setting) { detectHorizontalDragGestures { change, _ ->
+                change.consume()
+                set(range.start + (change.position.x / size.width.coerceAtLeast(1)).coerceIn(0f, 1f) * (range.endInclusive - range.start))
+            } }
+    } else Modifier
     val accent = Palette.accent
     val track = Palette.surface
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).alpha(if (enabled) 1f else 0.38f), verticalAlignment = Alignment.CenterVertically) {
-        OptionLabel(stringResource(label))
-        Spacer(
-            Modifier
-                .weight(1f)
-                .height(40.dp)
-                .then(interaction)
-                .drawBehind {
-                    val f = ((value - range.start) / (range.endInclusive - range.start)).toFloat().coerceIn(0f, 1f)
-                    val line = 4.dp.toPx()
-                    val thumbW = 10.dp.toPx()
-                    val thumbH = 20.dp.toPx()
-                    val cy = size.height / 2
-                    drawRect(track, Offset(0f, cy - line / 2), Size(size.width, line))
-                    drawRect(accent, Offset(0f, cy - line / 2), Size(size.width * f, line))
-                    drawRoundRect(accent, Offset((size.width - thumbW) * f, cy - thumbH / 2), Size(thumbW, thumbH), CornerRadius(3.dp.toPx() * LauncherStyle.cornerScale))
-                },
-        )
-        BasicText(Toml.format(value), Modifier.widthIn(min = 56.dp).padding(start = 12.dp), style = Mono.copy(textAlign = TextAlign.End), softWrap = false)
-        // Always there, so the slider doesn't narrow under the finger as it leaves the default.
-        if (enabled) {
-            BracketAction(stringResource(R.string.style_reset), Palette.muted) { style.update { it.with(setting, setting.default) } }
-        } else {
-            BasicText("[ ${stringResource(R.string.style_reset)} ]", Modifier.padding(horizontal = 8.dp, vertical = 6.dp).semantics { disabled() }, style = Mono.copy(color = Palette.muted))
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        val stacked = maxWidth < 340.dp || LocalDensity.current.fontScale > 1.2f
+        Column {
+            if (stacked) BasicText(labelText, style = Mono.copy(color = Palette.muted))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                if (!stacked) OptionLabel(labelText)
+                Spacer(Modifier.weight(1f).height(48.dp).then(interaction)
+                    .semantics {
+                        contentDescription = labelText
+                        stateDescription = shown
+                        progressBarRangeInfo = ProgressBarRangeInfo(value.toFloat(), range.start.toFloat()..range.endInclusive.toFloat(), ((range.endInclusive - range.start) * 100).roundToInt() - 1)
+                        if (enabled) setProgress { set(it.toDouble()) } else disabled()
+                    }
+                    .alpha(if (enabled) 1f else 0.45f)
+                    .drawBehind {
+                        val f = ((value - range.start) / (range.endInclusive - range.start)).toFloat().coerceIn(0f, 1f)
+                        val line = 4.dp.toPx()
+                        val thumbW = 10.dp.toPx()
+                        val thumbH = 20.dp.toPx()
+                        val cy = size.height / 2
+                        drawRect(track, Offset(0f, cy - line / 2), Size(size.width, line))
+                        drawRect(accent, Offset(0f, cy - line / 2), Size(size.width * f, line))
+                        drawRoundRect(accent, Offset((size.width - thumbW) * f, cy - thumbH / 2), Size(thumbW, thumbH), CornerRadius(3.dp.toPx() * LauncherStyle.cornerScale))
+                    })
+                BasicText(shown, Modifier.widthIn(min = 56.dp).padding(start = 8.dp).alpha(if (enabled) 1f else 0.45f), style = Mono.copy(textAlign = TextAlign.End), softWrap = false)
+                if (value != setting.default) {
+                    BracketAction(stringResource(R.string.style_reset), Palette.accent) { style.update { it.with(setting, setting.default) } }
+                } else {
+                    BasicText("[ ${stringResource(R.string.style_reset)} ]", Modifier.padding(horizontal = 8.dp, vertical = 6.dp).alpha(0.45f).semantics { disabled() }, style = Mono.copy(color = Palette.muted))
+                }
+            }
         }
     }
 }
@@ -929,22 +955,23 @@ private fun StyleOption(
     enabled: Boolean = true,
     onSelect: (Int) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).alpha(if (enabled) 1f else 0.38f), verticalAlignment = Alignment.CenterVertically) {
-        OptionLabel(stringResource(label))
-        // At a large Android font size the options may not fit: they scroll rather than wrap.
-        Box(Modifier.horizontalScroll(rememberScrollState())) {
-            Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp)) {
-                options.forEachIndexed { i, option ->
-                    val active = i == selected
-                    BasicText(
-                        option,
-                        Modifier
-                            .background(if (active) Palette.accent else Color.Transparent)
-                            .clickable(enabled = enabled) { onSelect(i) }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        style = Mono.copy(color = if (active) Palette.background else Palette.foreground),
-                        softWrap = false,
-                    )
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(vertical = 4.dp).alpha(if (enabled) 1f else 0.45f)) {
+        val stacked = maxWidth < 340.dp || LocalDensity.current.fontScale > 1.2f
+        Column {
+            if (stacked) BasicText(stringResource(label), style = Mono.copy(color = Palette.muted))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (!stacked) OptionLabel(stringResource(label))
+                Box(Modifier.horizontalScroll(rememberScrollState())) {
+                    Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp).selectableGroup()) {
+                        options.forEachIndexed { i, option ->
+                            val active = i == selected
+                            BasicText(option,
+                                Modifier.background(if (active) Palette.accent else Color.Transparent)
+                                    .selectable(selected = active, enabled = enabled, role = Role.RadioButton) { onSelect(i) }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                                style = Mono.copy(color = if (active) Palette.background else Palette.foreground), softWrap = false)
+                        }
+                    }
                 }
             }
         }
