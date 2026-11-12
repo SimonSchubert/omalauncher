@@ -144,8 +144,6 @@ fun StyleScreen(
             // Style choices don't depend on a theme, so they're offered before themes are downloaded too.
             Heading(R.string.style_home_screen)
             val style = runtime.style
-            Flag(R.string.style_orientation, R.string.style_portrait, R.string.style_rotation_android, style, Style.PORTRAIT)
-            if (style.style[Style.PORTRAIT]) OptionHint(stringResource(R.string.style_portrait_hint))
             Flag(R.string.style_icons, R.string.style_monochrome, R.string.style_colored, style, Style.MONOCHROME_ICONS)
             Flag(R.string.style_home_apps, R.string.style_boxed, R.string.style_icon_only, style, Style.APP_TILES)
             Flag(R.string.style_recent_apps, R.string.style_shown, R.string.style_hidden, style, Style.RECENT_APPS)

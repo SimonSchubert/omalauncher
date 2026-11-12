@@ -34,12 +34,10 @@ and zoom with a preview. While scrolling, start / middle / end show how the
 crop changes across pages; positions with no room to move are disabled until
 the image, zoom or window gives them room again. Preview choices only affect
 the preview. The same crop shows on home and in Omalauncher's
-Android live wallpaper. Settings › style › home screen also offers portrait
-orientation; Android may ignore this on large screens or in multi-window mode.
-Agents can change these through `[wallpaper]` (`scroll`, `x`, `y`, `zoom`) and
-`home.portrait` in `~/.config/omalauncher/style/style.toml`; `defaults.toml`
-beside it documents the ranges. Existing installs keep scrolling and Android's
-rotation behavior until these settings are changed.
+Android live wallpaper. Agents can change these through `[wallpaper]`
+(`scroll`, `x`, `y`, `zoom`) in `~/.config/omalauncher/style/style.toml`;
+`defaults.toml` beside it documents the ranges. Existing installs keep scrolling
+until these settings are changed.
 
 Needs an arm64 phone with Android 10 or newer. Without Linux, the launcher still
 has the themes, wallpapers, Android apps and the widgets that don't run commands.

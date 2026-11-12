@@ -143,11 +143,7 @@
     <string name="agents_still_running">%1$s läuft noch: schließ es und deinstalliere es dann noch mal</string>
     <string name="agents_install">installieren</string>
 
-    <!-- Home rotation and wallpaper framing. Positions run from 0 to 1; zoom from 1 to 3. -->
-    <string name="style_orientation">ausrichtung</string>
-    <string name="style_portrait">hochformat</string>
-    <string name="style_rotation_android">android</string>
-    <string name="style_portrait_hint">Android kann auf großen Bildschirmen oder im Mehrfenstermodus die Ausrichtung selbst bestimmen.</string>
+    <!-- Wallpaper framing. Positions run from 0 to 1; zoom from 1 to 3. -->
     <string name="style_wallpaper_motion">hintergrundbewegung</string>
     <string name="style_wallpaper_scroll">mitbewegen</string>
     <string name="style_wallpaper_fixed">fest</string>

@@ -145,11 +145,7 @@
     <string name="agents_still_running">%1$s ainda está aberto: feche e remova de novo</string>
     <string name="agents_install">instalar</string>
 
-    <!-- Home rotation and wallpaper framing. Positions run from 0 to 1; zoom from 1 to 3. -->
-    <string name="style_orientation">orientação</string>
-    <string name="style_portrait">retrato</string>
-    <string name="style_rotation_android">android</string>
-    <string name="style_portrait_hint">O Android pode manter a própria orientação em telas grandes ou no modo de várias janelas.</string>
+    <!-- Wallpaper framing. Positions run from 0 to 1; zoom from 1 to 3. -->
     <string name="style_wallpaper_motion">movimento do fundo</string>
     <string name="style_wallpaper_scroll">rolar</string>
     <string name="style_wallpaper_fixed">fixo</string>
