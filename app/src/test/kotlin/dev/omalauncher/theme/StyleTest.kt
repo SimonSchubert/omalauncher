@@ -149,10 +149,9 @@ class StyleTest {
         assertEquals(6.0, StyleFile.decode(emptyMap(), previous).style[Style.GAPS_IN], 0.0)
     }
 
-    @Test fun wallpaperAndRotationSettingsRoundTripWithoutChangingOldInstalls() {
+    @Test fun wallpaperSettingsRoundTripWithoutChangingOldInstalls() {
         val old = StyleFile.decode(Toml.parse("version = 1\nbackground = \"photo.jpg\"\n")).style
         assertEquals(WallpaperFraming(), old.wallpaperFraming)
-        assertFalse(old[Style.PORTRAIT])
         val text = """
             version = 1
             background = "photo.jpg"
@@ -161,22 +160,19 @@ class StyleTest {
             x = 0.2
             y = 0.8
             zoom = 1.7
-            [home]
-            portrait = true
         """.trimIndent()
         val table = Toml.parse(text)
         val decoded = StyleFile.decode(table)
         assertEquals(emptyList<String>(), decoded.problems)
         assertEquals(WallpaperFraming(false, 0.2f, 0.8f, 1.7f), decoded.style.wallpaperFraming)
-        assertTrue(decoded.style[Style.PORTRAIT])
         assertEquals("photo.jpg", decoded.style[Style.BACKGROUND])
         assertEquals(decoded.style, StyleFile.decode(Toml.parse(Toml.write(StyleFile.encode(table, decoded.style)))).style)
     }
 
     @Test fun invalidWallpaperSettingsKeepThePreviousValues() {
-        val previous = Style().with(Style.BACKGROUND_X, 0.3).with(Style.BACKGROUND_Y, 0.7).with(Style.BACKGROUND_ZOOM, 2.0).with(Style.BACKGROUND_SCROLL, false).with(Style.PORTRAIT, true)
-        val decoded = StyleFile.decode(Toml.parse("wallpaper.x = -0.1\nwallpaper.y = 1.1\nwallpaper.zoom = 0.5\nwallpaper.scroll = \"no\"\nhome.portrait = \"yes\"\n"), previous)
-        assertEquals(5, decoded.problems.size)
+        val previous = Style().with(Style.BACKGROUND_X, 0.3).with(Style.BACKGROUND_Y, 0.7).with(Style.BACKGROUND_ZOOM, 2.0).with(Style.BACKGROUND_SCROLL, false)
+        val decoded = StyleFile.decode(Toml.parse("wallpaper.x = -0.1\nwallpaper.y = 1.1\nwallpaper.zoom = 0.5\nwallpaper.scroll = \"no\"\n"), previous)
+        assertEquals(4, decoded.problems.size)
         assertEquals(previous, decoded.style)
         assertEquals(Style(), StyleFile.decode(emptyMap(), previous).style)
     }
