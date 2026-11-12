@@ -188,7 +188,8 @@ internal fun Modifier.homeSwipe(
 
 /**
  * Dragging the open swipe-down panel moves it under the finger; it settles open or closed like the drawer. A list in
- * it scrolls first: pushing up past its end moves the panel on, as pulling down past the drawer's top closes it.
+ * it scrolls first: pushing up past its end moves the panel on, as pulling down past the drawer's top closes it,
+ * unless gestures.overscroll-close is false ([LauncherStyle.overscrollClose]).
  */
 @Composable
 internal fun Modifier.pullSwipe(state: LauncherState): Modifier {
@@ -211,7 +212,7 @@ internal fun Modifier.pullSwipe(state: LauncherState): Modifier {
                     available: Offset,
                     source: NestedScrollSource,
                 ): Offset {
-                    if (source != NestedScrollSource.UserInput || available.y >= 0f) return Offset.Zero
+                    if (source != NestedScrollSource.UserInput || available.y >= 0f || !LauncherStyle.overscrollClose) return Offset.Zero
                     if (state.pull.value >= 1f) state.startPull()
                     state.pullBy(available.y / screenHeight)
                     return Offset(0f, available.y)

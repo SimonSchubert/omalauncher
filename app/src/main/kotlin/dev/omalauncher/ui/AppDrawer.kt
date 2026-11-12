@@ -396,7 +396,10 @@ internal fun recentApps(
         .toList()
 }
 
-/** Pulling down past the top of a list in the drawer drags it closed, like stock drawers; for its list, and a panel's in its place. */
+/**
+ * Pulling down past the top of a list in the drawer drags it closed, like stock drawers; for its list, and a panel's in
+ * its place. gestures.overscroll-close = false ([LauncherStyle.overscrollClose]) turns this off.
+ */
 @Composable
 internal fun rememberDrawerPull(state: LauncherState): NestedScrollConnection {
     val screenHeight = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
@@ -417,7 +420,7 @@ internal fun rememberDrawerPull(state: LauncherState): NestedScrollConnection {
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                if (source != NestedScrollSource.UserInput || available.y <= 0f || !LauncherStyle.overscrollClose) return Offset.Zero
                 state.dragBy(-available.y / screenHeight)
                 return Offset(0f, available.y)
             }
