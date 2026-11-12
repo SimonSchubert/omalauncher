@@ -185,10 +185,21 @@ private fun unfoldedScreen(window: IntSize): Boolean = LauncherStyle.unfoldedLay
  * [TWO_PAGES_MIN_WIDTH] rules out by width.
  */
 @Composable
-private fun unfoldedShape(window: IntSize): Boolean {
-    if (window.width / 2f / window.height !in 0.4f..0.65f) return false
-    return with(LocalDensity.current) { (window.width / 2).toDp() } >= TWO_PAGES_MIN_WIDTH
-}
+private fun unfoldedShape(window: IntSize): Boolean =
+    isUnfoldedShape(window, with(LocalDensity.current) { (window.width / 2).toDp() })
+
+/**
+ * [unfoldedShape] without Compose, given each half's width in dp. A half is phone-shaped from 0.4 to 0.7, its width
+ * over the height: inner screens run from about 0.52 (Pixel 9 Pro Fold) to 0.662 (Galaxy Z Fold8, #246). Tablets in
+ * landscape stay out, at 0.75 for 3:2 and 0.8 for 16:10; a 4:3 one's halves (0.667) are as phone-shaped as a Fold8's,
+ * so it gets two pages too.
+ */
+internal fun isUnfoldedShape(window: IntSize, halfWidth: Dp): Boolean =
+    window.height > 0 && window.width / 2f / window.height in 0.4f..UNFOLDED_HALF_MAX_ASPECT &&
+        halfWidth >= TWO_PAGES_MIN_WIDTH
+
+/** The widest half, width over height, that still counts as a page of its own on an unfolded screen. */
+private const val UNFOLDED_HALF_MAX_ASPECT = 0.7f
 
 /** Narrower than this, a "page" isn't worth having its own: smaller than the shortest common phone width. */
 private val TWO_PAGES_MIN_WIDTH = 320.dp
