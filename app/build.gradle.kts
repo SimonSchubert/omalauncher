@@ -1,3 +1,4 @@
+import java.security.MessageDigest
 import java.util.Properties
 
 plugins {
@@ -77,6 +78,25 @@ tasks.withType<Test>().configureEach { inputs.dir("src/main/assets/widgets") }
 tasks.matching { it.name == "preReleaseBuild" }.configureEach {
     val proot = file("src/main/jniLibs/arm64-v8a/libproot.so")
     doFirst { check(proot.exists()) { "$proot is missing; run scripts/fetch-proot.sh" } }
+}
+
+// The libraries don't follow a pull: built before patches/proot or the script changed, they make an app with
+// an old proot (and no fast lane library) that builds and installs like any other. The script leaves a hash
+// of what it built from in .source; a debug build without any libraries stays possible (CI lints that way).
+tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
+    val libs = file("src/main/jniLibs/arm64-v8a")
+    val root = rootProject.projectDir
+    val sources = listOf(rootProject.file("scripts/fetch-proot.sh")) +
+        rootProject.fileTree("patches/proot").files.filter { !it.name.startsWith(".") }.sortedBy { it.relativeTo(root).invariantSeparatorsPath }
+    inputs.files(sources)
+    doFirst {
+        if (!File(libs, "libproot.so").exists()) return@doFirst
+        val digest = MessageDigest.getInstance("SHA-256")
+        sources.forEach { digest.update(it.readBytes()) }
+        val now = digest.digest().joinToString("") { "%02x".format(it) }
+        val built = File(libs, ".source").takeIf { it.isFile }?.readText()?.trim()
+        check(built == now) { "$libs was built from an older patches/proot or scripts/fetch-proot.sh; run scripts/fetch-proot.sh" }
+    }
 }
 
 composeCompiler {

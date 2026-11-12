@@ -116,4 +116,10 @@ cp "$WORK/libandroid-shmem/$P/lib/libandroid-shmem.so" "$OUT/libandroid-shmem.so
 # on a runtime symlink.
 perl -pi -e 's/libtalloc\.so\.2\0/libtalloc.so\0\0\0/g' "$OUT/libproot.so" "$OUT/libtalloc.so"
 chmod 755 "$OUT"/*.so
+# What these libraries were built from: app/build.gradle.kts hashes the same files the same way and
+# stops the build when they have changed since. Not for another source tree.
+if [ -z "${PROOT_SRC:-}" ]; then
+  (cd "$ROOT" && { echo scripts/fetch-proot.sh; find patches/proot -type f -not -name '.*' | LC_ALL=C sort; } |
+    xargs cat | shasum -a 256 | cut -d' ' -f1) >"$OUT/.source"
+fi
 ls -la "$OUT"
