@@ -79,7 +79,7 @@ A file holds declarations, then the nodes it shows:
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 22.
+  it's 1. This launcher has 23.
 - Text is written in the language of whoever uses the widget. One meant for the store keeps its text in
   `strings { en { ... } id { ... } }` and shows `str.name`, the phone's language's (owl 16, see Text in more
   languages in docs/declarations.md).
@@ -91,7 +91,7 @@ declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a pan
 
 | read | for |
 |---|---|
-| docs/declarations.md | sources (`cmd`, `http`, `ws`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `every frame`, `at`, `when`, `on`, `on … each`), putting values into commands and URLs, `requires` and working without Linux |
+| docs/declarations.md | sources (`cmd`, `http`, `ws`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `every frame`, `at`, `when`, `on`, `on … each`), a notification of the widget's own on the lock screen, putting values into commands and URLs, `requires` and working without Linux |
 | docs/android.md | the phone's data: battery, media, notifications, volume, the next alarm, modes, apps, the drawer, agents, AirPods |
 | docs/expressions.md | operators and every function, dates and times, numbers, changing lists and maps, chance |
 | docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal, Browser |

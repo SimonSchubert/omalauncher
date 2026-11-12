@@ -3,6 +3,7 @@ package dev.omalauncher.widgets
 import dev.omalauncher.widgets.lang.sha256Hex
 import android.content.ComponentCallbacks
 import android.content.Context
+import android.content.IntentFilter
 import android.content.res.Configuration
 import android.os.FileObserver
 import android.util.Log
@@ -18,6 +19,7 @@ import dev.omalauncher.AppLanguage
 import dev.omalauncher.BuildConfig
 import dev.omalauncher.LauncherData
 import dev.omalauncher.Runtime
+import dev.omalauncher.registerNotExported
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.pacmanInstall
@@ -126,6 +128,9 @@ class WidgetEngine(
         }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val services = WidgetServices(context, proot, runtime, scope)
+
+    /** Widgets' own notifications, `notification:`; their buttons come back through [start]'s receiver. */
+    private val notifications = WidgetNotifications(context)
 
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction by services::launcherAction
@@ -617,6 +622,12 @@ class WidgetEngine(
                     }
                 }.also { it.startWatching() }
             launch { for (name in previewQueue) preview(name) }
+            // A widget's notification button, from the shade or the lock screen: its onNotification, with the button's value.
+            context.registerNotExported(IntentFilter(WidgetNotifications.PRESS)) { intent ->
+                val name = intent.getStringExtra(WidgetNotifications.EXTRA_FILE) ?: return@registerNotExported
+                val value = notifications.pressed(name, intent.getIntExtra(WidgetNotifications.EXTRA_BUTTON, -1)) ?: return@registerNotExported
+                instances[name]?.pressNotification(value)
+            }
             inboxObserver =
                 object : FileObserver(inboxDir, CLOSE_WRITE or MOVED_TO) {
                     override fun onEvent(
@@ -712,6 +723,7 @@ class WidgetEngine(
                     },
                     linux = { linux },
                     foreground = { (shownApps[name] ?: 0) > 0 || openScreen == name || name in shownPanels },
+                    showNotification = { n -> notifications.show(name, n) },
                 )
             prev?.let(inst::adopt)
             instances[spec.file.name] = inst
@@ -722,6 +734,9 @@ class WidgetEngine(
         if (openScreen?.let { instances[it]?.program?.screen } == null) openScreen = null
         // Stopped first: stopping saves persisted values, which forget() then deletes.
         previous.values.forEach { it.stop() }
+        // A widget gone, not compiling, waiting for Linux or without notification: any more, and at startup what the
+        // launcher showed before it stopped: their notifications go. The others' running instances show theirs.
+        notifications.keepOnly(instances.filterValues { it.program.notification != null }.keys)
         // A file deleted outside the launcher (an agent, rm) frees its spot, so it doesn't come back on top of
         // whatever moved in. Only while running: an empty listing at startup must not wipe the layout.
         if (old.isNotEmpty() && files.isNotEmpty()) {

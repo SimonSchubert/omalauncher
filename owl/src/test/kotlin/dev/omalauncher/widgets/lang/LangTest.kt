@@ -2178,6 +2178,28 @@ class LangTest {
         assertEquals(listOf("3:2: id has no b, so those show in English"), warned)
     }
 
+    @Test fun aWidgetHasANotificationOfItsOwn() {
+        val body = "state endsAt = 0\n notification: endsAt > 0 ? {title: \"tea\", until: endsAt, buttons: [\"stop\"]} : null\n Text { text: endsAt }"
+        val press = "onNotification: endsAt = value == \"stop\" ? 0 : endsAt + 60"
+        assertTrue(compileError("widget {\n $body\n}").contains("a widget's notification needs owl 23: add meta { owl: 23 }"))
+        assertTrue(compileError("widget {\n meta { owl: 22 }\n $body\n $press\n}").contains("needs owl 23"))
+        val p = Compiler.compile("widget {\n meta { owl: 23 }\n $body\n $press\n}")
+        assertEquals(23, p.level)
+        assertTrue(p.notification != null && p.onNotification != null && p.onTap == null)
+        // onTap stays the tile's, before or after it.
+        val both = Compiler.compile("widget {\n meta { owl: 23 }\n $press\n onTap: endsAt = 1\n $body\n}")
+        assertTrue(both.onTap != null && both.onNotification != null)
+        // A face can have one; an app, which is only there while it's open, can't.
+        assertTrue(Compiler.compile("face {\n meta { owl: 23 }\n $body\n}").notification != null)
+        assertTrue(compileError("app {\n meta { owl: 23 }\n $body\n}").contains("an app only takes"))
+        // Its buttons need it.
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n state n = 0\n onNotification: n = 1\n Text { text: n }\n}").contains("add notification:"))
+        // Other handlers still go on nodes.
+        assertTrue(compileError("widget {\n onLongPress: refresh()\n Text { text: 1 }\n}").contains("only takes onTap"))
+        // The action of the same name is as old as it was.
+        assertEquals(4, Compiler.compile("widget {\n meta { owl: 4 }\n Text { text: 1; onTap: notification(\"dismiss\", \"k\") }\n}").level)
+    }
+
     @Test fun lockHoldsTheHomeScreenStill() {
         val playing = "state playing = false\n Button { text: \"x\"; onTap: playing = !playing }"
         assertTrue(compileError("widget {\n lock: playing\n $playing\n}").contains("lock needs owl 18: add meta { owl: 18 }"))

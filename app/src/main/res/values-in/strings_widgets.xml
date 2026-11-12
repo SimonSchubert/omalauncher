@@ -3,4 +3,5 @@
     <string name="widgets_no_app_opens">tidak ada aplikasi yang bisa membuka %1$s</string>
     <string name="widgets_copied">disalin</string>
     <string name="widgets_notify_channel">Widget</string>
+    <string name="widgets_status_channel">Timer dan status widget</string>
 </resources>

@@ -197,7 +197,9 @@ internal val SINCE =
         // owl 22: 3D scenes in a Canvas, the meshes they draw and the vector math of a 3D game.
         listOf("scene", "model", "cube", "plane", "sphere", "cylinder", "cone", "terrain", "mesh", "parseObj", "project", "turn", "dot", "cross", "norm", "dist").associateWith { 22 } +
         // owl 22: Shader images to sample, and uniforms that are arrays.
-        listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 }
+        listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 } +
+        // owl 23: a notification of the widget's own, which Android counts down on the lock screen, and its buttons.
+        listOf(WIDGET_NOTIFICATION, "onNotification").associateWith { 23 }
 
 /** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
 internal const val SHADER_IMAGE = "uniform shader"
@@ -260,6 +262,12 @@ internal const val FRAME_RATE = "fps"
 /** The most frames a second `fps:` asks for, and what an animation gets without it. */
 const val MAX_FPS = 60
 
+/** A widget's or a face's `notification:`, named like this in [SINCE]: plain "notification" is the action, since owl 4. */
+internal const val WIDGET_NOTIFICATION = "a widget's notification"
+
+/** The most buttons a widget's notification has: Android shows three. */
+const val MAX_NOTIFICATION_BUTTONS = 3
+
 /** A widget's or a face's `lock:`, named like this in [SINCE]. */
 internal const val HOME_LOCK = "lock"
 
@@ -311,6 +319,8 @@ internal val HANDLER_PARAMS =
         "onDismiss" to emptyList(),
         // A panel's, at its top: a key pressed in the prompt bar while it's open.
         "onKey" to listOf("value"),
+        // owl 23: a widget's or a face's, at its top: a button of its notification pressed, with the button's value.
+        "onNotification" to listOf("value"),
         // owl 18: the page a Browser went to, its title, and how far it has loaded.
         "onNavigate" to listOf("value"),
         "onTitle" to listOf("value"),
@@ -428,10 +438,10 @@ internal val TILE = setOf("cols", "rows", "tileWidth", "tileHeight", "screenWidt
 /** Builtins that always give a number (or null, which reads as …). */
 internal val NUMBERS = setOf("int", "round", "floor", "ceil", "abs", "fixed", "len", "count", "sum", "min", "max", "clamp")
 
-internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding", "background", "lock", "fps")
+internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding", "background", "lock", "fps", "notification")
 
 /** A face has no tile's size; it says where it goes and whether the status bar stays over it. */
-internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge", "lock", "fps")
+internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge", "lock", "fps", "notification")
 
 /** `uniform shader name;` in a Shader's code; see [SHADER_IMAGE]. */
 internal val SHADER_IMAGE_RE = Regex("""\buniform\s+shader\s+(\w+)""")

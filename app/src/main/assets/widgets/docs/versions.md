@@ -2,7 +2,7 @@
 
 Part of the widget docs: README.md, one folder up, comes first, and paths here are from the widgets folder.
 
-`meta { owl: N }` is the language version a file needs; this launcher has 22, and without `meta` it's 1. Declare
+`meta { owl: N }` is the language version a file needs; this launcher has 23, and without `meta` it's 1. Declare
 the highest level of what the file uses: using something from a later level than the file declares is an error,
 and a launcher older than the level says "update the launcher" instead of failing on what it doesn't know. For a
 file only this phone runs, `owl: 12` is fine; for the store, a lower level reaches older launchers too.
@@ -41,3 +41,4 @@ file only this phone runs, `owl: 12` is fine; for the store, a lower level reach
 - **21**: `android.motion` and `every frame`
 - **22**: `onTouch`; 3D: Canvas `scene` and `model`, `cube`, `sphere`, `cylinder`, `cone`, `plane`, `terrain`, `mesh`, `parseObj`,
   `project`, `turn`, `dot`, `cross`, `norm` and `dist`; Shader image uniforms (`uniform shader`) and array uniforms
+- **23**: a widget's or a face's `notification:` and `onNotification`

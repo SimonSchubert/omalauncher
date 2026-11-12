@@ -230,6 +230,8 @@ class WidgetInstance(
     private val linux: () -> Boolean = { true },
     /** An app's window or the widget's screen is showing. Snapshot state. */
     private val foreground: () -> Boolean = { false },
+    /** Shows the widget's `notification:` as it is now, or takes it away for null; see WidgetNotifications. */
+    private val showNotification: (WidgetNotification?) -> Unit = {},
 ) : Host {
     override val budget = Budget()
     val root = Env.root(this)
@@ -812,6 +814,17 @@ class WidgetInstance(
                 }
         }
         startTriggers(scope, active)
+        // Whether the page shows or not: it's on the lock screen and in the shade, off home.
+        program.notification?.let { n ->
+            jobs +=
+                scope.launch {
+                    snapshotFlow { eval(n, root, "notification") }.collect { v ->
+                        val parsed = WidgetNotification.of(v, program.name)
+                        parsed.error?.let { report("notification: $it") }
+                        showNotification(parsed.notification)
+                    }
+                }
+        }
         program.globals.forEachIndexed { slot, g ->
             if (g !is Global.Source) return@forEachIndexed
             jobs +=
@@ -1266,6 +1279,23 @@ class WidgetInstance(
 
     /** `owl-send <file> refresh`. */
     fun refreshNow() = refresh()
+
+    /**
+     * A button of the widget's notification pressed, from the shade or the lock screen: runs onNotification with the
+     * button's [value]. Its clocks read the time now first, since off screen they stand still, and a timer paused from
+     * the lock screen must keep what's left from now, not from when the page was last seen.
+     */
+    fun pressNotification(value: Value) {
+        val action = program.onNotification ?: return
+        val now = Num(Math.floor(System.currentTimeMillis() / 1000.0))
+        program.globals.forEachIndexed { i, g ->
+            if (g is Global.Source && g.kind == "clock" && read(i) != now) {
+                write(i, now)
+                sample(g)
+            }
+        }
+        action.run(root, listOf(value))
+    }
 
     /**
      * Terminal nodes' sessions, by node. They keep running while the tile is
