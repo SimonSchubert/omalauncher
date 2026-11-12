@@ -61,4 +61,30 @@ class WallpaperFramingTest {
         assertEquals(IntRect.Zero, WallpaperFraming().crop(1000, 2000, 0, 0, 0.5f))
         assertEquals(Rect.Zero, WallpaperFraming().crop(0f, 0f, 1000f, 2000f, 0.5f))
     }
+
+    @Test fun matchingShapeHasNoPositionOrScrollToAdjust() {
+        assertEquals(WallpaperFraming.Adjustments(), WallpaperFraming().adjustments(1000, 2000, 1000, 2000))
+        assertEquals(WallpaperFraming.Adjustments(), WallpaperFraming().adjustments(1000, 2000, 0, 0))
+    }
+
+    @Test fun scrollingCanUseAllSpareWidthLeavingNoHorizontalAdjustment() {
+        // This quarter-screen margin is all used by the page movement.
+        assertEquals(WallpaperFraming.Adjustments(scrolling = true), WallpaperFraming().adjustments(1250, 2000, 1000, 2000))
+        // Fixed can place that same margin wherever the user wants it.
+        assertEquals(WallpaperFraming.Adjustments(horizontal = true), WallpaperFraming(scroll = false).adjustments(1250, 2000, 1000, 2000))
+    }
+
+    @Test fun widePicturesCanPositionTheirScrollRangeAndTallPicturesCanMoveVertically() {
+        assertEquals(WallpaperFraming.Adjustments(horizontal = true, scrolling = true), WallpaperFraming().adjustments(3000, 2000, 1000, 2000))
+        assertEquals(WallpaperFraming.Adjustments(vertical = true), WallpaperFraming().adjustments(1000, 4000, 1000, 2000))
+    }
+
+    @Test fun zoomMakesPositionControlsAvailableAgainWithoutLosingTheirValues() {
+        val framing = WallpaperFraming(x = 0.2f, y = 0.8f)
+        assertEquals(WallpaperFraming.Adjustments(), framing.adjustments(1000, 2000, 1000, 2000))
+        val zoomed = framing.copy(zoom = 2f)
+        assertEquals(WallpaperFraming.Adjustments(horizontal = true, vertical = true, scrolling = true), zoomed.adjustments(1000, 2000, 1000, 2000))
+        assertEquals(0.2f, zoomed.x, 0f)
+        assertEquals(0.8f, zoomed.y, 0f)
+    }
 }
