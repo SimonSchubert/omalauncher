@@ -112,6 +112,8 @@ app "sunset heist" {
   state ammo = [0, 0, 0]
   state gun = -1
   state firing = false
+  // the brake button held, in a car
+  state braking = false
   state shotAt = -100
   state hurt = 0
   // Tracers of recent shots, police on foot, explosions to set off and those burning, pickups taken and when.
@@ -450,7 +452,8 @@ app "sunset heist" {
           // Each kind its own: top speed, pick-up, how it turns and how well its tires hold.
           let drift = fwd > T.top * 0.42 && abs(turnBy) > 50
           let want = push * T.top * (abs(turnBy) > 110 ? 0.35 : 1)
-          let f1 = air != null ? fwd : clamp((fwd + (fwd < want ? T.acc : (push > 0 ? -30 : 0)) * dt) * pow(push > 0 ? 0.92 : 0.6, dt), -4, T.top)
+          // The brake stops it hard, whatever the stick says; held on at a standstill, it backs up.
+          let f1 = air != null ? fwd : (braking ? (fwd > 0.5 ? max(0, fwd - 28 * dt) : max(-7, fwd - 9 * dt)) : clamp((fwd + (fwd < want ? T.acc : (push > 0 ? -30 : 0)) * dt) * pow(push > 0 ? 0.92 : 0.6, dt), -7, T.top))
           let l1 = air != null ? lat : lat * pow(drift ? T.drift : T.grip, dt)
           let vx1 = fx0 * f1 - fz0 * l1
           let vz1 = fz0 * f1 + fx0 * l1
@@ -480,7 +483,7 @@ app "sunset heist" {
           pv = vx2 * fx0 + vz2 * fz0
           px = !hitXZ || !hitX ? nx : px
           pz = !hitXZ || !both && hitX ? nz : pz
-          if air == null && abs(l1) > 3.5 && gt - skidAt > 0.05 {
+          if air == null && (abs(l1) > 3.5 || braking && fwd > 12) && gt - skidAt > 0.05 {
             skids = drop(skids, max(0, len(skids) - 50)) + [{x: px - fx0 * T.len * 0.3, z: pz - fz0 * T.len * 0.3, h: ph, t: gt, w: T.wid}]
             skidAt = gt
           }
@@ -534,11 +537,13 @@ app "sunset heist" {
             fxAt = gt
           }
         } else if sunk != null {
+          braking = false
           if gt - sunk.at > 1.6 {
             hp = 0
           }
         } else {
           pspin = 0
+          braking = false
           let nx = px + sdx * 10 * dt
           let nz = pz + sdy * 10 * dt
           if abs(sdx) + abs(sdy) > 0.15 {
@@ -1691,10 +1696,10 @@ app "sunset heist" {
         }
         if inCar {
           for o in OUTL {
-            text("${round(abs(pv) * 3.6)}", W - 52 + o[0], H - BOT - 62 + o[1], size: 34, font: ANTON, align: center, color: black)
+            text("${round(abs(pv) * 3.6)}", W - 150 + o[0], H - BOT - 62 + o[1], size: 34, font: ANTON, align: center, color: black)
           }
-          text("${round(abs(pv) * 3.6)}", W - 52, H - BOT - 62, size: 34, font: ANTON, align: center, color: white)
-          text("KM/H", W - 52, H - BOT - 36, size: 13, font: ANTON, align: center, color: white)
+          text("${round(abs(pv) * 3.6)}", W - 150, H - BOT - 62, size: 34, font: ANTON, align: center, color: white)
+          text("KM/H", W - 150, H - BOT - 36, size: 13, font: ANTON, align: center, color: white)
         }
         // The map: the blocks around you, north up, with the way to the goal, the mission spots, the paint shop and
         // the police on it.
@@ -1793,9 +1798,10 @@ app "sunset heist" {
         align: end
         justify: end
         gap: 10
-        padding: [0, 0, 16, BOT + (inCar ? 96 : 28)]
+        padding: [0, 0, 16, BOT + 28]
         if inCar && abs(pv) < 4 && air == null {
           Text { text: "GET OUT"; width: 150; align: center; padding: [16, 10]; font: ANTON; fontSize: 20; background: alpha(black, 0.65); border: black; color: white; onTap: {
+            braking = false
             parked = drop(parked, max(0, len(parked) - 5)) + [{id: nextId, t: ptype, x: px, z: pz, h: ph, c: pcol, dmg: dmg, wreck: false}]
             nextId = nextId + 1
             inCar = false
@@ -1842,6 +1848,21 @@ app "sunset heist" {
           } }
         }
         // The gun in hand (tap for the next one), and the attack button, held to keep firing or punching.
+        // In a car, the brake, under the right thumb: held, it stops the car hard, then backs it up.
+        if inCar {
+          Box {
+            size: 92
+            radius: 46
+            align: center
+            background: alpha(braking ? #d8242a : black, braking ? 0.75 : 0.5)
+            border: 3
+            borderColor: alpha(white, braking ? 1 : 0.85)
+            scale: braking ? 0.93 : 1
+            onPress: braking = true
+            onRelease: braking = false
+            Text { text: "BRAKE"; width: 92; align: center; font: ANTON; fontSize: 22; color: white }
+          }
+        }
         if !inCar && sunk == null && gun >= 0 {
           Text { text: upper(WEAPONS[gun].name) + " · " + fmtNum(ammo[gun]); width: 150; align: center; padding: [12, 8]; font: ANTON; fontSize: 18; background: alpha(black, 0.65); border: black; color: #f2c230; onTap: gun = first(range(1, 3).map(i => (gun + i) % 3).filter(i => ammo[i] > 0)) ?? gun }
         }
