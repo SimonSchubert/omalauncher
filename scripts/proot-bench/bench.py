@@ -11,7 +11,7 @@ or the case is marked as a correctness failure.
 """
 import argparse, csv, random, statistics, subprocess, sys
 
-ALL = ["getpid", "stat", "stat-l2s", "open", "getcwd", "readlink", "exec", "stat-par4", "stat-par8",
+ALL = ["getpid", "stat", "stat-l2s", "stat-deep", "stat-link", "stat-miss", "stat-nodir", "stat-bind", "stat-rel", "stat-up", "lstat", "statx", "access", "fstat", "open", "open-plain", "open-miss", "getcwd", "readlink", "exec", "stat-par4", "stat-par8",
        "find", "ls-lR", "pacman-Qk", "sh-loop", "tar", "find-par4",
        "node", "npm", "git-status", "python", "cpu-par4"]
 MACRO = {"find", "ls-lR", "pacman-Qk", "sh-loop", "tar", "find-par4", "node", "npm", "git-status",

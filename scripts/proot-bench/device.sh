@@ -2,8 +2,9 @@
 # Runs one benchmark case once under one proot variant, on the device as the adb shell user.
 # device.sh <variant> <case>   prints "<wall ms> <pbench ns/op or -> <md5 of output>"
 # A variant is a directory v/<name> with libproot.so, libproot-loader.so, libtalloc.so and
-# libandroid-shmem.so, plus optional files: env (extra environment, one VAR=value per line) and
-# wrap (a command prefix such as "taskset 80").
+# libandroid-shmem.so, plus optional files: env (extra environment for proot, one VAR=value per
+# line), guestenv (the same for the guest, such as LD_PRELOAD) and wrap (a command prefix such as
+# "taskset 80").
 B=/data/local/tmp/pb
 V=$B/v/$1
 CASE=$2
@@ -14,17 +15,31 @@ guest() {
     LD_LIBRARY_PATH="$V" PROOT_LOADER="$V/libproot-loader.so" PROOT_TMP_DIR="$B/tmp" \
     $(cat "$V/wrap" 2>/dev/null) "$V/libproot.so" --kill-on-exit --link2symlink -0 -r "$B/rootfs" \
     -b /dev -b /proc -b /sys -w /root \
-    /usr/bin/env -i HOME=/root USER=root LANG=C.UTF-8 TERM=xterm-256color \
+    /usr/bin/env -i $(cat "$V/guestenv" 2>/dev/null) HOME=/root USER=root LANG=C.UTF-8 TERM=xterm-256color \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin /bin/sh -c "$1"
 }
 
-P=/usr/local/bin/pbench
+# pbench built in the guest (gcc -O2 pbench.c), so a preloaded library applies to it.
+P=/usr/local/bin/pbench-dyn
 ZONE=/usr/share/zoneinfo/Europe/Berlin
 case $CASE in
   getpid)      CMD="$P getpid 200000" ;;
   stat)        CMD="$P stat 5000 /usr/lib/libc.so.6" ;;
   stat-l2s)    CMD="$P stat 5000 $ZONE" ;;
+  stat-deep)   CMD="$P stat 5000 /usr/lib/node_modules/npm/node_modules/@gar/promise-retry/lib/index.js" ;;
+  stat-link)   CMD="$P stat 5000 /bin/sh" ;;
+  stat-miss)   CMD="$P nostat 5000 /usr/lib/nothing.so" ;;
+  stat-nodir)  CMD="$P nostat 5000 /usr/lib/python3/site-packages/nothing.py" ;;
+  stat-bind)   CMD="$P stat 5000 /proc/self/stat" ;;
+  stat-rel)    CMD="cd /usr/lib && $P stat 5000 libc.so.6" ;;
+  stat-up)     CMD="cd /usr/lib && $P stat 5000 ../lib/libc.so.6" ;;
+  lstat)       CMD="$P lstat 5000 /usr/lib/libc.so.6" ;;
+  statx)       CMD="$P statx 5000 /usr/lib/libc.so.6" ;;
+  access)      CMD="$P access 5000 /usr/lib/libc.so.6" ;;
+  fstat)       CMD="$P fstat 5000 /usr/lib/libc.so.6" ;;
   open)        CMD="$P open 5000 $ZONE" ;;
+  open-plain)  CMD="$P open 5000 /usr/lib/libc.so.6" ;;
+  open-miss)   CMD="$P noopen 5000 /usr/lib/nothing.so" ;;
   getcwd)      CMD="$P getcwd 5000" ;;
   readlink)    CMD="$P readlink 5000 /bin" ;;
   exec)        CMD="$P exec 100 /usr/bin/true" ;;
@@ -50,7 +65,7 @@ RC=$?
 T1=$(date +%s%N)
 [ $RC = 0 ] || { echo "FAIL rc=$RC: $OUT" >&2; exit 1; }
 case $CASE in
-  getpid|stat*|open|getcwd|readlink|exec) NS=$OUT; HASH=- ;;
+  getpid|stat*|lstat|access|fstat|open*|getcwd|readlink|exec) NS=$OUT; HASH=- ;;
   *) NS=-; HASH=$(echo "$OUT" | sort | md5sum | cut -c1-8) ;;
 esac
 echo "$(awk "BEGIN { printf \"%d\", ($T1 - $T0) / 1000000 }") $NS $HASH"
