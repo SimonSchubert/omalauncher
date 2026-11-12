@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- Play Store screenshots. Rendered one slide at a time by scripts/render-screenshots.sh (frame.html?s=N).
-     Each is a capture from scripts/store-captures.sh (1080x1670) under a caption band. -->
+     Each is a capture from scripts/store-captures.sh (1080x2400), scaled down under a caption. -->
 <html>
 <head>
 <meta charset="utf-8">
@@ -9,23 +9,27 @@
   * { margin: 0; box-sizing: border-box; }
   html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
   .slide { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: 'JetBrains Mono', monospace; }
-  /* The band is the shot's own top row drawn tall, so its colors run straight on into the screen below. */
-  .band { position: absolute; top: 0; left: 0; width: 1080px; height: 250px; background-repeat: no-repeat;
-          background-position: top left; background-size: 1080px 417500px; }
+  /* The backdrop is the shot's own top row drawn tall, so it has the screen's colors, softened so a single bright
+     pixel in that row doesn't become a line down the slide. It overhangs the slide so the blur has no faded edge. */
+  .band { position: absolute; inset: -80px; background-repeat: no-repeat; filter: blur(40px);
+          background-position: top left; background-size: 1240px 1920000px; }
   .band::after { content: ''; position: absolute; inset: 0; background: var(--veil); }
-  .caption { position: absolute; z-index: 1; left: 64px; right: 64px; bottom: 34px; color: var(--ink);
+  .caption { position: absolute; z-index: 1; left: 64px; right: 64px; top: 0; height: 240px; display: flex; align-items: center; justify-content: center;
+             text-align: center; color: var(--ink);
              font-size: 66px; font-weight: 800; line-height: 1.1; letter-spacing: -2px; }
   .caption em { font-style: normal; color: var(--accent); }
   /* JetBrains Mono has no Chinese; its letter-spacing would squeeze the characters together. */
   :lang(zh) .caption { font-family: 'JetBrains Mono', 'Noto Sans SC', sans-serif; letter-spacing: 0; }
-  .shot { position: absolute; top: 250px; left: 0; display: block; width: 1080px; height: 1670px; }
+  /* 20:9, a phone's screen shape, with a phone's round corners. */
+  .shot { position: absolute; top: 240px; left: 171px; display: block; width: 738px; height: 1640px;
+          border-radius: 56px; box-shadow: 0 0 0 2px rgba(255,255,255,0.10), 0 24px 64px rgba(0,0,0,0.45); }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script>
 // ink and accent come from each theme's colors (app/src/main/assets/themes/<theme>.toml); veil evens out the
-// band under the caption where the top of the wallpaper is busy. ?l= picks the language: captures from raw/<l>/
+// backdrop under the caption where the top of the wallpaper is busy. ?l= picks the language: captures from raw/<l>/
 // and the caption in it.
 const SLIDES = [
   { shot: '1-home', ink: '#e4eff7', accent: '#ff503e', veil: 'rgba(7,11,18,0.30)' },
@@ -64,7 +68,8 @@ const img = `raw/${l}/${s.shot}.png`;
 document.documentElement.lang = l;
 document.getElementById('root').innerHTML = `
   <div class="slide" style="--ink:${s.ink};--accent:${s.accent};--veil:${s.veil}">
-    <div class="band" style="background-image:url(${img})"><div class="caption">${TITLES[l][n - 1]}</div></div>
+    <div class="band" style="background-image:url(${img})"></div>
+    <div class="caption"><span>${TITLES[l][n - 1]}</span></div>
     <img class="shot" src="${img}">
   </div>`;
 document.title = String(SLIDES.length);

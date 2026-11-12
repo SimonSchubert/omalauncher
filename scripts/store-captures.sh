@@ -4,8 +4,8 @@
 # and a few screens beyond home, in each of the launcher's languages (LANGS, default all six; the launcher's own
 # language pick is set for the run).
 #
-# The display is shrunk to 1080x1670 for the run, the room a slide leaves below its caption, so the launcher lays
-# itself out for that and nothing is cropped or squashed. System UI demo mode keeps the clock and icons tidy.
+# The display is set to 1080x2400 for the run, a usual 20:9 phone screen, which frame.html shows scaled down
+# under its caption. System UI demo mode keeps the clock and icons tidy.
 #
 # Needs a debug build (run-as, the `theme` and `exec` extras) with Linux and the coding agents in RECENT installed,
 # on an emulator with Google Play so the Play Store is there to show: the Omalauncher_Play AVD, which needs no root.
@@ -33,18 +33,18 @@ SHIMS=files/arch/root/.local/share/mise/shims
 PKG=dev.omalauncher
 DATA=/data/data/$PKG
 BACKUP=cache/store-backup.tar
-SIZE=1080x1670
+SIZE=1080x2400
 
 # Shot, theme, then the widgets on its home screen in placement order (the launcher puts each in the first free
 # spot) as `<name>` for simonschubert's or `<author>/<name>`, `face:<name>` for a face or `app:<name>` for an app. A shot with a `shot_<name>` function below runs that
-# after they're placed, to open the screen it shows. Seven rows fit: two rows of 3-high tiles above the recent apps.
+# after they're placed, to open the screen it shows. Three rows of 3-high tiles fit above the recent apps.
 SCENES=(
-  "home        to-beyond         fetch today koi-pond"
+  "home        to-beyond         fetch today koi-pond releases"
   "manga       flexoki-light     face:manga"
   "voice       kanagawa          today"
   "linux       matte-black       today"
-  "live        jade-horse        ssalentin/red-panda hieitheevileye/fatcat dimasmds/hootling asphyksia/companion"
-  "light       catppuccin-latte  boogercheeseonrye/dog-of-the-day travonted/apod weebowiz/trip-view rcrohmana/classic-clock"
+  "live        jade-horse        ssalentin/red-panda hieitheevileye/fatcat dimasmds/hootling asphyksia/companion daileng/omarcharium"
+  "light       catppuccin-latte  boogercheeseonrye/dog-of-the-day travonted/apod weebowiz/trip-view rcrohmana/classic-clock calendar sun-and-moon"
   "store       gruvbox           today"
   "style       ristretto         today"
 )
@@ -88,11 +88,15 @@ demo enter
 # The real time on a 24-hour clock, so the status bar agrees with clock widgets and faces.
 clock=$(adb shell settings get system time_12_24 | tr -d '\r')
 adb shell settings put system time_12_24 24
-demo clock -e hhmm "$(date +%H%M)"
-demo battery -e level 100 -e plugged false
-demo network -e wifi show -e level 4 -e fully true
-demo network -e mobile hide
-demo notifications -e visible false
+# Sent again before each capture: System UI can drop the Wi-Fi icon during the run.
+status_bar() {
+  demo clock -e hhmm "$(date +%H%M)"
+  demo battery -e level 100 -e plugged false
+  demo network -e wifi show -e level 4 -e fully true
+  demo network -e mobile hide
+  demo notifications -e visible false
+}
+status_bar
 # The manga face reads the newest notification.
 adb shell cmd notification allow_listener $PKG/$PKG.widgets.runtime.MediaListener
 # Voice listens without asking first.
@@ -306,6 +310,7 @@ for scene in "${SCENES[@]}"; do
   adb shell input keyevent KEYCODE_HOME
   sleep 2
   if declare -F "shot_$shot" >/dev/null; then "shot_$shot"; fi
+  status_bar
   sleep 2
   adb exec-out screencap -p >"$OUT/$(printf %d $n)-$shot.png"
   echo "$OUT/$n-$shot.png"
