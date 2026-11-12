@@ -140,4 +140,17 @@
     <string name="agents_remove">hapus</string>
     <string name="agents_still_running">%1$s masih berjalan: tutup dulu, lalu hapus lagi</string>
     <string name="agents_install">instal</string>
+
+    <!-- Home rotation and wallpaper framing. Positions run from 0 to 1; zoom from 1 to 3. -->
+    <string name="style_orientation">orientasi</string>
+    <string name="style_portrait">potret</string>
+    <string name="style_rotation_android">android</string>
+    <string name="style_portrait_hint">Android dapat mempertahankan orientasinya sendiri pada layar besar atau dalam mode multi-jendela.</string>
+    <string name="style_wallpaper_motion">gerakan wallpaper</string>
+    <string name="style_wallpaper_scroll">geser</string>
+    <string name="style_wallpaper_fixed">tetap</string>
+    <string name="style_wallpaper_x">posisi horizontal</string>
+    <string name="style_wallpaper_y">posisi vertikal</string>
+    <string name="style_wallpaper_zoom">zoom</string>
+    <string name="style_wallpaper_position_hint">0 = kiri / atas · 1 = kanan / bawah · pratinjau menampilkan bagian tengah pergeseran</string>
 </resources>

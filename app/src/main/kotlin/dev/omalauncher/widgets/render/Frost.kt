@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.widgets.lang.num
+import dev.omalauncher.theme.WallpaperFraming
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -46,6 +47,7 @@ import kotlin.math.roundToInt
 class Backdrop(
     val file: () -> File?,
     val offset: () -> Float,
+    val framing: () -> WallpaperFraming,
 )
 
 val LocalBackdrop = staticCompositionLocalOf<Backdrop?> { null }
@@ -217,22 +219,22 @@ private class FrostNode(
         val pos = coords.positionInWindow()
         val screen = coords.findRootCoordinates().size
         val img = image
-        // As wallpaperCrop places the background on the screen, in floats: the small image would otherwise slide in steps.
+        // The same crop as home, in floats: the small image would otherwise slide in steps.
         val bw = img.width.toFloat()
         val bh = img.height.toFloat()
-        val scale = max(screen.width / bw, screen.height / bh)
-        val srcW = screen.width / scale
-        val srcH = screen.height / scale
-        val travel = min(bw - srcW, srcW / 2)
-        val left = (bw - srcW - travel) / 2 + travel * backdrop.offset().coerceIn(0f, 1f)
-        val top = (bh - srcH) / 2
+        val src = backdrop.framing().crop(bw, bh, screen.width.toFloat(), screen.height.toFloat(), backdrop.offset())
+        if (src.isEmpty) {
+            drawContent()
+            return
+        }
+        val scale = screen.width / src.width
         val r = corner().dp.toPx()
         clip.reset()
         clip.addRoundRect(RoundRect(0f, 0f, size.width, size.height, CornerRadius(r)))
         clipPath(clip) {
             drawImage(
                 img,
-                dstOffset = IntOffset((-left * scale - pos.x).roundToInt(), (-top * scale - pos.y).roundToInt()),
+                dstOffset = IntOffset((-src.left * scale - pos.x).roundToInt(), (-src.top * scale - pos.y).roundToInt()),
                 dstSize = IntSize((bw * scale).roundToInt(), (bh * scale).roundToInt()),
                 filterQuality = FilterQuality.Low,
             )

@@ -28,6 +28,16 @@ window opens as its own Android task, with its own card in Recents.
   Copilot, opencode and others, which open in a terminal
 - No account, no ads, no tracking
 
+In settings › style › background, add your own image, keep it fixed or let it
+scroll with the home pages, and adjust its horizontal and vertical position
+and zoom with a preview. The same crop shows on home and in Omalauncher's
+Android live wallpaper. Settings › style › home screen also offers portrait
+orientation; Android may ignore this on large screens or in multi-window mode.
+Agents can change these through `[wallpaper]` (`scroll`, `x`, `y`, `zoom`) and
+`home.portrait` in `~/.config/omalauncher/style/style.toml`; `defaults.toml`
+beside it documents the ranges. Existing installs keep scrolling and Android's
+rotation behavior until these settings are changed.
+
 Needs an arm64 phone with Android 10 or newer. Without Linux, the launcher still
 has the themes, wallpapers, Android apps and the widgets that don't run commands.
 

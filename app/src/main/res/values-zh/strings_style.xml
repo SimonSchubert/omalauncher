@@ -140,4 +140,17 @@
     <string name="agents_remove">移除</string>
     <string name="agents_still_running">%1$s 仍在运行：请先关闭，再移除一次</string>
     <string name="agents_install">安装</string>
+
+    <!-- Home rotation and wallpaper framing. Positions run from 0 to 1; zoom from 1 to 3. -->
+    <string name="style_orientation">屏幕方向</string>
+    <string name="style_portrait">竖屏</string>
+    <string name="style_rotation_android">android</string>
+    <string name="style_portrait_hint">在大屏幕或多窗口模式下，Android 可能会使用自己的屏幕方向。</string>
+    <string name="style_wallpaper_motion">壁纸移动</string>
+    <string name="style_wallpaper_scroll">滚动</string>
+    <string name="style_wallpaper_fixed">固定</string>
+    <string name="style_wallpaper_x">水平位置</string>
+    <string name="style_wallpaper_y">垂直位置</string>
+    <string name="style_wallpaper_zoom">缩放</string>
+    <string name="style_wallpaper_position_hint">0 = 左 / 上 · 1 = 右 / 下 · 预览显示滚动范围的中间位置</string>
 </resources>

@@ -11,7 +11,6 @@ import android.os.Looper
 import android.service.wallpaper.WallpaperService
 import android.view.SurfaceHolder
 import dev.omalauncher.ui.decodeForScreen
-import dev.omalauncher.ui.wallpaperCrop
 import java.util.concurrent.Executors
 
 /**
@@ -32,6 +31,7 @@ class OmarchyWallpaperService : WallpaperService() {
         private var colors: Map<String, String> = emptyMap()
         private var bitmap: Bitmap? = null
         private var loadedPath: String? = null
+        private var framing = WallpaperFraming()
 
         /** Where the launcher's pages are scrolled, 0 to 1: the background slides along. */
         private var xOffset = 0.5f
@@ -84,10 +84,12 @@ class OmarchyWallpaperService : WallpaperService() {
             if (decoder.isShutdown) return
             decoder.execute {
                 val (themeColors, file) = ThemeStore.savedSelection(this@OmarchyWallpaperService) ?: (emptyMap<String, String>() to null)
+                val savedFraming = StyleStore.read(this@OmarchyWallpaperService).wallpaperFraming
                 val decoded = if (file?.path != loadedPath) file?.let { decodeForScreen(it, this@OmarchyWallpaperService) } else null
                 main.post {
                     val colorsChanged = themeColors != colors
                     colors = themeColors
+                    framing = savedFraming
                     if (file?.path != loadedPath) {
                         loadedPath = file?.path
                         bitmap?.recycle()
@@ -105,8 +107,8 @@ class OmarchyWallpaperService : WallpaperService() {
             try {
                 canvas.drawColor(color("background", Color.BLACK))
                 bitmap?.let { bmp ->
-                    val src = wallpaperCrop(bmp.width, bmp.height, canvas.width, canvas.height, xOffset)
-                    canvas.drawBitmap(bmp, src, Rect(0, 0, canvas.width, canvas.height), paint)
+                    val src = framing.crop(bmp.width, bmp.height, canvas.width, canvas.height, xOffset)
+                    canvas.drawBitmap(bmp, Rect(src.left, src.top, src.right, src.bottom), Rect(0, 0, canvas.width, canvas.height), paint)
                 }
             } finally {
                 holder.unlockCanvasAndPost(canvas)

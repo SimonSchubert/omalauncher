@@ -5,6 +5,7 @@ import android.app.ActivityManager
 import android.app.role.RoleManager
 import android.content.Intent
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -68,6 +69,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             KeyIndicated { LauncherRoot(runtime, state) }
             SystemBarsEffect(this@MainActivity)
+            val portrait = LauncherStyle.style[Style.PORTRAIT]
+            LaunchedEffect(portrait) {
+                requestedOrientation = if (portrait) ActivityInfo.SCREEN_ORIENTATION_PORTRAIT else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
             // A face whose statusBar is false takes the status bar's room too.
             val fullScreen by remember { derivedStateOf { state.fullScreen && runtime.widgets.openScreen == null } }
             val statusBar = LauncherStyle.style[Style.STATUS_BAR_SHOWN] && !fullScreen

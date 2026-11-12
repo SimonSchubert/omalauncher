@@ -5,6 +5,7 @@ import androidx.annotation.StringRes
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -58,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
@@ -77,6 +79,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LauncherFont
@@ -130,10 +134,12 @@ fun StyleScreen(
                 },
                 onRemove = { removing = it },
             )
-            store.current?.let { BackgroundSection(store, it) }
+            store.current?.let { BackgroundSection(store, it, runtime.style) }
             // Style choices don't depend on a theme, so they're offered before themes are downloaded too.
             Heading(R.string.style_home_screen)
             val style = runtime.style
+            Flag(R.string.style_orientation, R.string.style_portrait, R.string.style_rotation_android, style, Style.PORTRAIT)
+            if (style.style[Style.PORTRAIT]) OptionHint(stringResource(R.string.style_portrait_hint))
             Flag(R.string.style_icons, R.string.style_monochrome, R.string.style_colored, style, Style.MONOCHROME_ICONS)
             Flag(R.string.style_home_apps, R.string.style_boxed, R.string.style_icon_only, style, Style.APP_TILES)
             Flag(R.string.style_recent_apps, R.string.style_shown, R.string.style_hidden, style, Style.RECENT_APPS)
@@ -342,6 +348,7 @@ private fun ThemeSection(
 private fun BackgroundSection(
     store: ThemeStore,
     theme: OmarchyTheme,
+    style: StyleStore,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -378,6 +385,12 @@ private fun BackgroundSection(
             }
         }
     }
+    Flag(R.string.style_wallpaper_motion, R.string.style_wallpaper_scroll, R.string.style_wallpaper_fixed, style, Style.BACKGROUND_SCROLL)
+    NumberSlider(R.string.style_wallpaper_x, style, Style.BACKGROUND_X)
+    NumberSlider(R.string.style_wallpaper_y, style, Style.BACKGROUND_Y)
+    NumberSlider(R.string.style_wallpaper_zoom, style, Style.BACKGROUND_ZOOM)
+    OptionHint(stringResource(R.string.style_wallpaper_position_hint))
+    WallpaperPreview(store.background, style)
     Row(
         Modifier
             .fillMaxWidth()
@@ -408,6 +421,23 @@ private fun BackgroundSection(
                 store.removeBackground(file)
                 removed++
             }
+        }
+    }
+}
+
+/** The current window's crop, centered between pages when scrolling is on. */
+@Composable
+private fun WallpaperPreview(file: File?, style: StyleStore) {
+    val image by produceState<ImageBitmap?>(null, file) {
+        value = file?.let { withContext(Dispatchers.IO) { decodeSampled(it, 480, 480)?.asImageBitmap() } }
+    }
+    val bmp = image ?: return
+    val window = windowSize()
+    val ratio = window.width.toFloat() / window.height.coerceAtLeast(1)
+    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.width(140.dp).aspectRatio(ratio).frame(1.dp, Palette.border, Palette.surface)) {
+            val src = style.style.wallpaperFraming.crop(bmp.width, bmp.height, size.width.toInt(), size.height.toInt(), 0.5f)
+            drawImage(bmp, srcOffset = IntOffset(src.left, src.top), srcSize = IntSize(src.width, src.height), dstSize = IntSize(size.width.toInt(), size.height.toInt()), filterQuality = FilterQuality.Medium)
         }
     }
 }
