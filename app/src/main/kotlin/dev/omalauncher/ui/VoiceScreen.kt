@@ -224,8 +224,10 @@ fun VoiceScreen(
     LaunchedEffect(session.approvals.firstOrNull()) { if (session.approvals.isNotEmpty()) haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
 
     val agentName = session.agent?.name ?: "agent"
-    val now by produceState(System.currentTimeMillis(), session.busy) {
-        while (true) {
+    // Only the time a task has taken reads it, so it only ticks while one runs.
+    val busy = session.busy
+    val now by produceState(System.currentTimeMillis(), busy) {
+        while (busy) {
             value = System.currentTimeMillis()
             delay(1000)
         }

@@ -31,6 +31,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
@@ -78,6 +79,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxState
+import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.agentInvocation
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -119,6 +121,7 @@ internal fun PromptBar(
     val linuxState by runtime.bootstrap.state.collectAsState()
     // Agents run in Linux: without it, the bar offers to install it instead.
     val linux = linuxState == LinuxState.Installed
+    val opensVoice = rememberOpensVoice(runtime, agent, linux)
 
     fun offerLinux() {
         focusManager.clearFocus()
@@ -359,7 +362,7 @@ internal fun PromptBar(
                 }
                 MicButton(
                     listening = listening,
-                    voice = linux && runtime.voice.opensFor(agent),
+                    voice = opensVoice,
                     // A tap opens the voice app, or dictates into the field and stops at the next pause; another tap
                     // stops it sooner.
                     onTap = { if (speech.listening) speech.stop() else tapMic() },
@@ -572,4 +575,22 @@ private class AboveAnchor(
         anchorBounds.left.coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
         (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0),
     )
+}
+
+/**
+ * Whether the mic opens the voice screen for [agent]. Asking means package manager calls, so it's kept between
+ * keystrokes, and asked again on each return: a recognizer may have been installed or picked meanwhile.
+ */
+@Composable
+internal fun rememberOpensVoice(
+    runtime: Runtime,
+    agent: Agent?,
+    linux: Boolean,
+): Boolean {
+    var resumes by remember { mutableIntStateOf(0) }
+    LifecycleResumeEffect(Unit) {
+        resumes++
+        onPauseOrDispose {}
+    }
+    return remember(agent, linux, resumes) { linux && runtime.voice.opensFor(agent) }
 }

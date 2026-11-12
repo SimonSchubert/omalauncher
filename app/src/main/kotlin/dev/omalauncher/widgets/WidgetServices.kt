@@ -257,7 +257,8 @@ class WidgetServices(
             "calendar" -> runtime.calendar.updates()
             "airpods" -> airpods.updates()
             // Both read Compose state: the app list and its usage, the installed agents and the one picked.
-            "apps" -> snapshotFlow { apps() }
+            // The apps are up to a thousand values made on each change, as the drawer's are: not on the main thread.
+            "apps" -> snapshotFlow { apps() }.flowOn(Dispatchers.Default)
             "agents" -> snapshotFlow { agents() }
             "recent" -> snapshotFlow { recent() }
             "modifiers" -> snapshotFlow { modifiers() }
@@ -292,11 +293,11 @@ class WidgetServices(
     override fun heard(owner: Any) = runtime.dictation.heard(owner)
 
     /** "work" or "clone" for an app in a profile beside the launcher's own, as the drawer marks it; null for its own. */
-    private fun profileKind(user: UserHandle): String? {
-        if (user == Process.myUserHandle()) return null
-        val serial = context.getSystemService(UserManager::class.java).getSerialNumberForUser(user)
-        return if (runtime.androidApps.cloned(serial)) "clone" else "work"
-    }
+    private fun profileKind(user: UserHandle): String? =
+        if (user == Process.myUserHandle()) null else profileKind(context.getSystemService(UserManager::class.java).getSerialNumberForUser(user))
+
+    /** As above, by [profile]'s serial number (see [dev.omalauncher.AndroidApp.profile]): no binder call. */
+    private fun profileKind(profile: Long?): String? = profile?.let { if (runtime.androidApps.cloned(it)) "clone" else "work" }
 
     /** Apps by package, in the drawer's order: a widget listing every app asks for each one's icon, and a scan per icon was O(n²). */
     private val appsByPackage by derivedStateOf { runtime.androidApps.apps.groupBy { it.component.packageName } }
@@ -465,7 +466,7 @@ class WidgetServices(
     private fun apps(): Value =
         Lst(
             runtime.androidApps.apps.take(Builtins.MAX_LIST).map { app ->
-                val kind = profileKind(app.user)
+                val kind = profileKind(app.profile)
                 val usage = "a:" + app.key
                 Obj(
                     mapOf(

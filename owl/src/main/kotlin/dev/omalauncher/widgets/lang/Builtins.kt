@@ -931,7 +931,11 @@ object Builtins {
         i: Value,
     ): Value =
         when (v) {
-            is Lst -> i.num()?.toInt()?.let { v.items.getOrNull(if (it < 0) v.items.size + it else it) } ?: Null
+            // Every xs[i] runs this: a Num index skips num()'s boxed Double?.
+            is Lst -> {
+                val k = if (i is Num) i.v.toInt() else i.num()?.toInt() ?: return Null
+                v.items.getOrNull(if (k < 0) v.items.size + k else k) ?: Null
+            }
             is Obj -> v.fields[i.toString()] ?: Null
             is Str -> i.num()?.toInt()?.let { v.v.getOrNull(if (it < 0) v.v.length + it else it)?.toString()?.let(::Str) } ?: Null
             else -> Null

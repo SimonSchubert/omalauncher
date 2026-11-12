@@ -265,6 +265,7 @@ private fun PromptRail(
 ) {
     val linuxState by runtime.bootstrap.state.collectAsState()
     val agent = runtime.agents.default
+    val opensVoice = rememberOpensVoice(runtime, agent, linuxState == LinuxState.Installed)
     // The longest that fits the rail: a letter takes a whole line.
     val hints =
         listOfNotNull(
@@ -310,6 +311,6 @@ private fun PromptRail(
                     state.open()
                 },
             contentAlignment = Alignment.Center,
-        ) { if (linuxState == LinuxState.Installed && runtime.voice.opensFor(agent)) VoiceIcon(Palette.foreground) else MicIcon(Palette.foreground) }
+        ) { if (opensVoice) VoiceIcon(Palette.foreground) else MicIcon(Palette.foreground) }
     }
 }

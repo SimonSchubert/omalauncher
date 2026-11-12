@@ -50,7 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -515,22 +515,27 @@ private fun Modifier.runningLine(
     radius: Dp,
 ): Modifier {
     val at = rememberInfiniteTransition(label = "running line").animateFloat(0f, 1f, infiniteRepeatable(tween(RUNNING_LINE_MS, easing = LinearEasing)), label = "running line")
-    return drawWithContent {
-        drawContent()
+    // The frame is measured once per size and shape; each frame only cuts the line out of it.
+    return drawWithCache {
         // A little thicker than the frame and inside it, its outer edge on the frame's.
         val w = 1.5.dp.toPx()
         val inner = Size(size.width - w, size.height - w)
-        val frame = Path().apply { addOutline(LauncherStyle.shape(radius).createOutline(inner, layoutDirection, this@drawWithContent)) }
+        val frame = Path().apply { addOutline(LauncherStyle.shape(radius).createOutline(inner, layoutDirection, this@drawWithCache)) }
         frame.translate(Offset(w / 2, w / 2))
         val measure = PathMeasure().apply { setPath(frame, false) }
         val length = measure.length
-        // Read only here, so each frame redraws the line and recomposes nothing.
-        val start = at.value * length
-        val end = start + length / 4
+        val stroke = Stroke(w)
         val line = Path()
-        measure.getSegment(start, minOf(end, length), line, true)
-        if (end > length) measure.getSegment(0f, end - length, line, true)
-        drawPath(line, color, style = Stroke(w))
+        onDrawWithContent {
+            drawContent()
+            // Read only here, so each frame redraws the line and recomposes nothing.
+            val start = at.value * length
+            val end = start + length / 4
+            line.reset()
+            measure.getSegment(start, minOf(end, length), line, true)
+            if (end > length) measure.getSegment(0f, end - length, line, true)
+            drawPath(line, color, style = stroke)
+        }
     }
 }
 
