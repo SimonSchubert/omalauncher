@@ -30,7 +30,10 @@ window opens as its own Android task, with its own card in Recents.
 
 In settings › style › background, add your own image, keep it fixed or let it
 scroll with the home pages, and adjust its horizontal and vertical position
-and zoom with a preview. The same crop shows on home and in Omalauncher's
+and zoom with a preview. While scrolling, start / middle / end show how the
+crop changes across pages; positions with no room to move are disabled until
+the image, zoom or window gives them room again. Preview choices only affect
+the preview. The same crop shows on home and in Omalauncher's
 Android live wallpaper. Settings › style › home screen also offers portrait
 orientation; Android may ignore this on large screens or in multi-window mode.
 Agents can change these through `[wallpaper]` (`scroll`, `x`, `y`, `zoom`) and

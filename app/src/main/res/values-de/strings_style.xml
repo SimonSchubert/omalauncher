@@ -154,5 +154,9 @@
     <string name="style_wallpaper_x">horizontale position</string>
     <string name="style_wallpaper_y">vertikale position</string>
     <string name="style_wallpaper_zoom">zoom</string>
-    <string name="style_wallpaper_position_hint">0 = links / oben · 1 = rechts / unten · die vorschau zeigt die mitte der bewegung</string>
+    <string name="style_wallpaper_position_hint">0 = links / oben · 1 = rechts / unten</string>
+    <string name="style_wallpaper_scroll_hint">Wähle den Bildbereich, der sich mit den Seiten bewegt.</string>
+    <string name="style_wallpaper_start">anfang</string>
+    <string name="style_wallpaper_middle">mitte</string>
+    <string name="style_wallpaper_end">ende</string>
 </resources>

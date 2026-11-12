@@ -191,5 +191,9 @@
     <string name="style_wallpaper_x">horizontal position</string>
     <string name="style_wallpaper_y">vertical position</string>
     <string name="style_wallpaper_zoom">zoom</string>
-    <string name="style_wallpaper_position_hint">0 = left / top · 1 = right / bottom · preview shows the middle of the scroll</string>
+    <string name="style_wallpaper_position_hint">0 = left / top · 1 = right / bottom</string>
+    <string name="style_wallpaper_scroll_hint">Choose the region of the image that follows the pages.</string>
+    <string name="style_wallpaper_start">start</string>
+    <string name="style_wallpaper_middle">middle</string>
+    <string name="style_wallpaper_end">end</string>
 </resources>

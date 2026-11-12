@@ -2,6 +2,7 @@ package dev.omalauncher.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -49,6 +51,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.focus.FocusRequester
@@ -68,6 +71,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -94,6 +99,7 @@ import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.theme.ThemeDirs
 import dev.omalauncher.theme.ThemeDownload
 import dev.omalauncher.theme.ThemeStore
+import dev.omalauncher.theme.WallpaperFraming
 import dev.omalauncher.theme.Toml
 import dev.omalauncher.widgets.WidgetEngine
 import dev.omalauncher.widgets.editWidgetCommand
@@ -386,11 +392,7 @@ private fun BackgroundSection(
         }
     }
     Flag(R.string.style_wallpaper_motion, R.string.style_wallpaper_scroll, R.string.style_wallpaper_fixed, style, Style.BACKGROUND_SCROLL)
-    NumberSlider(R.string.style_wallpaper_x, style, Style.BACKGROUND_X)
-    NumberSlider(R.string.style_wallpaper_y, style, Style.BACKGROUND_Y)
-    NumberSlider(R.string.style_wallpaper_zoom, style, Style.BACKGROUND_ZOOM)
-    OptionHint(stringResource(R.string.style_wallpaper_position_hint))
-    WallpaperPreview(store.background, style)
+    WallpaperOptions(store.background, style)
     Row(
         Modifier
             .fillMaxWidth()
@@ -425,18 +427,36 @@ private fun BackgroundSection(
     }
 }
 
-/** The current window's crop, centered between pages when scrolling is on. */
+/** Framing controls and the current window's crop, with a local page preview when scrolling is on. */
 @Composable
-private fun WallpaperPreview(file: File?, style: StyleStore) {
+private fun WallpaperOptions(file: File?, style: StyleStore) {
     val image by produceState<ImageBitmap?>(null, file) {
+        value = null
         value = file?.let { withContext(Dispatchers.IO) { decodeSampled(it, 480, 480)?.asImageBitmap() } }
     }
-    val bmp = image ?: return
     val window = windowSize()
+    val framing = style.style.wallpaperFraming
+    val available = image?.let { framing.adjustments(it.width, it.height, window.width, window.height) } ?: WallpaperFraming.Adjustments()
+    NumberSlider(R.string.style_wallpaper_x, style, Style.BACKGROUND_X, enabled = available.horizontal)
+    NumberSlider(R.string.style_wallpaper_y, style, Style.BACKGROUND_Y, enabled = available.vertical)
+    NumberSlider(R.string.style_wallpaper_zoom, style, Style.BACKGROUND_ZOOM, enabled = image != null)
+    OptionHint(stringResource(R.string.style_wallpaper_position_hint))
+    if (framing.scroll) OptionHint(stringResource(R.string.style_wallpaper_scroll_hint))
+    val bmp = image ?: return
+    var previewPage by remember(file) { mutableIntStateOf(1) }
+    if (framing.scroll) {
+        StyleOption(
+            R.string.style_preview,
+            listOf(stringResource(R.string.style_wallpaper_start), stringResource(R.string.style_wallpaper_middle), stringResource(R.string.style_wallpaper_end)),
+            previewPage,
+            enabled = available.scrolling,
+        ) { previewPage = it }
+    }
+    val previewOffset by animateFloatAsState(previewPage / 2f, label = "wallpaper preview")
     val ratio = window.width.toFloat() / window.height.coerceAtLeast(1)
     Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
         Canvas(Modifier.width(140.dp).aspectRatio(ratio).frame(1.dp, Palette.border, Palette.surface)) {
-            val src = style.style.wallpaperFraming.crop(bmp.width, bmp.height, size.width.toInt(), size.height.toInt(), 0.5f)
+            val src = style.style.wallpaperFraming.crop(bmp.width, bmp.height, size.width.toInt(), size.height.toInt(), previewOffset)
             drawImage(bmp, srcOffset = IntOffset(src.left, src.top), srcSize = IntSize(src.width, src.height), dstSize = IntSize(size.width.toInt(), size.height.toInt()), filterQuality = FilterQuality.Medium)
         }
     }
@@ -791,6 +811,7 @@ private fun NumberSlider(
     @StringRes label: Int,
     style: StyleStore,
     setting: Setting.Number,
+    enabled: Boolean = true,
 ) {
     val value = style.style[setting]
     val range = setting.range
@@ -802,14 +823,9 @@ private fun NumberSlider(
         val v = Math.round((range.start + f * (range.endInclusive - range.start)) * 100) / 100.0
         style.update { it.with(setting, v) }
     }
-    val accent = Palette.accent
-    val track = Palette.surface
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        OptionLabel(stringResource(label))
-        Spacer(
+    val interaction =
+        if (enabled) {
             Modifier
-                .weight(1f)
-                .height(40.dp)
                 // Keys step it, a twentieth of its range or with Shift a hundredth.
                 .keyStepped(vertical = false) { by, fine ->
                     val span = range.endInclusive - range.start
@@ -824,7 +840,20 @@ private fun NumberSlider(
                         change.consume()
                         set(change.position.x, size.width)
                     }
-                }.drawBehind {
+                }
+        } else {
+            Modifier.semantics { disabled() }
+        }
+    val accent = Palette.accent
+    val track = Palette.surface
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).alpha(if (enabled) 1f else 0.38f), verticalAlignment = Alignment.CenterVertically) {
+        OptionLabel(stringResource(label))
+        Spacer(
+            Modifier
+                .weight(1f)
+                .height(40.dp)
+                .then(interaction)
+                .drawBehind {
                     val f = ((value - range.start) / (range.endInclusive - range.start)).toFloat().coerceIn(0f, 1f)
                     val line = 4.dp.toPx()
                     val thumbW = 10.dp.toPx()
@@ -837,7 +866,11 @@ private fun NumberSlider(
         )
         BasicText(Toml.format(value), Modifier.widthIn(min = 56.dp).padding(start = 12.dp), style = Mono.copy(textAlign = TextAlign.End), softWrap = false)
         // Always there, so the slider doesn't narrow under the finger as it leaves the default.
-        BracketAction(stringResource(R.string.style_reset), Palette.muted) { style.update { it.with(setting, setting.default) } }
+        if (enabled) {
+            BracketAction(stringResource(R.string.style_reset), Palette.muted) { style.update { it.with(setting, setting.default) } }
+        } else {
+            BasicText("[ ${stringResource(R.string.style_reset)} ]", Modifier.padding(horizontal = 8.dp, vertical = 6.dp).semantics { disabled() }, style = Mono.copy(color = Palette.muted))
+        }
     }
 }
 
@@ -895,9 +928,10 @@ private fun StyleOption(
     options: List<String>,
     selected: Int,
     custom: String? = null,
+    enabled: Boolean = true,
     onSelect: (Int) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp).alpha(if (enabled) 1f else 0.38f), verticalAlignment = Alignment.CenterVertically) {
         OptionLabel(stringResource(label))
         // At a large Android font size the options may not fit: they scroll rather than wrap.
         Box(Modifier.horizontalScroll(rememberScrollState())) {
@@ -908,7 +942,7 @@ private fun StyleOption(
                         option,
                         Modifier
                             .background(if (active) Palette.accent else Color.Transparent)
-                            .clickable { onSelect(i) }
+                            .clickable(enabled = enabled) { onSelect(i) }
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                         style = Mono.copy(color = if (active) Palette.background else Palette.foreground),
                         softWrap = false,

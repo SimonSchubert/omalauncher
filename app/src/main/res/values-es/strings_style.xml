@@ -156,5 +156,9 @@
     <string name="style_wallpaper_x">posición horizontal</string>
     <string name="style_wallpaper_y">posición vertical</string>
     <string name="style_wallpaper_zoom">zoom</string>
-    <string name="style_wallpaper_position_hint">0 = izquierda / arriba · 1 = derecha / abajo · la vista previa muestra el centro del desplazamiento</string>
+    <string name="style_wallpaper_position_hint">0 = izquierda / arriba · 1 = derecha / abajo</string>
+    <string name="style_wallpaper_scroll_hint">Elige la región de la imagen que acompaña a las páginas.</string>
+    <string name="style_wallpaper_start">inicio</string>
+    <string name="style_wallpaper_middle">medio</string>
+    <string name="style_wallpaper_end">fin</string>
 </resources>

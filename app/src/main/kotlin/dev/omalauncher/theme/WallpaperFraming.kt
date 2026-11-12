@@ -13,6 +13,28 @@ data class WallpaperFraming(
     val y: Float = 0.5f,
     val zoom: Float = 1f,
 ) {
+    /** Which controls can change this crop; scrolling can already use all the spare width. */
+    fun adjustments(
+        bmpW: Int,
+        bmpH: Int,
+        w: Int,
+        h: Int,
+    ): Adjustments {
+        val origin = copy(x = 0f, y = 0f).crop(bmpW, bmpH, w, h, 0.5f)
+        return Adjustments(
+            horizontal = origin.left != copy(x = 1f).crop(bmpW, bmpH, w, h, 0.5f).left,
+            vertical = origin.top != copy(y = 1f).crop(bmpW, bmpH, w, h, 0.5f).top,
+            scrolling = crop(bmpW, bmpH, w, h, 0f).left != crop(bmpW, bmpH, w, h, 1f).left,
+        )
+    }
+
+    @Immutable
+    data class Adjustments(
+        val horizontal: Boolean = false,
+        val vertical: Boolean = false,
+        val scrolling: Boolean = false,
+    )
+
     /** Source pixels that fill the window, without stretching or showing past the picture's edges. */
     fun crop(
         bmpW: Float,

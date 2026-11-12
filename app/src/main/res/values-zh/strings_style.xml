@@ -152,5 +152,9 @@
     <string name="style_wallpaper_x">水平位置</string>
     <string name="style_wallpaper_y">垂直位置</string>
     <string name="style_wallpaper_zoom">缩放</string>
-    <string name="style_wallpaper_position_hint">0 = 左 / 上 · 1 = 右 / 下 · 预览显示滚动范围的中间位置</string>
+    <string name="style_wallpaper_position_hint">0 = 左 / 上 · 1 = 右 / 下</string>
+    <string name="style_wallpaper_scroll_hint">选择随页面移动的图像区域。</string>
+    <string name="style_wallpaper_start">起点</string>
+    <string name="style_wallpaper_middle">中间</string>
+    <string name="style_wallpaper_end">终点</string>
 </resources>

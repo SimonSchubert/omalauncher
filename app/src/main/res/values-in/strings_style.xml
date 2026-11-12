@@ -152,5 +152,9 @@
     <string name="style_wallpaper_x">posisi horizontal</string>
     <string name="style_wallpaper_y">posisi vertikal</string>
     <string name="style_wallpaper_zoom">zoom</string>
-    <string name="style_wallpaper_position_hint">0 = kiri / atas · 1 = kanan / bawah · pratinjau menampilkan bagian tengah pergeseran</string>
+    <string name="style_wallpaper_position_hint">0 = kiri / atas · 1 = kanan / bawah</string>
+    <string name="style_wallpaper_scroll_hint">Pilih bagian gambar yang mengikuti halaman.</string>
+    <string name="style_wallpaper_start">awal</string>
+    <string name="style_wallpaper_middle">tengah</string>
+    <string name="style_wallpaper_end">akhir</string>
 </resources>
