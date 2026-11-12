@@ -201,15 +201,7 @@ class GuestFs(
     fun freeName(
         dir: String,
         name: String,
-    ): String {
-        fun exists(n: String) = Files.exists(hostOf(child(dir, n)).toPath(), LinkOption.NOFOLLOW_LINKS)
-        if (!exists(name)) return name
-        val stem = name.substringBeforeLast('.').takeIf { '.' in name && !name.startsWith('.') } ?: name
-        val ext = if (stem == name) "" else "." + name.substringAfterLast('.')
-        return generateSequence(1) { it + 1 }
-            .map { n -> if (n == 1) "$stem (copy)$ext" else "$stem (copy $n)$ext" }
-            .first { !exists(it) }
-    }
+    ): String = copyName(name) { Files.exists(hostOf(child(dir, it)).toPath(), LinkOption.NOFOLLOW_LINKS) }
 
     private fun copyHost(
         src: File,
@@ -229,4 +221,17 @@ class GuestFs(
     private fun checkName(name: String) {
         if (name.isBlank() || '/' in name || name == "." || name == "..") throw IOException("invalid name")
     }
+}
+
+/** [name], or "name (copy)", "name (copy 2)" and on, the first that isn't [taken]; an extension stays last. */
+fun copyName(
+    name: String,
+    taken: (String) -> Boolean,
+): String {
+    if (!taken(name)) return name
+    val stem = name.substringBeforeLast('.').takeIf { '.' in name && !name.startsWith('.') } ?: name
+    val ext = if (stem == name) "" else "." + name.substringAfterLast('.')
+    return generateSequence(1) { it + 1 }
+        .map { n -> if (n == 1) "$stem (copy)$ext" else "$stem (copy $n)$ext" }
+        .first { !taken(it) }
 }

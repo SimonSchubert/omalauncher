@@ -5,6 +5,7 @@ import dev.omalauncher.PhoneFolders
 import dev.omalauncher.PhoneStorage
 import dev.omalauncher.linux.GuestEntry
 import dev.omalauncher.linux.GuestFs
+import dev.omalauncher.linux.copyName
 import java.io.File
 import java.io.IOException
 
@@ -167,13 +168,6 @@ internal class FilesFs(
         fun freeName(
             taken: Collection<String>,
             name: String,
-        ): String {
-            if (name !in taken) return name
-            val stem = name.substringBeforeLast('.').takeIf { '.' in name && !name.startsWith('.') } ?: name
-            val ext = if (stem == name) "" else "." + name.substringAfterLast('.')
-            return generateSequence(1) { it + 1 }
-                .map { n -> if (n == 1) "$stem (copy)$ext" else "$stem (copy $n)$ext" }
-                .first { it !in taken }
-        }
+        ): String = copyName(name) { it in taken }
     }
 }
