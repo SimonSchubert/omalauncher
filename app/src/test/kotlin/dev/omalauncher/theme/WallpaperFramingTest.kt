@@ -7,6 +7,37 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class WallpaperFramingTest {
+    @Test fun fitShowsTheWholeWideImageWithCenteredBorders() {
+        val f = WallpaperFraming(fit = true)
+        val p = f.placement(4000f, 2000f, 1000f, 2000f, 0.5f)
+        assertEquals(Rect(0f, 0f, 4000f, 2000f), p.source)
+        assertEquals(Rect(0f, 750f, 1000f, 1250f), p.destination)
+        assertEquals(WallpaperFraming.Adjustments(vertical = true), f.adjustments(4000, 2000, 1000, 2000))
+    }
+
+    @Test fun fitCanAlignAnEntireTallImageWithinSideBorders() {
+        val f = WallpaperFraming(fit = true, x = 0f)
+        val p = f.placement(1000f, 4000f, 2000f, 1000f, 0f)
+        assertEquals(Rect(0f, 0f, 1000f, 4000f), p.source)
+        assertEquals(Rect(0f, 0f, 250f, 1000f), p.destination)
+        assertEquals(WallpaperFraming.Adjustments(horizontal = true), f.adjustments(1000, 4000, 2000, 1000))
+    }
+
+    @Test fun fitZoomClipsOnlyTheOverflowAndKeepsItsProportions() {
+        val p = WallpaperFraming(scroll = false, fit = true, zoom = 2f).placement(4000f, 2000f, 1000f, 2000f, 0f)
+        assertEquals(Rect(1000f, 0f, 3000f, 2000f), p.source)
+        assertEquals(Rect(0f, 500f, 1000f, 1500f), p.destination)
+    }
+
+    @Test fun fitAndGlassShareTheSamePlacementAtDifferentImageResolutions() {
+        val f = WallpaperFraming(fit = true, x = 0.2f, y = 0.8f, zoom = 1.7f)
+        val home = f.placement(4000f, 2000f, 1080f, 2400f, 0.3f)
+        val glass = f.placement(500f, 250f, 1080f, 2400f, 0.3f)
+        assertEquals(home.destination, glass.destination)
+        assertEquals(home.source.left, glass.source.left * 8, 0.001f)
+        assertEquals(home.source.width, glass.source.width * 8, 0.001f)
+    }
+
     @Test fun defaultsKeepTheCenteredHalfScreenSlide() {
         val framing = WallpaperFraming()
         assertEquals(IntRect(750, 0, 1750, 2000), framing.crop(3000, 2000, 1000, 2000, 0f))

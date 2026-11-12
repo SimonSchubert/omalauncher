@@ -12,6 +12,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
@@ -48,6 +49,7 @@ class Backdrop(
     val file: () -> File?,
     val offset: () -> Float,
     val framing: () -> WallpaperFraming,
+    val color: () -> Color,
 )
 
 val LocalBackdrop = staticCompositionLocalOf<Backdrop?> { null }
@@ -222,19 +224,21 @@ private class FrostNode(
         // The same crop as home, in floats: the small image would otherwise slide in steps.
         val bw = img.width.toFloat()
         val bh = img.height.toFloat()
-        val src = backdrop.framing().crop(bw, bh, screen.width.toFloat(), screen.height.toFloat(), backdrop.offset())
+        val placement = backdrop.framing().placement(bw, bh, screen.width.toFloat(), screen.height.toFloat(), backdrop.offset())
+        val src = placement.source
         if (src.isEmpty) {
             drawContent()
             return
         }
-        val scale = screen.width / src.width
+        val scale = placement.destination.width / src.width
         val r = corner().dp.toPx()
         clip.reset()
         clip.addRoundRect(RoundRect(0f, 0f, size.width, size.height, CornerRadius(r)))
         clipPath(clip) {
+            drawRect(backdrop.color())
             drawImage(
                 img,
-                dstOffset = IntOffset((-src.left * scale - pos.x).roundToInt(), (-src.top * scale - pos.y).roundToInt()),
+                dstOffset = IntOffset((placement.destination.left - src.left * scale - pos.x).roundToInt(), (placement.destination.top - src.top * scale - pos.y).roundToInt()),
                 dstSize = IntSize((bw * scale).roundToInt(), (bh * scale).roundToInt()),
                 filterQuality = FilterQuality.Low,
             )
