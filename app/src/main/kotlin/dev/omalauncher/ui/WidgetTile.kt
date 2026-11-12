@@ -34,7 +34,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import dev.omalauncher.R
-import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.widgets.WidgetSpec
 import dev.omalauncher.widgets.lang.text
 import dev.omalauncher.widgets.render.WidgetContent
@@ -55,7 +54,7 @@ internal fun WidgetTile(
     onInstall: () -> Unit,
     onFix: (String) -> Unit,
     /** Where Linux stands, if the widget needs it and it isn't running: a placeholder keeps its cells. */
-    waitsForLinux: LinuxState? = null,
+    waitsForLinux: LinuxPhase? = null,
     onInstallLinux: () -> Unit = {},
     /** How much of a face the soft keyboard covers while one of its fields has it, in pixels: its `screenInset` then. */
     keyboard: Float = 0f,
@@ -74,8 +73,8 @@ internal fun WidgetTile(
     ) {
         if (waitsForLinux != null) {
             // While an installed Linux starts up the tile stays empty; it only offers an install when there's none.
-            if (waitsForLinux != LinuxState.Checking && waitsForLinux != LinuxState.Installed) {
-                LinuxPlaceholder(spec.name, installing = waitsForLinux is LinuxState.Installing, onInstallLinux)
+            if (waitsForLinux != LinuxPhase.Checking && waitsForLinux != LinuxPhase.Installed) {
+                LinuxPlaceholder(spec.name, installing = waitsForLinux == LinuxPhase.Installing, onInstallLinux)
             }
         } else if (instance != null && needs.isNotEmpty()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -26,7 +26,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -78,7 +77,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.window.PopupPositionProvider
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
-import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.agentInvocation
 import kotlinx.coroutines.flow.collectLatest
@@ -118,9 +116,8 @@ internal fun PromptBar(
     var focused by remember { mutableStateOf(false) }
     val panelShown by remember(state) { derivedStateOf { state.drawer.value > 0.01f } }
     val agent = runtime.agents.default
-    val linuxState by runtime.bootstrap.state.collectAsState()
     // Agents run in Linux: without it, the bar offers to install it instead.
-    val linux = linuxState == LinuxState.Installed
+    val linux = linuxPhase(runtime) == LinuxPhase.Installed
     val opensVoice = rememberOpensVoice(runtime, agent, linux)
 
     fun offerLinux() {

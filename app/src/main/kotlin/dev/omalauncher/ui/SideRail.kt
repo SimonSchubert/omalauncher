@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -45,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
-import dev.omalauncher.linux.LinuxState
 
 /** Where landscape home keeps the recent apps strip and the bar: the side portrait's bottom turned to. */
 enum class HomeSide { Left, Right }
@@ -263,13 +261,13 @@ private fun PromptRail(
     /** With no recent apps beside it, keys come to it out of the grid and go back across. */
     alone: Boolean,
 ) {
-    val linuxState by runtime.bootstrap.state.collectAsState()
+    val linux = linuxPhase(runtime) == LinuxPhase.Installed
     val agent = runtime.agents.default
-    val opensVoice = rememberOpensVoice(runtime, agent, linuxState == LinuxState.Installed)
+    val opensVoice = rememberOpensVoice(runtime, agent, linux)
     // The longest that fits the rail: a letter takes a whole line.
     val hints =
         listOfNotNull(
-            agent?.takeIf { linuxState == LinuxState.Installed }?.let { stringResource(R.string.home_prompt_hint_agent, it.bin) },
+            agent?.takeIf { linux }?.let { stringResource(R.string.home_prompt_hint_agent, it.bin) },
             stringResource(R.string.home_prompt_hint),
             stringResource(R.string.home_prompt_hint_short),
         )

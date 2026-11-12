@@ -9,7 +9,10 @@ import android.app.WallpaperManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.omalauncher.widgets.FACE_PAGE
 import dev.omalauncher.widgets.isFacePage
@@ -98,7 +101,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     val engine = runtime.widgets
-    val linuxState by runtime.bootstrap.state.collectAsState()
+    val linuxState = linuxPhase(runtime)
     val arrange = remember { Arrange() }
     // A foldable's cover screen has a layout of its own (its cells and pages in the layout, [cover] in layout.toml), and
     // with home.unfolded-layout so does a Fold's unfolded inner screen ([unfolded]): home shows that one there, and the
@@ -504,7 +507,7 @@ fun HomeScreen(
                     agent,
                     onBrowse = { state.show(SettingsPage.FaceStore) },
                 ) {
-                    if (linuxState == LinuxState.Installed) {
+                    if (linuxState == LinuxPhase.Installed) {
                         state.withAgent(runtime, "New face") { newOwlCommand(it, OwlKind.Face, page) }
                     } else {
                         state.show(SettingsPage.Linux)
@@ -519,7 +522,7 @@ fun HomeScreen(
                     agent,
                     onBrowse = { state.show(SettingsPage.Store) },
                 ) {
-                    if (linuxState == LinuxState.Installed) {
+                    if (linuxState == LinuxPhase.Installed) {
                         state.withAgent(runtime, "New widget") { newOwlCommand(it, OwlKind.Widget) }
                     } else {
                         state.show(SettingsPage.Linux)
@@ -692,7 +695,7 @@ private fun HomeTile(
     arrange: Arrange,
     /** As homeTurned(): cells are shown on their side. */
     turned: Boolean,
-    linuxState: LinuxState,
+    linuxState: LinuxPhase,
 ) {
     val engine = runtime.widgets
     val terminals = runtime.terminals
@@ -773,3 +776,33 @@ private fun HomeTile(
             )
     }
 }
+
+/** What home and its bar show of Linux: [LinuxState] without an install's progress and log, which change with every line it logs. */
+enum class LinuxPhase {
+    Checking,
+    Installing,
+    Installed,
+
+    /** Not installed, failed or being removed. */
+    Absent,
+}
+
+/** Linux's [LinuxPhase], recomposing the caller only when that changes. */
+@Composable
+fun linuxPhase(runtime: Runtime): LinuxPhase {
+    val bootstrap = runtime.bootstrap
+    val phases = remember(bootstrap) { bootstrap.state.phases() }
+    val initial = remember(bootstrap) { linuxPhase(bootstrap.state.value) }
+    return phases.collectAsState(initial).value
+}
+
+/** These states' phases, each once until it changes. */
+internal fun Flow<LinuxState>.phases(): Flow<LinuxPhase> = map(::linuxPhase).distinctUntilChanged()
+
+private fun linuxPhase(state: LinuxState) =
+    when (state) {
+        LinuxState.Checking -> LinuxPhase.Checking
+        is LinuxState.Installing -> LinuxPhase.Installing
+        LinuxState.Installed -> LinuxPhase.Installed
+        LinuxState.NotInstalled, is LinuxState.Failed, LinuxState.Removing -> LinuxPhase.Absent
+    }
