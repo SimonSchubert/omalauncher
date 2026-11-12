@@ -4,6 +4,20 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## 1.4.0 (versionCode 37) – 2026-11-12
+
+- Linux commands that look at many files run 2-8x faster with "fast system calls" on (pacman -Qk
+  8x, ls -lR 6x, du 5x, grep -r 3x, git status 2x): a small library inside Linux answers stat,
+  access, readlink, read-only open and similar calls itself instead of stopping for proot each
+  time.
+- Sunset heist: a brake button under the right thumb, and cars bump instead of passing through
+  each other: police, race rivals, the takedown car and parked cars are solid like traffic.
+- Agents building widgets lose fewer turns: owl-check draws a new preview after owl-send changed a
+  state and says which cells the tile has on home. The bundled game examples drop boomtown, sky
+  forge and last outpost.
+- Home no longer redraws for every line a Linux install logs, and typing and drawing do less work.
+- Fixes: AirPods no longer crash the launcher when their link stops.
+
 ## 1.3.0 (versionCode 36) – 2026-11-11
 
 - Owl 22 brings 3D: a Canvas `scene(camera)` draws lit, fogged and textured models from cubes,
