@@ -2,7 +2,6 @@ package dev.omalauncher.widgets.runtime
 
 import android.content.Context
 import android.content.pm.PackageManager
-import android.database.ContentObserver
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +11,7 @@ import android.telephony.ServiceState
 import android.telephony.SignalStrength
 import android.telephony.TelephonyCallback
 import android.telephony.TelephonyManager
+import dev.omalauncher.changeObserver
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
@@ -101,12 +101,7 @@ class Sim(
                     @Suppress("DEPRECATION")
                     ({ t.listen(listener, PhoneStateListener.LISTEN_NONE) })
                 }
-            val observer =
-                object : ContentObserver(main) {
-                    override fun onChange(selfChange: Boolean) {
-                        trySend(Unit)
-                    }
-                }
+            val observer = changeObserver(main) { trySend(Unit) }
             context.contentResolver.registerContentObserver(Settings.Global.getUriFor(MOBILE_DATA), true, observer)
             trySend(Unit)
             awaitClose {

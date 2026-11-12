@@ -198,15 +198,7 @@ class HomeStore(
                             return@forEachIndexed
                         }
                         moves += item to page
-                        val size = layout.cell(item.key, screen)?.let { it.w to it.h } ?: specs[item.key]?.size ?: (cols / 2 to 3)
-                        val c = tile.cell?.let { c -> rescaled(c, size, section.columns, cols, item.resizable) }
-                        cells[item.key] =
-                            when {
-                                c == null -> null
-                                c.x + c.w > cols -> null.also { problems += "$at: off the grid's $cols columns; it took the first free spot" }
-                                taken.any { it.overlaps(c) } -> null.also { problems += "$at: overlaps a tile before it; it took the first free spot" }
-                                else -> c.also { taken += it }
-                            }
+                        cells[item.key] = cell(tile.cell, sizeOf(item.key, screen, specs, cols), section.columns, cols, item.resizable, taken, at, problems)
                     }
                 }
             }
@@ -294,7 +286,7 @@ class HomeStore(
                             is WidgetTile -> {
                                 if (!widget(tile.file, page, face = false, at)) return@forEachIndexed
                                 key = tile.file
-                                size = layout.cell(key, Screen.MAIN)?.let { it.w to it.h } ?: specs[key]?.size ?: (cols / 2 to 3)
+                                size = sizeOf(key, Screen.MAIN, specs, cols)
                             }
                             is AppTile -> {
                                 key = app(tile.app, page, null, at)?.key ?: return@forEachIndexed
@@ -312,14 +304,7 @@ class HomeStore(
                             }
                         }
                         if (key in cells) return@forEachIndexed
-                        val c = tile.cell?.let { c -> rescaled(c, size, file.columns, cols, tile is WidgetTile) }
-                        cells[key] =
-                            when {
-                                c == null -> null
-                                c.x + c.w > cols -> null.also { problems += "$at: off the grid's $cols columns; it took the first free spot" }
-                                taken.any { it.overlaps(c) } -> null.also { problems += "$at: overlaps a tile before it; it took the first free spot" }
-                                else -> c.also { taken += it }
-                            }
+                        cells[key] = cell(tile.cell, size, file.columns, cols, tile is WidgetTile, taken, at, problems)
                     }
                 }
             }
@@ -339,6 +324,37 @@ class HomeStore(
     }
 
     /** [c] from the file's grid of [from] columns on this one's [to]; a tile without a size in the file keeps [size]. */
+    /** A widget's size on [screen]: its cell's there, else the size it asks for, else half the [cols] by 3. */
+    private fun sizeOf(
+        key: String,
+        screen: Screen,
+        specs: Map<String, WidgetSpec>,
+        cols: Int,
+    ): Pair<Int, Int> = layout.cell(key, screen)?.let { it.w to it.h } ?: specs[key]?.size ?: (cols / 2 to 3)
+
+    /**
+     * The cell the file gives a tile of [size] ([cell], written for [from] columns) on the [to]-column grid, added to
+     * [taken]; null, for the first free spot, when it gives none or it doesn't fit, which is noted in [problems] at [at].
+     */
+    private fun cell(
+        cell: Cell?,
+        size: Pair<Int, Int>,
+        from: Int,
+        to: Int,
+        resizable: Boolean,
+        taken: MutableList<Cell>,
+        at: String,
+        problems: MutableList<String>,
+    ): Cell? {
+        val c = cell?.let { rescaled(it, size, from, to, resizable) }
+        return when {
+            c == null -> null
+            c.x + c.w > to -> null.also { problems += "$at: off the grid's $to columns; it took the first free spot" }
+            taken.any { it.overlaps(c) } -> null.also { problems += "$at: overlaps a tile before it; it took the first free spot" }
+            else -> c.also { taken += it }
+        }
+    }
+
     private fun rescaled(
         c: Cell,
         size: Pair<Int, Int>,

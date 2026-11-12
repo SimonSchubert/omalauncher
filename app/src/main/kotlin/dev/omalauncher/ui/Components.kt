@@ -32,6 +32,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.compositionLocalOf
@@ -158,6 +164,38 @@ fun PanelFrame(
 /** A panel's title, in the accent color. */
 @Composable
 fun PanelTitle(text: String) = BasicText(text, style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title), maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+/**
+ * A search field in a panel's title, focused when it shows, with [hint] while it's empty. [autoCorrect] null leaves
+ * correction to the keyboard.
+ */
+@Composable
+fun PanelSearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    hint: String,
+    onSearch: () -> Unit = {},
+    autoCorrect: Boolean? = null,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = Mono.copy(fontSize = TextSize.Title),
+        cursorBrush = SolidColor(Palette.accent),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrectEnabled = autoCorrect),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+        modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
+        decorationBox = { inner ->
+            Box {
+                if (value.isEmpty()) BasicText(hint, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
+                inner()
+            }
+        },
+    )
+}
 
 /** The way back to the screen under an [OverlayPanel], for one opened from another (a settings page from settings); null for one on its own. */
 val LocalPanelBack = compositionLocalOf<(() -> Unit)?> { null }

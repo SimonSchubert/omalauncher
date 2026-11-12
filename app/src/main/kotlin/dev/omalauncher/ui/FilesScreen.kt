@@ -17,9 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,12 +32,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import android.net.Uri
 import androidx.core.content.FileProvider
@@ -226,26 +221,7 @@ fun FilesScreen(
             title = {
                 when {
                     selected.isNotEmpty() -> PanelTitle(stringResource(R.string.files_selected, selected.size))
-                    q != null -> {
-                        val focus = remember { FocusRequester() }
-                        LaunchedEffect(Unit) { focus.requestFocus() }
-                        BasicTextField(
-                            value = q,
-                            onValueChange = { query = it },
-                            singleLine = true,
-                            textStyle = Mono.copy(fontSize = TextSize.Title),
-                            cursorBrush = SolidColor(Palette.accent),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(onSearch = {}),
-                            modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
-                            decorationBox = { inner ->
-                                Box {
-                                    if (q.isEmpty()) BasicText(stringResource(R.string.files_filter_hint), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
-                                    inner()
-                                }
-                            },
-                        )
-                    }
+                    q != null -> PanelSearchField(q, { query = it }, stringResource(R.string.files_filter_hint))
                     else ->
                         PanelTitle(
                             when (path) {

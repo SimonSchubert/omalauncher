@@ -5,7 +5,6 @@ import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.database.ContentObserver
 import android.os.Handler
 import android.os.Looper
 import android.provider.CalendarContract
@@ -13,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import dev.omalauncher.changeObserver
 import dev.omalauncher.registerNotExported
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Num
@@ -124,12 +124,7 @@ class PhoneCalendar(
     private fun changes(): Flow<Unit> =
         callbackFlow {
             val resolver = context.contentResolver
-            val observer =
-                object : ContentObserver(Handler(Looper.getMainLooper())) {
-                    override fun onChange(selfChange: Boolean) {
-                        trySend(Unit)
-                    }
-                }
+            val observer = changeObserver(Handler(Looper.getMainLooper())) { trySend(Unit) }
             try {
                 listOf(CalendarContract.Events.CONTENT_URI, CalendarContract.Calendars.CONTENT_URI, CalendarContract.Instances.CONTENT_URI)
                     .forEach { resolver.registerContentObserver(it, true, observer) }
