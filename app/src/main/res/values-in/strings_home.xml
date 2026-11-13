@@ -63,6 +63,8 @@
     <string name="home_linux_window">Linux</string>
 
     <string name="drawer_action_pin">tambah ke layar utama</string>
+    <string name="drawer_action_add_to_strip">tambah ke bilah aplikasi</string>
+    <string name="drawer_action_remove_from_strip">hapus dari bilah aplikasi</string>
     <string name="drawer_action_info">info aplikasi</string>
     <string name="drawer_action_uninstall">uninstal</string>
 </resources>

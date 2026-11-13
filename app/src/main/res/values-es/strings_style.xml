@@ -19,6 +19,9 @@
     <string name="style_boxed">con recuadro</string>
     <string name="style_icon_only">solo icono</string>
     <string name="style_recent_apps">apps recientes</string>
+    <string name="style_app_strip">barra de apps</string>
+    <string name="style_pinned">fijadas</string>
+    <string name="style_recent">recientes</string>
     <string name="style_shown">mostrar</string>
     <string name="style_hidden">ocultar</string>
     <string name="style_empty_page_left">página vacía izq.</string>

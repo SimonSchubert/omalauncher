@@ -138,6 +138,8 @@ object LauncherStyle {
 
     /** The empty page after home's last, always (true) or only while a tile is carried (false). */
     val emptyPageRight get() = style[Style.EMPTY_PAGE_RIGHT]
+    /** That strip shows the apps pinned to it, in their order, instead of recent ones. */
+    val pinnedStrip get() = style[Style.PINNED_STRIP]
 
     /** The page home opens on and returns to when Home is pressed; see [homePageIn]. */
     val homePage get() = style[Style.HOME_PAGE]
