@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.content.res.XmlResourceParser
 import android.graphics.drawable.Drawable
 import android.util.Log
 import org.xmlpull.v1.XmlPullParser
@@ -61,7 +62,13 @@ class IconPack private constructor(
                 }
             val names = HashMap<String, String>()
             try {
-                appfilter(res, packageName)?.let { parser -> readAppfilter(parser, names) } ?: return null
+                val parser = appfilter(res, packageName) ?: return null
+                // A compiled one holds the pack's resources until closed.
+                try {
+                    readAppfilter(parser, names)
+                } finally {
+                    (parser as? XmlResourceParser)?.close()
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "cannot read $packageName's appfilter.xml", e)
                 return null

@@ -648,7 +648,6 @@ private fun Heading(
     }
 }
 
-/** Font names run long and pacman can add many: the picked one shows, and tapping it lists the others under it. */
 /** The icon pack Android apps take their icons from, among the installed ones; one set in style.toml but not installed shows by its package name. */
 @Composable
 private fun IconPackOption(style: StyleStore) {
@@ -667,6 +666,7 @@ private fun IconPackOption(style: StyleStore) {
     }
 }
 
+/** Font names run long and pacman can add many: the picked one shows, and tapping it lists the others under it. */
 @Composable
 private fun FontOption(
     families: List<String>,

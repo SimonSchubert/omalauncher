@@ -1,9 +1,6 @@
 package dev.omalauncher
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
@@ -25,7 +22,7 @@ import org.json.JSONArray
 class LauncherUpdates(
     private val context: Context,
 ) {
-    private val fromFdroid = installer(context) in FDROID_CLIENTS
+    private val fromFdroid = installerOf(context) in FDROID_CLIENTS
     private val scope = MainScope()
     private var checkedAt = 0L
 
@@ -72,7 +69,8 @@ class LauncherUpdates(
     @Suppress("UNUSED_PARAMETER")
     fun start(launcher: ActivityResultLauncher<IntentSenderRequest>) {
         val page = page ?: return
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        // Without a browser there's nothing to open it in; mustn't crash the launcher.
+        if (!context.openUrl(page)) Log.w(TAG, "no app opens $page")
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -120,16 +118,5 @@ class LauncherUpdates(
             }
             return 0
         }
-
-        fun installer(context: Context): String? =
-            runCatching {
-                val pm = context.packageManager
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    pm.getInstallSourceInfo(context.packageName).installingPackageName
-                } else {
-                    @Suppress("DEPRECATION")
-                    pm.getInstallerPackageName(context.packageName)
-                }
-            }.getOrNull()
     }
 }

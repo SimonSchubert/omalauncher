@@ -1,7 +1,6 @@
 package dev.omalauncher
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
@@ -24,7 +23,7 @@ import com.google.android.play.core.install.model.UpdateAvailability
 class LauncherUpdates(
     context: Context,
 ) {
-    private val fromPlay = installer(context) == PLAY_STORE
+    private val fromPlay = installerOf(context) == PLAY_STORE
     private val manager by lazy { AppUpdateManagerFactory.create(context) }
 
     /** What the last check found; one of these starts only one update screen. */
@@ -82,16 +81,5 @@ class LauncherUpdates(
         const val TAG = "LauncherUpdates"
         const val PLAY_STORE = "com.android.vending"
         val IMMEDIATE: AppUpdateOptions = AppUpdateOptions.defaultOptions(AppUpdateType.IMMEDIATE)
-
-        fun installer(context: Context): String? =
-            runCatching {
-                val pm = context.packageManager
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    pm.getInstallSourceInfo(context.packageName).installingPackageName
-                } else {
-                    @Suppress("DEPRECATION")
-                    pm.getInstallerPackageName(context.packageName)
-                }
-            }.getOrNull()
     }
 }
