@@ -2,7 +2,7 @@ package dev.omalauncher.widgets.runtime
 
 import dev.omalauncher.linux.ShellResult
 import dev.omalauncher.ui.EmbeddedBrowser
-import dev.omalauncher.ui.EmbeddedTerminal
+import dev.omalauncher.ui.home.EmbeddedTerminal
 import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.lang.Value

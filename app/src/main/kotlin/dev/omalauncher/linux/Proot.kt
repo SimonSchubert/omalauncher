@@ -5,8 +5,8 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import dev.omalauncher.LauncherData
-import dev.omalauncher.PhoneStorage
+import dev.omalauncher.storage.LauncherData
+import dev.omalauncher.storage.PhoneStorage
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import java.io.File

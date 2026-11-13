@@ -38,7 +38,7 @@
     <string name="settings_permissions">permissions</string>
     <string name="settings_permissions_subtitle">microphone, location, files, …</string>
 
-    <!-- The permissions screen (ui/PermissionsScreen.kt). Its rows reuse settings_local_network. -->
+    <!-- The permissions screen (ui/settings/PermissionsScreen.kt). Its rows reuse settings_local_network. -->
     <string name="permissions_title">permissions</string>
     <!-- The phone folders Linux reaches (PhoneFoldersRow, on top of this screen); Files is the app's name. -->
     <string name="permissions_folders_title">phone folders</string>

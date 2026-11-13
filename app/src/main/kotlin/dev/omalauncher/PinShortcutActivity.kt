@@ -6,7 +6,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import dev.omalauncher.ui.KeyIndicated
-import dev.omalauncher.ui.PinShortcutDialog
+import dev.omalauncher.ui.home.PinShortcutDialog
+import dev.omalauncher.apps.shortcutLabel
+import dev.omalauncher.system.AppLanguage
 
 /**
  * Asks before an app puts a shortcut on the home screen (ShortcutManager.requestPinShortcut): a website installed

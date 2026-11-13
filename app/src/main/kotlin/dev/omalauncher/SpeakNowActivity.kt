@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.speech.RecognizerIntent
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
-import dev.omalauncher.ui.Speech
+import dev.omalauncher.ui.voice.Speech
 
 /**
  * Opens the phone's own "speak now" screen for [Speech], when its speech app has no recognizer other apps can use

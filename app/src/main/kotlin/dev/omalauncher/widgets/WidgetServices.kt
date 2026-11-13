@@ -1,8 +1,8 @@
 package dev.omalauncher.widgets
 
-import dev.omalauncher.copyText
-import dev.omalauncher.registerNotExported
-import dev.omalauncher.shareText
+import dev.omalauncher.system.copyText
+import dev.omalauncher.system.registerNotExported
+import dev.omalauncher.system.shareText
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -33,7 +33,7 @@ import android.os.UserManager
 import android.util.Log
 import android.widget.Toast
 import dev.omalauncher.R
-import dev.omalauncher.postNotification
+import dev.omalauncher.system.postNotification
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.LinuxState
@@ -42,7 +42,7 @@ import dev.omalauncher.linux.GuestShell
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.ShellPool
 import dev.omalauncher.linux.ShellResult
-import dev.omalauncher.SecretBox
+import dev.omalauncher.widgets.runtime.SecretBox
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.resume
 import kotlin.concurrent.thread
@@ -50,12 +50,12 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.suspendCancellableCoroutine
-import dev.omalauncher.WebSocket
-import dev.omalauncher.LocalNetwork
-import dev.omalauncher.openHttp
-import dev.omalauncher.pin
-import dev.omalauncher.openUrl
-import dev.omalauncher.readUpTo
+import dev.omalauncher.net.WebSocket
+import dev.omalauncher.net.LocalNetwork
+import dev.omalauncher.net.openHttp
+import dev.omalauncher.net.pin
+import dev.omalauncher.system.openUrl
+import dev.omalauncher.system.readUpTo
 import dev.omalauncher.widgets.lang.sha256Hex
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.Builtins
@@ -69,23 +69,23 @@ import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.bool
-import dev.omalauncher.androidAppKey
-import dev.omalauncher.OfferedShortcut
-import dev.omalauncher.ui.AppHandlers
-import dev.omalauncher.ui.ShortcutMenu
-import dev.omalauncher.ui.initials
-import dev.omalauncher.ui.AppHit
+import dev.omalauncher.apps.androidAppKey
+import dev.omalauncher.apps.OfferedShortcut
+import dev.omalauncher.ui.home.AppHandlers
+import dev.omalauncher.ui.home.ShortcutMenu
+import dev.omalauncher.ui.home.initials
+import dev.omalauncher.ui.home.AppHit
 import dev.omalauncher.ui.EmbeddedBrowser
-import dev.omalauncher.ui.act
-import dev.omalauncher.ui.actionWords
-import dev.omalauncher.ui.kind
-import dev.omalauncher.ui.profileKind
+import dev.omalauncher.ui.home.act
+import dev.omalauncher.ui.home.actionWords
+import dev.omalauncher.ui.home.kind
+import dev.omalauncher.ui.home.profileKind
 import dev.omalauncher.ui.LauncherStyle
-import dev.omalauncher.ui.SettingsPage
-import dev.omalauncher.ui.allApps
-import dev.omalauncher.ui.appIconOf
-import dev.omalauncher.ui.open
-import dev.omalauncher.ui.recentApps
+import dev.omalauncher.ui.settings.SettingsPage
+import dev.omalauncher.ui.home.allApps
+import dev.omalauncher.ui.home.appIconOf
+import dev.omalauncher.ui.home.open
+import dev.omalauncher.ui.home.recentApps
 import dev.omalauncher.widgets.runtime.battery
 import dev.omalauncher.widgets.runtime.AirPods
 import dev.omalauncher.widgets.runtime.Alarm
@@ -296,7 +296,7 @@ class WidgetServices(
     private fun profileKind(user: UserHandle): String? =
         if (user == Process.myUserHandle()) null else profileKind(context.getSystemService(UserManager::class.java).getSerialNumberForUser(user))
 
-    /** As above, by [profile]'s serial number (see [dev.omalauncher.AndroidApp.profile]): no binder call. */
+    /** As above, by [profile]'s serial number (see [dev.omalauncher.apps.AndroidApp.profile]): no binder call. */
     private fun profileKind(profile: Long?): String? = profile?.let { if (runtime.androidApps.cloned(it)) "clone" else "work" }
 
     /** Apps by package, in the drawer's order: a widget listing every app asks for each one's icon, and a scan per icon was O(n²). */
@@ -459,9 +459,9 @@ class WidgetServices(
 
     /**
      * Launchable Android apps for `source a = android.apps`, updated as apps come and go and are opened, each `{key, name, package, component, profile, system, icon, score, last}`.
-     * `key` is [dev.omalauncher.AndroidApp.key], unique across profiles, for `androidApp(a.key)`; `profile` is `work` or
+     * `key` is [dev.omalauncher.apps.AndroidApp.key], unique across profiles, for `androidApp(a.key)`; `profile` is `work` or
      * `clone` as on notifications, else null; `icon` is the `app:` src for that copy. `score` and `last` are what the
-     * search ranks by ([dev.omalauncher.AppUsage]), so a widget can rank apps the same way.
+     * search ranks by ([dev.omalauncher.apps.AppUsage]), so a widget can rank apps the same way.
      */
     private fun apps(): Value =
         Lst(

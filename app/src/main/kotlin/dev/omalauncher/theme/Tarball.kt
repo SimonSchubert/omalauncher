@@ -1,7 +1,7 @@
 package dev.omalauncher.theme
 
-import dev.omalauncher.CountingInputStream
-import dev.omalauncher.openHttp
+import dev.omalauncher.system.CountingInputStream
+import dev.omalauncher.net.openHttp
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.io.File
 import java.io.IOException

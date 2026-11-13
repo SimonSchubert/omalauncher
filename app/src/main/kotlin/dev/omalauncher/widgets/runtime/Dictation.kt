@@ -7,7 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.R
-import dev.omalauncher.ui.Speech
+import dev.omalauncher.ui.voice.Speech
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str
@@ -15,7 +15,7 @@ import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.bool
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onCompletion
-import dev.omalauncher.hasPermission
+import dev.omalauncher.system.hasPermission
 
 /**
  * Dictation for widgets: `source said = android.speech` and `speech("start")`. One widget listens at a time, the one

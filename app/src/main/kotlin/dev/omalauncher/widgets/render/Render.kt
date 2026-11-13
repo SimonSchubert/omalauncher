@@ -124,7 +124,7 @@ import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.frame
 import dev.omalauncher.ui.holdsKeys
 import dev.omalauncher.ui.keyActivated
-import dev.omalauncher.ui.TerminalView
+import dev.omalauncher.ui.home.TerminalView
 import dev.omalauncher.ui.BrowserView
 import dev.omalauncher.widgets.lang.Action
 import dev.omalauncher.widgets.lang.Builtins
@@ -135,7 +135,7 @@ import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
-import dev.omalauncher.ui.TerminalTiles
+import dev.omalauncher.ui.home.TerminalTiles
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WNode
@@ -232,7 +232,7 @@ internal fun columnHugs(
 
 /**
  * Where a node's onLongPress says it took a long press, so the home screen around a face knows not to open its menu
- * for the same one; see [dev.omalauncher.ui.HomeGrid].
+ * for the same one; see [dev.omalauncher.ui.home.HomeGrid].
  */
 class LongPressClaim {
     /** When the last long press was taken, in uptime milliseconds. */

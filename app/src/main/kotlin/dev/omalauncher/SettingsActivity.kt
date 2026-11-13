@@ -7,8 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
-import dev.omalauncher.ui.SettingsPage
-import dev.omalauncher.ui.SettingsPages
+import dev.omalauncher.ui.settings.SettingsPage
+import dev.omalauncher.ui.settings.SettingsPages
 
 /**
  * The launcher's settings and the screens they open (style, agents, store, Linux, …):

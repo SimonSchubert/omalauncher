@@ -16,9 +16,9 @@ run/terminal/app actions, `requires`) show as placeholders in their cells until
 it's installed. Removing Linux deletes `files/arch` only.
 
 Launcher data that the guest also uses lives outside the rootfs and is bound
-into it by proot (`LauncherData.kt`), so installing or removing Linux never
-touches it: `files/omarchy` is `~/.local/share/omarchy` and `files/widgets` is
-`~/.config/omalauncher/widgets`.
+into it by proot (`storage/LauncherData.kt`), so installing or removing Linux
+never touches it: `files/omarchy` is `~/.local/share/omarchy` and
+`files/widgets` is `~/.config/omalauncher/widgets`.
 
 ## Source layout
 
@@ -26,6 +26,10 @@ Paths are under `app/src/main/kotlin/dev/omalauncher/` unless they start with
 a module folder; the OWL language is under
 `owl/src/main/kotlin/dev/omalauncher/widgets/`.
 
+- the package root: the `Application`, `Runtime` (the one object that holds
+  the launcher's services and wires them together), and every activity and
+  service the manifest names. Their class names are public (the home-screen
+  choice, pinned shortcuts, `am start`), so they stay where they are
 - `app/src/main/cpp/wlbridge.c`: JNI for unix sockets with fd passing, shm
   mapping, per-surface pixel stores, and compositing them into a window's
   `ANativeWindow`
@@ -36,7 +40,17 @@ a module folder; the OWL language is under
   (or, for a widget's `Terminal`, into a TextureView in the tile)
 - `linux/`: proot, the rootfs setup and its update steps, pacman, coding
   agents, and the bridges to Android (audio, URLs, /proc)
-- `ui/`: the Compose home screen, the bar and its app list, settings and Files
+- `ui/`: Compose. The package itself holds what every screen shares (the
+  palette, panels and dialogs, icons, key focus, the keyboard); `home/` is the
+  home screen, the bar and its app list, folders and tiles; `settings/` the
+  settings pages and first-run setup; `files/` Files and the editor;
+  `store/` the widget store and sharing; `voice/` the Voice screen and speech
+- `apps/`: the phone's Android apps, their shortcuts, usage and icon packs
+- `net/`: HTTPS with pinning, WebSocket, the local network
+- `storage/`: the launcher's own data directories (`LauncherData`) and the
+  phone's folders and shared storage that Files and Linux reach
+- `system/`: small Android helpers (notifications, broadcasts, permissions,
+  URLs and sharing, the app language)
 - `widgets/`: the widget engine (`render/` draws nodes, `runtime/` holds a
   running widget and its `android.*` sources); the language itself, its
   compiler (`lang/`) and the store's checks (`market/`) are in the `owl` module.
@@ -193,7 +207,7 @@ they cover, in `owl/src/test` or `app/src/test`.
   a warning to `market/Review.kt` so store reviewers check the widget, and
   update the privacy policy (`store/omalauncher.txt`). A new Android
   permission is asked through `ui/AskPermission.kt` and listed on the
-  permissions screen (`ui/PermissionsScreen.kt`).
+  permissions screen (`ui/settings/PermissionsScreen.kt`).
 - **A stock widget** (`assets/widgets/*.owl`): these are `Seeded` files, so
   an edit reaches every install that hasn't changed its copy. Raise the
   `version` in its `meta { }` and keep its `strings { }` sets in every app language.

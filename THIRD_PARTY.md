@@ -55,7 +55,7 @@ It is installed into the Linux guest when GPU acceleration is turned on for an A
 `scripts/fetch-proot.sh` downloads pinned versions of Termux's builds of PRoot (GPL-2.0),
 talloc (LGPL-3.0) and libandroid-shmem (BSD-3-Clause); they are not in this
 repository. The app lists every component it ships, with its license, under
-settings › licenses (`ui/LicensesScreen.kt`, texts in `app/src/main/assets/licenses/`).
+settings › licenses (`ui/settings/LicensesScreen.kt`, texts in `app/src/main/assets/licenses/`).
 
 ## Google Play In-App Updates
 

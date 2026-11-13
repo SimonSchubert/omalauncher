@@ -5,7 +5,7 @@ import android.os.Bundle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import dev.omalauncher.ui.FilesScreen
+import dev.omalauncher.ui.files.FilesScreen
 
 /** The Files app for the Linux file system: its own task and Recents card, opened from the drawer or `omarchy-files` in a terminal. */
 class FilesActivity : InstantActivity() {

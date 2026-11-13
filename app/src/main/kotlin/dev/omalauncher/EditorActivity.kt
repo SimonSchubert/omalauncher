@@ -10,9 +10,9 @@ import android.system.Os
 import android.system.OsConstants
 import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.linux.shellQuote
-import dev.omalauncher.ui.EditorHome
-import dev.omalauncher.ui.EditorScreen
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.ui.files.EditorHome
+import dev.omalauncher.ui.files.EditorScreen
 
 /**
  * The text editor: one Recents card per file (documentLaunchMode), opened from

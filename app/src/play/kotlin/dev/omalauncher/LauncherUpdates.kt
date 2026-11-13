@@ -13,6 +13,7 @@ import com.google.android.play.core.appupdate.AppUpdateOptions
 import com.google.android.play.core.install.model.ActivityResult
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.UpdateAvailability
+import dev.omalauncher.system.installerOf
 
 /**
  * A newer launcher on Google Play, for settings' updates box. Play is asked when settings opens and on its "check",

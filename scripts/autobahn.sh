@@ -33,7 +33,7 @@ for _ in $(seq 60); do
 done
 
 AUTOBAHN="ws://127.0.0.1:$PORT" "$ROOT/gradlew" -p "$ROOT" :app:testFossDebugUnitTest \
-  --tests dev.omalauncher.WebSocketAutobahnTest --rerun -q
+  --tests dev.omalauncher.net.WebSocketAutobahnTest --rerun -q
 
 python3 - "$OUT/clients/index.json" <<'PY'
 import json, sys

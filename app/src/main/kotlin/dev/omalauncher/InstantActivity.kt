@@ -33,6 +33,7 @@ import dev.omalauncher.ui.SystemBarsEffect
 import dev.omalauncher.ui.applySystemBars
 import java.util.Collections
 import java.util.WeakHashMap
+import dev.omalauncher.system.AppLanguage
 
 /**
  * The launcher's own screens with their own task (settings, Files, the editor, Linux
