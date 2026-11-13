@@ -117,6 +117,8 @@ seed() {
     life) json='{"birthYear":"1990","lifespan":"80"}' ;;
     # A town in France, so it doesn't fall back to the IP's location.
     carburant) json='{"city":"Lyon"}' ;;
+    # A picked city, so the globe doesn't centre on the IP's location.
+    weather-net) json='{"zoom":1,"span":"h","unit":"c","selLat":51.5074,"selLon":-0.1278,"selName":"london","picked":1,"layers":15}' ;;
     # A made-up key: the demo's python3 answers lastfm's helper without calling Last.fm.
     lastfm) json='{"username":"demo","apiKey":"demo"}' ;;
     # A public landmark's postcode (the Empire State Building), so the passes show.
