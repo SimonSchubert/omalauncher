@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.annotation.StringRes
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import dev.omalauncher.LauncherData
 import dev.omalauncher.R
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
@@ -189,5 +190,20 @@ class Pacman(
 
         /** Short AUR queries match thousands of packages. */
         private const val MAX_RESULTS = 100
+
+        /**
+         * Deletes the local database entries a killed pacman left without a `desc` (#273), and returns their names.
+         * pacman writes `desc` only after unpacking a package (an upgrade drops the old version's entry before), so
+         * an app killed meanwhile (an update, Android, a force stop) left the folder with just `mtree`, and every later
+         * transaction failed with "invalid or corrupted package". The package then counts as not installed; installing
+         * it again needs `--overwrite '*'` for the files already there. Only while no pacman runs.
+         */
+        fun dropUnfinished(localDb: File): List<String> =
+            localDb
+                .listFiles()
+                .orEmpty()
+                .filter { it.isDirectory && !File(it, "desc").exists() && runCatching { LauncherData.deleteTree(it) }.isSuccess }
+                .map { it.name }
+                .sorted()
     }
 }

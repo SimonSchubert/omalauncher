@@ -132,7 +132,8 @@ class Proot(
 
     /**
      * Resets what only lives as long as our process (guest processes die with
-     * it): /tmp, the runtime dir, a stale pacman lock. Writes the host-side
+     * it): /tmp, the runtime dir, a stale pacman lock and the database entries
+     * of a pacman killed mid-install. Writes the host-side
      * stand-ins every guest command needs. Call once, before any guest runs.
      */
     fun prepare() {
@@ -148,6 +149,7 @@ class Proot(
         // Its mount point, so / lists it; Android 10 has none (an empty one is all that's left there).
         if (rootfs.isDirectory) storageMount.let { if (PhoneStorage.supported()) it.mkdirs() else it.delete() }
         File(rootfs, "var/lib/pacman/db.lck").delete()
+        Pacman.dropUnfinished(File(rootfs, "var/lib/pacman/local")).takeIf { it.isNotEmpty() }?.let { Log.w("proot", "unfinished pacman entries dropped: $it") }
         // An empty stand-in, so fontconfig lists the bound font when it reads the directory.
         if (rootfs.isDirectory) {
             val stub = File(rootfs, GUEST_CJK_FONT.removePrefix("/"))
