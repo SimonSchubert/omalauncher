@@ -3,10 +3,10 @@ widget "now playing" {
   order: 20
   size: 6x2
   minSize: 3x2
-  meta { description: "What's playing on your phone, from any music or podcast app: album art, track, progress and play, pause and skip. Tap the tile to open the app"; version: "1.2"; license: "MIT"; category: "fun"; owl: 19 }
+  meta { description: "What's playing on your phone, from any music or podcast app: album art, track, progress and play, pause and skip. Tap the tile to open the app"; version: "1.3"; license: "MIT"; category: "fun"; owl: 23 }
   fps: 30
 
-  // {available, playing, title, artist, album, app, package, position, duration, art}.
+  // {available, playing, title, artist, album, app, package, position, duration, art, canSeek, speed, actions}.
   // Android only shares other apps' sessions with notification access; without it, available is false.
   source m = android.media
 
@@ -22,6 +22,16 @@ widget "now playing" {
   let tallArt = tall ? clamp(min(tileWidth - 26, tileHeight * 0.45), 40, 240) : 0
 
   onTap: media("open")
+
+  // The track's progress. Where the player can seek, a slider: tap it, or drag it and the track jumps there as the
+  // finger lifts (one seek, not one per move). No height: a sized Slider no longer fills the width.
+  component Bar() {
+    if m.canSeek == true {
+      Slider { value: pos; max: dur; color: accent; track: alpha(muted, 0.2); onChange: media("seek", value) }
+    } else {
+      Progress { value: pos; max: dur; color: accent; track: alpha(muted, 0.2); animate value: tween(900ms, "linear") }
+    }
+  }
 
   component Clock(s) {
     Text { text: s == null ? "" : "${floor(s / 60)}:${pad(floor(s % 60), 2, "0")}"; style: label; color: muted; font: mono; maxLines: 1; width: len("${floor(s / 60)}") * 7 + 22 }
@@ -140,7 +150,7 @@ widget "now playing" {
           }
           Spacer { weight: 1 }
           if dur > 0 {
-            Progress { value: pos; max: dur; color: accent; track: alpha(muted, 0.2); animate value: tween(900ms, "linear") }
+            Bar { }
             Row {
               align: center
               gap: 4
@@ -174,7 +184,7 @@ widget "now playing" {
             Text { text: [m.artist, narrow ? null : m.album].filter(x => x != null).join(" · "); style: small; color: muted; maxLines: 1 }
             Spacer { weight: 1 }
             if dur > 0 {
-              Progress { value: pos; max: dur; color: accent; track: alpha(muted, 0.2); animate value: tween(900ms, "linear") }
+              Bar { }
             }
             Row {
               align: center
