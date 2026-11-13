@@ -159,6 +159,9 @@ class Mesh internal constructor(
         out
     }
 
+    /** The mesh cut into a tree that orders its faces from any side, or null when it needs none; built on first draw. */
+    val bsp: Bsp? by lazy { Bsp.build(this) }
+
     override fun toString() = "<mesh of $triangles triangles>"
 
     private data class Position(
@@ -699,7 +702,8 @@ class Camera(
  * Turns a scene's models into 2D triangles, ready for one drawVertices call per texture: each model is moved
  * into the camera's view, skipped whole when it's out of view, its faces turned away dropped, the rest lit,
  * fogged, cut at the near plane and projected; then every triangle of the scene is sorted far to near, so the
- * near ones are painted over the far ones (a painter's algorithm: there's no depth buffer).
+ * near ones are painted over the far ones (a painter's algorithm: there's no depth buffer). Within a model that
+ * can hide part of itself, its [Bsp] decides the order instead, which is right from any side.
  *
  * Kept by a Canvas between frames: its arrays grow to the largest scene and are reused.
  */
@@ -764,6 +768,9 @@ class Scene3d {
     private val rot = FloatArray(9)
     private val tmp = FloatArray(3)
 
+    /** A model's faces in its tree's order. */
+    private var order = IntArray(256)
+
     /** Polygon cut at the near plane: up to 4 corners of x, y, d, r, g, b, a, u, v. */
     private val poly = FloatArray(9 * 4)
     private val corner = FloatArray(9 * 3)
@@ -825,6 +832,7 @@ class Scene3d {
         texH: Float,
     ) {
         if (mesh.triangles == 0) return
+        val first = n
         val amb = if (ambient.isNaN()) this.ambient else ambient.coerceIn(0f, 1f)
         val r = Meshes.rotation(turn[0], turn[1], turn[2], rot)
         val sx = scale[0]
@@ -871,13 +879,22 @@ class Scene3d {
         val n21 = c21 * isy * isy
         val n22 = c22 * isz * isz
 
-        val count = mesh.points.size / 3
+        // A model that can hide part of itself draws its cut mesh, far to near from where the eye is in the model's own
+        // space (a point's side of a plane doesn't change when the model is moved, turned or stretched).
+        val bsp = if (sx != 0f && sy != 0f && sz != 0f) mesh.bsp else null
+        val drawn = bsp?.mesh ?: mesh
+        if (bsp != null) {
+            if (order.size < drawn.triangles) order = IntArray(drawn.triangles)
+            // The eye from the model: -(at - eye), turned back (the transpose) and unstretched.
+            bsp.order(-(r[0] * qx + r[3] * qy + r[6] * qz) / sx, -(r[1] * qx + r[4] * qy + r[7] * qz) / sy, -(r[2] * qx + r[5] * qy + r[8] * qz) / sz, order)
+        }
+        val count = drawn.points.size / 3
         if (px.size < count) {
             px = FloatArray(count)
             py = FloatArray(count)
             pz = FloatArray(count)
         }
-        val pts = mesh.points
+        val pts = drawn.points
         for (i in 0 until count) {
             val x = pts[3 * i]
             val y = pts[3 * i + 1]
@@ -887,7 +904,7 @@ class Scene3d {
             pz[i] = c20 * x + c21 * y + c22 * z + oz
         }
         val texIndex =
-            if (texture != null && mesh.uvs != null) {
+            if (texture != null && drawn.uvs != null) {
                 // One index per image, so models that share it draw in one batch.
                 textures.indexOfFirst { it === texture }.takeIf { it >= 0 } ?: run {
                     textures += texture
@@ -898,14 +915,15 @@ class Scene3d {
             } else {
                 -1
             }
-        val fn = mesh.faceNormals
-        val cn = if (smooth) mesh.cornerNormals else null
-        val tris = mesh.tris
-        val uvs = mesh.uvs
-        val ci = mesh.colorIndex
+        val fn = drawn.faceNormals
+        val cn = if (smooth) drawn.cornerNormals else null
+        val tris = drawn.tris
+        val uvs = drawn.uvs
+        val ci = drawn.colorIndex
         val near = cam.near
         val far = cam.far
-        for (t in 0 until mesh.triangles) {
+        for (q in 0 until drawn.triangles) {
+            val t = if (bsp != null) order[q] else q
             val a = tris[3 * t]
             val b = tris[3 * t + 1]
             val c = tris[3 * t + 2]
@@ -996,6 +1014,18 @@ class Scene3d {
                 }
                 if (m >= 3) stage(poly, 0, 1, 2, texIndex)
                 if (m == 4) stage(poly, 0, 2, 3, texIndex)
+            }
+        }
+        // The tree's order stands within the model: its faces take the depths they would have had, nearest last, so
+        // across models the scene still sorts by depth.
+        if (bsp != null && n - first > 1) {
+            java.util.Arrays.sort(depth, first, n)
+            var lo = first
+            var hi = n - 1
+            while (lo < hi) {
+                val d = depth[lo]
+                depth[lo++] = depth[hi]
+                depth[hi--] = d
             }
         }
     }
