@@ -64,7 +64,8 @@ jobs:
           EOF
 
       - name: Test and build
-        run: ./gradlew :owl:test :app:testFossDebugUnitTest :app:assembleFossRelease
+        # The play AAB too, only for its R8 mapping: fastlane uploads one built locally, which maps the same.
+        run: ./gradlew :owl:test :app:testFossDebugUnitTest :app:assembleFossRelease :app:bundlePlayRelease
 
       # Checksum and provenance, so a sideloaded APK can be checked against what CI built:
       # sha256sum -c SHA256SUMS, or gh attestation verify <apk> -R SimonSchubert/omalauncher.
@@ -75,8 +76,10 @@ jobs:
           cp app/build/outputs/apk/foss/release/app-foss-release.apk "$apk"
           sha256sum "$apk" > SHA256SUMS
           echo "file=$apk" >> "$GITHUB_OUTPUT"
-          # The foss build's: the Play AAB is the play build, whose mapping differs (it's inside the AAB).
+          # Both builds' R8 mappings: the APK's, and the play build's, which retraces Play crashes. Match a trace's
+          # `r8-map-id` to `# pg_map_id` at the top of one.
           cp app/build/outputs/mapping/fossRelease/mapping.txt "mapping-${{ steps.version.outputs.name }}.txt"
+          cp app/build/outputs/mapping/playRelease/mapping.txt "mapping-play-${{ steps.version.outputs.name }}.txt"
 
       - uses: actions/attest-build-provenance@v2
         with:
@@ -92,4 +95,4 @@ jobs:
             echo "$notes is missing" >&2
             exit 1
           fi
-          gh release create "$GITHUB_REF_NAME" "$apk" SHA256SUMS "mapping-${{ steps.version.outputs.name }}.txt" --title "$GITHUB_REF_NAME" --notes-file "$notes" --verify-tag
+          gh release create "$GITHUB_REF_NAME" "$apk" SHA256SUMS "mapping-${{ steps.version.outputs.name }}.txt" "mapping-play-${{ steps.version.outputs.name }}.txt" --title "$GITHUB_REF_NAME" --notes-file "$notes" --verify-tag

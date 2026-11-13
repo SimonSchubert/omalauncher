@@ -31,8 +31,11 @@ signed APK and attaches it to a GitHub release with `SHA256SUMS` and the R8
 `mapping.txt`, using `changelogs/<versionCode>.txt` as the notes (it fails
 without one). That APK is the `foss` build, without Play's closed-source in-app
 update library, so F-Droid can build the same thing; fastlane uploads the `play`
-build. Their R8 mappings differ: Play crashes retrace with the play build's
-(`app/build/outputs/mapping/playRelease/mapping.txt`, also inside the AAB).
+build. Their R8 mappings differ, so the release carries both:
+`mapping-<version>.txt` for the APK and `mapping-play-<version>.txt`, which
+retraces Play crashes (the workflow builds the play AAB for it; the same commit
+gives the same mapping as the one fastlane uploaded). A trace's `r8-map-id`
+matches the `# pg_map_id` at the top of the right one.
 
 Bump `versionCode` for every upload and add its changelog. Add the release's
 most important changes to `CHANGELOG.md` as they land under "Unreleased", and

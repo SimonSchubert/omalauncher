@@ -4,6 +4,12 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+- Settings tells you when a newer Omalauncher is out: from Google Play, with an update button that
+  opens Play's update screen (#190), or for the GitHub build, from GitHub releases, with a link to
+  the release.
+
 ## 1.4.0 (versionCode 37) – 2026-11-12
 
 - Linux commands that look at many files run 2-8x faster with "fast system calls" on (pacman -Qk
