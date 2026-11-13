@@ -129,6 +129,7 @@
 
     <string name="linux_notification_channel">Linux 会话</string>
     <string name="linux_notify_channel">智能体和脚本</string>
+    <string name="linux_media_channel">Linux 正在播放</string>
     <string name="linux_notification_installing">正在安装 Linux · %1$s</string>
     <string name="linux_notification_installing_percent">正在安装 Linux · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">Linux 安装已中止 · 打开 设置 › linux 重试</string>

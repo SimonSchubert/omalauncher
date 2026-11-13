@@ -48,7 +48,8 @@ private const val TAG = "phone"
 /**
  * `omalauncher` for the guest (`phone` until 0.20, which stays as another name for it): the phone's location, calendar
  * AirPods and battery for agents and scripts, as JSON, from the same sources widgets read; and notifications and
- * Android's share sheet for them. Only what the launcher was already
+ * Android's share sheet for them. `omalauncher media` goes the other way: a Linux player puts what it plays in
+ * Android's media controls (LinuxMedia). Only what the launcher was already
  * allowed: nothing here asks for a permission; a widget's tap does that. A request is a file in the runtime dir's
  * phone/ (<id>.req, the command and its arguments, each ended by a NUL, so a text can span lines), the answer <id>.done: `ok` and then the JSON, or
  * `usage: ...`, `denied: ...` or `error: ...`, which the script tells apart by exit code; like owl-send's inbox. <id>.ack, made
@@ -61,6 +62,7 @@ class PhoneBridge(
     private val calendar: PhoneCalendar,
     private val airpods: () -> AirPods,
     private val folders: PhoneFolders,
+    private val media: LinuxMedia,
     /** Main: the sources are read on the main thread, as widgets read them. */
     private val scope: CoroutineScope,
 ) {
@@ -117,6 +119,7 @@ class PhoneBridge(
                     "get" -> withContext(Dispatchers.IO) { get(args.drop(1)) }
                     "put" -> withContext(Dispatchers.IO) { put(args.drop(1)) }
                     "pick" -> pick(args.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: DOWNLOADS)
+                    "media" -> media(args.getOrNull(1)?.takeIf { it.isNotEmpty() }, args.getOrNull(2))
                     else -> Answer.Usage("unknown command '${args[0]}'")
                 }
             } catch (e: Exception) {
@@ -304,6 +307,28 @@ class PhoneBridge(
         return Answer.Ok(after.without("supported", "granted"))
     }
 
+    /** `omalauncher media`: what's in Android's media controls; `set <json>` puts a track there or changes it, `clear` takes it away. */
+    private fun media(
+        word: String?,
+        json: String?,
+    ): Answer =
+        when (word) {
+            null -> Answer.Ok(media.current())
+            "set" -> {
+                val v = json?.let { runCatching { Json.parse(it) }.getOrNull() } as? Obj
+                if (v == null) {
+                    Answer.Usage("media set: one JSON object, like {\"title\": \"…\", \"playing\": true, \"command\": \"myplayer\"}")
+                } else {
+                    media.set(v)?.let { Answer.Usage(it) } ?: Answer.Ok(media.current())
+                }
+            }
+            "clear" -> {
+                media.clear()
+                Answer.Ok(null)
+            }
+            else -> Answer.Usage("media: set <json>, clear, or nothing for what's set")
+        }
+
     /** What the script reads: its first line tells it the exit code. */
     private sealed class Answer(
         val text: String,
@@ -334,7 +359,7 @@ class PhoneBridge(
         const val OLD_COMMAND = "phone"
         const val SCRIPT = "$COMMAND.sh"
         /** What this launcher's `omalauncher` answers, for `omalauncher version`. */
-        val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "version")
+        val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "media", "version")
         const val NOTIFY_CHANNEL = "linux"
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"

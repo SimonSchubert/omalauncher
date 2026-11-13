@@ -133,6 +133,7 @@
 
     <string name="linux_notification_channel">Sessão Linux</string>
     <string name="linux_notify_channel">Agentes e scripts</string>
+    <string name="linux_media_channel">Tocando do Linux</string>
     <string name="linux_notification_installing">Instalando o Linux · %1$s</string>
     <string name="linux_notification_installing_percent">Instalando o Linux · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">A instalação do Linux parou · abra configurações › linux para tentar de novo</string>

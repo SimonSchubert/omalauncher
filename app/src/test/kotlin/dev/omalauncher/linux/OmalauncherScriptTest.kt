@@ -119,6 +119,18 @@ class OmalauncherScriptTest {
         assertEquals(listOf("notify", "build", "line one\nline two"), received)
     }
 
+    /** A player's JSON goes as one argument, however it's written. */
+    @Test fun mediaSendsItsJsonWhole() {
+        val json = "{\"title\": \"Live set\",\n  \"playing\": true, \"command\": \"myplayer-ctl\"}"
+        assertEquals(0, run("media", "set", json).code)
+        assertEquals(listOf("media", "set", json), received)
+        assertEquals(0, run("media", "clear").code)
+        assertEquals(listOf("media", "clear"), received)
+        received = null
+        assertEquals(2, run("media", "set", "{}", "x").code)
+        assertEquals(null, received)
+    }
+
     @Test fun versionFlagIsTheVersionCommand() {
         answer = { "ok\n{\"version\":\"1\"}" }
         val r = run("--version")

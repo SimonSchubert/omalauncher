@@ -129,6 +129,7 @@
 
     <string name="linux_notification_channel">Sesi Linux</string>
     <string name="linux_notify_channel">Agen dan skrip</string>
+    <string name="linux_media_channel">Diputar dari Linux</string>
     <string name="linux_notification_installing">Menginstal Linux · %1$s</string>
     <string name="linux_notification_installing_percent">Menginstal Linux · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">Penyiapan Linux berhenti · buka setelan › linux untuk mencoba lagi</string>
