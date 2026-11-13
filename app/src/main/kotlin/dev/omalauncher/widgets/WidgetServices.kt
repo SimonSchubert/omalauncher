@@ -648,7 +648,7 @@ class WidgetServices(
             // Any scheme an app handles: tel:, geo:, mailto:, ... One nothing handles mustn't crash the launcher.
             "url" -> if (!context.openUrl(arg)) Toast.makeText(context, context.getString(R.string.widgets_no_app_opens, arg), Toast.LENGTH_SHORT).show()
             "launcher" -> launcherAction?.invoke(arg)
-            "media" -> media.control(arg)
+            "media" -> media.control(arg, args.getOrNull(1))
             "volume" -> volume.control(args[0], args.getOrNull(1).textOrNull())
             "notification" -> notifications.control(arg, args.getOrNull(1).textOrNull(), args.getOrNull(2))
             "settings" -> panels.open(arg, media.playingPackage())

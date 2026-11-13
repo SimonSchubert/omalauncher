@@ -197,7 +197,9 @@ internal val SINCE =
         // owl 22: 3D scenes in a Canvas, the meshes they draw and the vector math of a 3D game.
         listOf("scene", "model", "cube", "plane", "sphere", "cylinder", "cone", "terrain", "mesh", "parseObj", "project", "turn", "dot", "cross", "norm", "dist").associateWith { 22 } +
         // owl 22: Shader images to sample, and uniforms that are arrays.
-        listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 }
+        listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 } +
+        // owl 23: what's playing moved to a point in it, for a scrubber or a record turned by hand.
+        mapOf("media(\"seek\")" to 23)
 
 /** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
 internal const val SHADER_IMAGE = "uniform shader"
@@ -370,7 +372,15 @@ internal val SETTINGS_PAGES = setOf("internet", "wifi", "bluetooth", "airplane",
 
 internal val ACTION_WORDS =
     mapOf(
-        "media" to setOf("toggle", "play", "pause", "next", "previous", "open").let { Words(it, "media takes ${it.joinToString()}") },
+        // seek takes where to go, in seconds from the start (owl 23); the others take nothing more.
+        "media" to
+            setOf("toggle", "play", "pause", "next", "previous", "open").let { plain ->
+                Words(
+                    plain + "seek",
+                    "media takes ${plain.joinToString()} or seek",
+                    forms = plain.associateWith { 1..1 to "media(\"$it\")" } + mapOf("seek" to (2..2 to "media(\"seek\", seconds)")),
+                )
+            },
         // A number sets the level in percent.
         "volume" to setOf("up", "down", "mute", "unmute", "toggle").let { Words(it, "volume takes a level in percent, or ${it.joinToString()}", numbers = true) },
         // true and false also turn it on and off.
