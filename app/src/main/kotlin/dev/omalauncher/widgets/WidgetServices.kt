@@ -146,6 +146,12 @@ private val REDIRECTS = setOf(301, 302, 303, 307, 308)
  */
 private const val DRAWER_EVERY_MS = 200L
 
+/** What starts the key of a Linux window in `android.windows`; the rest is its handle, as Android's recents cards have it. */
+internal const val WINDOW_KEY = "w:"
+
+/** How often `android.windows` changes at most: a terminal's title changes with every frame of its program's spinner. */
+private const val WINDOWS_EVERY_MS = 1000L
+
 /** How many shortcuts from shortcuts(...) stay openable by key: a few menus' worth. */
 private const val MAX_OFFERED = 64
 
@@ -233,6 +239,7 @@ class WidgetServices(
             "apps" -> apps()
             "agents" -> agents()
             "recent" -> recent()
+            "windows" -> windows()
             "drawer" -> drawer()
             "modifiers" -> modifiers()
             else -> throw WidgetError("unknown android source $name")
@@ -261,6 +268,15 @@ class WidgetServices(
             "apps" -> snapshotFlow { apps() }.flowOn(Dispatchers.Default)
             "agents" -> snapshotFlow { agents() }
             "recent" -> snapshotFlow { recent() }
+            // The windows and their titles are Compose state. Terminals retitle constantly (an agent's spinner):
+            // the first at once, then the latest at most every WINDOWS_EVERY_MS.
+            "windows" ->
+                snapshotFlow { windows() }
+                    .conflate()
+                    .transform {
+                        emit(it)
+                        delay(WINDOWS_EVERY_MS)
+                    }
             "modifiers" -> snapshotFlow { modifiers() }
             // Linux's state is a flow of its own, not Compose state: a change of its word starts the drawer's anew.
             "drawer" -> runtime.bootstrap.state.map(::linuxWord).distinctUntilChanged().flatMapLatest { snapshotFlow { drawer() } }
@@ -529,6 +545,30 @@ class WidgetServices(
                 )
             },
         )
+
+    /**
+     * The Linux windows open now for `source w = android.windows`, oldest first, each `{key, appId, title, name, icon}`:
+     * `appId` is its Wayland app_id, `title` the title it gives itself, `name` what the launcher calls it (the name it was
+     * started under, its app's, else its title), and `icon` its `icon:` src, as its card in Android's recents has it.
+     * `open(w.key)` brings it to the front. Terminals inside tiles aren't windows of their own and aren't listed.
+     */
+    private fun windows(): Value {
+        val wm = runtime.wm
+        return Lst(
+            wm.appWindows.take(Builtins.MAX_LIST).mapNotNull { w ->
+                val handle = wm.handleOf(w) ?: return@mapNotNull null
+                Obj(
+                    mapOf(
+                        "key" to Str(WINDOW_KEY + handle),
+                        "appId" to Str(w.appId),
+                        "title" to Str(w.title),
+                        "name" to Str(runtime.displayName(w.appId, w.title)),
+                        "icon" to Str("icon:$WINDOW_KEY$handle"),
+                    ),
+                )
+            },
+        )
+    }
 
     /**
      * The drawer for `source d = android.drawer`: `{apps, linux, monochrome, work, updates}`. `apps` is every app in the drawer's
@@ -945,9 +985,14 @@ class WidgetServices(
 
     /**
      * open(key): an app from `android.recent` or `android.agents`, or an `android.apps` key, opened as from the drawer: the
-     * drawer, or a panel open in its place or from the top, closes, and the bar's text goes.
+     * drawer, or a panel open in its place or from the top, closes, and the bar's text goes. A window's key from
+     * `android.windows` brings that window back instead, and leaves the drawer the same way; a closed one's does nothing.
      */
     private fun openApp(key: String) {
+        if (key.startsWith(WINDOW_KEY)) {
+            if (runtime.showWindow(key.removePrefix(WINDOW_KEY))) appHandlers?.leave?.invoke()
+            return
+        }
         offered[key]?.let { (menu, s) -> return menu.open(s) }
         val hit = hitOf(key) ?: return
         appHandlers?.launch?.invoke(hit) ?: hit.open(runtime)

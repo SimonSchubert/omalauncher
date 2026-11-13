@@ -137,6 +137,8 @@ internal fun allApps(runtime: Runtime): List<AppHit> =
 /** What the app cells do: open, pin to home, the Android app's info and uninstall, removing a shortcut, and an owl app's edit, share and remove. */
 internal class AppHandlers(
     val launch: (AppHit) -> Unit,
+    /** Leaves the drawer, or a panel open in its place, as opening an app from it does: for a window brought back instead. */
+    val leave: () -> Unit,
     val pin: (AppHit) -> Unit,
     val info: (AndroidApp) -> Unit,
     val uninstall: (AndroidApp) -> Unit,
@@ -255,6 +257,9 @@ internal fun appIconOf(
         "a", "s" -> (if (mono) runtime.androidApps.masks else runtime.androidApps.icons)[id]
         "l" -> (if (mono) runtime.linuxApps.masks else runtime.linuxApps.icons)[id]
         "o" -> runtime.widgets.apps().firstOrNull { it.file.name == id }?.let { runtime.owlIcon(it, mono) }
+        // A window from android.windows (its WINDOW_KEY): the icon of its card in Android's recents.
+        "w" ->
+            runtime.wm.windowByHandle(id)?.let(runtime::appOfWindow)?.let { (if (mono) runtime.linuxApps.masks else runtime.linuxApps.icons)[it.id] }
         else -> null
     }
 }
