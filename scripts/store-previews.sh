@@ -173,6 +173,33 @@ print(json.dumps({"days": days, "entries": [{"date": today.isoformat(), "v": v, 
     network) json=$(printf '{"todayKey":"%s","todaySamples":5140,"todayFails":6,"todaySum":107800}' "$(adb shell date +%F | tr -d '\r')") ;;
     # A public profile with a long streak, so Duo shows a streak instead of asking for a username.
     duolingo) json='{"user":"luis"}' ;;
+    # Three weeks logged, the last two confirmed and a bit over the average, and 3 of 25 holidays taken, so the track and the graph show.
+    timesheet) json=$(python3 - <<'PY'
+import json, time, datetime as dt
+today = dt.date.today()
+def hm(m): return f"{m // 60:02d}:{m % 60:02d}"
+times = [(505, 745, 775, 1005), (515, 760, 790, 1020), (500, 740, 770, 990), (520, 760, 790, 1030), (495, 730, 760, 960)]
+weeks, hol = [], []
+for back in (0, 1, 2):
+    mon = today - dt.timedelta(days=today.weekday() + 7 * back)
+    noon = int(time.mktime(dt.datetime(mon.year, mon.month, mon.day, 12).timetuple()))
+    days = []
+    for di in range(7):
+        day = mon + dt.timedelta(days=di)
+        if di >= 5:
+            days.append({"amIn": "", "amOut": "", "pmIn": "", "pmOut": "", "amInM": None, "amOutM": None, "pmInM": None, "pmOutM": None, "done": False})
+            continue
+        a, b, c, d = times[(di + back) % 5]
+        if back == 2 and di == 2:
+            hol.append({"key": day.isoformat(), "days": 1})
+        done = day <= today
+        days.append({"amIn": hm(a), "amOut": hm(b), "pmIn": hm(c), "pmOut": hm(d), "amInM": a, "amOutM": b, "pmInM": c, "pmOutM": d, "done": done})
+    wk = int(mon.strftime("%V"))
+    weeks.append({"id": f"{wk}-{noon}", "week": wk, "monday": noon, "date": mon.strftime("%d/%m/%y"), "days": days})
+hol += [{"key": (today - dt.timedelta(days=today.weekday() + 7 * 4 - d)).isoformat(), "days": 1} for d in (3, 4)]
+print(json.dumps({"weeks": weeks, "openWeek": weeks[0]["id"], "holidayDays": 25, "holidayText": "25.00", "holDone": hol}))
+PY
+) ;;
     *) return 0 ;;
   esac
   printf '{"v":1,"savedAt":%s,"values":%s}' "$(date +%s)" "$json" > "$WORK/state.json"

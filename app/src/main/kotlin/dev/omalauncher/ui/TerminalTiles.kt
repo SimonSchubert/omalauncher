@@ -16,10 +16,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,6 +47,9 @@ import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.wayland.WindowRenderer
 import dev.omalauncher.wayland.XdgToplevel
+import dev.omalauncher.widgets.runtime.WidgetInstance
+import java.util.Collections
+import java.util.WeakHashMap
 
 /**
  * Terminals that live inside home-screen tiles (the widgets' `Terminal` node)
@@ -56,8 +61,11 @@ import dev.omalauncher.wayland.XdgToplevel
  * drawer; tapping it gives it the keyboard and its touches, until a tap
  * outside, Back, or leaving the page. A widget's own text field (an Input)
  * that takes the keyboard is treated the same way: its tile lifts above the
- * keyboard and lets go on the same tap outside, Back or page turn. Main
- * thread only.
+ * keyboard and lets go on the same tap outside, Back or page turn. A Browser tile's page too:
+ * a WebView would take every touch meant for the page swipe or a long press, so its tile is
+ * inert until tapped and, once tapped, the page is the one lifted and the one that lets go. The
+ * lock lives here too, beside focus and the lift: a widget showing whose `lock:` holds keeps the
+ * whole home screen still (see [holdWidgets]). Main thread only.
  */
 class TerminalTiles(
     private val runtime: Runtime,
@@ -93,8 +101,43 @@ class TerminalTiles(
     var field by mutableStateOf<TileField?>(null)
         private set
 
-    /** A tile has the keyboard: its terminal ([active]) or one of its widget's text fields ([field]). */
-    val typing get() = active != null || field != null
+    /** The page that has the touches, if any; a page's own fields raise the WebView's keyboard, not [keyboard]. */
+    var browser by mutableStateOf<EmbeddedBrowser?>(null)
+        private set
+
+    /** A tile has the keyboard: its terminal ([active]), one of its widget's text fields ([field]) or its page ([browser]). */
+    val typing get() = active != null || field != null || browser != null
+
+    /** The widgets holding the home screen still; see [HomeLock]. */
+    private val holds = HomeLock()
+
+    /** Home is being edited (a tile selected, a folder open): a focused page doesn't hold it still, so it can be moved. */
+    var editing by mutableStateOf(false)
+
+    /**
+     * Something holds the home screen still: the pages, the swipe up and the long press wait until it lets go. A widget
+     * showing whose `lock:` holds, or a page that has the tile, so a swipe that starts beside the page turns nothing and a
+     * long press lifts nothing; editing lets go of the page's, since a locked screen can't be rearranged.
+     */
+    val locked get() = holds.locked || (browser != null && !editing)
+
+    /** The widgets showing, and those of them whose `lock:` holds now; see [HomeLock.widgets]. */
+    fun holdWidgets(
+        showing: Set<Any>,
+        holding: Set<Any>,
+    ) = holds.widgets(showing, holding)
+
+    /**
+     * Back or the cue's button: the tile lets go first (a page that kept it would only hold the screen again), then every
+     * widget's hold does, until its lock turns false.
+     */
+    fun unlock() {
+        deactivate()
+        holds.unlockAll()
+    }
+
+    /** [instance]'s tile has the keyboard or the touches: its terminal, one of its text fields or one of its pages. */
+    fun typingIn(instance: WidgetInstance) = instance.owns(active) || instance.owns(browser) || field?.widget === instance
 
     init {
         wm.claim = { window -> sessions.firstOrNull { it.appId == window.appId }?.attach(window) != null }
@@ -123,6 +166,8 @@ class TerminalTiles(
     fun activate(term: EmbeddedTerminal) {
         val window = term.window ?: return
         tile = null
+        // Unfolded, two pages of home show at once: the tile tapped is the one that takes the keyboard and the touches.
+        releaseBrowser()
         wm.focus(window)
         keyboard?.show()
     }
@@ -151,6 +196,7 @@ class TerminalTiles(
         keyboard?.hide()
         field?.release()
         field = null
+        releaseBrowser()
     }
 
     /** [f] took focus, and with it the keyboard. */
@@ -158,6 +204,8 @@ class TerminalTiles(
         if (active != null) wm.focus(null)
         keyboard?.hide()
         tile = null
+        // A page on another tile showing beside this one lets go.
+        releaseBrowser()
         field = f
     }
 
@@ -166,12 +214,36 @@ class TerminalTiles(
         if (field === f) field = null
     }
 
+    /** The tile's [b] was tapped: it takes the page's own touches, and a terminal or a field that had them lets go. */
+    fun focused(b: EmbeddedBrowser) {
+        if (active != null) wm.focus(null)
+        keyboard?.hide()
+        tile = null
+        field?.release()
+        field = null
+        browser = b
+    }
+
+    /** [b] let go: its page closed, or the tile went away with it. */
+    fun unfocused(b: EmbeddedBrowser) {
+        if (browser === b) browser = null
+    }
+
+    /** The page that has the touches lets go of them, and its field of the keyboard. */
+    private fun releaseBrowser() {
+        browser?.clearFocus()
+        browser = null
+    }
+
+    /** What the typing tile shows: its page or its terminal, measured in the window. */
+    private val surfaceBounds get() = browser?.bounds ?: active?.bounds
+
     /**
      * A press at window point [p]: outside the typing tile, it gives the home screen its touches back. The whole tile,
      * not only its terminal: a widget's own keys beside its Terminal press keys in it rather than taking the keyboard away.
      */
     fun pressAt(p: Offset) {
-        val bounds = typingBounds(field != null, tile, active?.bounds) ?: return
+        val bounds = typingBounds(field != null, tile, surfaceBounds) ?: return
         if (extraKeys?.contains(p) == true) return
         if (!bounds.translate(0f, -lift).contains(p)) deactivate()
     }
@@ -192,7 +264,7 @@ class TerminalTiles(
         top: Float,
         minHeight: Float,
     ): Float {
-        val bounds = typingBounds(field != null, tile, active?.bounds)
+        val bounds = typingBounds(field != null, tile, surfaceBounds)
         val (l, c) = bounds?.let { liftAndCut(it, imeHeight, imeTarget, windowHeight, margin, top, minHeight) } ?: (0f to 0f)
         lift = l
         cut = c
@@ -221,13 +293,14 @@ class TerminalTiles(
         /**
          * What the lift keeps clear: the typing tile's whole tile, so its frame clears the keys too, measured before the
          * cut, which would otherwise feed back into it. A focused field's tile counts once it's measured, never a
-         * terminal's bounds in its place; a terminal falls back to its own until its tile is.
+         * terminal's bounds in its place; a terminal falls back to its own until its tile is. A page falls back to its
+         * own bounds the same way: it is what its tile shows, and a page's field raises the WebView's keyboard.
          */
         internal fun typingBounds(
             fieldFocused: Boolean,
             tile: Rect?,
-            terminal: Rect?,
-        ): Rect? = if (fieldFocused) tile else terminal?.let { tile ?: it }
+            surface: Rect?,
+        ): Rect? = if (fieldFocused) tile else surface?.let { tile ?: it }
 
         /** The lift and cut for [bounds], see [liftFor]. */
         internal fun liftAndCut(
@@ -243,6 +316,45 @@ class TerminalTiles(
             val room = (bounds.top - top).coerceAtLeast(0f)
             return minOf(overlap(imeHeight), room) to (overlap(imeTarget) - room).coerceIn(0f, (bounds.height - minHeight).coerceAtLeast(0f))
         }
+    }
+}
+
+/**
+ * The widgets holding the home screen still, from their `lock:`. A set, since two can hold it at once and one letting go
+ * must not free the screen the other holds. Never saved, so a restart comes up unlocked. Main thread only.
+ */
+internal class HomeLock {
+    // mutableStateSetOf doesn't exist; a map with unit values is the same thing, and recomposes what reads it.
+    private val widgets = mutableStateMapOf<Any, Unit>()
+
+    /**
+     * Widgets whose hold Back or the cue let go of. Their `lock:` still says true, but the person said otherwise: they
+     * stay let go until it's seen false, so the next game, not this one, holds the screen again. A page turned away from
+     * and back doesn't count as false. Weak, so a widget removed while let go isn't kept for it.
+     */
+    private val released: MutableSet<Any> = Collections.newSetFromMap(WeakHashMap())
+
+    /** Something holds the home screen still. */
+    val locked get() = widgets.isNotEmpty()
+
+    /**
+     * The widgets [showing], and those of them whose `lock:` [holding] now, in place of the ones before: a widget whose
+     * lock turned false, or that went out of sight (its page turned away, it was removed or reloaded), lets go.
+     */
+    fun widgets(
+        showing: Set<Any>,
+        holding: Set<Any>,
+    ) {
+        released.removeAll { it in showing && it !in holding }
+        val now = holding - released
+        widgets.keys.retainAll(now)
+        now.forEach { widgets[it] = Unit }
+    }
+
+    /** Back or the cue's button: everything lets go, and the widgets' locks stay let go until they turn false. */
+    fun unlockAll() {
+        released.addAll(widgets.keys)
+        widgets.clear()
     }
 }
 
@@ -270,12 +382,19 @@ class EmbeddedTerminal internal constructor(
         private set
 
     private var closed = false
+    private var started = false
 
     /** Where the tile is, in window pixels, as if the home screen weren't lifted. */
     internal var bounds = Rect.Zero
 
+    /** Paging a tile back into composition must not restart an exited terminal. */
+    internal fun autoStart() {
+        if (!started) start()
+    }
+
     fun start() {
         if (running || closed) return
+        started = true
         running = true
         tiles.launch(this) {
             main.post {
@@ -322,7 +441,7 @@ fun TerminalView(
     val tiles = term.tiles
     val window = term.window
     val active = tiles.active === term
-    LaunchedEffect(term) { term.start() }
+    LaunchedEffect(term) { term.autoStart() }
     // Keys that went into the terminal come back out to it as it lets the keyboard go, rather than to wherever
     // Android gives the window's focus.
     val back = remember { FocusRequester() }
@@ -333,6 +452,9 @@ fun TerminalView(
         withFrameNanos {}
         back.requestFocus()
     }
+    // The tile's tab went away (its visible turned false) or the node did: out of sight, the terminal mustn't keep the
+    // keyboard, or the home screen lifted for a tile that no longer shows.
+    DisposableEffect(term) { onDispose { if (tiles.active === term) tiles.deactivate() } }
     Box(modifier.onGloballyPositioned { term.bounds = it.boundsInWindow().translate(0f, tiles.lift) }) {
         AndroidView(
             factory = { EmbeddedWindowView(it, tiles) },

@@ -78,6 +78,15 @@ class OpenBridge(
                 timeout 2 sh -c 'printf "%s\n" "${'$'}1" > $guestFifo' sh "${'$'}1"
                 """.trimIndent() + "\n"
             },
+            // npm's open package (DeepSeek Harness, agents' logins) runs its own copy of xdg-utils' xdg-open, which
+            // skips BROWSER=xdg-open, so as not to call itself, and tries x-www-browser first.
+            Managed.text(File(bin, "x-www-browser"), Policy.Owned, executable = true) {
+                """
+                #!/bin/sh
+                # omalauncher: opens URLs in the Android browser, for scripts that look for a browser by this name
+                exec xdg-open "${'$'}@"
+                """.trimIndent() + "\n"
+            },
             Managed.text(File(bin, FILES_COMMAND), Policy.Owned, executable = true) {
                 """
                 #!/bin/sh

@@ -10,6 +10,9 @@
     <string name="files_home">home</string>
     <string name="files_place_config">config</string>
     <string name="files_place_downloads">unduhan</string>
+    <string name="files_place_phone_folders">folder ponsel</string>
+    <string name="files_add_phone_folder">tambah folder ponsel</string>
+    <string name="files_no_phone_folders">belum ada folder ponsel: tambahkan dari menu</string>
     <string name="files_place_system">sistem</string>
     <string name="files_search">cari</string>
     <string name="files_more">lainnya</string>
@@ -83,6 +86,7 @@
     <string name="prompt_speech_refused">pengenal suara ponsel tidak mengizinkan aplikasi lain memakainya</string>
     <string name="prompt_speech_failed">pengenalan suara gagal (%1$d)</string>
     <string name="prompt_speech_language">pengenalan suara tidak tersedia untuk bahasa ini</string>
+    <string name="prompt_speech_not_downloaded">pengenalan suara untuk bahasa ini belum diunduh di ponsel ini</string>
     <string name="prompt_speech_mic_permission">perlu izin mikrofon</string>
     <string name="prompt_speech_network">pengenalan suara memerlukan koneksi jaringan</string>
 </resources>

@@ -3,10 +3,6 @@ package dev.omalauncher.widgets
 import dev.omalauncher.copyText
 import dev.omalauncher.registerNotExported
 import dev.omalauncher.shareText
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -36,8 +32,8 @@ import android.os.UserHandle
 import android.os.UserManager
 import android.util.Log
 import android.widget.Toast
-import dev.omalauncher.MainActivity
 import dev.omalauncher.R
+import dev.omalauncher.postNotification
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.LinuxState
@@ -79,6 +75,7 @@ import dev.omalauncher.ui.AppHandlers
 import dev.omalauncher.ui.ShortcutMenu
 import dev.omalauncher.ui.initials
 import dev.omalauncher.ui.AppHit
+import dev.omalauncher.ui.EmbeddedBrowser
 import dev.omalauncher.ui.act
 import dev.omalauncher.ui.actionWords
 import dev.omalauncher.ui.kind
@@ -89,9 +86,12 @@ import dev.omalauncher.ui.allApps
 import dev.omalauncher.ui.appIconOf
 import dev.omalauncher.ui.open
 import dev.omalauncher.ui.recentApps
+import dev.omalauncher.widgets.runtime.battery
+import dev.omalauncher.widgets.runtime.AirPods
 import dev.omalauncher.widgets.runtime.Alarm
 import dev.omalauncher.widgets.runtime.Media
 import dev.omalauncher.widgets.runtime.Modes
+import dev.omalauncher.widgets.runtime.Motion
 import dev.omalauncher.widgets.runtime.Notifications
 import dev.omalauncher.widgets.runtime.Services
 import dev.omalauncher.widgets.runtime.Sim
@@ -174,12 +174,15 @@ class WidgetServices(
     private val streams = Streams(proot, scope)
 
     /** What's playing on the phone. */
-    private val media = Media(context)
+    val media = Media(context)
     private val notifications = Notifications(context, media, ::profileKind)
     private val volume = Volume(context)
     private val alarm = Alarm(context)
     private val modes = Modes(context)
     private val sim = Sim(context)
+    private val motion = Motion(context)
+    /** android.airpods and airpods(...); each activity that shows widgets lets it ask for Bluetooth while it's in front. */
+    val airpods = AirPods(context, scope)
     private val panels = SystemPanels(context)
 
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
@@ -215,7 +218,7 @@ class WidgetServices(
 
     override fun android(name: String): Value =
         when (name) {
-            "battery" -> battery()
+            "battery" -> battery(context)
             "power" -> power()
             "device" -> device()
             "system" -> system()
@@ -226,6 +229,7 @@ class WidgetServices(
             "alarm" -> alarm.value()
             "modes" -> modes.value()
             "sim" -> sim.value()
+            "airpods" -> airpods.value()
             "apps" -> apps()
             "agents" -> agents()
             "recent" -> recent()
@@ -248,8 +252,13 @@ class WidgetServices(
             "alarm" -> alarm.updates()
             "modes" -> modes.updates()
             "sim" -> sim.updates()
+            "motion" -> motion.updates()
+            "location" -> runtime.location.updates()
+            "calendar" -> runtime.calendar.updates()
+            "airpods" -> airpods.updates()
             // Both read Compose state: the app list and its usage, the installed agents and the one picked.
-            "apps" -> snapshotFlow { apps() }
+            // The apps are up to a thousand values made on each change, as the drawer's are: not on the main thread.
+            "apps" -> snapshotFlow { apps() }.flowOn(Dispatchers.Default)
             "agents" -> snapshotFlow { agents() }
             "recent" -> snapshotFlow { recent() }
             "modifiers" -> snapshotFlow { modifiers() }
@@ -266,7 +275,7 @@ class WidgetServices(
             "battery" ->
                 callbackFlow {
                     // The broadcast is sticky: registering delivers the current state at once.
-                    val receiver = context.registerNotExported(IntentFilter(Intent.ACTION_BATTERY_CHANGED)) { trySend(battery()) }
+                    val receiver = context.registerNotExported(IntentFilter(Intent.ACTION_BATTERY_CHANGED)) { trySend(battery(context)) }
                     awaitClose { context.unregisterReceiver(receiver) }
                 }.distinctUntilChanged()
             else -> null
@@ -284,11 +293,11 @@ class WidgetServices(
     override fun heard(owner: Any) = runtime.dictation.heard(owner)
 
     /** "work" or "clone" for an app in a profile beside the launcher's own, as the drawer marks it; null for its own. */
-    private fun profileKind(user: UserHandle): String? {
-        if (user == Process.myUserHandle()) return null
-        val serial = context.getSystemService(UserManager::class.java).getSerialNumberForUser(user)
-        return if (runtime.androidApps.cloned(serial)) "clone" else "work"
-    }
+    private fun profileKind(user: UserHandle): String? =
+        if (user == Process.myUserHandle()) null else profileKind(context.getSystemService(UserManager::class.java).getSerialNumberForUser(user))
+
+    /** As above, by [profile]'s serial number (see [dev.omalauncher.AndroidApp.profile]): no binder call. */
+    private fun profileKind(profile: Long?): String? = profile?.let { if (runtime.androidApps.cloned(it)) "clone" else "work" }
 
     /** Apps by package, in the drawer's order: a widget listing every app asks for each one's icon, and a scan per icon was O(n²). */
     private val appsByPackage by derivedStateOf { runtime.androidApps.apps.groupBy { it.component.packageName } }
@@ -347,6 +356,13 @@ class WidgetServices(
         command: String?,
         fontSize: Double?,
     ) = runtime.terminals.create(command, fontSize)
+
+    /** A page for a Browser node: the tile draws it, so nothing runs until it shows. */
+    override fun browser(
+        url: String?,
+        js: Boolean,
+        zoom: Double,
+    ) = EmbeddedBrowser(runtime.terminals, url, js, zoom)
 
     // Resolved again for every read, so a folder swapped for a link out of Linux isn't followed.
     override fun fileUpdates(path: String) = watchFile { guestFile(path) }
@@ -450,7 +466,7 @@ class WidgetServices(
     private fun apps(): Value =
         Lst(
             runtime.androidApps.apps.take(Builtins.MAX_LIST).map { app ->
-                val kind = profileKind(app.user)
+                val kind = profileKind(app.profile)
                 val usage = "a:" + app.key
                 Obj(
                     mapOf(
@@ -517,8 +533,9 @@ class WidgetServices(
     /**
      * The drawer for `source d = android.drawer`: `{apps, linux, monochrome, work, updates}`. `apps` is every app in the drawer's
      * order (owl apps, Linux apps, shortcuts, Android apps, then the work profile's shortcuts and apps), each
-     * `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`:
+     * `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, dot, actions, score, last}`:
      * - `label` what screen readers say for it ("WhatsApp work"), for an Image's `label`; `profile` as in `android.apps`; `alias` what search matches besides the name ("WhatsApp work");
+     * - `dot` whether it has a notification dot;
      * - `paused` for an app in a paused work profile; `actions` the words its long-press menu offers, for appAction(...);
      * - `hasIcon` whether `icon` draws anything yet; without, the drawer shows `initials` on a badge, as it does a
      *   silhouette when `monochrome`.
@@ -533,12 +550,14 @@ class WidgetServices(
                 apps.shortcuts.filter { it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.work }.map { AppHit.Android(it) }
         val list =
             hits.take(Builtins.MAX_LIST).map { hit ->
+                val dot = hit.hasDot
                 Obj(
                     mapOf(
                         "key" to Str(hit.key),
                         "kind" to Str(hit.kind),
                         "name" to Str(hit.label),
-                        "label" to Str(hit.spoken),
+                        "label" to Str(if (dot) context.getString(R.string.home_app_has_notifications, hit.spoken) else hit.spoken),
+                        "dot" to bool(dot),
                         "icon" to Str("icon:" + hit.key),
                         "profile" to (hit.profileKind?.let(::Str) ?: Null),
                         "alias" to (hit.alias?.let(::Str) ?: Null),
@@ -554,50 +573,6 @@ class WidgetServices(
             }
         val work = if (apps.workProfiles.isEmpty()) Null else Obj(mapOf("paused" to bool(apps.workProfiles.any { apps.paused(it) })))
         return Obj(mapOf("apps" to Lst(list), "linux" to Str(linuxWord(runtime.bootstrap.state.value)), "monochrome" to bool(LauncherStyle.monochromeIcons), "work" to work, "updates" to Num((runtime.updates.pending?.count ?: 0).toDouble())))
-    }
-
-    /** Android hides the battery from the guest (/sys/class/power_supply), so expose it here. */
-    private fun battery(): Value {
-        val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        // Some builds report no scale (0); dividing by it would throw inside the battery receiver.
-        val scale = (intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100).takeIf { it > 0 } ?: 100
-        val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
-        fun extra(name: String) = intent?.getIntExtra(name, -1)?.takeIf { it >= 0 }
-        val health =
-            when (extra(BatteryManager.EXTRA_HEALTH)) {
-                BatteryManager.BATTERY_HEALTH_GOOD -> "good"
-                BatteryManager.BATTERY_HEALTH_OVERHEAT -> "overheating"
-                BatteryManager.BATTERY_HEALTH_DEAD -> "dead"
-                BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> "over voltage"
-                BatteryManager.BATTERY_HEALTH_COLD -> "cold"
-                BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> "failing"
-                else -> null
-            }
-        val plugged =
-            when (extra(BatteryManager.EXTRA_PLUGGED)) {
-                BatteryManager.BATTERY_PLUGGED_AC -> "ac"
-                BatteryManager.BATTERY_PLUGGED_USB -> "usb"
-                BatteryManager.BATTERY_PLUGGED_WIRELESS -> "wireless"
-                BatteryManager.BATTERY_PLUGGED_DOCK -> "dock"
-                else -> null
-            }
-        return Obj(
-            mapOf(
-                "level" to Num(if (level >= 0) (level * 100 / scale).toDouble() else 0.0),
-                "charging" to bool(charging),
-                // Plugged in but not charging: full, or held below full to spare the battery.
-                "status" to Str(if (charging) "charging" else if (plugged != null) "plugged in" else "on battery"),
-                // Reported in tenths of a degree and in millivolts.
-                "temp" to (extra(BatteryManager.EXTRA_TEMPERATURE)?.let { Num(it / 10.0) } ?: Null),
-                "voltage" to (extra(BatteryManager.EXTRA_VOLTAGE)?.let { Num(it / 1000.0) } ?: Null),
-                "health" to (health?.let(::Str) ?: Null),
-                "plugged" to (plugged?.let(::Str) ?: Null),
-                "technology" to (intent?.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY)?.takeIf { it.isNotBlank() }?.let(::Str) ?: Null),
-                "cycles" to ((if (Build.VERSION.SDK_INT >= 34) extra(BatteryManager.EXTRA_CYCLE_COUNT) else null)?.let { Num(it.toDouble()) } ?: Null),
-            ),
-        )
     }
 
     /**
@@ -652,10 +627,19 @@ class WidgetServices(
         if (name == "run") return run(arg) { done() }
         // Keys go out as they're pressed, many a second while one repeats: nothing to refresh after them.
         when (name) {
-            "pressKey" -> return KeyNames.combo(arg)?.let(runtime.keyboard::press) ?: Unit
-            "typeText" -> return runtime.keyboard.type(arg)
+            "pressKey" -> return KeyNames.combo(arg)?.let { runtime.keyboard.flush(); runtime.keyboard.press(it) } ?: Unit
+            "typeText" -> return runtime.keyboard.run { flush(); type(arg) }
             "latch" -> return runtime.keyboard.latch(arg, args.getOrNull(1).textOrNull())
             "pickImages" -> return runtime.keyboard.pickImages()
+            // Nothing to refresh: the source follows the grant itself.
+            "location" -> return runtime.location.request()
+            "calendar" ->
+                return when {
+                    arg == "request" -> runtime.calendar.request()
+                    // An event still loading (…) would open today instead.
+                    args.getOrNull(1) == Null -> Unit
+                    else -> runtime.calendar.open(args.getOrNull(1))
+                }
         }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.
@@ -672,6 +656,7 @@ class WidgetServices(
             "copy" -> copy(arg)
             "notify" -> notify(arg, args.getOrNull(1).textOrNull())
             "torch" -> modes.torch(args[0])
+            "airpods" -> airpods.control(arg, args.getOrNull(1))
             // Notification access lets the launcher switch it; without it, the setting that grants it. Granted but not
             // bound yet: Android's own DND setting this time, while the listener binds again for the next tap.
             "dnd" ->
@@ -1036,30 +1021,14 @@ class WidgetServices(
         context.shareText(text)
     }
 
-    private var notificationId = 1000
-
     /** notify(title, text): an Android notification that opens the home screen. Needs the notification permission. */
     private fun notify(
         title: String,
         text: String?,
     ) {
-        val nm = context.getSystemService(NotificationManager::class.java)
-        if (!nm.areNotificationsEnabled()) {
+        if (!context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.widgets_notify_channel), title, text)) {
             Log.w("widgets", "notify: notifications are off for the launcher")
-            return
         }
-        nm.createNotificationChannel(NotificationChannel(NOTIFY_CHANNEL, context.getString(R.string.widgets_notify_channel), NotificationManager.IMPORTANCE_DEFAULT))
-        val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val n =
-            Notification
-                .Builder(context, NOTIFY_CHANNEL)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setContentIntent(open)
-                .setAutoCancel(true)
-                .build()
-        nm.notify(notificationId++, n)
     }
 }
 

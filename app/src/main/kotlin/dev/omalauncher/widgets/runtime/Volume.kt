@@ -1,9 +1,9 @@
 package dev.omalauncher.widgets.runtime
 
+import dev.omalauncher.changeObserver
 import dev.omalauncher.registerNotExported
 import android.content.Context
 import android.content.IntentFilter
-import android.database.ContentObserver
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -85,12 +85,7 @@ class Volume(
                     addAction("android.media.STREAM_MUTE_CHANGED_ACTION")
                 }
             val receiver = context.registerNotExported(filter) { trySend(Unit) }
-            val observer =
-                object : ContentObserver(main) {
-                    override fun onChange(selfChange: Boolean) {
-                        trySend(Unit)
-                    }
-                }
+            val observer = changeObserver(main) { trySend(Unit) }
             context.contentResolver.registerContentObserver(Settings.System.CONTENT_URI, true, observer)
             // Headphones plugged in or out, and an output picked in Android's switcher.
             val devices =

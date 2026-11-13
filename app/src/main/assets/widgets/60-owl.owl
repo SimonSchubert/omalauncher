@@ -1,5 +1,8 @@
 widget "owl" {
-  meta { owl: 16; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.2"; license: "MIT"; category: "fun" }
+  meta { owl: 19; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.3"; license: "MIT"; category: "fun" }
+  // Breathing, blinking and dancing step a few times a second: 10 is plenty. The rocking egg and the hop
+  // and flap after a tap are smooth motion, so 30 for those.
+  fps: !hatched || time >= tapAt && time - tapAt < 3 ? 30 : 10
   page: 2
   order: 1
   size: 3x3

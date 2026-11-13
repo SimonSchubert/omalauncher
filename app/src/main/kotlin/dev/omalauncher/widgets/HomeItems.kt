@@ -83,7 +83,9 @@ data class FolderEntry(
 /**
  * Pinned apps and their folders, saved launcher-side next to the grid layout, and in layout.toml by [HomeStore].
  * Folders are saved apart from the apps, so a launcher that predates them
- * still reads its apps (each back on the grid on its own).
+ * still reads its apps (each back on the grid on its own). An app is pinned, and in its folder, on every
+ * [Screen] alike; [Shortcut.page] and [FolderEntry.page] are the main screen's, and on another screen the page
+ * is the layout's ([WidgetLayout.page]), like a widget's.
  */
 class Shortcuts(
     context: Context,
@@ -105,10 +107,14 @@ class Shortcuts(
         for (i in items.indices) if (items[i].folder?.let { it !in known } == true) items[i] = items[i].copy(folder = null)
     }
 
-    /** Apps and folders on the grid; apps in a folder show inside it instead. */
-    fun onGrid(): List<HomeItem> =
-        items.filter { it.folder == null } +
-            folderEntries.map { f -> Folder(f.key, f.page, items.filter { it.folder == f.key }, f.name) }
+    /** Apps and folders on the grid of [screen] (the one shown unless said), on its pages; apps in a folder show inside it instead. */
+    fun onGrid(screen: Screen = layout.screen): List<HomeItem> {
+        if (screen == Screen.MAIN) return items.filter { it.folder == null } + folderEntries.map { f -> Folder(f.key, f.page, items.filter { it.folder == f.key }, f.name) }
+        // Read so a page chosen on this screen recomputes what lists home's items; the pages themselves aren't state.
+        layout.pageStamp
+        return items.filter { it.folder == null }.map { it.copy(page = layout.page(it.key, screen) ?: screen.fromMain(it.page)) } +
+            folderEntries.map { f -> Folder(f.key, layout.page(f.key, screen) ?: screen.fromMain(f.page), items.filter { it.folder == f.key }, f.name) }
+    }
 
     /**
      * Drops [app] on [target]: into it if it's a folder, otherwise both go into a new
@@ -124,10 +130,13 @@ class Shortcuts(
                 is Folder -> target.key
                 is Shortcut -> {
                     val key = "folder:" + System.currentTimeMillis().toString(36)
-                    folderEntries += FolderEntry(key, target.page)
-                    layout.cell(target.key)?.let { layout.set(key, it) }
+                    // The folder takes the app's place on every screen: its main page as saved, the shown screen's as the layout has it.
+                    val saved = items.first { it.key == target.key }
+                    folderEntries += FolderEntry(key, saved.page)
+                    if (layout.screen != Screen.MAIN) layout.setPage(key, target.page)
+                    for (screen in Screen.entries) layout.cell(target.key, screen)?.let { layout.set(key, it, screen) }
                     layout.remove(target.key)
-                    setFolder(target.key, key, target.page)
+                    setFolder(target.key, key, saved.page)
                     key
                 }
                 else -> return null
@@ -191,7 +200,10 @@ class Shortcuts(
             if (apps.size >= 2) continue
             layout.save()
             apps.firstOrNull()?.let { app ->
-                if (layout.cell(app.key) == null) layout.cell(f.key)?.let { layout.set(app.key, it) }
+                for (screen in Screen.entries) {
+                    if (layout.cell(app.key, screen) == null) layout.cell(f.key, screen)?.let { layout.set(app.key, it, screen) }
+                    if (screen != Screen.MAIN) layout.page(f.key, screen)?.let { layout.setPage(app.key, it, screen) }
+                }
                 setFolder(app.key, null, f.page)
             }
             folderEntries.remove(f)
@@ -264,20 +276,45 @@ class Shortcuts(
 
     private fun keyOf(shortcut: AndroidShortcut) = "shortcut:" + shortcut.key
 
-    /** Pinning an app that's already on the home screen moves it to [Shortcut.page], out of its folder. */
+    /**
+     * Pinning an app that's already on the home screen moves it to [Shortcut.page], out of its folder. Pinned on another
+     * screen than the main one, it goes on that page there, and on the main screen's page 1 (the page it's pinned from isn't one of the main screen's).
+     */
     private fun add(shortcut: Shortcut) {
         items.removeAll { it.key == shortcut.key }
-        items += shortcut
+        if (layout.screen == Screen.MAIN) {
+            items += shortcut
+        } else {
+            items += shortcut.copy(page = 1)
+            layout.setPage(shortcut.key, shortcut.page)
+        }
         tidy()
         save()
     }
 
-    /** Puts an app or folder on [page]; an app moved out of its folder lands on the grid on its own. */
+    /**
+     * Puts an app or folder on [page] of [screen] (the one shown unless said); an app moved out of its folder lands on the grid on its own,
+     * on every screen, since folders are the same on all of them.
+     */
     fun move(
         key: String,
         page: Int,
+        screen: Screen = layout.screen,
     ) {
         val f = folderEntries.indexOfFirst { it.key == key }
+        if (screen != Screen.MAIN) {
+            if (f < 0) {
+                val i = items.indexOfFirst { it.key == key }
+                if (i < 0) return
+                if (items[i].folder != null) {
+                    items[i] = items[i].copy(folder = null)
+                    tidy()
+                    save()
+                }
+            }
+            layout.setPage(key, page, screen)
+            return
+        }
         if (f >= 0) {
             folderEntries[f] = folderEntries[f].copy(page = page)
             for (i in items.indices) if (items[i].folder == key) items[i] = items[i].copy(page = page)

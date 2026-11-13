@@ -32,6 +32,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.compositionLocalOf
@@ -159,6 +165,38 @@ fun PanelFrame(
 @Composable
 fun PanelTitle(text: String) = BasicText(text, style = Mono.copy(color = Palette.accent, fontSize = TextSize.Title), maxLines = 1, overflow = TextOverflow.Ellipsis)
 
+/**
+ * A search field in a panel's title, focused when it shows, with [hint] while it's empty. [autoCorrect] null leaves
+ * correction to the keyboard.
+ */
+@Composable
+fun PanelSearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    hint: String,
+    onSearch: () -> Unit = {},
+    autoCorrect: Boolean? = null,
+) {
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = Mono.copy(fontSize = TextSize.Title),
+        cursorBrush = SolidColor(Palette.accent),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrectEnabled = autoCorrect),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+        modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
+        decorationBox = { inner ->
+            Box {
+                if (value.isEmpty()) BasicText(hint, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
+                inner()
+            }
+        },
+    )
+}
+
 /** The way back to the screen under an [OverlayPanel], for one opened from another (a settings page from settings); null for one on its own. */
 val LocalPanelBack = compositionLocalOf<(() -> Unit)?> { null }
 
@@ -279,7 +317,7 @@ fun <T> ChoicePopup(
     onPick: (T) -> Unit,
     label: (T) -> String,
     minWidth: Dp = 180.dp,
-    sublabel: ((T) -> String)? = null,
+    sublabel: ((T) -> String?)? = null,
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
     Popup(popupPositionProvider = position, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
@@ -309,7 +347,7 @@ fun <T> ChoicePopup(
                     BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
                     Column(Modifier.weight(1f)) {
                         BasicText(label(option), style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
-                        sublabel?.let { BasicText(it(option), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small)) }
+                        sublabel?.invoke(option)?.let { BasicText(it, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small)) }
                     }
                 }
             }
@@ -412,9 +450,10 @@ fun JobLog(
         } else {
             // A failure's reason is usually at the end of the line: let it wrap.
             for (line in log.takeLast(4)) BasicText(line, style = style, maxLines = if (state is JobState.Failed) 3 else 1, overflow = TextOverflow.Ellipsis)
-            if (log.size > 4 || state is JobState.Failed) BasicText(toggle, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
         }
     }
+    // A button, not one more line of the log.
+    if (!expanded && (log.size > 4 || state is JobState.Failed)) BracketAction(toggle, Palette.accent) { expanded = true }
     if (expanded) {
         val context = LocalContext.current
         Row {

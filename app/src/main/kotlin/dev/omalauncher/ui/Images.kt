@@ -24,15 +24,7 @@ fun decodeSampled(
     minWidth: Int,
     minHeight: Int = minWidth,
     maxBytes: Long = Long.MAX_VALUE,
-): Bitmap? {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.path, bounds)
-    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-    var sample = 1
-    while (bounds.outWidth / (sample * 2) >= minWidth && bounds.outHeight / (sample * 2) >= minHeight) sample *= 2
-    if (4L * ceilDiv(bounds.outWidth, sample) * ceilDiv(bounds.outHeight, sample) > maxBytes) return null
-    return BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
-}
+): Bitmap? = decodeSampled(minWidth, minHeight, maxBytes) { options -> BitmapFactory.decodeFile(file.path, options) }
 
 /** [decodeSampled] for an image already in memory, like a download. */
 fun decodeSampled(
@@ -40,14 +32,22 @@ fun decodeSampled(
     minWidth: Int,
     minHeight: Int = minWidth,
     maxBytes: Long = Long.MAX_VALUE,
+): Bitmap? = decodeSampled(minWidth, minHeight, maxBytes) { options -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) }
+
+/** [decodeSampled] with [decode], which decodes the image with the options it's given: once for its size, once for it. */
+private fun decodeSampled(
+    minWidth: Int,
+    minHeight: Int,
+    maxBytes: Long,
+    decode: (BitmapFactory.Options) -> Bitmap?,
 ): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    decode(bounds)
     if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
     var sample = 1
     while (bounds.outWidth / (sample * 2) >= minWidth && bounds.outHeight / (sample * 2) >= minHeight) sample *= 2
     if (4L * ceilDiv(bounds.outWidth, sample) * ceilDiv(bounds.outHeight, sample) > maxBytes) return null
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+    return decode(BitmapFactory.Options().apply { inSampleSize = sample })
 }
 
 private fun ceilDiv(

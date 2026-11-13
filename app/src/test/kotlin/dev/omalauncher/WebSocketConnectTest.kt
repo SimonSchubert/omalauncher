@@ -32,10 +32,13 @@ class WebSocketConnectTest {
         assertTrue("$e", e is IOException && e.suppressed.size == 1)
     }
 
-    /** Nothing at all within the time given is a timeout. */
+    /**
+     * Nothing at all within the time given is a timeout. Not on 443: a VPN's web filter (NordVPN's) answers there for
+     * any address, TEST-NET too.
+     */
     @Test fun timesOut() {
         val began = System.currentTimeMillis()
-        val e = runCatching { WebSocket.connectTcp(listOf(dead(1)), 443, 500) }.exceptionOrNull()
+        val e = runCatching { WebSocket.connectTcp(listOf(dead(1)), 9, 500) }.exceptionOrNull()
         assertTrue("$e", e is IOException)
         assertTrue(System.currentTimeMillis() - began < 2_000)
     }

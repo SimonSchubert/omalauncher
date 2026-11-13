@@ -13,8 +13,9 @@
     <string name="voice_no_speech">Voz precisa de reconhecimento de fala, e este telefone não tem. Instale um, como o Reconhecimento e síntese de voz do Google, e escolha-o nas configurações de entrada por voz do Android. Ou digite.</string>
     <string name="voice_input_settings">entrada por voz</string>
     <string name="voice_type">digitar</string>
-    <string name="voice_no_agent">Voz conversa com Claude Code, Grok ou OpenCode no Linux. Instale um deles para conversar.</string>
+    <string name="voice_no_agent">Voz conversa com um agente de programação no Linux. Instale um para conversar.</string>
     <string name="voice_agents">agentes</string>
+    <string name="voice_log_in">entrar</string>
     <string name="voice_thinking">pensando</string>
     <plurals name="voice_steps">
         <item quantity="one">%1$d passo</item>
@@ -70,4 +71,14 @@
     <string name="voice_quiet">%1$s está quieto há dois minutos; pare se ele travou</string>
     <string name="voice_failed">falhou</string>
     <string name="voice_retrying">tentando de novo: %1$s</string>
+    <string name="voice_voice">voz</string>
+    <string name="voice_language">idioma</string>
+    <string name="voice_language_launcher">padrão (%1$s)</string>
+    <string name="voice_default">padrão</string>
+    <string name="voice_default_named">padrão (%1$s)</string>
+    <string name="voice_online">online</string>
+    <string name="voice_speed">velocidade</string>
+    <string name="voice_tts_settings">configurações de texto para fala</string>
+    <string name="voice_no_voice">Ainda não há voz para %1$s neste telefone: baixe uma nas configurações de texto para fala.</string>
+    <string name="voice_sample">É assim que as respostas vão soar.</string>
 </resources>

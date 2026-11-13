@@ -69,6 +69,7 @@ import dev.omalauncher.stripCellSize
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.widgets.WidgetSpec
 import dev.omalauncher.widgets.render.LocalMenuOpened
+import dev.omalauncher.widgets.runtime.NotificationDots
 
 /** One app the drawer lists: an owl app, a Linux or Android app, or a shortcut. */
 internal sealed interface AppHit {
@@ -88,6 +89,9 @@ internal sealed interface AppHit {
     /** In a paused work profile: shown dimmed, and opening it turns work apps back on. */
     fun paused(runtime: Runtime) = false
 
+    /** It has a notification Android would put a dot on it for. */
+    val hasDot: Boolean get() = false
+
     data class Linux(
         val app: LinuxApp,
     ) : AppHit {
@@ -102,6 +106,8 @@ internal sealed interface AppHit {
         override val label get() = app.label
         override val spoken get() = app.spoken
         override val alias get() = if (app.profile != null) "${app.label} ${if (app.clone) "clone" else "work"}" else null
+
+        override val hasDot get() = NotificationDots.has(app.component.packageName, app.profile)
 
         override fun paused(runtime: Runtime) = runtime.androidApps.paused(app.profile)
     }
@@ -122,6 +128,8 @@ internal sealed interface AppHit {
         override val label get() = shortcut.label
         override val spoken get() = shortcut.spoken
         override val alias get() = if (shortcut.profile != null) "${shortcut.label} ${if (shortcut.clone) "clone" else "work"}" else null
+
+        override val hasDot get() = NotificationDots.has(shortcut.ref.packageName, shortcut.profile, shortcut.ref.id)
 
         override fun paused(runtime: Runtime) = runtime.androidApps.paused(shortcut.profile)
     }

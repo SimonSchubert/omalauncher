@@ -1,0 +1,34 @@
+widget "sketch" {
+  page: 3
+  order: 6
+  size: 6x3
+  minSize: 4x2
+  // The home screen holds still while this is true: no page turn, no swipe up, no long press, and the prompt bar
+  // and recent strip open nothing, so a stroke on the pad stays the pad's. Done lets go, and so do Back and the
+  // chip at the top, until the next draw.
+  lock: drawing
+
+  meta { owl: 18; description: "A pad to draw on: tap draw, and the home screen holds still so a stroke can't turn the page. Tap done to let it go."; version: "1.0"; license: "MIT"; category: "fun" }
+
+  state drawing = false
+  state dots = []
+
+  Column {
+    gap: 6
+    Row {
+      gap: 8
+      Text { text: drawing ? "drawing" : "tap draw to start"; style: small; color: drawing ? accent : muted; weight: 1 }
+      Button { text: drawing ? "done" : "draw"; onTap: drawing = !drawing }
+    }
+    // A dot per tap, wherever it lands.
+    Canvas {
+      weight: 1
+      // A Canvas in a Column is as wide as what it draws, which is nothing until the first dot: it fills the row.
+      fill: width
+      background: alpha(surface, 0.6)
+      radius: 8 * corners
+      onTap: { if drawing { dots = dots + [{x: x, y: y}] } }
+      for d in dots { circle(d.x, d.y, 6, fill: accent) }
+    }
+  }
+}

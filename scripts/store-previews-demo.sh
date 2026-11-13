@@ -14,7 +14,7 @@
 # files, `fastfetch` greets terminal-profiles, cleaner finds caches worth clearing, `adb` answers
 # private-space like a phone with its Private Space open, `perl` answers wifi-radar's scan with a
 # made-up home network, `ssh` answers server-pulse's collector, speedtest finds a finished run,
-# share-bridge a link that's up, and `websocat` answers nostr-inbox's relays. `ping` answers network
+# share-bridge a link that's up, libre-summary three quits the Libre app saved, and `websocat` answers nostr-inbox's relays. `ping` answers network
 # with real-looking round trips (the emulator's own replies all say 0 ms), and `python3` answers vacuum's
 # status like a robot on its dock. With "off", puts everything back.
 set -u
@@ -57,8 +57,11 @@ neondl=~/.cache/omalauncher-neondl
 privspace=~/.cache/private-space.json
 speedtest=~/.local/share/omalauncher/speedtest/status.json
 bridge=~/.local/share/omalauncher/share-bridge/status.json
+libre=~/.local/share/libre/resume.json
 nostr=~/.cache/nostr-inbox/009ce97e22b376c406740f9b842f780ca2e92c2093a5f11d12f43f6150d8e6a1
 omagit=~/projects/weather-cli
+solaredge=~/.config/omarchy-solaredge/data.json
+solaredgeauth=~/.config/omarchy-solaredge/auth.json
 
 # Moves a real file aside before the demo writes its own; "off" puts it back.
 aside() { [ -f "$1" ] && [ ! -f "$1.before-demo" ] && mv "$1" "$1.before-demo"; mkdir -p "${1%/*}"; }
@@ -88,7 +91,7 @@ if [ "${1:-}" = off ]; then
     "$pptver" "$pptsetup" "$pptstatus" "$devlogsver" "$devlogsbin" "$devlogserrors" "$flashcards" \
     "$scripts/backup-dotfiles.sh" "$scripts/clean-downloads.sh" "$scripts/pull-repos.sh" \
     "$scripts/serve-here.sh" "$scripts/update-system.sh" "$layoutlog" "$radio/pid" "$radio/now" "$photo" \
-    "$gameboy" "$neondl/state.json" "$neondl/version.txt" "$privspace" "$speedtest" "$bridge"; do
+    "$gameboy" "$neondl/state.json" "$neondl/version.txt" "$privspace" "$speedtest" "$bridge" "$libre" "$solaredge" "$solaredgeauth"; do
     [ -f "$f.before-demo" ] && mv "$f.before-demo" "$f" || rm -f "$f"
   done
   exit 0
@@ -127,6 +130,8 @@ aside "$cursor"
 echo '{"accessToken":"demo"}' > "$cursor"
 cat > /usr/local/bin/curl <<'EOF'
 #!/bin/sh
+# The SolarEdge reader puts its URL in a -K file.
+prev=; for a in "$@"; do [ "$prev" = -K ] && grep -q monitoringapi.solaredge.com "$a" 2>/dev/null && exec /usr/bin/python3 /tmp/store-previews-demo/solaredge.py "$@"; prev=$a; done
 case "$*" in
   *DashboardService/GetCurrentPeriodUsage*) echo '{"billingCycleEnd":"1792627200000","planUsage":{"totalPercentUsed":77,"apiPercentUsed":96,"includedSpend":7000,"limit":7000}}' ;;
   # cursor-plan reads the answer from stdout, xai from -o with the status from -w.
@@ -320,6 +325,43 @@ exec /usr/bin/pgrep "$@"
 EOF
 chmod +x /usr/local/bin/pgrep
 
+# jenskock's SolarEdge tiles: a signed-in site whose token never runs out, and the reader's API calls (their URL is
+# in a curl -K file) answered with a sunny afternoon: 4.2 kW from the roof and 18.4 kWh so far, the house drawing
+# 1.4 kW of it and 1.9 kW going to the grid. The reader writes data.json from these as it would from SolarEdge.
+aside "$solaredge"
+aside "$solaredgeauth"
+rm -f "$solaredge"
+echo '{"site_id": "1234567", "client_id": "demo", "client_secret": "demo", "refresh_token": "demo", "access_token": "demo", "expires_at": 4102444800}' > "$solaredgeauth"
+chmod 600 "$solaredgeauth"
+cat > "$demo/solaredge.py" <<'EOF'
+import json, math, sys, time
+args = sys.argv[1:]
+cfg = args[args.index("-K") + 1]
+out = args[args.index("-o") + 1] if "-o" in args else None
+url = next((l.split('"')[1] for l in open(cfg) if l.startswith("url")), "")
+now = int(time.time()) // 900 * 900
+def series(vals):
+    return [{"timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - (47 - i) * 900)), "value": v} for i, v in enumerate(vals)]
+sun = [round(max(0.0, 5400 * math.exp(-((i - 40) / 16.0) ** 2) - 250)) for i in range(48)]
+house = [round(380 + 120 * math.sin(i / 3.0) + (1700 if 28 <= i <= 31 else 0) + (900 if i in (12, 13) else 0) + (1000 if i >= 45 else 0)) for i in range(48)]
+sun[-1], house[-1] = 4200, 1400
+if url.endswith("/power"):
+    body = {"unit": "W", "values": series(sun)}
+elif url.endswith("/overview"):
+    body = {"production": {"total": 18400, "unit": "WH"}, "consumption": {"total": 13000, "unit": "WH", "fromPv": 4700, "fromGrid": 8300}}
+elif url.endswith("/meters/telemetry"):
+    body = {"meters": {"CONSUMPTION": {"consumptionPower": {"unit": "W", "values": series(house)}},
+                       "GRID": {"importPower": {"values": series([0] * 48)}, "exportPower": {"values": series([1900] * 48)}}}}
+else:
+    body = {}
+text = json.dumps(body)
+if out:
+    open(out, "w").write(text)
+    sys.stdout.write("200")
+else:
+    sys.stdout.write(text)
+EOF
+
 # rcrohmana's codex-quota and photoprism-random hand their script to `python -`: a Plus account part way
 # through both limits, and a photo of Moraine Lake (public domain, Wikimedia Commons).
 aside "$photoprism"
@@ -334,7 +376,7 @@ if [ "$*" = - ]; then
   now=$(date +%s)
   case "$s" in
     *wham/usage*) printf '{"five":{"pct":38,"reset":%s},"week":{"pct":61,"reset":%s},"plan":"plus","checked":%s,"error":null}\n' $((now + 7920)) $((now + 273600)) "$now"; exit 0 ;;
-    *photoprism-random*) echo ~/.cache/photoprism-random/demo.jpg; exit 0 ;;
+    *photoprism-random*) printf '{"thumb": "%s", "full": "%s"}\n' ~/.cache/photoprism-random/demo.jpg ~/.cache/photoprism-random/demo.jpg; exit 0 ;;
   esac
   printf '%s\n' "$s" | exec /usr/bin/python -
 fi
@@ -817,6 +859,14 @@ printf '{"running":false,"phase":"DONE","step":"Test complete · Tap to re-run",
 # wouldn't outlive this script's proot anyway.
 aside "$bridge"
 echo '{"url":"http://127.0.0.1:8765/store-preview-demo/"}' > "$bridge"
+
+# libre-summary: the summary the Libre app writes, with three made-up quits counted back from now
+# (the same ones as apps/madness807/libre/screens.txt in the store).
+aside "$libre"
+now=$(date +%s)
+printf '{"items":[{"id":"vape-1","nom":"Vape","type":"vape","debut":%s,"parSemaine":15},{"id":"soda-1","nom":"Soda","type":"soda","debut":%s,"parSemaine":6},{"id":"reseaux-1","nom":"Instagram","type":"reseaux","debut":%s,"parSemaine":0}],"envies":[%s,%s,%s],"currency":"$"}\n' \
+  $((now - 12 * 86400 - 5 * 3600)) $((now - 41 * 86400 - 3 * 3600)) $((now - 4 * 86400 - 9 * 3600)) \
+  $((now - 2 * 3600)) $((now - 7 * 3600)) $((now - 30 * 3600)) > "$libre"
 
 # nostr-inbox: a made-up account's last day on nostr, dated from when it's asked. `websocat` answers the
 # relay queries that name it or the people in it; its profile, relays and mute list are the ones the

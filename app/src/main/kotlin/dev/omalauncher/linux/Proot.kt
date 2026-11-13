@@ -1,10 +1,16 @@
 package dev.omalauncher.linux
 
 import android.content.Context
+import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import dev.omalauncher.LauncherData
+import dev.omalauncher.PhoneStorage
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import java.io.File
+import kotlin.concurrent.thread
 
 /** Paths and process launching for the proot'd Arch rootfs. */
 class Proot(
@@ -37,6 +43,30 @@ class Proot(
     /** How guest apps render OpenGL and Vulkan: in software, or on the GPU once [Gpu] turns it on. */
     @Volatile var graphicsEnv: List<String> = SOFTWARE_ENV
 
+    private val prefs = LauncherData.prefs(context)
+
+    /**
+     * What makes Linux's system calls fast: proot keeping itself and programs making many syscalls on one fast
+     * CPU (patches/proot/0002), and the fast lane, [fastLane]. On unless the user turned it off; applies to what
+     * starts after a change.
+     */
+    var cpuPinning by mutableStateOf(prefs.getBoolean(CPU_PINNING, true))
+        private set
+
+    fun changeCpuPinning(on: Boolean) {
+        cpuPinning = on
+        prefs.edit().putBoolean(CPU_PINNING, on).apply()
+    }
+
+    /**
+     * The fast lane library (patches/proot/fastpath): preloaded into guest programs, it answers stat, access,
+     * readlink and read-only open for plain rootfs paths itself, without a stop in proot (patches/proot/0003).
+     * Built by scripts/fetch-proot.sh next to proot and copied into the guest by [managed], so the two always
+     * come from the same APK; a build without it runs as before.
+     */
+    private val fastLaneSource = File(nativeDir, "libfastpath.so")
+    private val fastLane = File(rootfs, FAST_LANE.removePrefix("/"))
+
     /** Launcher data the guest sees in its home, kept outside the rootfs; see [LauncherData]. */
     private val dataBinds =
         listOf(
@@ -54,8 +84,13 @@ class Proot(
      */
     private val cjkFont = File("/system/fonts/NotoSansCJK-Regular.ttc")
 
+    private val fixedBinds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
+
+    /** The phone's shared storage, as far as Android lets the launcher see it ([PhoneStorage]). */
+    private val storageBinds = if (PhoneStorage.supported()) listOf(PhoneStorage.GUEST to PhoneStorage.root) else emptyList()
+
     /** Host directories bound over guest paths by [command]. */
-    private val binds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
+    private val binds = fixedBinds + storageBinds
 
     /**
      * Where an absolute guest path lives on the Android side, following the
@@ -73,6 +108,9 @@ class Proot(
 
     /** Whether [real], a canonical host file, is one the guest can see, rather than the launcher's own. */
     fun guestVisible(real: File) = visible.any { real.startsWith(it) }
+
+    /** The empty directory in the rootfs that the phone's storage is bound over. */
+    private val storageMount get() = File(rootfs, PhoneStorage.GUEST.removePrefix("/"))
 
     /** The guest's files as it sees them; see [GuestFs]. */
     val guestFs by lazy { GuestFs(::hostFile, ::guestVisible) }
@@ -98,16 +136,17 @@ class Proot(
      * stand-ins every guest command needs. Call once, before any guest runs.
      */
     fun prepare() {
-        for (dir in listOf(tmpDir, runtimeDir)) {
-            LauncherData.deleteTree(dir)
-            dir.mkdirs()
-        }
+        discardTmp()
+        LauncherData.deleteTree(runtimeDir)
+        runtimeDir.mkdirs()
         // proot skips a bind whose host directory is missing, and the guest would then write into the rootfs.
         // The empty mount points make the bound directories show up in listings of their parents.
         for ((guest, host) in dataBinds) {
             host.mkdirs()
             if (rootfs.isDirectory) File(rootfs, guest.removePrefix("/")).mkdirs()
         }
+        // Its mount point, so / lists it; Android 10 has none (an empty one is all that's left there).
+        if (rootfs.isDirectory) storageMount.let { if (PhoneStorage.supported()) it.mkdirs() else it.delete() }
         File(rootfs, "var/lib/pacman/db.lck").delete()
         // An empty stand-in, so fontconfig lists the bound font when it reads the directory.
         if (rootfs.isDirectory) {
@@ -127,15 +166,33 @@ class Proot(
         File(filesDir, "bwrap-shim").delete()
     }
 
+    /** Old /tmp contents waiting to be deleted; see [discardTmp]. */
+    private val discardedTmp = File(filesDir, "tmp-discarded")
+
+    /**
+     * Starts the guest with an empty /tmp. A day of agent work can leave hundreds of thousands of files there (a
+     * cloned repo with node_modules), and deleting them takes long enough on a phone that Linux looked uninstalled
+     * meanwhile. So the old one moves aside and is deleted in the background, along with any a killed process left.
+     */
+    private fun discardTmp() {
+        discardedTmp.mkdirs()
+        if (tmpDir.exists() && !tmpDir.renameTo(File(discardedTmp, System.nanoTime().toString()))) LauncherData.deleteTree(tmpDir)
+        tmpDir.mkdirs()
+        thread(name = "tmp-discard", isDaemon = true) {
+            runCatching { LauncherData.deleteTree(discardedTmp) }.onFailure { Log.w("proot", "old /tmp", it) }
+        }
+    }
+
     /**
      * The bwrap stand-in (assets/bwrap-shim.sh): user namespaces are unavailable under proot, so the real one
      * fails. glycin and Codex look for bwrap on PATH, where /usr/local/bin precedes the package's /usr/bin.
      */
     fun managed(): List<Managed> =
-        listOf(Managed.asset(context, "bwrap-shim.sh", File(rootfs, "usr/local/bin/bwrap"), Policy.Owned, executable = true))
+        listOf(Managed.asset(context, "bwrap-shim.sh", File(rootfs, "usr/local/bin/bwrap"), Policy.Owned, executable = true)) +
+            if (fastLaneSource.isFile) listOf(Managed(fastLane, Policy.Owned) { fastLaneSource.readBytes() }) else emptyList()
 
-    private fun command(script: String): List<String> =
-        listOf(
+    private fun command(script: String): List<String> {
+        return listOf(
             File(nativeDir, "libproot.so").path,
             "--kill-on-exit",
             "--link2symlink",
@@ -173,6 +230,10 @@ class Proot(
                 "DISABLE_AUTOUPDATER=1",
                 "OPENCODE_DISABLE_AUTOUPDATE=1",
                 "GROK_DISABLE_AUTOUPDATER=1",
+                // Claude Code's cross-session messaging (its internal switch, undocumented): proot sends opens of
+                // /proc/*/uid_map to /dev/null, for bwrap's writes, so Claude reads an empty map, takes it for a user
+                // namespace without one, and greets every start with a warning that messaging is off.
+                "CLAUDE_CODE_HARBOR_KITE=0",
                 "BROWSER=xdg-open",
                 // The launcher's editor; yazi and git open files with it. Its shim falls back to micro.
                 "EDITOR=$EDIT_COMMAND",
@@ -184,7 +245,11 @@ class Proot(
                 "QT_QPA_PLATFORM=wayland",
                 "MOZ_ENABLE_WAYLAND=1",
                 "SDL_VIDEODRIVER=wayland",
-            ) + graphicsEnv + listOf("/bin/sh", "-c", script)
+            ) + graphicsEnv +
+            // Only once the library is there: the dynamic linker complains on every start about one it can't find.
+            (if (cpuPinning && fastLane.isFile) listOf("LD_PRELOAD=$FAST_LANE") else emptyList()) +
+            listOf("/bin/sh", "-c", script)
+    }
 
     /**
      * Kills every proot we started and every guest process: before the rootfs
@@ -212,15 +277,23 @@ class Proot(
                 put("PROOT_LOADER", File(nativeDir, "libproot-loader.so").path)
                 put("PROOT_TMP_DIR", tmpDir.path)
                 put("LD_LIBRARY_PATH", nativeDir.path)
+                if (!cpuPinning) {
+                    put("PROOT_HOME_CPU", "off")
+                    put("PROOT_FASTPATH", "off")
+                }
             }
             redirectErrorStream(true)
         }
 
     companion object {
+        private const val CPU_PINNING = "proot_cpu_pinning"
+
         const val GUEST_HOME = "/root"
 
         /** XDG_RUNTIME_DIR in the guest, bound to [runtimeDir]. */
         const val GUEST_RUNTIME_DIR = "/run/user/0"
+
+        private const val FAST_LANE = "/usr/local/lib/libfastpath.so"
 
         private const val GUEST_CJK_FONT = "/usr/share/fonts/android/NotoSansCJK-Regular.ttc"
     }

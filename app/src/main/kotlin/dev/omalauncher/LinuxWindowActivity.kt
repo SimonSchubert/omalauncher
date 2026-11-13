@@ -45,7 +45,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.ui.ExtraKeys
 import dev.omalauncher.ui.ImagePicker
 import dev.omalauncher.ui.KeyboardSink
-import dev.omalauncher.ui.MicPermission
+import dev.omalauncher.ui.WidgetAsks
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.linuxWindowInput
@@ -60,7 +60,7 @@ import kotlinx.coroutines.flow.first
 class LinuxWindowActivity : InstantActivity() {
     private var window: XdgToplevel? = null
     private val imagePicker = ImagePicker(this) { runtime }
-    private val mic = MicPermission(this)
+    private val asks = WidgetAsks(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,7 +94,7 @@ class LinuxWindowActivity : InstantActivity() {
         super.onResume()
         window?.let(runtime.wm::focus)
         runtime.keyboard.imagePicker = imagePicker
-        runtime.dictation.askMic = mic::ask
+        asks.resumed(runtime)
     }
 
     override fun onStop() {
@@ -126,7 +126,7 @@ class LinuxWindowActivity : InstantActivity() {
         super.onPause()
         runtime.keyboard.releaseHeld()
         if (runtime.keyboard.imagePicker === imagePicker) runtime.keyboard.imagePicker = null
-        runtime.dictation.askMic = null
+        asks.paused(runtime)
     }
 }
 

@@ -30,7 +30,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
@@ -62,7 +61,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
@@ -227,9 +225,7 @@ private fun EditorBody(
             modifier = Modifier.weight(1f),
             title = {
                 if (q != null) {
-                    val focus = remember { FocusRequester() }
-                    LaunchedEffect(Unit) { focus.requestFocus() }
-                    BasicTextField(
+                    PanelSearchField(
                         value = q,
                         onValueChange = {
                             query = it
@@ -237,18 +233,9 @@ private fun EditorBody(
                             match = match?.let { m -> TextRange(m.start) }
                             find()
                         },
-                        singleLine = true,
-                        textStyle = Mono.copy(fontSize = TextSize.Title),
-                        cursorBrush = SolidColor(Palette.accent),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrectEnabled = false),
-                        keyboardActions = KeyboardActions(onSearch = { find() }),
-                        modifier = Modifier.fillMaxWidth().focusRequester(focus).leavesUpDown(),
-                        decorationBox = { inner ->
-                            Box {
-                                if (q.isEmpty()) BasicText(stringResource(R.string.editor_find_hint), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Title))
-                                inner()
-                            }
-                        },
+                        hint = stringResource(R.string.editor_find_hint),
+                        onSearch = { find() },
+                        autoCorrect = false,
                     )
                 } else {
                     PanelTitle(if (dirty) stringResource(R.string.editor_title_unsaved, name) else name)

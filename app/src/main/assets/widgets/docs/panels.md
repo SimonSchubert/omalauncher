@@ -29,6 +29,9 @@ Opening the drawer brings up the keyboard, so search is ready. For a drawer that
 (owl 15) leaves it down: tap the prompt bar to search, and a hardware keyboard types into it as before. It's `true` or
 `false` in the file, not an expression; a panel from the top has no bar, so there it changes nothing.
 
+A panel that animates with `time` can say how many frames a second it needs with `fps:`, as a widget does (owl 19,
+see docs/declarations.md).
+
 ```owl
 panel "my drawer" {
   meta { owl: 11 }

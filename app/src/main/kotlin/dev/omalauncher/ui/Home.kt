@@ -9,13 +9,17 @@ import android.app.WallpaperManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
 import dev.omalauncher.widgets.FACE_PAGE
 import dev.omalauncher.widgets.isFacePage
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.HomeItem
+import dev.omalauncher.widgets.Screen
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.WidgetItem
 import dev.omalauncher.widgets.WidgetSpec
@@ -97,8 +101,18 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
 ) {
     val engine = runtime.widgets
-    val linuxState by runtime.bootstrap.state.collectAsState()
+    val linuxState = linuxPhase(runtime)
     val arrange = remember { Arrange() }
+    // A foldable's cover screen has a layout of its own (its cells and pages in the layout, [cover] in layout.toml), and
+    // with home.unfolded-layout so does a Fold's unfolded inner screen ([unfolded]): home shows that one there, and the
+    // main one back on the phone-shaped screen. The pages below follow a frame later.
+    val screen =
+        when {
+            coverScreen() -> Screen.COVER
+            unfoldedScreen() -> Screen.UNFOLDED
+            else -> Screen.MAIN
+        }
+    SideEffect { engine.show(screen) }
     // One empty page always waits after the last one, to drop tiles on or pin apps to. Pages only exist
     // while they hold something, so it becomes a real page once used and a new empty one follows.
     // Left of page 1 the same, for faces: like a stock launcher's feed, but the user's own. An empty one waits left of
@@ -123,9 +137,11 @@ fun HomeScreen(
     // shift as the widgets' pages joined, with home turning to page 1 among them.
     val slots = if (engine.loaded) slotsOf(pageNumbers, per, ::full) else emptyList()
     fun slotOf(page: Int) = slots.indexOfFirst { page in it }
-    // Home opens on page 1, not left of it; on the first tile page, if a layout from before faces has none numbered 1.
+    fun homePage() = homePageIn(engine.pages, LauncherStyle.homePage)
+    // Home opens on home.home-page, page 1 unless set, or the first page after it if none is numbered so. Among the pages
+    // that hold something: the empty ones waiting at either end aren't home.
     // Made again once the widgets have loaded, so it starts on that page among all of them.
-    val pager = key(engine.loaded) { rememberPagerState(initialPage = slotOf(pageNumbers.firstOrNull { it >= 1 } ?: 1).coerceAtLeast(0)) { slots.size } }
+    val pager = key(engine.loaded) { rememberPagerState(initialPage = slotOf(homePage()).coerceAtLeast(0)) { slots.size } }
     // A tile dropped on another page: show that page once the page list has caught up, by the list as it is then. The
     // list the request was made with could be one from before (a store add spilling onto page 2 showed a face). A swipe
     // meanwhile wins, and the request goes with it rather than firing later.
@@ -143,7 +159,17 @@ fun HomeScreen(
     var menuFor by remember { mutableStateOf<HomeItem?>(null) }
 
     val terminals = runtime.terminals
+    // A page that has the tile holds the screen still, so its drags stay its own; editing lets go so a page can be moved.
+    val editing = state.editing != null || arrange.folder != null
+    SideEffect { terminals.editing = editing }
+    // Composed last, a BackHandler takes Back first; this one goes before the others to take it only when nothing else on
+    // home wants it, so a tile typing (a terminal's control, a page's history) gets it as it does now.
+    BackHandler(enabled = terminals.locked) { terminals.unlock() }
     BackHandler(enabled = terminals.typing) { terminals.deactivate() }
+    // A focused page takes Back for its own history first, as any web view does, and only then lets go of the tile.
+    // Composed after the one above, so it is asked first: a BackHandler takes Back before the ones before it.
+    val page = terminals.browser
+    BackHandler(enabled = page != null && page.canGoBack) { page?.back() }
     BackHandler(enabled = state.homeMenuOpen) { state.homeMenuOpen = false }
     BackHandler(enabled = arrange.folder != null && !state.homeMenuOpen) { arrange.folder = null }
     // After the folder's, so back puts down an app selected in it before closing it.
@@ -183,6 +209,19 @@ fun HomeScreen(
         shownPer = per
         if (i >= 0) pager.scrollToPage(i)
     }
+    // Switching screens (a fold or unfold with a home of its own there, or the cover screen) goes back to the page that
+    // screen last showed, page 1 the first time: the page numbers are another screen's. A drag the switch cuts short
+    // drops nothing, and carries nothing on.
+    val lastPage = remember { HashMap<Screen, Int>() }
+    var shownScreen by remember { mutableStateOf(screen) }
+    LaunchedEffect(screen) {
+        if (screen == shownScreen) return@LaunchedEffect
+        shownScreen = screen
+        state.editing = null
+        arrange.folder = null
+        arrange.drop()
+        showPage = lastPage[screen] ?: homePage()
+    }
     // The drawer pins apps to whichever page is showing (the left one of a pair); from a face, wherever it is, to page 1.
     // Pages appearing before the one showing don't move home off it, unless home was just sent to another page. At
     // start, pinned apps load before widgets, so page 1 may join after the faces and later pages: until widgets have
@@ -191,6 +230,8 @@ fun HomeScreen(
     LaunchedEffect(pager.currentPage, slots, engine.loaded) {
         if (!engine.loaded) return@LaunchedEffect
         if (slots != listed[0]) {
+            // The first pages after loading: the pager was made on home.home-page, so that is the active page.
+            if (listed[0].isEmpty()) engine.activePage = slots.getOrNull(pager.currentPage)?.first() ?: 1
             listed[0] = slots
             val i = slotOf(engine.activePage)
             if (showPage == null && i >= 0 && i != pager.currentPage) {
@@ -199,13 +240,22 @@ fun HomeScreen(
             }
         }
         engine.activePage = slots.getOrNull(pager.currentPage)?.first() ?: 1
+        if (engine.layout.screen == shownScreen && showPage == null) lastPage[shownScreen] = engine.activePage
         state.currentPage = engine.activePage.takeIf { it >= 1 && !full(it) } ?: 1
     }
     val shown = slots.getOrElse(pager.currentPage) { listOf(1) }
-    // A face showing has the keyboard, for one of its fields or terminals: it isn't lifted, it makes room itself.
-    val faceTyping = shown.mapNotNull(::faceOn).any { f -> engine.instance(f.spec)?.let { it.owns(runtime.terminals.active) || runtime.terminals.field?.widget === it } == true }
+    // A face showing has the keyboard, for one of its fields, terminals or pages: it isn't lifted, it makes room itself.
+    val faceTyping = shown.mapNotNull(::faceOn).any { f -> engine.instance(f.spec)?.let(terminals::typingIn) == true }
     val faceShowing = shown.all(::full)
     val statusBarAway = shown.all { faceOn(it)?.let { f -> engine.instance(f.spec) }?.showsStatusBar() == false }
+    // The widgets showing whose lock: holds keep the screen still, read here rather than in composition, so a game's state
+    // changing doesn't recompose home. Only those showing: a page turned away from can't hold the one turned to.
+    LaunchedEffect(engine, shown) {
+        snapshotFlow {
+            val showing = shown.flatMap(engine::itemsOn).filterIsInstance<WidgetItem>().mapNotNullTo(HashSet()) { engine.instance(it.spec) }
+            showing to showing.filterTo(HashSet()) { it.holdsHome() }
+        }.collect { (showing, holding) -> terminals.holdWidgets(showing, holding) }
+    }
     // Which pager slots are full screen, for the bar to slide with the others.
     val fullSlots = slots.map { it.all(::full) }
     SideEffect {
@@ -242,7 +292,7 @@ fun HomeScreen(
     val typing = terminals.active != null
     LaunchedEffect(typing) { if (!typing) terminals.keyboard?.hide() }
     DisposableEffect(state) {
-        state.onHomeAgain = { if (arrange.folder != null) arrange.folder = null else state.requestedPage = 1 }
+        state.onHomeAgain = { if (arrange.folder != null) arrange.folder = null else state.requestedPage = homePage() }
         onDispose { state.onHomeAgain = {} }
     }
     LaunchedEffect(state.requestedPage) {
@@ -319,8 +369,9 @@ fun HomeScreen(
         Modifier
             .fillMaxSize()
             // Swiping up opens the drawer, like stock launchers, or what gesture settings say; not while editing, in a
-            // folder or typing in a tile. A long-press drag takes its touches first, and the pager only wants sideways ones.
-            .homeSwipe(runtime, state, enabled = !terminals.typing && state.editing == null && arrange.folder == null)
+            // folder or typing in a tile, nor while a widget holds the screen still. A long-press drag takes its touches
+            // first, and the pager only wants sideways ones.
+            .homeSwipe(runtime, state, enabled = !terminals.typing && state.editing == null && arrange.folder == null && !terminals.locked)
             // Typing in a tile (its terminal or a widget's text field): lift the pages so the tile stays above the keyboard,
             // but not under the status bar; a tile too tall for both gives up the rest at its bottom.
             .graphicsLayer {
@@ -406,6 +457,7 @@ fun HomeScreen(
                     .focusRequester(state.homeEntry)
                     .focusGroup(),
             selected = state.editing,
+            locked = terminals.locked,
             onSelect = { state.editing = it },
             actions = { item ->
                 // A pinned Android app offers its shortcuts above the bar, as its long-press menu in the drawer does.
@@ -455,7 +507,7 @@ fun HomeScreen(
                     agent,
                     onBrowse = { state.show(SettingsPage.FaceStore) },
                 ) {
-                    if (linuxState == LinuxState.Installed) {
+                    if (linuxState == LinuxPhase.Installed) {
                         state.withAgent(runtime, "New face") { newOwlCommand(it, OwlKind.Face, page) }
                     } else {
                         state.show(SettingsPage.Linux)
@@ -470,7 +522,7 @@ fun HomeScreen(
                     agent,
                     onBrowse = { state.show(SettingsPage.Store) },
                 ) {
-                    if (linuxState == LinuxState.Installed) {
+                    if (linuxState == LinuxPhase.Installed) {
                         state.withAgent(runtime, "New widget") { newOwlCommand(it, OwlKind.Widget) }
                     } else {
                         state.show(SettingsPage.Linux)
@@ -493,6 +545,15 @@ fun HomeScreen(
             onRenameFolder = { folder, name -> engine.shortcuts.rename(folder.key, name) },
         )
     }
+    }
+
+    // A widget holds the home screen still: the border, and the way out of it, over the pages and above them here, so
+    // a widget that covers the tile area can't cover the way out.
+    if (terminals.locked) {
+        LockCue(
+            face = faceShowing,
+            onUnlock = terminals::unlock,
+        )
     }
 
     if (extraKeys) {
@@ -565,6 +626,12 @@ internal fun pagerPages(
     return if (!emptyPageRight || lastEmpty) withFace else withFace + (withFace.last() + 1)
 }
 
+/** The page [wanted] names among [pages]: the first at or after it, the last when it is beyond them all. */
+internal fun homePageIn(
+    pages: List<Int>,
+    wanted: Int,
+): Int = pages.firstOrNull { it >= wanted } ?: pages.last()
+
 /**
  * The pager's slots, what each of its positions shows left to right: a page each with [per] 1. Unfolded ([per] 2), tile
  * pages in pairs, so every tile keeps its folded size, and a [full] page (a face's, or the empty one waiting for one)
@@ -628,7 +695,7 @@ private fun HomeTile(
     arrange: Arrange,
     /** As homeTurned(): cells are shown on their side. */
     turned: Boolean,
-    linuxState: LinuxState,
+    linuxState: LinuxPhase,
 ) {
     val engine = runtime.widgets
     val terminals = runtime.terminals
@@ -656,7 +723,7 @@ private fun HomeTile(
         is WidgetItem -> {
             // Whose terminal has the keyboard: the tile gives up what the keyboard covers once the lift is spent.
             val instance = engine.instance(item.spec)
-            val typing = instance != null && (instance.owns(terminals.active) || terminals.field?.widget === instance)
+            val typing = instance != null && terminals.typingIn(instance)
             WidgetTile(
                 spec = item.spec,
                 instance = engine.instance(item.spec),
@@ -695,6 +762,7 @@ private fun HomeTile(
                 onTap = open,
                 paused = runtime.androidApps.paused(item.profile),
                 clone = runtime.androidApps.cloned(item.profile),
+                dot = runtime.hasDot(item),
             )
         is Folder ->
             FolderTile(
@@ -704,6 +772,37 @@ private fun HomeTile(
                 focused = highlighted,
                 modifier = tile,
                 onTap = open,
+                dot = item.apps.any(runtime::hasDot),
             )
     }
 }
+
+/** What home and its bar show of Linux: [LinuxState] without an install's progress and log, which change with every line it logs. */
+enum class LinuxPhase {
+    Checking,
+    Installing,
+    Installed,
+
+    /** Not installed, failed or being removed. */
+    Absent,
+}
+
+/** Linux's [LinuxPhase], recomposing the caller only when that changes. */
+@Composable
+fun linuxPhase(runtime: Runtime): LinuxPhase {
+    val bootstrap = runtime.bootstrap
+    val phases = remember(bootstrap) { bootstrap.state.phases() }
+    val initial = remember(bootstrap) { linuxPhase(bootstrap.state.value) }
+    return phases.collectAsState(initial).value
+}
+
+/** These states' phases, each once until it changes. */
+internal fun Flow<LinuxState>.phases(): Flow<LinuxPhase> = map(::linuxPhase).distinctUntilChanged()
+
+private fun linuxPhase(state: LinuxState) =
+    when (state) {
+        LinuxState.Checking -> LinuxPhase.Checking
+        is LinuxState.Installing -> LinuxPhase.Installing
+        LinuxState.Installed -> LinuxPhase.Installed
+        LinuxState.NotInstalled, is LinuxState.Failed, LinuxState.Removing -> LinuxPhase.Absent
+    }

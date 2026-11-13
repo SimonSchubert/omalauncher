@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets.runtime
 
+import dev.omalauncher.changeObserver
 import dev.omalauncher.registerNotExported
 import android.app.NotificationManager
 import android.content.Context
@@ -7,7 +8,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.res.Configuration
 import android.content.res.Resources
-import android.database.ContentObserver
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.location.LocationManager
@@ -188,12 +188,7 @@ class Modes(
                 }
             val receiver = context.registerNotExported(filter) { trySend(Unit) }
             // The radios, rotation and brightness send no broadcast an app without permissions may hear; their settings change.
-            val observer =
-                object : ContentObserver(main) {
-                    override fun onChange(selfChange: Boolean) {
-                        trySend(Unit)
-                    }
-                }
+            val observer = changeObserver(main) { trySend(Unit) }
             for (name in listOf(Settings.Global.AIRPLANE_MODE_ON, Settings.Global.WIFI_ON, Settings.Global.BLUETOOTH_ON)) {
                 resolver.registerContentObserver(Settings.Global.getUriFor(name), false, observer)
             }

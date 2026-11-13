@@ -1,0 +1,37 @@
+Omalauncher ist ein Startbildschirm für Tastatur-Fans, der den Look von Omarchy auf Android bringt und ein komplettes Arch Linux ARM neben deinen Apps laufen lassen kann.
+
+THEMES
+Such dir eins von 22 Omarchy-Themes aus: Tokyo Night, Catppuccin, Gruvbox, Nord, Rose Pine, Kanagawa, Everforest und mehr. Jedes Theme färbt den ganzen Launcher ein und bringt eigene Hintergründe mit, die du auch als Live-Hintergrund nutzen kannst.
+
+STARTBILDSCHIRM, WIDGETS UND FACES
+• Seiten mit Widgets und angehefteten Apps in einem Raster
+• Eingebaute Widgets für Datum, Wetter und dein System
+• Faces: eine ganze Seite aus einem Guss, etwa als Manga-Seite, Terminal oder Bauhaus-Plakat
+• Ein Store mit Widgets, Faces, kleinen Apps und Spielen, geschrieben in einer kleinen offenen Sprache, die du selbst bearbeiten kannst
+• Eine App-Übersicht mit Suche für alle deine Android-Apps
+
+ARCH LINUX (OPTIONAL)
+Der Launcher läuft auch ohne. Wenn du willst, lädt Omalauncher Arch Linux ARM herunter und startet es mit proot, ganz ohne Root.
+• Linux-Apps öffnen sich in eigenen Fenstern, jedes mit eigener Karte in den letzten Apps
+• Omalauncher ist der Wayland-Compositor, also laufen grafische Apps wie foot
+• Pakete aus Arch Linux ARM und dem AUR suchen und installieren
+• Terminal-Widgets, die Befehle auf deinem Startbildschirm ausführen
+• Files, ein Dateimanager für den Linux-Home-Ordner und die Ordner deines Handys, die du auswählst: Dateien kopieren, verschieben, umbenennen, löschen, öffnen und teilen
+• Dein Theme gilt auch für die Linux-Apps
+
+CODING-AGENTEN
+Mit Linux schickt die Eingabeleiste unten auf dem Startbildschirm deine Anfrage an einen Coding-Agenten wie Claude Code, Codex, Copilot, Grok oder opencode, der sich in einem Terminal öffnet. Ein Agent kann dir auch ein Widget bauen.
+
+VOICE
+Tipp auf den Voice-Button und sprich mit deinem Coding-Agenten. Er antwortet laut, zeigt, was er gerade macht, und fragt nach, bevor er einen Befehl ausführt oder eine Datei ändert. Lieber tippen? Schalt aufs Schreiben um und lies die Antworten. Die Sprache erkennt Android, nur der Text landet in Linux.
+
+TASTENKÜRZEL
+Mit Hardware-Tastatur: Super+T öffnet ein Terminal, Super+D die App-Übersicht, Super+1 bis 9 wechseln die Seite und Super+W schließt ein Fenster.
+
+SPRACHEN
+English, Bahasa Indonesia, Español, Português, Deutsch und 简体中文.
+
+DATENSCHUTZ
+Kein Konto, keine Werbung, kein Tracking. Omalauncher geht nur ins Internet, um Themes, Widgets, das Wetter und, wenn du willst, Linux und seine Pakete zu laden.
+
+Omalauncher ist ein unabhängiges Projekt und gehört weder zu Omarchy noch zu Arch Linux.

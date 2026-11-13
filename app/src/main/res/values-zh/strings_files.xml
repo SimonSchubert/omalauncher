@@ -10,6 +10,9 @@
     <string name="files_home">主目录</string>
     <string name="files_place_config">配置</string>
     <string name="files_place_downloads">下载</string>
+    <string name="files_place_phone_folders">手机文件夹</string>
+    <string name="files_add_phone_folder">添加手机文件夹</string>
+    <string name="files_no_phone_folders">还没有手机文件夹：从菜单添加一个</string>
     <string name="files_place_system">系统</string>
     <string name="files_search">搜索</string>
     <string name="files_more">更多</string>
@@ -83,6 +86,7 @@
     <string name="prompt_speech_refused">手机的语音识别器不允许其他应用使用</string>
     <string name="prompt_speech_failed">语音识别失败（%1$d）</string>
     <string name="prompt_speech_language">这种语言无法使用语音输入</string>
+    <string name="prompt_speech_not_downloaded">这部手机还没有下载这种语言的语音输入</string>
     <string name="prompt_speech_mic_permission">需要麦克风权限</string>
     <string name="prompt_speech_network">语音识别需要网络连接</string>
 </resources>

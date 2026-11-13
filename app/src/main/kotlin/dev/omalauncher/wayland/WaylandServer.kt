@@ -14,6 +14,9 @@ private const val TAG = "wl.server"
 /** Deepest chain of subsurface and popup parents we follow. */
 internal const val MAX_NESTING = 32
 
+/** Most clients connected at once; far more than windows anyone opens, far fewer than run the heap out. */
+internal const val MAX_CLIENTS = 256
+
 data class OutputInfo(
     val widthPx: Int,
     val heightPx: Int,
@@ -91,6 +94,13 @@ class WaylandServer(
                     // Transient (a client gave up, out of fds): keep serving after a pause.
                     Log.w(TAG, "accept failed: errno ${-fd}")
                     SystemClock.sleep(100)
+                    continue
+                }
+                // Each client costs two threads and their buffers: a program that only opens connections
+                // would otherwise run the launcher out of memory (about 1,700 did).
+                if (synchronized(this) { clients.size } >= MAX_CLIENTS) {
+                    Log.w(TAG, "refusing a client: $MAX_CLIENTS already connected")
+                    Native.close(fd)
                     continue
                 }
                 val client = Client(this, fd)

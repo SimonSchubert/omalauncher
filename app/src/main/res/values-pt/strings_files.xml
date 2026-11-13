@@ -10,6 +10,9 @@
     <string name="files_home">pessoal</string>
     <string name="files_place_config">config</string>
     <string name="files_place_downloads">downloads</string>
+    <string name="files_place_phone_folders">pastas do telefone</string>
+    <string name="files_add_phone_folder">adicionar pasta do telefone</string>
+    <string name="files_no_phone_folders">ainda não há pastas do telefone: adicione uma pelo menu</string>
     <string name="files_place_system">sistema</string>
     <string name="files_search">pesquisar</string>
     <string name="files_more">mais</string>
@@ -87,6 +90,7 @@
     <string name="prompt_speech_refused">o reconhecimento de fala do telefone não deixa outros apps usá-lo</string>
     <string name="prompt_speech_failed">o reconhecimento de fala falhou (%1$d)</string>
     <string name="prompt_speech_language">a fala não está disponível neste idioma</string>
+    <string name="prompt_speech_not_downloaded">a fala deste idioma não foi baixada neste telefone</string>
     <string name="prompt_speech_mic_permission">é preciso a permissão do microfone</string>
     <string name="prompt_speech_network">o reconhecimento de fala precisa de conexão com a rede</string>
 </resources>

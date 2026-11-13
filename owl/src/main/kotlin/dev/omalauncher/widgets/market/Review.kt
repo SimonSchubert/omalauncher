@@ -6,6 +6,7 @@ import dev.omalauncher.widgets.lang.Global
 import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.lang.Program
+import dev.omalauncher.widgets.lang.ShaderCost
 import dev.omalauncher.widgets.lang.Source
 
 /**
@@ -98,6 +99,9 @@ class Review(
                 "See \"Values in commands\" in the widgets docs (docs/declarations.md)"
         }
         warnings += risks(p.commands - unquoted.toSet())
+        // A heavy shader hangs the GPU whenever its page shows. Code put together while the widget runs is counted by
+        // the launcher before it draws it.
+        for (code in p.shaders.filterNotNull().distinct()) ShaderCost.problem(code)?.let { errors += "a Shader: $it" }
         warnings += costs(p)
 
         // A later page has no version of its own: changing it needs face.owl's to go up, which the CLI checks.
@@ -260,6 +264,11 @@ class Review(
                 // An image, sound or font URL whose host comes from widget values (Compiler's webFile): it can go anywhere too.
                 Regex("""^(image|sound|font) GET https://[^/\s]*…$""") to "loads a file from a server put together while the widget runs, which can send its data anywhere",
                 Regex("""^($IF_LINUX)?read file \(a path built from widget values\)$""") to "reads a file whose path is put together while the widget runs",
+                // Linux sees the phone's storage there (the app's PhoneStorage): the files Linux saved in it.
+                Regex("""(^|[\s"'=:(])(/sdcard|/storage/emulated)(/|\b)""") to "reaches the phone's own files (photos, downloads); check nothing sends them elsewhere",
+                Regex("""^read the phone's approximate location""") to "knows roughly where the phone is; check where it sends that",
+                Regex("""^read events in the phone's calendars""") to "sees calendar event titles, times and locations; check nothing sends them elsewhere",
+                Regex("""^read and change the AirPods""") to "reads and changes the AirPods connected to the phone; check where it sends what it reads",
                 Regex("""^read Android notifications""") to "sees every notification on the phone; check nothing sends them anywhere",
                 Regex("""^reply to notifications as you""") to "sends messages as you through other apps; check when it replies and what it says",
                 Regex("""^press the buttons on notifications""") to "presses buttons on other apps' notifications (delete, archive, call back); check which and when",

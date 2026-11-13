@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.PathParser
 import dev.omalauncher.ui.iconMask
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -520,29 +521,38 @@ class AndroidAppCatalog(
                 // With what to draw each icon from; null for those of a paused profile, kept as they were.
                 var made = emptyList<Pair<ShortcutInfo?, AndroidShortcut>>()
                 val listed = shortcuts.toList()
+                // The system can fail a call partway (a label's lookup threw BadParcelableException on a Galaxy A15
+                // when its process died or binder ran out of buffer): the drawer keeps what it shows until the next reload.
                 val infos =
-                    withContext(Dispatchers.IO) {
-                        val me = Process.myUserHandle()
-                        // Ours first; the system lists the profiles it lets a launcher see, ours included.
-                        val profiles = listOf(me) + runCatching { launcherApps.profiles }.getOrDefault(emptyList()).filter { it != me }
-                        canList = canListShortcuts()
-                        profiles
-                            .flatMap { user ->
-                                val profile = if (user == me) null else userManager.getSerialNumberForUser(user)
-                                val clone = profile != null && isClone(user)
-                                if (profile != null && userManager.isQuietModeEnabled(user)) paused += profile
-                                if (profile != null && clone) clones += profile
-                                if (profile != null && !clone) works += profile
-                                // A paused profile's shortcuts can't be listed; they stay, dimmed like its apps, and opening one resumes it.
-                                if (canList) made += if (profile != null && profile in paused) listed.filter { it.profile == profile }.map { null to it } else pinnedShortcuts(user, profile, clone)
-                                runCatching { launcherApps.getActivityList(null, user) }
-                                    .onFailure { Log.w(TAG, "cannot list apps in $user", it) }
-                                    .getOrDefault(emptyList())
-                                    .filter { it.componentName.packageName != context.packageName }
-                                    .map { it to AndroidApp(it.label.toString(), it.componentName, user, profile, it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0, clone = clone) }
-                            }
-                            // The same app in two profiles: the owner's one first.
-                            .sortedWith(compareBy({ it.second.label.lowercase() }, { it.second.profile != null }))
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val me = Process.myUserHandle()
+                            // Ours first; the system lists the profiles it lets a launcher see, ours included.
+                            val profiles = listOf(me) + runCatching { launcherApps.profiles }.getOrDefault(emptyList()).filter { it != me }
+                            canList = canListShortcuts()
+                            profiles
+                                .flatMap { user ->
+                                    val profile = if (user == me) null else userManager.getSerialNumberForUser(user)
+                                    val clone = profile != null && isClone(user)
+                                    if (profile != null && userManager.isQuietModeEnabled(user)) paused += profile
+                                    if (profile != null && clone) clones += profile
+                                    if (profile != null && !clone) works += profile
+                                    // A paused profile's shortcuts can't be listed; they stay, dimmed like its apps, and opening one resumes it.
+                                    if (canList) made += if (profile != null && profile in paused) listed.filter { it.profile == profile }.map { null to it } else pinnedShortcuts(user, profile, clone)
+                                    runCatching { launcherApps.getActivityList(null, user) }
+                                        .onFailure { Log.w(TAG, "cannot list apps in $user", it) }
+                                        .getOrDefault(emptyList())
+                                        .filter { it.componentName.packageName != context.packageName }
+                                        .map { it to AndroidApp(it.label.toString(), it.componentName, user, profile, it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM != 0, clone = clone) }
+                                }
+                                // The same app in two profiles: the owner's one first.
+                                .sortedWith(compareBy({ it.second.label.lowercase() }, { it.second.profile != null }))
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.w(TAG, "cannot list apps", e)
+                        return@launch
                     }
                 listsShortcuts = canList
                 pausedProfiles = paused

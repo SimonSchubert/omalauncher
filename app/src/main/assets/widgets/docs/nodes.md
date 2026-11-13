@@ -23,9 +23,10 @@ when lists reorder), and `let x = ...` inside any node.
 | `Shader` | an AGSL shader, see docs/drawing.md. Fills the space unless sized |
 | `Spacer` | empty space: `size`, `width`, `height` or `weight` |
 | `Slider` | a horizontal slider: `value`, `min` (0), `max` (100), `step`, `color`, `track`, `live`. `onChange` gets the chosen `value` when the finger lifts, or at every step while dragging with `live: true`. With keys, Left and Right step it by `step`, else a twentieth of the range (a hundredth with Shift), each step sent to `onChange`. Full width and 28 dp tall unless sized (owl 4) |
-| `Input` | a one-line text field: `text` (what it shows; replaces what's typed when it changes), `placeholder`, `color`, `fontSize`, `clear: true` (empty it after submitting), `underline: false` (no line under it, for a field inside a frame of its own, owl 10), `password: true` (dots for what's typed, and a keyboard that neither suggests nor learns it, owl 12), `focus: true` (focus it and raise the keyboard when the screen opens, or when `focus` turns true; only in a `screen { }`, owl 6). `onChange` gets the text as `value` as it's typed, `onSubmit` when the keyboard's send key is pressed (owl 4) |
+| `Input` | a text field, one line unless `lines` says more: `text` (what it shows; replaces what's typed when it changes), `placeholder`, `color`, `fontSize`, `clear: true` (empty it after submitting), `underline: false` (no line under it, for a field inside a frame of its own, owl 10), `password: true` (dots for what's typed, and a keyboard that neither suggests nor learns it, owl 12), `focus: true` (focus it and raise the keyboard when the screen opens, or when `focus` turns true; only in a `screen { }`, owl 6), `lines: 6` (wraps what's typed and grows with it up to 6 lines, then scrolls inside, as a chat's message box; `value` carries the `\n`s. Without `onSubmit`, Enter starts a new line; with it, Enter and the keyboard's send key submit and Shift+Enter starts a new line, so for newlines typed on the soft keyboard too, leave `onSubmit` out and send from a `Button`; a `password` stays one line; owl 18). `onChange` gets the text as `value` as it's typed, `onSubmit` when the keyboard's send key is pressed (owl 4) |
 | `Popup` | a menu over everything, the tile, the bar and other tiles, at the start of the node that holds it: `position: below` (the default) or `above`, kept on screen and on the other side when there's no room, `gap`, `align`. Show it with `visible`; a tap outside it or Back runs `onDismiss`, which it must have, so it can close: `Box { Text { text: "menu"; onTap: open = true }  Popup { visible: open; onDismiss: open = false; … } }`. Framed like the launcher's menus unless it has a `background` or `border`. It takes no room where it's written (owl 10) |
 | `Terminal` | a live terminal (foot) in the tile: `command` (default: the login shell), `fontSize` (points; foot.ini has 8). Fills the space unless sized. See below |
+| `Browser` | a web page in the tile, drawn by Android's WebView: `url` (https, at a host written in the file), `js: true` (script on), `zoom` (text size, 1 by default). `onNavigate`, `onTitle` and `onProgress` follow the page, and `web("back")` steers it. Two at most, on a widget's tile or a face, never in a `for` or a component. Fills the space unless sized. See docs/browser.md (owl 18) |
 
 Every node also takes:
 
@@ -46,7 +47,12 @@ Every node also takes:
   keys repeat: `repeat` is 0 for the press and counts up from there; `Slider` and `Input` also take
   `onChange`, and `Input` `onSubmit`, both with `value`; `Popup` takes `onDismiss`; a Column with `scroll` or `lazy`, or a
   Grid with `lazy`, takes `onPull`, run when it's pulled down past its top and let go there: `onPull: refresh()`. The
-  launcher draws the refresh icon coming down with the pull and spins it while the sources fetch (owl 17). In pages, apps and a widget's `screen { }`,
+  launcher draws the refresh icon coming down with the pull and spins it while the sources fetch (owl 17). `onTouch` (owl 22) sees
+  every finger at once, for a game's two thumbs: it runs as any finger goes down, moves or lifts, with `touches`, the
+  fingers down as `{id, x, y, startX, startY}` (where each went down), and `[]` once the last one lifts. Keep it in a state,
+  `onTouch: fingers = touches`, and read it in `every frame`: a joystick is where a finger went down and how far it's
+  moved from there, `first(fingers)`, and a second finger can be on a button at the same time (see `examples/sunset-heist`).
+  A node with `onTouch` keeps the moves, so nothing around it scrolls with them. In pages, apps and a widget's `screen { }`,
   `onLongPress` (with `x`, `y`, owl 10); on a tile, long-press belongs to the home screen, which uses it
   to move and resize tiles. A node with `onTap` or `onLongPress` ripples from where it's pressed, within its `radius`, in apps, panels, faces and screens; on a widget's tile and in a key bar it stays still.
   `ripple: false` (owl 14) leaves one still anywhere, for a node that shows its press itself, as with `onPress`.
@@ -251,8 +257,9 @@ widget "shell" {
   outside it, Back or another page lets go. The ⌨ button toggles the soft keyboard,
   and a tap on the line with the terminal's cursor (its prompt) brings it back.
 - The terminal keeps running while its page is off screen. It ends when the widget
-  is removed or its file changes. When `command` exits, the tile offers a restart;
-  use `"btop; exec bash"` to fall back to a shell.
+  is removed or its file changes. When `command` exits, it stays stopped until you
+  tap the restart hint, even after leaving and returning to its page. Use
+  `"btop; exec bash"` to fall back to a shell.
 - `padding: 0` lets the terminal fill the tile's frame.
 - Its background is see-through: the tile's glass (`widgets.opacity` in style.toml), or a `background`
   behind it, shows where the program leaves the terminal's own. Cells a program colors, like a status line, stay solid.

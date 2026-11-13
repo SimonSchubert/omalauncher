@@ -5,19 +5,24 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.AppLanguage
 import dev.omalauncher.R
+import dev.omalauncher.linux.AGENTS
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.AgentStore
+import dev.omalauncher.linux.JobState
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.killTree
 import dev.omalauncher.ui.Speaker
 import dev.omalauncher.ui.Speech
-import dev.omalauncher.widgets.WidgetEngine
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -55,10 +60,39 @@ class VoiceSession(
     )
 
     /** The agents that can talk: installed, and with a link. */
-    val voiceAgents: List<Agent> get() = agents.installed.filter { it.bin in LINKS }
+    val voiceAgents: List<Agent> get() = agents.installed.filter { it.bin in VOICE_LINKS }
 
-    /** Whether [agent] can talk here: Claude Code, Grok and OpenCode, the ones tried. */
-    fun talksTo(agent: Agent?) = agent != null && agent.bin in LINKS
+    /** Every agent with a link, installed or not, in Omarchy's order: the ones to pick from, installed when picked. */
+    val linked: List<Agent> get() = AGENTS.filter { it.bin in VOICE_LINKS }
+
+    /** Whether [agent] can talk here: one with a link. */
+    fun talksTo(agent: Agent?) = agent != null && agent.bin in VOICE_LINKS
+
+    /** An agent picked that wasn't installed: installing, or failed to (its log in [installState]); null otherwise. */
+    var installing by mutableStateOf<Agent?>(null)
+        private set
+
+    val installState: JobState get() = installing?.let { agents.states[it.bin] } ?: JobState.Idle
+
+    private val scope = MainScope()
+
+    /** Installs [to], picked though it isn't there, and talks to it once it is (not while a task runs). */
+    fun install(to: Agent) {
+        installing = to
+        if (agents.states[to.bin] is JobState.Working) return
+        scope.launch {
+            if (!agents.install(to) || installing != to) return@launch
+            installing = null
+            if (agent == null) {
+                wanted = to
+                if (screens > 0) wake()
+            } else if (screens > 0) {
+                switchTo(to)
+            } else {
+                prefer(to)
+            }
+        }
+    }
 
     /**
      * Whether the AI bar's mic opens the voice screen for [agent]: it talks here, and the phone can hear the user.
@@ -102,6 +136,15 @@ class VoiceSession(
     /** Something to tell the user, like an error; null when there's nothing. */
     var notice by mutableStateOf<String?>(null)
 
+    /** Whether [notice] says the agent isn't signed in ("Not logged in · Please run /login"), for a way to. */
+    val needsLogin get() = notice?.let(LOGIN::containsMatchIn) == true
+
+    /** Signing in, in the agent's own terminal: this one stops, so the next prompt starts it signed in. */
+    fun loggingIn() {
+        stopAgent()
+        notice = null
+    }
+
     /** When the task in progress started (ms), for the time shown. */
     var since by mutableLongStateOf(0L)
         private set
@@ -134,6 +177,7 @@ class VoiceSession(
 
     private var link: AgentLink? = null
     private var process: Process? = null
+
     private var session: String? = null
     private val always = HashSet<String>()
     private var buffer = ""
@@ -153,23 +197,65 @@ class VoiceSession(
     /** Writes to the agent off the main thread, in order: a full pipe mustn't freeze the screen. */
     private val writer = Executors.newSingleThreadExecutor { Thread(it, "voice-write").apply { isDaemon = true } }
 
+    /**
+     * Files, the trace and stopping the agent, in order, apart from [writer]: an agent that stopped reading blocks
+     * its writes, and that mustn't hold up saving the conversation, [resume]'s wait for it, or the kill that ends it.
+     */
+    private val files = Executors.newSingleThreadExecutor { Thread(it, "voice-files").apply { isDaemon = true } }
+
     val dir get() = File(context.filesDir, "voice")
 
     /**
-     * What went to and came from the agent, for finding out why it misbehaves: /tmp/voice-agent.log in Linux,
-     * readable from a terminal, cut in half when it passes 1 MB; /tmp is emptied as the launcher starts.
+     * What went to and came from the agent, for finding out why it misbehaves: ~/.cache/omalauncher/voice-agent.log in
+     * Linux, readable from a terminal, cut in half when it passes 1 MB. Not in /tmp, which is emptied as the launcher
+     * starts: an update or Android ending the process took the log of what went wrong with it.
      */
     private fun trace(
         way: Char,
         line: String,
-    ) = writer.execute {
+    ) = files.execute {
         runCatching {
-            val log = proot.hostFile("/tmp/voice-agent.log")
+            val log = File(proot.home, ".cache/omalauncher/voice-agent.log").apply { parentFile?.mkdirs() }
             if (log.length() > 1_000_000) log.writeText(log.readText().takeLast(500_000))
             log.appendText("${System.currentTimeMillis() % 100_000_000} $way ${line.take(4000)}\n")
         }
     }
     private val settingsFile get() = File(dir, "settings.json")
+
+    /** The language it listens and reads aloud in, a tag ("de"); null for the launcher's. */
+    var language by mutableStateOf<String?>(null)
+        private set
+
+    /** The voice replies are read in, by name; null for the engine's choice for [language]. */
+    var voice by mutableStateOf<String?>(null)
+        private set
+
+    /** How fast replies are read: 1 is the engine's normal speed; a little faster by default, as replies can be long. */
+    var rate by mutableFloatStateOf(DEFAULT_RATE)
+        private set
+
+    init {
+        readJson(settingsFile)?.let { s ->
+            // Saved in three letters ("deu") before Speaker named the engine's languages in two.
+            language = s.optString("language").ifEmpty { null }?.let(AppLanguage::short)
+            voice = s.optString("voice").ifEmpty { null }
+            rate = s.optDouble("rate", DEFAULT_RATE.toDouble()).toFloat().takeIf { it in 0.5f..2f } ?: DEFAULT_RATE
+        }
+        speaker.use(language, voice, rate)
+    }
+
+    /** Listens and reads aloud in [language] (null for the launcher's), with [voice], at [rate]. */
+    fun useVoice(
+        language: String?,
+        voice: String?,
+        rate: Float,
+    ) {
+        this.language = language
+        this.voice = voice
+        this.rate = rate
+        speaker.use(language, voice, rate)
+        saveSettings()
+    }
 
     private fun transcriptFile(bin: String) = File(dir, "transcript-$bin.json")
 
@@ -264,14 +350,14 @@ class VoiceSession(
 
     /**
      * [said] with what the agent should know first: that the user switched between typing and talking, and, for
-     * an ACP agent, which got [VOICE_PROMPT] only with its first prompt, a reminder to keep it short now and then.
+     * an agent that got [VOICE_PROMPT] only with its first prompt (ACP), a reminder to keep it short now and then.
      */
     private fun withNote(said: String): String {
         sent++
         val note =
             when {
                 typing != toldTyping -> if (typing) TYPING_NOTE else TALKING_NOTE
-                !typing && link !is ClaudeLink && sent % REMIND_EVERY == 0 -> VOICE_REMINDER
+                !typing && link?.instructed == false && sent % REMIND_EVERY == 0 -> VOICE_REMINDER
                 else -> null
             }
         toldTyping = typing
@@ -313,7 +399,7 @@ class VoiceSession(
         if (!took && instead != null) link?.prompt(instead)
         // Questions that came while this one was up and that "always" now covers.
         for (other in approvals.toList()) if (approveAll || Steps.covered(other.key, this.always)) answer(other.id, true)
-        phase = if (approvals.isNotEmpty()) Phase.Approval else if (busy) Phase.Working else Phase.Idle
+        settle()
         approvals.firstOrNull()?.let(::announce)
     }
 
@@ -325,8 +411,16 @@ class VoiceSession(
         if (on) for (a in approvals.toList()) answer(a.id, true)
     }
 
+    /** [bin] is being removed: its process stops if it's the agent here, as mise won't delete a running one. */
+    fun release(bin: String): Boolean {
+        if (agent?.bin != bin || process == null) return false
+        stopAgent()
+        return true
+    }
+
     /** Talks to [to] instead: the conversation so far is put aside and [to]'s comes back. */
     fun switchTo(to: Agent) {
+        installing = null
         if (to.bin == agent?.bin || busy) return
         stopAgent()
         load(to)
@@ -359,9 +453,9 @@ class VoiceSession(
         val a = agent ?: return
         if (busy || !canResume) return
         // Its files are written in order on [writer]: wait for any still on their way.
-        runCatching { writer.submit {}.get() }
+        runCatching { files.submit {}.get() }
         val last = readJson(previousSessionFile(a.bin))?.optString("id")?.ifEmpty { null }
-        val lines = readArray(previousTranscriptFile(a.bin))?.let { arr -> (0 until arr.length()).mapNotNull(arr::optJSONObject).map { Entry(it.optString("who"), it.optString("text")) } }.orEmpty()
+        val lines = readLines(previousTranscriptFile(a.bin))
         if (last == null) {
             canResume = false
             return
@@ -371,7 +465,7 @@ class VoiceSession(
         if (keep != null) {
             keepPrevious(a, keep, transcript.toList())
         } else {
-            writer.execute {
+            files.execute {
                 previousSessionFile(a.bin).delete()
                 previousTranscriptFile(a.bin).delete()
             }
@@ -398,7 +492,7 @@ class VoiceSession(
         if (id != null) keepPrevious(a, id, transcript.toList())
         transcript.clear()
         saveTranscript()
-        writer.execute { sessionFile(a.bin).delete() }
+        files.execute { sessionFile(a.bin).delete() }
         session = null
         notice = null
     }
@@ -408,10 +502,8 @@ class VoiceSession(
         id: String,
         lines: List<Entry>,
     ) {
-        val out = JSONArray()
-        for (e in lines.takeLast(200)) out.put(JSONObject().put("who", e.who).put("text", e.text))
-        writeFile(previousTranscriptFile(a.bin), out.toString())
-        writeFile(previousSessionFile(a.bin), JSONObject().put("id", id).put("at", System.currentTimeMillis()).toString())
+        writeLines(previousTranscriptFile(a.bin), lines)
+        writeFile(previousSessionFile(a.bin), json("id" to id, "at" to System.currentTimeMillis()).toString())
         canResume = true
     }
 
@@ -432,7 +524,7 @@ class VoiceSession(
         val fresh = last != null && (anyAge || System.currentTimeMillis() - last.optLong("at") < RESUME_MS)
         session = if (fresh) last!!.optString("id").ifEmpty { null } else null
         if (fresh) {
-            readArray(transcriptFile(to.bin))?.let { a -> (0 until a.length()).mapNotNull(a::optJSONObject).forEach { transcript += Entry(it.optString("who"), it.optString("text")) } }
+            transcript += readLines(transcriptFile(to.bin))
             if (last!!.optBoolean("busy")) transcript += Entry("note", str(R.string.voice_note_task_stopped))
         }
     }
@@ -441,7 +533,7 @@ class VoiceSession(
         val a = agent ?: return
         // Lines go to the process this link started, never to one started after it (a switch, a restart).
         var to: Process? = null
-        val l = linkFor(a) { line -> to?.let { p -> writer.execute { write(p, line) } } }
+        val l = VOICE_LINKS.getValue(a.bin).invoke { line -> to?.let { p -> writer.execute { write(p, line) } } }
         link = l
         toldTyping = false
         sent = 0
@@ -455,14 +547,19 @@ class VoiceSession(
             }
         process = p
         to = p
-        l.open(session)
+        val opening = l.open(session)
         trace('$', "start ${a.bin}" + (session?.let { " resuming $it" } ?: ""))
         // Stopping the agent closes its pipes under these readers: that ends them, it isn't an error.
         Thread({
             runCatching {
                 p.inputStream.bufferedReader().forEachLine { line ->
                     trace('<', line)
-                    main.post { if (process === p) events(read(l, line)) }
+                    main.post {
+                        if (process === p) {
+                            // A bug in what an event does is logged; it never takes the launcher down.
+                            runCatching { events(read(l, line)) }.onFailure { Log.w(TAG, "couldn't handle the agent's line", it) }
+                        }
+                    }
                 }
             }
             runCatching { p.waitFor() }
@@ -476,8 +573,7 @@ class VoiceSession(
                 }
             }
         }, "voice-err").apply { isDaemon = true }.start()
-        // Claude says nothing until the first prompt; it's ready once it runs.
-        if (l is ClaudeLink) phase = Phase.Idle
+        events(opening)
         startWatch()
     }
 
@@ -511,7 +607,7 @@ class VoiceSession(
         turns = 0
         endReply()
         phase = Phase.Off
-        writer.execute { killTree(p) }
+        files.execute { killTree(p) }
     }
 
     private val idleStop = Runnable { if (screens == 0 && !busy && approvals.isEmpty()) stopAgent() }
@@ -583,7 +679,7 @@ class VoiceSession(
                     heardBack = true
                     handOver(final = true)
                     afterTool = true
-                    if (System.currentTimeMillis() - lastSaid > PROGRESS_MS) say(str(R.string.voice_say_moment))
+                    if (System.currentTimeMillis() - lastSaid > PROGRESS_MS) say(spoken(R.string.voice_say_moment))
                     if (phase != Phase.Approval) phase = Phase.Working
                 }
                 is LinkEvent.Step -> {
@@ -593,7 +689,7 @@ class VoiceSession(
                 }
                 is LinkEvent.Ask -> {
                     heardBack = true
-                    val a = Approval(e.id, e.act, shown(e.act), said(e.act), e.detail, e.key)
+                    val a = Approval(e.id, e.act, shown(e.act), said(e.act), e.detail.take(400), e.key)
                     if (approveAll || Steps.covered(e.key, always)) {
                         link?.answer(e.id, true, false, null)
                     } else {
@@ -614,13 +710,13 @@ class VoiceSession(
                     endReply()
                     saveSession()
                     if (prompted && e.error != null) {
-                        say(str(R.string.voice_say_failed))
-                        notice = e.error.ifEmpty { str(R.string.voice_failed) }
+                        say(spoken(R.string.voice_say_failed))
+                        notice = e.error.take(200).ifEmpty { str(R.string.voice_failed) }
                     } else if (prompted && !had && !e.cancelled) {
                         notice = str(R.string.voice_nothing_to_say, name)
                     }
                     if (turns == 0) {
-                        phase = if (approvals.isEmpty()) Phase.Idle else Phase.Approval
+                        settle()
                         scheduleIdleStop()
                     }
                 }
@@ -635,7 +731,12 @@ class VoiceSession(
         }
     }
 
-    private fun announce(a: Approval) = say(str(R.string.voice_say_wants, name, a.said))
+    /** The phase once something's done: a question waiting, the task going on, or nothing. */
+    private fun settle() {
+        phase = if (approvals.isNotEmpty()) Phase.Approval else if (busy) Phase.Working else Phase.Idle
+    }
+
+    private fun announce(a: Approval) = say(spoken(R.string.voice_say_wants, name, said(a.act, aloud = true)))
 
     /** The agent's name, for what's shown and said. */
     private val name get() = agent?.name ?: str(R.string.voice_the_agent)
@@ -646,35 +747,26 @@ class VoiceSession(
         vararg args: Any,
     ) = context.getString(id, *args)
 
-    /** A step as it's shown: "reading x.png". */
-    fun shown(act: Act): String =
-        when (act.verb) {
-            Act.Verb.Run -> str(R.string.voice_step_run, act.what)
-            Act.Verb.Read -> str(R.string.voice_step_read, act.what)
-            Act.Verb.Write -> str(R.string.voice_step_write, act.what)
-            Act.Verb.Edit -> str(R.string.voice_step_edit, act.what)
-            Act.Verb.Delete -> str(R.string.voice_step_delete, act.what)
-            Act.Verb.Search -> str(R.string.voice_step_search, act.what)
-            Act.Verb.SearchWeb -> str(R.string.voice_step_web, act.what)
-            Act.Verb.Subtask -> str(R.string.voice_step_subtask, act.what)
-            Act.Verb.Plan -> str(R.string.voice_step_plan)
-            Act.Verb.Tool -> act.what.ifEmpty { str(R.string.voice_step_tool) }
-        }
+    /**
+     * Text said aloud: in the language replies are read in, when the launcher has its text in it, so a German voice
+     * doesn't read the launcher's English; else the launcher's.
+     */
+    private fun spoken(
+        id: Int,
+        vararg args: Any,
+    ) = AppLanguage.stringIn(context, speaker.locale, id, *args) ?: str(id, *args)
 
-    /** What it wants to do, after "Claude Code wants to": "read x.png". */
-    private fun said(act: Act): String =
-        when (act.verb) {
-            Act.Verb.Run -> str(R.string.voice_do_run, act.what)
-            Act.Verb.Read -> str(R.string.voice_do_read, act.what)
-            Act.Verb.Write -> str(R.string.voice_do_write, act.what)
-            Act.Verb.Edit -> str(R.string.voice_do_edit, act.what)
-            Act.Verb.Delete -> str(R.string.voice_do_delete, act.what)
-            Act.Verb.Search -> str(R.string.voice_do_search, act.what)
-            Act.Verb.SearchWeb -> str(R.string.voice_do_web, act.what)
-            Act.Verb.Subtask -> str(R.string.voice_do_subtask, act.what)
-            Act.Verb.Plan -> str(R.string.voice_do_plan)
-            Act.Verb.Tool -> if (act.what.isEmpty()) str(R.string.voice_do_tool_unknown) else str(R.string.voice_do_tool, act.what)
-        }
+    /** A step as it's shown: "reading x.png". */
+    fun shown(act: Act): String = if (act.verb == Act.Verb.Tool) act.what.ifEmpty { str(R.string.voice_step_tool) } else str(STEP.getValue(act.verb), act.what)
+
+    /** What it wants to do, after "Claude Code wants to": "read x.png"; [aloud], in the language it's said in. */
+    private fun said(
+        act: Act,
+        aloud: Boolean = false,
+    ): String {
+        val id = if (act.verb == Act.Verb.Tool && act.what.isEmpty()) R.string.voice_do_tool_unknown else DOES.getValue(act.verb)
+        return if (aloud) spoken(id, act.what) else str(id, act.what)
+    }
 
     /** Finished sentences to the voice as soon as they're complete; the rest when the reply ends. */
     private fun handOver(final: Boolean) {
@@ -734,7 +826,7 @@ class VoiceSession(
                 if (link?.foldsPrompts == true && turns > 0 && doneAt > 0 && lastEvent <= doneAt && now - doneAt > 4000) {
                     turns = 0
                     doneAt = 0
-                    phase = if (approvals.isEmpty()) Phase.Idle else Phase.Approval
+                    settle()
                 }
                 // Nothing at all since the prompt: OpenCode out of its free quota leaves a prompt hanging without a word.
                 if (turns > 0 && !heardBack && now - asked > SILENT_MS && notice == null) notice = str(R.string.voice_no_answer, name)
@@ -752,23 +844,25 @@ class VoiceSession(
 
     private fun saveTranscript() {
         val a = agent ?: return
-        val out = JSONArray()
-        for (e in transcript.takeLast(200)) out.put(JSONObject().put("who", e.who).put("text", e.text))
-        writeFile(transcriptFile(a.bin), out.toString())
+        writeLines(transcriptFile(a.bin), transcript)
     }
 
     private fun saveSession(busy: Boolean = this.busy) {
         val a = agent ?: return
         val id = session ?: return
-        writeFile(sessionFile(a.bin), JSONObject().put("id", id).put("at", System.currentTimeMillis()).put("busy", busy).toString())
+        writeFile(sessionFile(a.bin), json("id" to id, "at" to System.currentTimeMillis(), "busy" to busy).toString())
     }
 
-    private fun saveSettings() = writeFile(settingsFile, JSONObject().put("agent", agent?.bin).put("approveAll", approveAll).put("typing", typing).toString())
+    private fun saveSettings() =
+        writeFile(
+            settingsFile,
+            json("agent" to agent?.bin, "approveAll" to approveAll, "typing" to typing, "language" to language, "voice" to voice, "rate" to rate.toDouble()).toString(),
+        )
 
     private fun writeFile(
         file: File,
         text: String,
-    ) = writer.execute {
+    ) = files.execute {
         runCatching {
             file.parentFile?.mkdirs()
             val tmp = File(file.path + ".tmp")
@@ -779,28 +873,49 @@ class VoiceSession(
 
     private fun readJson(file: File) = runCatching { JSONObject(file.readText()) }.getOrNull()
 
-    private fun readArray(file: File) = runCatching { JSONArray(file.readText()) }.getOrNull()
+    /** A conversation's lines, its last 200. */
+    private fun writeLines(
+        file: File,
+        lines: List<Entry>,
+    ) = writeFile(file, JSONArray(lines.takeLast(200).map { json("who" to it.who, "text" to it.text) }).toString())
+
+    private fun readLines(file: File) =
+        runCatching { JSONArray(file.readText()).objects().map { Entry(it.optString("who"), it.optString("text")) } }.getOrNull().orEmpty()
 
     companion object {
         private const val TAG = "voice"
 
-        /** The agents that speak ACP, by bin, with what starts them as an ACP server on stdio. */
-        private val ACP = mapOf("grok" to "grok agent stdio", "opencode" to "opencode acp")
+        /** An agent's error that it isn't signed in: Claude's "Not logged in", Grok's "Authentication required". */
+        private val LOGIN = Regex("log ?in|sign ?in|authenticat|api key|credential", RegexOption.IGNORE_CASE)
 
-        /**
-         * Where an ACP agent's sessions work, when not home: OpenCode snapshots its folder with git before every
-         * turn, and all of home took minutes before its first word; the widgets are what voice is mostly for.
-         */
-        private val ACP_DIRS = mapOf("opencode" to "/root/${WidgetEngine.GUEST_DIR}")
+        /** How a step is shown ([shown]) and how what it wants to do is said ([said]), by verb; each takes [Act.what]. */
+        private val STEP =
+            mapOf(
+                Act.Verb.Run to R.string.voice_step_run,
+                Act.Verb.Read to R.string.voice_step_read,
+                Act.Verb.Write to R.string.voice_step_write,
+                Act.Verb.Edit to R.string.voice_step_edit,
+                Act.Verb.Delete to R.string.voice_step_delete,
+                Act.Verb.Search to R.string.voice_step_search,
+                Act.Verb.SearchWeb to R.string.voice_step_web,
+                Act.Verb.Subtask to R.string.voice_step_subtask,
+                Act.Verb.Plan to R.string.voice_step_plan,
+            )
+        private val DOES =
+            mapOf(
+                Act.Verb.Run to R.string.voice_do_run,
+                Act.Verb.Read to R.string.voice_do_read,
+                Act.Verb.Write to R.string.voice_do_write,
+                Act.Verb.Edit to R.string.voice_do_edit,
+                Act.Verb.Delete to R.string.voice_do_delete,
+                Act.Verb.Search to R.string.voice_do_search,
+                Act.Verb.SearchWeb to R.string.voice_do_web,
+                Act.Verb.Subtask to R.string.voice_do_subtask,
+                Act.Verb.Plan to R.string.voice_do_plan,
+                Act.Verb.Tool to R.string.voice_do_tool,
+            )
 
-        /** The agents with a link, by bin. */
-        val LINKS = ACP.keys + "claude"
-
-        fun linkFor(
-            agent: Agent,
-            write: (String) -> Unit,
-        ): AgentLink = ACP[agent.bin]?.let { AcpLink(write, it, ACP_DIRS[agent.bin] ?: AcpLink.HOME) } ?: ClaudeLink(write)
-
+        const val DEFAULT_RATE = 1.25f
         const val IDLE_STOP_MS = 10 * 60_000L
         const val RESUME_MS = 12 * 3_600_000L
         const val QUIET_MS = 120_000L

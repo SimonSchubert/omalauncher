@@ -84,6 +84,7 @@ import dev.omalauncher.widgets.runtime.PicturePainter
 import dev.omalauncher.widgets.runtime.WidgetImage
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
@@ -124,9 +125,11 @@ import dev.omalauncher.ui.frame
 import dev.omalauncher.ui.holdsKeys
 import dev.omalauncher.ui.keyActivated
 import dev.omalauncher.ui.TerminalView
+import dev.omalauncher.ui.BrowserView
 import dev.omalauncher.widgets.lang.Action
 import dev.omalauncher.widgets.lang.Builtins
 import dev.omalauncher.widgets.lang.Env
+import dev.omalauncher.widgets.lang.MAX_FPS
 import dev.omalauncher.widgets.lang.Gradient
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
@@ -246,11 +249,6 @@ val LocalLongPressClaim = staticCompositionLocalOf<LongPressClaim?> { null }
 /** Widget text, 13sp as widgets were made for, whatever size the launcher's own text is. */
 internal val WidgetMono get() = Mono.copy(fontSize = 13.sp)
 
-/** Animated widgets' frame rate: on a 120 Hz screen, twice it costs twice the battery for motion that looks the same. */
-private const val WIDGET_FPS = 60
-
-private const val TICK = 1_000_000_000L / WIDGET_FPS
-
 /** The widget's screen { } block, filling [modifier]; `screenWidth` and `screenHeight` follow its size. */
 @Composable
 fun WidgetScreen(
@@ -291,7 +289,8 @@ private fun ScreenNodes(
  * A frame clock for widgets that read `time`, only while they're on screen ([covered] is false)
  * and something still reads it: a `time` under an `if` that's false, like a backdrop drawn only
  * while music plays, stops it after a few frames, and the next read starts it again. At most
- * [WIDGET_FPS] frames a second, whatever the screen's rate.
+ * [MAX_FPS] frames a second, whatever the screen's rate (on a 120 Hz screen, twice it costs twice the battery for
+ * motion that looks the same), or fewer as the widget's `fps:` asks.
  */
 @Composable
 private fun FrameClock(
@@ -305,21 +304,27 @@ private fun FrameClock(
         // When the next tick is due. A frame up to a quarter of a tick early takes it, so a 60 Hz screen ticks on each
         // frame, 90 Hz on two in three and 120 Hz on every other one.
         var due = start
+        var last = start
         while (true) {
             if (covered()) snapshotFlow { covered() }.first { !it }
-            if (unread >= 3) {
+            // An `every frame` widget moves things each frame, whether or not anything reads `time`.
+            if (unread >= 3 && !inst.runsEachFrame) {
                 inst.awaitTimeRead(start)
                 unread = 0
             }
+            // As often as the widget's fps: asks for now, at most MAX_FPS.
+            val tick = (1e9 / inst.frameRate()).toLong()
             withFrameNanos { now ->
-                if (now < due - TICK / 4) return@withFrameNanos
+                if (now < due - tick / 4) return@withFrameNanos
                 // Behind by more than a tick (covered, or a long frame): the next one is a tick from now.
-                due = if (now - due > TICK) now + TICK else due + TICK
+                due = if (now - due > tick) now + tick else due + tick
                 // Widgets that draw slowly get half the frame rate instead of stalling the home screen.
                 if (inst.slow && frame++ % 2 != 0L) return@withFrameNanos
                 unread = if (inst.timeRead) 0 else unread + 1
                 inst.timeRead = false
                 inst.time = (now - start) / 1e9
+                inst.frame((now - last) / 1e9)
+                last = now
             }
         }
     }
@@ -753,6 +758,24 @@ private fun Element(
                 TerminalView(term, mod.then(if (sized) Modifier else Modifier.fillMaxSize()))
             }
         }
+        "Browser" -> {
+            val url = p.observe("url")?.takeIf { it != Null }?.toString()
+            // Script off unless the node asks: it's what makes a page able to do anything on its own.
+            val js = p.observe("js")?.truthy == true
+            // A NaN or negative zoom would throw as the page's text size is worked out; 1 is the page's own.
+            val zoom = p.observe("zoom")?.num()?.takeIf { it.isFinite() && it > 0 } ?: 1.0
+            // A URL built from a value still loading waits for it, rather than loading about:blank first.
+            if (url != null) {
+                val page = remember(el, url, js, zoom) { inst.browser(el, url, js, zoom) }
+                BrowserView(
+                    page,
+                    mod.then(if (sized) Modifier else Modifier.fillMaxSize()),
+                    onTitle = el.handlers["onTitle"]?.let { a -> { v: String -> a.run(p.env, listOf(Str(v))) } },
+                    onNavigate = el.handlers["onNavigate"]?.let { a -> { v: String -> a.run(p.env, listOf(Str(v))) } },
+                    onProgress = el.handlers["onProgress"]?.let { a -> { v: Double -> a.run(p.env, listOf(Num(v))) } },
+                )
+            }
+        }
     }
 }
 
@@ -977,6 +1000,39 @@ private fun handlers(
                     "horizontal" -> detectHorizontalDragGestures(start, { ended(false) }, { ended(true) }) { change, dx -> move(change, dx, 0f) }
                     "vertical" -> detectVerticalDragGestures(start, { ended(false) }, { ended(true) }) { change, dy -> move(change, 0f, dy) }
                     else -> detectDragGestures(start, { ended(false) }, { ended(true) }) { change, drag -> move(change, drag.x, drag.y) }
+                }
+            }
+    }
+    // Every finger at once, for a game's two thumbs (owl 22): the list of those down, on each change.
+    el.handlers["onTouch"]?.let { a ->
+        m =
+            m.pointerInput(el, p.env) {
+                val starts = HashMap<Long, Offset>()
+                fun dp(v: Float) = Num((v / density).toDouble())
+                try {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val had = starts.isNotEmpty()
+                            val touches = ArrayList<Value>(event.changes.size)
+                            for (c in event.changes) {
+                                if (!c.pressed) {
+                                    starts.remove(c.id.value)
+                                    continue
+                                }
+                                val start = starts.getOrPut(c.id.value) { c.position }
+                                // Its moves are the game's: nothing around it scrolls or swipes with them.
+                                if (c.positionChanged()) c.consume()
+                                touches += Obj(mapOf("id" to Num(c.id.value.toDouble()), "x" to dp(c.position.x), "y" to dp(c.position.y), "startX" to dp(start.x), "startY" to dp(start.y)))
+                            }
+                            // A mouse moving over it with no button down changes nothing.
+                            if (touches.isEmpty() && !had) continue
+                            a.run(p.env, listOf(Lst(touches)))
+                        }
+                    }
+                } finally {
+                    // Gone while fingers were down: none are, any more.
+                    if (starts.isNotEmpty()) a.run(p.env, listOf(Lst(emptyList())))
                 }
             }
     }

@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shadow
@@ -29,6 +31,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import dev.omalauncher.R
 import dev.omalauncher.spokenLabel
 import dev.omalauncher.widgets.Shortcut
 
@@ -50,10 +54,13 @@ fun ShortcutTile(
     paused: Boolean = false,
     /** In a clone profile: read out as a clone, not a work app. */
     clone: Boolean = false,
+    /** It has a notification Android would put a dot on it for. */
+    dot: Boolean = false,
 ) {
     val mono = LauncherStyle.monochromeIcons
     val bare = LauncherStyle.bareAppIcons
-    val spoken = spokenLabel(label, shortcut.profile, clone)
+    val name = spokenLabel(label, shortcut.profile, clone)
+    val spoken = if (dot) stringResource(R.string.home_app_has_notifications, name) else name
     BoxWithConstraints(
         modifier
             .alpha(if (paused) PausedAlpha else 1f)
@@ -69,26 +76,46 @@ fun ShortcutTile(
             verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
         ) {
             val bmp = icon
-            when {
-                // Bare silhouettes and initials sit on a badge, as in the drawer, so they read on any wallpaper.
-                bare && (mono || bmp == null) ->
-                    IconBadge(iconSize) {
-                        if (bmp != null) {
-                            Image(bmp, spoken, Modifier.size(iconSize * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
-                        } else {
-                            BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.35f).sp))
+            Box(Modifier.notificationDot(dot)) {
+                when {
+                    // Bare silhouettes and initials sit on a badge, as in the drawer, so they read on any wallpaper.
+                    bare && (mono || bmp == null) ->
+                        IconBadge(iconSize) {
+                            if (bmp != null) {
+                                Image(bmp, spoken, Modifier.size(iconSize * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
+                            } else {
+                                BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.35f).sp))
+                            }
                         }
-                    }
-                bmp != null ->
-                    Image(bmp, spoken, Modifier.size(iconSize), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
-                else ->
-                    // Apps without an icon get their initials.
-                    Box(Modifier.size(iconSize), contentAlignment = Alignment.Center) {
-                        BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.45f).sp))
-                    }
+                    bmp != null ->
+                        Image(bmp, spoken, Modifier.size(iconSize), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
+                    else ->
+                        // Apps without an icon get their initials.
+                        Box(Modifier.size(iconSize), contentAlignment = Alignment.Center) {
+                            BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = (iconSize.value * 0.45f).sp))
+                        }
+                }
             }
             if (showLabel) TileLabel(label)
         }
+    }
+}
+
+/**
+ * A notification dot over an icon's top right, as stock launchers draw it: on the edge of a round icon, about a
+ * quarter of its width. The ring keeps it apart from an icon in the same accent.
+ */
+@Composable
+internal fun Modifier.notificationDot(show: Boolean): Modifier {
+    if (!show) return this
+    val fill = Palette.accent
+    val ring = Palette.background
+    return drawWithContent {
+        drawContent()
+        val radius = size.width * 0.114f
+        val center = Offset(size.width * 0.85f, size.width * 0.15f)
+        drawCircle(ring, radius * 1.25f, center)
+        drawCircle(fill, radius, center)
     }
 }
 

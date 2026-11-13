@@ -1,0 +1,199 @@
+app "canyon run" {
+  meta { owl: 22; description: "A low-poly flight down an endless canyon in 3D: drag to steer between pillars and tumbling rocks, and thread the rings for points"; version: "1.0"; license: "MIT"; category: "games" }
+  // How it works: the Canvas holds a scene(camera) { } of model(...) calls. The canyon is one terrain()
+  // tile whose heights repeat every 40 units, drawn as a few copies end to end under the ship, so it
+  // never runs out; fog in the background color hides where it ends. The ship flies toward -z, and
+  // the camera follows it from behind. Pillars, rocks and rings are spawned ahead in `every frame`
+  // and dropped once they're behind, and hits are plain distance checks in world units.
+  title: ""
+  statusBar: false
+  edge: true
+  fps: mode == "play" ? 60 : 30
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect width="256" height="256" rx="56" fill="#1d1420"/>
+    <path d="M0 256L70 120L104 132L128 92L152 132L186 120L256 256Z" fill="#7a3b2e"/>
+    <path d="M0 256L56 156L96 168L128 132L160 168L200 156L256 256Z" fill="#c4643f"/>
+    <path d="M60 256L118 150H138L196 256Z" fill="#3a2a35"/>
+    <circle cx="128" cy="70" r="26" fill="#ffd166"/>
+    <path d="M128 168L156 196L128 188L100 196Z" fill="#7ad1ff" stroke="#e8f6ff" stroke-width="5" stroke-linejoin="round"/>
+  </svg>"""
+
+  state mode = "title"
+  state best = 0 persist
+  // how far the ship has flown, in units, and how fast it goes
+  state flown = 0
+  state speed = 12
+  state bonus = 0
+  state gt = 0
+  state overAt = 0
+  // the ship, where the finger steers it, and how far it still has to go there; not x or y, which handlers' values would hide
+  state sx = 0
+  state sy = 1.8
+  state tx = 0
+  state ty = 1.8
+  // where the next pillar or rock goes, in units flown
+  state nextAt = 40
+  state rocks = []
+  state rings = []
+  state bits = []
+
+  let W = screenWidth ?? 400
+  let H = screenHeight ?? 800
+  let TOP = max(screenTop ?? 0, 12)
+  let score = floor(flown / 2) + bonus
+  let tile = floor(flown / 40)
+
+  // The canyon: a floor 10 units wide between walls that rise to 9. Row 40 repeats row 0, so tiles meet without a seam.
+  let GROUND = terrain(
+    range(41).map(i => range(31).map(j => pow(clamp((abs(j - 15) - 5) / 6, 0, 1), 2) * 9 + hash(i % 40, j) * (0.2 + clamp((abs(j - 15) - 5) / 6, 0, 1) * 2.4))),
+    range(40).map(i => range(30).map(j => abs(j - 14.5) < 5.5 ? (hash(i, j, 7) < 0.5 ? mix(muted, background, 0.55) : mix(muted, background, 0.4)) : (hash(i, j, 8) < 0.6 ? orange : mix(orange, red, 0.45))))
+  )
+  let PILLAR = cylinder(7)
+  let ROCK = sphere(6)
+  let BIT = cube()
+  // A ring: a tube of 6 sides bent round 16 times, as points and four-sided faces.
+  let RING = mesh(
+    flatten(range(16).map(i => range(6).map(j => [(1 + 0.16 * cos(rad(j * 60))) * cos(rad(i * 22.5)), (1 + 0.16 * cos(rad(j * 60))) * sin(rad(i * 22.5)), 0.16 * sin(rad(j * 60))]))),
+    flatten(range(16).map(i => range(6).map(j => [i * 6 + j, (i + 1) % 16 * 6 + j, (i + 1) % 16 * 6 + (j + 1) % 6, i * 6 + (j + 1) % 6])))
+  )
+  // The ship: a dart pointing toward -z, its faces in two colors.
+  let SHIP = mesh(
+    [[0, 0, -1.3], [-1, -0.05, 0.5], [1, -0.05, 0.5], [0, 0.32, 0.35], [0, -0.2, 0.4]],
+    [[0, 3, 1], [0, 2, 3], [0, 1, 4], [0, 4, 2], [1, 3, 4], [2, 4, 3]],
+    [accent, accent, muted, muted, orange, orange]
+  )
+
+  let cam = {eye: [sx * 0.7, sy + 1.5, -flown + 6], look: [sx * 0.85, sy * 0.8 + 0.4, -flown - 10], fov: 64, near: 0.3, far: 75}
+
+  every frame {
+    gt = gt + dt
+    // debris tumbles on, falling, after the ship is gone
+    bits = bits.map(b => merge(b, {x: b.x + b.vx * dt, y: max(0.2, b.y + b.vy * dt), z: b.z + b.vz * dt, vy: b.vy - 14 * dt, life: b.life - dt})).filter(b => b.life > 0)
+    if mode != "over" {
+      // On the title screen the ship weaves down the canyon by itself.
+      if mode == "title" {
+        tx = sin(gt * 0.6) * 3
+        ty = 1.8 + sin(gt * 1.1) * 0.9
+      }
+      speed = mode == "play" ? min(speed + 0.35 * dt, 40) : 12
+      flown = flown + speed * dt
+      sx = sx + (tx - sx) * min(1, 5 * dt)
+      sy = sy + (ty - sy) * min(1, 5 * dt)
+    }
+    if mode == "play" {
+      // What's ahead: one pillar or rock per gap, closer together the faster it goes, sometimes two, and a ring now and then.
+      if nextAt < flown + 72 {
+        let two = random() < min(0.65, flown / 3000)
+        let lanes = two ? [random() * 4.5 - 4.5, random() * 4.5] : [random() * 9 - 4.5]
+        rocks = rocks + lanes.map(l => random() < 0.5 ? {k: "p", x: l, y: 3, z: -nextAt, r: 0.6, s: 0} : {k: "r", x: l, y: 0.8 + random() * 2.6, z: -nextAt, r: 0.5 + random() * 0.4, s: random() * 360})
+        if random() < 0.4 {
+          rings = rings + [{x: random() * 7 - 3.5, y: 1.1 + random() * 2.2, z: -nextAt - 4, done: false}]
+        }
+        nextAt = nextAt + max(5.5, 12 - speed / 5)
+      }
+      // A ring counts when the ship goes through it: within a unit of its middle as it passes.
+      let through = count(rings, r => !r.done && r.z > -flown && dist([r.x, r.y], [sx, sy]) < 1)
+      if through > 0 {
+        bonus = bonus + 50 * through
+        haptic()
+      }
+      rings = rings.map(r => !r.done && r.z > -flown ? merge(r, {done: true, got: dist([r.x, r.y], [sx, sy]) < 1}) : r).filter(r => r.z < -flown + 8)
+      rocks = rocks.map(o => o.k == "r" ? merge(o, {s: o.s + 90 * dt}) : o).filter(o => o.z < -flown + 8)
+      // Pillars stand from the floor up past where the ship can fly: only how far to the side counts.
+      if any(rocks, o => o.k == "p" ? abs(o.z + flown) < 0.8 && abs(o.x - sx) < o.r + 0.4 : dist([o.x, o.y, o.z], [sx, sy, -flown]) < o.r + 0.3) {
+        mode = "over"
+        overAt = gt
+        best = max(best, score)
+        haptic()
+        bits = range(18).map(j => {x: sx, y: sy, z: -flown, vx: random() * 12 - 6, vy: random() * 9, vz: random() * 8 - 2 - speed * 0.3, life: 1 + random(), s: random() * 360, c: j % 3 == 0 ? orange : accent})
+      }
+    }
+  }
+
+  Box {
+    fill: true
+    background: background
+    Canvas {
+      fill: true
+      ripple: false
+      // The sun, far ahead of the camera: drawn first, so the canyon walls pass in front of it.
+      let sun = project([0, 14, -flown - 400], cam, width, height)
+      if sun != null {
+        circle(sun.x, sun.y, 70, fill: alpha(yellow, 0.12))
+        circle(sun.x, sun.y, 36, fill: alpha(yellow, 0.85))
+      }
+      scene(cam, light: [0.4, 1, 0.5], ambient: 0.3, fog: background) {
+        for t in range(max(0, tile - 1), tile + 3) {
+          model(GROUND, at: [0, 0, -(t * 40 + 20)])
+        }
+        for o in rocks {
+          if o.k == "p" {
+            model(PILLAR, at: [o.x, 3, o.z], scale: [o.r * 2, 7, o.r * 2], color: mix(orange, foreground, 0.25))
+          } else {
+            model(ROCK, at: [o.x, o.y, o.z], turn: [o.s, o.s * 0.6, 0], scale: o.r * 2, color: muted, smooth: false)
+          }
+        }
+        for r in rings {
+          if !r.got {
+            model(RING, at: [r.x, r.y, r.z], turn: [0, 0, gt * 120], color: yellow, smooth: true, twoSided: true, ambient: 0.55)
+          }
+        }
+        for b in bits {
+          model(BIT, at: [b.x, b.y, b.z], turn: [b.s + gt * 300, b.s, 0], scale: 0.3, color: b.c)
+        }
+        if mode != "over" {
+          model(SHIP, at: [sx, sy, -flown], turn: [(ty - sy) * 10, 0, (sx - tx) * 16], scale: 0.6, twoSided: true)
+        }
+      }
+
+      // Dragging moves the point the ship heads for, a bit at a time, so the finger never covers it.
+      onDrag: {
+        if mode == "play" {
+          tx = clamp(tx + dx / 40, -4.4, 4.4)
+          ty = clamp(ty - dy / 55, 0.6, 4.2)
+        }
+      }
+      onTap: {
+        if mode == "title" || (mode == "over" && gt - overAt > 1) {
+          mode = "play"
+          flown = 0
+          speed = 14
+          bonus = 0
+          sx = 0
+          sy = 1.8
+          tx = 0
+          ty = 1.8
+          nextAt = 40
+          rocks = []
+          rings = []
+          bits = []
+        }
+      }
+    }
+    if mode == "play" {
+      Row {
+        fill: width
+        padding: [16, TOP + 4, 16, 0]
+        Text { text: fmtNum(score); style: title; color: foreground; weight: 1 }
+        Text { text: "${floor(speed * 10)} km/h"; style: muted }
+      }
+    }
+    if mode != "play" {
+      Column {
+        fill: true
+        align: center
+        justify: center
+        gap: 12
+        padding: 24
+        Text { text: mode == "title" ? "canyon run" : "crashed"; style: huge; color: mode == "title" ? yellow : red; align: center }
+        if mode == "over" {
+          Text { text: fmtNum(score); style: title; align: center }
+        }
+        Text { text: best > 0 ? "best ${fmtNum(best)}" : ""; style: muted; align: center }
+        Spacer { height: 12 }
+        Text { text: "drag to steer · fly through the rings"; align: center }
+        Text { text: "tap to fly"; style: muted; align: center }
+      }
+    }
+  }
+}

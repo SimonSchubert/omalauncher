@@ -65,7 +65,8 @@ data class CatalogEntry(
 
     /**
      * Runs commands in the guest or installs packages, like [dev.omalauncher.widgets.lang.Program.needsLinux]; http
-     * requests, web images, sounds, fonts and what Android tells it (notifications, apps, recent apps) don't count.
+     * requests, web pages, web images, sounds, fonts and what Android tells it (notifications, apps, recent apps) don't
+     * count.
      */
     val needsLinux get() = requires.isNotEmpty() || commands.any { c -> NO_LINUX.none { c.startsWith(it) } && !c.startsWith(Compiler.IF_LINUX) }
 }
@@ -77,7 +78,7 @@ data class FacePage(
 )
 
 /** What a store item's listed commands start with when they don't run in Linux; see [CatalogEntry.needsLinux]. */
-private val NO_LINUX = listOf("http GET ", "http POST ", "image GET ", "sound GET ", "font GET ", "read Android ", "read installed Android apps", "read the recently opened apps")
+private val NO_LINUX = listOf("http GET ", "http POST ", "browser GET ", "image GET ", "sound GET ", "font GET ", "read Android ", "read installed Android apps", "read the recently opened apps")
 
 object Catalog {
     /**

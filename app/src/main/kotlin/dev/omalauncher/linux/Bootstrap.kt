@@ -578,9 +578,10 @@ class Bootstrap(
 
     private fun configure() {
         val root = proot.rootfs
+        // Public servers until LinuxDns writes the phone's (Runtime starts it once Linux is up).
         File(root, "etc/resolv.conf").apply {
             delete()
-            writeText("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
+            writeText(LinuxDns.resolvConf(emptyList(), null))
         }
         File(root, "etc/hosts").writeText("127.0.0.1 localhost\n::1 localhost\n")
         File(root, "etc/locale.conf").writeText("LANG=C.UTF-8\n")

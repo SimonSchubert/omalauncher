@@ -91,6 +91,13 @@
     <string name="linux_agent_ori">OpenRouter\'s coding agent</string>
     <string name="linux_agent_muse">Meta\'s coding agent</string>
     <string name="linux_agent_kimi">Moonshot AI\'s coding agent</string>
+    <string name="linux_agent_qwen">Alibaba\'s Qwen coding agent</string>
+    <string name="linux_agent_mcode">MiniMax\'s coding agent</string>
+    <string name="linux_agent_kiro">Amazon\'s coding agent</string>
+    <string name="linux_agent_kilo">Open-source agent built on OpenCode</string>
+    <string name="linux_agent_devin">Cognition\'s coding agent</string>
+    <string name="linux_agent_amp">Coding agent from ampcode.com</string>
+    <string name="linux_agent_commandcode">Coding agent from commandcode.ai</string>
 
     <!-- The first-run screen. -->
     <string name="linux_welcome_title">omarchy on your home screen</string>
@@ -159,9 +166,14 @@
     <string name="linux_retry">retry</string>
     <string name="linux_gpu_turn_off">turn off</string>
     <string name="linux_gpu_turn_on">turn on</string>
+    <string name="linux_cpu_pinning_title">fast system calls</string>
+    <string name="linux_cpu_pinning_on">on · keeps Linux on one fast CPU core · for programs started from now on</string>
+    <string name="linux_cpu_pinning_off">off · for programs started from now on</string>
 
     <!-- The ongoing notification while Linux runs. -->
     <string name="linux_notification_channel">Linux session</string>
+    <!-- Name of the notification channel for what agents and scripts in Linux post with `omalauncher notify`, shown in Android's notification settings. -->
+    <string name="linux_notify_channel">Agents and scripts</string>
     <!-- %1$s: the install's phase (download arch linux). -->
     <string name="linux_notification_installing">Installing Linux · %1$s</string>
     <!-- %1$d: percent done, %2$s: the install's phase (download arch linux). -->

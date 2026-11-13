@@ -23,6 +23,9 @@ class VoiceActivity : InstantActivity() {
             finishAndRemoveTask()
             return
         }
+        // Brought back in a new process (after an update, or after Android ended it), Voice comes up before home,
+        // which starts the rest; without that the agents are never looked for, and it says none is installed.
+        runtime.start()
         opens = 1
         runtime.voice.openedAnew()
         setInstantContent {

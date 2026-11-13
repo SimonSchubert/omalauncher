@@ -116,6 +116,28 @@ object AppLanguage {
 
     private fun overrides(tag: String) = Configuration().apply { setLocales(LocaleList(Locale.forLanguageTag(tag))) }
 
+    /**
+     * [code] in two letters where it has them ("deu" → "de"), as the launcher and speech recognizers name languages:
+     * some text-to-speech engines name theirs in three.
+     */
+    fun short(code: String): String = threeLetters[code.lowercase(Locale.ROOT)] ?: code
+
+    private val threeLetters by lazy {
+        Locale.getISOLanguages().mapNotNull { l -> runCatching { Locale(l).isO3Language to l }.getOrNull() }.toMap()
+    }
+
+    /** String [id] in [locale] when the launcher has its text in that language, else null. */
+    fun stringIn(
+        context: Context,
+        locale: Locale,
+        id: Int,
+        vararg args: Any,
+    ): String? {
+        if (supported.none { Locale.forLanguageTag(it).language == locale.language }) return null
+        val config = Configuration(context.resources.configuration).apply { setLocale(locale) }
+        return context.createConfigurationContext(config).getString(id, *args)
+    }
+
     /** [tag]'s name in its own language: "English", "Indonesia". */
     fun name(tag: String): String {
         val locale = Locale.forLanguageTag(tag)

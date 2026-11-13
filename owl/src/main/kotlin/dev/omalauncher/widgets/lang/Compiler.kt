@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 17
+        const val LEVEL = 22
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -61,10 +61,19 @@ class Compiler private constructor(
 
         private const val MAX_SHAPES = 8
 
+        /** Each Browser is a web view of its own: a tile has room for two. */
+        private const val MAX_BROWSERS = 2
+
+        /** Texts [shaderTexts] gives at most for one Shader: a few picked between, not every combination of many. */
+        private const val MAX_SHADER_TEXTS = 64
+
         private val TIME_WORD = Regex("""\btime\b""")
 
         /** Whether a Shader's code reads its `time` uniform: only then does it need a frame clock. */
         fun shaderReadsTime(code: String) = TIME_WORD.containsMatchIn(code)
+
+        /** The names of a Shader's `uniform shader name;` lines, the images it samples (owl 22). */
+        fun shaderImages(code: String): Set<String> = SHADER_IMAGE_RE.findAll(code).map { it.groupValues[1] }.toSet()
 
         /**
          * A URL's scheme, host and port, written out so no value can send it elsewhere: what a secret is bound to. No
@@ -180,7 +189,7 @@ class Compiler private constructor(
     ): List<String> {
         if (e is Expr.Cond) return servers(e.a, s, name) + servers(e.b, s, name)
         // A URL that's null pauses its source: it goes nowhere.
-        if (ex(e, s).const == Null) return emptyList()
+        if (reviewed(e, s) == Null) return emptyList()
         val host = server(e, s) ?: fail("$name is a secret, so the server it goes to is written out: \"https://api.example.com/…\", not a value", e.pos)
         if (host.startsWith("http://")) fail("$name is a secret, so it goes only to an https:// server, where nothing on the way can read it", e.pos)
         if (host.startsWith("ws://")) fail("$name is a secret, so it goes only to a wss:// server, where nothing on the way can read it", e.pos)
@@ -232,6 +241,21 @@ class Compiler private constructor(
     private var guest = false
     private var animated = false
     private var terminal = false
+    private var browser = false
+    /** Each text a Shader's code can be, null for one worked out while the widget runs. */
+    private val shaders = ArrayList<String?>()
+
+    /** Browsers so far, against [MAX_BROWSERS]. */
+    private var browsers = 0
+
+    /** Where the first web(...) is, checked against [browser] once every node is compiled. */
+    private var webAt: Int? = null
+
+    /**
+     * Inside a `for` or a component's body: what's written there once is drawn as many times as it's used, every copy
+     * the same node. A Browser can't go there: its page belongs to the node, so the copies would close each other's.
+     */
+    private var repeated = 0
     private var nodes = 0
     private var maxNodes = MAX_NODES
 
@@ -256,6 +280,12 @@ class Compiler private constructor(
 
     /** Where a handler calls screen(), which an app has no use for. */
     private var openScreen: Int? = null
+
+    /** While a scene's body is compiled: it holds model(...) calls, and only it does. */
+    private var inScene = false
+
+    /** While [reviewed] works out a command or URL: lets read as values again, not as what they folded to. */
+    private var reviewing = false
 
     /** The newest feature used, from [SINCE], and where: the widget must declare at least its version. */
     private var needs: Triple<Int, String, Int>? = null
@@ -357,13 +387,21 @@ class Compiler private constructor(
         val background = props["background"]?.let { if (gradient(it.value)) since(GRADIENT_BACKGROUND, it.pos); ex(it.value, root) }
         // Whether the status bar stays over a face, read as it changes: a face can hide it for a game and bring it back.
         val statusBar = props["statusBar"]?.let { ex(it.value, root) }
+        // Whether the home screen holds still around the tile, read as it changes: a game holds it while it's played. A
+        // constant would hold it whenever the page shows, so it has to be something that changes, like a state.
+        val lock =
+            props["lock"]?.let { p ->
+                since(HOME_LOCK, p.pos)
+                ex(p.value, root).also { if (it.const != null) fail("lock holds the home screen still while what it says is true, so it's something that changes, like lock: playing, not a fixed value", p.pos) }
+            }
+        val fps = props["fps"]?.let(::frameRate)
         // Drawn under the status bar and a camera cutout: fixed in the file, since the whole face moves when it changes.
         val edge =
             props["edge"]?.let { p ->
                 since(FACE_EDGE, p.pos)
                 ((p.value as? Expr.Lit)?.value as? Bool)?.v ?: fail("edge is true or false, not an expression", p.pos)
             } ?: false
-        checkLevel(level)
+        finish(level)
 
         return Program(
             name = ast.name ?: "widget",
@@ -371,6 +409,8 @@ class Compiler private constructor(
             level = level,
             size = props["size"]?.let { cells(it) },
             statusBar = statusBar,
+            lock = lock,
+            fps = fps,
             edge = edge,
             kind = ast.kind,
             minSize = props["minSize"]?.let { cells(it) } ?: (1 to 1),
@@ -393,13 +433,30 @@ class Compiler private constructor(
             programs = scripts.flatMap(ShellWords::programs).toSortedSet(),
             animated = animated,
             terminal = terminal,
+            browser = browser,
+            shaders = shaders,
             nodeCount = tileNodes,
         )
     }
 
     /** Declared, so a launcher too old for a feature says "update the launcher" instead of failing on an unknown name. */
-    private fun checkLevel(level: Int) {
+    /** Checks what can only be told once the whole file is compiled: the level it declares, and a web(...) with no page to steer. */
+    private fun finish(level: Int) {
         needs?.let { (v, feature, pos) -> if (level < v) fail("$feature needs owl $v: add meta { owl: $v }", pos) }
+        webAt?.let { if (!browser) fail("web(...) steers this file's Browser, and it has none: add Browser { url: \"https://host/page\" }", it) }
+    }
+
+    /**
+     * `fps:`, how many frames a second the file's `time` animation needs, read as it changes: a pet that only
+     * blinks and breathes needs a few, and its hop after a tap more. A fixed number is checked here; one worked out
+     * as it runs is kept from 1 to [MAX_FPS] (see Program.fps).
+     */
+    private fun frameRate(p: Prop): Ev {
+        since(FRAME_RATE, p.pos)
+        val e = ex(p.value, root)
+        val c = e.const
+        if (c != null && (c !is Num || c.v < 1 || c.v > MAX_FPS)) fail("fps is a number of frames a second, from 1 to $MAX_FPS, like fps: 10 or fps: playing ? 30 : 10", p.pos)
+        return e
     }
 
     /**
@@ -415,7 +472,7 @@ class Compiler private constructor(
         triggers: List<Trigger>,
     ): Program {
         since("app \"…\" { }", 0)
-        for (p in body.props) if (p.name !in setOf("title", "icon", "back", "edge", "statusBar")) fail("an app only takes title, icon, back, edge and statusBar (no size or page: it isn't a tile)", p.pos)
+        for (p in body.props) if (p.name !in setOf("title", "icon", "back", "edge", "statusBar", "fps")) fail("an app only takes title, icon, back, edge, statusBar and fps (no size or page: it isn't a tile)", p.pos)
         // Whether the status bar stays over the app, read as it changes, as on a face.
         val statusBar = body.props.firstOrNull { it.name == "statusBar" }?.let { since(APP_STATUS_BAR, it.pos); ex(it.value, root) }
         // Drawn under the navigation bar: fixed in the file, since the whole view moves when it changes.
@@ -456,7 +513,8 @@ class Compiler private constructor(
         val title = body.props.firstOrNull { it.name == "title" }?.let { ex(it.value, root) }
         val back = backProp?.let { ex(it.value, root) }
         val onBack = onBackHandler?.let { handler(it, root) }
-        checkLevel(level)
+        val fps = body.props.firstOrNull { it.name == "fps" }?.let(::frameRate)
+        finish(level)
         return Program(
             name = ast.name ?: "app",
             meta = meta,
@@ -468,6 +526,7 @@ class Compiler private constructor(
             onBack = onBack,
             edge = edge,
             statusBar = statusBar,
+            fps = fps,
             triggers = triggers,
             commands = commands.toList(),
             secretHosts = secretHosts.mapValues { it.value.sorted() },
@@ -477,6 +536,8 @@ class Compiler private constructor(
             programs = scripts.flatMap(ShellWords::programs).toSortedSet(),
             animated = animated,
             terminal = terminal,
+            browser = browser,
+            shaders = shaders,
             nodeCount = nodes,
             kind = ast.kind,
             icon = icon,
@@ -498,8 +559,8 @@ class Compiler private constructor(
         triggers: List<Trigger>,
     ): Program {
         since(PANEL_FILE, 0)
-        body.props.firstOrNull { it.name != "enter" && it.name != "opacity" && it.name != "keyboard" }?.let {
-            fail("a panel only takes enter (what the prompt bar says Enter does), opacity (how much it covers home) and keyboard (whether the keyboard comes up as it opens); the launcher frames it, and gesture settings pick which swipe opens it", it.pos)
+        body.props.firstOrNull { it.name !in setOf("enter", "opacity", "keyboard", "fps") }?.let {
+            fail("a panel only takes enter (what the prompt bar says Enter does), opacity (how much it covers home), keyboard (whether the keyboard comes up as it opens) and fps (how often it animates); the launcher frames it, and gesture settings pick which swipe opens it", it.pos)
         }
         body.handlers.firstOrNull { it.name != "onSubmit" && it.name != "onKey" }?.let {
             fail("handlers go on the nodes inside a panel; only onSubmit (Enter in the prompt bar) and onKey (its arrow and Tab keys) go at its top", it.pos)
@@ -529,7 +590,8 @@ class Compiler private constructor(
                 since(PANEL_KEYBOARD, it.pos)
                 ((it.value as? Expr.Lit)?.value as? Bool)?.v ?: fail("keyboard is true or false, not an expression", it.pos)
             } ?: true
-        checkLevel(level)
+        val fps = body.props.firstOrNull { it.name == "fps" }?.let(::frameRate)
+        finish(level)
         return Program(
             name = ast.name ?: "panel",
             meta = meta,
@@ -541,6 +603,7 @@ class Compiler private constructor(
             enter = enter,
             opacity = opacity,
             keyboard = keyboard,
+            fps = fps,
             triggers = triggers,
             commands = commands.toList(),
             secretHosts = secretHosts.mapValues { it.value.sorted() },
@@ -578,7 +641,7 @@ class Compiler private constructor(
         val tree = items(body.items, root, Children.UI)
         if (tree.isEmpty()) fail("a key bar needs at least one node, like Button { text: \"esc\"; onPress: pressKey(\"esc\") }", 0)
         (screenAction ?: openScreen)?.let { fail("screen() and close() open and close a widget's screen { }; the key bar comes and goes with the keyboard", it) }
-        checkLevel(level)
+        finish(level)
         return Program(
             name = ast.name ?: "keybar",
             meta = meta,
@@ -636,7 +699,7 @@ class Compiler private constructor(
         what: String,
         prefix: String = "",
     ) {
-        (ev.const as? Str)?.v?.let {
+        (reviewed(e, s) as? Str)?.v?.let {
             scripts += it
             commands += prefix + it
             return
@@ -662,7 +725,7 @@ class Compiler private constructor(
         s: Scope,
         value: String = "sh",
     ): List<String>? {
-        ex(e, s).const?.let { c ->
+        reviewed(e, s)?.let { c ->
             // A URL that's null pauses its source: no shape.
             return if (c is Str || c is Num) listOf(c.toString()) else if (c == Null && value == "enc") emptyList() else null
         }
@@ -684,6 +747,37 @@ class Compiler private constructor(
                 else -> null
             }
         return out?.let(::capped)
+    }
+
+    /**
+     * A Browser's url: a page from the web, at a host written out in the file, so the review can list it as
+     * "browser GET <url>" the way it lists http(...). https only: file:, content:, javascript: and data: say
+     * where a file is or run code, and http sends the page in the clear. Its values follow the same rule as a
+     * URL's anywhere: enc() around each, and none of them the host.
+     */
+    private fun browserUrl(
+        e: Expr,
+        ev: Ev,
+        s: Scope,
+    ) {
+        // Each way it can turn out: url: ready ? "https://a.test/" : "https://a.test/start".
+        if (e is Expr.Cond) return listOf(e.a, e.b).forEach { browserUrl(it, ex(it, s), s) }
+        val whole = constText(e, s)
+        val start = whole ?: constantStart(e, s)
+        if (start.startsWith("http://")) fail("a Browser loads over https only", e.pos)
+        if (start.isNotEmpty() && !start.startsWith("https://")) {
+            fail("a Browser loads pages from the web, so https:// only: not file:, content:, javascript: or data:", e.pos)
+        }
+        // A page that's null loads nothing: nothing to check, and nothing to list.
+        if (ev.const == Null) return
+        val listed =
+            whole?.let { listOf(it) }
+                ?: shapes(e, s, "enc")?.takeIf { it.isNotEmpty() && it.all(FIXED_HOST::containsMatchIn) }
+        if (listed == null) {
+            val (msg, pos) = urlWarning(e, s) ?: ("a Browser's url is https:// at a host written in the file, with its values put through enc()" to e.pos)
+            fail(msg, pos)
+        }
+        listed.forEach { commands += "browser GET $it" }
     }
 
     /**
@@ -765,9 +859,27 @@ class Compiler private constructor(
         s: Scope,
     ): String? {
         if (e is Expr.Interp) return e.parts.map { constText(it, s) ?: return null }.joinToString("")
-        val c = ex(e, s).const ?: (e as? Expr.Name)?.let { n -> (lookup(n.name, s) as? Ref.Slot)?.let { (globals[it.index] as? Global.Let)?.value?.const } }
+        val c = reviewed(e, s) ?: (e as? Expr.Name)?.let { n -> (lookup(n.name, s) as? Ref.Slot)?.let { (globals[it.index] as? Global.Let)?.value?.const } }
         return if (c is Str || c is Num) c.toString() else null
     }
+
+    /**
+     * Every text a Shader's code can be, when each is fixed: a literal or a top-level let (`code: print`), joined
+     * (`lib + city`) or picked (`night ? dark : day`); null when any is worked out while the widget runs.
+     */
+    private fun shaderTexts(
+        e: Expr,
+        s: Scope,
+    ): List<String>? =
+        when {
+            e is Expr.Cond -> (shaderTexts(e.a, s) ?: return null) + (shaderTexts(e.b, s) ?: return null)
+            e is Expr.Binary && e.op == "+" -> {
+                val a = shaderTexts(e.a, s) ?: return null
+                val b = shaderTexts(e.b, s) ?: return null
+                a.flatMap { x -> b.map { x + it } }.take(MAX_SHADER_TEXTS)
+            }
+            else -> constText(e, s)?.let(::listOf)
+        }
 
     private fun constant(
         e: Expr,
@@ -844,6 +956,10 @@ class Compiler private constructor(
                 if (e.name == "recent") commands += "read the recently opened apps"
                 if (e.name == "drawer") commands += "read the launcher's apps (names and icons)"
                 if (e.name == "speech") commands += "listen through the microphone after a tap, and read what you say"
+                if (e.name == "location") commands += "read the phone's approximate location, once you allow it"
+                if (e.name == "calendar") commands += "read events in the phone's calendars, once you allow it"
+                if (e.name == "airpods") commands += AIRPODS_COMMAND
+                if (e.name == "motion") commands += "read how the phone is tilted while it shows"
                 Global.Source(d.name, "android.${e.name}", null, (every ?: 60.0).coerceAtLeast(1.0), false, 0)
             }
             else -> fail("a source is cmd(\"...\"), stream(\"...\"), http(\"...\"), file(\"...\"), clock, or android.${ANDROID.joinToString("/")}", e.pos)
@@ -942,9 +1058,15 @@ class Compiler private constructor(
 
     private fun trigger(d: Decl.Trigger): Trigger {
         since(d.kind, d.pos)
+        if (d.kind == "every" && (d.expr as? Expr.Name)?.name == "frame") {
+            since(EVERY_FRAME, d.pos)
+            // Run by the frame clock, which only runs for an animated widget.
+            animated = true
+            return Trigger(TriggerKind.FRAME, Ev.of(Null), handler(Handler(d.kind, d.stmts, d.pos), root, listOf("dt")), d.pos)
+        }
         val expr =
             if (d.kind == "every") {
-                val seconds = constant(d.expr, "every").num() ?: fail("every takes an interval, like every 10s { ... }", d.expr.pos)
+                val seconds = constant(d.expr, "every").num() ?: fail("every takes an interval, like every 10s { ... }, or frame: every frame { ... }", d.expr.pos)
                 if (!(seconds >= 1)) fail("every runs at most once a second", d.expr.pos)
                 Ev.of(Num(seconds))
             } else {
@@ -964,20 +1086,27 @@ class Compiler private constructor(
     }
 
     /** The names of the sources that read android.speech: speech(...) needs one, and `on said.final` may type. */
-    private val speechSources by lazy {
+    private val speechSources by lazy { androidSources("speech") }
+
+    /** The names of the sources that read android.[name]. */
+    private fun androidSources(name: String) =
         ast.body.decls
             .filterIsInstance<Decl.Source>()
-            .filter { (it.expr as? Expr.Member)?.let { m -> m.name == "speech" && (m.e as? Expr.Name)?.name == "android" } == true }
+            .filter { (it.expr as? Expr.Member)?.let { m -> m.name == name && (m.e as? Expr.Name)?.name == "android" } == true }
             .map { it.name }
             .toSet()
-    }
 
     private fun component(d: Decl.Component): Component {
         val body = d.body
         if (body.props.isNotEmpty() || body.handlers.isNotEmpty()) fail("a component's body holds nodes; put properties on a node inside it", d.pos)
         val scope = Scope(root, d.params.map { it.first })
         val defaults = d.params.map { (_, def) -> def?.let { ex(it, root) } }
-        return Component(d.params.map { it.first }, defaults, items(body.items, scope, Children.UI))
+        repeated++
+        try {
+            return Component(d.params.map { it.first }, defaults, items(body.items, scope, Children.UI))
+        } finally {
+            repeated--
+        }
     }
 
     // Items
@@ -1024,7 +1153,14 @@ class Compiler private constructor(
                 noProps(it.body, "for")
                 val list = ex(it.list, scope)
                 val inner = Scope(scope, listOfNotNull(it.name, it.index ?: "\u0000index"))
-                WNode.For(list, it.key?.let { k -> ex(k, inner) }, items(it.body.items, inner, mode), it.pos)
+                repeated++
+                val body =
+                    try {
+                        items(it.body.items, inner, mode)
+                    } finally {
+                        repeated--
+                    }
+                WNode.For(list, it.key?.let { k -> ex(k, inner) }, body, it.pos)
             }
             is Item.Let -> error("lets are gathered by items()")
             is Item.Call -> {
@@ -1047,6 +1183,17 @@ class Compiler private constructor(
         if (op.group && it.body == null) fail("${c.name}(...) wraps drawing calls: ${c.name}(...) { ... }", c.pos)
         if (!op.group && it.body != null) fail("${c.name}(...) takes no { } body", c.pos)
         for ((k, v) in c.named) if (k !in DRAW_NAMED) fail("unknown option '$k' (${DRAW_NAMED.joinToString()})", v.pos)
+        // A scene's and a model's options are theirs alone, and theirs are only those.
+        val own = if (c.name == "scene") SCENE_NAMED else if (c.name == "model") MODEL_NAMED else null
+        for ((k, v) in c.named) {
+            if (own != null && k !in own) fail("${c.name} takes ${own.joinToString()}, not '$k'", v.pos)
+            if (own == null && k != "color" && (k in SCENE_NAMED || k in MODEL_NAMED)) fail("'$k' is an option of scene(...) or model(...)", v.pos)
+        }
+        when {
+            c.name == "model" && !inScene -> fail("model(...) draws in 3D, so it goes inside scene(camera) { ... }", c.pos)
+            c.name == "scene" && inScene -> fail("a scene can't hold another scene", c.pos)
+            inScene && c.name != "model" -> fail("a scene holds model(...) calls; draw ${c.name}(...) on the Canvas after the scene, over it", c.pos)
+        }
         since(c.name, c.pos)
         if (c.name == "image") webFile(c.args[0], scope, "image")
         if (c.name == "text" && c.named.any { it.first in TEXT_STYLE }) since(CANVAS_TEXT_STYLE, c.pos)
@@ -1059,7 +1206,13 @@ class Compiler private constructor(
             c.named.associate { (k, v) -> k to (enumOrNull(k, v) ?: ex(v, scope)) },
             it.body?.let { b ->
                 noProps(b, c.name)
-                items(b.items, scope, Children.DRAW)
+                val scene = c.name == "scene"
+                if (scene) inScene = true
+                try {
+                    items(b.items, scope, Children.DRAW)
+                } finally {
+                    if (scene) inScene = false
+                }
             },
             it.pos,
         )
@@ -1138,10 +1291,32 @@ class Compiler private constructor(
             }
             guest = true
         }
+        if (n.type == "Browser") {
+            browser = true
+            if (repeated > 0) fail("a Browser can't go inside a for or a component: its page is the node's, so each copy would close the others'; write it out, two at most", n.pos)
+            // A home tile's or a face's only: elsewhere nothing gives its touches back to home or lets Back reach its history.
+            if (inScreen != false || (ast.kind != OwlKind.Widget && ast.kind != OwlKind.Face)) {
+                fail("a Browser goes on a widget's tile or a face, not in a screen { }, an app, a panel or the key bar", n.pos)
+            }
+            if (++browsers > MAX_BROWSERS) {
+                fail("a widget has room for $MAX_BROWSERS Browsers, each a web view of its own: show another page by setting a Browser's url instead", n.pos)
+            }
+            val url = body.props.firstOrNull { it.name == "url" } ?: fail("a Browser needs a url: \"https://host/page\"", n.pos)
+            browserUrl(url.value, props.getValue("url"), scope)
+        }
         if (n.type == "Image") body.props.firstOrNull { it.name == "src" }?.let { webFile(it.value, scope, "image") }
         // A shader animates only if its code reads `time`; code that's worked out at run time might.
         if (n.type == "Shader") {
             val code = props["code"]?.const
+            body.props.firstOrNull { it.name == "code" }?.let { p ->
+                val texts = shaderTexts(p.value, scope)
+                shaders += texts ?: listOf(null)
+                // An image to sample, or an array uniform: older launchers pass neither.
+                for (t in texts.orEmpty()) {
+                    if (SHADER_IMAGE_RE.containsMatchIn(t)) since(SHADER_IMAGE, p.pos)
+                    if (SHADER_ARRAY_RE.containsMatchIn(t)) since(SHADER_ARRAY, p.pos)
+                }
+            }
             if (code == null || shaderReadsTime(code.toString())) animated = true
         }
         if (kind.children == Children.NONE && body.items.isNotEmpty()) fail("${n.type} can't hold other nodes", body.items[0].pos)
@@ -1321,6 +1496,7 @@ class Compiler private constructor(
                     if ("${call.name}(\"$c\")" in SINCE) since("${call.name}(\"$c\")", call.pos)
                 }
                 since(call.name, call.pos)
+                if (call.name == "web" && webAt == null) webAt = call.pos
                 // notification(...) with one value or three is a word from owl 13, even when the word isn't written out.
                 if (call.name == "notification" && call.args.size != 2) since("notification(\"action\")", call.pos)
                 // A written-out brightness; one from a value, like a Slider's, can't be told from on and off here.
@@ -1360,6 +1536,15 @@ class Compiler private constructor(
                     }
                     // The microphone opens only for a touch, never on a timer or a fetched value.
                     if (TriggerKind.entries.any { it.word == handlerName } && word != null && word !in SPEECH_ANYWHERE) fail("speech(\"$word\") works in onTap, not in a trigger; stop and cancel work anywhere", call.pos)
+                }
+                if (call.name == "airpods") commands += AIRPODS_COMMAND
+                if (call.name in ASKS && (args.getOrNull(0)?.const as? Str)?.v == "request") {
+                    val ask = "${call.name}(\"request\")"
+                    // Asking for what nothing reads: what it allows is only in the source.
+                    if (androidSources(call.name).isEmpty()) fail("$ask asks for what source x = android.${call.name} reads: declare it, then x.granted says whether it's allowed", call.pos)
+                    // The permission dialog covers the widget before the finger lifts, and comes only for a touch.
+                    if (handlerName == "onPress" || handlerName == "onRelease") fail("$ask opens Android's permission dialog over the widget before the finger lifts: put it in onTap", call.pos)
+                    if (TriggerKind.entries.any { it.word == handlerName }) fail("$ask works in onTap, not in a trigger: Android asks only when you tap", call.pos)
                 }
                 if (call.name == "latch") (args.getOrNull(1)?.const as? Str)?.v?.let { if (it !in KeyNames.hows) fail("latch's second value is ${KeyNames.hows.joinToString()}", call.args[1].pos) }
                 if (call.name == "screen" || call.name == "close") screenAction = screenAction ?: call.pos
@@ -1512,7 +1697,7 @@ class Compiler private constructor(
                 p is Expr.Binary && p.op == "+" -> bad(p.a, false) ?: bad(p.b, false)
                 p is Expr.Cond -> bad(p.a, top) ?: bad(p.b, top)
                 p is Expr.Call && (p.name == "enc" || p.name in NUMBERS) -> null
-                ex(p, s).const == Null -> null
+                reviewed(p, s) == Null -> null
                 else -> p.also { whole = top }
             }
         val value = bad(e, true)
@@ -1534,7 +1719,7 @@ class Compiler private constructor(
             return "a value in this URL isn't put through enc(), so the store's review can't show where it goes: write $fix (a number can go through int(n) or fixed(n, 4) instead; a path with / in it can't, so write its fixed parts out and enc() only the values between them)" to value.pos
         }
         // Every value is encoded: so either the server comes from one, or the URL has too many ways to turn out to list.
-        fun fixed(p: Expr): Boolean = if (p is Expr.Cond) fixed(p.a) && fixed(p.b) else ex(p, s).const == Null || server(p, s) != null
+        fun fixed(p: Expr): Boolean = if (p is Expr.Cond) fixed(p.a) && fixed(p.b) else reviewed(p, s) == Null || server(p, s) != null
         if (fixed(e)) {
             return "this URL can turn out more than $MAX_SHAPES ways, more than the store's review lists: write fewer ternaries into it, " +
                 "or pass the parts that vary through enc() as one value" to e.pos
@@ -1593,6 +1778,23 @@ class Compiler private constructor(
     ) = e is Expr.Name && e.name in secrets && lookup(e.name, s) is Ref.Slot
 
     private fun isUnset(e: Expr) = e is Expr.Lit && (e.value == Null || e.value == Str(""))
+
+    /**
+     * [e]'s constant as the store's review sees it: a let stays a value, as it did before lets folded, so
+     * `sh(script)` is one value in a command and not the script's whole text, which would no longer be listable.
+     */
+    private fun reviewed(
+        e: Expr,
+        s: Scope,
+    ): Value? {
+        val was = reviewing
+        reviewing = true
+        try {
+            return ex(e, s).const
+        } finally {
+            reviewing = was
+        }
+    }
 
     private fun ex(
         e: Expr,
@@ -1708,6 +1910,16 @@ class Compiler private constructor(
                             "({Authorization: \"Bearer \${${e.name}}\"}), into their URL as enc(${e.name}), or into ${e.name} == null, != null or != \"\"",
                         e.pos,
                     )
+                }
+                // A let folded to a constant (`let C = 32`, `let BOX = cube()`) and an asset (a fixed name) read as their
+                // value: no read through the host, which in the app goes through Compose's state on every use, and what
+                // uses them folds too.
+                if (!reviewing) {
+                    when (val g = globals.getOrNull(ref.index)) {
+                        is Global.Let -> g.value.const?.let { return Ev.of(it) }
+                        is Global.Asset -> return Ev.of(g.value)
+                        else -> {}
+                    }
                 }
                 return Ev(null) { env -> env.host.read(ref.index) }
             }

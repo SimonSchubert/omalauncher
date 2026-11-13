@@ -3,18 +3,18 @@
     <string name="store_title">toko</string>
 
     <string name="store_kind_widgets">widget</string>
-    <string name="store_kind_faces">face</string>
+    <string name="store_kind_faces">widget layar penuh</string>
     <string name="store_kind_apps">aplikasi</string>
     <string name="store_kind_panels">panel</string>
     <string name="store_kind_keybars">keybar</string>
     <string name="store_kind_widget">widget</string>
-    <string name="store_kind_face">face</string>
+    <string name="store_kind_face">widget layar penuh</string>
     <string name="store_kind_app">aplikasi</string>
     <string name="store_kind_panel">panel</string>
     <string name="store_kind_keybar">keybar</string>
 
     <string name="store_pick_widget">pilih widget untuk melihat apa yang diinstal dan dijalankannya</string>
-    <string name="store_pick_face">pilih face untuk melihat apa yang diinstal dan dijalankannya</string>
+    <string name="store_pick_face">pilih widget layar penuh untuk melihat apa yang diinstal dan dijalankannya</string>
     <string name="store_pick_app">pilih aplikasi untuk melihat apa yang diinstal dan dijalankannya</string>
     <string name="store_pick_panel">pilih panel untuk melihat apa yang diinstal dan dijalankannya</string>
     <string name="store_pick_keybar">pilih keybar untuk melihat apa yang diinstal dan dijalankannya</string>
@@ -28,6 +28,7 @@
     <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
 
     <string name="store_builtin">bawaan</string>
+
     <string name="store_terminal">terminal</string>
     <string name="store_terminal_details">6x4 · shell</string>
     <string name="store_agent_details">6x6 · menjalankan %1$s</string>
@@ -45,6 +46,7 @@
     <string name="store_installed">✓ terinstal</string>
     <string name="store_needs_newer">perlu launcher yang lebih baru</string>
     <string name="store_needs_linux">perlu linux</string>
+    <string name="store_full_screen">layar penuh</string>
     <plurals name="store_pages">
         <item quantity="other">%1$d halaman</item>
     </plurals>
@@ -60,7 +62,7 @@
         <item quantity="other">tambahkan %1$d halaman yang belum ada</item>
     </plurals>
     <string name="store_add_to_page">tambah ke halaman %1$d</string>
-    <string name="store_add_as_face">tambah sebagai face</string>
+    <string name="store_add_as_face">tambah sebagai widget layar penuh</string>
     <string name="store_install">instal</string>
     <string name="store_uninstall">uninstal</string>
     <string name="store_remove">hapus</string>

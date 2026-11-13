@@ -1,0 +1,753 @@
+The fast lane beside PRoot: a library preloaded into guest programs
+(patches/proot/fastpath) answers stat, statx, access, readlink, read-only
+open, fstat and close itself for paths that stay inside the rootfs. PRoot
+hands it the rootfs, the bindings and the fake ids through prctl(PR_PROOT_FASTPATH), and its own idea of the
+working directory, since chdir is emulated. The seccomp filter lets a
+traced syscall made from the library's one fixed syscall instruction pass
+untraced.
+
+What the library remembers goes stale, so PRoot counts what matters in a
+small file all guest processes map, "<rootfs>.fastpath" or
+PROOT_FASTPATH_STATE, shared by every PRoot on that rootfs: symlinks made
+and directories renamed, changes of fake ids, of the root and of the
+bindings (chroot and mount are emulated), changes of a working directory.
+
+As the guest's root, PRoot forces permissions on what a path walks
+through and restores them when it next hears from the tracee. With the
+fast lane that can be many library-made syscalls later, which would see
+the forced mode; so such a syscall is stopped at its exit too, and the
+mode restored there.
+
+PROOT_FASTPATH=off turns all of it off, and so does the f2fs workaround.
+
+diff --git a/src/GNUmakefile b/src/GNUmakefile
+index 6aaef1d..73d07f9 100644
+--- a/src/GNUmakefile
++++ b/src/GNUmakefile
+@@ -55,6 +55,7 @@ OBJECTS += \
+ 	tracee/reg.o		\
+ 	tracee/event.o		\
+ 	tracee/affinity.o	\
++	tracee/fastpath.o	\
+ 	tracee/seccomp.o        \
+ 	tracee/statx.o		\
+ 	ptrace/ptrace.o		\
+diff --git a/src/extension/fake_id0/fake_id0.c b/src/extension/fake_id0/fake_id0.c
+index bea4c8a..6da1e96 100644
+--- a/src/extension/fake_id0/fake_id0.c
++++ b/src/extension/fake_id0/fake_id0.c
+@@ -38,6 +38,7 @@
+ #include <linux/net.h>   /* SYS_SENDMSG, */
+ 
+ #include "extension/extension.h"
++#include "tracee/fastpath.h"
+ #include "syscall/syscall.h"
+ #include "syscall/sysnum.h"
+ #include "syscall/seccomp.h"
+@@ -506,6 +507,17 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
+ 
+ 	(void) chmod(path, new_mode);
+ 
++	/* The mode is restored when this tracee's next event is handled,
++	 * which under seccomp is its next intercepted syscall.  With the
++	 * fast lane that can be many syscalls later, and the ones made
++	 * through the library meanwhile would see the forced mode (an
++	 * fstat right after opening a read-only file).  So ask for the
++	 * exit stage of this very syscall, where it is restored.  */
++	if (fastpath_enabled() && IS_IN_SYSENTER(tracee)) {
++		((Tracee *) tracee)->sysexit_pending = true;
++		((Tracee *) tracee)->restart_how = PTRACE_SYSCALL;
++	}
++
+ 	return;
+ }
+ 
+@@ -1416,6 +1428,8 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
+ 		case PR_setresgid32:
+ 		case PR_chroot:
+ 			status = handle_sigsys(tracee, config);
++			/* No exit stage will tell the fast lane.  */
++			fastpath_config_changed(tracee);
+ 			if (status < 0)
+ 				return status;
+ 			break;
+diff --git a/src/path/f2fs-bug.c b/src/path/f2fs-bug.c
+index 4a5ee45..713faab 100644
+--- a/src/path/f2fs-bug.c
++++ b/src/path/f2fs-bug.c
+@@ -113,10 +113,23 @@ end:
+ 	return result;
+ }
+ 
++bool should_skip_file_access_due_to_f2fs_bug(const Tracee *tracee, const char *path);
++
++static bool f2fs_bug_probed;
++static bool f2fs_bug_detected;
++
++/**
++ * Is the workaround on?  Then a path must not reach the kernel before
++ * its name was seen in a directory listing, which the fast lane
++ * (tracee/fastpath.h) doesn't do.
++ */
++bool f2fs_bug_workaround_enabled(const Tracee *tracee) {
++	(void) should_skip_file_access_due_to_f2fs_bug(tracee, "/");
++	return f2fs_bug_detected;
++}
++
+ bool should_skip_file_access_due_to_f2fs_bug(const Tracee *tracee, const char *path) {
+ 	/* On first call check if workaround should be enabled */
+-	static bool f2fs_bug_probed;
+-	static bool f2fs_bug_detected;
+ 	if (!f2fs_bug_probed) {
+ 		const char *env = getenv("PROOT_F2FS_WORKAROUND");
+ 		if (env != NULL && strcmp(env, "1") == 0) {
+diff --git a/src/path/f2fs-bug.h b/src/path/f2fs-bug.h
+index b8eabdf..c7d523b 100644
+--- a/src/path/f2fs-bug.h
++++ b/src/path/f2fs-bug.h
+@@ -5,5 +5,6 @@
+ #include "tracee/tracee.h" /* Tracee,  */
+ 
+ bool should_skip_file_access_due_to_f2fs_bug(const Tracee *tracee, const char *path);
++bool f2fs_bug_workaround_enabled(const Tracee *tracee);
+ 
+ #endif /* F2FS_BUG_H */
+diff --git a/src/syscall/enter.c b/src/syscall/enter.c
+index 6bfdd56..acc1dd8 100644
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -69,6 +69,7 @@
+ #include "syscall/heap.h"
+ #include "extension/extension.h"
+ #include "execve/execve.h"
++#include "tracee/fastpath.h"
+ #include "tracee/tracee.h"
+ #include "tracee/reg.h"
+ #include "tracee/mem.h"
+@@ -2753,6 +2754,18 @@ int translate_syscall_enter(Tracee *tracee)
+ 		break;
+ 
+ 	case PR_prctl:
++		/* The preloaded fast lane library asks for the rootfs and
++		 * the bindings, see tracee/fastpath.h.  */
++		if (peek_reg(tracee, CURRENT, SYSARG_1) == PR_PROOT_FASTPATH) {
++			poke_reg(tracee, SYSARG_RESULT,
++				(word_t) fastpath_handshake(tracee,
++					peek_reg(tracee, CURRENT, SYSARG_2),
++					peek_reg(tracee, CURRENT, SYSARG_3),
++					peek_reg(tracee, CURRENT, SYSARG_4)));
++			set_sysnum(tracee, PR_void);
++			status = 0;
++			break;
++		}
+ 		/* Prevent tracees from setting dumpable flag.
+ 		 * (Otherwise it could break tracee memory access)  */
+ 		if (peek_reg(tracee, CURRENT, SYSARG_1) == PR_SET_DUMPABLE) {
+@@ -2897,6 +2910,9 @@ int translate_syscall_enter(Tracee *tracee)
+ 
+ 
+ end:
++	if (status >= 0)
++		fastpath_syscall(tracee, false);
++
+ 	status2 = notify_extensions(tracee, SYSCALL_ENTER_END, status, 0);
+ 	if (status2 < 0)
+ 		status = status2;
+diff --git a/src/syscall/exit.c b/src/syscall/exit.c
+index 285b67a..48b56a6 100644
+--- a/src/syscall/exit.c
++++ b/src/syscall/exit.c
+@@ -39,6 +39,7 @@
+ #include "syscall/rlimit.h"
+ #include "execve/execve.h"
+ #include "tracee/tracee.h"
++#include "tracee/fastpath.h"
+ #include "tracee/reg.h"
+ #include "tracee/mem.h"
+ #include "tracee/abi.h"
+@@ -811,4 +812,6 @@ end:
+ 	status = notify_extensions(tracee, SYSCALL_EXIT_END, 0, 0);
+ 	if (status < 0)
+ 		poke_reg(tracee, SYSARG_RESULT, (word_t) status);
++
++	fastpath_syscall(tracee, true);
+ }
+diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
+index 58deeb3..f7e2c88 100644
+--- a/src/syscall/seccomp.c
++++ b/src/syscall/seccomp.c
+@@ -41,6 +41,7 @@
+ 
+ #include "syscall/seccomp.h"
+ #include "tracee/tracee.h"
++#include "tracee/fastpath.h"
+ #include "syscall/syscall.h"
+ #include "syscall/sysnum.h"
+ #include "extension/extension.h"
+@@ -96,6 +97,8 @@ static int add_statements(struct sock_fprog *program, size_t nb_statements,
+  */
+ static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int flag)
+ {
++	/* The instruction pointer is a 64-bit little-endian field.  */
++	const size_t ip_offset = offsetof(struct seccomp_data, instruction_pointer);
+ 	int status;
+ 
+ 	/* Sanity check.  */
+@@ -112,15 +115,38 @@ static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int fla
+ 		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag)
+ 	};
+ 
++	/* The same, but let the syscall pass untraced when it is made
++	 * from the fast lane's one syscall instruction: the preloaded
++	 * library has translated its paths already (tracee/fastpath.h).
++	 * Only syscalls PRoot traces look at the instruction pointer, so
++	 * the kernel can still tell that all the others are always
++	 * allowed, and skip the filter for them.  */
++	#define LENGTH_FASTPATH_SYSCALL 7
++	struct sock_filter fastpath_statements[LENGTH_FASTPATH_SYSCALL] = {
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, syscall, 0, 6),
++		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, ip_offset),
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, (uint32_t) FASTPATH_SYSCALL_IP, 0, 3),
++		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, ip_offset + 4),
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, (uint32_t) (FASTPATH_SYSCALL_IP >> 32), 0, 1),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_ALLOW),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag)
++	};
++
+ 	DEBUG_FILTER("FILTER:     trace if syscall == %ld\n", syscall);
+ 
+-	status = add_statements(program, LENGTH_TRACE_SYSCALL, statements);
++	if (fastpath_enabled())
++		status = add_statements(program, LENGTH_FASTPATH_SYSCALL, fastpath_statements);
++	else
++		status = add_statements(program, LENGTH_TRACE_SYSCALL, statements);
+ 	if (status < 0)
+ 		return status;
+ 
+ 	return 0;
+ }
+ 
++/* Statements per traced syscall, see add_trace_syscall().  */
++#define LENGTH_TRACED (fastpath_enabled() ? LENGTH_FASTPATH_SYSCALL : LENGTH_TRACE_SYSCALL)
++
+ /**
+  * Append to @program->filter the statements that allow anything (if
+  * unfiltered).  Note that @nb_traced_syscalls is used to make a
+@@ -144,7 +170,7 @@ static int end_arch_section(struct sock_fprog *program, size_t nb_traced_syscall
+ 
+ 	/* Sanity check, see start_arch_section().  */
+ 	if (   talloc_array_length(program->filter) - program->len
+-	    != LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACE_SYSCALL)
++	    != LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACED)
+ 		return -ERANGE;
+ 
+ 	return 0;
+@@ -161,7 +187,7 @@ static int start_arch_section(struct sock_fprog *program, uint32_t arch, size_t
+ 	const size_t arch_offset    = offsetof(struct seccomp_data, arch);
+ 	const size_t syscall_offset = offsetof(struct seccomp_data, nr);
+ 	const size_t section_length = LENGTH_END_SECTION +
+-					nb_traced_syscalls * LENGTH_TRACE_SYSCALL;
++					nb_traced_syscalls * LENGTH_TRACED;
+ 	int status;
+ 
+ 	/* Sanity checks.  */
+diff --git a/src/tracee/fastpath.c b/src/tracee/fastpath.c
+new file mode 100644
+index 0000000..8c21ba1
+--- /dev/null
++++ b/src/tracee/fastpath.c
+@@ -0,0 +1,379 @@
++/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*- */
++
++#include <errno.h>      /* E*, */
++#include <fcntl.h>      /* open(2), O_*, */
++#include <limits.h>     /* PATH_MAX, */
++#include <stdio.h>      /* snprintf(3), */
++#include <stdlib.h>     /* getenv(3), */
++#include <string.h>     /* str*(3), mem*(3), */
++#include <sys/mman.h>   /* mmap(2), */
++#include <sys/queue.h>  /* CIRCLEQ_*, */
++#include <sys/stat.h>   /* lstat(2), */
++#include <unistd.h>     /* get*id(2), ftruncate(2), */
++#include <talloc.h>     /* talloc_*, */
++
++#include "tracee/fastpath.h"
++#include "arch.h"
++#include "tracee/mem.h"
++#include "tracee/reg.h"
++#include "syscall/sysnum.h"
++#include "path/binding.h"
++#include "path/path.h"
++#include "path/f2fs-bug.h"
++#include "extension/extension.h"
++#include "extension/fake_id0/config.h"
++
++/**
++ * The fast lane only exists on arm64 so far, and PROOT_FASTPATH=off
++ * turns it off.
++ */
++bool fastpath_enabled(void)
++{
++#if defined(ARCH_ARM64)
++	static int enabled = -1;
++
++	if (enabled < 0) {
++		const char *value = getenv("PROOT_FASTPATH");
++		enabled = (value == NULL || strcmp(value, "off") != 0);
++	}
++	return enabled;
++#else
++	return false;
++#endif
++}
++
++static char state_path[PATH_MAX];
++
++/**
++ * Map the state file, creating it first if needed: PROOT_FASTPATH_STATE,
++ * or by default "<rootfs>.fastpath", so that every PRoot on this rootfs
++ * uses the same one.  This function returns NULL if there's none.
++ */
++static struct fastpath_state *get_state(const Tracee *tracee)
++{
++	static struct fastpath_state *state;
++	static bool failed;
++	const char *path;
++	void *mapping;
++	int fd;
++
++	if (state != NULL || failed)
++		return state;
++	failed = true;
++
++	path = getenv("PROOT_FASTPATH_STATE");
++	if (path != NULL) {
++		if (strlen(path) >= sizeof(state_path))
++			return NULL;
++		strcpy(state_path, path);
++	}
++	else {
++		const char *root = get_root(tracee);
++		int length;
++
++		if (root == NULL || root[0] == '\0' || strcmp(root, "/") == 0)
++			return NULL;
++		length = snprintf(state_path, sizeof(state_path), "%s.fastpath", root);
++		if (length < 0 || (size_t) length >= sizeof(state_path))
++			return NULL;
++	}
++
++	fd = open(state_path, O_RDWR | O_CREAT | O_CLOEXEC, 0600);
++	if (fd < 0)
++		return NULL;
++	if (ftruncate(fd, sizeof(struct fastpath_state)) < 0) {
++		close(fd);
++		return NULL;
++	}
++	mapping = mmap(NULL, sizeof(struct fastpath_state), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++	close(fd);
++	if (mapping == MAP_FAILED)
++		return NULL;
++
++	state = mapping;
++	failed = false;
++	return state;
++}
++
++/**
++ * The fake ids or the root of some process may have changed.
++ */
++void fastpath_config_changed(Tracee *tracee)
++{
++	struct fastpath_state *state;
++
++	if (!fastpath_enabled() || tracee->fs == NULL || tracee->fs->bindings.guest == NULL)
++		return;
++
++	state = get_state(tracee);
++	if (state != NULL)
++		__atomic_add_fetch(&state->config, 1, __ATOMIC_SEQ_CST);
++}
++
++/**
++ * A thread of @tracee's process got a working directory of its own.
++ */
++void fastpath_thread_cwd(Tracee *tracee)
++{
++	struct fastpath_state *state;
++
++	if (!fastpath_enabled() || tracee->fs == NULL || tracee->fs->bindings.guest == NULL)
++		return;
++
++	state = get_state(tracee);
++	if (state != NULL)
++		__atomic_store_n(&state->thread_cwds, 1, __ATOMIC_SEQ_CST);
++}
++
++/**
++ * Is the host path at @address of @tracee a directory or a symlink?
++ * Also true when there's no telling, say below a directory without
++ * permissions; a missing path is neither.
++ */
++static bool is_directory_or_symlink(const Tracee *tracee, word_t address)
++{
++	char path[PATH_MAX];
++	struct stat statl;
++
++	if (read_path(tracee, path, address) < 0)
++		return true;
++
++	if (lstat(path, &statl) < 0)
++		return (errno != ENOENT);
++
++	return (S_ISDIR(statl.st_mode) || S_ISLNK(statl.st_mode));
++}
++
++/**
++ * Count what makes the library's memory stale, see struct
++ * fastpath_state.  Called at the end of both stages of every syscall
++ * PRoot handles; at the enter stage the paths are translated already.
++ *
++ * A symlink can only appear where there's nothing, so it's enough to
++ * count it (and a hard link to one) before it is made.  A rename can put a directory with
++ * other content in place of a directory at once, hence it's counted
++ * afterwards too.
++ */
++void fastpath_syscall(Tracee *tracee, bool is_exit)
++{
++	const RegVersion version = (is_exit ? MODIFIED : CURRENT);
++	struct fastpath_state *state;
++	bool paths = false;
++	bool cwds = false;
++	Reg old, new;
++
++	if (!fastpath_enabled() || tracee->fs == NULL || tracee->fs->bindings.guest == NULL)
++		return;
++
++	switch (get_sysnum(tracee, ORIGINAL)) {
++	case PR_symlink:
++	case PR_symlinkat:
++		if (is_exit)
++			return;
++		paths = true;
++		break;
++
++	case PR_link:
++		old = SYSARG_1;
++		goto link;
++
++	case PR_linkat:
++		old = SYSARG_2;
++	link:
++		/* A hard link to a symlink is one more symlink, whether
++		 * the kernel makes it or the link2symlink extension.  */
++		if (is_exit || !is_directory_or_symlink(tracee, peek_reg(tracee, CURRENT, old)))
++			return;
++		paths = true;
++		break;
++
++	case PR_mount:
++	case PR_umount:
++	case PR_umount2:
++	case PR_pivot_root:
++		/* Emulated at the enter stage, see syscall/enter.c: the
++		 * bindings or the root of this process changed.  */
++		if (is_exit)
++			return;
++		fastpath_config_changed(tracee);
++		cwds = true;
++		break;
++
++	case PR_chdir:
++	case PR_fchdir:
++		/* Emulated at the enter stage, see syscall/enter.c.  */
++		if (is_exit)
++			return;
++		cwds = true;
++		break;
++
++	case PR_rename:
++		old = SYSARG_1;
++		new = SYSARG_2;
++		goto rename;
++
++	case PR_renameat:
++	case PR_renameat2:
++		old = SYSARG_2;
++		new = SYSARG_4;
++	rename:
++		if (is_exit && (int) peek_reg(tracee, CURRENT, SYSARG_RESULT) != 0)
++			return;
++		if (   !is_directory_or_symlink(tracee, peek_reg(tracee, version, old))
++		    && !is_directory_or_symlink(tracee, peek_reg(tracee, version, new)))
++			return;
++		/* PRoot renames the working directory along with a
++		 * directory above it, see syscall/exit.c.  */
++		paths = true;
++		cwds = is_exit;
++		break;
++
++	case PR_setuid:
++	case PR_setuid32:
++	case PR_setgid:
++	case PR_setgid32:
++	case PR_setreuid:
++	case PR_setreuid32:
++	case PR_setregid:
++	case PR_setregid32:
++	case PR_setresuid:
++	case PR_setresuid32:
++	case PR_setresgid:
++	case PR_setresgid32:
++	case PR_setfsuid:
++	case PR_setfsuid32:
++	case PR_setfsgid:
++	case PR_setfsgid32:
++	case PR_chroot:
++		if (!is_exit)
++			return;
++		fastpath_config_changed(tracee);
++		cwds = true;
++		break;
++
++	default:
++		return;
++	}
++
++	/* The file is only made once there is something to count.  */
++	state = get_state(tracee);
++	if (state == NULL)
++		return;
++	if (paths)
++		__atomic_add_fetch(&state->paths, 1, __ATOMIC_SEQ_CST);
++	if (cwds)
++		__atomic_add_fetch(&state->cwds, 1, __ATOMIC_SEQ_CST);
++}
++
++/**
++ * Answer prctl(PR_PROOT_FASTPATH, @address, @size, @what) of @tracee,
++ * see fastpath.h.  This function returns the length written, otherwise
++ * -errno.
++ */
++int fastpath_handshake(Tracee *tracee, word_t address, word_t size, word_t what)
++{
++	struct fastpath_info *info;
++	const Binding *binding;
++	const Binding *other;
++	Extension *fake_id0;
++	const char *root;
++	size_t length;
++	char *cursor;
++	int status;
++
++	if (!fastpath_enabled() || tracee->fs == NULL || tracee->fs->bindings.guest == NULL)
++		return -EINVAL;
++
++	root = get_root(tracee);
++	if (root == NULL || root[0] == '\0' || strcmp(root, "/") == 0)
++		return -EINVAL;
++
++	if (f2fs_bug_workaround_enabled(tracee) || get_state(tracee) == NULL)
++		return -EINVAL;
++
++	if (what == FASTPATH_CWD) {
++		if (tracee->fs->cwd == NULL)
++			return -EINVAL;
++		length = strlen(tracee->fs->cwd) + 1;
++		if (length > size)
++			return -ERANGE;
++		status = write_data(tracee, address, tracee->fs->cwd, length);
++		return (status < 0 ? status : (int) length);
++	}
++	if (what != FASTPATH_INFO)
++		return -EINVAL;
++
++	/* An upper bound: bindings inside another binding are left out below.  */
++	length = sizeof(struct fastpath_info) + strlen(root) + 1 + strlen(state_path) + 1 + 1;
++	CIRCLEQ_FOREACH(binding, tracee->fs->bindings.guest, link.guest) {
++		/* A binding without a path, as chroot(2) can leave one
++		 * behind: nothing to tell the library, and nothing
++		 * compare_paths() takes.  */
++		if (binding->guest.path[0] == '\0' || binding->host.path[0] == '\0')
++			return -EINVAL;
++		length += strlen(binding->guest.path) + 1;
++	}
++	if (length > size)
++		return -ERANGE;
++
++	info = talloc_zero_size(tracee->ctx, length);
++	if (info == NULL)
++		return -ENOMEM;
++
++	info->version = FASTPATH_VERSION;
++	info->uid = getuid();
++	info->gid = getgid();
++	info->fake_uid = info->uid;
++	info->fake_gid = info->gid;
++
++	/* What stat shows instead of PRoot's ids, see
++	 * extension/fake_id0/stat.c.  */
++	fake_id0 = get_extension(tracee, fake_id0_callback);
++	if (fake_id0 != NULL && fake_id0->config != NULL) {
++		const Config *config = talloc_get_type_abort(fake_id0->config, Config);
++		info->fake_uid = config->suid;
++		info->fake_gid = config->sgid;
++	}
++
++	cursor = info->paths;
++	cursor = stpcpy(cursor, root) + 1;
++	cursor = stpcpy(cursor, state_path) + 1;
++	CIRCLEQ_FOREACH(binding, tracee->fs->bindings.guest, link.guest) {
++		bool covered = false;
++
++		if (strcmp(binding->guest.path, "/") == 0)
++			continue;
++
++		switch (compare_paths(root, binding->host.path)) {
++		case PATHS_ARE_EQUAL:
++		case PATH1_IS_PREFIX:
++		case PATH2_IS_PREFIX:
++			info->flags |= FASTPATH_HOST_OVERLAP;
++			break;
++		default:
++			break;
++		}
++
++		/* Such as /proc/<pid>/auxv below /proc: it differs from
++		 * process to process and tells the library nothing.  */
++		CIRCLEQ_FOREACH(other, tracee->fs->bindings.guest, link.guest) {
++			if (   other != binding
++			    && strcmp(other->guest.path, "/") != 0
++			    && compare_paths(other->guest.path, binding->guest.path) == PATH1_IS_PREFIX) {
++				covered = true;
++				break;
++			}
++		}
++		if (!covered)
++			cursor = stpcpy(cursor, binding->guest.path) + 1;
++	}
++	*cursor++ = '\0';
++	length = cursor - (char *) info;
++	info->length = length;
++
++	status = write_data(tracee, address, info, length);
++	if (status < 0)
++		return status;
++
++	return length;
++}
+diff --git a/src/tracee/fastpath.h b/src/tracee/fastpath.h
+new file mode 100644
+index 0000000..7f10b2a
+--- /dev/null
++++ b/src/tracee/fastpath.h
+@@ -0,0 +1,86 @@
++/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
++ *
++ * The fast lane: a library preloaded into guest programs answers simple
++ * path syscalls itself.  It asks PRoot for the rootfs, the bindings and
++ * the fake ids (prctl(PR_PROOT_FASTPATH)), translates paths that are
++ * plainly inside the rootfs on its own, and makes the real syscall from
++ * one fixed address, which the seccomp filter lets pass untraced.
++ * Everything else goes through PRoot as before.
++ *
++ * What the library remembers can go stale, so PRoot counts the events
++ * that matter in a small file every guest process maps (struct
++ * fastpath_state), shared by all PRoot instances on one rootfs.
++ */
++
++#ifndef TRACEE_FASTPATH_H
++#define TRACEE_FASTPATH_H
++
++#include <stdbool.h>
++#include <stdint.h>
++#include "tracee/tracee.h"
++
++/* Where the library maps its "svc 0; ret".  Below EXEC_PIC_ADDRESS
++ * (arch.h), which is where the loader puts programs.  The filter sees
++ * the address of the instruction after the svc.  */
++#define FASTPATH_ADDRESS 0x2fc0000000ULL
++#define FASTPATH_SYSCALL_IP (FASTPATH_ADDRESS + 4)
++
++/* prctl(PR_PROOT_FASTPATH, buffer, size, what): fills @buffer and
++ * returns the length written; fails with EINVAL when the fast lane is
++ * off (and under a kernel without PRoot), ERANGE when @size is too
++ * small.  @what is FASTPATH_INFO for a struct fastpath_info, or
++ * FASTPATH_CWD for the working directory as PRoot knows it, a guest
++ * path: chdir(2) is emulated, the kernel's working directory never
++ * changes.  */
++#define PR_PROOT_FASTPATH 0x50524f46
++#define FASTPATH_INFO 0
++#define FASTPATH_CWD 1
++
++#define FASTPATH_VERSION 2
++
++/* A binding's host side lies inside the rootfs (or the other way
++ * round): a host path below the rootfs doesn't tell its guest path.  */
++#define FASTPATH_HOST_OVERLAP 1
++
++struct fastpath_info {
++	uint32_t version;
++	uint32_t flags;
++	uint32_t uid;		/* PRoot's real ids: what stat reports for the guest's files...  */
++	uint32_t gid;
++	uint32_t fake_uid;	/* ... and what the guest is shown instead.  */
++	uint32_t fake_gid;
++	uint32_t length;	/* Of the whole reply.  */
++	uint32_t reserved;
++	/* Then NUL-terminated strings: the host path of the rootfs, the
++	 * host path of the state file, each guest path a binding
++	 * covers, and an empty string.  */
++	char paths[];
++};
++
++/* The state file.  The library compares both counters with the values
++ * it last saw before it trusts what it remembers.  */
++struct fastpath_state {
++	/* Counts symlinks made (hard links to one too) and directories
++	 * or symlinks renamed: a path the library knew as real
++	 * directories all the way down may go through a symlink now.  */
++	uint32_t paths;
++	/* Counts changes of some process' fake ids, root or bindings
++	 * (chroot(2), mount(2) and the like are emulated): the answer to
++	 * the handshake may have changed.  */
++	uint32_t config;
++	/* Counts changes of some process' working directory: chdir(2),
++	 * and renames of a directory, which may be above it.  */
++	uint32_t cwds;
++	/* Not zero once a thread got a working directory of its own
++	 * (clone(2) with CLONE_THREAD but without CLONE_FS): the library
++	 * keeps one per process, so it leaves relative paths alone.  */
++	uint32_t thread_cwds;
++};
++
++extern bool fastpath_enabled(void);
++extern int fastpath_handshake(Tracee *tracee, word_t address, word_t size, word_t what);
++extern void fastpath_thread_cwd(Tracee *tracee);
++extern void fastpath_config_changed(Tracee *tracee);
++extern void fastpath_syscall(Tracee *tracee, bool is_exit);
++
++#endif /* TRACEE_FASTPATH_H */
+diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
+index 5da396f..cf1d1dd 100644
+--- a/src/tracee/tracee.c
++++ b/src/tracee/tracee.c
+@@ -36,6 +36,7 @@
+ #include <inttypes.h>   /* PRI*, */
+ 
+ #include "tracee/tracee.h"
++#include "tracee/fastpath.h"
+ #include "tracee/reg.h"
+ #include "tracee/mem.h"
+ #include "path/binding.h"
+@@ -768,6 +769,10 @@ static int attach_child(Tracee *parent, word_t clone_flags, pid_t pid)
+ 		child->fs = talloc_reference(child, parent->fs);
+ 	}
+ 	else {
++		/* A thread with a working directory of its own.  */
++		if ((clone_flags & CLONE_THREAD) != 0)
++			fastpath_thread_cwd(parent);
++
+ 		/* File-system name-space is copied.  */
+ 		child->fs = talloc_zero(child, FileSystemNameSpace);
+ 		if (child->fs == NULL)

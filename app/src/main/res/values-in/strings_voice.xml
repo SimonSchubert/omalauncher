@@ -13,8 +13,9 @@
     <string name="voice_no_speech">Suara perlu pengenalan ucapan, dan ponsel ini tidak punya. Instal satu, seperti Pengenalan &amp; Sintesis Ucapan dari Google, lalu pilih di setelan input suara Android. Atau ketik saja.</string>
     <string name="voice_input_settings">input suara</string>
     <string name="voice_type">ketik</string>
-    <string name="voice_no_agent">Suara bicara dengan Claude Code, Grok, atau OpenCode di Linux. Instal salah satunya untuk bicara.</string>
+    <string name="voice_no_agent">Suara bicara dengan agen coding di Linux. Instal salah satunya untuk bicara.</string>
     <string name="voice_agents">agen</string>
+    <string name="voice_log_in">masuk</string>
     <string name="voice_thinking">berpikir</string>
     <plurals name="voice_steps">
         <item quantity="other">%1$d langkah</item>
@@ -68,4 +69,14 @@
     <string name="voice_quiet">%1$s sudah diam dua menit; hentikan kalau macet</string>
     <string name="voice_failed">gagal</string>
     <string name="voice_retrying">mencoba lagi: %1$s</string>
+    <string name="voice_voice">suara</string>
+    <string name="voice_language">bahasa</string>
+    <string name="voice_language_launcher">bawaan (%1$s)</string>
+    <string name="voice_default">bawaan</string>
+    <string name="voice_default_named">bawaan (%1$s)</string>
+    <string name="voice_online">online</string>
+    <string name="voice_speed">kecepatan</string>
+    <string name="voice_tts_settings">setelan teks ke ucapan</string>
+    <string name="voice_no_voice">Belum ada suara untuk %1$s di ponsel ini: unduh di setelan teks ke ucapan.</string>
+    <string name="voice_sample">Seperti inilah jawaban akan terdengar.</string>
 </resources>

@@ -3,7 +3,6 @@ package dev.omalauncher.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import android.Manifest
-import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,11 +26,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
@@ -78,10 +77,11 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.window.PopupPositionProvider
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
-import dev.omalauncher.linux.LinuxState
+import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.agentInvocation
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.gestures.detectTapGestures
+import dev.omalauncher.hasPermission
 
 /**
  * How the prompt bar was summoned from outside it; Send asks the agent with what's typed (the panel's ask row),
@@ -116,9 +116,9 @@ internal fun PromptBar(
     var focused by remember { mutableStateOf(false) }
     val panelShown by remember(state) { derivedStateOf { state.drawer.value > 0.01f } }
     val agent = runtime.agents.default
-    val linuxState by runtime.bootstrap.state.collectAsState()
     // Agents run in Linux: without it, the bar offers to install it instead.
-    val linux = linuxState == LinuxState.Installed
+    val linux = linuxPhase(runtime) == LinuxPhase.Installed
+    val opensVoice = rememberOpensVoice(runtime, agent, linux)
 
     fun offerLinux() {
         focusManager.clearFocus()
@@ -184,7 +184,7 @@ internal fun PromptBar(
 
     fun talk(hold: Boolean) {
         if (!linux) return offerLinux()
-        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+        if (context.hasPermission(Manifest.permission.RECORD_AUDIO)) {
             listen(hold)
         } else {
             permission.launch(Manifest.permission.RECORD_AUDIO)
@@ -359,7 +359,7 @@ internal fun PromptBar(
                 }
                 MicButton(
                     listening = listening,
-                    voice = linux && runtime.voice.opensFor(agent),
+                    voice = opensVoice,
                     // A tap opens the voice app, or dictates into the field and stops at the next pause; another tap
                     // stops it sooner.
                     onTap = { if (speech.listening) speech.stop() else tapMic() },
@@ -572,4 +572,22 @@ private class AboveAnchor(
         anchorBounds.left.coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
         (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0),
     )
+}
+
+/**
+ * Whether the mic opens the voice screen for [agent]. Asking means package manager calls, so it's kept between
+ * keystrokes, and asked again on each return: a recognizer may have been installed or picked meanwhile.
+ */
+@Composable
+internal fun rememberOpensVoice(
+    runtime: Runtime,
+    agent: Agent?,
+    linux: Boolean,
+): Boolean {
+    var resumes by remember { mutableIntStateOf(0) }
+    LifecycleResumeEffect(Unit) {
+        resumes++
+        onPauseOrDispose {}
+    }
+    return remember(agent, linux, resumes) { linux && runtime.voice.opensFor(agent) }
 }

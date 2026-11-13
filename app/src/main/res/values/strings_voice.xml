@@ -19,8 +19,9 @@
     <string name="voice_input_settings">voice input</string>
     <!-- Switches from talking to typing. -->
     <string name="voice_type">type</string>
-    <string name="voice_no_agent">Voice talks with Claude Code, Grok or OpenCode in Linux. Install one of them to talk.</string>
+    <string name="voice_no_agent">Voice talks with a coding agent in Linux. Install one to talk.</string>
     <string name="voice_agents">agents</string>
+    <string name="voice_log_in">log in</string>
     <string name="voice_thinking">thinking</string>
     <plurals name="voice_steps">
         <item quantity="one">%1$d step</item>
@@ -90,4 +91,17 @@
     <string name="voice_failed">failed</string>
     <!-- %1$s is the agent's error, like a network error. -->
     <string name="voice_retrying">retrying: %1$s</string>
+    <!-- The voice settings: the chip in the top row and the dialog it opens. -->
+    <string name="voice_voice">voice</string>
+    <string name="voice_language">language</string>
+    <!-- The language picked in the launcher, which Voice uses unless another is picked; %1$s is its name. -->
+    <string name="voice_language_launcher">default (%1$s)</string>
+    <string name="voice_default">default</string>
+    <string name="voice_default_named">default (%1$s)</string>
+    <!-- After a voice that needs the internet. -->
+    <string name="voice_online">online</string>
+    <string name="voice_speed">speed</string>
+    <string name="voice_tts_settings">text-to-speech settings</string>
+    <string name="voice_no_voice">No voice for %1$s on this phone yet: get one in the text-to-speech settings.</string>
+    <string name="voice_sample">This is how replies will sound.</string>
 </resources>

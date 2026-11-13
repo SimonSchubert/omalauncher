@@ -51,6 +51,7 @@ object Icons {
                 "M8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z",
         )
     }
+    val Plus by lazy { icon("plus", "M19,13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z") }
     val Refresh by lazy {
         icon(
             "refresh",

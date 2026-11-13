@@ -20,6 +20,12 @@
     <!-- Quick jumps to /root/.config, /root/Downloads and / -->
     <string name="files_place_config">config</string>
     <string name="files_place_downloads">downloads</string>
+    <!-- Where Linux sees the phone's storage (PhoneStorage.GUEST), a path's name. -->
+    <string name="files_place_sdcard" translatable="false">sdcard</string>
+    <!-- The phone folders the user granted (PhoneFolders), and the list of them. -->
+    <string name="files_place_phone_folders">phone folders</string>
+    <string name="files_add_phone_folder">add phone folder</string>
+    <string name="files_no_phone_folders">no phone folders yet: add one from the menu</string>
     <string name="files_place_system">system</string>
     <string name="files_search">search</string>
     <string name="files_more">more</string>
@@ -113,6 +119,7 @@
     <!-- %1$d is the recognizer's error code. -->
     <string name="prompt_speech_failed">speech recognition failed (%1$d)</string>
     <string name="prompt_speech_language">speech isn\'t available in this language</string>
+    <string name="prompt_speech_not_downloaded">speech for this language isn\'t downloaded on this phone</string>
     <string name="prompt_speech_mic_permission">microphone permission needed</string>
     <string name="prompt_speech_network">speech recognition needs a network connection</string>
 </resources>

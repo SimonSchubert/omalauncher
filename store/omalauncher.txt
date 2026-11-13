@@ -1,6 +1,6 @@
 Privacy Policy
 
-Effective Date: 23.10.2026
+Effective Date: 08.11.2026
 
 Omalauncher ("the App") is an Android home screen launcher developed by Simon Schubert ("we," "us," or "our"). This Privacy Policy explains how the App handles information.
 
@@ -21,9 +21,14 @@ Your home screen layout, widgets, theme settings and, if you install it, the Lin
 
 - Microphone (optional): used only while you hold or tap the microphone button to dictate a prompt. Speech is recognized by your phone's speech recognition service (on the device where the phone supports it), and only the resulting text is passed to the app you are talking to. The App does not record or store audio.
 - Notification access (optional): lets media widgets show and control what is currently playing, and lets widgets you add show your notifications (app name, title and text), open, dismiss or snooze them, use their buttons (such as "Mark as read"), send a reply you type to the app that posted one, and show or switch Do Not Disturb. A reply goes only to that app, which handles it as if you had replied from the notification. Notifications are read on your device, only when a widget on your home screen asks for them, and are not stored or sent to us. A widget you add could send what it shows to a service it contacts; each widget's page in the widget store shows what it runs and which addresses it contacts.
+- Approximate location (optional): lets the weather widget, and widgets you add that ask for it, show what is near you, such as the weather or the nearest station. The App asks for it only when you tap a widget's "use my location" (or a similar button), and asks for approximate location only, accurate to about a kilometre or two, never your precise location. It is read on your device only while such a widget is on your screen, never in the background, and is not stored or sent to us. The weather widget sends it, rounded to about a kilometre, to wttr.in (section 4); another widget could send it to a service it contacts, and each widget's page in the widget store says if it reads your location.
+- Calendar (optional): lets widgets you add show your upcoming events (title, time, place and calendar name) from the calendars on your phone, including ones synced from your accounts. The App asks for it only when you tap a widget's button that asks for it, and only reads, never adds, changes or deletes events. Events are read on your device only while such a widget is on your screen, for the next 14 days, and are not stored or sent to us. A widget you add could send what it shows to a service it contacts; each widget's page in the widget store says if it reads your calendar.
+- Phone folders (optional): if you install Linux, you can pick folders of your phone's files, such as photos, downloads or documents, in Android's own folder picker, for the App's file manager and for programs you run in Linux, which copy files to and from them with the `omalauncher` command. Such a program can also open Android's file picker, where you choose the files it gets, if any. The App reaches only the folders and files you picked; Android keeps its access to a folder until you remove the folder in the App's permissions settings. The App asks for no storage permission: without one, programs in Linux can also save files to your phone's Download and Documents folders (pictures to Pictures), at /sdcard, and see only the files they saved there. The App itself does not read, scan or upload your files. A program you run in Linux, such as a coding agent, may send a file it reads to its provider (section 4), as it does with your prompts; each widget's page in the widget store says if it reaches /sdcard.
 - Uninstalling apps: used only when you choose to uninstall an app from the app drawer. Android asks you to confirm every uninstall.
 - Internet: used to download the content listed in section 4.
+- Nearby devices / Bluetooth (optional): lets widgets you add show your AirPods' battery levels, listening mode and settings, and change them. The App asks for it only when you tap a widget's button that asks for it, and then talks only to AirPods connected to your phone, over Bluetooth. Nothing it reads leaves your device or is stored. A widget you add could send what it shows to a service it contacts; each widget's page in the widget store shows what it runs and which addresses it contacts.
 - Local network (optional, Android 17 and newer): lets widgets you add and the Linux environment reach devices on your own network, such as a printer, a home server or Home Assistant. The App asks for it only when you turn it on in its settings. The App itself does not scan your network or contact devices on it.
+- Programs in the Linux environment (optional): if you install Linux, a program you run there, such as a coding agent, can ask the App for your approximate location, your calendar events for the coming days, your AirPods' state and your battery's state, with the `omalauncher` command (formerly `phone`), and only for what you have already allowed above; it never asks for a permission itself. The App reads it on your device only when such a program asks, and does not store it or send it to us. Such a program can also post a notification, and open Android's share sheet for files of its own, where you pick the app they go to, if any. A coding agent may send what it reads to its provider (section 4), as it does with your prompts.
 
 4. Third-Party Services
 
@@ -38,7 +43,7 @@ dpaste.com (sharing widgets)
 - Widgets shared as a QR code or link without dpaste.com carry the whole widget in the link itself and are not uploaded anywhere.
 
 wttr.in (weather widget)
-- The weather widget requests the current weather. wttr.in estimates your approximate location from your IP address.
+- The weather widget requests the current weather for a city you type, or, if you allowed approximate location, for your approximate coordinates rounded to about a kilometre. Otherwise wttr.in estimates your approximate location from your IP address.
 
 Widgets
 - Widgets you add from the widget store may contact other services to show their content (for example prices, news feeds or radio streams). Each widget's page in the store shows what it runs and which addresses it contacts.
@@ -60,13 +65,13 @@ The App is not intended for children under 13 years of age. We do not knowingly 
 
 As the developer is based in Berlin, Germany, we comply with the General Data Protection Regulation (GDPR) where applicable:
 - Local storage: all data the App stores stays on your device and is under your control.
-- Permissions: microphone, notification and local network access are optional and require your explicit consent.
+- Permissions: microphone, notification, location, calendar, Bluetooth and local network access, and the phone folders you pick, are optional and require your explicit consent.
 - Third-party requests: requests to the services in section 4 are made only to provide the features you use.
 
 7. Your Rights
 
 You can:
-- Revoke microphone, notification and local network access at any time in your device settings.
+- Revoke microphone, notification, location, calendar, Bluetooth and local network access at any time in your device settings, and remove phone folders in the App's permissions settings.
 - Remove Linux and its files in the App's settings.
 - Remove widgets from your home screen.
 - Choose not to share widgets through dpaste.com; pastes expire on their own after 7 days or one year.
