@@ -29,6 +29,7 @@ import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.bool
+import dev.omalauncher.widgets.lang.num
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -278,8 +279,14 @@ class Media(
             .map { withContext(worker) { value() } }
             .distinctUntilChanged()
 
-    /** media("toggle"), "play", "pause", "next", "previous"; without access, opens the setting that grants it. */
-    fun control(command: String) {
+    /**
+     * media("toggle"), "play", "pause", "next", "previous", and media("seek", seconds) from the start (owl 23); without
+     * access, opens the setting that grants it.
+     */
+    fun control(
+        command: String,
+        value: Value? = null,
+    ) {
         if (!granted) {
             openAccessSettings()
             return
@@ -298,6 +305,8 @@ class Media(
             "toggle" -> if (s?.state == PlaybackState.STATE_PLAYING) t.pause() else if (canPlay) play(c) else open(c)
             "next" -> t.skipToNext()
             "previous" -> t.skipToPrevious()
+            // A session that can't seek ignores it, as Android's own seek bar does then.
+            "seek" -> value?.num()?.takeIf { it.isFinite() }?.let { t.seekTo((it.coerceAtLeast(0.0) * 1000).toLong()) }
             "open" -> open(c)
         }
     }

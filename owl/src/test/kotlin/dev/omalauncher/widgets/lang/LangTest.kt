@@ -1663,6 +1663,15 @@ class LangTest {
         compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"snoozeAll\") } }").let { assertTrue(it, it.contains("notification(\"snoozeAll\", seconds)")) }
     }
 
+    /** What's playing moved to a point in it (owl 23); the other media words still take nothing more. */
+    @Test fun mediaSeek() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n source m = android.media\n Text { text: 1; onTap: { media(\"seek\", 90); media(\"seek\", m.position + 10); media(\"toggle\") } } }")
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"seek\", 90) } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"seek\") } }").let { assertTrue(it, it.contains("media(\"seek\", seconds)")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"next\", 3) } }").let { assertTrue(it, it.contains("media(\"next\")")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"rewind\") } }").let { assertTrue(it, it.contains("media takes")) }
+    }
+
     @Test fun sliderAndInput() {
         val p =
             Compiler.compile(
