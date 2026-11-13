@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">configuració</string>
+
+    <string name="settings_style">estil</string>
+    <string name="settings_style_subtitle">tema, fons, pantalla d\'inici</string>
+    <string name="settings_pages">pàgines</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="one">%1$d pàgina · ordena, edita, treu</item>
+        <item quantity="other">%1$d pàgines · ordena, edita, treu</item>
+    </plurals>
+    <string name="settings_gestures">gestos</string>
+    <string name="settings_gestures_subtitle">amunt: %1$s · avall: %2$s</string>
+    <string name="settings_language">idioma</string>
+    <string name="settings_language_phone">idioma del telèfon</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">instal·lat · treu</string>
+    <string name="settings_linux_installing_percent">instal·lant %1$d%% · %2$s</string>
+    <string name="settings_linux_installing">instal·lant · %1$s</string>
+    <string name="settings_linux_failed">la instal·lació s\'ha aturat · torna-ho a provar</string>
+    <string name="settings_linux_removing">eliminant…</string>
+    <string name="settings_linux_not_installed">no instal·lat · instal·la Arch Linux per a aplicacions de terminal i agents</string>
+    <string name="settings_agents">agents de programació</string>
+    <string name="settings_agents_default">per defecte: %1$s</string>
+    <string name="settings_agents_install">instal·la Claude Code, OpenCode, …</string>
+    <string name="settings_needs_linux">necessita linux</string>
+    <string name="settings_packages">paquets</string>
+    <string name="settings_packages_subtitle">instal·la aplicacions i eines de Linux amb pacman i l\'AUR</string>
+    <string name="settings_home_app">aplicació d\'inici predeterminada</string>
+    <string name="settings_home_app_subtitle">fes d\'Omalauncher la teva pantalla d\'inici</string>
+    <string name="settings_local_network">xarxa local</string>
+    <string name="settings_local_network_subtitle">deixa que els widgets i linux arribin a la teva impressora, home assistant, …</string>
+    <string name="settings_permissions">permisos</string>
+    <string name="settings_permissions_subtitle">micròfon, ubicació, fitxers, …</string>
+
+    <string name="permissions_title">permisos</string>
+    <string name="permissions_folders_title">carpetes del telèfon</string>
+    <string name="permissions_folders_about">carpetes de les teves fotos, descàrregues i documents per a linux: a Fitxers, i per a agents i scripts a través d\'omalauncher</string>
+    <string name="permissions_folders_sdcard">el que linux desa a %1$s/Download o %1$s/Documents també ho veuen altres aplicacions</string>
+    <string name="permissions_folders_add">afegeix una carpeta</string>
+    <string name="permissions_folders_remove">treu</string>
+    <string name="permissions_folders_cant_keep">android no ha deixat que el launcher mantingui aquesta carpeta</string>
+    <string name="permissions_folders_no_picker">aquest telèfon no té selector de carpetes</string>
+    <string name="permissions_note">els widgets i els agents poden usar tot el que hi ha aquí. android controla els interruptors: activar-los demana permís, desactivar-los obre la configuració d\'android per a l\'aplicació</string>
+    <string name="permissions_on">activat · %1$s</string>
+    <string name="permissions_off">desactivat · %1$s</string>
+    <string name="permissions_mic">micròfon</string>
+    <string name="permissions_mic_uses">el micròfon de la barra de comandes, Veu, widgets que escolten</string>
+    <string name="permissions_location">ubicació</string>
+    <string name="permissions_location_uses">aproximada · widgets com el temps, mentre són a la pantalla · agents amb omalauncher location</string>
+    <string name="permissions_calendar">calendari</string>
+    <string name="permissions_calendar_uses">els teus esdeveniments, només lectura · widgets de calendari · agents amb omalauncher calendar</string>
+    <string name="permissions_bluetooth">bluetooth</string>
+    <string name="permissions_bluetooth_uses">les bateries i la configuració dels teus AirPods · widgets d\'AirPods · agents amb omalauncher airpods</string>
+    <string name="permissions_notifications">notificacions</string>
+    <string name="permissions_notifications_uses">linux mentre s\'executa, widgets que et notifiquen</string>
+    <string name="permissions_notification_access">accés a les notificacions</string>
+    <string name="permissions_notification_access_uses">punts de notificació, què sona i no molestar per a widgets</string>
+
+    <string name="settings_android">configuració d\'android</string>
+    <string name="settings_android_subtitle">la configuració del sistema del telèfon</string>
+    <string name="settings_licenses">llicències</string>
+    <string name="settings_licenses_subtitle">programari de codi obert d\'Omalauncher</string>
+
+    <string name="settings_system_updating">actualitzant el sistema: %1$s…</string>
+    <string name="settings_system_update_failed">una actualització del sistema no ha acabat</string>
+    <string name="settings_retry">torna-ho a provar</string>
+    <string name="settings_system_updates">actualitzacions del sistema</string>
+    <string name="settings_widget_updates">widgets</string>
+    <string name="settings_update_all">actualitza-ho tot</string>
+    <string name="settings_check">comprova</string>
+    <string name="settings_update">actualitza</string>
+    <string name="settings_updating">actualitzant…</string>
+    <string name="settings_checking">comprovant…</string>
+    <string name="settings_not_checked">encara no s\'ha comprovat</string>
+    <string name="settings_up_to_date">al dia · comprovat fa %1$s</string>
+    <string name="settings_store_unreachable">no s\'ha pogut connectar amb la botiga</string>
+    <string name="settings_updates_held">editats, així que no s\'actualitzen aquí: %1$s · actualitzar-ne un a la botiga substitueix els teus canvis</string>
+    <string name="settings_more_lines">+%1$d més</string>
+    <string name="settings_just_now">ara mateix</string>
+    <string name="settings_minutes_ago">fa %1$dm</string>
+    <string name="settings_hours_ago">fa %1$dh</string>
+    <string name="settings_days_ago">fa %1$dd</string>
+</resources>
