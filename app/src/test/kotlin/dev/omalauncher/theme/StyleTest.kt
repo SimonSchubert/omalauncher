@@ -144,6 +144,18 @@ class StyleTest {
         assertEquals(Style.GLASS, decoded.style[Style.STATUS_BAR.opacity], 0.0)
     }
 
+    @Test fun overscrollCloseIsOnUnlessTurnedOff() {
+        // On by default, so panels close as they always have (#278).
+        assertTrue(Style()[Style.OVERSCROLL_CLOSE])
+        assertTrue(StyleFile.defaultsText().contains("overscroll-close = true"))
+        val off = StyleFile.decode(Toml.parse("[gestures]\noverscroll-close = false\n"))
+        assertEquals(emptyList<String>(), off.problems)
+        assertFalse(off.style[Style.OVERSCROLL_CLOSE])
+        // Saved back as the one setting that differs from the defaults.
+        assertEquals(false, StyleFile.encode(emptyMap(), off.style)["gestures.overscroll-close"])
+        assertEquals(null, StyleFile.encode(emptyMap(), Style())["gestures.overscroll-close"])
+    }
+
     @Test fun absentKeysAreDefaultsNotThePreviousValues() {
         val previous = Style().with(Style.GAPS_IN, 10.0)
         assertEquals(6.0, StyleFile.decode(emptyMap(), previous).style[Style.GAPS_IN], 0.0)
