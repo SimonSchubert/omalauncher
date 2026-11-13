@@ -69,6 +69,7 @@
     <string name="settings_launcher_updates">launcher</string>
     <string name="settings_launcher_update_available">Omalauncher baru tersedia di Google Play</string>
     <string name="settings_launcher_update_failed">Google Play tidak dapat memperbarui Omalauncher</string>
+    <string name="settings_launcher_update_github">Omalauncher %1$s → %2$s di GitHub</string>
     <string name="settings_update_all">perbarui semua</string>
     <string name="settings_check">periksa</string>
     <string name="settings_update">perbarui</string>

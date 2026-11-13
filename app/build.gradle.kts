@@ -30,7 +30,7 @@ android {
     buildFeatures { buildConfig = true }
 
     // play: the AAB for Google Play, with Play's in-app updates, whose library is closed source. foss: the APK on
-    // GitHub releases, which F-Droid builds too, without it; its LauncherUpdates never finds an update.
+    // GitHub releases, which F-Droid builds too, without it; its LauncherUpdates asks GitHub releases instead.
     flavorDimensions += "store"
     productFlavors {
         create("foss") {

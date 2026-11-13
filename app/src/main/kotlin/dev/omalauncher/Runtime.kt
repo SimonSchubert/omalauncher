@@ -137,7 +137,7 @@ class Runtime(
     }
     val updates = SystemUpdates(proot, pacman, agents)
 
-    /** A newer launcher on Google Play; only the play build finds one. */
+    /** A newer launcher: on Google Play in the play build, on GitHub releases in the foss build. */
     val launcherUpdates = LauncherUpdates(context)
     val gpu = Gpu(context, proot, pacman)
 
@@ -408,7 +408,7 @@ class Runtime(
     /** Checks for updates now, on the runtime's scope: leaving settings doesn't cancel it. */
     fun checkUpdates() {
         if (linux) scope.launch { updates.check(force = true) }
-        launcherUpdates.check()
+        launcherUpdates.check(force = true)
     }
 
     /** Runs every pending update (packages and agents); the drawer then lists what changed. */

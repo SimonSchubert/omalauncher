@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.omalauncher.AppLanguage
+import dev.omalauncher.BuildConfig
 import dev.omalauncher.LocalNetwork
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
@@ -223,7 +224,7 @@ private fun SetupUpdates(runtime: Runtime) {
 
 /**
  * "system updates" while Linux is installed, then "widgets": the store's widgets and apps, shown only while they
- * have updates, then "launcher": a newer launcher on Google Play, shown only while there is one. Each has its own
+ * have updates, then "launcher": a newer launcher on Google Play or GitHub, shown only while there is one. Each has its own
  * "update"; the top's "update all" shows when Linux and widgets both do, and "check" checks all while nothing is
  * pending. Without Linux, the box is only there while widgets or the launcher have updates.
  */
@@ -288,7 +289,9 @@ private fun UpdatesBox(
         if (launcherShown) {
             // Play restarts the launcher, which would cut a running system or widget update off halfway.
             val launcherReady = launcher.available && !busy
-            if (launcher.available) UpdateLines(listOf(stringResource(R.string.settings_launcher_update_available)), launcherReady) { launcher.start(playScreen) }
+            // GitHub's has a version; Play's doesn't.
+            val line = launcher.version?.let { stringResource(R.string.settings_launcher_update_github, BuildConfig.VERSION_NAME, it) } ?: stringResource(R.string.settings_launcher_update_available)
+            if (launcher.available) UpdateLines(listOf(line), launcherReady) { launcher.start(playScreen) }
             if (launcher.failed) BasicText(stringResource(R.string.settings_launcher_update_failed), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
         }
     }

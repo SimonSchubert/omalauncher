@@ -155,7 +155,10 @@ app list's settings gear. "update all" in settings runs `pacman -Syyu` and then
 build flavor asks Google Play when settings opens (`LauncherUpdates.kt` in
 `app/src/play`) and lists a newer version in the same updates box; its
 "update" opens Play's own update screen. The `foss` flavor (GitHub releases,
-F-Droid) has a twin of that class without Play's closed-source library.
+F-Droid) has a twin of that class without Play's closed-source library: it
+asks GitHub's releases API instead (at most hourly) and "update" opens the
+release page. Installs made by an F-Droid client never ask; F-Droid updates
+them.
 
 Pinned versions: `ThemeStore.OMARCHY_REF` (the Omarchy commit) and
 `CLIAMP_VERSION` in `Bootstrap.kt`. Changing the first makes every install

@@ -19,7 +19,7 @@ import com.google.android.play.core.install.model.UpdateAvailability
  * A newer launcher on Google Play, for settings' updates box. Play is asked when settings opens and on its "check",
  * never in the background; "update" opens Play's own screen, which asks before it downloads, installs and restarts
  * the launcher. Only an install Play made can take Play's updates, so other installs never ask. The foss build has
- * a twin of this class without Play's library.
+ * a twin of this class that asks GitHub releases instead.
  */
 class LauncherUpdates(
     context: Context,
@@ -41,7 +41,12 @@ class LauncherUpdates(
     var failed by mutableStateOf(false)
         private set
 
-    fun check() {
+    /** Play doesn't say the newer version's name. */
+    val version: String? = null
+
+    /** Asks Play; Play answers from its own cache, so every call asks, [force] or not. */
+    @Suppress("UNUSED_PARAMETER")
+    fun check(force: Boolean = false) {
         if (!fromPlay || checking) return
         checking = true
         manager.appUpdateInfo
