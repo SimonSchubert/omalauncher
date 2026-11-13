@@ -1308,6 +1308,19 @@ class LangTest {
         assertTrue(compileError(src.replace("owl: 21", "owl: 20")).contains("android.motion needs owl 21"))
     }
 
+    @Test fun androidWindows() {
+        val src = "widget {\n meta { owl: 23 }\n source w = android.windows\n for x in w key x.key { Text { text: x.name; onTap: open(x.key) } } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.windows", (p.globals.single() as Global.Source).kind)
+        assertTrue(!p.needsLinux)
+        assertEquals(listOf("read the open Linux windows (names and titles)"), p.commands)
+        assertEquals(
+            listOf("sees the titles of open Linux windows (folders, files, commands); check nothing sends them elsewhere"),
+            Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") },
+        )
+        assertTrue(compileError(src.replace("owl: 23", "owl: 22")).contains("android.windows needs owl 23"))
+    }
+
     @Test fun everyFrame() {
         val src = "widget {\n meta { owl: 21 }\n state x = 0\n every frame { x = x + 100 * dt }\n Text { text: x } }"
         val p = Compiler.compile(src)

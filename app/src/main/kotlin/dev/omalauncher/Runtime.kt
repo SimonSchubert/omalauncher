@@ -614,6 +614,19 @@ class Runtime(
         launch(app.exec)
     }
 
+    /**
+     * Brings the Linux window with this handle to the front, for a widget's open(w.key); false if it's gone or has no
+     * task to move. Never a new task: a second activity would draw the same window, and closing either closes it.
+     */
+    fun showWindow(handle: String): Boolean = wm.windowByHandle(handle)?.let(::bringToFront) ?: false
+
+    /** The Linux app whose icon a window's Recents card shows: its agent's, else the app it's named after. */
+    fun appOfWindow(window: XdgToplevel): LinuxApp? {
+        val label = displayName(window.appId, window.title)
+        val name = agentOf(window.appId, label)?.name ?: label
+        return linuxApps.apps.firstOrNull { it.name == name }
+    }
+
     /** Moves [window]'s Android task to the front; false if it has none (yet). */
     private fun bringToFront(window: XdgToplevel): Boolean {
         val handle = wm.handleOf(window) ?: return false

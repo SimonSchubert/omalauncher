@@ -140,9 +140,13 @@ private fun DesktopScreen(
     // Closing it forgets the search, like stock drawers: the next swipe up shows every app, not the old results.
     LaunchedEffect(panelShown) { if (!panelShown) state.query = "" }
 
-    fun launch(hit: AppHit) {
+    fun leave() {
         state.query = ""
         state.closeNow()
+    }
+
+    fun launch(hit: AppHit) {
+        leave()
         hit.open(runtime)
     }
 
@@ -150,6 +154,7 @@ private fun DesktopScreen(
         remember(runtime, state, context) {
             AppHandlers(
                 launch = ::launch,
+                leave = ::leave,
                 // Pins to the page that's showing; the panel closes so the new tile is visible.
                 pin = { hit ->
                     when (hit) {

@@ -268,6 +268,7 @@ class Review(
                 Regex("""(^|[\s"'=:(])(/sdcard|/storage/emulated)(/|\b)""") to "reaches the phone's own files (photos, downloads); check nothing sends them elsewhere",
                 Regex("""^read the phone's approximate location""") to "knows roughly where the phone is; check where it sends that",
                 Regex("""^read events in the phone's calendars""") to "sees calendar event titles, times and locations; check nothing sends them elsewhere",
+                Regex("""^read the open Linux windows""") to "sees the titles of open Linux windows (folders, files, commands); check nothing sends them elsewhere",
                 Regex("""^read and change the AirPods""") to "reads and changes the AirPods connected to the phone; check where it sends what it reads",
                 Regex("""^read Android notifications""") to "sees every notification on the phone; check nothing sends them anywhere",
                 Regex("""^reply to notifications as you""") to "sends messages as you through other apps; check when it replies and what it says",
