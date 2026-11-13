@@ -26,6 +26,7 @@ Part of the widget docs: README.md, one folder up, comes first, and paths here a
 | `meta { owl: 12 }` | the language version the file needs (this launcher has 19; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see docs/screens.md (owl 5) |
+| `notification: running ? {title: "tea", until: endsAt} : null` | a notification of the widget's own, on the lock screen and in the shade while it's a map, gone while it's null; `onNotification: ...` runs when one of its buttons is pressed. See A notification of its own (owl 23) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
 | `padding: 12` / `background: ...` | the tile's padding (dp) and background |
 | `lock: playing` | holds the home screen still while it's true and the tile shows: no page turn, swipe up or long press, so a game's or a drawing pad's swipes stay its own. Back and the chip it puts at the top let go until it turns false. Something that changes, never a fixed `true` (owl 18) |
@@ -122,6 +123,41 @@ widget "focus" {
 for a deadline use `at`, which doesn't need one. A trigger that runs more than 10 times a
 second is held back and reported (one that changes what it watches would otherwise loop);
 `on x each` may run 100 times a second, and `every frame` once a frame.
+
+## A notification of its own
+
+`notification:` at the top of a widget or a face is a notification that stays while it's a map and
+goes while it's null, read as it changes like a node's properties: a timer's says what runs, pauses and rings (owl 23).
+It shows on the lock screen in full, so keep what's private out of it. Its map takes:
+
+| field | is |
+|---|---|
+| `title` | its first line; the widget's name without it |
+| `text` | the line under it |
+| `until` | a Unix time in seconds it counts down to, `endsAt`: Android runs the clock, so it keeps time on the lock screen while the widget doesn't redraw. On Android 16 and later a running clock also shows at the top of the lock screen and as a chip in the status bar |
+| `since` | a Unix time it counts up from instead, like a stopwatch's start |
+| `buttons` | up to 3, each a text, `"stop"`, or `{text: "+1m", value: {do: "add", sec: 60}}` |
+
+A button pressed, from the shade or the lock screen, runs `onNotification` with `value`, the button's
+`value` (its text without one). Tapping the notification opens home. It's posted again only when what it says
+changes, makes no sound (a ring is `notify(...)`'s, in an `at`), and is one per widget.
+
+While the page is off screen, as it is behind the lock screen, its sources stand still, `now` too: work the
+notification out from states, which handlers and `at` change, not from `now`. `onNotification` reads `now` as it
+is, since a press sets the clocks first.
+
+```owl
+widget "tea" {
+  meta { owl: 23 }
+  source now = clock every 1s
+  state endsAt = 0 persist
+  notification: endsAt > 0 ? {title: "tea", until: endsAt, buttons: ["+1m", "stop"]} : null
+  onNotification: endsAt = value == "stop" ? 0 : max(endsAt, now) + 60
+  at endsAt { notify("tea", "it's ready"); endsAt = 0 }
+  onTap: endsAt = now + 3 * 60
+  Text { text: endsAt > now ? fmtTime(endsAt - now, "m:ss", "UTC") : "tea" }
+}
+```
 
 ## Dependencies
 

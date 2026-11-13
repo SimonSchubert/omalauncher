@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 22
+        const val LEVEL = 23
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -314,7 +314,7 @@ class Compiler private constructor(
         if (body.animations.isNotEmpty()) fail("animate belongs inside a node", body.animations[0].pos)
         // An app, a panel and keys check their own (onBack, onSubmit).
         if (ast.kind != OwlKind.App && ast.kind != OwlKind.Panel && ast.kind != OwlKind.Keybar) {
-            for (h in body.handlers) if (h.name != "onTap") fail("a ${ast.kind.word} only takes onTap at the top level", h.pos)
+            for (h in body.handlers) if (h.name != "onTap" && h.name != "onNotification") fail("a ${ast.kind.word} only takes onTap (and onNotification) at the top level", h.pos)
         }
 
         // Sources, state and assets first: lets and components may use any of them.
@@ -382,7 +382,16 @@ class Compiler private constructor(
         if (rootNodes.isEmpty()) fail("a widget needs at least one node, like Text { text: \"hi\" }", 0)
         val tileNodes = nodes
         val screen = screens.firstOrNull()?.let { screen(it) }
-        val onTap = body.handlers.firstOrNull()?.let { handler(it, root) }
+        val onTap = body.handlers.firstOrNull { it.name == "onTap" }?.let { handler(it, root) }
+        // A notification of its own, shown while it's something and gone while it's null: read as it changes, so a
+        // timer's follows it as it starts, pauses and rings.
+        val notification = props["notification"]?.let { since(WIDGET_NOTIFICATION, it.pos); ex(it.value, root) }
+        val onNotification =
+            body.handlers.firstOrNull { it.name == "onNotification" }?.let { h ->
+                since("onNotification", h.pos)
+                if (notification == null) fail("onNotification runs when a button of the widget's notification is pressed: add notification: { title: \"…\", buttons: [\"stop\"] }", h.pos)
+                handler(h, root)
+            }
         if (screen == null) screenAction?.let { fail("screen() and close() need a screen { } block in the widget", it) }
         val background = props["background"]?.let { if (gradient(it.value)) since(GRADIENT_BACKGROUND, it.pos); ex(it.value, root) }
         // Whether the status bar stays over a face, read as it changes: a face can hide it for a game and bring it back.
@@ -424,6 +433,8 @@ class Compiler private constructor(
             screen = screen?.first,
             screenTitle = screen?.second,
             onTap = onTap,
+            notification = notification,
+            onNotification = onNotification,
             triggers = triggers,
             commands = commands.toList(),
             secretHosts = secretHosts.mapValues { it.value.sorted() },
