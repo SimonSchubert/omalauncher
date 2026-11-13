@@ -36,17 +36,28 @@ class Bsp private constructor(
         ez: Float,
         out: IntArray,
     ) {
+        // Without recursion: a tree of a mesh with tens of thousands of faces can be as deep, too deep for the stack.
+        // Each entry is a node to visit, or (as -1 - node) one whose faces come next; a node is pushed at most twice.
+        val stack = IntArray(2 * count.size)
+        var top = 0
         var k = 0
-
-        fun visit(node: Int) {
-            if (node < 0) return
+        stack[top++] = 0
+        while (top > 0) {
+            val node = stack[--top]
+            if (node < 0) {
+                val m = -1 - node
+                for (i in first[m] until first[m] + count[m]) out[k++] = faces[i]
+                continue
+            }
             val o = 4 * node
             val inFront = planes[o] * ex + planes[o + 1] * ey + planes[o + 2] * ez - planes[o + 3] > 0f
-            visit(if (inFront) back[node] else front[node])
-            for (i in first[node] until first[node] + count[node]) out[k++] = faces[i]
-            visit(if (inFront) front[node] else back[node])
+            // Popped last to first: the far side, the node's faces, the near side.
+            val near = if (inFront) front[node] else back[node]
+            val far = if (inFront) back[node] else front[node]
+            if (near >= 0) stack[top++] = near
+            stack[top++] = -1 - node
+            if (far >= 0) stack[top++] = far
         }
-        visit(0)
     }
 
     companion object {
@@ -93,7 +104,8 @@ class Bsp private constructor(
                     val (list, parent, isFront) = work.removeLast()
                     val node = count.size
                     if (parent >= 0) (if (isFront) front else back)[parent] = node
-                    val s = pickSplitter(list, eps)
+                    val splitter = pickSplitter(list, eps)
+                    val s = plane(splitter)
                     val nx = s[0]
                     val ny = s[1]
                     val nz = s[2]
@@ -109,7 +121,9 @@ class Bsp private constructor(
                         val d1 = nx * f.p[3] + ny * f.p[4] + nz * f.p[5] - d
                         val d2 = nx * f.p[6] + ny * f.p[7] + nz * f.p[8] - d
                         when {
-                            abs(d0) <= eps && abs(d1) <= eps && abs(d2) <= eps -> on += f
+                            // The splitter stays on its node even when rounding puts a sliver's far corners off its own
+                            // plane: each node then takes at least one face, and the tree can't go on forever.
+                            f === splitter || (abs(d0) <= eps && abs(d1) <= eps && abs(d2) <= eps) -> on += f
                             d0 >= -eps && d1 >= -eps && d2 >= -eps -> fs += f
                             d0 <= eps && d1 <= eps && d2 <= eps -> bs += f
                             else -> {
@@ -161,14 +175,14 @@ class Bsp private constructor(
         }
 
         /**
-         * The plane of one of [list]'s faces to cut by: of a few spread through the list, the one that cuts the fewest
-         * of a sample of the faces, and splits the rest most evenly. As x, y, z and distance.
+         * The face of [list] whose plane to cut by: of a few spread through the list, the one that cuts the fewest of a
+         * sample of the faces, and splits the rest most evenly.
          */
         private fun pickSplitter(
             list: List<Face>,
             eps: Float,
-        ): FloatArray {
-            val best = FloatArray(4)
+        ): Face {
+            var best = list[0]
             var bestScore = Int.MAX_VALUE
             val tries = minOf(list.size, 12)
             val step = max(1, list.size / 200)
@@ -194,7 +208,7 @@ class Bsp private constructor(
                 val score = 8 * cuts + abs(fr - bk)
                 if (score < bestScore) {
                     bestScore = score
-                    pl.copyInto(best)
+                    best = f
                 }
             }
             return best

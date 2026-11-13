@@ -125,6 +125,20 @@ class BspTest {
     }
 
     /** Sorting faces by the depth of their middles, as scenes did, paints the car wrong from some sides. */
+    /** A sliver whose far corners rounding puts off its own plane: the tree kept cutting by it until memory ran out. */
+    @Test(timeout = 10_000)
+    fun aSliverDoesNotCutForever() {
+        val sliver = listOf(7.3087816, 1.0047317, 4.100808, -52.52781, -93.93712, -30.145348, -52.527798, -93.93714, -30.145365)
+        val others = listOf(1000.0, 0.0, 0.0, 1001.0, 0.0, 0.0, 1000.0, 1.0, 0.0, 1000.0, 0.0, 5.0, 1000.0, 1.0, 5.0, 1001.0, 0.0, 5.0)
+        val points = (sliver + others).chunked(3).map { v(*it.toDoubleArray()) }
+        val faces = (0 until 3).map { f -> Lst(List(3) { Num(3.0 * f + it) }) }
+        val bsp = Meshes.mesh(Lst(points), Lst(faces), Null).bsp
+        assertNotNull(bsp)
+        val order = IntArray(bsp!!.mesh.triangles)
+        bsp.order(0f, 0f, 100f, order)
+        assertEquals(order.indices.toSet(), order.toSet())
+    }
+
     @Test fun depthSortAloneGetsOverlappingBoxesWrong() {
         val faces = world(car, floatArrayOf(0f, 0f, 0f), floatArrayOf(0f, 0f, 0f), floatArrayOf(1f, 1f, 1f))
         val bad =
