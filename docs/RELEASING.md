@@ -29,7 +29,10 @@ git tag v<versionName> && git push origin v<versionName>
 The tag starts `.github/workflows/release.yml`: it runs the tests, builds the
 signed APK and attaches it to a GitHub release with `SHA256SUMS` and the R8
 `mapping.txt`, using `changelogs/<versionCode>.txt` as the notes (it fails
-without one). The mapping matches the Play build's, so it retraces Play crashes.
+without one). That APK is the `foss` build, without Play's closed-source in-app
+update library, so F-Droid can build the same thing; fastlane uploads the `play`
+build. Their R8 mappings differ: Play crashes retrace with the play build's
+(`app/build/outputs/mapping/playRelease/mapping.txt`, also inside the AAB).
 
 Bump `versionCode` for every upload and add its changelog. Add the release's
 most important changes to `CHANGELOG.md` as they land under "Unreleased", and

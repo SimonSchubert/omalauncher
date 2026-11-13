@@ -151,6 +151,12 @@ untouched, plus `mise outdated`. When updates are pending, a dot shows on the
 app list's settings gear. "update all" in settings runs `pacman -Syyu` and then
 `mise upgrade` as one job. Nothing updates automatically.
 
+**The launcher itself** updates through whatever installed it. The `play`
+build flavor asks Google Play when settings opens (`LauncherUpdates.kt` in
+`app/src/play`) and lists a newer version in the same updates box; its
+"update" opens Play's own update screen. The `foss` flavor (GitHub releases,
+F-Droid) has a twin of that class without Play's closed-source library.
+
 Pinned versions: `ThemeStore.OMARCHY_REF` (the Omarchy commit) and
 `CLIAMP_VERSION` in `Bootstrap.kt`. Changing the first makes every install
 download the new themes on its next start (`ThemeStore.ensureRelease`, with or

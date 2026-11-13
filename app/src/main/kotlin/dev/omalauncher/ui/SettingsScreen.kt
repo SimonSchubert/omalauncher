@@ -223,8 +223,9 @@ private fun SetupUpdates(runtime: Runtime) {
 
 /**
  * "system updates" while Linux is installed, then "widgets": the store's widgets and apps, shown only while they
- * have updates. Each has its own "update"; the top's "update all" shows when both do, and "check" checks both
- * while nothing is pending. Without Linux, the box is only there while widgets have updates.
+ * have updates, then "launcher": a newer launcher on Google Play, shown only while there is one. Each has its own
+ * "update"; the top's "update all" shows when Linux and widgets both do, and "check" checks all while nothing is
+ * pending. Without Linux, the box is only there while widgets or the launcher have updates.
  */
 @Composable
 private fun UpdatesBox(
@@ -234,7 +235,11 @@ private fun UpdatesBox(
     val updates = runtime.updates
     val engine = runtime.widgets
     val markets = engine.markets
+    val launcher = runtime.launcherUpdates
+    // Out here: Play's screen answers after the launcher section may have gone.
+    val playScreen = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { launcher.onResult(it.resultCode) }
     if (linux) LaunchedEffect(Unit) { updates.check() }
+    LaunchedEffect(Unit) { launcher.check() }
     LaunchedEffect(Unit) {
         // Opened on its own after the process died, settings comes before the engine has read these.
         withContext(Dispatchers.IO) { markets.forEach { it.load() } }
@@ -244,14 +249,21 @@ private fun UpdatesBox(
     val pending = markets.flatMap { m -> m.updates.map { m to it } }
     // Edited ones are left to the store, which says their changes would go.
     val (held, ready) = pending.partition { (m, e) -> m.edited(e) }
-    val busy = updates.job is JobState.Working || updates.checking || engine.updating || markets.any { it.loading }
+    val busy = updates.job is JobState.Working || updates.checking || engine.updating || markets.any { it.loading } || launcher.checking
     val widgets = pending.isNotEmpty() || engine.updating || engine.updateError != null
-    if (!linux && !widgets) return
+    val launcherShown = launcher.available || launcher.failed
+    if (!linux && !widgets && !launcherShown) return
     Column(
         Modifier.padding(bottom = 8.dp).card(),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            BasicText(stringResource(if (linux) R.string.settings_system_updates else R.string.settings_widget_updates), Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item))
+            val title =
+                when {
+                    linux -> R.string.settings_system_updates
+                    widgets -> R.string.settings_widget_updates
+                    else -> R.string.settings_launcher_updates
+                }
+            BasicText(stringResource(title), Modifier.weight(1f), style = Mono.copy(fontSize = TextSize.Item))
             when {
                 busy -> {}
                 // With one section pending, its own "update" is the same thing.
@@ -260,7 +272,7 @@ private fun UpdatesBox(
                         runtime.updateSystem()
                         engine.updateAll()
                     }
-                linuxPending || ready.isNotEmpty() -> {}
+                linuxPending || ready.isNotEmpty() || launcher.available -> {}
                 // Not a composition scope: this branch leaves composition as soon as checking starts, which would cancel the check.
                 else ->
                     BracketAction(stringResource(R.string.settings_check), Palette.muted) {
@@ -272,6 +284,13 @@ private fun UpdatesBox(
         if (linux) LinuxUpdatesRows(runtime)
         if (linux && widgets) BasicText(stringResource(R.string.settings_widget_updates), Modifier.padding(top = 8.dp), style = Mono.copy(fontSize = TextSize.Item))
         if (widgets) WidgetUpdatesRows(engine, markets, ready, held)
+        if (launcherShown && (linux || widgets)) BasicText(stringResource(R.string.settings_launcher_updates), Modifier.padding(top = 8.dp), style = Mono.copy(fontSize = TextSize.Item))
+        if (launcherShown) {
+            // Play restarts the launcher, which would cut a running system or widget update off halfway.
+            val launcherReady = launcher.available && !busy
+            if (launcher.available) UpdateLines(listOf(stringResource(R.string.settings_launcher_update_available)), launcherReady) { launcher.start(playScreen) }
+            if (launcher.failed) BasicText(stringResource(R.string.settings_launcher_update_failed), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
+        }
     }
 }
 

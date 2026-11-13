@@ -114,12 +114,12 @@ itself, so Omarchy's Super+Space and Super+Enter can't be used.
 
 ```sh
 ./scripts/fetch-proot.sh          # Termux's proot -> app/src/main/jniLibs (needs bsdtar)
-./gradlew :app:installDebug
+./gradlew :app:installFossDebug
 # optional: skip the 830 MB download on the device
 adb push ArchLinuxARM-aarch64-latest.tar.gz /sdcard/Android/data/dev.omalauncher/files/
 ```
 
-Tests: `./gradlew :owl:test :app:testDebugUnitTest`. `./gradlew :owl:owlJar`
+Tests: `./gradlew :owl:test :app:testFossDebugUnitTest`. `./gradlew :owl:owlJar`
 builds `owl/build/cli/owl.jar`, the checker the widget store's CI runs.
 
 In debug builds you can launch guest commands with

@@ -64,7 +64,7 @@ jobs:
           EOF
 
       - name: Test and build
-        run: ./gradlew :owl:test :app:testDebugUnitTest :app:assembleRelease
+        run: ./gradlew :owl:test :app:testFossDebugUnitTest :app:assembleFossRelease
 
       # Checksum and provenance, so a sideloaded APK can be checked against what CI built:
       # sha256sum -c SHA256SUMS, or gh attestation verify <apk> -R SimonSchubert/omalauncher.
@@ -72,11 +72,11 @@ jobs:
         id: apk
         run: |
           apk="omalauncher-${{ steps.version.outputs.name }}.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$apk"
+          cp app/build/outputs/apk/foss/release/app-foss-release.apk "$apk"
           sha256sum "$apk" > SHA256SUMS
           echo "file=$apk" >> "$GITHUB_OUTPUT"
-          # The same R8 run as the Play AAB's, so it retraces Play crashes too: match `r8-map-id` to `# pg_map_id`.
-          cp app/build/outputs/mapping/release/mapping.txt "mapping-${{ steps.version.outputs.name }}.txt"
+          # The foss build's: the Play AAB is the play build, whose mapping differs (it's inside the AAB).
+          cp app/build/outputs/mapping/fossRelease/mapping.txt "mapping-${{ steps.version.outputs.name }}.txt"
 
       - uses: actions/attest-build-provenance@v2
         with:

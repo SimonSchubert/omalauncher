@@ -66,6 +66,9 @@
     <string name="settings_retry">coba lagi</string>
     <string name="settings_system_updates">pembaruan sistem</string>
     <string name="settings_widget_updates">widget</string>
+    <string name="settings_launcher_updates">launcher</string>
+    <string name="settings_launcher_update_available">Omalauncher baru tersedia di Google Play</string>
+    <string name="settings_launcher_update_failed">Google Play tidak dapat memperbarui Omalauncher</string>
     <string name="settings_update_all">perbarui semua</string>
     <string name="settings_check">periksa</string>
     <string name="settings_update">perbarui</string>

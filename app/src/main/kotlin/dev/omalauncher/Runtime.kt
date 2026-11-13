@@ -136,6 +136,9 @@ class Runtime(
         agents.release = { agent -> voiceSession.isInitialized() && voice.release(agent.bin) }
     }
     val updates = SystemUpdates(proot, pacman, agents)
+
+    /** A newer launcher on Google Play; only the play build finds one. */
+    val launcherUpdates = LauncherUpdates(context)
     val gpu = Gpu(context, proot, pacman)
 
     /** The guest's resolv.conf, on the phone's DNS servers while Linux is up. */
@@ -400,6 +403,7 @@ class Runtime(
     /** Checks for updates now, on the runtime's scope: leaving settings doesn't cancel it. */
     fun checkUpdates() {
         if (linux) scope.launch { updates.check(force = true) }
+        launcherUpdates.check()
     }
 
     /** Runs every pending update (packages and agents); the drawer then lists what changed. */

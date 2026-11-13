@@ -28,8 +28,9 @@ jobs:
           [ -d "$ANDROID_HOME/ndk/$ndk" ] || yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" >/dev/null
 
       - name: Test
-        run: ./gradlew :owl:test :app:testDebugUnitTest :owl:owlJar
+        run: ./gradlew :owl:test :app:testFossDebugUnitTest :owl:owlJar
 
       # Builds without proot (scripts/fetch-proot.sh), which is enough to compile wlbridge and run lint.
+      # The play build adds Play's in-app updates and their dependencies; linting it too catches what they break.
       - name: Build and lint
-        run: ./gradlew :app:assembleDebug :app:lintDebug
+        run: ./gradlew :app:assembleFossDebug :app:lintFossDebug :app:lintPlayDebug

@@ -56,3 +56,12 @@ It is installed into the Linux guest when GPU acceleration is turned on for an A
 talloc (LGPL-3.0) and libandroid-shmem (BSD-3-Clause); they are not in this
 repository. The app lists every component it ships, with its license, under
 settings › licenses (`ui/LicensesScreen.kt`, texts in `app/src/main/assets/licenses/`).
+
+## Google Play In-App Updates
+
+The `play` build, the one on Google Play, includes Google's
+[Play In-App Updates library](https://developer.android.com/guide/playcore/in-app-updates)
+(`com.google.android.play:app-update`) under the
+[Play Core SDK Terms](https://developer.android.com/guide/playcore/license). It is not open
+source, so it isn't listed under settings › licenses, and the `foss` build (GitHub releases,
+F-Droid) leaves it out.

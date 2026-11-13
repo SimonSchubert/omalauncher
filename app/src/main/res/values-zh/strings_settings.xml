@@ -66,6 +66,9 @@
     <string name="settings_retry">重试</string>
     <string name="settings_system_updates">系统更新</string>
     <string name="settings_widget_updates">小组件</string>
+    <string name="settings_launcher_updates">启动器</string>
+    <string name="settings_launcher_update_available">Google Play 上有新版 Omalauncher</string>
+    <string name="settings_launcher_update_failed">Google Play 无法更新 Omalauncher</string>
     <string name="settings_update_all">全部更新</string>
     <string name="settings_check">检查</string>
     <string name="settings_update">更新</string>

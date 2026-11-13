@@ -6,6 +6,8 @@ androidx-activity = "1.13.0"
 androidsvg = "1.4"
 commons-compress = "1.28.0"
 zxing = "3.5.4"
+play-app-update = "2.1.0"
+androidx-fragment = "1.9.1"
 junit = "4.13.2"
 org-json = "20260814"
 
@@ -18,6 +20,8 @@ junit = { module = "junit:junit", version.ref = "junit" }
 org-json = { module = "org.json:json", version.ref = "org-json" }
 androidsvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "androidx-fragment" }
+play-app-update = { module = "com.google.android.play:app-update", version.ref = "play-app-update" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 [plugins]

@@ -68,6 +68,9 @@
     <string name="settings_retry">reintentar</string>
     <string name="settings_system_updates">actualizaciones del sistema</string>
     <string name="settings_widget_updates">widgets</string>
+    <string name="settings_launcher_updates">launcher</string>
+    <string name="settings_launcher_update_available">hay un Omalauncher nuevo en Google Play</string>
+    <string name="settings_launcher_update_failed">Google Play no pudo actualizar Omalauncher</string>
     <string name="settings_update_all">actualizar todo</string>
     <string name="settings_check">comprobar</string>
     <string name="settings_update">actualizar</string>

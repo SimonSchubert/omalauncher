@@ -77,6 +77,10 @@
     <string name="settings_retry">retry</string>
     <string name="settings_system_updates">system updates</string>
     <string name="settings_widget_updates">widgets</string>
+    <!-- The updates box's section for a newer launcher on Google Play (Play builds only). -->
+    <string name="settings_launcher_updates">launcher</string>
+    <string name="settings_launcher_update_available">a new Omalauncher is on Google Play</string>
+    <string name="settings_launcher_update_failed">Google Play couldn\'t update Omalauncher</string>
     <string name="settings_update_all">update all</string>
     <string name="settings_check">check</string>
     <string name="settings_update">update</string>
