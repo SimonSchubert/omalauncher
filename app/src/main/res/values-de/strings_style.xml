@@ -15,6 +15,8 @@
     <string name="style_icons">symbole</string>
     <string name="style_monochrome">monochrom</string>
     <string name="style_colored">farbig</string>
+    <string name="style_icon_pack">symbolpaket</string>
+    <string name="style_icon_pack_none">keins</string>
     <string name="style_home_apps">start-apps</string>
     <string name="style_boxed">gerahmt</string>
     <string name="style_icon_only">nur symbol</string>

@@ -249,15 +249,36 @@ class AndroidAppCatalog(
     var listed by mutableStateOf(false)
         private set
 
+    /**
+     * The icon pack's package (Style.ICON_PACK), or null for apps' own icons. Setting it draws every app's icon again;
+     * a pack that isn't installed changes nothing until it is.
+     */
+    var iconPack: String? = null
+        set(value) {
+            if (field == value) return
+            field = value
+            if (started) reload()
+        }
+
+    /** The pack [reload] read for [packRead], so it reads appfilter.xml only when the pack changes. */
+    private var pack: IconPack? = null
+    private var packRead: String? = null
+    private var started = false
+
+    /** Which [iconPack] each app's icon in [icons] was drawn with; one drawn with another is drawn again. */
+    private val drawnWith = HashMap<String, String?>()
+
     /** Icon edge in px: the drawer's 52dp icon at this screen's density. */
     private val iconPx = (52 * context.resources.displayMetrics.density).toInt().coerceAtLeast(48)
 
     fun start() {
+        started = true
         launcherApps.registerCallback(
             object : LauncherApps.Callback() {
-                override fun onPackageAdded(packageName: String, user: UserHandle) = reload()
+                // Evicting also reads the icon pack again when it's the one installed or removed.
+                override fun onPackageAdded(packageName: String, user: UserHandle) = reload(evict = packageName)
 
-                override fun onPackageRemoved(packageName: String, user: UserHandle) = reload()
+                override fun onPackageRemoved(packageName: String, user: UserHandle) = reload(evict = packageName)
 
                 // Updates can change the icon, so drop the cached one.
                 override fun onPackageChanged(packageName: String, user: UserHandle) = reload(evict = packageName)
@@ -514,6 +535,16 @@ class AndroidAppCatalog(
                     icons.keys.removeAll { it.startsWith("$evict/") }
                     masks.keys.removeAll { it.startsWith("$evict/") }
                 }
+                // The pack chosen, installed or updated since it was read: every app's icon is drawn again (see drawnWith),
+                // without clearing the old ones first, so the drawer doesn't blink to initials.
+                val wanted = iconPack
+                if (wanted != packRead || (wanted != null && evict == wanted)) {
+                    pack = wanted?.let { withContext(Dispatchers.IO) { IconPack.load(context, it) } }
+                    packRead = wanted
+                    drawnWith.clear()
+                }
+                val iconPack = pack
+                val dpi = context.resources.displayMetrics.densityDpi
                 var paused = emptySet<Long>()
                 var clones = emptySet<Long>()
                 var works = emptySet<Long>()
@@ -573,11 +604,14 @@ class AndroidAppCatalog(
                 val present = (list.map { it.key } + pinned.map { it.key }).toHashSet()
                 icons.keys.retainAll(present)
                 masks.keys.retainAll(present)
+                drawnWith.keys.retainAll(present)
                 // Started in this order, and they run four at a time: with hundreds of apps, the recent strip's would
                 // otherwise wait their turn in the alphabet.
                 val first = iconsFirst()
                 for ((info, app) in infos.sortedBy { it.second.key !in first }) {
-                    if (app.key !in icons) loadIcon(app.key, app.profile, app.clone) { info.getIcon(0) }
+                    if (app.key !in icons || drawnWith[app.key] != wanted || app.key !in drawnWith) {
+                        loadIcon(app.key, app.profile, app.clone, drawn = { drawnWith[app.key] = wanted }) { iconPack?.drawable(app.component, dpi) ?: info.getIcon(0) }
+                    }
                 }
                 // Apps change a shortcut's icon without an update, so these are drawn again each time; there are only a few.
                 for ((info, shortcut) in made) {
@@ -635,12 +669,14 @@ class AndroidAppCatalog(
         key: String,
         profile: Long?,
         clone: Boolean,
+        drawn: () -> Unit = {},
         drawable: () -> Drawable?,
     ) = launch {
         val rendered = withContext(iconDispatcher) { runCatching { drawable()?.let { render(it, profile, clone) } }.getOrNull() }
         if (rendered != null) {
             icons[key] = rendered.first
             masks[key] = rendered.second
+            drawn()
         }
     }
 

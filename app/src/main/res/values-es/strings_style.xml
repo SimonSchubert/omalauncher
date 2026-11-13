@@ -15,6 +15,8 @@
     <string name="style_icons">iconos</string>
     <string name="style_monochrome">monocromo</string>
     <string name="style_colored">color</string>
+    <string name="style_icon_pack">paquete de iconos</string>
+    <string name="style_icon_pack_none">ninguno</string>
     <string name="style_home_apps">apps de inicio</string>
     <string name="style_boxed">con recuadro</string>
     <string name="style_icon_only">solo icono</string>

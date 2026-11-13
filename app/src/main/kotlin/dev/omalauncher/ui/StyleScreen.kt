@@ -77,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import dev.omalauncher.IconPack
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LauncherFont
@@ -135,6 +136,7 @@ fun StyleScreen(
             Heading(R.string.style_home_screen)
             val style = runtime.style
             Flag(R.string.style_icons, R.string.style_monochrome, R.string.style_colored, style, Style.MONOCHROME_ICONS)
+            IconPackOption(style)
             Flag(R.string.style_home_apps, R.string.style_boxed, R.string.style_icon_only, style, Style.APP_TILES)
             Flag(R.string.style_recent_apps, R.string.style_shown, R.string.style_hidden, style, Style.RECENT_APPS)
             Flag(R.string.style_empty_page_left, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_LEFT)
@@ -647,6 +649,24 @@ private fun Heading(
 }
 
 /** Font names run long and pacman can add many: the picked one shows, and tapping it lists the others under it. */
+/** The icon pack Android apps take their icons from, among the installed ones; one set in style.toml but not installed shows by its package name. */
+@Composable
+private fun IconPackOption(style: StyleStore) {
+    val context = LocalContext.current
+    val packs by produceState(emptyList<Pair<String, String>>()) { value = withContext(Dispatchers.IO) { IconPack.installed(context) } }
+    val selected = style.style[Style.ICON_PACK]
+    val none = stringResource(R.string.style_icon_pack_none)
+    val names = packs.toMap()
+    val options = listOf<String?>(null) + packs.map { it.first } + listOfNotNull(selected?.takeIf { it !in names })
+    val label = { pkg: String? -> if (pkg == null) none else names[pkg] ?: pkg }
+    DropdownOption(
+        stringResource(R.string.style_icon_pack),
+        value = { BasicText(label(selected), Modifier.weight(1f, fill = false), style = Mono.copy(color = Palette.foreground), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+    ) { close ->
+        ChoicePopup(options, selected, BelowAnchorStart, onDismiss = close, onPick = { pkg -> style.update { it.with(Style.ICON_PACK, pkg) } }, label = label)
+    }
+}
+
 @Composable
 private fun FontOption(
     families: List<String>,

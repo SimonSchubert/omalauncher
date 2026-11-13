@@ -207,6 +207,11 @@ class Runtime(
         androidApps.iconsFirst = {
             usage.recent.take(20).filter { it.startsWith("a:") }.mapTo(HashSet()) { it.substringAfter(':') } + widgets.shortcuts.items.mapNotNull(::androidKeyOf)
         }
+        // Read before start, so the first load draws the pack's icons rather than drawing every icon twice.
+        androidApps.iconPack = style.style[Style.ICON_PACK]
+        scope.launch {
+            snapshotFlow { style.style[Style.ICON_PACK] }.drop(1).collect { androidApps.iconPack = it }
+        }
         androidApps.start()
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
         keyboard.onShortcut = { code ->

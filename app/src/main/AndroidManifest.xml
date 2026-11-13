@@ -36,6 +36,13 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Icon packs (Arcticons and the like) for the Style menu's picker. -->
+        <intent>
+            <action android:name="org.adw.launcher.THEMES" />
+        </intent>
+        <intent>
+            <action android:name="com.novalauncher.THEME" />
+        </intent>
         <!-- Lets settings("output") see whether the phone's System UI has Android's output switcher. -->
         <intent>
             <action android:name="com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG" />

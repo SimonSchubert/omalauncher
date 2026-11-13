@@ -15,6 +15,8 @@
     <string name="style_icons">图标</string>
     <string name="style_monochrome">单色</string>
     <string name="style_colored">彩色</string>
+    <string name="style_icon_pack">图标包</string>
+    <string name="style_icon_pack_none">无</string>
     <string name="style_home_apps">主屏应用</string>
     <string name="style_boxed">带框</string>
     <string name="style_icon_only">仅图标</string>

@@ -19,6 +19,8 @@
     <string name="style_icons">icons</string>
     <string name="style_monochrome">monochrome</string>
     <string name="style_colored">colored</string>
+    <string name="style_icon_pack">icon pack</string>
+    <string name="style_icon_pack_none">none</string>
     <string name="style_home_apps">home apps</string>
     <string name="style_boxed">boxed</string>
     <string name="style_icon_only">icon only</string>
