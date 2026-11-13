@@ -41,4 +41,4 @@ file only this phone runs, `owl: 12` is fine; for the store, a lower level reach
 - **21**: `android.motion` and `every frame`
 - **22**: `onTouch`; 3D: Canvas `scene` and `model`, `cube`, `sphere`, `cylinder`, `cone`, `plane`, `terrain`, `mesh`, `parseObj`,
   `project`, `turn`, `dot`, `cross`, `norm` and `dist`; Shader image uniforms (`uniform shader`) and array uniforms
-- **23**: `media("seek", seconds)`
+- **23**: `media("seek", seconds)`, `media("speed", ...)` and `media("action", id)`; `android.media`'s `canSeek`, `speed` and `actions`

@@ -198,8 +198,9 @@ internal val SINCE =
         listOf("scene", "model", "cube", "plane", "sphere", "cylinder", "cone", "terrain", "mesh", "parseObj", "project", "turn", "dot", "cross", "norm", "dist").associateWith { 22 } +
         // owl 22: Shader images to sample, and uniforms that are arrays.
         listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 } +
-        // owl 23: what's playing moved to a point in it, for a scrubber or a record turned by hand.
-        mapOf("media(\"seek\")" to 23)
+        // owl 23: what's playing moved to a point in it, for a scrubber or a record turned by hand; its speed, and the
+        // player's own buttons.
+        listOf("media(\"seek\")", "media(\"speed\")", "media(\"action\")").associateWith { 23 }
 
 /** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
 internal const val SHADER_IMAGE = "uniform shader"
@@ -372,13 +373,20 @@ internal val SETTINGS_PAGES = setOf("internet", "wifi", "bluetooth", "airplane",
 
 internal val ACTION_WORDS =
     mapOf(
-        // seek takes where to go, in seconds from the start (owl 23); the others take nothing more.
+        // seek takes where to go, in seconds from the start, speed how fast, action which of the app's buttons (owl 23);
+        // the others take nothing more.
         "media" to
             setOf("toggle", "play", "pause", "next", "previous", "open").let { plain ->
                 Words(
-                    plain + "seek",
-                    "media takes ${plain.joinToString()} or seek",
-                    forms = plain.associateWith { 1..1 to "media(\"$it\")" } + mapOf("seek" to (2..2 to "media(\"seek\", seconds)")),
+                    plain + setOf("seek", "speed", "action"),
+                    "media takes ${plain.joinToString()}, seek, speed or action",
+                    forms =
+                        plain.associateWith { 1..1 to "media(\"$it\")" } +
+                            mapOf(
+                                "seek" to (2..2 to "media(\"seek\", seconds)"),
+                                "speed" to (2..2 to "media(\"speed\", 1.5)"),
+                                "action" to (2..2 to "media(\"action\", a.id), with a from the source's actions"),
+                            ),
                 )
             },
         // A number sets the level in percent.

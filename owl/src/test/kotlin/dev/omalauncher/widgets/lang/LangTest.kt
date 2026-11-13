@@ -1672,6 +1672,15 @@ class LangTest {
         compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"rewind\") } }").let { assertTrue(it, it.contains("media takes")) }
     }
 
+    /** The player's speed and its own buttons (owl 23), next to seek. */
+    @Test fun mediaSpeedAndActions() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n source m = android.media\n Column { Text { text: m.speed; onTap: media(\"speed\", 1.5) }\n for a in m.actions { Text { text: a.title; onTap: media(\"action\", a.id) } } } }")
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"speed\", 2) } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"action\", \"like\") } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"action\") } }").let { assertTrue(it, it.contains("media(\"action\", a.id)")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"speed\") } }").let { assertTrue(it, it.contains("media(\"speed\", 1.5)")) }
+    }
+
     @Test fun sliderAndInput() {
         val p =
             Compiler.compile(
