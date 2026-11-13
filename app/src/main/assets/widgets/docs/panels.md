@@ -11,7 +11,7 @@ is picked in settings › gestures, or in style.toml as the panel's file name (s
 ```toml
 [gestures]
 swipe-up = "my-drawer.owl"     # drawer.owl by default; "none" leaves the swipe to tapping the bar
-swipe-down = "controls.owl"    # "none" nothing
+swipe-down = "controls.owl"    # "none" nothing; "notifications" Android's notification shade
 ```
 
 The drawer is the panel picked for swiping up, else `drawer.owl`, else `.stock-drawer.owl`: the drawer as this

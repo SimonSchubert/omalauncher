@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Swiping down on home can pull down the system notification shade (Gestures.kt). -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <!-- Speech input for the agent prompt bar; only recognized text reaches Linux. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Widgets' android.location, after a tap on location("request"): approximate only, and only while on screen. -->
