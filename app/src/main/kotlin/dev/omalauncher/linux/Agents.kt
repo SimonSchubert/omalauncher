@@ -19,13 +19,29 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
 
-/** A coding agent CLI, installed the way Omarchy's omarchy-default-agent does it: via mise. */
+/**
+ * A coding agent CLI, installed the way Omarchy's omarchy-default-agent does it: via mise.
+ * An agent mise cannot install brings its own [install] command instead.
+ */
 data class Agent(
     val bin: String,
     val name: String,
     @StringRes val description: Int,
-    /** mise package spec. */
+    /** mise package spec; for an agent with its own [install] it is only an identifier. */
     val pkg: String,
+    /**
+     * The agent's own installer, run in the guest home, for an agent mise has no package for (Hermes).
+     * Nothing here writes over a copy of [bin] the user put in ~/.local/bin, so an agent installed by
+     * hand, or a script that reaches one on another machine, is left alone (see [AgentStore.isInstalled]).
+     */
+    val install: String? = null,
+    /**
+     * The file the agent's own installer writes last, from the guest home. Hermes writes ~/.local/bin/hermes
+     * before it builds its runtime, so a command that has a runtime directory beside it and not this file is
+     * an install that stopped partway: offered again, rather than opened onto an update it cannot finish.
+     * Null: the command is the whole install.
+     */
+    val done: String? = null,
     /** What starts it without a prompt, when that's more than [bin]. */
     val command: String = bin,
     /** Whether mise needs node to install it: npm packages run their postinstall scripts with it. */
@@ -35,7 +51,10 @@ data class Agent(
     val windowAlias get() = bin.split('-').joinToString("") { it.replaceFirstChar(Char::uppercase) } + "Window"
 }
 
-/** Omarchy's agent list (omarchy-default-agent), limited to ones mise can install on arm64. */
+/**
+ * Omarchy's agent list (omarchy-default-agent), limited to ones mise can install on arm64, plus Hermes,
+ * which Omarchy installs with its own installer (omarchy-install-hermes-cli) rather than with mise.
+ */
 val AGENTS =
     listOf(
         Agent("claude", "Claude Code", R.string.linux_agent_claude, "claude"),
@@ -48,6 +67,23 @@ val AGENTS =
         Agent("cursor-agent", "Cursor CLI", R.string.linux_agent_cursor, "cursor-agent"),
         Agent("agy", "Antigravity", R.string.linux_agent_antigravity, "antigravity-cli"),
         Agent("pi", "Pi", R.string.linux_agent_pi, "pi"),
+        Agent(
+            "hermes",
+            "Hermes",
+            R.string.linux_agent_hermes,
+            "hermes",
+            // uv hardlinks wheels out of its cache and the guest runs under proot's --link2symlink with
+            // /tmp bound elsewhere, so those links fail ("Operation not permitted", os error 1, out of
+            // ~/.hermes/cache/uv); copy instead. pm, Hermes's own package manager, runs uv with
+            // XDG_CONFIG_HOME and XDG_CONFIG_DIRS pointed at an empty directory and drops every UV_* it
+            // does not forward, so ~/.config/uv/uv.toml is never read and an exported UV_LINK_MODE never
+            // arrives. /etc/uv/uv.toml is the one uv still reads under that override, so chat, update and
+            // doctor copy too (see UV_LINK_MODE in Proot.command for the uv calls pm does not wrap).
+            install = "mkdir -p /etc/uv && printf '%s\\n' 'link-mode = \"copy\"' > /etc/uv/uv.toml && " +
+                "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | " +
+                "bash -s -- --non-interactive --skip-browser --skip-computer-use",
+            done = ".hermes/hermes-agent/.hermes-bootstrap-complete",
+        ),
         Agent("omp", "Oh My Pi", R.string.linux_agent_omp, "github:can1357/oh-my-pi"),
         Agent("ori", "Ori", R.string.linux_agent_ori, "github:OpenRouterLabs/ori-releases", command = "ori code"),
         Agent(
@@ -119,8 +155,8 @@ val MISE_NODE_FOR_AGENTS =
     }
 
 /**
- * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, Antigravity and Copilot as -i (they
- * refuse a bare argument), the others as an argument.
+ * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, Hermes as `chat -q`, Antigravity
+ * and Copilot as -i (they refuse a bare argument), the others as an argument.
  * Ori's agent is `ori code`, which stays open only with --interactive. Kimi takes a prompt only in
  * print mode, so the session it ran in is continued after the answer. Qwen Code and Kilo bind it to
  * an option, MiniMax Code, Kiro, Devin and Command Code take it after --, and Amp reads its first
@@ -138,6 +174,7 @@ fun agentInvocation(
     val quoted = shellQuote(if (prompt.startsWith("-")) " $prompt" else prompt)
     return when {
         agentBin == "opencode" -> "$agentBin --prompt $quoted"
+        agentBin == "hermes" -> "$agentBin chat -q $quoted"
         agentBin == "copilot" -> "$agentBin -i $quoted"
         agentBin == "claude" && readOnly -> "$agentBin --permission-mode plan $quoted"
         agentBin == "ori" -> "ori code --interactive --prompt $quoted"
@@ -153,6 +190,21 @@ fun agentInvocation(
     }
 }
 
+/**
+ * Whether a command at ~/.local/bin/[Agent.bin] is an install to use, rather than what a failed one left.
+ *
+ * A command there is the user's — an agent that installs itself, or a script that reaches one on another
+ * machine — and counts. When the agent's own installer writes that command first and its [Agent.done] file
+ * last, a runtime directory that exists without the file is an install that stopped partway: Hermes writes
+ * ~/.local/bin/hermes and its checkout, then dies in its dependency sync, and a bar that offered it would
+ * open onto an update it cannot finish. With no runtime beside it, the command is a wrapper, not a wreck.
+ */
+fun installedByHand(home: File, agent: Agent): Boolean {
+    if (!Files.exists(File(home, ".local/bin/${agent.bin}").toPath(), LinkOption.NOFOLLOW_LINKS)) return false
+    val done = agent.done?.let { File(home, it) } ?: return true
+    return !done.parentFile.exists() || done.exists()
+}
+
 class AgentStore(
     private val proot: Proot,
     /** A string resource with one argument, in the app's language. */
@@ -165,8 +217,16 @@ class AgentStore(
 
     val states = mutableStateMapOf<String, JobState>()
 
-    /** Shims are symlinks to a guest path (/root/.local/bin/mise), so don't follow them from the host. */
-    fun isInstalled(agent: Agent) = Files.exists(File(shims, agent.bin).toPath(), LinkOption.NOFOLLOW_LINKS)
+    /**
+     * Shims are symlinks to a guest path (/root/.local/bin/mise), so don't follow them from the host.
+     *
+     * A mise shim means this screen installed it. A command at ~/.local/bin/[Agent.bin] is the user's: an
+     * agent that installs itself, or a script that reaches an agent somewhere else (another machine, a
+     * container). Count it as installed so the bar can pick it, and never write over it — see
+     * [installedByHand] for what a failed self-install leaves behind.
+     */
+    fun isInstalled(agent: Agent) =
+        Files.exists(File(shims, agent.bin).toPath(), LinkOption.NOFOLLOW_LINKS) || installedByHand(proot.home, agent)
 
     /** The agent picked in the prompt bar, kept in the guest home where scripts can read it too. */
     private val preferredFile get() = File(proot.launcherConfig, "agent")
@@ -208,13 +268,14 @@ class AgentStore(
             if (isInstalled(agent)) onInstalled(agent)
         }
 
-    /** Installs [agent] with mise, bootstrapping mise itself if needed. */
+    /** Installs [agent] with its own installer, or with mise (bootstrapping mise itself if needed). */
     fun installScript(agent: Agent) =
-        buildString {
-            append(if (mise.exists()) "$MISE_SELF_UPDATE && " else "curl -fsSL https://mise.run | sh && ")
-            if (agent.node) append("mise use -g node@lts && ")
-            append("mise use -g ${shellQuote(agent.pkg)} && $MISE_CLEANUP")
-        }
+        agent.install
+            ?: buildString {
+                append(if (mise.exists()) "$MISE_SELF_UPDATE && " else "curl -fsSL https://mise.run | sh && ")
+                if (agent.node) append("mise use -g node@lts && ")
+                append("mise use -g ${shellQuote(agent.pkg)} && $MISE_CLEANUP")
+            }
 
     /** Call after [installScript] succeeded: makes the agent show up in the drawer. */
     fun onInstalled(agent: Agent) {
@@ -235,19 +296,30 @@ class AgentStore(
      * mise keeps a version that a running program started from, so an agent still open in a window or terminal
      * stays installed, out of mise's config; the row then says to close it, instead of looking untouched. What
      * the launcher runs itself (Voice) is stopped first.
+     *
+     * An agent with its own installer stays where it is: the command in ~/.local/bin may be the user's own, so
+     * the job says where to remove it instead, and the row isn't told a mise version is still running.
      */
     suspend fun remove(agent: Agent): Boolean {
         // Its process ends on another thread: a moment, so mise doesn't find it still running.
         if (release(agent)) delay(1500)
         val ok =
             try {
-                run(agent, R.string.linux_job_removing) { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
+                run(agent, R.string.linux_job_removing) {
+                    if (agent.install != null) {
+                        "echo '${agent.name} is installed outside the launcher; remove ~/.local/bin/${agent.bin} where it lives'"
+                    } else {
+                        "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE"
+                    }
+                }
             } finally {
                 // Also when its screen closed while mise worked, as with install.
                 refresh()
                 onChanged()
             }
-        if (ok && isInstalled(agent)) states[agent.bin] = JobState.Failed(listOf(text(R.string.agents_still_running, agent.name)))
+        if (agent.install == null && ok && isInstalled(agent)) {
+            states[agent.bin] = JobState.Failed(listOf(text(R.string.agents_still_running, agent.name)))
+        }
         return ok && !isInstalled(agent)
     }
 
