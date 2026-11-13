@@ -113,12 +113,16 @@ private fun DesktopScreen(
         runtime.themes.wallpaper?.let { bmp ->
             // Read while drawing, and in its own layer, so swiping pages only redraws this.
             Canvas(Modifier.fillMaxSize().graphicsLayer()) {
-                val src = wallpaperCrop(bmp.width, bmp.height, size.width.toInt(), size.height.toInt(), state.wallpaperOffset)
+                val placement = runtime.style.style.wallpaperFraming.placement(bmp.width.toFloat(), bmp.height.toFloat(), size.width, size.height, state.wallpaperOffset)
+                val src = placement.sourcePixels(bmp.width, bmp.height)
+                val dst = placement.destinationPixels(size.width.toInt(), size.height.toInt())
+                drawRect(Palette.background)
                 drawImage(
                     bmp,
                     srcOffset = IntOffset(src.left, src.top),
-                    srcSize = IntSize(src.width(), src.height()),
-                    dstSize = IntSize(size.width.toInt(), size.height.toInt()),
+                    srcSize = IntSize(src.width, src.height),
+                    dstOffset = IntOffset(dst.left, dst.top),
+                    dstSize = IntSize(dst.width, dst.height),
                     filterQuality = FilterQuality.Medium,
                 )
             }
@@ -128,7 +132,7 @@ private fun DesktopScreen(
     if (!state.faceShowing) SystemBarFrames()
     val covered = remember(state) { { state.homeCovered || runtime.widgets.openScreen != null } }
     // What frosted nodes blur: the background drawn above, or by our live wallpaper, slid as far as the pages.
-    val backdrop = remember(runtime, state) { Backdrop({ runtime.themes.background }, { state.wallpaperOffset }) }
+    val backdrop = remember(runtime, state) { Backdrop({ runtime.themes.background }, { state.wallpaperOffset }, { runtime.style.style.wallpaperFraming }, { Palette.background }) }
     CompositionLocalProvider(LocalHomeCovered provides covered, LocalBackdrop provides backdrop) {
         // The whole window: a face fills it, and tiles keep clear of the system bars and the bar themselves.
         HomeScreen(runtime, state, Modifier.fillMaxSize())

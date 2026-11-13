@@ -90,7 +90,7 @@
     <string name="style_retry">coba lagi</string>
     <string name="style_download_themes">unduh tema</string>
 
-    <string name="style_add_image">+ gambar</string>
+    <string name="style_add_image">gunakan gambar</string>
     <string name="style_wallpaper_active">✓ wallpaper android &amp; warna sistem mengikuti tema (warna sistem diperbarui setelah layar mati)</string>
     <string name="style_wallpaper_use">jadikan wallpaper android + warna sistem</string>
     <string name="style_remove_background_title">hapus latar belakang?</string>
@@ -140,4 +140,24 @@
     <string name="agents_remove">hapus</string>
     <string name="agents_still_running">%1$s masih berjalan: tutup dulu, lalu hapus lagi</string>
     <string name="agents_install">instal</string>
+
+    <!-- Wallpaper framing. Positions run from 0 to 1; zoom from 1 to 3. -->
+    <string name="style_wallpaper_motion">gerakan wallpaper</string>
+    <string name="style_wallpaper_scroll">geser</string>
+    <string name="style_wallpaper_fixed">tetap</string>
+    <string name="style_wallpaper_x">posisi horizontal</string>
+    <string name="style_wallpaper_y">posisi vertikal</string>
+    <string name="style_wallpaper_zoom">zoom</string>
+    <string name="style_wallpaper_position_hint" formatted="false">0% = kiri / atas · 100% = kanan / bawah</string>
+    <string name="style_wallpaper_scroll_hint">Pilih bagian gambar yang mengikuti halaman.</string>
+    <string name="style_wallpaper_start">awal</string>
+    <string name="style_wallpaper_middle">tengah</string>
+    <string name="style_wallpaper_end">akhir</string>
+    <string name="style_wallpaper_sizing">ukuran gambar</string>
+    <string name="style_wallpaper_whole">gambar utuh</string>
+    <string name="style_wallpaper_fill">isi</string>
+    <string name="style_wallpaper_disabled_hint">Perbesar gambar untuk mengatur posisi yang redup. Nilai tersimpannya tetap dapat direset.</string>
+    <string name="style_wallpaper_loading">Memuat gambar…</string>
+    <string name="style_wallpaper_choose">Pilih gambar untuk mengatur bingkainya.</string>
+    <string name="style_wallpaper_unreadable">Gambar ini tidak dapat dibuka. Pilih yang lain.</string>
 </resources>

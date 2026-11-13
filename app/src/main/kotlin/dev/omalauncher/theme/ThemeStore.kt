@@ -224,6 +224,7 @@ class ThemeStore(
         // On reload a different background may replace one already showing; it stays up until the new one is decoded.
         val stale = wallpaper != null && bg != background
         background = bg
+        style.bindWallpaper(bg)
         // A new release can move it (a dropped theme into the user's, renumbered backgrounds), leaving Linux's link dangling.
         if (bg != null && isLinux()) withContext(Dispatchers.IO) { runCatching { guest.linkBackground(bg) } }
         // Decodes the wallpaper on first load, unless ours is the live one.
@@ -466,6 +467,7 @@ class ThemeStore(
 
     private suspend fun showBackground(file: File?) {
         background = file
+        style.bindWallpaper(file)
         // With the live wallpaper active, the launcher is transparent and needs no copy of its own.
         wallpaper = if (liveWallpaperActive) null else decodeWallpaper(file)
         if (file != null && isLinux()) withContext(Dispatchers.IO) { guest.linkBackground(file) }
@@ -565,6 +567,15 @@ class ThemeStore(
                 LauncherData.userThemesDir(context),
                 LauncherData.userBackgroundsDir(context),
             )
+
+        internal fun wallpaperKey(context: Context, file: File) = file.relativeTo(context.filesDir).invariantSeparatorsPath
+
+        internal fun wallpaperKey(context: Context, saved: Style): String {
+            val name = saved[Style.THEME] ?: DEFAULT_THEME
+            val theme = runCatching { themeDirs(context).load(name) }.getOrNull()
+            val bg = saved[Style.BACKGROUND]?.let { theme?.backgroundNamed(it) } ?: theme?.backgrounds()?.firstOrNull()
+            return bg?.let { wallpaperKey(context, it) } ?: "unresolved:$name/${saved[Style.BACKGROUND].orEmpty()}"
+        }
 
         /**
          * The saved theme colors and background, read straight from disk. The wallpaper

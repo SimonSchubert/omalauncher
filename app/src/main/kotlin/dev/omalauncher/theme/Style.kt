@@ -128,6 +128,12 @@ class Style(
         value: T,
     ) = Style(values + (setting.key to value))
 
+    val wallpaperFraming get() = WallpaperFraming(this[BACKGROUND_SCROLL], this[BACKGROUND_X].toFloat(), this[BACKGROUND_Y].toFloat(), this[BACKGROUND_ZOOM].toFloat(), this[BACKGROUND_FIT])
+
+    fun withWallpaperFraming(framing: WallpaperFraming) =
+        with(BACKGROUND_SCROLL, framing.scroll).with(BACKGROUND_X, framing.x.toString().toDouble()).with(BACKGROUND_Y, framing.y.toString().toDouble())
+            .with(BACKGROUND_ZOOM, framing.zoom.toString().toDouble()).with(BACKGROUND_FIT, framing.fit)
+
     /** Each of [settings] set to its [value]: settings the Style menu changes together, like both bars'. */
     fun <T, S : Setting<T>> with(
         settings: List<S>,
@@ -150,6 +156,11 @@ class Style(
 
         val THEME = Setting.Name("theme", "The Omarchy theme, by its directory name in ~/.local/share/omarchy/themes or ~/.config/omarchy/themes (yours win).")
         val BACKGROUND = Setting.Name("background", "A file name from the theme's backgrounds/ or ~/.config/omarchy/backgrounds/<theme>/. Unset: the theme's first.")
+        val BACKGROUND_SCROLL = Setting.Flag("wallpaper.scroll", true, "Slide the wallpaper with home's pages; false keeps the chosen crop fixed.")
+        val BACKGROUND_FIT = Setting.Flag("wallpaper.fit", false, "Show the whole image with the theme's background in the borders; false fills the window by cropping. Zoom is relative to the chosen mode.")
+        val BACKGROUND_X = Setting.Number("wallpaper.x", 0.5, 0.0..1.0, "Horizontal position in the crop or within the borders: 0 is left, 0.5 center, 1 right. With scrolling, positions the range the wallpaper travels through.")
+        val BACKGROUND_Y = Setting.Number("wallpaper.y", 0.5, 0.0..1.0, "Vertical position in the crop or within the borders: 0 is top, 0.5 center, 1 bottom.")
+        val BACKGROUND_ZOOM = Setting.Number("wallpaper.zoom", 1.0, 1.0..3.0, "Wallpaper zoom relative to the sizing mode: 1 fills the screen or fits the whole image, 3 magnifies it three times. The picture is never stretched.")
 
         val APP_TILES = Setting.Flag("home.app-tiles", true, "Apps on home in a tile like a widget; false draws bare icons on the wallpaper.")
         val RECENT_APPS = Setting.Flag("home.recent-apps", true, "The strip of recently used apps above the prompt bar.")
@@ -271,7 +282,7 @@ object StyleFile {
 
     val ALL: List<Setting<*>> =
         with(Style) {
-            listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, EMPTY_PAGE_LEFT, EMPTY_PAGE_RIGHT, HOME_PAGE, COLUMNS, FORCE_SINGLE_PAGE, COVER_SCREEN, UNFOLDED_LAYOUT, UNFOLDED_COLUMNS, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
+            listOf(THEME, BACKGROUND, FONT, BACKGROUND_SCROLL, BACKGROUND_FIT, BACKGROUND_X, BACKGROUND_Y, BACKGROUND_ZOOM, APP_TILES, RECENT_APPS, EMPTY_PAGE_LEFT, EMPTY_PAGE_RIGHT, HOME_PAGE, COLUMNS, FORCE_SINGLE_PAGE, COVER_SCREEN, UNFOLDED_LAYOUT, UNFOLDED_COLUMNS, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, KEYBAR_GAPS_OUT, KEYBAR_BORDER_WIDTH, MONOCHROME_ICONS, CORNER_SCALE) +
                 listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, TERMINAL_SUGGESTIONS, SWIPE_UP, SWIPE_DOWN)
         }

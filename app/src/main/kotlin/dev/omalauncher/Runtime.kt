@@ -200,6 +200,9 @@ class Runtime(
         scope.launch {
             snapshotFlow { style.style[Style.FONT] }.drop(1).collect { launcherFont.apply() }
         }
+        scope.launch {
+            snapshotFlow { style.style.wallpaperFraming }.drop(1).collect { ThemeStore.changeListeners.forEach { it() } }
+        }
         // The recent strip's and home's pinned apps.
         androidApps.iconsFirst = {
             usage.recent.take(20).filter { it.startsWith("a:") }.mapTo(HashSet()) { it.substringAfter(':') } + widgets.shortcuts.items.mapNotNull(::androidKeyOf)

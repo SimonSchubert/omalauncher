@@ -111,7 +111,7 @@
     <string name="style_download_themes">download themes</string>
 
     <!-- Backgrounds. -->
-    <string name="style_add_image">+ image</string>
+    <string name="style_add_image">use image</string>
     <string name="style_wallpaper_active">✓ android wallpaper &amp; system colors follow the theme (system colors update after the screen turns off)</string>
     <string name="style_wallpaper_use">use as android wallpaper + system colors</string>
     <string name="style_remove_background_title">remove background?</string>
@@ -179,4 +179,24 @@
     <string name="agents_remove">remove</string>
     <string name="agents_still_running">%1$s is still running: close it, then remove it again</string>
     <string name="agents_install">install</string>
+
+    <!-- Wallpaper framing. Positions run from 0 to 1; zoom from 1 to 3. -->
+    <string name="style_wallpaper_motion">wallpaper motion</string>
+    <string name="style_wallpaper_scroll">scroll</string>
+    <string name="style_wallpaper_fixed">fixed</string>
+    <string name="style_wallpaper_x">horizontal position</string>
+    <string name="style_wallpaper_y">vertical position</string>
+    <string name="style_wallpaper_zoom">zoom</string>
+    <string name="style_wallpaper_position_hint" formatted="false">0% = left / top · 100% = right / bottom</string>
+    <string name="style_wallpaper_scroll_hint">Choose the region of the image that follows the pages.</string>
+    <string name="style_wallpaper_start">start</string>
+    <string name="style_wallpaper_middle">middle</string>
+    <string name="style_wallpaper_end">end</string>
+    <string name="style_wallpaper_sizing">image sizing</string>
+    <string name="style_wallpaper_whole">whole image</string>
+    <string name="style_wallpaper_fill">fill</string>
+    <string name="style_wallpaper_disabled_hint">Zoom in to adjust dimmed positions. You can still reset their saved values.</string>
+    <string name="style_wallpaper_loading">Loading image…</string>
+    <string name="style_wallpaper_choose">Choose an image to adjust its framing.</string>
+    <string name="style_wallpaper_unreadable">Could not open this image. Choose another.</string>
 </resources>
