@@ -319,7 +319,9 @@ class ThemeStore(
         withContext(Dispatchers.IO) {
             download = ThemeDownload.Running(0)
             try {
-                release.download(picked, dirs.user) { download = ThemeDownload.Running(it) }
+                val files = ReleaseFiles.parse(context.assets.open(RELEASE_FILES).bufferedReader().use { it.readText() })
+                check(files.ref == OMARCHY_REF) { "$RELEASE_FILES is for ${files.ref}, rerun scripts/fetch-theme-colors.sh" }
+                release.download(files, picked, dirs.user) { download = ThemeDownload.Running(it) }
                 themes = scan()
                 complete = true
                 download = ThemeDownload.Idle
@@ -548,7 +550,13 @@ class ThemeStore(
     private fun savedTheme(): OmarchyTheme? = runCatching { dirs.load(picked) }.getOrNull()
 
     companion object {
-        /** The Omarchy commit themes and configs come from. Changing it updates them on every install. */
+        /** The files [OmarchyRelease.download] fetches, by scripts/fetch-theme-colors.sh. */
+        const val RELEASE_FILES = "omarchy-files.txt"
+
+        /**
+         * The Omarchy commit themes and configs come from. Changing it updates them on every install;
+         * rerun scripts/fetch-theme-colors.sh after, for [RELEASE_FILES] and the bundled colors.
+         */
         const val OMARCHY_REF = "ac2690cd7be4f47e4a255f5e2e78d904d436b068"
 
         private const val RENDERED_BY = "rendered_by"

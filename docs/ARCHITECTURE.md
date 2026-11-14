@@ -179,7 +179,9 @@ Pinned versions: `ThemeStore.OMARCHY_REF` (the Omarchy commit) and
 download the new themes on its next start (`ThemeStore.ensureRelease`, with or
 without Linux); rerun `scripts/fetch-theme-colors.sh` with it, since first run
 fetches only the picked theme's colors and first background by the names that
-script bundles. Changing the second updates Linux installs through the steps
+script bundles, and the download fetches the files it lists in
+`assets/omarchy-files.txt` one by one (about 80 MB, where the repo's tarball
+is 180), keeping what arrived across interrupted attempts. Changing the second updates Linux installs through the steps
 above.
 
 Guest processes die with the app (`--kill-on-exit`), so the Wayland protocol,
