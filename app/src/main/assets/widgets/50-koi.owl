@@ -1,7 +1,8 @@
 widget "koi pond" {
-  meta { owl: 19; description: "A pixel-art koi pond in your theme's colors. Tap the water to feed the koi"; version: "1.3"; license: "MIT"; category: "fun" }
+  meta { owl: 19; description: "A pixel-art koi pond in your theme's colors. Tap the water to feed the koi"; version: "1.4"; license: "MIT"; category: "fun" }
   // Idle the koi move less than an art pixel a frame at 20; feeding, they dart, and 30 keeps that smooth.
-  fps: feeding ? 30 : 20
+  fps: feeding ? 30 : modes.saver ? 10 : 20
+  source modes = android.modes
   page: 1
   order: 6
   size: 6x3

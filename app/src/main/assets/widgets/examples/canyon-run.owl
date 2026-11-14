@@ -1,5 +1,5 @@
 app "canyon run" {
-  meta { owl: 22; description: "A low-poly flight down an endless canyon in 3D: drag to steer between pillars and tumbling rocks, and thread the rings for points"; version: "1.0"; license: "MIT"; category: "games" }
+  meta { owl: 22; description: "A low-poly flight down an endless canyon in 3D: drag to steer between pillars and tumbling rocks, and thread the rings for points"; version: "1.1"; license: "MIT"; category: "games" }
   // How it works: the Canvas holds a scene(camera) { } of model(...) calls. The canyon is one terrain()
   // tile whose heights repeat every 40 units, drawn as a few copies end to end under the ship, so it
   // never runs out; fog in the background color hides where it ends. The ship flies toward -z, and
@@ -8,7 +8,8 @@ app "canyon run" {
   title: ""
   statusBar: false
   edge: true
-  fps: mode == "play" ? 60 : 30
+  fps: mode == "play" ? 60 : modes.saver ? 15 : 30
+  source modes = android.modes
   icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
     <rect width="256" height="256" rx="56" fill="#1d1420"/>
     <path d="M0 256L70 120L104 132L128 92L152 132L186 120L256 256Z" fill="#7a3b2e"/>

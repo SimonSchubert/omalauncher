@@ -38,7 +38,8 @@ the foreground. A widget that reads `time` animates while it's on screen, up to
 backdrop drawn only while music plays, costs nothing (older launchers
 animate whenever `time` appears at all). Each frame costs battery for as long as the page shows, so say how many
 the animation needs with `fps:` (owl 19, see docs/declarations.md): `fps: 10` for a pet that blinks and breathes,
-`fps: tapped ? 30 : 10` for one that hops after a tap. Move things by `time`, not by counting frames, so they keep
+`fps: tapped ? 30 : 10` for one that hops after a tap. Give fewer while battery saver is on, keeping what the user is
+driving smooth: `source modes = android.modes` and `fps: tapped ? 30 : modes.saver ? 5 : 10`. Move things by `time`, not by counting frames, so they keep
 their speed at any rate. A game whose things move by their speed, bounce and collide keeps them in states and
 moves them in `every frame` by `dt` (owl 21, see Triggers in docs/declarations.md, and `examples/space-bounce`).
 
