@@ -83,7 +83,7 @@
 
     <string name="prompt_listening">слушаю…</string>
     <string name="prompt_hint_apps">открыть приложение…</string>
-    <string name="prompt_hint_ask">открыть приложение или спросить %1$s…</string>
+    <string name="prompt_hint_ask">открыть или спросить %1$s…</string>
     <string name="prompt_enter_ask">⏎ спросить</string>
     <string name="prompt_agent">агент</string>
     <string name="prompt_manage_agents">"  управление агентами…"</string>

@@ -32,10 +32,10 @@
     <string name="style_cover_screen">внешний экран</string>
     <string name="style_cover_upright">вертикально</string>
     <string name="style_cover_turned">горизонтально</string>
-    <string name="style_unfolded">в разложенном виде</string>
+    <string name="style_unfolded">основной экран</string>
     <string name="style_unfolded_own">свой главный экран</string>
     <string name="style_unfolded_pages">страницы</string>
-    <string name="style_unfolded_columns">столбцы в разложенном виде</string>
+    <string name="style_unfolded_columns">столбцы основного экрана</string>
     <string name="style_corners">углы</string>
     <string name="style_corners_edge">прямые</string>
     <string name="style_corners_soft">мягкие</string>
@@ -43,7 +43,7 @@
     <string name="style_gaps_in">отступы внутри</string>
     <string name="style_gaps_out">отступы снаружи</string>
     <string name="style_border_width">толщина рамки</string>
-    <string name="style_opacity">непрозрачность</string>
+    <string name="style_opacity">плотность</string>
     <string name="style_frosted_glass">матовое стекло</string>
     <string name="style_on">вкл</string>
     <string name="style_off">выкл</string>
@@ -55,7 +55,7 @@
     <string name="style_text_smaller">мельче</string>
     <string name="style_text_default">обычный</string>
     <string name="style_text_larger">крупнее</string>
-    <string name="style_preview">предпросмотр</string>
+    <string name="style_preview">превью</string>
     <string name="style_preview_app">приложение</string>
     <string name="style_reset">сбросить</string>
     <string name="style_differ_step">в style.toml они разные; любой шаг выставит всем одно значение</string>

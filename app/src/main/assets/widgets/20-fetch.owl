@@ -117,7 +117,7 @@ widget "fetch" {
       }, w, w)
     }
     ru {
-      uptime: "время работы"; packages: "пакеты"; display: "экран"; theme: "тема"; memory: "память"; disk: "диск"
+      uptime: "аптайм"; packages: "пакеты"; display: "экран"; theme: "тема"; memory: "память"; disk: "диск"
       battery: "батарея"; apps: "приложения"; byDefault: "по умолчанию"; phone: "телефон"; device: "устройство"
       hardware: "оборудование"; network: "сеть"; launcher: "лаунчер"; security: "безопасность"; build: "сборка"
       locale: "регион"; cores: "ядра"; storage: "хранилище"; speed: "скорость"; received: "получено"; sent: "отправлено"

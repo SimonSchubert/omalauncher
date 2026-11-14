@@ -29,10 +29,10 @@
 
     <string name="store_builtin">встроенные</string>
     <string name="store_terminal">терминал</string>
-    <string name="store_terminal_details">6x4 · командная оболочка</string>
+    <string name="store_terminal_details">6x4 · оболочка</string>
     <string name="store_agent_details">6x6 · запускает %1$s</string>
     <string name="store_on_home">✓ на главном экране</string>
-    <string name="store_tap_to_add">нажмите, чтобы добавить на страницу %1$d</string>
+    <string name="store_tap_to_add">добавить на стр. %1$d</string>
 
     <string name="store_reviewed">проверенные %1$s с github.com/%2$s</string>
     <string name="store_loading">загрузка…</string>
