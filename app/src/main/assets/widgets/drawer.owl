@@ -2,7 +2,7 @@ panel "app drawer" {
   // The app drawer: swiping up on home opens it, above the prompt bar. It's a panel like any other, so it's yours to
   // change: ask your agent to edit it, or pick another panel in settings › gestures. .stock-drawer.owl next to it is
   // this file as the launcher ships it, kept up to date: compare the two to see what changed in a newer launcher.
-  meta { description: "The launcher's app drawer, written in owl: your apps by kind, search as you type in the prompt bar, and each app's long-press menu"; version: "1.3"; license: "MIT"; category: "system"; owl: 16 }
+  meta { description: "The launcher's app drawer, written in owl: your apps by kind, search as you type in the prompt bar, each app's long-press menu, and moving apps by dragging (long-press › move)"; version: "1.4"; license: "MIT"; category: "system"; owl: 24 }
   // The launcher's gear, as its settings buttons draw it; currentColor takes the accent.
   asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
   // What the drawer says, in the phone's language where it has a set, and in English where it doesn't. The action
@@ -12,6 +12,7 @@ panel "app drawer" {
       personal: "personal"; work: "work"; apps: "apps"; linux: "linux"; shortcuts: "shortcuts"; android: "android"
       workApps: "work apps"; workPaused: "work apps paused"; linuxApps: "linux apps"
       pin: "add to home"; info: "app info"; uninstall: "uninstall"; remove: "remove"; edit: "edit"; share: "share"
+      move: "move"; done: "done"; arranging: "drag an app to move it"
       settings: "settings"; turnOn: "turn on"; pause: "pause"; installing: "installing…"; installLinux: "install linux"
       open: "open"; ask: "ask"; askInstallLinux: "ask an agent · install linux"; askInstallAgent: "ask an agent · install one"
       askAgent: (bin, text) => "ask ${bin}: ${text}"
@@ -20,6 +21,7 @@ panel "app drawer" {
       personal: "pribadi"; work: "kerja"; apps: "aplikasi"; linux: "linux"; shortcuts: "pintasan"; android: "android"
       workApps: "aplikasi kerja"; workPaused: "aplikasi kerja dijeda"; linuxApps: "aplikasi linux"
       pin: "tambah ke layar utama"; info: "info aplikasi"; uninstall: "uninstal"; remove: "hapus"; edit: "edit"; share: "bagikan"
+      move: "pindahkan"; done: "selesai"; arranging: "seret aplikasi untuk memindahkannya"
       settings: "setelan"; turnOn: "aktifkan"; pause: "jeda"; installing: "menginstal…"; installLinux: "instal linux"
       open: "buka"; ask: "tanya"; askInstallLinux: "tanya agen · instal linux"; askInstallAgent: "tanya agen · instal satu"
       askAgent: (bin, text) => "tanya ${bin}: ${text}"
@@ -28,6 +30,7 @@ panel "app drawer" {
       personal: "personal"; work: "trabajo"; apps: "apps"; linux: "linux"; shortcuts: "accesos directos"; android: "android"
       workApps: "apps de trabajo"; workPaused: "apps de trabajo en pausa"; linuxApps: "apps de linux"
       pin: "agregar a inicio"; info: "info de la app"; uninstall: "desinstalar"; remove: "quitar"; edit: "editar"; share: "compartir"
+      move: "mover"; done: "listo"; arranging: "arrastra una app para moverla"
       settings: "configuración"; turnOn: "activar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
       open: "abrir"; ask: "preguntar"; askInstallLinux: "preguntar a un agente · instalar linux"; askInstallAgent: "preguntar a un agente · instalar uno"
       askAgent: (bin, text) => "preguntar a ${bin}: ${text}"
@@ -36,6 +39,7 @@ panel "app drawer" {
       personal: "pessoal"; work: "trabalho"; apps: "apps"; linux: "linux"; shortcuts: "atalhos"; android: "android"
       workApps: "apps de trabalho"; workPaused: "apps de trabalho pausados"; linuxApps: "apps linux"
       pin: "adicionar à tela inicial"; info: "informações do app"; uninstall: "desinstalar"; remove: "remover"; edit: "editar"; share: "compartilhar"
+      move: "mover"; done: "concluir"; arranging: "arraste um app para movê-lo"
       settings: "configurações"; turnOn: "ativar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
       open: "abrir"; ask: "perguntar"; askInstallLinux: "perguntar a um agente · instalar linux"; askInstallAgent: "perguntar a um agente · instalar um"
       askAgent: (bin, text) => "perguntar ao ${bin}: ${text}"
@@ -44,6 +48,7 @@ panel "app drawer" {
       personal: "persönlich"; work: "arbeit"; apps: "apps"; linux: "linux"; shortcuts: "verknüpfungen"; android: "android"
       workApps: "arbeits-apps"; workPaused: "arbeits-apps pausiert"; linuxApps: "linux-apps"
       pin: "zum startbildschirm hinzufügen"; info: "app-info"; uninstall: "deinstallieren"; remove: "entfernen"; edit: "bearbeiten"; share: "teilen"
+      move: "verschieben"; done: "fertig"; arranging: "ziehe eine app, um sie zu verschieben"
       settings: "einstellungen"; turnOn: "aktivieren"; pause: "pausieren"; installing: "wird installiert…"; installLinux: "linux installieren"
       open: "öffnen"; ask: "fragen"; askInstallLinux: "einen agenten fragen · linux installieren"; askInstallAgent: "einen agenten fragen · einen installieren"
       askAgent: (bin, text) => "${bin} fragen: ${text}"
@@ -52,6 +57,7 @@ panel "app drawer" {
       personal: "个人"; work: "工作"; apps: "应用"; linux: "linux"; shortcuts: "快捷方式"; android: "android"
       workApps: "工作应用"; workPaused: "工作应用已暂停"; linuxApps: "linux 应用"
       pin: "添加到主屏幕"; info: "应用信息"; uninstall: "卸载"; remove: "移除"; edit: "编辑"; share: "分享"
+      move: "移动"; done: "完成"; arranging: "拖动应用即可移动位置"
       settings: "设置"; turnOn: "开启"; pause: "暂停"; installing: "正在安装…"; installLinux: "安装 linux"
       open: "打开"; ask: "提问"; askInstallLinux: "问智能体 · 安装 linux"; askInstallAgent: "问智能体 · 先装一个"
       askAgent: (bin, text) => "问 ${bin}：${text}"
@@ -74,6 +80,20 @@ panel "app drawer" {
   state tab = "personal"
   // The result picked with the arrow or Tab keys, -1 for the ask row; null follows the ranking.
   state pick = null
+  // Arrange mode: a long-press menu's "move" starts it, [done] ends it. While it runs, dragging an app moves it in
+  // its section. The order is one list of app keys for every section (no key is in two), kept across restarts.
+  state arranging = false
+  state order = [] persist
+  // The app being dragged, how far the finger has taken it, and where on its cell the finger came down.
+  state dragKey = ""
+  state dragX = 0
+  state dragY = 0
+  state pressX = 0
+  state pressY = 0
+  // A cell's real, laid-out size, reported by onSize: a drop counts the cells the finger crosses in these, so it
+  // lands right at any font size or density. 0 until the cells are first laid out, before any drag can start.
+  state cellW = 0
+  state cellH = 0
 
   // As the launcher's drawer fits them: a column for every 76 dp.
   let cols = max(1, floor(((screenWidth ?? 400) - 24) / 76))
@@ -90,10 +110,12 @@ panel "app drawer" {
       {id: "shortcuts", title: str.shortcuts, apps: mine.filter(a => a.kind == "shortcut")},
       {id: "android", title: str.android, apps: mine.filter(a => a.kind == "android")}
     ]
+  // Each section in the user's own order: apps a drag placed come by their place in order, the rest as they came.
+  let ordered = sections.map(s => merge(s, {apps: sortBy(s.apps, a => indexOf(order, a.key) == -1 ? 100000 : indexOf(order, a.key))}))
   // A title, then rows of cols apps. Without Linux, its section is an offer to install it.
-  let rows = flatten(sections.filter(s => len(s.apps) > 0 || s.work || (s.linux && !linux)).map(s => flatten([
+  let rows = flatten(ordered.filter(s => len(s.apps) > 0 || s.work || (s.linux && !linux)).map(s => flatten([
       [{key: "h:" + s.id, title: s.linux && !linux ? str.linuxApps : s.title, work: s.work, offer: s.linux && !linux}],
-      chunk(s.apps, cols).map((cells, r) => {key: s.id + ":" + r, cells: cells})
+      chunk(s.apps, cols).map((cells, r) => {key: s.id + ":" + r, cells: cells, apps: s.apps, section: s.id})
     ])))
   // Every profile's apps match while typing, best first; the list runs up from the bar, so the best sits right above it.
   let hits = searching ? rank(d.apps, typed) : []
@@ -110,8 +132,8 @@ panel "app drawer" {
     }
   }
 
-  // Typing starts the pick over, at the best match.
-  on typed { pick = null }
+  // Typing starts the pick over, at the best match, and ends arranging: results open apps again.
+  on typed { pick = null; arranging = false }
 
   // How much the drawer covers home: near-opaque, as home's widgets showing through make the icons hard to read.
   opacity: 0.97
@@ -197,7 +219,73 @@ panel "app drawer" {
         for w in a.actions {
           Text { text: get(str, w, w); fontSize: 15; fill: width; padding: [12, 12]; onTap: { menu = ""; appAction(w, a.key) } }
         }
+        Spacer { height: 1; fill: width; background: border }
+        // Not an appAction: rearranging is the drawer's own, and works for every kind of app.
+        Text { text: str.move; fontSize: 15; fill: width; padding: [12, 12]; onTap: { menu = ""; arranging = true } }
       }
+    }
+  }
+
+  // A cell while arranging: no opening or menu. The finger takes the icon with it (its offset, eased back on a
+  // spring); letting go drops it on the cell under the finger, and the new place in its section's order is kept
+  // across restarts. The cells take the drags, so the list doesn't scroll while arranging: [done], scroll, and
+  // "move" again reaches further than the screen does in one go.
+  component MoveCell(a, apps, section) {
+    Column {
+      weight: 1
+      align: center
+      gap: 6
+      padding: [4, 10]
+      radius: 16 * corners
+      border: dragKey == a.key ? 2 : 0
+      borderColor: accent
+      scale: dragKey == a.key ? 1.06 : 1
+      opacity: dragKey == "" ? (a.paused ? 0.4 : 1) : (dragKey == a.key ? 1 : 0.5)
+      offset: dragKey == a.key ? [dragX, dragY] : [0, 0]
+      animate offset: spring(0.8, 400)
+      onSize: {
+        if cellW != width {
+          cellW = width
+          cellH = height
+        }
+      }
+      onPress: {
+        dragKey = a.key
+        dragX = 0
+        dragY = 0
+        pressX = x
+        pressY = y
+      }
+      onDrag: {
+        if dragKey == a.key {
+          if dragX == 0 && dragY == 0 { haptic() }
+          dragX = dragX + dx
+          dragY = dragY + dy
+        }
+      }
+      onDragEnd: {
+        if dragKey == a.key {
+          let keys = map(apps, x => x.key)
+          let from = indexOf(keys, a.key)
+          // The cell whose place the finger is over: press point and drag share the cell's own coordinate
+          // space, counted in whole cells of the measured size. Sideways clamps at the row's own edges - a drag
+          // past the grid's side doesn't wrap into another row; rows change only by dragging up or down.
+          let col = from % cols
+          let hc = clamp(floor((pressX + dragX) / cellW), 0 - col, cols - 1 - col)
+          let to = clamp(from + hc + floor((pressY + dragY) / cellH) * cols, 0, len(apps) - 1)
+          if to != from {
+            let moved = remove(keys, from)
+            order = order.filter(k => indexOf(keys, k) == -1) + take(moved, to) + [a.key] + drop(moved, to)
+          }
+        }
+        dragKey = ""
+        dragX = 0
+        dragY = 0
+      }
+      // A press that wasn't a drag leaves nothing held.
+      onTap: dragKey = ""
+      AppIcon { a: a }
+      Text { text: a.name; fontSize: 12; align: center; maxLines: 2; minLines: 2; fill: width }
     }
   }
 
@@ -208,11 +296,13 @@ panel "app drawer" {
       align: center
       padding: [0, 12, 0, 8]
       gap: 0
-      // Typing searches every profile, so the tabs step aside.
-      for t in d.work != null && !searching ? ["personal", "work"] : [] {
+      // Typing searches every profile, so the tabs step aside; while arranging, the way out stands where they were.
+      for t in d.work != null && !searching && !arranging ? ["personal", "work"] : [] {
         Text { text: get(str, t); color: tab == t ? accent : muted; background: tab == t ? surface : transparent; radius: 18 * corners; padding: [14, 10]; onTap: tab = t }
       }
+      Text { text: str.arranging; visible: arranging && !searching; color: muted; padding: [14, 10] }
       Spacer { weight: 1 }
+      Text { text: "[" + str.done + "]"; visible: arranging && !searching; color: accent; padding: [14, 10]; onTap: { arranging = false; dragKey = "" } }
       Box {
         size: 44
         radius: 22 * corners
@@ -246,7 +336,13 @@ panel "app drawer" {
           Row {
             fill: width
             gap: 0
-            for a in row.cells { Cell { a: a; picked: false } }
+            for a in row.cells {
+              if arranging {
+                MoveCell { a: a; apps: row.apps; section: row.section }
+              } else {
+                Cell { a: a; picked: false }
+              }
+            }
             // A short last row keeps its cells the width of the others'.
             for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
           }
