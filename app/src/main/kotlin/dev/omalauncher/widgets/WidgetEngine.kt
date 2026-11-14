@@ -1137,7 +1137,9 @@ class WidgetEngine(
         listOf("AGENTS.md", "CLAUDE.md").map { Managed.text(File(proot.home, it), Policy.Seeded) { AGENT_POINTER } } +
             listOf("owl-check", "owl-send").map { bin ->
                 Managed.asset(context, "$bin.sh", File(proot.rootfs, "usr/local/bin/$bin"), Policy.Owned, executable = true)
-            }
+            } +
+            // The web-search agent: turns what the prompt bar types into a link or a search, and the settings app edits.
+            listOf(Managed.asset(context, "websearch.sh", File(proot.home, ".local/bin/websearch"), Policy.Owned, executable = true))
 
     companion object {
         /** A store preview screen's `name = value`, up to the next `;` outside quotes. */

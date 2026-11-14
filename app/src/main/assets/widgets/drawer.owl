@@ -2,7 +2,7 @@ panel "app drawer" {
   // The app drawer: swiping up on home opens it, above the prompt bar. It's a panel like any other, so it's yours to
   // change: ask your agent to edit it, or pick another panel in settings › gestures. .stock-drawer.owl next to it is
   // this file as the launcher ships it, kept up to date: compare the two to see what changed in a newer launcher.
-  meta { description: "The launcher's app drawer, written in owl: your apps by kind, search as you type in the prompt bar, and each app's long-press menu"; version: "1.3"; license: "MIT"; category: "system"; owl: 16 }
+  meta { description: "The launcher's app drawer, written in owl: your apps by kind, search as you type in the prompt bar, the web and your bookmarks opened by Enter, and each app's long-press menu"; version: "1.5"; license: "MIT"; category: "system"; owl: 16 }
   // The launcher's gear, as its settings buttons draw it; currentColor takes the accent.
   asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
   // What the drawer says, in the phone's language where it has a set, and in English where it doesn't. The action
@@ -15,6 +15,7 @@ panel "app drawer" {
       settings: "settings"; turnOn: "turn on"; pause: "pause"; installing: "installing…"; installLinux: "install linux"
       open: "open"; ask: "ask"; askInstallLinux: "ask an agent · install linux"; askInstallAgent: "ask an agent · install one"
       askAgent: (bin, text) => "ask ${bin}: ${text}"
+      search: "web search"; web: "web"; openLink: "open link"
     }
     id {
       personal: "pribadi"; work: "kerja"; apps: "aplikasi"; linux: "linux"; shortcuts: "pintasan"; android: "android"
@@ -23,6 +24,7 @@ panel "app drawer" {
       settings: "setelan"; turnOn: "aktifkan"; pause: "jeda"; installing: "menginstal…"; installLinux: "instal linux"
       open: "buka"; ask: "tanya"; askInstallLinux: "tanya agen · instal linux"; askInstallAgent: "tanya agen · instal satu"
       askAgent: (bin, text) => "tanya ${bin}: ${text}"
+      search: "pencarian web"; web: "web"; openLink: "buka tautan"
     }
     es {
       personal: "personal"; work: "trabajo"; apps: "apps"; linux: "linux"; shortcuts: "accesos directos"; android: "android"
@@ -31,6 +33,7 @@ panel "app drawer" {
       settings: "configuración"; turnOn: "activar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
       open: "abrir"; ask: "preguntar"; askInstallLinux: "preguntar a un agente · instalar linux"; askInstallAgent: "preguntar a un agente · instalar uno"
       askAgent: (bin, text) => "preguntar a ${bin}: ${text}"
+      search: "buscar en la web"; web: "web"; openLink: "abrir enlace"
     }
     pt {
       personal: "pessoal"; work: "trabalho"; apps: "apps"; linux: "linux"; shortcuts: "atalhos"; android: "android"
@@ -39,6 +42,7 @@ panel "app drawer" {
       settings: "configurações"; turnOn: "ativar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
       open: "abrir"; ask: "perguntar"; askInstallLinux: "perguntar a um agente · instalar linux"; askInstallAgent: "perguntar a um agente · instalar um"
       askAgent: (bin, text) => "perguntar ao ${bin}: ${text}"
+      search: "pesquisar na web"; web: "web"; openLink: "abrir link"
     }
     de {
       personal: "persönlich"; work: "arbeit"; apps: "apps"; linux: "linux"; shortcuts: "verknüpfungen"; android: "android"
@@ -47,6 +51,7 @@ panel "app drawer" {
       settings: "einstellungen"; turnOn: "aktivieren"; pause: "pausieren"; installing: "wird installiert…"; installLinux: "linux installieren"
       open: "öffnen"; ask: "fragen"; askInstallLinux: "einen agenten fragen · linux installieren"; askInstallAgent: "einen agenten fragen · einen installieren"
       askAgent: (bin, text) => "${bin} fragen: ${text}"
+      search: "web-suche"; web: "web"; openLink: "link öffnen"
     }
     zh {
       personal: "个人"; work: "工作"; apps: "应用"; linux: "linux"; shortcuts: "快捷方式"; android: "android"
@@ -55,6 +60,7 @@ panel "app drawer" {
       settings: "设置"; turnOn: "开启"; pause: "暂停"; installing: "正在安装…"; installLinux: "安装 linux"
       open: "打开"; ask: "提问"; askInstallLinux: "问智能体 · 安装 linux"; askInstallAgent: "问智能体 · 先装一个"
       askAgent: (bin, text) => "问 ${bin}：${text}"
+      search: "网页搜索"; web: "网页"; openLink: "打开链接"
     }
     ru {
       personal: "личные"; work: "рабочие"; apps: "приложения"; linux: "linux"; shortcuts: "ярлыки"; android: "android"
@@ -63,17 +69,36 @@ panel "app drawer" {
       settings: "настройки"; turnOn: "включить"; pause: "приостановить"; installing: "установка…"; installLinux: "установить linux"
       open: "открыть"; ask: "спросить"; askInstallLinux: "спросить агента · установить linux"; askInstallAgent: "спросить агента · установить агента"
       askAgent: (bin, text) => "спросить ${bin}: ${text}"
+      search: "поиск в сети"; web: "веб"; openLink: "открыть ссылку"
     }
   }
   source d = android.drawer
+  // The bar's agent, to switch between searching the web and asking it, and the tool's settings, for bookmarks.
   source ag = android.agents
+  source wcfg = file("~/.config/omalauncher/websearch.json") json
+  // The android apps, for the browsers among them: the ones a link can be opened in from this drawer.
+  source apps = android.apps
+  // The browsers the tool can hand a link to: the ones with a link scheme of their own, as `websearch browsers`
+  // knows them. Android's default needs none; it opens whatever Android opens links with.
+  source bw = cmd("$HOME/.local/bin/websearch browsers") every 5m json
   // The app whose long-press menu is open, by key, and the shortcuts it offers: null while they load, and the menu
   // waits for them, so it opens whole rather than growing.
   state menu = ""
   state menuShortcuts = null
   state tab = "personal"
-  // The result picked with the arrow or Tab keys, -1 for the ask row; null follows the ranking.
+  // The result picked with the arrow or Tab keys, -1 for the search row; null follows the ranking.
   state pick = null
+  // What Enter resolved what's typed to, and the text it asked about: the web search agent's answer,
+  // opened in Android's browser (or whatever app takes it, for tel: and the like). "~" is neither: it's put
+  // there while the agent looks, so the same words twice still change the state and open again.
+  state webTarget = null
+  state webQuery = ""
+  // What Enter does with words that name no app: search the web ("web") or ask the bar's agent ("ask").
+  state mode = "web" persist
+  // Whether the list of browsers is open above the search row, for opening this one in another of them.
+  state chooser = false
+  // A resolved link to hand to Android's share sheet, for a browser that has no scheme to be opened by.
+  state shareUrl = null
 
   // As the launcher's drawer fits them: a column for every 76 dp.
   let cols = max(1, floor(((screenWidth ?? 400) - 24) / 76))
@@ -98,11 +123,20 @@ panel "app drawer" {
   // Every profile's apps match while typing, best first; the list runs up from the bar, so the best sits right above it.
   let hits = searching ? rank(d.apps, typed) : []
   let hitRows = chunk(hits, cols).map((cells, r) => {key: "q:" + r, start: r * cols, cells: cells})
-  // Enter opens the best match when it names an app well, as the bar does; anything else, a prompt of more lines among it, goes to the agent.
+  // Enter opens the best match when it names an app well, as the bar does; anything else is a link to open or words to search the web for.
   let opens = len(hits) > 0 && strongMatch(hits[0], typed)
-  // What Enter acts on: a result by its place in hits, or -1 for the ask row.
+  // What Enter acts on: a result by its place in hits, or -1 for the search row.
   let chosen = pick ?? (opens ? 0 : -1)
-  let agent = ag.default
+  // Whether what's typed reads as a link, for what the bar says Enter does; the tool decides for real.
+  let linkish = contains(lower(typed), "://") || startsWith(lower(typed), "www.") || match(typed, '^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+([/:?#][^ ]*)?$') != null
+  // What the bar's Enter does here: open the app, open the link, or search the web.
+  let webAction = linkish ? str.openLink : str.search
+  // The agent the bar asks, its name, and the bookmarks the tool keeps: what's typed opens one of them too.
+  let agentName = ag.default == null ? str.ask : ag.default.bin
+  let marks = wcfg.bookmarks ?? []
+  let markHits = searching && mode == "web" ? take(rank(marks.map(b => merge(b, {alias: replace(replace(b.url, "https://", ""), "http://", "")})), typed), 3) : []
+  // The chooser's browsers, the ones that can take a link: those the tool has a scheme for, among the apps installed.
+  let browsers = (bw ?? []).filter(k => (k.open ?? "") != "" && len(apps.filter(a => a.package == k.package)) > 0).map(k => merge(first(apps.filter(a => a.package == k.package)) ?? {}, k)).sortBy(b => lower(b.name))
   // With a keyboard: Up and Tab move the pick away from the bar, Down and Shift+Tab back; the ask row sits lowest.
   onKey: {
     if searching {
@@ -116,7 +150,7 @@ panel "app drawer" {
   // How much the drawer covers home: near-opaque, as home's widgets showing through make the icons hard to read.
   opacity: 0.97
   // keyboard: false (with owl: 15 in meta) leaves the keyboard down as the drawer opens, until the bar is tapped.
-  enter: searching ? (chosen >= 0 ? "▸ " + str.open : "⏎ " + str.ask) : ""
+  enter: searching ? (chosen >= 0 ? "▸ " + str.open : !linux ? "⏎ " + str.ask : mode == "ask" ? "▸ " + str.ask : linkish ? "↗ " + str.open : "⏎ web") : ""
   // An empty bar's Enter does nothing, as on home.
   onSubmit: {
     if searching {
@@ -124,10 +158,37 @@ panel "app drawer" {
         open(hits[chosen].key)
       } else if !linux {
         launcher("linux")
+      } else if mode == "ask" {
+        ask(typed)
       } else {
-        ask(value)
+        webQuery = typed
+        webTarget = "~"
+        webTarget = run("$HOME/.local/bin/websearch print ${sh(typed)}")
       }
     }
+  }
+
+  // The web search agent (the "web search" app) says what the text resolves to, and that opens: a search
+  // on your engine, a link as it is, a site's rule naming a browser or a private tab. "~" is the wait
+  // before its answer, and nothing means it couldn't tell: then the agent, as Enter did before.
+  on webTarget {
+    let t = trim(value ?? "")
+    if t != "~" {
+      if t != "" {
+        url(t)
+      } else if webQuery != "" {
+        ask(webQuery)
+      }
+    }
+  }
+
+  // A link for the share sheet: Android's own list of apps to open it with, the browsers among them.
+  on shareUrl {
+    let u = trim(value ?? "")
+    if u != "" {
+      share(u)
+    }
+    shareUrl = null
   }
 
   // An app's icon as the drawer draws it: its own, its silhouette on a badge with monochrome icons, or its initials.
@@ -269,7 +330,54 @@ panel "app drawer" {
         }
       }
     }
-    // The one line above the bar that sends what's typed to the agent; outlined when that's what Enter does.
+    // The one line above the bar that searches the web, or opens the link, when Enter does; outlined when
+    // that's what Enter does. With an app picked, it opens that app instead.
+    // Bookmarks that match what's typed, above the bar like the apps: tap one to open it.
+    Column {
+      visible: len(markHits) > 0
+      fill: width
+      gap: 0
+      for b in markHits key b.url {
+        Row {
+          fill: width
+          gap: 10
+          align: center
+          padding: [12, 6]
+          onTap: {
+            webQuery = b.url
+            webTarget = "~"
+            webTarget = run("$HOME/.local/bin/websearch print ${sh(b.url)}")
+          }
+          Text { text: "★"; color: accent; fontSize: 12 }
+          Text { text: b.name; weight: 1; maxLines: 1 }
+          Text { text: replace(replace(b.url, "https://", ""), "http://", ""); color: muted; fontSize: 10; maxLines: 1 }
+        }
+      }
+    }
+    // What Enter does with words: search the web, or ask the bar's agent, as its own menu picks it.
+    Row {
+      visible: searching && linux
+      gap: 6
+      padding: [12, 0, 12, 6]
+      Text {
+        text: "⏎ " + str.web
+        fontSize: 11
+        padding: [10, 5]
+        radius: 12 * corners
+        color: mode == "web" ? foreground : muted
+        background: mode == "web" ? surface : transparent
+        onTap: { mode = "web"; haptic() }
+      }
+      Text {
+        text: "▸ " + agentName
+        fontSize: 11
+        padding: [10, 5]
+        radius: 12 * corners
+        color: mode == "ask" ? foreground : muted
+        background: mode == "ask" ? surface : transparent
+        onTap: { mode = "ask"; haptic() }
+      }
+    }
     Row {
       visible: searching
       fill: width
@@ -279,20 +387,84 @@ panel "app drawer" {
       borderColor: accent
       radius: 16 * corners
       onTap: {
-        if !linux {
+        if chosen >= 0 {
+          open(hits[chosen].key)
+        } else if !linux {
           launcher("linux")
-        } else if agent == null {
-          launcher("agents")
-        } else {
+        } else if mode == "ask" {
           ask(typed)
+        } else {
+          webQuery = typed
+          webTarget = "~"
+          webTarget = run("$HOME/.local/bin/websearch print ${sh(typed)}")
         }
       }
-      Text { text: "⏎"; color: chosen == -1 ? accent : muted }
+      Text { text: mode == "ask" ? "▸" : linkish ? "↗" : "⏎"; color: chosen == -1 ? accent : muted }
       Text {
-        text: !linux ? str.askInstallLinux : agent == null ? str.askInstallAgent : str.askAgent(agent.bin, typed)
+        text: !linux ? str.askInstallLinux : mode == "ask" ? str.askAgent(agentName, typed) : webAction + ": " + typed
         color: chosen == -1 ? foreground : muted
         maxLines: 1
         weight: 1
+      }
+      // Opens the list of browsers, to try this one in another of them; nothing hides the row's own tap.
+      Text { text: "▾"; color: muted; fontSize: 12; padding: [6, 0]; onTap: { chooser = true; haptic() } }
+      Popup {
+        visible: chooser
+        position: above
+        onDismiss: chooser = false
+        width: 220
+        gap: 0
+        Text { text: "open in"; color: muted; fontSize: 10; padding: [12, 6] }
+        for b in browsers key b.key {
+          Row {
+            fill: width
+            align: center
+            gap: 10
+            padding: [10, 12]
+            onTap: {
+              chooser = false
+              haptic()
+              webQuery = typed
+              webTarget = "~"
+              webTarget = run("$HOME/.local/bin/websearch print --browser ${sh(b.package)} ${sh(typed)}")
+            }
+            Image { src: b.icon; size: 24; label: b.name }
+            Text { text: b.name; weight: 1; maxLines: 1 }
+          }
+        }
+        Text {
+          text: "Android default"
+          fill: width
+          padding: [10, 12]
+          color: muted
+          onTap: {
+            chooser = false
+            haptic()
+            webQuery = typed
+            webTarget = "~"
+            webTarget = run("$HOME/.local/bin/websearch print --browser system ${sh(typed)}")
+          }
+        }
+        // Any other browser, and any other app: Android's share sheet, an icon list of what takes a link.
+        Spacer { height: 1; fill: width; background: border }
+        Row {
+          fill: width
+          align: center
+          gap: 10
+          padding: [10, 12]
+          onTap: {
+            chooser = false
+            haptic()
+            shareUrl = run("$HOME/.local/bin/websearch print ${sh(typed)}")
+          }
+          Text { text: "↗"; color: accent; fontSize: 14 }
+          Column {
+            weight: 1
+            gap: 1
+            Text { text: "another browser…"; maxLines: 1 }
+            Text { text: "Android's share sheet"; color: muted; fontSize: 9 }
+          }
+        }
       }
     }
   }
