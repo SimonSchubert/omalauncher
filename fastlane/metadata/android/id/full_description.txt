@@ -29,7 +29,7 @@ PINTASAN KEYBOARD
 Dengan keyboard fisik: Super+T membuka terminal, Super+D laci aplikasi, Super+1 sampai 9 berpindah halaman, dan Super+W menutup jendela.
 
 BAHASA
-English, Bahasa Indonesia, Español, Português, Deutsch, dan 简体中文.
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, dan Русский.
 
 PRIVASI
 Tanpa akun, tanpa iklan, tanpa pelacakan. Omalauncher hanya terhubung ke internet untuk mengunduh tema, widget, cuaca, dan, kalau kamu mau, Linux beserta paketnya.

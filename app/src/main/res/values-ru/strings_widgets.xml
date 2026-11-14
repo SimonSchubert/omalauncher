@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widgets_no_app_opens">%1$s нечем открыть</string>
+    <string name="widgets_copied">скопировано</string>
+    <string name="widgets_notify_channel">Виджеты</string>
+</resources>

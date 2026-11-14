@@ -29,7 +29,7 @@ ATALHOS DE TECLADO
 Com um teclado físico: Super+T abre um terminal, Super+D a gaveta, Super+1 a 9 trocam de página e Super+W fecha uma janela.
 
 IDIOMAS
-English, Bahasa Indonesia, Español, Português, Deutsch e 简体中文.
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文 e Русский.
 
 PRIVACIDADE
 Sem conta, sem anúncios, sem rastreamento. O Omalauncher só se conecta à internet para baixar temas, widgets, o clima e, se você quiser, o Linux e seus pacotes.

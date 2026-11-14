@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_edit">изменить</string>
+    <string name="home_share">поделиться</string>
+    <string name="home_remove">убрать</string>
+
+    <string name="home_create_with">создать с помощью %1$s</string>
+    <string name="home_create_with_an_agent">создать с помощью агента</string>
+    <string name="home_browse_store">открыть магазин</string>
+    <string name="home_create_widget">виджет</string>
+    <string name="home_create_app">приложение</string>
+    <string name="home_create_panel">панель</string>
+
+    <string name="home_face_invite_title">свой полноэкранный виджет</string>
+    <string name="home_face_invite_text">Эту страницу можно занять полноэкранным виджетом: лентой новостей, дашбордом, стартовой страницей, игрой. Опишите, что вам нужно, и %1$s соберёт его прямо здесь.</string>
+    <string name="home_face_invite_text_no_agent">Эту страницу можно занять полноэкранным виджетом: лентой новостей, дашбордом, стартовой страницей, игрой. Опишите, что вам нужно, и агент соберёт его прямо здесь.</string>
+    <string name="home_widget_invite_title">место для виджетов</string>
+    <string name="home_widget_invite_text">На этой странице пока пусто. Добавьте сюда виджеты: часы, погоду, список дел, работу ваших агентов. Опишите, что вам нужно, и %1$s их соберёт.</string>
+    <string name="home_widget_invite_text_no_agent">На этой странице пока пусто. Добавьте сюда виджеты: часы, погоду, список дел, работу ваших агентов. Опишите, что вам нужно, и агент их соберёт.</string>
+
+    <string name="home_drop_here">отпустите здесь</string>
+    <string name="home_drop_face_only">сюда можно положить только полноэкранный виджет</string>
+    <string name="home_lock_locked">экран заблокирован</string>
+    <string name="home_lock_unlock">разблокировать</string>
+
+    <plurals name="home_file_problems">
+        <item quantity="one">%1$s: %2$d ошибка</item>
+        <item quantity="few">%1$s: %2$d ошибки</item>
+        <item quantity="many">%1$s: %2$d ошибок</item>
+        <item quantity="other">%1$s: %2$d ошибки</item>
+    </plurals>
+    <plurals name="home_file_problems_more">
+        <item quantity="one">ещё %1$d в errors.txt · нажмите, чтобы скрыть</item>
+        <item quantity="few">ещё %1$d в errors.txt · нажмите, чтобы скрыть</item>
+        <item quantity="many">ещё %1$d в errors.txt · нажмите, чтобы скрыть</item>
+        <item quantity="other">ещё %1$d в errors.txt · нажмите, чтобы скрыть</item>
+    </plurals>
+    <string name="home_file_problems_hide">нажмите, чтобы скрыть</string>
+
+    <string name="home_widget_needs">нужно: %1$s</string>
+    <string name="home_installing">установка…</string>
+    <string name="home_install">установить</string>
+    <string name="home_retry">повторить</string>
+    <string name="home_fix_with_agent">исправить с помощью агента</string>
+    <string name="home_widget_needs_linux">нужен Linux</string>
+    <string name="home_widget_needs_linux_text">выполняет команды в Arch Linux, который ставится по желанию</string>
+
+    <string name="home_terminal_starting">запуск…</string>
+    <string name="home_terminal_exited">завершён · нажмите, чтобы перезапустить</string>
+
+    <string name="home_prompt_hint_agent">открыть приложение или спросить %1$s</string>
+    <string name="home_prompt_hint">открыть приложение</string>
+    <string name="home_prompt_hint_short">приложения</string>
+
+    <string name="home_folder_named">папка %1$s</string>
+    <string name="home_app_has_notifications">%1$s, есть уведомления</string>
+    <string name="home_folder">папка</string>
+    <string name="home_folder_tap_to_name">нажмите, чтобы назвать</string>
+
+    <string name="home_refresh">обновить</string>
+    <string name="home_refreshing">обновление</string>
+    <string name="home_job_failed">ошибка:</string>
+    <string name="home_job_whole_log">весь лог</string>
+    <string name="home_job_less">свернуть</string>
+    <string name="home_job_copy">копировать</string>
+    <string name="home_settings">настройки</string>
+
+    <string name="home_linux_window">Linux</string>
+
+    <string name="drawer_action_pin">добавить на главный экран</string>
+    <string name="drawer_action_info">о приложении</string>
+    <string name="drawer_action_uninstall">удалить</string>
+</resources>

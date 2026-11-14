@@ -25,7 +25,7 @@ import dev.omalauncher.storage.LauncherData
  */
 object AppLanguage {
     /** The languages the launcher has its text in, as language tags; more come with their translations. */
-    val supported = listOf("en", "id", "es", "pt", "de", "zh")
+    val supported = listOf("en", "id", "es", "pt", "de", "zh", "ru")
 
     private const val KEY = "language"
 

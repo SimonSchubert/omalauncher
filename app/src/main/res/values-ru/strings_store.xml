@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="store_title">магазин</string>
+
+    <string name="store_kind_widgets">виджеты</string>
+    <string name="store_kind_faces">полноэкранные виджеты</string>
+    <string name="store_kind_apps">приложения</string>
+    <string name="store_kind_panels">панели</string>
+    <string name="store_kind_keybars">панели клавиш</string>
+    <string name="store_kind_widget">виджет</string>
+    <string name="store_kind_face">полноэкранный виджет</string>
+    <string name="store_kind_app">приложение</string>
+    <string name="store_kind_panel">панель</string>
+    <string name="store_kind_keybar">панель клавиш</string>
+
+    <string name="store_pick_widget">выберите виджет, чтобы увидеть, что он устанавливает и запускает</string>
+    <string name="store_pick_face">выберите полноэкранный виджет, чтобы увидеть, что он устанавливает и запускает</string>
+    <string name="store_pick_app">выберите приложение, чтобы увидеть, что оно устанавливает и запускает</string>
+    <string name="store_pick_panel">выберите панель, чтобы увидеть, что она устанавливает и запускает</string>
+    <string name="store_pick_keybar">выберите панель клавиш, чтобы увидеть, что она устанавливает и запускает</string>
+
+    <string name="store_search">поиск: %2$s (%1$d)</string>
+    <string name="store_tab_all">все</string>
+    <string name="store_tab_new">новые</string>
+    <string name="store_tab_installed">установленные</string>
+    <string name="store_category_other">другое</string>
+    <string name="store_tab">%1$s %2$d</string>
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <string name="store_builtin">встроенные</string>
+    <string name="store_terminal">терминал</string>
+    <string name="store_terminal_details">6x4 · командная оболочка</string>
+    <string name="store_agent_details">6x6 · запускает %1$s</string>
+    <string name="store_on_home">✓ на главном экране</string>
+    <string name="store_tap_to_add">нажмите, чтобы добавить на страницу %1$d</string>
+
+    <string name="store_reviewed">проверенные %1$s с github.com/%2$s</string>
+    <string name="store_loading">загрузка…</string>
+    <string name="store_empty">%1$s: пока ничего нет</string>
+    <string name="store_no_new">%1$s: новых нет</string>
+    <string name="store_none_installed">%1$s: из магазина ничего не установлено</string>
+    <string name="store_no_match">по запросу «%1$s» ничего не найдено</string>
+
+    <string name="store_update_available">есть обновление</string>
+    <string name="store_installed">✓ установлено</string>
+    <string name="store_needs_newer">нужна более новая версия лаунчера</string>
+    <string name="store_needs_linux">нужен linux</string>
+    <string name="store_full_screen">весь экран</string>
+    <plurals name="store_pages">
+        <item quantity="one">%1$d страница</item>
+        <item quantity="few">%1$d страницы</item>
+        <item quantity="many">%1$d страниц</item>
+        <item quantity="other">%1$d страницы</item>
+    </plurals>
+    <string name="store_badge_new">новинка</string>
+
+    <string name="store_needs_newer_detail">нужна более новая версия лаунчера (owl %1$d); обновите лаунчер, чтобы установить</string>
+    <string name="store_may_have_changes">возможно, здесь есть ваши правки, и обновление их заменит</string>
+    <string name="store_you_changed">здесь есть ваши правки, и обновление их заменит</string>
+    <string name="store_update_anyway">всё равно обновить %1$s → %2$s</string>
+    <string name="store_update">обновить %1$s → %2$s</string>
+    <string name="store_open">открыть</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="one">добавить %1$d недостающую страницу</item>
+        <item quantity="few">добавить %1$d недостающие страницы</item>
+        <item quantity="many">добавить %1$d недостающих страниц</item>
+        <item quantity="other">добавить %1$d недостающей страницы</item>
+    </plurals>
+    <string name="store_add_to_page">добавить на страницу %1$d</string>
+    <string name="store_add_as_face">добавить как полноэкранный виджет</string>
+    <string name="store_install">установить</string>
+    <string name="store_uninstall">удалить</string>
+    <string name="store_remove">убрать</string>
+    <string name="store_uninstall_confirm">удалить %1$s?</string>
+    <string name="store_remove_confirm">убрать %1$s?</string>
+    <string name="store_remove_file">Файл переместится в .removed/ в папке виджетов.</string>
+    <string name="store_remove_files">Файлы переместятся в .removed/ в папке виджетов.</string>
+    <string name="store_changed_since_approval">команды или пакеты изменились с версии, которую вы одобрили</string>
+
+    <string name="store_added_widget">✓ на главном экране</string>
+    <string name="store_added_face">✓ слева от первой страницы</string>
+    <string name="store_added_app">✓ в списке приложений</string>
+    <string name="store_added_panel">✓ в настройках жестов</string>
+    <string name="store_added_keybar">✓ в папке виджетов</string>
+
+    <string name="store_needs_linux_app">нужен Linux: приложение выполняет команды в Arch, поэтому появится в списке приложений, когда вы установите Linux в настройках</string>
+    <string name="store_needs_linux_widget">нужен Linux: виджет выполняет команды в Arch, поэтому до установки Linux в настройках на его месте будет заглушка</string>
+
+    <string name="store_installs_packages">устанавливает пакеты: %1$s</string>
+    <string name="store_packages_none">нет</string>
+    <string name="store_runs_no_commands">не выполняет команд</string>
+    <string name="store_runs_commands">выполняет в Arch эти команды:</string>
+
+    <string name="store_installing">установка…</string>
+    <string name="store_updating">обновление…</string>
+    <string name="store_adding_pages">добавление страниц…</string>
+    <string name="store_load_failed">не удалось загрузить магазин: %1$s</string>
+    <string name="store_download_mismatch">загрузка не совпадает с проверенной версией; попробуйте позже</string>
+    <string name="store_install_failed">ошибка установки: %1$s</string>
+
+    <string name="store_shared_title">вам прислали: %1$s</string>
+    <string name="store_shared_fetching">загрузка с %1$s…</string>
+    <string name="store_shared_unreadable">не удаётся прочитать</string>
+    <string name="store_shared_not_widget">По этой ссылке нет виджета: %1$s.</string>
+    <string name="store_shared_unnamed_app">приложение</string>
+    <string name="store_shared_unnamed_widget">виджет</string>
+    <string name="store_shared_info">прислали вам%1$s · %2$.1f КБ</string>
+    <string name="store_shared_warning">Добавляйте, только если доверяете отправителю. Команды ниже будут выполняться в Arch от вашего имени, с доступом к вашим файлам и сети.</string>
+    <string name="store_shared_needs_newer">нужна более новая версия лаунчера (owl %1$d); обновите лаунчер, чтобы добавить</string>
+    <string name="store_shared_replace">заменить прежнюю версию %1$s</string>
+    <string name="store_add_to_drawer">добавить в список приложений</string>
+    <string name="store_add_to_panels">добавить в панели жестов</string>
+    <string name="store_add_to_widgets_folder">добавить в папку виджетов</string>
+    <string name="store_hide_file">скрыть файл</string>
+    <string name="store_show_file">показать файл целиком</string>
+    <string name="store_review_with_agent">проверить с помощью агента</string>
+
+    <string name="store_share_title">поделиться: %1$s</string>
+    <string name="store_check_secrets">проверить на секреты с помощью агента</string>
+    <string name="store_share_unreadable">не удаётся прочитать %1$s</string>
+    <string name="store_share_too_big">%1$s больше %2$d КБ — лаунчер столько не примет</string>
+    <string name="store_uploading">отправка…</string>
+    <string name="store_share_get_code">получить QR-код</string>
+    <string name="store_something_wrong">что-то пошло не так</string>
+    <string name="store_share_uploads">публикует его в открытом доступе на %1$s (хранится %2$d дн.)</string>
+    <string name="store_share_send_link">Или отправьте ссылку: она постоянная, весь виджет в ней.</string>
+    <string name="store_share_too_big_link">Слишком большой для ссылки: поделиться можно через QR-код.</string>
+    <string name="store_share_pasted_permanent">Ссылка на %1$s, перестанет работать через %2$d дн. Ссылка ниже — постоянная.</string>
+    <string name="store_share_pasted">Ссылка на %1$s, перестанет работать через %2$d дн.</string>
+    <string name="store_share_permanent">Бессрочно: весь виджет закодирован в изображении.</string>
+    <string name="store_share_code">поделиться QR-кодом</string>
+    <string name="store_share_link">поделиться ссылкой</string>
+    <string name="store_copied">скопировано</string>
+    <string name="store_copy_link">копировать ссылку</string>
+    <string name="store_share_subject">Виджет %1$s</string>
+    <string name="store_share_code_clip">QR-код %1$s</string>
+    <string name="store_share_chooser">Поделиться: %1$s</string>
+    <string name="store_in_store">в магазине</string>
+    <string name="store_issue_info">Issue на github.com/%1$s; после проверки виджет сможет установить любой.</string>
+    <string name="store_pr_info">Или pull request от вашего агента — он может добавить и превью:</string>
+    <string name="store_create_pr">создать pull request с помощью агента</string>
+    <string name="store_open_issue">открыть issue на GitHub</string>
+    <string name="store_no_browser">нет браузера, чтобы открыть %1$s</string>
+    <string name="store_issue_uploads">публикует его в открытом доступе на %1$s для проверки</string>
+    <string name="store_upload_failed">✗ не удалось отправить: %1$s</string>
+
+    <string name="store_pin_title">добавить на главный экран?</string>
+    <string name="store_pin_from">от %1$s</string>
+    <string name="store_cancel">отмена</string>
+    <string name="store_add">добавить</string>
+
+    <string name="store_theme_title">темы сообщества</string>
+    <string name="store_theme_search">поиск: темы (%1$d)</string>
+    <string name="store_theme_header">созданы сообществом, список на omarchy.org/themes · устанавливаются с GitHub</string>
+    <string name="store_theme_in_use">✓ используется</string>
+    <string name="store_theme_install_confirm">установить %1$s?</string>
+    <string name="store_theme_install_message">Из %1$s. Linux получит цвета и обои темы, но не скрипты и не настройки терминала.</string>
+    <string name="store_theme_install_message_replaces">Из %1$s. Linux получит цвета и обои темы, но не скрипты и не настройки терминала.\n\nОна заменит вашу тему %2$s.</string>
+    <string name="store_theme_install_message_over">Из %1$s. Linux получит цвета и обои темы, но не скрипты и не настройки терминала.\n\nОна заменит тему Omarchy %2$s; если удалить новую, тема Omarchy вернётся.</string>
+    <string name="store_theme_installing">установка %1$s… %2$d МБ</string>
+    <string name="store_theme_catalog_failed">не удалось загрузить omarchy.org/themes: %1$s</string>
+    <string name="store_theme_page_changed">страница изменилась, и её не удаётся прочитать</string>
+    <string name="store_theme_not_github">это не репозиторий GitHub: %1$s</string>
+    <string name="store_theme_not_on_github">%1$s нет на GitHub</string>
+    <string name="store_theme_no_colors">в ней нет colors.toml или alacritty.toml</string>
+    <string name="store_theme_cant_move">не удаётся переместить тему на место</string>
+</resources>

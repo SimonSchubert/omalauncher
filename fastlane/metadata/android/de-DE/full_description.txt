@@ -29,7 +29,7 @@ TASTENKÜRZEL
 Mit Hardware-Tastatur: Super+T öffnet ein Terminal, Super+D die App-Übersicht, Super+1 bis 9 wechseln die Seite und Super+W schließt ein Fenster.
 
 SPRACHEN
-English, Bahasa Indonesia, Español, Português, Deutsch und 简体中文.
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文 und Русский.
 
 DATENSCHUTZ
 Kein Konto, keine Werbung, kein Tracking. Omalauncher geht nur ins Internet, um Themes, Widgets, das Wetter und, wenn du willst, Linux und seine Pakete zu laden.

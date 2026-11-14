@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="linux_stage_download">загрузка arch linux</string>
+    <string name="linux_stage_extract">распаковка системы</string>
+    <string name="linux_stage_configure">настройка pacman</string>
+    <string name="linux_stage_packages">установка приложений omarchy</string>
+    <string name="linux_stage_agents">установка ИИ-агентов</string>
+    <string name="linux_stage_agents_named">установка: %1$s</string>
+
+    <string name="linux_step_download">Загрузка Arch Linux ARM</string>
+    <string name="linux_step_configure">Настройка системы</string>
+    <string name="linux_step_forks">Проверка запуска программ</string>
+    <string name="linux_step_keyring">Инициализация связки ключей pacman</string>
+    <string name="linux_step_no_kernel">Удаление пакетов ядра</string>
+    <string name="linux_step_packages">Установка пакетов</string>
+    <string name="linux_step_keymap">Компиляция раскладки клавиатуры</string>
+    <string name="linux_step_cliamp">Установка cliamp</string>
+    <string name="linux_step_agent">Установка %1$s</string>
+    <string name="linux_step_downloaded">%1$d из %2$d МБ</string>
+    <string name="linux_step_downloaded_unknown">%1$d МБ</string>
+    <string name="linux_step_extract_start">Начало</string>
+    <plurals name="linux_step_extracted">
+        <item quantity="one">%d файл</item>
+        <item quantity="few">%d файла</item>
+        <item quantity="many">%d файлов</item>
+        <item quantity="other">%d файла</item>
+    </plurals>
+
+    <string name="linux_log_retrying">%1$s; повторная попытка (%2$d из %3$d)</string>
+    <string name="linux_log_step_failed">%1$s — сбой: %2$s; повторите в настройках</string>
+    <string name="linux_log_agent_failed">не удалось установить %1$s; попробуйте ещё раз в разделе настройки › ИИ-агенты</string>
+
+    <string name="linux_error_no_space">недостаточно места: Linux нужно %1$s свободного места, а на телефоне %2$s; освободите место и попробуйте снова</string>
+    <string name="linux_error_out_of_space">на телефоне закончилось место; Linux нужно около %1$s свободного места; освободите место и попробуйте снова</string>
+    <string name="linux_error_http">ошибка загрузки: HTTP %1$d</string>
+    <string name="linux_error_cut_short">загрузка прервалась; повторите, чтобы её продолжить</string>
+    <string name="linux_error_move_download">не удаётся переместить загруженный файл на место</string>
+    <string name="linux_error_cant_run">Linux не может выполнять здесь команды (код %1$d)</string>
+    <string name="linux_error_kernel">ядро этого телефона не даёт программам Linux запускать другие программы, поэтому установку продолжить нельзя. кастомным прошивкам с ядром 4.14 нужен коммит ядра 05b289263772 от их мейнтейнера; подробнее в issue #105 на github</string>
+    <string name="linux_error_command">`%1$s`: ошибка (код %2$d)</string>
+    <string name="linux_error_cliamp_mismatch">загруженный cliamp не совпадает с %1$s</string>
+    <string name="linux_error_cant_replace">не удаётся заменить %1$s</string>
+
+    <string name="linux_job_installing">установка</string>
+    <string name="linux_job_removing">удаление</string>
+    <string name="linux_job_building">сборка</string>
+    <string name="linux_job_updating">обновление</string>
+    <string name="linux_job_waiting">ожидание</string>
+    <string name="linux_job_checking">проверка</string>
+    <string name="linux_job_working">%1$s…</string>
+
+    <string name="linux_updates_unreachable">не удалось связаться с зеркалами</string>
+
+    <string name="linux_agent_claude">Агент для программирования от Anthropic</string>
+    <string name="linux_agent_opencode">Открытый агент для любых провайдеров моделей</string>
+    <string name="linux_agent_codex">Агент для программирования от OpenAI</string>
+    <string name="linux_agent_grok">Агент для программирования от xAI</string>
+    <string name="linux_agent_copilot">Агент для программирования от GitHub</string>
+    <string name="linux_agent_crush">Агент для терминала от Charm</string>
+    <string name="linux_agent_cursor">Агент для терминала от Cursor</string>
+    <string name="linux_agent_antigravity">Агент для программирования Gemini от Google</string>
+    <string name="linux_agent_pi">Минималистичный расширяемый агент для программирования</string>
+    <string name="linux_agent_omp">Pi со встроенными инструментами и плагинами</string>
+    <string name="linux_agent_ori">Агент для программирования от OpenRouter</string>
+    <string name="linux_agent_muse">Агент для программирования от Meta</string>
+    <string name="linux_agent_kimi">Агент для программирования от Moonshot AI</string>
+    <string name="linux_agent_qwen">Агент для программирования Qwen от Alibaba</string>
+    <string name="linux_agent_mcode">Агент для программирования от MiniMax</string>
+    <string name="linux_agent_kiro">Агент для программирования от Amazon</string>
+    <string name="linux_agent_kilo">Открытый агент на основе OpenCode</string>
+    <string name="linux_agent_devin">Агент для программирования от Cognition</string>
+    <string name="linux_agent_amp">Агент для программирования от ampcode.com</string>
+    <string name="linux_agent_commandcode">Агент для программирования от commandcode.ai</string>
+
+    <string name="linux_welcome_title">omarchy на главном экране</string>
+    <string name="linux_welcome_body">Темы и обои Omarchy, ваши Android-приложения и виджеты на главном экране. Arch Linux добавит терминальные приложения и ИИ-агентов — сейчас или позже в настройках.</string>
+    <string name="linux_welcome_linux">linux</string>
+    <string name="linux_welcome_choice">также установить Arch Linux</string>
+    <string name="linux_welcome_choice_detail">терминальные приложения, агенты, pacman · загрузка ~1 ГБ, 3 ГБ места</string>
+    <string name="linux_welcome_start">начать</string>
+    <string name="linux_welcome_start_linux">начать и установить linux</string>
+    <string name="linux_welcome_start_hint">Обои темы скачаются сразу, а остальные темы Omarchy (около 70 МБ) — в фоне.</string>
+    <string name="linux_welcome_start_linux_hint">Linux — это около 1 ГБ загрузки (лучше по Wi-Fi) и 3 ГБ места. Он устанавливается в фоне за 10–20 минут, а главным экраном можно пользоваться сразу.</string>
+    <string name="linux_welcome_getting">загрузка темы %1$s</string>
+    <string name="linux_welcome_theme_failed">тема не скачалась</string>
+    <string name="linux_welcome_wallpaper">скачать её обои</string>
+    <string name="linux_welcome_skip">продолжить без обоев</string>
+    <string name="linux_welcome_skip_hint">Цвета темы применятся в любом случае. Лаунчер попробует скачать обои позже; их также можно скачать в разделе настройки › оформление.</string>
+
+    <string name="linux_agents_label">ИИ-агенты</string>
+    <string name="linux_agents_hint">Отметьте агентов, которых нужно установить вместе с Linux. Добавить или удалить их можно позже в настройках.</string>
+    <string name="linux_theme_label">тема</string>
+    <string name="linux_more_themes">ещё темы ›</string>
+
+    <string name="linux_progress_title">установка linux</string>
+    <string name="linux_progress_stopped">установка остановлена</string>
+    <string name="linux_try_again">попробовать снова</string>
+    <string name="linux_cancel_install">отменить установку</string>
+    <string name="linux_progress_background">Это окно можно закрыть и пользоваться лаунчером: установка продолжится в фоне.</string>
+    <string name="linux_output">вывод</string>
+    <string name="linux_output_less">свернуть</string>
+    <string name="linux_output_more">развернуть</string>
+
+    <string name="linux_title">linux</string>
+    <string name="linux_removing">удаление linux…</string>
+    <string name="linux_offer_title">arch linux, по желанию</string>
+    <string name="linux_offer_body">Linux-приложения, терминальные виджеты, ИИ-агенты, pacman и Файлы. Около 1 ГБ загрузки и 3 ГБ места; устанавливается в фоне.</string>
+    <string name="linux_install">установить linux</string>
+    <plurals name="linux_install_with_agents">
+        <item quantity="one">установить linux и агентов: %d</item>
+        <item quantity="few">установить linux и агентов: %d</item>
+        <item quantity="many">установить linux и агентов: %d</item>
+        <item quantity="other">установить linux и агентов: %d</item>
+    </plurals>
+    <string name="linux_arch">arch linux</string>
+    <string name="linux_installed_size">установлен · %1$s</string>
+    <string name="linux_measuring">подсчёт…</string>
+    <string name="linux_remove">удалить linux</string>
+    <string name="linux_remove_ask">удалить linux?</string>
+    <string name="linux_remove_body">Будут удалены Linux-приложения, ИИ-агенты, пакеты и всё в /root, например Downloads. Темы, обои, виджеты и главный экран останутся.</string>
+    <string name="linux_remove_confirm">удалить</string>
+    <string name="linux_cancel">отмена</string>
+    <string name="linux_gpu_title">ускорение gpu</string>
+    <string name="linux_gpu_on">вкл · %1$s · для приложений, открытых после включения</string>
+    <string name="linux_gpu_off_failed">выкл: gpu не прошёл проверку после обновления системы</string>
+    <string name="linux_gpu_waiting">вкл · ждёт проверки</string>
+    <string name="linux_gpu_failed">gpu не прошёл проверку; приложения работают с программной отрисовкой</string>
+    <string name="linux_gpu_offer">экспериментально · %1$s · ускоряет приложения и игры на OpenGL и Vulkan; терминальных приложений это не касается</string>
+    <string name="linux_retry">повторить</string>
+    <string name="linux_gpu_turn_off">выключить</string>
+    <string name="linux_gpu_turn_on">включить</string>
+    <string name="linux_cpu_pinning_title">быстрые системные вызовы</string>
+    <string name="linux_cpu_pinning_on">вкл · Linux работает на одном быстром ядре процессора · для программ, запущенных после включения</string>
+    <string name="linux_cpu_pinning_off">выкл · для программ, запущенных после выключения</string>
+
+    <string name="linux_notification_channel">Сеанс Linux</string>
+    <string name="linux_notify_channel">Агенты и скрипты</string>
+    <string name="linux_notification_installing">Установка Linux · %1$s</string>
+    <string name="linux_notification_installing_percent">Установка Linux · %1$d%% · %2$s</string>
+    <string name="linux_notification_failed">Установка Linux остановлена · откройте настройки › linux, чтобы повторить</string>
+    <string name="linux_notification_removing">Удаление Linux</string>
+    <string name="linux_notification_running">Сеанс Linux запущен</string>
+
+    <string name="packages_title">пакеты</string>
+    <string name="packages_search">поиск пакетов</string>
+    <string name="packages_intro">Пакеты Arch Linux ARM через pacman и AUR через yay. Установка заодно обновляет систему, поэтому может занять время. Пакеты AUR публикуют пользователи, а собираются они прямо на устройстве: сначала проверьте их PKGBUILD на aur.archlinux.org.</string>
+    <string name="packages_loading">загрузка…</string>
+    <string name="packages_searching">поиск…</string>
+    <string name="packages_installed">установленные (%1$d)</string>
+    <string name="packages_none">подходящих пакетов нет</string>
+    <plurals name="packages_results">
+        <item quantity="one">%d результат</item>
+        <item quantity="few">%d результата</item>
+        <item quantity="many">%d результатов</item>
+        <item quantity="other">%d результата</item>
+    </plurals>
+    <string name="packages_required">обязательный</string>
+    <string name="packages_confirm">подтвердить</string>
+    <string name="packages_remove">удалить</string>
+    <string name="packages_install">установить</string>
+
+    <string name="licenses_title">лицензии</string>
+    <string name="licenses_header">Omalauncher %1$s · © 2026 Simon Schubert\n\nВ него входит открытое ПО, перечисленное ниже.</string>
+    <string name="licenses_website">сайт</string>
+    <string name="licenses_source">исходный код</string>
+    <string name="licenses_use_proot">запускает необязательную систему Linux</string>
+    <string name="licenses_use_talloc">распределитель памяти для PRoot</string>
+    <string name="licenses_use_shmem">общая память для PRoot</string>
+    <string name="licenses_use_mesa">OpenGL на GPU Adreno в необязательной системе Linux</string>
+    <string name="licenses_use_wayland">файлы протоколов, входящие в Mesa</string>
+    <string name="licenses_use_omarchy">цвета тем для первого запуска</string>
+    <string name="licenses_use_nerd_fonts">шрифт с символами</string>
+    <string name="licenses_use_weather_icons">значки погоды в шрифте с символами</string>
+    <string name="licenses_use_mdi">значки в шрифте с символами</string>
+    <string name="licenses_use_compose">пользовательский интерфейс</string>
+    <string name="licenses_use_jetpack">activity, Compose и другие библиотеки AndroidX</string>
+    <string name="licenses_use_kotlin">среда выполнения языка</string>
+    <string name="licenses_use_commons_compress">распаковывает загрузки</string>
+    <string name="licenses_use_androidsvg">рисует значки SVG</string>
+    <string name="licenses_use_zxing">рисует QR-коды, через которые делятся виджетами</string>
+    <string name="licenses_use_json">читает и записывает JSON</string>
+</resources>

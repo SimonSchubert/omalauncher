@@ -116,6 +116,25 @@ widget "fetch" {
         "failing": "故障", "wireless": "无线", "dock": "底座"
       }, w, w)
     }
+    ru {
+      uptime: "время работы"; packages: "пакеты"; display: "экран"; theme: "тема"; memory: "память"; disk: "диск"
+      battery: "батарея"; apps: "приложения"; byDefault: "по умолчанию"; phone: "телефон"; device: "устройство"
+      hardware: "оборудование"; network: "сеть"; launcher: "лаунчер"; security: "безопасность"; build: "сборка"
+      locale: "регион"; cores: "ядра"; storage: "хранилище"; speed: "скорость"; received: "получено"; sent: "отправлено"
+      mobile: "по моб. сети"; level: "заряд"; temperature: "температура"; voltage: "напряжение"; health: "состояние"
+      cycles: "циклы"; technology: "технология"; version: "версия"; explicit: "вручную"; upgraded: "обновлено"
+      never: "никогда"; unknown: "неизвестно"; installLinux: "установить linux"
+      notInstalled: "не установлен. arch linux arm добавляет в лаунчер терминал, агентов и pacman."
+      upTo: ghz => " · до ${ghz} ГГц"
+      androidApps: n => "${n} " + (n % 10 == 1 && n % 100 != 11 ? "android-приложение" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "android-приложения" : "android-приложений")
+      appCount: n => "${n} " + (n % 10 == 1 && n % 100 != 11 ? "приложение" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "приложения" : "приложений")
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "заряжается", "plugged in": "подключено", "on battery": "разряжается", "good": "хорошее",
+        "overheating": "перегрев", "dead": "неисправность", "over voltage": "перенапряжение", "cold": "переохлаждение",
+        "failing": "износ", "wireless": "беспроводная", "dock": "док-станция"
+      }, w, w)
+    }
   }
 
   // The phone, from Android: works without Linux.

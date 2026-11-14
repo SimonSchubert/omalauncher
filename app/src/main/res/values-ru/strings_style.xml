@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="style_title">оформление</string>
+
+    <string name="style_home_screen">главный экран</string>
+    <string name="style_widgets">виджеты</string>
+    <string name="style_screens">экраны</string>
+    <string name="style_keybar">панель клавиш терминала</string>
+    <string name="style_system_bars">системные панели</string>
+    <string name="style_launcher_widgets">лаунчер и виджеты</string>
+    <string name="style_theme">тема</string>
+    <string name="style_background">фон</string>
+    <string name="style_terminal">терминал</string>
+
+    <string name="style_icons">значки</string>
+    <string name="style_monochrome">монохромные</string>
+    <string name="style_colored">цветные</string>
+    <string name="style_icon_pack">набор значков</string>
+    <string name="style_icon_pack_none">нет</string>
+    <string name="style_home_apps">приложения на главном</string>
+    <string name="style_boxed">в рамке</string>
+    <string name="style_icon_only">только значок</string>
+    <string name="style_recent_apps">недавние приложения</string>
+    <string name="style_shown">показывать</string>
+    <string name="style_hidden">не показывать</string>
+    <string name="style_empty_page_left">пустая страница слева</string>
+    <string name="style_empty_page_right">пустая страница справа</string>
+    <string name="style_columns">столбцы</string>
+    <string name="style_pages">страницы</string>
+    <string name="style_pages_one">одна</string>
+    <string name="style_pages_auto">авто</string>
+    <string name="style_cover_screen">внешний экран</string>
+    <string name="style_cover_upright">вертикально</string>
+    <string name="style_cover_turned">горизонтально</string>
+    <string name="style_unfolded">в разложенном виде</string>
+    <string name="style_unfolded_own">свой главный экран</string>
+    <string name="style_unfolded_pages">страницы</string>
+    <string name="style_unfolded_columns">столбцы в разложенном виде</string>
+    <string name="style_corners">углы</string>
+    <string name="style_corners_edge">прямые</string>
+    <string name="style_corners_soft">мягкие</string>
+    <string name="style_corners_round">скруглённые</string>
+    <string name="style_gaps_in">отступы внутри</string>
+    <string name="style_gaps_out">отступы снаружи</string>
+    <string name="style_border_width">толщина рамки</string>
+    <string name="style_opacity">непрозрачность</string>
+    <string name="style_frosted_glass">матовое стекло</string>
+    <string name="style_on">вкл</string>
+    <string name="style_off">выкл</string>
+    <string name="style_status_bar">строка состояния</string>
+    <string name="style_bars_background">фон</string>
+    <string name="style_font">шрифт</string>
+    <string name="style_system_font">системный</string>
+    <string name="style_text">текст</string>
+    <string name="style_text_smaller">мельче</string>
+    <string name="style_text_default">обычный</string>
+    <string name="style_text_larger">крупнее</string>
+    <string name="style_preview">предпросмотр</string>
+    <string name="style_preview_app">приложение</string>
+    <string name="style_reset">сбросить</string>
+    <string name="style_differ_step">в style.toml они разные; любой шаг выставит всем одно значение</string>
+    <string name="style_differ">разные</string>
+    <string name="style_custom">своё: %1$s, из style.toml</string>
+    <string name="style_more_settings">больше настроек, например цвета рамок и панелей: %1$s</string>
+
+    <string name="style_keys">клавиши</string>
+    <string name="style_keybar_removed">удалена</string>
+    <string name="style_keybar_errors">с ошибками</string>
+    <string name="style_keybar_stock">стандартная</string>
+    <string name="style_keybar_edited">изменена</string>
+    <string name="style_keybar_edit">изменить с помощью агента</string>
+    <string name="style_keybar_back_to_stock">вернуть стандартную</string>
+    <string name="style_keybar_gone">файла %1$s нет, поэтому показаны стандартные клавиши</string>
+    <string name="style_keybar_restore_title">вернуть стандартные клавиши?</string>
+    <string name="style_keybar_restore_message">Ваш keybar.owl будет заменён тем, что поставляется с лаунчером.</string>
+    <string name="style_replace">заменить</string>
+
+    <string name="style_browse">обзор</string>
+    <string name="style_install">установить</string>
+    <string name="style_install_theme">установить тему</string>
+    <string name="style_install_hint">Репозиторий темы на GitHub. Установленная тема с тем же названием будет заменена.</string>
+    <string name="style_own_theme">ваша тема</string>
+    <string name="style_update">обновить</string>
+    <string name="style_remove">удалить</string>
+    <string name="style_remove_theme_title">удалить %1$s?</string>
+    <string name="style_remove_theme_builtin">Ваши изменения в ней пропадут, версия Omarchy останется.</string>
+    <string name="style_remove_deleted">Она будет удалена с телефона и из Linux.</string>
+    <string name="style_themes_downloading">Остальные темы Omarchy скачиваются с github.com/omacom/omarchy (~70 МБ).</string>
+    <string name="style_themes_not_installed">Темы Omarchy ещё не установлены. Они скачиваются с github.com/omacom/omarchy (~70 МБ).</string>
+    <string name="style_downloading">загрузка… %1$d МБ</string>
+    <string name="style_failed">ошибка: %1$s</string>
+    <string name="style_retry">повторить</string>
+    <string name="style_download_themes">скачать темы</string>
+
+    <string name="style_add_image">+ изображение</string>
+    <string name="style_wallpaper_active">✓ обои android и системные цвета подстраиваются под тему (системные цвета обновятся, когда экран выключится)</string>
+    <string name="style_wallpaper_use">установить как обои android + системные цвета</string>
+    <string name="style_remove_background_title">удалить фон?</string>
+
+    <string name="style_terminal_hint">для терминалов, открытых после этого · другие шрифты через pacman, например ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">подсказки клавиатуры</string>
+    <string name="style_keyboard_suggestions_hint">подсказки, непрерывный ввод и диктовка; текст попадает в терминал по одному слову · со следующего открытия клавиатуры</string>
+    <plurals name="style_terminal_size">
+        <item quantity="one">%1$s пт · %2$d столбец в книжной ориентации</item>
+        <item quantity="few">%1$s пт · %2$d столбца в книжной ориентации</item>
+        <item quantity="many">%1$s пт · %2$d столбцов в книжной ориентации</item>
+        <item quantity="other">%1$s пт · %2$d столбца в книжной ориентации</item>
+    </plurals>
+
+    <string name="pages_title">страницы</string>
+    <string name="pages_intro">Страницы главного экрана слева направо. Чтобы переместить страницу, перетащите её за ≡ или с клавиатуры: возьмите ≡ клавишей Enter и двигайте стрелками. Главный экран открывается на первой странице с плитками; полноэкранные виджеты перед ней располагаются слева.</string>
+    <string name="pages_loading">загрузка…</string>
+    <string name="pages_remove_named">убрать %1$s?</string>
+    <string name="pages_remove_page">убрать эту страницу?</string>
+    <string name="pages_remove_face_message">Файл переместится в .removed/ в папке виджетов.</string>
+    <string name="pages_remove_tiles_message">%1$s. Виджеты переместятся в .removed/ в папке виджетов; приложения исчезнут с главного экрана, но останутся установленными.</string>
+    <string name="pages_remove">убрать</string>
+    <plurals name="pages_apps">
+        <item quantity="one">%1$d приложение</item>
+        <item quantity="few">%1$d приложения</item>
+        <item quantity="many">%1$d приложений</item>
+        <item quantity="other">%1$d приложения</item>
+    </plurals>
+    <string name="pages_empty">пусто</string>
+    <string name="pages_doesnt_compile">не компилируется</string>
+    <string name="pages_face">весь экран</string>
+    <string name="pages_home">главная</string>
+    <string name="pages_edit">изменить</string>
+    <string name="pages_share">поделиться</string>
+
+    <string name="gestures_title">жесты</string>
+    <string name="gestures_swipe_up">свайп вверх</string>
+    <string name="gestures_swipe_down">свайп вниз</string>
+    <string name="gestures_nothing">ничего</string>
+    <string name="gestures_has_errors">%1$s (с ошибками)</string>
+    <string name="gestures_missing">%1$s (нет файла)</string>
+    <string name="gestures_edit">изменить</string>
+    <string name="gestures_hint">панели — это owl-файлы, и список приложений тоже: меняйте их как виджеты или создайте новую через агента в меню главного экрана. если на свайп вверх ничего не назначено, нажатие на строку ввода всё равно открывает список приложений</string>
+    <string name="gestures_stock_drawer">стандартный список приложений</string>
+    <string name="gestures_drawer_shows">список приложений → %1$s</string>
+    <string name="gestures_swipe_down_nothing">свайп вниз ничего не открывает</string>
+    <string name="gestures_until_fixed">%1$s, пока ошибка не исправлена: %2$s</string>
+    <string name="gestures_keybar_until_fixed">панель клавиш терминала будет стандартной, пока ошибка не исправлена: %1$s</string>
+
+    <string name="agents_title">ИИ-агенты</string>
+    <string name="agents_intro">Устанавливаются через mise, как в Omarchy. Вход открывается в браузере; ключи вставляйте из буфера обмена клавиатуры.</string>
+    <string name="agents_open">открыть</string>
+    <string name="agents_remove">удалить</string>
+    <string name="agents_still_running">%1$s ещё работает: закройте его и попробуйте удалить снова</string>
+    <string name="agents_install">установить</string>
+</resources>
