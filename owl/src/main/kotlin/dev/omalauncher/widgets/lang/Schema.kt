@@ -172,6 +172,8 @@ internal val SINCE =
         mapOf(STRINGS_DECL to 16, "lang" to 16) +
         // owl 17: a list pulled down past its top, to fetch again.
         mapOf("onPull" to 17) +
+        // owl 24: a node's measured size, as laid out.
+        mapOf("onSize" to 24) +
         // owl 17: servers with a certificate of their own, pinned; WebSockets, and a trigger for each of their messages.
         listOf(HTTP_PIN, "ws", "send", ON_EACH).associateWith { 17 } +
         // owl 18: a field that wraps what's typed and grows with it, for messages longer than a line.
@@ -307,6 +309,8 @@ internal val HANDLER_PARAMS =
         "onDragEnd" to listOf("vx", "vy"),
         // owl 22: every finger down, as {id, x, y, startX, startY}, on each change; [] once they've all lifted.
         "onTouch" to listOf("touches"),
+        // The node's measured size in dp, as laid out: where a drag lands can count real cells, not guessed ones.
+        "onSize" to listOf("width", "height"),
         // A Column or Grid that scrolls, pulled down past its top and let go there: refresh(), mostly.
         "onPull" to emptyList(),
         "onChange" to listOf("value"),

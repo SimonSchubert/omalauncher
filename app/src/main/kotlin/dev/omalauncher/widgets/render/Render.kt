@@ -840,6 +840,12 @@ private fun common(
     parent: Any?,
 ): Modifier {
     var m: Modifier = Modifier
+    val el = p.el
+    val density = LocalDensity.current.density
+    // First, so it reports the node's whole laid-out size, before padding and the rest take their share (owl 24).
+    el.handlers["onSize"]?.let { a ->
+        m = m.onSizeChanged { sz -> a.run(p.env, listOf(Num((sz.width / density).toDouble()), Num((sz.height / density).toDouble()))) }
+    }
     // While the node's own onDrag has the finger: an animated offset follows it rather than easing after it.
     val held = remember { mutableStateOf(false) }
     p.observe("weight")?.num()?.toFloat()?.takeIf { it > 0f }?.let { w ->
