@@ -668,7 +668,16 @@ class WidgetServices(
                     }
                 }
             "share" -> share(arg)
-            "haptic" -> view?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            // Android's own touch feedback effects, so the user's setting still decides; a word from a value it doesn't
+            // know is medium, as haptic() was before it took one.
+            "haptic" ->
+                view?.performHapticFeedback(
+                    when (args.firstOrNull().textOrNull()) {
+                        "light" -> HapticFeedbackConstants.CLOCK_TICK
+                        "strong" -> HapticFeedbackConstants.LONG_PRESS
+                        else -> HapticFeedbackConstants.VIRTUAL_KEY
+                    },
+                )
             "open" -> openApp(arg)
             "ask" -> ask(arg, args.getOrNull(1).textOrNull())
             "appAction" -> args.getOrNull(1).textOrNull()?.let { appAction(arg, it) }

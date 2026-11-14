@@ -200,7 +200,9 @@ internal val SINCE =
         listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 } +
         // owl 23: what's playing moved to a point in it, for a scrubber or a record turned by hand; its speed, and the
         // player's own buttons.
-        listOf("media(\"seek\")", "media(\"speed\")", "media(\"action\")").associateWith { 23 }
+        listOf("media(\"seek\")", "media(\"speed\")", "media(\"action\")").associateWith { 23 } +
+        // owl 23: how strong a haptic() is.
+        mapOf(HAPTIC_STRENGTH to 23)
 
 /** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
 internal const val SHADER_IMAGE = "uniform shader"
@@ -222,6 +224,9 @@ internal const val VOLUME_STREAM = "volume(…, stream)"
 
 /** `torch(40)`, a brightness, named like this in [SINCE]. */
 internal const val TORCH_LEVEL = "torch(level)"
+
+/** `haptic("light")`, a strength, named like this in [SINCE]. */
+internal const val HAPTIC_STRENGTH = "haptic(strength)"
 
 /** volume(...)'s second value; media without one. */
 internal val VOLUME_STREAMS = setOf("media", "ring", "notification", "alarm")
@@ -413,6 +418,8 @@ internal val ACTION_WORDS =
                         "unsnoozeAll" to (1..1 to "notification(\"unsnoozeAll\")"),
                     ),
             ),
+        // How strong, from Android's own touch feedback; haptic() alone is medium.
+        "haptic" to setOf("light", "medium", "strong").let { Words(it, "haptic takes ${it.joinToString()}, or nothing for medium") },
         // Android's panel (a sheet over home) where it has one, else its settings screen.
         "settings" to SETTINGS_PAGES.let { Words(it, "settings takes ${it.joinToString()}") },
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },

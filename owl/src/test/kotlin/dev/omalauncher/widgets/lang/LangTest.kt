@@ -1058,6 +1058,14 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: share(\"x\") } }").contains("share needs owl 7"))
     }
 
+    @Test fun hapticStrength() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n state feel = \"light\"\n Text { text: 1; onTap: { haptic(\"light\"); haptic(\"strong\"); haptic(feel); haptic() } } }")
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: haptic(\"hard\") } }").contains("haptic takes light, medium, strong"))
+        assertTrue(compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: haptic(\"light\") } }").contains("needs owl 23"))
+        assertTrue(compileError("widget {\n meta { owl: 22 }\n state feel = \"light\"\n Text { text: 1; onTap: haptic(feel) } }").contains("needs owl 23"))
+        Compiler.compile("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: haptic() } }")
+    }
+
     @Test fun androidApps() {
         val p = Compiler.compile("widget {\n meta { owl: 8 }\n source a = android.apps every 1m\n Image { src: a[0].icon; onTap: androidApp(a[0].key) } }")
         assertEquals(listOf("android.apps"), p.globals.map { (it as Global.Source).kind })
