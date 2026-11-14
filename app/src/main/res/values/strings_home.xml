@@ -90,4 +90,12 @@
     <string name="drawer_action_pin">add to home</string>
     <string name="drawer_action_info">app info</string>
     <string name="drawer_action_uninstall">uninstall</string>
+    <!-- A message from the developer, shown once over home. -->
+    <string name="home_news_close">close</string>
+    <string name="home_news_off">don\'t show news again</string>
+    <!-- Under the numbers of a message's countdown. -->
+    <string name="home_news_days">days</string>
+    <string name="home_news_hours">hours</string>
+    <string name="home_news_minutes">min</string>
+    <string name="home_news_seconds">sec</string>
 </resources>

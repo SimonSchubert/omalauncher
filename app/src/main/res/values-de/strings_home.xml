@@ -67,4 +67,10 @@
     <string name="drawer_action_pin">zum startbildschirm hinzufügen</string>
     <string name="drawer_action_info">app-info</string>
     <string name="drawer_action_uninstall">deinstallieren</string>
+    <string name="home_news_close">schließen</string>
+    <string name="home_news_off">keine neuigkeiten mehr zeigen</string>
+    <string name="home_news_days">tage</string>
+    <string name="home_news_hours">std</string>
+    <string name="home_news_minutes">min</string>
+    <string name="home_news_seconds">sek</string>
 </resources>

@@ -223,6 +223,12 @@ they cover, in `owl/src/test` or `app/src/test`.
   ask for permissions.
 - **UI text**: `res/values/strings_<area>.xml` and the same key in each
   `values-*` folder.
+- **A message to users** (a contest, news): no app change. Edit
+  `announcements.json` in the omarchy-widgets repo, published next to the
+  store's catalog; settings shows it once in a dialog (`net/Announcements.kt`,
+  `ui/home/AnnouncementDialog.kt`). Old launchers read new files, so only add
+  fields; a message that needs a newer launcher sets `minVersionCode`. Times
+  need their `Z`. A debug build reads `files/announcements.json` instead.
 - **What Linux gets set up with**: a rootfs step in `linux/Bootstrap.kt` (a
   changed step needs a new id), or a file the launcher writes, listed in
   a `managed()` list (like the one in `linux/Agents.kt`, collected in

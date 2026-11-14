@@ -146,6 +146,9 @@ class Runtime(
 
     /** A newer launcher: on Google Play in the play build, on GitHub releases in the foss build. */
     val launcherUpdates = LauncherUpdates(context)
+
+    /** Messages from the developer, shown on home. */
+    val announcements = dev.omalauncher.net.Announcements(context)
     val gpu = Gpu(context, proot, pacman)
 
     /** The guest's resolv.conf, on the phone's DNS servers while Linux is up. */

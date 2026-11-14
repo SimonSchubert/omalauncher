@@ -57,6 +57,7 @@ import dev.omalauncher.ui.ReadingWidth
 import dev.omalauncher.ui.Symbol
 import dev.omalauncher.ui.TextSize
 import dev.omalauncher.ui.card
+import dev.omalauncher.ui.home.AnnouncementDialog
 import dev.omalauncher.ui.home.gestureLabel
 import dev.omalauncher.ui.passesKeys
 import dev.omalauncher.ui.rememberAskPermission
@@ -96,6 +97,9 @@ fun SettingsScreen(
             // Refused, or Android didn't ask at all after earlier refusals: the choice is then in its home app settings.
             if (notHome) context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
+    // A message from the developer, asked for each time settings opens (at most every few hours) and shown once over it.
+    LaunchedEffect(Unit) { runtime.announcements.check() }
+    AnnouncementDialog(runtime)
     OverlayPanel(stringResource(R.string.settings_title), onDismiss, contentWidth = ReadingWidth) {
         val linuxStatus =
             when (val l = linux) {
