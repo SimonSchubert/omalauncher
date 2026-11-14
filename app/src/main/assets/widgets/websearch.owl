@@ -1,0 +1,374 @@
+app "web search" {
+  meta { owl: 18; description: "Search the web from the prompt bar: which engine, which browser, a rule per site, and your bookmarks"; version: "2.0"; license: "MIT"; category: "system" }
+  title: view == "" ? "web search" : view
+  back: view != ""
+  onBack: { view = ""; haptic() }
+  edge: true
+  icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+    <rect width="256" height="256" rx="56" fill="#1A1B26"/>
+    <circle cx="110" cy="108" r="62" fill="#7AA2F7"/>
+    <ellipse cx="110" cy="108" rx="29" ry="62" fill="none" stroke="#4A6FC4" stroke-width="10"/>
+    <path d="M48 108h124" stroke="#4A6FC4" stroke-width="10"/>
+    <circle cx="110" cy="108" r="62" fill="none" stroke="#C7D8FF" stroke-width="14"/>
+    <rect x="152" y="152" width="80" height="28" rx="14" transform="rotate(45 152 152)" fill="#C7D8FF"/>
+  </svg>"""
+  requires { pacman: ["python"] }
+
+  // The file the bar's tool reads; this app only ever writes it, through
+  // `websearch config set` and `websearch browser set`.
+  source saved = file("~/.config/omalauncher/websearch.json") json
+  // The browsers the tool knows by package, with the link templates it tries.
+  source known = cmd("$HOME/.local/bin/websearch browsers") json
+  // Every app, for the browsers installed and their icons.
+  source apps = android.apps
+
+  state view = ""
+  // Picks, so a change shows at once: null means the file's value.
+  state enginePick = null
+  state engineUrl = null
+  state browserPick = null
+  state privatePick = null
+  state barePick = null
+  state tplOpen = null
+  state tplPrivate = null
+  state rulesDraft = null
+  state bookName = null
+  state bookUrl = null
+  state said = ""
+  state tryText = ""
+  state tryTarget = null
+  state tryWhy = null
+
+  let cfg = saved ?? {}
+  let engines = [
+    {id: "brave", name: "Brave Search"},
+    {id: "duckduckgo", name: "DuckDuckGo"},
+    {id: "google", name: "Google"},
+    {id: "startpage", name: "Startpage"},
+    {id: "kagi", name: "Kagi"},
+    {id: "ecosia", name: "Ecosia"},
+    {id: "qwant", name: "Qwant"},
+    {id: "mojeek", name: "Mojeek"},
+    {id: "marginalia", name: "Marginalia"},
+    {id: "wikipedia", name: "Wikipedia"},
+    {id: "youtube", name: "YouTube"}
+  ]
+  let engine = enginePick ?? cfg.engine ?? "brave"
+  let ownUrl = trim(engineUrl ?? cfg.engine_url ?? "")
+  let engineName = ownUrl != "" ? "your own" : first(engines.filter(e => e.id == engine).map(e => e.name)) ?? engine
+  let browser = browserPick ?? cfg.browser ?? "system"
+  let privateOn = privatePick ?? cfg.private ?? false
+  let bareOn = barePick ?? cfg.bare_links ?? true
+  let rules = rulesDraft ?? cfg.rules ?? ""
+  let marks = cfg.bookmarks ?? []
+  let ruleCount = len(lines(trim(rules)).filter(l => trim(l) != ""))
+  let clear = alpha(foreground, 0.06)
+
+  // The browsers installed, each with the link templates the tool would use:
+  // an app whose package names a browser, minus the ones that only look like
+  // one (a firewall, a tips app).
+  let isBrowser = a => contains(lower(a.package), ".browser") || contains(lower(a.package), "chrome") || contains(lower(a.package), "firefox") || contains(lower(a.package), "torbrowser") || contains(lower(a.package), "waterfox") || contains(lower(a.package), "duckduckgo.mobile") || contains(lower(a.package), "sbrowser") || contains(lower(a.package), "com.microsoft.emmx") || contains(lower(a.package), "com.vivaldi.browser") || contains(lower(a.package), "com.opera")
+  let installed = apps.filter(isBrowser).sortBy(a => lower(a.name))
+  let browsers = installed.map(a => merge(a, first(known.filter(k => k.package == a.package)) ?? {}))
+  let sel = first(browsers.filter(b => b.package == browser))
+  let selName = browser == "system" ? "Android default" : (sel == null ? browser : sel.name)
+  let selOpen = tplOpen ?? (sel == null ? "" : sel.open ?? "")
+  let selPrivate = tplPrivate ?? (sel == null ? "" : sel.private ?? "")
+  // What a template makes of a link, as `url()` takes it.
+  let browserCount = len(browsers)
+
+  // A row that opens one of the views above, with what it is set to under its name.
+  component Section(name, value, to) {
+    Row {
+      fill: width
+      align: center
+      gap: 8
+      padding: [14, 12]
+      radius: 6 * corners
+      background: clear
+      onTap: { view = to; haptic() }
+      Column {
+        weight: 1
+        gap: 2
+        Text { text: name }
+        Text { text: value; color: muted; fontSize: 11; maxLines: 1 }
+      }
+      Text { text: "›"; color: accent }
+    }
+  }
+
+  component Hint(text) {
+    Text { text: text; color: muted; fontSize: 11; padding: [4, 6] }
+  }
+
+  // A browser: its icon, its name, and a tick for the one links open in.
+  // A browser: picked for its own link scheme, or, without one, a way into Android's settings to make it the default.
+  component BrowserRow(b) {
+    Row {
+      fill: width
+      align: center
+      gap: 12
+      padding: [10, 12]
+      radius: 6 * corners
+      background: browser == b.package ? alpha(accent, 0.14) : transparent
+      onTap: {
+        haptic()
+        if b.open != "" && b.open != null {
+          browserPick = b.package
+          tplOpen = null
+          tplPrivate = null
+          run("$HOME/.local/bin/websearch config set browser ${sh(b.package)}")
+        } else {
+          appAction("info", b.key)
+        }
+      }
+      Image { src: b.icon; size: 30; label: b.name }
+      Column {
+        weight: 1
+        gap: 1
+        Text { text: b.name }
+        Text { text: b.open != "" && b.open != null ? "takes a link in a scheme of its own" : "Android opens it only as the default"; color: muted; fontSize: 10 }
+      }
+      if b.open != "" && b.open != null {
+        Text { text: browser == b.package ? "●" : "○"; color: browser == b.package ? accent : muted }
+      } else {
+        Text { text: "make default"; color: accent; fontSize: 10 }
+      }
+    }
+  }
+
+  Column {
+    scroll: true
+    padding: [12, 0]
+    gap: 8
+
+    if view == "" {
+      Text {
+        text: "In the app drawer (swipe up on home), what you type that names no app is searched for here, opened if it's a link, or opened from your bookmarks when you press Enter. The two chips above the row switch Enter to your coding agent for a query; the switch stays as you leave it."
+        style: muted
+        fontSize: 12
+        padding: [2, 4, 4, 4]
+      }
+      Section { name: "search engine"; value: engineName; to: "engine" }
+      Section { name: "open in"; value: selName + (privateOn ? " · private" : ""); to: "browser" }
+      Section { name: "site rules"; value: ruleCount == 0 ? "none · every link opens" : ruleCount + (ruleCount == 1 ? " site" : " sites") + " with a rule"; to: "rules" }
+      Section { name: "bookmarks"; value: len(marks) == 0 ? "none · import or add some" : len(marks) + (len(marks) == 1 ? " bookmark" : " bookmarks"); to: "bookmarks" }
+      Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [14, 12]
+        radius: 6 * corners
+        background: clear
+        Text { text: "bare domains are links"; weight: 1 }
+        Text { text: bareOn ? "on" : "off"; color: accent; fontSize: 12 }
+        onTap: {
+          let next = !bareOn
+          barePick = next
+          haptic()
+          run("$HOME/.local/bin/websearch config set bare_links ${next ? "true" : "false"}")
+        }
+      }
+      Section { name: "try it"; value: "what a line would do"; to: "try" }
+      Row {
+        fill: width
+        align: center
+        padding: [14, 12]
+        Text { text: "settings file"; weight: 1 }
+        Text { text: "~/.config/omalauncher/websearch.json"; color: muted; fontSize: 11; maxLines: 1 }
+      }
+    }
+
+    if view == "engine" {
+      Hint { text: "Where searches go. Brave Search unless you pick another." }
+      for e in engines key e.id {
+        Row {
+          fill: width
+          align: center
+          gap: 10
+          padding: [12, 10]
+          radius: 6 * corners
+          background: engine == e.id && ownUrl == "" ? alpha(accent, 0.14) : transparent
+          onTap: { enginePick = e.id; engineUrl = ""; haptic(); run("$HOME/.local/bin/websearch config set engine ${sh(e.id)}"); run("$HOME/.local/bin/websearch config set engine_url ${sh("")}") }
+          Text { text: engine == e.id && ownUrl == "" ? "●" : "○"; color: engine == e.id && ownUrl == "" ? accent : muted }
+          Text { text: e.name; weight: 1 }
+        }
+      }
+      Hint { text: "Or a search URL of your own, with {q} where the query goes. Clearing it uses the one picked above." }
+      Input {
+        text: engineUrl ?? cfg.engine_url ?? ""
+        placeholder: "https://example.com/search?q={q}"
+        onChange: engineUrl = value
+        onSubmit: { engineUrl = value; haptic(); run("$HOME/.local/bin/websearch config set engine_url ${sh(trim(value))}") }
+      }
+    }
+
+    if view == "browser" {
+      Hint { text: "Android opens links in its default browser. One with a link scheme of its own can open them instead, like the Chromium ones' googlechrome://, and is picked here; the rest open only as Android's default, so their row goes to app info to make them it." }
+      Hint { text: "For one search elsewhere, the drawer's search row has a ▾ at its end: it lists the browsers links can open in, plus Android's default and a share to any app, which is how a browser without a scheme is reached." }
+      Row {
+        fill: width
+        align: center
+        gap: 12
+        padding: [10, 12]
+        radius: 6 * corners
+        background: browser == "system" ? alpha(accent, 0.14) : transparent
+        onTap: { browserPick = "system"; tplOpen = null; tplPrivate = null; haptic(); run("$HOME/.local/bin/websearch config set browser ${sh("system")}") }
+        Box {
+          size: 30
+          radius: 15
+          background: surface
+          align: center
+          Text { text: "A"; color: browser == "system" ? accent : muted; fontSize: 15 }
+        }
+        Column {
+          weight: 1
+          gap: 1
+          Text { text: "Android default" }
+          Text { text: "whatever Android opens"; color: muted; fontSize: 10 }
+        }
+        Text { text: browser == "system" ? "●" : "○"; color: browser == "system" ? accent : muted }
+      }
+      if browserCount == 0 {
+        Hint { text: "No browsers found: this launcher sees the apps it can open." }
+      }
+      for b in browsers key b.key {
+        BrowserRow { b: b }
+      }
+      Row {
+        fill: width
+        align: center
+        gap: 8
+        padding: [14, 12]
+        radius: 6 * corners
+        background: clear
+        Text { text: "open privately"; weight: 1 }
+        Text { text: privateOn ? "on" : "off"; color: accent; fontSize: 12 }
+        onTap: {
+          let next = !privateOn
+          privatePick = next
+          haptic()
+          run("$HOME/.local/bin/websearch config set private ${next ? "true" : "false"}")
+        }
+      }
+      Hint { text: "Android has no link that asks a browser for a private tab, so this only works where a private link is filled in below, and none is known. A browser private by design is what works: a rule like \"*.onion open tor\" or \"host open private duckduckgo\" sends a site to one." }
+      if sel != null {
+        Hint { text: "The link " + sel.name + " takes. {url} is the link as it is, {urlenc} the same percent-encoded, {urlbare} the same without https://. Empty falls back to Android's default." }
+        Input {
+          text: selOpen
+          placeholder: "googlechrome://{urlbare}"
+          onChange: tplOpen = value
+          onSubmit: { tplOpen = value; haptic(); run("$HOME/.local/bin/websearch browser set ${sh(sel.package)} open ${sh(trim(value))}") }
+        }
+        Hint { text: "And the link that opens a private tab, if this browser has one." }
+        Input {
+          text: selPrivate
+          placeholder: "a private-tab link, if it has one"
+          onChange: tplPrivate = value
+          onSubmit: { tplPrivate = value; haptic(); run("$HOME/.local/bin/websearch browser set ${sh(sel.package)} private ${sh(trim(value))}") }
+        }
+        Row {
+          gap: 10
+          align: center
+          Button { text: "test"; onTap: { haptic(); url(selOpen == "" ? "https://example.com" : replace(replace(replace(selOpen, "{url}", "https://example.com"), "{urlenc}", enc("https://example.com")), "{urlbare}", "example.com")) } }
+          Button {
+            text: selOpen == "" ? "make default" : "app info"
+            onTap: { haptic(); appAction("info", sel.key) }
+          }
+          Text { text: "opens example.com"; color: muted; fontSize: 10; weight: 1 }
+        }
+        Hint { text: "If nothing opened, this browser doesn't take links that way: clear the link and make it Android's default in its app info, or leave it alone and pick \"another browser\" in the drawer, which shares the link." }
+      }
+    }
+
+    if view == "rules" {
+      Hint { text: "One site a line: a host, then open or search, then private or public, then a browser by name. \"*.example.com\" takes its subdomains too." }
+      Input {
+        text: rules
+        lines: 8
+        placeholder: "youtube.com open\nreddit.com search\ngithub.com open private\ntor site: *.onion open tor\ntracker.example open duckduckgo"
+        onChange: rulesDraft = value
+      }
+      Row {
+        gap: 10
+        align: center
+        Button { text: "save"; onTap: { haptic(); said = "saved"; run("$HOME/.local/bin/websearch config set rules ${sh(rulesDraft ?? rules)}") } }
+        Text { text: ruleCount == 0 ? "no rules" : ruleCount + (ruleCount == 1 ? " rule" : " rules"); color: muted; fontSize: 11; weight: 1 }
+        Text { text: said; color: green; fontSize: 11 }
+      }
+      Hint { text: "A link a rule sends to search is searched for instead, as if you had typed it as words." }
+    }
+
+    if view == "bookmarks" {
+      Hint { text: "Typing a bookmark's name in the bar opens it, and matching ones are listed above the search row. Import a browser's exported bookmarks (a Netscape HTML or Chrome JSON file) or add one here." }
+      Row {
+        gap: 10
+        align: center
+        Button {
+          text: "import a file"
+          onTap: { haptic(); said = run("$HOME/.local/bin/websearch bookmark import --pick") }
+        }
+        Text { text: len(marks) == 0 ? "no bookmarks" : len(marks) + (len(marks) == 1 ? " bookmark" : " bookmarks"); color: muted; fontSize: 11; weight: 1 }
+        Text { text: said; color: green; fontSize: 11 }
+      }
+      Hint { text: "A name, then the link." }
+      Input {
+        text: bookName ?? ""
+        placeholder: "name (optional)"
+        onChange: bookName = value
+      }
+      Input {
+        text: bookUrl ?? ""
+        placeholder: "https://example.com"
+        onChange: bookUrl = value
+        onSubmit: {
+          let u = trim(value)
+          if u != "" {
+            bookUrl = ""
+            haptic()
+            said = "added"
+            run("$HOME/.local/bin/websearch bookmark add ${sh(u)} ${sh(trim(bookName ?? ""))}")
+            bookName = ""
+          }
+        }
+      }
+      for b in reverse(marks) key b.url {
+        Row {
+          fill: width
+          align: center
+          gap: 10
+          padding: [10, 4]
+          onTap: { haptic(); url(b.url) }
+          Column {
+            weight: 1
+            gap: 1
+            Text { text: b.name; maxLines: 1 }
+            Text { text: b.url; color: muted; fontSize: 10; maxLines: 1 }
+          }
+          Text { text: "✕"; color: muted; padding: [8, 4]; onTap: { haptic(); run("$HOME/.local/bin/websearch bookmark remove ${sh(b.url)}") } }
+        }
+      }
+    }
+
+    if view == "try" {
+      Hint { text: "Type what you would in the bar." }
+      Input {
+        text: tryText
+        placeholder: "a sentence, example.com, or a bookmark"
+        onSubmit: {
+          let q = trim(value)
+          tryText = q
+          tryWhy = run("$HOME/.local/bin/websearch explain ${sh(q)}")
+          tryTarget = run("$HOME/.local/bin/websearch print ${sh(q)}")
+        }
+      }
+      Text { text: tryWhy ?? ""; color: muted; fontSize: 11; padding: [4, 6] }
+      Text { text: tryTarget ?? ""; color: accent; fontSize: 11; font: mono; padding: [2, 6] }
+      if trim(tryTarget ?? "") != "" {
+        Button { text: "open"; onTap: { haptic(); url(trim(tryTarget)) } }
+      }
+    }
+
+    Spacer { height: screenInset + 12 }
+  }
+}
