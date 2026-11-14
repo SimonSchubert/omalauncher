@@ -17,6 +17,16 @@
     <string name="style_colored">coloridos</string>
     <string name="style_icon_pack">pacote de ícones</string>
     <string name="style_icon_pack_none">nenhum</string>
+    <string name="style_icon_pack_manage">ícones dos apps…</string>
+    <string name="style_icon_pack_missing">apps sem ícone do pacote</string>
+    <string name="style_icon_pack_covered">apps com ícone do pacote</string>
+    <string name="style_icon_pack_suggest">sugerir os que faltam com o agente</string>
+    <string name="style_icon_pack_review">revisar sugestões</string>
+    <string name="style_icon_pack_no_suggestions">ainda não há sugestões: sugira primeiro</string>
+    <string name="style_icon_pack_accept_all">aceitar todas</string>
+    <string name="style_icon_pack_overridden">apps com ícone substituído</string>
+    <string name="style_icon_pack_clear">limpar substituição</string>
+    <string name="style_icon_pack_filter">filtrar ícones</string>
     <string name="style_home_apps">apps no início</string>
     <string name="style_boxed">em caixa</string>
     <string name="style_icon_only">só ícone</string>

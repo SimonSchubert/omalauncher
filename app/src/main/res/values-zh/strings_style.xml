@@ -17,6 +17,16 @@
     <string name="style_colored">彩色</string>
     <string name="style_icon_pack">图标包</string>
     <string name="style_icon_pack_none">无</string>
+    <string name="style_icon_pack_manage">应用图标…</string>
+    <string name="style_icon_pack_missing">没有包图标的应用</string>
+    <string name="style_icon_pack_covered">有包图标的应用</string>
+    <string name="style_icon_pack_suggest">用助手补上缺少的</string>
+    <string name="style_icon_pack_review">查看建议</string>
+    <string name="style_icon_pack_no_suggestions">还没有建议文件：请先运行建议</string>
+    <string name="style_icon_pack_accept_all">全部接受</string>
+    <string name="style_icon_pack_overridden">已改过的应用</string>
+    <string name="style_icon_pack_clear">清除替换</string>
+    <string name="style_icon_pack_filter">筛选图标</string>
     <string name="style_home_apps">主屏应用</string>
     <string name="style_boxed">带框</string>
     <string name="style_icon_only">仅图标</string>

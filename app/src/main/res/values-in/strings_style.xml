@@ -17,6 +17,16 @@
     <string name="style_colored">berwarna</string>
     <string name="style_icon_pack">paket ikon</string>
     <string name="style_icon_pack_none">tidak ada</string>
+    <string name="style_icon_pack_manage">ikon aplikasi…</string>
+    <string name="style_icon_pack_missing">aplikasi tanpa ikon paket</string>
+    <string name="style_icon_pack_covered">aplikasi dengan ikon paket</string>
+    <string name="style_icon_pack_suggest">sarankan yang hilang dengan agen</string>
+    <string name="style_icon_pack_review">tinjau saran</string>
+    <string name="style_icon_pack_no_suggestions">belum ada berkas saran: sarankan dulu</string>
+    <string name="style_icon_pack_accept_all">terima semua</string>
+    <string name="style_icon_pack_overridden">aplikasi yang diganti</string>
+    <string name="style_icon_pack_clear">hapus pengganti</string>
+    <string name="style_icon_pack_filter">saring ikon</string>
     <string name="style_home_apps">aplikasi layar utama</string>
     <string name="style_boxed">dalam kotak</string>
     <string name="style_icon_only">ikon saja</string>
