@@ -42,6 +42,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import dev.omalauncher.storage.LauncherData
 import dev.omalauncher.system.registerNotExported
 
 data class AndroidApp(
@@ -185,6 +186,9 @@ fun pinnedIds(
 class AndroidAppCatalog(
     private val context: Context,
 ) {
+    /** Per-app drawable names for the current icon pack, in the style directory beside style.toml. */
+    val iconOverrides = IconOverrides(LauncherData.styleDir(context))
+
     val apps = mutableStateListOf<AndroidApp>()
 
     /** Shortcuts apps put on the home screen, by name; Android shows them only to the default home app. */
@@ -261,12 +265,20 @@ class AndroidAppCatalog(
             if (started) reload()
         }
 
+    /**
+     * Draws app icons again. [drawnWith] keeps one already drawn for this pack and override, so a single
+     * change redraws that app.
+     */
+    fun reloadIcons() {
+        if (started) reload()
+    }
+
     /** The pack [reload] read for [packRead], so it reads appfilter.xml only when the pack changes. */
     private var pack: IconPack? = null
     private var packRead: String? = null
     private var started = false
 
-    /** Which [iconPack] each app's icon in [icons] was drawn with; one drawn with another is drawn again. */
+    /** Pack and override each icon in [icons] was drawn with (`pack`, or `pack` plus the override name); another is drawn again. */
     private val drawnWith = HashMap<String, String?>()
 
     /** Icon edge in px: the drawer's 52dp icon at this screen's density. */
@@ -610,8 +622,13 @@ class AndroidAppCatalog(
                 // otherwise wait their turn in the alphabet.
                 val first = iconsFirst()
                 for ((info, app) in infos.sortedBy { it.second.key !in first }) {
-                    if (app.key !in icons || drawnWith[app.key] != wanted || app.key !in drawnWith) {
-                        loadIcon(app.key, app.profile, app.clone, drawn = { drawnWith[app.key] = wanted }) { iconPack?.drawable(app.component, dpi) ?: info.getIcon(0) }
+                    // Override drawable when the pack has it, else the pack's appfilter icon, else the app's own.
+                    val override = wanted?.let { iconOverrides.get(it, iconComponentKey(app.component)) }?.takeIf { it.isNotBlank() }
+                    val stamp = if (wanted == null) null else override?.let { "$wanted\n$it" } ?: wanted
+                    if (app.key !in icons || drawnWith[app.key] != stamp || app.key !in drawnWith) {
+                        loadIcon(app.key, app.profile, app.clone, drawn = { drawnWith[app.key] = stamp }) {
+                            iconPack?.drawable(app.component, dpi, override) ?: info.getIcon(0)
+                        }
                     }
                 }
                 // Apps change a shortcut's icon without an update, so these are drawn again each time; there are only a few.
