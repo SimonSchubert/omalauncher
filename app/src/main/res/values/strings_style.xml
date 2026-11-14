@@ -21,6 +21,17 @@
     <string name="style_colored">colored</string>
     <string name="style_icon_pack">icon pack</string>
     <string name="style_icon_pack_none">none</string>
+    <!-- Every app's icon from the pack: covered, missing, and ones given another drawable. -->
+    <string name="style_icon_pack_manage">app icons…</string>
+    <string name="style_icon_pack_missing">apps without a pack icon</string>
+    <string name="style_icon_pack_covered">apps with a pack icon</string>
+    <string name="style_icon_pack_suggest">suggest missing with agent</string>
+    <string name="style_icon_pack_review">review suggestions</string>
+    <string name="style_icon_pack_no_suggestions">no suggestions file yet: run suggest first</string>
+    <string name="style_icon_pack_accept_all">accept all</string>
+    <string name="style_icon_pack_overridden">overridden apps</string>
+    <string name="style_icon_pack_clear">clear override</string>
+    <string name="style_icon_pack_filter">filter drawables</string>
     <string name="style_home_apps">home apps</string>
     <string name="style_boxed">boxed</string>
     <string name="style_icon_only">icon only</string>

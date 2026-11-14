@@ -152,95 +152,101 @@ fun StyleScreen(
     RescanThemes(store)
     var installOpen by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<OmarchyTheme?>(null) }
+    var managingIcons by remember { mutableStateOf(false) }
     val linux by runtime.bootstrap.state.collectAsState()
-    OverlayPanel(stringResource(R.string.style_title), onDismiss) {
-        Column(Modifier.verticalScroll(rememberScrollState())) {
-            ThemeSection(
-                store,
-                onBrowse = onBrowse,
-                onInstall = {
-                    store.clearInstallError()
-                    installOpen = true
-                },
-                onRemove = { removing = it },
-            )
-            store.current?.let { BackgroundSection(store, it) }
-            // Style choices don't depend on a theme, so they're offered before themes are downloaded too.
-            Heading(R.string.style_home_screen)
-            val style = runtime.style
-            Flag(R.string.style_icons, R.string.style_monochrome, R.string.style_colored, style, Style.MONOCHROME_ICONS)
-            IconPackOption(style)
-            Flag(R.string.style_home_apps, R.string.style_boxed, R.string.style_icon_only, style, Style.APP_TILES)
-            Flag(R.string.style_recent_apps, R.string.style_shown, R.string.style_hidden, style, Style.RECENT_APPS)
-            Flag(R.string.style_empty_page_left, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_LEFT)
-            Flag(R.string.style_empty_page_right, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_RIGHT)
-            CountOption(R.string.style_columns, Style.COLUMNS, style)
-            Flag(R.string.style_pages, R.string.style_pages_one, R.string.style_pages_auto, style, Style.FORCE_SINGLE_PAGE)
-            Flag(R.string.style_cover_screen, R.string.style_cover_upright, R.string.style_cover_turned, style, Style.COVER_SCREEN)
-            Flag(R.string.style_unfolded, R.string.style_unfolded_own, R.string.style_unfolded_pages, style, Style.UNFOLDED_LAYOUT)
-            if (style.style[Style.UNFOLDED_LAYOUT]) CountOption(R.string.style_unfolded_columns, Style.UNFOLDED_COLUMNS, style)
-            NumberOption(R.string.style_corners, Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
-            HomePreview(runtime)
-            // Like Hyprland's gaps_in, gaps_out and border_size; the colors are in style.toml.
-            Heading(R.string.style_widgets)
-            Stepper(R.string.style_gaps_in, style, Style.GAPS_IN)
-            Stepper(R.string.style_gaps_out, style, Style.GAPS_OUT)
-            Stepper(R.string.style_border_width, style, Style.TILE_BORDER_WIDTH)
-            NumberSlider(R.string.style_opacity, style, Style.TILE_OPACITY)
-            Flag(R.string.style_frosted_glass, R.string.style_on, R.string.style_off, style, Style.TILE_FROST)
-            WidgetPreview()
-            Heading(R.string.style_screens)
-            Stepper(R.string.style_gaps_out, style, Style.SCREEN_GAPS_OUT)
-            Stepper(R.string.style_border_width, style, Style.SCREEN_BORDER_WIDTH)
-            // keybar.owl reads these as gapsOut and borderWidth.
-            Heading(R.string.style_keybar)
-            KeybarOption(runtime, onAgent)
-            Stepper(R.string.style_gaps_out, style, Style.KEYBAR_GAPS_OUT)
-            Stepper(R.string.style_border_width, style, Style.KEYBAR_BORDER_WIDTH)
-            // Both bars at once; style.toml can set them apart. Background is the band behind their icons.
-            Heading(R.string.style_system_bars)
-            Flag(R.string.style_status_bar, R.string.style_shown, R.string.style_hidden, style, Style.STATUS_BAR_SHOWN)
-            Flag(R.string.style_bars_background, R.string.style_shown, R.string.style_hidden, style, Style.STATUS_BAR.framed, Style.NAVIGATION_BAR.framed)
-            Stepper(R.string.style_border_width, style, Style.STATUS_BAR.borderWidth, Style.NAVIGATION_BAR.borderWidth)
-            if (linux == LinuxState.Installed) {
-                // Linux's fonts, which the terminal section lists.
-                Heading(R.string.style_launcher_widgets)
-                val fonts = listOf(Style.SYSTEM_FONT) + runtime.terminalFont.families
-                val systemFont = stringResource(R.string.style_system_font)
-                FontOption(fonts, style.style[Style.FONT], label = { if (it == Style.SYSTEM_FONT) systemFont else it }) { family ->
-                    style.update { it.with(Style.FONT, family) }
-                }
-                TerminalSection(runtime.terminalFont, runtime.launcherFont, style)
-                BasicText(
-                    stringResource(R.string.style_more_settings, "~/${StyleStore.GUEST_DIR}/defaults.toml"),
-                    Modifier.padding(top = 20.dp),
-                    style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+    Box(Modifier.fillMaxSize()) {
+        OverlayPanel(stringResource(R.string.style_title), onDismiss) {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                ThemeSection(
+                    store,
+                    onBrowse = onBrowse,
+                    onInstall = {
+                        store.clearInstallError()
+                        installOpen = true
+                    },
+                    onRemove = { removing = it },
                 )
+                store.current?.let { BackgroundSection(store, it) }
+                // Style choices don't depend on a theme, so they're offered before themes are downloaded too.
+                Heading(R.string.style_home_screen)
+                val style = runtime.style
+                Flag(R.string.style_icons, R.string.style_monochrome, R.string.style_colored, style, Style.MONOCHROME_ICONS)
+                IconPackOption(style) { managingIcons = true }
+                Flag(R.string.style_home_apps, R.string.style_boxed, R.string.style_icon_only, style, Style.APP_TILES)
+                Flag(R.string.style_recent_apps, R.string.style_shown, R.string.style_hidden, style, Style.RECENT_APPS)
+                Flag(R.string.style_empty_page_left, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_LEFT)
+                Flag(R.string.style_empty_page_right, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_RIGHT)
+                CountOption(R.string.style_columns, Style.COLUMNS, style)
+                Flag(R.string.style_pages, R.string.style_pages_one, R.string.style_pages_auto, style, Style.FORCE_SINGLE_PAGE)
+                Flag(R.string.style_cover_screen, R.string.style_cover_upright, R.string.style_cover_turned, style, Style.COVER_SCREEN)
+                Flag(R.string.style_unfolded, R.string.style_unfolded_own, R.string.style_unfolded_pages, style, Style.UNFOLDED_LAYOUT)
+                if (style.style[Style.UNFOLDED_LAYOUT]) CountOption(R.string.style_unfolded_columns, Style.UNFOLDED_COLUMNS, style)
+                NumberOption(R.string.style_corners, Corners.entries.map { it.label to it.scale.toDouble() }, Style.CORNER_SCALE, style)
+                HomePreview(runtime)
+                // Like Hyprland's gaps_in, gaps_out and border_size; the colors are in style.toml.
+                Heading(R.string.style_widgets)
+                Stepper(R.string.style_gaps_in, style, Style.GAPS_IN)
+                Stepper(R.string.style_gaps_out, style, Style.GAPS_OUT)
+                Stepper(R.string.style_border_width, style, Style.TILE_BORDER_WIDTH)
+                NumberSlider(R.string.style_opacity, style, Style.TILE_OPACITY)
+                Flag(R.string.style_frosted_glass, R.string.style_on, R.string.style_off, style, Style.TILE_FROST)
+                WidgetPreview()
+                Heading(R.string.style_screens)
+                Stepper(R.string.style_gaps_out, style, Style.SCREEN_GAPS_OUT)
+                Stepper(R.string.style_border_width, style, Style.SCREEN_BORDER_WIDTH)
+                // keybar.owl reads these as gapsOut and borderWidth.
+                Heading(R.string.style_keybar)
+                KeybarOption(runtime, onAgent)
+                Stepper(R.string.style_gaps_out, style, Style.KEYBAR_GAPS_OUT)
+                Stepper(R.string.style_border_width, style, Style.KEYBAR_BORDER_WIDTH)
+                // Both bars at once; style.toml can set them apart. Background is the band behind their icons.
+                Heading(R.string.style_system_bars)
+                Flag(R.string.style_status_bar, R.string.style_shown, R.string.style_hidden, style, Style.STATUS_BAR_SHOWN)
+                Flag(R.string.style_bars_background, R.string.style_shown, R.string.style_hidden, style, Style.STATUS_BAR.framed, Style.NAVIGATION_BAR.framed)
+                Stepper(R.string.style_border_width, style, Style.STATUS_BAR.borderWidth, Style.NAVIGATION_BAR.borderWidth)
+                if (linux == LinuxState.Installed) {
+                    // Linux's fonts, which the terminal section lists.
+                    Heading(R.string.style_launcher_widgets)
+                    val fonts = listOf(Style.SYSTEM_FONT) + runtime.terminalFont.families
+                    val systemFont = stringResource(R.string.style_system_font)
+                    FontOption(fonts, style.style[Style.FONT], label = { if (it == Style.SYSTEM_FONT) systemFont else it }) { family ->
+                        style.update { it.with(Style.FONT, family) }
+                    }
+                    TerminalSection(runtime.terminalFont, runtime.launcherFont, style)
+                    BasicText(
+                        stringResource(R.string.style_more_settings, "~/${StyleStore.GUEST_DIR}/defaults.toml"),
+                        Modifier.padding(top = 20.dp),
+                        style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+                    )
+                }
+            }
+            if (installOpen) {
+                TextDialog(
+                    stringResource(R.string.style_install_theme),
+                    "",
+                    stringResource(R.string.style_install),
+                    hint = stringResource(R.string.style_install_hint),
+                    onDismiss = { installOpen = false },
+                ) { url ->
+                    installOpen = false
+                    scope.launch { store.install(url) }
+                }
+            }
+            removing?.let { theme ->
+                val builtIn = theme.dirs.size > 1
+                ConfirmDialog(
+                    stringResource(R.string.style_remove_theme_title, theme.title.lowercase()),
+                    stringResource(if (builtIn) R.string.style_remove_theme_builtin else R.string.style_remove_deleted),
+                    stringResource(R.string.style_remove),
+                    onDismiss = { removing = null },
+                ) {
+                    removing = null
+                    scope.launch { store.remove(theme) }
+                }
             }
         }
-        if (installOpen) {
-            TextDialog(
-                stringResource(R.string.style_install_theme),
-                "",
-                stringResource(R.string.style_install),
-                hint = stringResource(R.string.style_install_hint),
-                onDismiss = { installOpen = false },
-            ) { url ->
-                installOpen = false
-                scope.launch { store.install(url) }
-            }
-        }
-        removing?.let { theme ->
-            val builtIn = theme.dirs.size > 1
-            ConfirmDialog(
-                stringResource(R.string.style_remove_theme_title, theme.title.lowercase()),
-                stringResource(if (builtIn) R.string.style_remove_theme_builtin else R.string.style_remove_deleted),
-                stringResource(R.string.style_remove),
-                onDismiss = { removing = null },
-            ) {
-                removing = null
-                scope.launch { store.remove(theme) }
-            }
+        if (managingIcons) {
+            IconPackIconsScreen(runtime, onDismiss = { managingIcons = false }, onAgent = onAgent)
         }
     }
 }
@@ -683,7 +689,10 @@ private fun Heading(
 
 /** The icon pack Android apps take their icons from, among the installed ones; one set in style.toml but not installed shows by its package name. */
 @Composable
-private fun IconPackOption(style: StyleStore) {
+private fun IconPackOption(
+    style: StyleStore,
+    onManage: () -> Unit,
+) {
     val context = LocalContext.current
     val packs by produceState(emptyList<Pair<String, String>>()) { value = withContext(Dispatchers.IO) { IconPack.installed(context) } }
     val selected = style.style[Style.ICON_PACK]
@@ -691,11 +700,17 @@ private fun IconPackOption(style: StyleStore) {
     val names = packs.toMap()
     val options = listOf<String?>(null) + packs.map { it.first } + listOfNotNull(selected?.takeIf { it !in names })
     val label = { pkg: String? -> if (pkg == null) none else names[pkg] ?: pkg }
-    DropdownOption(
-        stringResource(R.string.style_icon_pack),
-        value = { BasicText(label(selected), Modifier.weight(1f, fill = false), style = Mono.copy(color = Palette.foreground), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-    ) { close ->
-        ChoicePopup(options, selected, BelowAnchorStart, onDismiss = close, onPick = { pkg -> style.update { it.with(Style.ICON_PACK, pkg) } }, label = label)
+    Column(Modifier.fillMaxWidth()) {
+        DropdownOption(
+            stringResource(R.string.style_icon_pack),
+            value = { BasicText(label(selected), Modifier.weight(1f, fill = false), style = Mono.copy(color = Palette.foreground), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        ) { close ->
+            ChoicePopup(options, selected, BelowAnchorStart, onDismiss = close, onPick = { pkg -> style.update { it.with(Style.ICON_PACK, pkg) } }, label = label)
+        }
+        // Every app's icon from this pack, including ones it already covers.
+        if (selected != null) {
+            BracketAction(stringResource(R.string.style_icon_pack_manage), Palette.accent, Modifier.padding(start = LabelWidth - 8.dp), onManage)
+        }
     }
 }
 

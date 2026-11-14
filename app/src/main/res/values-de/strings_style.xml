@@ -17,6 +17,16 @@
     <string name="style_colored">farbig</string>
     <string name="style_icon_pack">symbolpaket</string>
     <string name="style_icon_pack_none">keins</string>
+    <string name="style_icon_pack_manage">app-symbole…</string>
+    <string name="style_icon_pack_missing">apps ohne symbol im paket</string>
+    <string name="style_icon_pack_covered">apps mit symbol im paket</string>
+    <string name="style_icon_pack_suggest">fehlende mit agent vorschlagen</string>
+    <string name="style_icon_pack_review">vorschläge prüfen</string>
+    <string name="style_icon_pack_no_suggestions">noch keine vorschläge: erst vorschlagen</string>
+    <string name="style_icon_pack_accept_all">alle übernehmen</string>
+    <string name="style_icon_pack_overridden">ersetzte apps</string>
+    <string name="style_icon_pack_clear">zuordnung löschen</string>
+    <string name="style_icon_pack_filter">symbole filtern</string>
     <string name="style_home_apps">start-apps</string>
     <string name="style_boxed">gerahmt</string>
     <string name="style_icon_only">nur symbol</string>

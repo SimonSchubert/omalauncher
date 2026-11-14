@@ -17,6 +17,16 @@
     <string name="style_colored">цветные</string>
     <string name="style_icon_pack">набор значков</string>
     <string name="style_icon_pack_none">нет</string>
+    <string name="style_icon_pack_manage">значки приложений…</string>
+    <string name="style_icon_pack_missing">приложения без значка набора</string>
+    <string name="style_icon_pack_covered">приложения со значком набора</string>
+    <string name="style_icon_pack_suggest">предложить недостающие с агентом</string>
+    <string name="style_icon_pack_review">проверить предложения</string>
+    <string name="style_icon_pack_no_suggestions">файла предложений ещё нет: сначала запустите предложение</string>
+    <string name="style_icon_pack_accept_all">принять все</string>
+    <string name="style_icon_pack_overridden">приложения с заменой</string>
+    <string name="style_icon_pack_clear">сбросить замену</string>
+    <string name="style_icon_pack_filter">фильтр значков</string>
     <string name="style_home_apps">приложения на главном</string>
     <string name="style_boxed">в рамке</string>
     <string name="style_icon_only">только значок</string>
@@ -135,7 +145,7 @@
     <string name="gestures_has_errors">%1$s (с ошибками)</string>
     <string name="gestures_missing">%1$s (нет файла)</string>
     <string name="gestures_edit">изменить</string>
-    <string name="gestures_hint">панели — это owl-файлы, и список приложений тоже: меняйте их как виджеты или создайте новую через агента в меню главного экрана. если на свайп вверх ничего не назначено, нажатие на строку ввода всё равно открывает список приложений</string>
+    <string name="gestures_hint">панели: это owl-файлы, и список приложений тоже: меняйте их как виджеты или создайте новую через агента в меню главного экрана. если на свайп вверх ничего не назначено, нажатие на строку ввода всё равно открывает список приложений</string>
     <string name="gestures_stock_drawer">стандартный список приложений</string>
     <string name="gestures_drawer_shows">список приложений → %1$s</string>
     <string name="gestures_swipe_down_nothing">свайп вниз ничего не открывает</string>
