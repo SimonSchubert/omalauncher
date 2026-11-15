@@ -116,11 +116,7 @@
             android:exported="false"
             android:taskAffinity=""
             android:theme="@style/Theme.Omalauncher.Dialog" />
-        <!-- The Linux destination in Android's share sheet (ShareInActivity): what's shared lands in the guest's
-             ~/Downloads. Labelled "Linux", which is what the sheet shows. Linux is installed and removed while the
-             launcher runs, so the sheet resolves the alias, not the activity: only the alias is exported, and it
-             starts out off, Runtime turning it on with an install and off with a removal
-             (ShareInActivity.listedInShareSheet). -->
+        <!-- The "Linux" destination in Android's share sheet. Only shows if a Linux environment is installed. -->
         <activity
             android:name=".ShareInActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"

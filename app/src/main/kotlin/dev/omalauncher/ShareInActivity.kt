@@ -37,9 +37,8 @@ import java.io.IOException
 
 /**
  * The Linux destination in Android's share sheet: another app's files, or the text it shared, are copied into the
- * guest's ~/Downloads, the folder `omalauncher pick` uses too. A small card shows while they're copied; Back stops the
- * copy and leaves nothing behind. Labelled "Linux", which is what the sheet lists; only while Linux is installed,
- * see [listedInShareSheet].
+ * guest's ~/Downloads (the same folder `omalauncher pick` uses too). A small card shows while they're copied; Back stops the
+ * copy and leaves nothing behind.
  */
 class ShareInActivity : ComponentActivity() {
     /** In the language picked in settings. */

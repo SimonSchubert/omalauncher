@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Linux setup, updates and the session (linux/, ui/Setup.kt, ui/LinuxScreen.kt, LinuxService.kt), the packages
-     screen (packages_), the licenses screen (licenses_), and what another Android app shares to Linux (ShareInActivity). -->
+     screen (packages_), the licenses screen (licenses_), and the share activity (ShareInActivity). -->
 <resources>
     <!-- The phases of a fresh install, as the setup screen lists them. -->
     <string name="linux_stage_download">download arch linux</string>

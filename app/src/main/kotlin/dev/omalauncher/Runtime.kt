@@ -201,8 +201,7 @@ class Runtime(
     init {
         // Saved, so removing Linux later doesn't bring the first-run screen back.
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
-        // Android's share sheet lists Linux only while it's installed; ShareInActivity's alias starts off (see the
-        // manifest). Nothing to change while Linux is being installed, or an update failed: as it was.
+        // Android's share sheet lists Linux only while it's installed; ShareInActivity's alias starts off
         scope.launch {
             bootstrap.state.collect { state ->
                 when (state) {

@@ -229,7 +229,6 @@ class PhoneFolders(
     fun copyIn(
         uri: Uri,
         dir: File,
-        /** Asked as the copy goes: true stops it, leaving nothing behind. */
         stopped: () -> Boolean = { false },
     ): File {
         val name = nameOf(uri)
