@@ -44,6 +44,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -88,6 +89,7 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -577,7 +579,7 @@ private fun Element(
                 val hug = columnHugs(inst.program.level, sized, parent is RowScope, parent is ColumnScope && LocalHug.current)
                 HoldingPopups(el, mod, env, inst) { m, children ->
                     Column(
-                        m.then(pull).then(if (p.observe("scroll")?.truthy == true) Modifier.verticalScroll(rememberScrollState()) else Modifier),
+                        m.then(pull).then(if (p.observe("scroll")?.truthy == true) Modifier.scrolls(rememberScrollState()) else Modifier),
                         verticalArrangement = arrangement,
                         horizontalAlignment = alignment,
                     ) { CompositionLocalProvider(LocalHug provides hug) { Nodes(children, env, inst, this) } }
@@ -817,6 +819,26 @@ private fun boxAlign(a: String?) =
         "bottomEnd" -> Alignment.BottomEnd
         else -> Alignment.TopStart
     }
+
+/**
+ * A Column's `scroll: true`. Inside something that already scrolls up and down it has no limit to its height, and
+ * Compose throws on a scroll measured so, which took home down (Play, 1.4.0). There it's as tall as its rows and
+ * what it's in scrolls, as a `lazy:` one does.
+ */
+private fun Modifier.scrolls(state: ScrollState): Modifier =
+    layout { measurable, constraints ->
+        val bounded =
+            if (constraints.hasBoundedHeight) {
+                constraints
+            } else {
+                Constraints.fitPrioritizingWidth(constraints.minWidth, constraints.maxWidth, constraints.minHeight, UNBOUNDED_HEIGHT_PX)
+            }
+        val placeable = measurable.measure(bounded)
+        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }.verticalScroll(state)
+
+/** Taller than any Column gets, and small enough to fit a Constraints next to any screen's width. */
+private const val UNBOUNDED_HEIGHT_PX = 1 shl 17
 
 private fun padding(v: Value?): PaddingValues? {
     val n = v?.num()
