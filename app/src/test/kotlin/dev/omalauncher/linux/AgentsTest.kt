@@ -89,6 +89,26 @@ class AgentsTest {
         )
     }
 
+    /** A system update updates Hermes with its own updater, and only where its install finished. */
+    @Test fun updatesRunHermesOnlyWhereItIsInstalled() {
+        val home = createTempDirectory("own").toFile()
+        val stub = File(home, "bin/hermes").apply { parentFile.mkdirs() }
+        stub.writeText("#!/bin/sh\necho \"${'$'}*\" >>\"${'$'}HOME/ran\"\n")
+        stub.setExecutable(true)
+        fun update(): Int {
+            val process = ProcessBuilder("sh", "-c", OWN_UPDATES).redirectErrorStream(true)
+            process.environment()["HOME"] = home.path
+            process.environment()["PATH"] = "${stub.parent}:${System.getenv("PATH")}"
+            return process.start().waitFor()
+        }
+        assertEquals(0, update())
+        assertTrue("updated without an install", !File(home, "ran").exists())
+        File(home, ".hermes/hermes-agent/.hermes-bootstrap-complete").apply { parentFile.mkdirs() }.writeText("")
+        assertEquals(0, update())
+        assertEquals("update --yes\n", File(home, "ran").readText())
+        home.deleteRecursively()
+    }
+
     /** Omarchy 4.5's agents get the prompt whole, however it's quoted, in the form each one takes. */
     @Test fun newAgentsReceiveThePromptLiterally() {
         val prompt = "Explain \"it's quoted\"; \$(exit 17)\nand keep \$HOME literal."
@@ -100,6 +120,7 @@ class AgentsTest {
                 "mcode" to listOf("mcode", "--", prompt),
                 "devin" to listOf("devin", "--", prompt),
                 "commandcode" to listOf("commandcode", "--", prompt),
+                "hermes" to listOf("hermes", "chat", "--yolo", "--query=$prompt"),
             )
         val dir = createTempDirectory("agents").toFile()
         fun stub(
@@ -121,6 +142,8 @@ class AgentsTest {
             stub(bin, "printf '%s\\0' \"${'$'}(basename \"${'$'}0\")\" \"${'$'}@\"")
             assertEquals(bin, args, run(agentInvocation(bin, prompt)).split('\u0000').dropLast(1))
         }
+        // Reading something untrusted, Hermes keeps asking before dangerous commands.
+        assertEquals(listOf("hermes", "chat", "--query=$prompt"), run(agentInvocation("hermes", prompt, readOnly = true)).split('\u0000').dropLast(1))
         // Amp reads its first message from stdin, then stays interactive.
         stub("amp", "cat")
         assertEquals(prompt + "\n", run(agentInvocation("amp", prompt)))

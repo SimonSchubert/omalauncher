@@ -143,7 +143,7 @@
     <string name="gestures_keybar_until_fixed">панель клавиш терминала будет стандартной, пока ошибка не исправлена: %1$s</string>
 
     <string name="agents_title">ИИ-агенты</string>
-    <string name="agents_intro">Устанавливаются через mise, как в Omarchy. Вход открывается в браузере; ключи вставляйте из буфера обмена клавиатуры.</string>
+    <string name="agents_intro">Устанавливаются как в Omarchy, большинство через mise. Вход открывается в браузере; ключи вставляйте из буфера обмена клавиатуры.</string>
     <string name="agents_open">открыть</string>
     <string name="agents_remove">удалить</string>
     <string name="agents_still_running">%1$s ещё работает: закройте его и попробуйте удалить снова</string>

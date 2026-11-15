@@ -144,7 +144,7 @@ class SystemUpdates(
         runCatching { Versioned.writeFile(file, VERSION, data) }
     }
 
-    /** Upgrades everything: a full pacman sync, then mise's tools. Returns whether it worked. */
+    /** Upgrades everything: a full pacman sync, then mise's tools and the agents with their own updater. Returns whether it worked. */
     suspend fun updateAll(): Boolean {
         if (job is JobState.Working) return false
         // mise's too, as agents install and remove with it: mise's first, as agent jobs never take pacman's.
@@ -188,6 +188,6 @@ class SystemUpdates(
         val UPDATE_SCRIPT =
             "pacman -Syyu --noconfirm && $CLEAN_PACMAN_CACHE && " +
                 "if command -v mise >/dev/null; then $MISE_SELF_UPDATE && $MISE_NODE_FOR_AGENTS && mise upgrade; " +
-                "ok=\$?; $MISE_PRUNE; $MISE_CLEANUP; [ \$ok -eq 0 ]; fi"
+                "ok=\$?; $MISE_PRUNE; $MISE_CLEANUP; [ \$ok -eq 0 ]; fi && $OWN_UPDATES"
     }
 }

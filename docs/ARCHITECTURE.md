@@ -192,7 +192,8 @@ the socket and the guest environment carry no state across an update.
 Each recipe lists what a complete change touches. Tests go next to the code
 they cover, in `owl/src/test` or `app/src/test`.
 
-- **A coding agent**: an `Agent` entry in `linux/Agents.kt`; its description
+- **A coding agent**: an `Agent` entry in `linux/Agents.kt` (with an
+  `OwnInstaller` when mise has no package for it, like Hermes); its description
   as `linux_agent_<id>` in every `strings_linux.xml`; an SVG in `art/icons/`,
   turned into PNGs by `scripts/make-icons.sh`; an `activity-alias` in
   `AndroidManifest.xml` so its window gets its own icon and label; a case in

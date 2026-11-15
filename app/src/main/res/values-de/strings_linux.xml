@@ -58,6 +58,7 @@
     <string name="linux_agent_cursor">Agent von Cursor fürs Terminal</string>
     <string name="linux_agent_antigravity">Gemini-Coding-Agent von Google</string>
     <string name="linux_agent_pi">Minimaler, erweiterbarer Coding-Agent</string>
+    <string name="linux_agent_hermes">Agent von Nous Research, der beim Arbeiten dazulernt, etwa 2,5 GB</string>
     <string name="linux_agent_omp">Pi mit eingebauten Tools und Plugins</string>
     <string name="linux_agent_ori">Coding-Agent von OpenRouter</string>
     <string name="linux_agent_muse">Coding-Agent von Meta</string>

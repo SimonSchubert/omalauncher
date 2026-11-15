@@ -57,6 +57,7 @@
     <string name="linux_agent_cursor">Agen terminal dari Cursor</string>
     <string name="linux_agent_antigravity">Agen coding Gemini dari Google</string>
     <string name="linux_agent_pi">Agen coding minimalis yang bisa diperluas</string>
+    <string name="linux_agent_hermes">Agen dari Nous Research yang belajar sambil bekerja, sekitar 2,5 GB</string>
     <string name="linux_agent_omp">Pi dengan alat dan plugin bawaan</string>
     <string name="linux_agent_ori">Agen coding dari OpenRouter</string>
     <string name="linux_agent_muse">Agen coding dari Meta</string>

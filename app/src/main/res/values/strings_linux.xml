@@ -87,6 +87,7 @@
     <string name="linux_agent_cursor">Cursor\'s agent for the terminal</string>
     <string name="linux_agent_antigravity">Google\'s Gemini coding agent</string>
     <string name="linux_agent_pi">Minimal, extensible coding agent</string>
+    <string name="linux_agent_hermes">Nous Research\'s agent that learns as it works, about 2.5 GB</string>
     <string name="linux_agent_omp">Pi with tools and plugins built in</string>
     <string name="linux_agent_ori">OpenRouter\'s coding agent</string>
     <string name="linux_agent_muse">Meta\'s coding agent</string>
