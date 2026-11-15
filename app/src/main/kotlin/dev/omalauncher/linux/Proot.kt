@@ -67,6 +67,14 @@ class Proot(
     private val fastLaneSource = File(nativeDir, "libfastpath.so")
     private val fastLane = File(rootfs, FAST_LANE.removePrefix("/"))
 
+    /**
+     * Where proot keeps the files behind hard links, which Android denies apps: each link is a symlink into here
+     * (--link2symlink, PROOT_L2S_DIR). Without it they sit next to the link, and a program that links a directory
+     * entry by entry (uv out of its cache) trips over them; links made before stay where they are and keep working
+     * (patches/proot/0004). Inside the rootfs, so they are on its filesystem and go when it does.
+     */
+    private val linkStore = File(rootfs, "var/lib/proot/l2s")
+
     /** Launcher data the guest sees in its home, kept outside the rootfs; see [LauncherData]. */
     private val dataBinds =
         listOf(
@@ -279,6 +287,8 @@ class Proot(
                 put("PROOT_LOADER", File(nativeDir, "libproot-loader.so").path)
                 put("PROOT_TMP_DIR", tmpDir.path)
                 put("LD_LIBRARY_PATH", nativeDir.path)
+                // The real path: proot compares it with the ones it resolved, and /data/user/0 is a symlink.
+                if (rootfs.isDirectory && (linkStore.isDirectory || linkStore.mkdirs())) put("PROOT_L2S_DIR", linkStore.canonicalPath)
                 if (!cpuPinning) {
                     put("PROOT_HOME_CPU", "off")
                     put("PROOT_FASTPATH", "off")
