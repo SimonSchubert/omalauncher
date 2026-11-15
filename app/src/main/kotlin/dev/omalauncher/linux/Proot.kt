@@ -292,6 +292,9 @@ class Proot(
 
         const val GUEST_HOME = "/root"
 
+        /** Where `omalauncher pick` and a share from another app put the files: the guest's own Downloads. */
+        const val GUEST_DOWNLOADS = "$GUEST_HOME/Downloads"
+
         /** XDG_RUNTIME_DIR in the guest, bound to [runtimeDir]. */
         const val GUEST_RUNTIME_DIR = "/run/user/0"
 

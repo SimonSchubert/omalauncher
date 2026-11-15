@@ -135,6 +135,12 @@
     <string name="linux_notification_removing">正在移除 Linux</string>
     <string name="linux_notification_running">Linux 会话运行中</string>
 
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">正在保存到 linux…</string>
+    <string name="share_in_saved">已保存到 ~/Downloads</string>
+    <string name="share_in_failed">无法保存到 linux</string>
+    <string name="share_in_no_linux">linux 尚未设置</string>
+
     <string name="packages_title">软件包</string>
     <string name="packages_search">搜索软件包</string>
     <string name="packages_intro">通过 pacman 安装 Arch Linux ARM 软件包，通过 yay 安装 AUR 软件包。安装时也会更新系统，所以可能要等一会儿。AUR 软件包由用户提交，并在设备上构建：请先在 aur.archlinux.org 上查看它的 PKGBUILD。</string>
