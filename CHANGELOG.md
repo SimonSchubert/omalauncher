@@ -6,6 +6,21 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.6.0 (versionCode 39) – 2026-11-15
+
+- Hermes is in the coding agents list (#244): it installs with its own installer (about 2.5 GB),
+  starts with --yolo like on Omarchy, updates with the system update, and can be talked to on the
+  Voice screen.
+- Linux: programs that hard link files work (uv, pnpm, cp -al, git clone --local failed with
+  "Operation not permitted"), replacing a hard-linked file no longer destroys its other copies,
+  and a program in one window can talk to its own background process started from another.
+- The Omarchy themes download is 79 MB instead of 180, and an interrupted download picks up where
+  it stopped.
+- Our widgets animate at half their rate while battery saver is on; a tap or a game in play stays
+  smooth.
+- Fix: a widget with a scrolling Column inside another scrolling Column no longer takes the
+  launcher down (the most reported crash on Play since 1.2.0).
+
 ## 1.5.0 (versionCode 38) – 2026-11-14
 
 - The launcher comes in Russian, with the words Russian Android uses, and a Russian store listing.
