@@ -57,7 +57,7 @@
     <string name="linux_agent_cursor">Cursor 的终端智能体</string>
     <string name="linux_agent_antigravity">Google 的 Gemini 编程智能体</string>
     <string name="linux_agent_pi">精简、可扩展的编程智能体</string>
-    <string name="linux_agent_hermes">Nous Research 的智能体，边用边学，约 2.5 GB</string>
+    <string name="linux_agent_hermes">Nous Research 的智能体，约 2.5 GB</string>
     <string name="linux_agent_omp">内置工具和插件的 Pi</string>
     <string name="linux_agent_ori">OpenRouter 的编程智能体</string>
     <string name="linux_agent_muse">Meta 的编程智能体</string>

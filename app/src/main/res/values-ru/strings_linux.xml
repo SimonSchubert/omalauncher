@@ -60,7 +60,7 @@
     <string name="linux_agent_cursor">Агент для терминала от Cursor</string>
     <string name="linux_agent_antigravity">Агент для программирования Gemini от Google</string>
     <string name="linux_agent_pi">Минималистичный расширяемый агент для программирования</string>
-    <string name="linux_agent_hermes">Агент от Nous Research, который учится в работе, около 2,5 ГБ</string>
+    <string name="linux_agent_hermes">Агент от Nous Research, около 2,5 ГБ</string>
     <string name="linux_agent_omp">Pi со встроенными инструментами и плагинами</string>
     <string name="linux_agent_ori">Агент для программирования от OpenRouter</string>
     <string name="linux_agent_muse">Агент для программирования от Meta</string>
