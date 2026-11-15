@@ -105,8 +105,7 @@ class OmarchyRelease(
         try {
             release.files
                 .map { file ->
-                    val target = File(root, file.path)
-                    require(target.canonicalPath.startsWith(root.path + File.separator)) { "bad path ${file.path}" }
+                    val target = requireNotNull(root.inside(file.path)) { "bad path ${file.path}" }
                     pool.submit {
                         // Written atomically, so a file with the listed size is complete.
                         if (target.length() != file.size || !target.isFile) {

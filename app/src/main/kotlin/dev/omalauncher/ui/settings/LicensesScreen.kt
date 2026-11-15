@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.BuildConfig
 import dev.omalauncher.R
+import dev.omalauncher.system.assetText
 import dev.omalauncher.system.openUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -199,12 +200,12 @@ private fun Details(c: Component) {
             if (c.license == "public-domain") {
                 null
             } else {
-                withContext(Dispatchers.IO) { context.assets.open("licenses/${c.license}.txt").bufferedReader().use { it.readText() } }
+                withContext(Dispatchers.IO) { context.assetText("licenses/${c.license}.txt") }
             }
     }
     // The LGPL is a set of permissions on top of the GPL 3.0, so it ships with both texts.
     val gpl3 by produceState<String?>(null, c.license) {
-        if (c.license == "lgpl-3.0") value = withContext(Dispatchers.IO) { context.assets.open("licenses/gpl-3.0.txt").bufferedReader().use { it.readText() } }
+        if (c.license == "lgpl-3.0") value = withContext(Dispatchers.IO) { context.assetText("licenses/gpl-3.0.txt") }
     }
     val small = Mono.copy(fontSize = TextSize.Small)
     val open = remember(context) { { url: String -> context.openUrl(url); Unit } }
