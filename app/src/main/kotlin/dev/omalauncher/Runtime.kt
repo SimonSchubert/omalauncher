@@ -27,6 +27,7 @@ import dev.omalauncher.linux.VOICE_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.LinuxDns
+import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.PhoneBridge
 import dev.omalauncher.linux.Pacman
@@ -200,6 +201,17 @@ class Runtime(
     init {
         // Saved, so removing Linux later doesn't bring the first-run screen back.
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
+        // Android's share sheet lists Linux only while it's installed; ShareInActivity's alias starts off (see the
+        // manifest). Nothing to change while Linux is being installed, or an update failed: as it was.
+        scope.launch {
+            bootstrap.state.collect { state ->
+                when (state) {
+                    LinuxState.Installed -> ShareInActivity.listedInShareSheet(context, true)
+                    LinuxState.NotInstalled, LinuxState.Removing -> ShareInActivity.listedInShareSheet(context, false)
+                    else -> Unit
+                }
+            }
+        }
         themes.loadPalette()
         // An agent or the user edited style.toml; the rest of the style is read where it's drawn.
         style.onExternalChange = { old, new ->

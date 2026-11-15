@@ -84,10 +84,10 @@ rename and delete files and copy them to and from Linux; agents reach them
 through the `omalauncher` commands above. Android keeps the access until you
 remove the folder there.
 
-The other way round, another Android app's share sheet lists **Linux**: what
-you share there is saved into Linux's `~/Downloads`, as `omalauncher pick`
-saves what you pick there. A link or text shared without a file becomes a small
-`.txt`.
+The other way round, another Android app's share sheet lists **Linux** while
+Linux is installed: what you share there is saved into Linux's `~/Downloads`,
+as `omalauncher pick` saves what you pick there. A link or text shared without a
+file becomes a small `.txt`.
 
 Touch input in Linux windows: tap is a left click, long press is a right
 click, drag scrolls; apps with touch support (foot, GTK) get real touch.

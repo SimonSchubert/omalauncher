@@ -1,7 +1,9 @@
 package dev.omalauncher
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -36,7 +38,8 @@ import java.io.IOException
 /**
  * The Linux destination in Android's share sheet: another app's files, or the text it shared, are copied into the
  * guest's ~/Downloads, the folder `omalauncher pick` uses too. A small card shows while they're copied; Back stops the
- * copy and leaves nothing behind. Labelled "Linux", which is what the sheet lists.
+ * copy and leaves nothing behind. Labelled "Linux", which is what the sheet lists; only while Linux is installed,
+ * see [listedInShareSheet].
  */
 class ShareInActivity : ComponentActivity() {
     /** In the language picked in settings. */
@@ -102,11 +105,31 @@ class ShareInActivity : ComponentActivity() {
         }
     }
 
-    private companion object {
+    internal companion object {
         const val TAG = "share"
 
         /** As PhoneBridge's, so everything the launcher says about Linux sits on one channel. */
         const val NOTIFY_CHANNEL = "linux"
+
+        /** The alias the manifest exports to the share sheet; this activity itself isn't exported. */
+        private val SHARE_SHEET = ComponentName(BuildConfig.APPLICATION_ID, "dev.omalauncher.ShareToLinux")
+
+        /**
+         * Lists Linux in Android's share sheet, or takes it out: Linux is installed and removed while the launcher
+         * runs, and a destination with no guest to save into mustn't be offered. The manifest's alias starts off;
+         * Runtime follows the install state.
+         */
+        fun listedInShareSheet(
+            context: Context,
+            listed: Boolean,
+        ) {
+            context.packageManager.setComponentEnabledSetting(
+                SHARE_SHEET,
+                if (listed) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                // The launcher is this process, and a toggle mustn't end it.
+                PackageManager.DONT_KILL_APP,
+            )
+        }
 
         /** The files [intent] shared: its clip data, which most senders set, else EXTRA_STREAM. */
         fun sharedUris(intent: Intent): List<Uri> {
