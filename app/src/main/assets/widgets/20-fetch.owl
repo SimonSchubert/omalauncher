@@ -3,7 +3,7 @@ widget "fetch" {
   order: 2
   size: 3x3
   minSize: 2x2
-  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.10"; license: "MIT"; category: "system"; owl: 16 }
+  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.11"; license: "MIT"; category: "system"; owl: 16 }
 
   // What it says, in the phone's language where it has a set. Words fastfetch and Linux use as names (os, host,
   // kernel, cpu, shell) stay as they are. Android's battery words come in English, so a set names them itself.
@@ -212,6 +212,9 @@ widget "fetch" {
   // A narrow tile (two columns on a phone) has room for a label and a number: no os, host or kernel,
   // uptime in its largest unit, and memory, disk and battery as percentages.
   let narrow = tileWidth != null && tileWidth < 170
+  // Japanese and Chinese labels come from a taller font than the mono one, and eleven lines of them run past
+  // the bottom of a phone's 3x3 tile: shell or display gives way there.
+  let tall = (lang() == "ja" || lang() == "zh") && tileHeight != null && tileHeight < 215
 
   // Bytes a second over the last two reads; null until there are two, and after a reboot restarts the counters.
   state down = null
@@ -323,10 +326,12 @@ widget "fetch" {
         Line { key: str.packages; value: linux ? (lx.pkgs == null ? null : onAndroid ? "${lx.pkgs} (pacman), ${sys.apps} (${str.apps})" : "${lx.pkgs} (pacman)") : "${sys.apps} (${str.apps})" }
       }
       if !short {
-        if linux {
-          Line { key: "shell"; value: lx.shell }
-        } else {
-          Line { key: str.display; value: shown.width == null ? null : "${shown.width}x${shown.height} @ ${shown.hz}Hz" }
+        if !tall {
+          if linux {
+            Line { key: "shell"; value: lx.shell }
+          } else {
+            Line { key: str.display; value: shown.width == null ? null : "${shown.width}x${shown.height} @ ${shown.hz}Hz" }
+          }
         }
         Line { key: str.theme; value: sys.theme ?? str.byDefault }
         Line { key: "cpu"; value: sys.cpu == null ? null : "${sys.cpu.soc == "" ? sys.cpu.hardware : sys.cpu.soc} (${sys.cpu.cores})" }
