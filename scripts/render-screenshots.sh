@@ -9,9 +9,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 COUNT=8
 # Play listing locale → the language its captures and captions are in.
-declare -A LANG_OF=([en-US]=en [id]=id [es-419]=es [es-ES]=es [pt-BR]=pt [de-DE]=de [zh-CN]=zh)
+declare -A LANG_OF=([en-US]=en [id]=id [es-419]=es [es-ES]=es [pt-BR]=pt [de-DE]=de [zh-CN]=zh [ru-RU]=ru [ja-JP]=ja [uk]=uk)
 LOCALES=("$@")
-[ ${#LOCALES[@]} -gt 0 ] || LOCALES=(en-US id es-419 es-ES pt-BR de-DE zh-CN)
+[ ${#LOCALES[@]} -gt 0 ] || LOCALES=(en-US id es-419 es-ES pt-BR de-DE zh-CN ru-RU ja-JP uk)
 
 for locale in "${LOCALES[@]}"; do
   l=${LANG_OF[$locale]}
