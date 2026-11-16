@@ -137,7 +137,7 @@ class VoiceSession(
     var notice by mutableStateOf<String?>(null)
 
     /** Whether [notice] says the agent isn't signed in ("Not logged in · Please run /login"), for a way to. */
-    val needsLogin get() = notice?.let(LOGIN::containsMatchIn) == true
+    val needsLogin get() = notice?.let(::needsLogin) == true
 
     /** Signing in, in the agent's own terminal: this one stops, so the next prompt starts it signed in. */
     fun loggingIn() {
@@ -716,12 +716,13 @@ class VoiceSession(
                     doneAt = System.currentTimeMillis()
                     restarts = 0
                     val had = reply.isNotBlank() || keptEarly || transcript.lastOrNull()?.who == "image"
+                    val said = reply
                     keptEarly = false
                     endReply()
                     saveSession()
                     if (prompted && e.error != null) {
                         say(spoken(R.string.voice_say_failed))
-                        notice = e.error.take(200).ifEmpty { str(R.string.voice_failed) }
+                        notice = failure(e.error, said).take(200).ifEmpty { str(R.string.voice_failed) }
                     } else if (prompted && !had && !e.cancelled) {
                         notice = str(R.string.voice_nothing_to_say, name)
                     }
@@ -900,8 +901,30 @@ class VoiceSession(
     companion object {
         private const val TAG = "voice"
 
-        /** An agent's error that it isn't signed in: Claude's "Not logged in", Grok's "Authentication required". */
-        private val LOGIN = Regex("log ?in|sign ?in|authenticat|api key|credential", RegexOption.IGNORE_CASE)
+        /**
+         * An agent's error that it isn't signed in: Claude's "Not logged in", Grok's "Authentication required", Hermes's
+         * "not connected to any AI provider yet".
+         */
+        private val LOGIN = Regex("log ?in|sign ?in|authenticat|api key|credential|not connected to any (ai )?provider", RegexOption.IGNORE_CASE)
+
+        /**
+         * What a failed prompt's notice says: its [error], or, when only the reply it [said] tells it isn't signed in, that
+         * reply's first sentence (the reply above it has the rest). Hermes answers "⚠️ Hermes is not connected to any AI
+         * provider yet. Run `hermes model`…" and then fails with just "admitted_turn_failed".
+         */
+        internal fun failure(
+            error: String,
+            said: String,
+        ): String {
+            if (LOGIN.containsMatchIn(error)) return error
+            val line = said.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: return error
+            val sentence = line.split(SENTENCE_END, limit = 2).first()
+            return if (LOGIN.containsMatchIn(sentence)) sentence else error
+        }
+
+        private val SENTENCE_END = Regex("(?<=[.!?])\\s+")
+
+        internal fun needsLogin(notice: String) = LOGIN.containsMatchIn(notice)
 
         /** How a step is shown ([shown]) and how what it wants to do is said ([said]), by verb; each takes [Act.what]. */
         private val STEP =
