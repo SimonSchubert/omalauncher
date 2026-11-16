@@ -42,4 +42,4 @@ file only this phone runs, `owl: 12` is fine; for the store, a lower level reach
 - **22**: `onTouch`; 3D: Canvas `scene` and `model`, `cube`, `sphere`, `cylinder`, `cone`, `plane`, `terrain`, `mesh`, `parseObj`,
   `project`, `turn`, `dot`, `cross`, `norm` and `dist`; Shader image uniforms (`uniform shader`) and array uniforms
 - **23**: `media("seek", seconds)`, `media("speed", ...)` and `media("action", id)`; `android.media`'s `canSeek`, `speed` and `actions`; `haptic("light")`, `"medium"` and `"strong"`
-- **24**: `strip "…" { }` files and `android.strip`, and Row's `scroll`
+- **24**: `strip "…" { }` files and `android.strip`, Row's `scroll`, and `mask` on the apps of `android.drawer` and `android.strip` (`Image { src: "mask:…" }`, an app's silhouette)

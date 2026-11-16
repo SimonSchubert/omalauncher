@@ -324,9 +324,9 @@ class WidgetEngine(
     /** Whether the strip shows stood up beside the grid, in landscape: `vertical` in `android.strip`. */
     var stripVertical by mutableStateOf(false)
 
-    /** How tall the strip measured above the bar, and how wide stood up beside the grid, in pixels; 0 until it has. */
-    var stripHeightPx by mutableIntStateOf(0)
-    var stripWidthPx by mutableIntStateOf(0)
+    /** How tall the strip measured above the bar, and how wide stood up beside the grid, in pixels; -1 until it has. */
+    var stripHeightPx by mutableIntStateOf(-1)
+    var stripWidthPx by mutableIntStateOf(-1)
 
     /** On a home page: a widget's tile, or a face; not an app, a panel, the extra keys or the strip. */
     fun onHome(spec: WidgetSpec) = spec.kind == OwlKind.Widget || spec.kind == OwlKind.Face

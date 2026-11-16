@@ -1,6 +1,9 @@
 package dev.omalauncher.ui.home
 
 import androidx.compose.runtime.key
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
@@ -254,7 +257,19 @@ internal fun stripRoom(
     vertical: Boolean,
 ): Dp {
     val px = if (vertical) runtime.widgets.stripWidthPx else runtime.widgets.stripHeightPx
-    return if (px > 0) with(LocalDensity.current) { px.toDp() } else RecentStripHeight
+    // 0 is a strip that draws nothing, which gives its room back.
+    return if (px >= 0) with(LocalDensity.current) { px.toDp() } else RecentStripHeight
+}
+
+/**
+ * The most of the screen the strip may take: a third of its height above the bar, a quarter of its width beside the
+ * grid. Whatever a file asks for, home's tiles and the bar stay on screen; a strip laid out only for portrait, which
+ * would fill the whole side in landscape, scrolls in a quarter of it instead.
+ */
+@Composable
+private fun stripMax(vertical: Boolean): Dp {
+    val config = LocalConfiguration.current
+    return if (vertical) (config.screenWidthDp / 4).dp else (config.screenHeightDp / 3).dp
 }
 
 /**
@@ -308,6 +323,8 @@ internal fun RecentStrip(
             vertical,
             modifier
                 .then(if (vertical) Modifier.fillMaxHeight() else Modifier.padding(horizontal = EdgeGap).fillMaxWidth())
+                .then(if (vertical) Modifier.widthIn(max = stripMax(true)) else Modifier.heightIn(max = stripMax(false)))
+                .clipToBounds()
                 .onSizeChanged { if (vertical) widgets.stripWidthPx = it.width else widgets.stripHeightPx = it.height }
                 .then(keys),
         )

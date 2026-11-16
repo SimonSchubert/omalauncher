@@ -330,6 +330,8 @@ class WidgetServices(
     override fun launcherIcon(key: String) =
         offered[key]?.let { (_, s) -> if (LauncherStyle.monochromeIcons) s.mask else s.icon } ?: appIconOf(runtime, key, LauncherStyle.monochromeIcons)
 
+    override fun launcherMask(key: String) = offered[key]?.let { (_, s) -> s.mask } ?: appIconOf(runtime, key, mono = true)
+
     /**
      * Shortcuts handed out by shortcuts(...), by the key they got ("x:3"): open(...), appAction("pin", ...) and
      * `icon:` take it. Each keeps the menu it came from, which opens and pins it as the drawer's own menu does.
@@ -548,6 +550,8 @@ class WidgetServices(
                 "label" to Str(if (dot) context.getString(R.string.home_app_has_notifications, hit.spoken) else hit.spoken),
                 "dot" to bool(dot),
                 "icon" to Str("icon:" + hit.key),
+                // Its silhouette whether or not icons are monochrome, to tint any color (owl 24).
+                "mask" to Str("mask:" + hit.key),
                 "profile" to (hit.profileKind?.let(::Str) ?: Null),
                 "alias" to (hit.alias?.let(::Str) ?: Null),
                 "paused" to bool(hit.paused(runtime)),
