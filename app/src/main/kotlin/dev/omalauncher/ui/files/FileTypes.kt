@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.io.File
+import java.util.Locale
 
 /** Copied or cut items waiting to be pasted; process-wide so it survives leaving Files. */
 internal object FileClipboard {
@@ -46,6 +47,7 @@ internal fun formatDate(
     millis: Long,
 ): String {
     val sameYear = DateFormat.format("yyyy", millis) == DateFormat.format("yyyy", System.currentTimeMillis())
-    val date = DateFormat.format(if (sameYear) "MMM d" else "MMM d, yyyy", millis)
+    // The order a language writes a date in: "Nov 16" in English, "11月16日" in Japanese.
+    val date = DateFormat.format(DateFormat.getBestDateTimePattern(Locale.getDefault(), if (sameYear) "MMMd" else "yMMMd"), millis)
     return "$date, ${DateFormat.getTimeFormat(context).format(millis)}"
 }

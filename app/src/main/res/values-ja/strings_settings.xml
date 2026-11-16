@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">設定</string>
+
+    <string name="settings_style">スタイル</string>
+    <string name="settings_style_subtitle">テーマ、背景、ホーム画面</string>
+    <string name="settings_pages">ページ</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="other">%1$d ページ · 並べ替え、編集、削除</item>
+    </plurals>
+    <string name="settings_gestures">ジェスチャー</string>
+    <string name="settings_gestures_subtitle">上：%1$s · 下：%2$s</string>
+    <string name="settings_language">言語</string>
+    <string name="settings_language_phone">スマートフォンの言語</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">インストール済み · 削除</string>
+    <string name="settings_linux_installing_percent">インストール中 %1$d%% · %2$s</string>
+    <string name="settings_linux_installing">インストール中 · %1$s</string>
+    <string name="settings_linux_failed">セットアップが停止 · 再試行</string>
+    <string name="settings_linux_removing">削除中…</string>
+    <string name="settings_linux_not_installed">未インストール · Arch Linux を入れるとターミナルアプリとエージェントが使えます</string>
+    <string name="settings_agents">コーディングエージェント</string>
+    <string name="settings_agents_default">デフォルト：%1$s</string>
+    <string name="settings_agents_install">Claude Code、OpenCode などをインストール</string>
+    <string name="settings_needs_linux">linux が必要</string>
+    <string name="settings_packages">パッケージ</string>
+    <string name="settings_packages_subtitle">pacman と AUR で Linux のアプリやツールを追加</string>
+    <string name="settings_home_app">デフォルトのホームアプリ</string>
+    <string name="settings_home_app_subtitle">Omalauncher をホーム画面にする</string>
+    <string name="settings_local_network">ローカルネットワーク</string>
+    <string name="settings_local_network_subtitle">ウィジェットと linux からプリンタや home assistant などに接続</string>
+    <string name="settings_permissions">権限</string>
+    <string name="settings_permissions_subtitle">マイク、位置情報、ファイルなど</string>
+
+    <string name="permissions_title">権限</string>
+    <string name="permissions_folders_title">スマートフォンのフォルダ</string>
+    <string name="permissions_folders_about">写真、ダウンロード、ドキュメントなどのフォルダを linux で使えるようにします。「ファイル」に表示され、エージェントやスクリプトからは omalauncher コマンドで使えます</string>
+    <string name="permissions_folders_sdcard">linux が %1$s/Download や %1$s/Documents に保存したものは、ほかのアプリからも見えます</string>
+    <string name="permissions_folders_add">フォルダを追加</string>
+    <string name="permissions_folders_remove">削除</string>
+    <string name="permissions_folders_cant_keep">android の制限により、このフォルダは追加できませんでした</string>
+    <string name="permissions_folders_no_picker">このスマートフォンにはフォルダ選択画面がありません</string>
+    <string name="permissions_note">ここにあるものは、ウィジェットとエージェントが利用できます。スイッチを管理しているのは android です。オンにすると許可を求める画面が出て、オフにすると android の設定が開きます</string>
+    <string name="permissions_on">オン · %1$s</string>
+    <string name="permissions_off">オフ · %1$s</string>
+    <string name="permissions_mic">マイク</string>
+    <string name="permissions_mic_uses">プロンプトバーのマイク、Voice、音声を聞き取るウィジェット</string>
+    <string name="permissions_location">位置情報</string>
+    <string name="permissions_location_uses">おおよその位置情報 · 天気などのウィジェット（表示中のみ） · omalauncher location を使うエージェント</string>
+    <string name="permissions_calendar">カレンダー</string>
+    <string name="permissions_calendar_uses">予定（読み取りのみ） · カレンダーウィジェット · omalauncher calendar を使うエージェント</string>
+    <string name="permissions_bluetooth">bluetooth</string>
+    <string name="permissions_bluetooth_uses">AirPods のバッテリー残量と設定 · AirPods ウィジェット · omalauncher airpods を使うエージェント</string>
+    <string name="permissions_notifications">通知</string>
+    <string name="permissions_notifications_uses">実行中の linux、通知を送るウィジェット</string>
+    <string name="permissions_notification_access">通知へのアクセス</string>
+    <string name="permissions_notification_access_uses">ウィジェット用の通知ドット、再生中の曲、サイレントモード</string>
+
+    <string name="settings_android">android の設定</string>
+    <string name="settings_android_subtitle">スマートフォンのシステム設定</string>
+    <string name="settings_licenses">ライセンス</string>
+    <string name="settings_licenses_subtitle">Omalauncher に含まれるオープンソースソフトウェア</string>
+
+    <string name="settings_system_updating">システムを更新中：%1$s…</string>
+    <string name="settings_system_update_failed">システムアップデートが完了しませんでした</string>
+    <string name="settings_retry">再試行</string>
+    <string name="settings_system_updates">システムアップデート</string>
+    <string name="settings_widget_updates">ウィジェット</string>
+    <string name="settings_launcher_updates">ランチャー</string>
+    <string name="settings_launcher_update_available">Omalauncher の新しいバージョンが Google Play にあります</string>
+    <string name="settings_launcher_update_failed">Google Play で Omalauncher を更新できませんでした</string>
+    <string name="settings_launcher_update_github">Omalauncher %1$s → %2$s（GitHub）</string>
+    <string name="settings_update_all">すべて更新</string>
+    <string name="settings_check">確認</string>
+    <string name="settings_update">更新</string>
+    <string name="settings_updating">更新中…</string>
+    <string name="settings_checking">確認中…</string>
+    <string name="settings_not_checked">まだ確認していません</string>
+    <string name="settings_up_to_date">最新です · 確認：%1$s</string>
+    <string name="settings_store_unreachable">ストアに接続できませんでした</string>
+    <string name="settings_updates_held">編集済みのため、ここでは更新されません：%1$s · ストアで更新すると、加えた変更は上書きされます</string>
+    <string name="settings_more_lines">ほか %1$d 件</string>
+    <string name="settings_just_now">たった今</string>
+    <string name="settings_minutes_ago">%1$d 分前</string>
+    <string name="settings_hours_ago">%1$d 時間前</string>
+    <string name="settings_days_ago">%1$d 日前</string>
+</resources>

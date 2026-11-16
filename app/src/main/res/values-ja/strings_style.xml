@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="style_title">スタイル</string>
+
+    <string name="style_home_screen">ホーム画面</string>
+    <string name="style_widgets">ウィジェット</string>
+    <string name="style_screens">画面</string>
+    <string name="style_keybar">ターミナルのキーバー</string>
+    <string name="style_system_bars">システムバー</string>
+    <string name="style_launcher_widgets">ランチャーとウィジェット</string>
+    <string name="style_theme">テーマ</string>
+    <string name="style_background">背景</string>
+    <string name="style_terminal">ターミナル</string>
+
+    <string name="style_icons">アイコン</string>
+    <string name="style_monochrome">モノクロ</string>
+    <string name="style_colored">カラー</string>
+    <string name="style_icon_pack">アイコンパック</string>
+    <string name="style_icon_pack_none">なし</string>
+    <string name="style_home_apps">アプリ表示</string>
+    <string name="style_boxed">枠付き</string>
+    <string name="style_icon_only">アイコンのみ</string>
+    <string name="style_recent_apps">最近のアプリ</string>
+    <string name="style_shown">表示</string>
+    <string name="style_hidden">非表示</string>
+    <string name="style_empty_page_left">左の空ページ</string>
+    <string name="style_empty_page_right">右の空ページ</string>
+    <string name="style_columns">列数</string>
+    <string name="style_pages">ページ</string>
+    <string name="style_pages_one">1 ページ</string>
+    <string name="style_pages_auto">自動</string>
+    <string name="style_cover_screen">カバー画面</string>
+    <string name="style_cover_upright">縦向き</string>
+    <string name="style_cover_turned">横向き</string>
+    <string name="style_unfolded">メイン画面</string>
+    <string name="style_unfolded_own">専用のホーム</string>
+    <string name="style_unfolded_pages">ページ</string>
+    <string name="style_unfolded_columns">メインの列数</string>
+    <string name="style_corners">角</string>
+    <string name="style_corners_edge">直角</string>
+    <string name="style_corners_soft">やや丸</string>
+    <string name="style_corners_round">丸</string>
+    <string name="style_gaps_in">内側の余白</string>
+    <string name="style_gaps_out">外側の余白</string>
+    <string name="style_border_width">枠線の太さ</string>
+    <string name="style_opacity">不透明度</string>
+    <string name="style_frosted_glass">すりガラス</string>
+    <string name="style_on">オン</string>
+    <string name="style_off">オフ</string>
+    <string name="style_status_bar">ステータスバー</string>
+    <string name="style_bars_background">背景</string>
+    <string name="style_font">フォント</string>
+    <string name="style_system_font">システムのデフォルト</string>
+    <string name="style_text">文字サイズ</string>
+    <string name="style_text_smaller">小さめ</string>
+    <string name="style_text_default">標準</string>
+    <string name="style_text_larger">大きめ</string>
+    <string name="style_preview">プレビュー</string>
+    <string name="style_preview_app">アプリ</string>
+    <string name="style_reset">リセット</string>
+    <string name="style_differ_step">style.toml で値が揃っていません。ここで選ぶとすべて同じ値になります</string>
+    <string name="style_differ">値が不揃い</string>
+    <string name="style_custom">カスタム：%1$s（style.toml の設定）</string>
+    <string name="style_more_settings">枠線やバーの色など、その他の設定：%1$s</string>
+
+    <string name="style_keys">キー</string>
+    <string name="style_keybar_removed">削除済み</string>
+    <string name="style_keybar_errors">エラーあり</string>
+    <string name="style_keybar_stock">標準</string>
+    <string name="style_keybar_edited">編集済み</string>
+    <string name="style_keybar_edit">エージェントで編集</string>
+    <string name="style_keybar_back_to_stock">標準に戻す</string>
+    <string name="style_keybar_gone">%1$s が見つからないため、標準のキーを表示しています</string>
+    <string name="style_keybar_restore_title">標準のキーに戻しますか？</string>
+    <string name="style_keybar_restore_message">現在の keybar.owl は、このランチャーに付属のものに置き換えられます。</string>
+    <string name="style_replace">置き換える</string>
+
+    <string name="style_browse">探す</string>
+    <string name="style_install">インストール</string>
+    <string name="style_install_theme">テーマをインストール</string>
+    <string name="style_install_hint">テーマの GitHub リポジトリを入力します。同じ名前のテーマがインストール済みの場合は置き換えられます。</string>
+    <string name="style_own_theme">自分のテーマ</string>
+    <string name="style_update">更新</string>
+    <string name="style_remove">削除</string>
+    <string name="style_remove_theme_title">%1$s を削除しますか？</string>
+    <string name="style_remove_theme_builtin">加えた変更は失われますが、Omarchy 版は残ります。</string>
+    <string name="style_remove_deleted">スマートフォンと Linux の両方から削除されます。</string>
+    <string name="style_themes_downloading">Omarchy のほかのテーマを github.com/omacom/omarchy からダウンロードしています（約 70 MB）。</string>
+    <string name="style_themes_not_installed">Omarchy のテーマはまだインストールされていません。github.com/omacom/omarchy からダウンロードします（約 70 MB）。</string>
+    <string name="style_downloading">ダウンロード中… %1$d MB</string>
+    <string name="style_failed">失敗：%1$s</string>
+    <string name="style_retry">再試行</string>
+    <string name="style_download_themes">テーマをダウンロード</string>
+
+    <string name="style_add_image">+ 画像</string>
+    <string name="style_wallpaper_active">✓ android の壁紙とシステムカラーがテーマに連動しています（システムカラーは画面がオフになった後に更新されます）</string>
+    <string name="style_wallpaper_use">android の壁紙とシステムカラーに使う</string>
+    <string name="style_remove_background_title">背景を削除しますか？</string>
+
+    <string name="style_terminal_hint">これから開くターミナルに適用 · フォントは pacman で追加できます（例：ttf-cascadia-code）</string>
+    <string name="style_keyboard_suggestions">入力候補</string>
+    <string name="style_keyboard_suggestions_hint">入力候補、グライド入力、音声入力が使えます。テキストは単語ごとにターミナルへ送られます · 次にキーボードを開いたときから適用</string>
+    <plurals name="style_terminal_size">
+        <item quantity="other">%1$s pt · 縦向きで %2$d 桁</item>
+    </plurals>
+
+    <string name="pages_title">ページ</string>
+    <string name="pages_intro">ホームのページを左から順に並べています。≡ をドラッグすると移動できます。キーボードでは、Enter で ≡ をつかみ、矢印キーで移動します。ホームは、タイルのある最初のページで開きます。それより前にある全画面ウィジェットは、その左側に並びます。</string>
+    <string name="pages_loading">読み込み中…</string>
+    <string name="pages_remove_named">%1$s を削除しますか？</string>
+    <string name="pages_remove_page">このページを削除しますか？</string>
+    <string name="pages_remove_face_message">ファイルはウィジェットフォルダ内の .removed/ に移動されます。</string>
+    <string name="pages_remove_tiles_message">%1$s。ウィジェットはウィジェットフォルダ内の .removed/ に移動されます。アプリはホームから外れますが、インストールされたままです。</string>
+    <string name="pages_remove">削除</string>
+    <plurals name="pages_apps">
+        <item quantity="other">アプリ %1$d 個</item>
+    </plurals>
+    <string name="pages_empty">空のページ</string>
+    <string name="pages_doesnt_compile">コンパイルエラー</string>
+    <string name="pages_face">全画面</string>
+    <string name="pages_home">ホーム</string>
+    <string name="pages_edit">編集</string>
+    <string name="pages_share">共有</string>
+
+    <string name="gestures_title">ジェスチャー</string>
+    <string name="gestures_swipe_up">上にスワイプ</string>
+    <string name="gestures_swipe_down">下にスワイプ</string>
+    <string name="gestures_nothing">なし</string>
+    <string name="gestures_has_errors">%1$s（エラーあり）</string>
+    <string name="gestures_missing">%1$s（ファイルなし）</string>
+    <string name="gestures_edit">編集</string>
+    <string name="gestures_hint">パネルは owl ファイルで、ドロワーもそのひとつです。ウィジェットと同じように編集でき、ホームのメニューからエージェントで新しく作ることもできます。上スワイプが「なし」でも、バーをタップすればドロワーが開きます</string>
+    <string name="gestures_stock_drawer">標準のドロワー</string>
+    <string name="gestures_drawer_shows">ドロワーは「%1$s」になります</string>
+    <string name="gestures_swipe_down_nothing">下スワイプでは何も開きません</string>
+    <string name="gestures_until_fixed">修正されるまで、%1$s：%2$s</string>
+    <string name="gestures_keybar_until_fixed">修正されるまで、ターミナルのキーバーは標準のものになります：%1$s</string>
+
+    <string name="agents_title">コーディングエージェント</string>
+    <string name="agents_intro">Omarchy と同じ方法でインストールします（ほとんどは mise を使用）。ログイン画面はブラウザで開きます。API キーは、キーボードのクリップボードから貼り付けてください。</string>
+    <string name="agents_open">開く</string>
+    <string name="agents_remove">削除</string>
+    <string name="agents_still_running">%1$s はまだ実行中です。閉じてから、もう一度削除してください</string>
+    <string name="agents_install">インストール</string>
+</resources>

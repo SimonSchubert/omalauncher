@@ -64,6 +64,14 @@ panel "app drawer" {
       open: "открыть"; ask: "спросить"; askInstallLinux: "спросить агента · установить linux"; askInstallAgent: "спросить агента · установить агента"
       askAgent: (bin, text) => "спросить ${bin}: ${text}"
     }
+    ja {
+      personal: "個人用"; work: "仕事用"; apps: "アプリ"; linux: "linux"; shortcuts: "ショートカット"; android: "android"
+      workApps: "仕事用アプリ"; workPaused: "仕事用アプリは一時停止中"; linuxApps: "linux アプリ"
+      pin: "ホームに追加"; info: "アプリ情報"; uninstall: "アンインストール"; remove: "削除"; edit: "編集"; share: "共有"
+      settings: "設定"; turnOn: "オンにする"; pause: "一時停止"; installing: "インストール中…"; installLinux: "linux をインストール"
+      open: "開く"; ask: "聞く"; askInstallLinux: "エージェントに聞く · linux をインストール"; askInstallAgent: "エージェントに聞く · まずインストール"
+      askAgent: (bin, text) => "${bin} に聞く：${text}"
+    }
   }
   source d = android.drawer
   source ag = android.agents

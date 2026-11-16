@@ -13,6 +13,8 @@ widget "today" {
       feels: "feels"; humidity: "humidity"; rainToday: "rain today"; uv: "uv index"; pressure: "pressure"
       visibility: "visibility"; next24: "next 24 hours"; now: "now"; days: "3 days"; today: "today"
       sunrise: "sunrise"; sunset: "sunset"; moon: "moon"; kmh: "km/h"; yr: "open yr.no ↗"
+      // The month and year under the weekday, as a fmtTime pattern: a language that puts the year first has its own.
+      monthYear: "MMMM yyyy"
       sky: (code, desc) => lower(trim(desc))
       wind: dir => "wind ${lower(dir)}"
       uvLevel: uv => uv >= 8 ? "very high" : uv >= 6 ? "high" : uv >= 3 ? "moderate" : "low"
@@ -216,6 +218,41 @@ widget "today" {
         "Last Quarter": "последняя четверть", "Waning Crescent": "убывающий серп"
       }, phase, lower(phase)) + " · освещено ${lit}%"
     }
+    ja {
+      title: "天気"; loading: "天気…"; offline: "天気を取得できません"; city: "都市 · 空欄 = 自動"; here: "現在地を使う"
+      feels: "体感"; humidity: "湿度"; rainToday: "今日の降水"; uv: "UV 指数"; pressure: "気圧"
+      visibility: "視程"; next24: "今後 24 時間"; now: "現在"; days: "3 日間"; today: "今日"
+      sunrise: "日の出"; sunset: "日の入り"; moon: "月"; kmh: "km/h"; yr: "yr.no を開く ↗"
+      monthYear: "yyyy年M月"
+      // The words Japanese forecasts use: 弱い, 強い and 激しい for how hard it falls, にわか for showers.
+      sky: (code, desc) => get({
+        "113": "晴れ", "116": "晴れ時々曇り", "119": "曇り", "122": "本曇り", "143": "もや",
+        "176": "ところにより雨", "179": "ところにより雪", "182": "ところによりみぞれ", "185": "ところにより着氷性の霧雨",
+        "200": "ところにより雷", "227": "地吹雪", "230": "猛吹雪", "248": "霧", "260": "着氷性の霧",
+        "263": "ところにより弱い霧雨", "266": "弱い霧雨", "281": "着氷性の霧雨", "284": "強い着氷性の霧雨",
+        "293": "ところにより小雨", "296": "小雨", "299": "時々雨", "302": "雨",
+        "305": "時々強い雨", "308": "強い雨", "311": "弱い着氷性の雨", "314": "強い着氷性の雨",
+        "317": "弱いみぞれ", "320": "強いみぞれ", "323": "ところにより小雪", "326": "小雪",
+        "329": "ところにより雪", "332": "雪", "335": "ところにより大雪", "338": "大雪",
+        "350": "凍雨", "353": "弱いにわか雨", "356": "強いにわか雨", "359": "激しいにわか雨",
+        "362": "弱いみぞれ", "365": "強いみぞれ", "368": "弱いにわか雪",
+        "371": "強いにわか雪", "374": "弱い凍雨", "377": "強い凍雨",
+        "386": "雷を伴う弱い雨", "389": "雷を伴う強い雨", "392": "雷を伴う弱い雪",
+        "395": "雷を伴う強い雪"
+      }, code, lower(trim(desc)))
+      // The sixteen points, as Japanese forecasts name them.
+      wind: dir => get({
+        "N": "北の風", "NNE": "北北東の風", "NE": "北東の風", "ENE": "東北東の風", "E": "東の風", "ESE": "東南東の風",
+        "SE": "南東の風", "SSE": "南南東の風", "S": "南の風", "SSW": "南南西の風", "SW": "南西の風", "WSW": "西南西の風",
+        "W": "西の風", "WNW": "西北西の風", "NW": "北西の風", "NNW": "北北西の風"
+      }, dir, "風向 ${dir}")
+      uvLevel: uv => uv >= 8 ? "非常に強い" : uv >= 6 ? "強い" : uv >= 3 ? "中程度" : "弱い"
+      phase: (phase, lit) => get({
+        "New Moon": "新月", "Waxing Crescent": "三日月", "First Quarter": "上弦の月",
+        "Waxing Gibbous": "満ちていく月", "Full Moon": "満月", "Waning Gibbous": "欠けていく月",
+        "Last Quarter": "下弦の月", "Waning Crescent": "有明の月"
+      }, phase, lower(phase)) + " · 輝面率 ${lit}%"
+    }
   }
 
   source now = clock every 1m
@@ -314,7 +351,7 @@ widget "today" {
           gap: 0
           weight: 1
           Text { text: lower(fmtTime(now, "EEEE")); style: label; color: accent; maxLines: 1 }
-          Text { text: lower(fmtTime(now, "MMMM yyyy")); style: small; color: muted; maxLines: 1 }
+          Text { text: lower(fmtTime(now, str.monthYear)); style: small; color: muted; maxLines: 1 }
         }
       }
     }

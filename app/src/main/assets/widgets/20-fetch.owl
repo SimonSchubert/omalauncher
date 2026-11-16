@@ -135,6 +135,25 @@ widget "fetch" {
         "failing": "износ", "wireless": "беспроводная", "dock": "док-станция"
       }, w, w)
     }
+    ja {
+      uptime: "稼働時間"; packages: "パッケージ"; display: "画面"; theme: "テーマ"; memory: "メモリ"; disk: "ディスク"
+      battery: "バッテリー"; apps: "アプリ"; byDefault: "デフォルト"; phone: "スマートフォン"; device: "デバイス"
+      hardware: "ハードウェア"; network: "ネットワーク"; launcher: "ランチャー"; security: "セキュリティ"; build: "ビルド"
+      locale: "ロケール"; cores: "コア"; storage: "ストレージ"; speed: "速度"; received: "受信"; sent: "送信"
+      mobile: "モバイル"; level: "残量"; temperature: "温度"; voltage: "電圧"; health: "状態"
+      cycles: "サイクル数"; technology: "種類"; version: "バージョン"; explicit: "個は明示的にインストール"; upgraded: "最終更新"
+      never: "なし"; unknown: "不明"; installLinux: "linux をインストール"
+      notInstalled: "未インストール。arch linux arm を入れると、ランチャーでターミナル、エージェント、pacman が使えます。"
+      upTo: ghz => " · 最大 ${ghz} GHz"
+      androidApps: n => "android アプリ ${n} 個"
+      appCount: n => "アプリ ${n} 個"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "充電中", "plugged in": "電源に接続", "on battery": "バッテリー駆動", "good": "良好",
+        "overheating": "過熱", "dead": "寿命", "over voltage": "過電圧", "cold": "低温",
+        "failing": "異常", "wireless": "ワイヤレス", "dock": "ドック"
+      }, w, w)
+    }
   }
 
   // The phone, from Android: works without Linux.

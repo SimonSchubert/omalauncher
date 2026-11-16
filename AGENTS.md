@@ -66,7 +66,7 @@ change done.
   the app for JVM 11, so an inline owl function fails the app build
   (`INLINE_FROM_HIGHER_PLATFORM`). Write a plain method instead.
 - **UI text goes in `res/values/strings_<area>.xml`**, with a translation in
-  every `values-*` folder (de, es, in, pt, zh). `HardcodedTextTest` fails on
+  every `values-*` folder (de, es, in, ja, pt, ru, zh). `HardcodedTextTest` fails on
   literal text in UI calls. German is lower case wherever the English is, and
   casual (du). Agent prompts, owl errors, logs and the stock `.owl` files stay
   English.
