@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">настройки</string>
+
+    <string name="settings_style">оформление</string>
+    <string name="settings_style_subtitle">тема, фон, главный экран</string>
+    <string name="settings_pages">страницы</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="one">%1$d страница · порядок, правка, удаление</item>
+        <item quantity="few">%1$d страницы · порядок, правка, удаление</item>
+        <item quantity="many">%1$d страниц · порядок, правка, удаление</item>
+        <item quantity="other">%1$d страницы · порядок, правка, удаление</item>
+    </plurals>
+    <string name="settings_gestures">жесты</string>
+    <string name="settings_gestures_subtitle">вверх: %1$s · вниз: %2$s</string>
+    <string name="settings_language">язык</string>
+    <string name="settings_language_phone">язык телефона</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">установлен · удалить</string>
+    <string name="settings_linux_installing_percent">установка %1$d%% · %2$s</string>
+    <string name="settings_linux_installing">установка · %1$s</string>
+    <string name="settings_linux_failed">установка остановлена · повторить</string>
+    <string name="settings_linux_removing">удаление…</string>
+    <string name="settings_linux_not_installed">не установлен · установите Arch Linux для терминальных приложений и агентов</string>
+    <string name="settings_agents">ИИ-агенты</string>
+    <string name="settings_agents_default">по умолчанию: %1$s</string>
+    <string name="settings_agents_install">установить Claude Code, OpenCode, …</string>
+    <string name="settings_needs_linux">нужен linux</string>
+    <string name="settings_packages">пакеты</string>
+    <string name="settings_packages_subtitle">Linux-приложения и инструменты из pacman и AUR</string>
+    <string name="settings_home_app">лаунчер по умолчанию</string>
+    <string name="settings_home_app_subtitle">сделать Omalauncher главным экраном</string>
+    <string name="settings_local_network">локальная сеть</string>
+    <string name="settings_local_network_subtitle">доступ виджетов и linux к принтеру, home assistant, …</string>
+    <string name="settings_permissions">разрешения</string>
+    <string name="settings_permissions_subtitle">микрофон, местоположение, файлы, …</string>
+
+    <string name="permissions_title">разрешения</string>
+    <string name="permissions_folders_title">папки телефона</string>
+    <string name="permissions_folders_about">папки с фото, загрузками и документами для linux: в Файлах, а для агентов и скриптов — через omalauncher</string>
+    <string name="permissions_folders_sdcard">то, что linux сохраняет в %1$s/Download или %1$s/Documents, видят и другие приложения</string>
+    <string name="permissions_folders_add">добавить папку</string>
+    <string name="permissions_folders_remove">убрать</string>
+    <string name="permissions_folders_cant_keep">android не дал лаунчеру сохранить доступ к этой папке</string>
+    <string name="permissions_folders_no_picker">на этом телефоне нет окна выбора папки</string>
+    <string name="permissions_note">виджеты и агенты могут пользоваться всем, что здесь включено. переключателями управляет android: включение запрашивает разрешение, а выключение открывает настройки android</string>
+    <string name="permissions_on">вкл · %1$s</string>
+    <string name="permissions_off">выкл · %1$s</string>
+    <string name="permissions_mic">микрофон</string>
+    <string name="permissions_mic_uses">микрофон в строке ввода, Голос, виджеты, которые слушают</string>
+    <string name="permissions_location">местоположение</string>
+    <string name="permissions_location_uses">приблизительное · виджеты вроде погоды, пока они на экране · агенты через omalauncher location</string>
+    <string name="permissions_calendar">календарь</string>
+    <string name="permissions_calendar_uses">ваши события, только чтение · виджеты календаря · агенты через omalauncher calendar</string>
+    <string name="permissions_bluetooth">bluetooth</string>
+    <string name="permissions_bluetooth_uses">заряд и настройки ваших AirPods · виджеты AirPods · агенты через omalauncher airpods</string>
+    <string name="permissions_notifications">уведомления</string>
+    <string name="permissions_notifications_uses">linux, пока он работает, и виджеты, которые присылают уведомления</string>
+    <string name="permissions_notification_access">доступ к уведомлениям</string>
+    <string name="permissions_notification_access_uses">значки уведомлений, что сейчас играет и режим «не беспокоить» для виджетов</string>
+
+    <string name="settings_android">настройки android</string>
+    <string name="settings_android_subtitle">системные настройки телефона</string>
+    <string name="settings_licenses">лицензии</string>
+    <string name="settings_licenses_subtitle">открытое ПО в Omalauncher</string>
+
+    <string name="settings_system_updating">обновление системы: %1$s…</string>
+    <string name="settings_system_update_failed">обновление системы не завершилось</string>
+    <string name="settings_retry">повторить</string>
+    <string name="settings_system_updates">обновления системы</string>
+    <string name="settings_widget_updates">виджеты</string>
+    <string name="settings_launcher_updates">лаунчер</string>
+    <string name="settings_launcher_update_available">в Google Play есть новая версия Omalauncher</string>
+    <string name="settings_launcher_update_failed">Google Play не удалось обновить Omalauncher</string>
+    <string name="settings_launcher_update_github">Omalauncher %1$s → %2$s на GitHub</string>
+    <string name="settings_update_all">обновить всё</string>
+    <string name="settings_check">проверить</string>
+    <string name="settings_update">обновить</string>
+    <string name="settings_updating">обновление…</string>
+    <string name="settings_checking">проверка…</string>
+    <string name="settings_not_checked">ещё не проверялось</string>
+    <string name="settings_up_to_date">всё актуально · проверено %1$s</string>
+    <string name="settings_store_unreachable">не удалось связаться с магазином</string>
+    <string name="settings_updates_held">изменены, поэтому здесь не обновляются: %1$s · обновление через магазин заменит ваши правки</string>
+    <string name="settings_more_lines">и ещё %1$d</string>
+    <string name="settings_just_now">только что</string>
+    <string name="settings_minutes_ago">%1$d мин назад</string>
+    <string name="settings_hours_ago">%1$d ч назад</string>
+    <string name="settings_days_ago">%1$d дн. назад</string>
+</resources>

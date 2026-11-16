@@ -197,7 +197,12 @@ internal val SINCE =
         // owl 22: 3D scenes in a Canvas, the meshes they draw and the vector math of a 3D game.
         listOf("scene", "model", "cube", "plane", "sphere", "cylinder", "cone", "terrain", "mesh", "parseObj", "project", "turn", "dot", "cross", "norm", "dist").associateWith { 22 } +
         // owl 22: Shader images to sample, and uniforms that are arrays.
-        listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 }
+        listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 } +
+        // owl 23: what's playing moved to a point in it, for a scrubber or a record turned by hand; its speed, and the
+        // player's own buttons.
+        listOf("media(\"seek\")", "media(\"speed\")", "media(\"action\")").associateWith { 23 } +
+        // owl 23: how strong a haptic() is.
+        mapOf(HAPTIC_STRENGTH to 23)
 
 /** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
 internal const val SHADER_IMAGE = "uniform shader"
@@ -219,6 +224,9 @@ internal const val VOLUME_STREAM = "volume(…, stream)"
 
 /** `torch(40)`, a brightness, named like this in [SINCE]. */
 internal const val TORCH_LEVEL = "torch(level)"
+
+/** `haptic("light")`, a strength, named like this in [SINCE]. */
+internal const val HAPTIC_STRENGTH = "haptic(strength)"
 
 /** volume(...)'s second value; media without one. */
 internal val VOLUME_STREAMS = setOf("media", "ring", "notification", "alarm")
@@ -370,7 +378,22 @@ internal val SETTINGS_PAGES = setOf("internet", "wifi", "bluetooth", "airplane",
 
 internal val ACTION_WORDS =
     mapOf(
-        "media" to setOf("toggle", "play", "pause", "next", "previous", "open").let { Words(it, "media takes ${it.joinToString()}") },
+        // seek takes where to go, in seconds from the start, speed how fast, action which of the app's buttons (owl 23);
+        // the others take nothing more.
+        "media" to
+            setOf("toggle", "play", "pause", "next", "previous", "open").let { plain ->
+                Words(
+                    plain + setOf("seek", "speed", "action"),
+                    "media takes ${plain.joinToString()}, seek, speed or action",
+                    forms =
+                        plain.associateWith { 1..1 to "media(\"$it\")" } +
+                            mapOf(
+                                "seek" to (2..2 to "media(\"seek\", seconds)"),
+                                "speed" to (2..2 to "media(\"speed\", 1.5)"),
+                                "action" to (2..2 to "media(\"action\", a.id), with a from the source's actions"),
+                            ),
+                )
+            },
         // A number sets the level in percent.
         "volume" to setOf("up", "down", "mute", "unmute", "toggle").let { Words(it, "volume takes a level in percent, or ${it.joinToString()}", numbers = true) },
         // true and false also turn it on and off.
@@ -395,6 +418,8 @@ internal val ACTION_WORDS =
                         "unsnoozeAll" to (1..1 to "notification(\"unsnoozeAll\")"),
                     ),
             ),
+        // How strong, from Android's own touch feedback; haptic() alone is medium.
+        "haptic" to setOf("light", "medium", "strong").let { Words(it, "haptic takes ${it.joinToString()}, or nothing for medium") },
         // Android's panel (a sheet over home) where it has one, else its settings screen.
         "settings" to SETTINGS_PAGES.let { Words(it, "settings takes ${it.joinToString()}") },
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },

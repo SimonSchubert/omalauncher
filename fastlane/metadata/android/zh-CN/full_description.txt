@@ -29,7 +29,7 @@ ARCH LINUX（可选）
 使用实体键盘时：Super+T 打开终端，Super+D 打开应用抽屉，Super+1 到 9 切换页面，Super+W 关闭窗口。
 
 语言
-English、Bahasa Indonesia、Español、Português、Deutsch 和简体中文。
+English、Bahasa Indonesia、Español、Português、Deutsch、简体中文和 Русский。
 
 隐私
 无需账号，没有广告，没有跟踪。Omalauncher 只在下载主题、小组件、天气，以及（如果你选择安装）Linux 及其软件包时联网。

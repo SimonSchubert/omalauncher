@@ -1058,6 +1058,14 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: share(\"x\") } }").contains("share needs owl 7"))
     }
 
+    @Test fun hapticStrength() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n state feel = \"light\"\n Text { text: 1; onTap: { haptic(\"light\"); haptic(\"strong\"); haptic(feel); haptic() } } }")
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: haptic(\"hard\") } }").contains("haptic takes light, medium, strong"))
+        assertTrue(compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: haptic(\"light\") } }").contains("needs owl 23"))
+        assertTrue(compileError("widget {\n meta { owl: 22 }\n state feel = \"light\"\n Text { text: 1; onTap: haptic(feel) } }").contains("needs owl 23"))
+        Compiler.compile("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: haptic() } }")
+    }
+
     @Test fun androidApps() {
         val p = Compiler.compile("widget {\n meta { owl: 8 }\n source a = android.apps every 1m\n Image { src: a[0].icon; onTap: androidApp(a[0].key) } }")
         assertEquals(listOf("android.apps"), p.globals.map { (it as Global.Source).kind })
@@ -1661,6 +1669,24 @@ class LangTest {
         // A forgotten length is caught, not a snooze that silently does nothing.
         compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"snooze\", \"k\") } }").let { assertTrue(it, it.contains("notification(\"snooze\", key, seconds)")) }
         compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"snoozeAll\") } }").let { assertTrue(it, it.contains("notification(\"snoozeAll\", seconds)")) }
+    }
+
+    /** What's playing moved to a point in it (owl 23); the other media words still take nothing more. */
+    @Test fun mediaSeek() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n source m = android.media\n Text { text: 1; onTap: { media(\"seek\", 90); media(\"seek\", m.position + 10); media(\"toggle\") } } }")
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"seek\", 90) } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"seek\") } }").let { assertTrue(it, it.contains("media(\"seek\", seconds)")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"next\", 3) } }").let { assertTrue(it, it.contains("media(\"next\")")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"rewind\") } }").let { assertTrue(it, it.contains("media takes")) }
+    }
+
+    /** The player's speed and its own buttons (owl 23), next to seek. */
+    @Test fun mediaSpeedAndActions() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n source m = android.media\n Column { Text { text: m.speed; onTap: media(\"speed\", 1.5) }\n for a in m.actions { Text { text: a.title; onTap: media(\"action\", a.id) } } } }")
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"speed\", 2) } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"action\", \"like\") } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"action\") } }").let { assertTrue(it, it.contains("media(\"action\", a.id)")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"speed\") } }").let { assertTrue(it, it.contains("media(\"speed\", 1.5)")) }
     }
 
     @Test fun sliderAndInput() {

@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 22
+        const val LEVEL = 23
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -1489,7 +1489,7 @@ class Compiler private constructor(
                 if (call.args.size !in arity) fail("${call.name} takes ${arity.first}-${arity.last} values", call.pos)
                 val args = call.args.map { ex(it, scope) }
                 ACTION_WORDS[call.name]?.let { w ->
-                    val c = (args[0].const as? Str)?.v
+                    val c = (args.firstOrNull()?.const as? Str)?.v
                     if (c != null && c !in w.words && !(w.numbers && c.toDoubleOrNull() != null)) fail(w.message, call.pos)
                     w.forms[c]?.let { (arity, usage) -> if (call.args.size !in arity) fail("it's $usage", call.pos) }
                     // A word newer than its action, like notification("reply"), needs the level it came with.
@@ -1501,6 +1501,8 @@ class Compiler private constructor(
                 if (call.name == "notification" && call.args.size != 2) since("notification(\"action\")", call.pos)
                 // A written-out brightness; one from a value, like a Slider's, can't be told from on and off here.
                 if (call.name == "torch" && (args[0].const is Num || (args[0].const as? Str)?.v?.toDoubleOrNull() != null)) since(TORCH_LEVEL, call.pos)
+                // One from a value counts too: it couldn't run on an older launcher.
+                if (call.name == "haptic" && call.args.isNotEmpty()) since(HAPTIC_STRENGTH, call.pos)
                 if (call.name == "volume" && call.args.size == 2) {
                     (args[1].const as? Str)?.v?.let { if (it !in VOLUME_STREAMS) fail("volume's stream is ${VOLUME_STREAMS.joinToString()}", call.args[1].pos) }
                     since(VOLUME_STREAM, call.pos)

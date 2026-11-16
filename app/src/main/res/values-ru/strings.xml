@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omalauncher</string>
+    <string name="wallpaper_label">Omarchy</string>
+    <string name="wallpaper_description">Фон текущей темы Omarchy. Системные цвета подстраиваются под тему.</string>
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">Терминал</string>
+    <string name="activity_app">Приложение</string>
+    <string name="activity_files">Файлы</string>
+    <string name="activity_voice">Голос</string>
+    <string name="activity_settings">Настройки</string>
+    <string name="notification_listener">Виджеты Omalauncher</string>
+</resources>

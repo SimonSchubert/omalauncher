@@ -1,25 +1,52 @@
 package dev.omalauncher.theme
 
-import dev.omalauncher.LauncherData
-import dev.omalauncher.httpGet
+import dev.omalauncher.net.httpGet
+import dev.omalauncher.storage.LauncherData
 import dev.omalauncher.upgrade.writeAtomically
 import java.io.File
+import java.io.IOException
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicLong
 
-/** What we keep from the Omarchy repo: themes, config templates and app configs. */
-private val KEEP_PATHS =
-    listOf(
-        "themes/", "default/themed/", "default/bash/", "config/btop/", "config/starship.toml",
-        "config/lazygit/", "config/tmux/", "etc/fastfetch/", "icon.txt",
-    )
+/** One file [OmarchyRelease.download] fetches: its path in the repo and its size in bytes. */
+data class ReleaseFile(
+    val path: String,
+    val size: Long,
+)
 
 /**
- * Omarchy's repo at [ThemeStore.OMARCHY_REF], unpacked where Omarchy keeps it
- * (~/.local/share/omarchy). A download replaces the whole directory in one
- * rename once complete: an interrupted one leaves the previous version, and
- * nothing lingers from it after a successful one.
+ * The files to fetch from Omarchy at [ref]: themes, config templates and app
+ * configs, the list scripts/fetch-theme-colors.sh writes to assets/omarchy-files.txt.
+ */
+data class ReleaseFiles(
+    val ref: String,
+    val files: List<ReleaseFile>,
+) {
+    companion object {
+        /** Lines of "size path" after one "ref <commit>"; "#" lines are comments. */
+        fun parse(text: String): ReleaseFiles {
+            var ref = ""
+            val files = mutableListOf<ReleaseFile>()
+            text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.forEach { line ->
+                val (first, rest) = line.substringBefore(' ') to line.substringAfter(' ', "")
+                if (first == "ref") ref = rest else files += ReleaseFile(rest, first.toLong())
+            }
+            return ReleaseFiles(ref, files)
+        }
+    }
+}
+
+/**
+ * Omarchy's repo at [ThemeStore.OMARCHY_REF], the parts the launcher uses,
+ * where Omarchy keeps it (~/.local/share/omarchy). A download replaces the
+ * whole directory in one rename once complete: an interrupted one leaves the
+ * previous version, and nothing lingers from it after a successful one.
+ * [fetch] gets a file's bytes by its path in the repo.
  */
 class OmarchyRelease(
     val dir: File,
+    private val fetch: (String) -> ByteArray = ::fetchRaw,
 ) {
     private val marker = File(dir, ".omalauncher-ref")
 
@@ -37,38 +64,81 @@ class OmarchyRelease(
     ) {
         val theme = File(dir, "themes/$name")
         // The background first: a theme dir counts as installed once colors.toml is there.
-        background?.let { fetch("themes/$name/backgrounds/$it", File(theme, "backgrounds/$it")) }
-        fetch("themes/$name/colors.toml", File(theme, "colors.toml"))
-    }
-
-    private fun fetch(
-        path: String,
-        target: File,
-    ) {
-        val url = "https://raw.githubusercontent.com/omacom/omarchy/${ThemeStore.OMARCHY_REF}/$path"
-        writeAtomically(target, httpGet(url, connectTimeout = 15_000, readTimeout = 30_000))
+        background?.let { writeAtomically(File(theme, "backgrounds/$it"), fetch("themes/$name/backgrounds/$it")) }
+        writeAtomically(File(theme, "colors.toml"), fetch("themes/$name/colors.toml"))
     }
 
     /**
-     * Blocking. [onProgress] gets the megabytes read so far. [picked] is the
-     * theme in use: if this release drops it, it moves to [userThemes].
+     * Blocking. Fetches [release]'s files one by one, a few at a time, into a
+     * staging directory that outlives a failed or interrupted attempt: the
+     * next one fetches only what's missing, where a tarball started over.
+     * [onProgress] gets the megabytes on hand so far. [picked] is the theme
+     * in use: if this release drops it, it moves to [userThemes].
      */
     fun download(
+        release: ReleaseFiles,
         picked: String,
         userThemes: File,
         onProgress: (Int) -> Unit,
     ) {
-        val staging = File(dir.parentFile, ".omarchy.download").also(LauncherData::deleteTree)
-        unpackTarball("https://codeload.github.com/omacom/omarchy/tar.gz/${ThemeStore.OMARCHY_REF}", staging, onProgress) { path ->
-            // The lock-screen images and the boot intro videos (4.5) are unused here and add ~20 MB and ~100 MB.
-            KEEP_PATHS.any { path.startsWith(it) } && !path.endsWith("unlock.png") && "/backgrounds/intros/" !in path
+        val staging = File(dir.parentFile, ".omarchy.download")
+        // The marker names the commit a staging directory holds; one for another commit, or from a tarball, starts over.
+        val stagingMarker = File(staging, marker.name)
+        if (runCatching { stagingMarker.readText().trim() }.getOrNull() != release.ref) {
+            LauncherData.deleteTree(staging)
+            staging.mkdirs()
+            stagingMarker.writeText(release.ref + "\n")
+        }
+        val root = staging.canonicalFile
+        val have = AtomicLong()
+        var reported = -1L
+        val report = { bytes: Long ->
+            synchronized(have) {
+                val megabytes = have.addAndGet(bytes) shr 20
+                if (megabytes != reported) {
+                    reported = megabytes
+                    onProgress(megabytes.toInt())
+                }
+            }
+        }
+        val pool = Executors.newFixedThreadPool(PARALLEL)
+        try {
+            release.files
+                .map { file ->
+                    val target = requireNotNull(root.inside(file.path)) { "bad path ${file.path}" }
+                    pool.submit {
+                        // Written atomically, so a file with the listed size is complete.
+                        if (target.length() != file.size || !target.isFile) {
+                            val bytes = fetch(file.path)
+                            if (bytes.size.toLong() != file.size) throw IOException("${file.path}: ${bytes.size} bytes, expected ${file.size}")
+                            writeAtomically(target, bytes)
+                        }
+                        report(file.size)
+                    }
+                }.forEach {
+                    try {
+                        it.get()
+                    } catch (e: ExecutionException) {
+                        throw e.cause ?: e
+                    }
+                }
+        } finally {
+            pool.shutdownNow()
         }
         keepDroppedTheme(File(dir, "themes"), File(staging, "themes"), userThemes, picked)
-        File(staging, marker.name).writeText(ThemeStore.OMARCHY_REF + "\n")
         LauncherData.deleteTree(dir)
         check(staging.renameTo(dir)) { "can't move the themes into place" }
     }
+
+    private companion object {
+        /** Files fetched at once: most are small, so one at a time would mostly wait on round trips. */
+        const val PARALLEL = 4
+    }
 }
+
+/** A file of Omarchy's repo at [ThemeStore.OMARCHY_REF]. Blocking. */
+private fun fetchRaw(path: String): ByteArray =
+    httpGet("https://raw.githubusercontent.com/omacom/omarchy/${ThemeStore.OMARCHY_REF}/$path", connectTimeout = 15_000, readTimeout = 30_000)
 
 /**
  * Copies theme [name] from the [old] release's themes into [userThemes] when

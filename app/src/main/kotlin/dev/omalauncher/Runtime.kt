@@ -42,12 +42,12 @@ import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.theme.ThemeStore
-import dev.omalauncher.ui.Gestures
+import dev.omalauncher.ui.home.Gestures
 import dev.omalauncher.ui.KeyboardBridge
-import dev.omalauncher.ui.SettingsPage
-import dev.omalauncher.ui.Speaker
+import dev.omalauncher.ui.settings.SettingsPage
+import dev.omalauncher.ui.voice.Speaker
 import dev.omalauncher.voice.VoiceSession
-import dev.omalauncher.ui.TerminalTiles
+import dev.omalauncher.ui.home.TerminalTiles
 import dev.omalauncher.ui.WindowManager
 import dev.omalauncher.ui.bitmapMask
 import dev.omalauncher.ui.Palette
@@ -81,6 +81,13 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
+import dev.omalauncher.apps.AndroidAppCatalog
+import dev.omalauncher.apps.AppUsage
+import dev.omalauncher.apps.androidAppKey
+import dev.omalauncher.apps.androidShortcutKey
+import dev.omalauncher.linux.LinuxAppCatalog
+import dev.omalauncher.storage.LauncherData
+import dev.omalauncher.storage.PhoneFolders
 
 /**
  * Process-wide state: the launcher (themes, widgets, Android apps) and the
@@ -137,6 +144,12 @@ class Runtime(
         agents.release = { agent -> voiceSession.isInitialized() && voice.release(agent.bin) }
     }
     val updates = SystemUpdates(proot, pacman, agents)
+
+    /** A newer launcher: on Google Play in the play build, on GitHub releases in the foss build. */
+    val launcherUpdates = LauncherUpdates(context)
+
+    /** Messages from the developer, shown on home. */
+    val announcements = dev.omalauncher.net.Announcements(context)
     val gpu = Gpu(context, proot, pacman)
 
     /** The guest's resolv.conf, on the phone's DNS servers while Linux is up. */
@@ -204,6 +217,11 @@ class Runtime(
         // The recent strip's and home's pinned apps.
         androidApps.iconsFirst = {
             usage.recent.take(20).filter { it.startsWith("a:") }.mapTo(HashSet()) { it.substringAfter(':') } + widgets.shortcuts.items.mapNotNull(::androidKeyOf)
+        }
+        // Read before start, so the first load draws the pack's icons rather than drawing every icon twice.
+        androidApps.iconPack = style.style[Style.ICON_PACK]
+        scope.launch {
+            snapshotFlow { style.style[Style.ICON_PACK] }.drop(1).collect { androidApps.iconPack = it }
         }
         androidApps.start()
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
@@ -401,6 +419,7 @@ class Runtime(
     /** Checks for updates now, on the runtime's scope: leaving settings doesn't cancel it. */
     fun checkUpdates() {
         if (linux) scope.launch { updates.check(force = true) }
+        launcherUpdates.check(force = true)
     }
 
     /** Runs every pending update (packages and agents); the drawer then lists what changed. */

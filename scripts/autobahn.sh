@@ -32,8 +32,8 @@ for _ in $(seq 60); do
   sleep 1
 done
 
-AUTOBAHN="ws://127.0.0.1:$PORT" "$ROOT/gradlew" -p "$ROOT" :app:testDebugUnitTest \
-  --tests dev.omalauncher.WebSocketAutobahnTest --rerun -q
+AUTOBAHN="ws://127.0.0.1:$PORT" "$ROOT/gradlew" -p "$ROOT" :app:testFossDebugUnitTest \
+  --tests dev.omalauncher.net.WebSocketAutobahnTest --rerun -q
 
 python3 - "$OUT/clients/index.json" <<'PY'
 import json, sys

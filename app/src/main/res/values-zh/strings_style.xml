@@ -15,6 +15,8 @@
     <string name="style_icons">图标</string>
     <string name="style_monochrome">单色</string>
     <string name="style_colored">彩色</string>
+    <string name="style_icon_pack">图标包</string>
+    <string name="style_icon_pack_none">无</string>
     <string name="style_home_apps">主屏应用</string>
     <string name="style_boxed">带框</string>
     <string name="style_icon_only">仅图标</string>
@@ -138,7 +140,7 @@
     <string name="gestures_keybar_until_fixed">修复之前，终端按键栏使用默认按键：%1$s</string>
 
     <string name="agents_title">编程智能体</string>
-    <string name="agents_intro">和 Omarchy 一样用 mise 安装。登录会在浏览器中打开；用键盘的剪贴板粘贴密钥。</string>
+    <string name="agents_intro">和 Omarchy 一样安装，大多数用 mise。登录会在浏览器中打开；用键盘的剪贴板粘贴密钥。</string>
     <string name="agents_open">打开</string>
     <string name="agents_remove">移除</string>
     <string name="agents_still_running">%1$s 仍在运行：请先关闭，再移除一次</string>

@@ -7,10 +7,10 @@ import android.system.OsConstants
 import android.util.Log
 import androidx.annotation.StringRes
 import dev.omalauncher.R
-import dev.omalauncher.CountingInputStream
-import dev.omalauncher.LauncherData
+import dev.omalauncher.system.CountingInputStream
+import dev.omalauncher.storage.LauncherData
 import dev.omalauncher.widgets.lang.hex
-import dev.omalauncher.openHttp
+import dev.omalauncher.net.openHttp
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.upgrade.StepJournal
 import dev.omalauncher.upgrade.writeAtomically

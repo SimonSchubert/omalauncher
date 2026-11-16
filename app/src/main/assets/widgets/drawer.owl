@@ -56,6 +56,14 @@ panel "app drawer" {
       open: "打开"; ask: "提问"; askInstallLinux: "问智能体 · 安装 linux"; askInstallAgent: "问智能体 · 先装一个"
       askAgent: (bin, text) => "问 ${bin}：${text}"
     }
+    ru {
+      personal: "личные"; work: "рабочие"; apps: "приложения"; linux: "linux"; shortcuts: "ярлыки"; android: "android"
+      workApps: "рабочие приложения"; workPaused: "рабочие приложения приостановлены"; linuxApps: "приложения linux"
+      pin: "добавить на главный экран"; info: "о приложении"; uninstall: "удалить"; remove: "убрать"; edit: "изменить"; share: "поделиться"
+      settings: "настройки"; turnOn: "включить"; pause: "приостановить"; installing: "установка…"; installLinux: "установить linux"
+      open: "открыть"; ask: "спросить"; askInstallLinux: "спросить агента · установить linux"; askInstallAgent: "спросить агента · установить агента"
+      askAgent: (bin, text) => "спросить ${bin}: ${text}"
+    }
   }
   source d = android.drawer
   source ag = android.agents

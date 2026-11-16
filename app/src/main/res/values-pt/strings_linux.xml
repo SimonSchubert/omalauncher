@@ -59,6 +59,7 @@
     <string name="linux_agent_cursor">Agente do Cursor para o terminal</string>
     <string name="linux_agent_antigravity">Agente de programação Gemini do Google</string>
     <string name="linux_agent_pi">Agente de programação mínimo e extensível</string>
+    <string name="linux_agent_hermes">Agente da Nous Research, cerca de 2,5 GB</string>
     <string name="linux_agent_omp">Pi com ferramentas e plugins incluídos</string>
     <string name="linux_agent_ori">Agente de programação da OpenRouter</string>
     <string name="linux_agent_muse">Agente de programação da Meta</string>

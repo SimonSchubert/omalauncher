@@ -14,9 +14,9 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import dev.omalauncher.AppLanguage
+import dev.omalauncher.system.AppLanguage
 import dev.omalauncher.BuildConfig
-import dev.omalauncher.LauncherData
+import dev.omalauncher.storage.LauncherData
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.Proot
@@ -1173,8 +1173,12 @@ class WidgetEngine(
             "# omalauncher\n\nThis Arch system runs inside an Android launcher, omalauncher; its source is at " +
                 "https://github.com/SimonSchubert/omalauncher, should you need to understand how the launcher works.\n\n" +
                 "It's Arch Linux ARM under proot, not a booted system: you are root already (no sudo needed), and there is " +
-                "no systemd (systemctl, services and timers don't work), no cron, no Docker and no kernel modules. Install " +
-                "packages with pacman or yay, command-line tools with mise. /sdcard is the phone's own storage, but it shows only " +
+                "no systemd (systemctl, services and timers don't work), no cron, no Docker and no kernel modules. A server, " +
+                "bot or gateway keeps running in the background, but only as long as the terminal or window it was started in " +
+                "stays open, and nothing starts it again: run it in the foreground there. Install " +
+                "packages with pacman or yay, command-line tools with mise. A Chromium that a tool downloads (Playwright, " +
+                "an agent's browser) needs --no-sandbox, as you are root, and its libraries from pacman: nss at-spi2-core " +
+                "libcups libxcomposite libxdamage libxrandr mesa cairo pango. /sdcard is the phone's own storage, but it shows only " +
                 "the files Linux put there itself: save files for the user's other apps in /sdcard/Download or /sdcard/Documents " +
                 "(pictures in /sdcard/Pictures). The user's other files are in the phone folders they let Linux reach, which have " +
                 "no path: `omalauncher folders` lists them, `omalauncher ls`, `get` and `put` list and copy files in and out, and " +

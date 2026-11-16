@@ -27,7 +27,7 @@ import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.linux.ShellResult
 import dev.omalauncher.theme.Setting
 import dev.omalauncher.theme.Style
-import dev.omalauncher.ui.EmbeddedTerminal
+import dev.omalauncher.ui.home.EmbeddedTerminal
 import dev.omalauncher.ui.EmbeddedBrowser
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette

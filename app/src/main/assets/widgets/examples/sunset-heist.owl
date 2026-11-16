@@ -1,5 +1,5 @@
 app "sunset heist" {
-  meta { owl: 22; description: "A sunny city by the sea, seen from above: drive, get out, take any car, race rivals, chase down cars and run missions for cash, jump the ramps and shake off the police"; version: "1.0"; license: "MIT"; category: "games" }
+  meta { owl: 22; description: "A sunny city by the sea, seen from above: drive, get out, take any car, race rivals, chase down cars and run missions for cash, jump the ramps and shake off the police"; version: "1.1"; license: "MIT"; category: "games" }
   // How it works: the city is made from a seed in lets, 12 by 16 cells of 32 units, each a block with
   // roads along its edges, and a kind: docks on the north shore, a canal across the middle, hotels on the
   // beach, houses in the south, towers downtown and a few landmarks. Only the cells around the camera are drawn. Two scenes share one camera: the
@@ -10,7 +10,8 @@ app "sunset heist" {
   title: ""
   statusBar: false
   edge: true
-  fps: mode == "play" ? 60 : 30
+  fps: mode == "play" ? 60 : modes.saver ? 15 : 30
+  source modes = android.modes
   icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
     <rect width="256" height="256" rx="56" fill="#8fd0ec"/>
     <path d="M0 176H256V200A56 56 0 0 1 200 256H56A56 56 0 0 1 0 200Z" fill="#2a9cb8"/>

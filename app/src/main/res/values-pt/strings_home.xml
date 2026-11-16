@@ -71,4 +71,10 @@
     <string name="drawer_action_remove_from_strip">remover da barra de apps</string>
     <string name="drawer_action_info">informações do app</string>
     <string name="drawer_action_uninstall">desinstalar</string>
+    <string name="home_news_close">fechar</string>
+    <string name="home_news_off">não mostrar mais novidades</string>
+    <string name="home_news_days">dias</string>
+    <string name="home_news_hours">horas</string>
+    <string name="home_news_minutes">min</string>
+    <string name="home_news_seconds">seg</string>
 </resources>

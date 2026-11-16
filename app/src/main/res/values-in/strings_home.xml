@@ -67,4 +67,10 @@
     <string name="drawer_action_remove_from_strip">hapus dari bilah aplikasi</string>
     <string name="drawer_action_info">info aplikasi</string>
     <string name="drawer_action_uninstall">uninstal</string>
+    <string name="home_news_close">tutup</string>
+    <string name="home_news_off">jangan tampilkan berita lagi</string>
+    <string name="home_news_days">hari</string>
+    <string name="home_news_hours">jam</string>
+    <string name="home_news_minutes">mnt</string>
+    <string name="home_news_seconds">dtk</string>
 </resources>

@@ -136,6 +136,7 @@ val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
         "devin" to { w -> AcpLink(w, "devin acp") },
         "commandcode" to { w -> AcpLink(w, "commandcode acp") },
         "agy" to { w -> AcpLink(w, "agy acp") },
+        "hermes" to { w -> AcpLink(w, "hermes-acp") },
         "pi" to ::PiLink,
     )
 

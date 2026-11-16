@@ -15,6 +15,8 @@
     <string name="style_icons">ikon</string>
     <string name="style_monochrome">monokrom</string>
     <string name="style_colored">berwarna</string>
+    <string name="style_icon_pack">paket ikon</string>
+    <string name="style_icon_pack_none">tidak ada</string>
     <string name="style_home_apps">aplikasi layar utama</string>
     <string name="style_boxed">dalam kotak</string>
     <string name="style_icon_only">ikon saja</string>
@@ -138,7 +140,7 @@
     <string name="gestures_keybar_until_fixed">bilah tombol terminal memakai bawaan sampai diperbaiki: %1$s</string>
 
     <string name="agents_title">agen coding</string>
-    <string name="agents_intro">Diinstal dengan mise, seperti di Omarchy. Login terbuka di browser; tempel kunci API lewat papan klip keyboard.</string>
+    <string name="agents_intro">Diinstal seperti di Omarchy, sebagian besar dengan mise. Login terbuka di browser; tempel kunci API lewat papan klip keyboard.</string>
     <string name="agents_open">buka</string>
     <string name="agents_remove">hapus</string>
     <string name="agents_still_running">%1$s masih berjalan: tutup dulu, lalu hapus lagi</string>

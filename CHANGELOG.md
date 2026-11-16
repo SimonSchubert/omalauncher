@@ -4,6 +4,40 @@ The most important changes in each release. The Play Store notes for a release
 are in `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
 Dates are when the build was uploaded to Play.
 
+## Unreleased
+
+## 1.6.0 (versionCode 39) – 2026-11-15
+
+- Hermes is in the coding agents list (#244): it installs with its own installer (about 2.5 GB),
+  starts with --yolo like on Omarchy, updates with the system update, and can be talked to on the
+  Voice screen.
+- Linux: programs that hard link files work (uv, pnpm, cp -al, git clone --local failed with
+  "Operation not permitted"), replacing a hard-linked file no longer destroys its other copies,
+  and a program in one window can talk to its own background process started from another.
+- The Omarchy themes download is 79 MB instead of 180, and an interrupted download picks up where
+  it stopped.
+- Our widgets animate at half their rate while battery saver is on; a tap or a game in play stays
+  smooth.
+- Fix: a widget with a scrolling Column inside another scrolling Column no longer takes the
+  launcher down (the most reported crash on Play since 1.2.0).
+
+## 1.5.0 (versionCode 38) – 2026-11-14
+
+- The launcher comes in Russian, with the words Russian Android uses, and a Russian store listing.
+- Android apps can take their icons from an installed icon pack such as Arcticons: style › icon
+  pack; monochrome tints the pack's icons in the theme's accent (#120).
+- Settings tells you when a newer Omalauncher is out: from Google Play, with an update button that
+  opens Play's update screen (#190), or for the GitHub build, from GitHub releases, with a link to
+  the release.
+- Settings can show a message from us once, like a contest with a countdown, from
+  announcements.json in the store repo; "don't show news again" turns them off.
+- Owl 23: widgets pick how strong a haptic is (`haptic("light")`, `"medium"`, `"strong"`), seek
+  what's playing (`media("seek", s)`), change its speed and press its notification buttons
+  (#287, #291). now playing's progress bar is a slider where the player allows seeking.
+- Fixes: 3D models no longer flicker where their parts overlap, and one with a long thin sliver no
+  longer runs the launcher out of memory; pacman works again after the app was killed mid-install
+  (#273); the GitHub build's update button no longer crashes on a phone without a browser.
+
 ## 1.4.0 (versionCode 37) – 2026-11-12
 
 - Linux commands that look at many files run 2-8x faster with "fast system calls" on (pacman -Qk

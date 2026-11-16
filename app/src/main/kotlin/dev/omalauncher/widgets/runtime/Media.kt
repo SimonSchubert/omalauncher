@@ -22,13 +22,16 @@ import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
-import dev.omalauncher.AppLabels
+import dev.omalauncher.apps.AppLabels
+import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.bool
+import dev.omalauncher.widgets.lang.num
+import dev.omalauncher.widgets.lang.textOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
@@ -198,6 +201,11 @@ class Media(
                 "position" to (position?.let { Num(Math.floor(it)) } ?: Null),
                 "duration" to (duration?.let { Num(Math.floor(it)) } ?: Null),
                 "art" to (artSrc?.let(::Str) ?: Null),
+                // What the session lets widgets do besides play, pause and skip (owl 23): seeking, as the notification's
+                // seek bar shows only then; its speed; and the app's own buttons (like, shuffle, skip 30 s).
+                "canSeek" to bool(s != null && s.actions and PlaybackState.ACTION_SEEK_TO != 0L),
+                "speed" to (s?.playbackSpeed?.takeIf { it > 0f }?.let { Num(it.toDouble()) } ?: Null),
+                "actions" to Lst(s?.customActions.orEmpty().map { Obj(mapOf("id" to Str(it.action), "title" to Str(it.name.toString()))) }),
             ),
         )
     }
@@ -278,8 +286,15 @@ class Media(
             .map { withContext(worker) { value() } }
             .distinctUntilChanged()
 
-    /** media("toggle"), "play", "pause", "next", "previous"; without access, opens the setting that grants it. */
-    fun control(command: String) {
+    /**
+     * media("toggle"), "play", "pause", "next", "previous", and (owl 23) media("seek", seconds) from the start,
+     * media("speed", 1.5) and media("action", id) for one of the app's own buttons; without access, opens the setting
+     * that grants it.
+     */
+    fun control(
+        command: String,
+        value: Value? = null,
+    ) {
         if (!granted) {
             openAccessSettings()
             return
@@ -298,6 +313,11 @@ class Media(
             "toggle" -> if (s?.state == PlaybackState.STATE_PLAYING) t.pause() else if (canPlay) play(c) else open(c)
             "next" -> t.skipToNext()
             "previous" -> t.skipToPrevious()
+            // A session that can't seek ignores it, as Android's own seek bar does then.
+            "seek" -> value?.num()?.takeIf { it.isFinite() }?.let { t.seekTo((it.coerceAtLeast(0.0) * 1000).toLong()) }
+            "speed" -> value?.num()?.takeIf { it.isFinite() && it > 0 }?.let { t.setPlaybackSpeed(it.toFloat()) }
+            // By its id, not its place: players swap buttons (like and unlike) between reading the list and the tap.
+            "action" -> s?.customActions?.firstOrNull { it.action == value.textOrNull() }?.let { t.sendCustomAction(it, null) }
             "open" -> open(c)
         }
     }

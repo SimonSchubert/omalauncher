@@ -10,7 +10,7 @@ import android.os.Bundle
 import android.os.Build
 import android.os.UserHandle
 import android.service.notification.StatusBarNotification
-import dev.omalauncher.AppLabels
+import dev.omalauncher.apps.AppLabels
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num

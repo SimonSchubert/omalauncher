@@ -38,7 +38,7 @@
     <string name="settings_permissions">permissions</string>
     <string name="settings_permissions_subtitle">microphone, location, files, …</string>
 
-    <!-- The permissions screen (ui/PermissionsScreen.kt). Its rows reuse settings_local_network. -->
+    <!-- The permissions screen (ui/settings/PermissionsScreen.kt). Its rows reuse settings_local_network. -->
     <string name="permissions_title">permissions</string>
     <!-- The phone folders Linux reaches (PhoneFoldersRow, on top of this screen); Files is the app's name. -->
     <string name="permissions_folders_title">phone folders</string>
@@ -77,6 +77,12 @@
     <string name="settings_retry">retry</string>
     <string name="settings_system_updates">system updates</string>
     <string name="settings_widget_updates">widgets</string>
+    <!-- The updates box's section for a newer launcher, on Google Play (Play builds) or GitHub releases (GitHub builds). -->
+    <string name="settings_launcher_updates">launcher</string>
+    <string name="settings_launcher_update_available">a new Omalauncher is on Google Play</string>
+    <string name="settings_launcher_update_failed">Google Play couldn\'t update Omalauncher</string>
+    <!-- The running version and the newer one on GitHub releases (GitHub builds). -->
+    <string name="settings_launcher_update_github">Omalauncher %1$s → %2$s on GitHub</string>
     <string name="settings_update_all">update all</string>
     <string name="settings_check">check</string>
     <string name="settings_update">update</string>
