@@ -38,6 +38,8 @@
     <string name="home_fix_with_agent">エージェントで修正</string>
     <string name="home_widget_needs_linux">Linux が必要</string>
     <string name="home_widget_needs_linux_text">追加インストールする Arch Linux でコマンドを実行します</string>
+    <string name="home_widget_linux_stopped">Linux は停止中</string>
+    <string name="home_start_linux">開始</string>
 
     <string name="home_terminal_starting">起動中…</string>
     <string name="home_terminal_exited">終了しました · タップで再起動</string>

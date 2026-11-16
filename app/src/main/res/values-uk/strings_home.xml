@@ -44,6 +44,8 @@
     <string name="home_fix_with_agent">виправити з агентом</string>
     <string name="home_widget_needs_linux">потрібен Linux</string>
     <string name="home_widget_needs_linux_text">виконує команди в Arch Linux, який встановлюється за бажанням</string>
+    <string name="home_widget_linux_stopped">Linux зупинено</string>
+    <string name="home_start_linux">запустити</string>
 
     <string name="home_terminal_starting">запуск…</string>
     <string name="home_terminal_exited">завершено · торкніться, щоб перезапустити</string>

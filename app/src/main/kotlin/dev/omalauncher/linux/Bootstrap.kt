@@ -261,6 +261,16 @@ class Bootstrap(
             }
         }
 
+    /**
+     * For a Linux stopped in settings: an installed system reports [LinuxState.Installed] without running a guest
+     * command; its update steps wait for [run] when it's started. False, and nothing changes, if setup never completed.
+     */
+    fun installedWhileStopped(): Boolean {
+        if (!journal.setupComplete) return false
+        _state.value = LinuxState.Installed
+        return true
+    }
+
     @Volatile private var cancelled = false
 
     @Volatile private var connection: HttpURLConnection? = null

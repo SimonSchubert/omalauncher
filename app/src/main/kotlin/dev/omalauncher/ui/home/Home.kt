@@ -799,6 +799,9 @@ enum class LinuxPhase {
     Installing,
     Installed,
 
+    /** Installed, but stopped in settings; what needs it sends the user there to start it. */
+    Stopped,
+
     /** Not installed, failed or being removed. */
     Absent,
 }
@@ -809,8 +812,11 @@ fun linuxPhase(runtime: Runtime): LinuxPhase {
     val bootstrap = runtime.bootstrap
     val phases = remember(bootstrap) { bootstrap.state.phases() }
     val initial = remember(bootstrap) { linuxPhase(bootstrap.state.value) }
-    return phases.collectAsState(initial).value
+    return phases.collectAsState(initial).value.stopped(runtime.linuxStopped)
 }
+
+/** [LinuxPhase.Stopped] for an installed Linux that was stopped; any other phase as it is. */
+internal fun LinuxPhase.stopped(stopped: Boolean) = if (stopped && this == LinuxPhase.Installed) LinuxPhase.Stopped else this
 
 /** These states' phases, each once until it changes. */
 internal fun Flow<LinuxState>.phases(): Flow<LinuxPhase> = map(::linuxPhase).distinctUntilChanged()

@@ -193,12 +193,28 @@ class Runtime(
         private set
 
     /** Linux is installed and its services run: guest commands (like the update check) can go. */
-    private var linux = false
+    private var linux by mutableStateOf(false)
 
-    /** The Linux install and removal; one at a time. */
+    /** Whether Linux is up: false while it starts, and while it's stopped or not installed. */
+    val linuxRunning get() = linux
+
+    /** The Linux install and removal, its stop and start; one at a time. */
     private var linuxJob: Job? = null
 
+    /**
+     * Linux is installed but stopped in settings: no guest process runs, there's no foreground service, and it stays
+     * so across restarts until it's started there. Features that need Linux send the user there, as without one.
+     */
+    var linuxStopped by mutableStateOf(prefs.getBoolean(LINUX_STOPPED, false))
+        private set
+
+    private fun saveStopped(stopped: Boolean) {
+        linuxStopped = stopped
+        prefs.edit().putBoolean(LINUX_STOPPED, stopped).apply()
+    }
+
     init {
+        proot.stopped = linuxStopped
         // Saved, so removing Linux later doesn't bring the first-run screen back.
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
         // Android's share sheet lists Linux only while it's installed; ShareInActivity's alias starts off
@@ -283,7 +299,19 @@ class Runtime(
             style.start()
             // On the first-run screen the download is the screen's job, with progress.
             if (launcherReady) scope.launch { themes.ensureRelease() }
-            if (bootstrap.wanted) runLinux { bootstrap.run() } else bootstrap.run()
+            when {
+                !bootstrap.wanted -> bootstrap.run()
+                // Stopped in settings, it stays stopped: no service, no guest command, until it's started there.
+                linuxStopped && bootstrap.installedWhileStopped() -> Unit
+                else -> {
+                    // Stopped mid-install can't happen through settings; an install always goes on.
+                    if (linuxStopped) {
+                        saveStopped(false)
+                        proot.stopped = false
+                    }
+                    runLinux { bootstrap.run() }
+                }
+            }
         }
     }
 
@@ -298,7 +326,7 @@ class Runtime(
     fun installLinux(agents: List<Agent>) = runLinux { bootstrap.install(agents) }
 
     /** Continues a failed install, or a failed update of an installed system. */
-    fun retryLinux() = runLinux { bootstrap.run() }
+    fun retryLinux() = if (linuxStopped) startLinux() else runLinux { bootstrap.run() }
 
     /** Stops an install that hasn't completed, running or failed, and deletes what it downloaded and unpacked. */
     fun cancelLinux() {
@@ -317,17 +345,51 @@ class Runtime(
     /** Runs [work] with the foreground service up, so it goes on outside the app; then starts Linux if it's installed. */
     private fun runLinux(work: suspend () -> Unit) {
         if (linuxJob?.isActive == true) return
+        linuxJob = scope.launch { withService(work) }
+    }
+
+    private suspend fun withService(work: suspend () -> Unit) {
+        setService(true)
+        withContext(Dispatchers.IO) {
+            if (!prepared) {
+                proot.prepare()
+                prepared = true
+            }
+        }
+        work()
+        if (bootstrap.isInstalled) onLinuxReady() else setService(false)
+    }
+
+    /**
+     * Stops an installed Linux without deleting anything: every guest process ends (Linux apps, terminals, agents,
+     * widgets' commands) and the foreground service goes. It stays stopped across restarts, until [startLinux].
+     */
+    fun stopLinux() {
+        if (linuxStopped || !bootstrap.isInstalled) return
+        saveStopped(true)
+        // After a start still under way, which would bring it up again.
+        val before = linuxJob
         linuxJob =
             scope.launch {
-                setService(true)
-                withContext(Dispatchers.IO) {
-                    if (!prepared) {
-                        proot.prepare()
-                        prepared = true
-                    }
-                }
-                work()
-                if (bootstrap.isInstalled) onLinuxReady() else setService(false)
+                before?.join()
+                linux = false
+                widgets.linuxChanged(false)
+                audio.stop()
+                withContext(Dispatchers.IO) { proot.stop() }
+                setService(false)
+            }
+    }
+
+    /** Starts a Linux stopped with [stopLinux]: as at launch, with update steps that waited. */
+    fun startLinux() {
+        if (!linuxStopped) return
+        saveStopped(false)
+        val before = linuxJob
+        linuxJob =
+            scope.launch {
+                before?.join()
+                proot.stopped = false
+                withService { bootstrap.run() }
             }
     }
 
@@ -352,6 +414,9 @@ class Runtime(
                 gpu.turnOff()
                 linuxApps.clear()
                 setService(false)
+                // Removed while stopped: the next install runs.
+                saveStopped(false)
+                proot.stopped = false
             }
     }
 
@@ -732,5 +797,6 @@ class Runtime(
     companion object {
         private const val TAG = "runtime"
         private const val SETUP_DONE = "setup_done"
+        private const val LINUX_STOPPED = "linux_stopped"
     }
 }

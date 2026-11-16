@@ -14,6 +14,7 @@
     <string name="settings_language_phone">スマートフォンの言語</string>
     <string name="settings_linux">linux</string>
     <string name="settings_linux_installed">インストール済み · 削除</string>
+    <string name="settings_linux_stopped">インストール済み · 停止中</string>
     <string name="settings_linux_installing_percent">インストール中 %1$d%% · %2$s</string>
     <string name="settings_linux_installing">インストール中 · %1$s</string>
     <string name="settings_linux_failed">セットアップが停止 · 再試行</string>

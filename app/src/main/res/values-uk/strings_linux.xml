@@ -133,6 +133,15 @@
     <string name="linux_cpu_pinning_title">швидкі системні виклики</string>
     <string name="linux_cpu_pinning_on">увімк · тримає Linux на одному швидкому ядрі CPU · для програм, запущених відтепер</string>
     <string name="linux_cpu_pinning_off">вимк · для програм, запущених відтепер</string>
+    <string name="linux_session_title">сеанс</string>
+    <string name="linux_session_running">працює · додатки Linux, термінали й агенти доступні</string>
+    <string name="linux_session_starting">запускається…</string>
+    <string name="linux_session_stopped">зупинено · нічого не працює й нічого не видаляється · лишається зупиненим після перезапуску</string>
+    <string name="linux_stop">зупинити</string>
+    <string name="linux_start">запустити</string>
+    <string name="linux_stop_ask">зупинити linux?</string>
+    <string name="linux_stop_body">Закриває додатки Linux, термінали й ШІ-агентів і перериває їхню роботу. Нічого не видаляється. Віджети й додатки, яким потрібен Linux, чекатимуть, доки ви знову не запустите його тут.</string>
+    <string name="linux_stop_confirm">зупинити</string>
 
     <string name="linux_notification_channel">Сеанс Linux</string>
     <string name="linux_notify_channel">Агенти й скрипти</string>

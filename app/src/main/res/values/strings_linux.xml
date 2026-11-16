@@ -170,6 +170,15 @@
     <string name="linux_cpu_pinning_title">fast system calls</string>
     <string name="linux_cpu_pinning_on">on · keeps Linux on one fast CPU core · for programs started from now on</string>
     <string name="linux_cpu_pinning_off">off · for programs started from now on</string>
+    <string name="linux_session_title">session</string>
+    <string name="linux_session_running">running · Linux apps, terminals and agents work</string>
+    <string name="linux_session_starting">starting…</string>
+    <string name="linux_session_stopped">stopped · nothing runs and nothing is deleted · stays stopped after a restart</string>
+    <string name="linux_stop">stop</string>
+    <string name="linux_start">start</string>
+    <string name="linux_stop_ask">stop linux?</string>
+    <string name="linux_stop_body">Closes Linux apps, terminals and coding agents, and ends whatever they were doing. Nothing is deleted. Widgets and apps that need Linux wait until you start it here again.</string>
+    <string name="linux_stop_confirm">stop</string>
 
     <!-- The ongoing notification while Linux runs. -->
     <string name="linux_notification_channel">Linux session</string>

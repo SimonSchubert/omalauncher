@@ -101,7 +101,7 @@ private fun SettingsPage(
     onDismiss: () -> Unit,
 ) {
     val close = onDismiss
-    val linuxInstalled = runtime.bootstrap.state.collectAsState().value == LinuxState.Installed
+    val linuxInstalled = runtime.bootstrap.state.collectAsState().value == LinuxState.Installed && !runtime.linuxStopped
 
     // Settings has no home underneath: the agent opens in its own terminal, or the agents screen offers one.
     fun agent(

@@ -133,6 +133,15 @@
     <string name="linux_cpu_pinning_title">быстрые системные вызовы</string>
     <string name="linux_cpu_pinning_on">вкл · Linux работает на одном быстром ядре процессора · для программ, запущенных после включения</string>
     <string name="linux_cpu_pinning_off">выкл · для программ, запущенных после выключения</string>
+    <string name="linux_session_title">сеанс</string>
+    <string name="linux_session_running">работает · Linux-приложения, терминалы и агенты доступны</string>
+    <string name="linux_session_starting">запускается…</string>
+    <string name="linux_session_stopped">остановлен · ничего не работает и ничего не удаляется · остаётся остановленным после перезапуска</string>
+    <string name="linux_stop">остановить</string>
+    <string name="linux_start">запустить</string>
+    <string name="linux_stop_ask">остановить linux?</string>
+    <string name="linux_stop_body">Закрывает Linux-приложения, терминалы и ИИ-агентов и прерывает их работу. Ничего не удаляется. Виджеты и приложения, которым нужен Linux, ждут, пока вы снова не запустите его здесь.</string>
+    <string name="linux_stop_confirm">остановить</string>
 
     <string name="linux_notification_channel">Сеанс Linux</string>
     <string name="linux_notify_channel">Агенты и скрипты</string>

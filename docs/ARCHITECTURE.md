@@ -187,6 +187,12 @@ above.
 Guest processes die with the app (`--kill-on-exit`), so the Wayland protocol,
 the socket and the guest environment carry no state across an update.
 
+Settings › Linux can stop an installed Linux (`Runtime.stopLinux`): every
+guest process is killed, the foreground service goes, and `Proot.process`
+refuses to start another until it's started again. The `linux_stopped`
+preference keeps it stopped across restarts; meanwhile the Wayland server and
+the bridges stay up, and whatever needs Linux opens its settings.
+
 ## Where to change what
 
 Each recipe lists what a complete change touches. Tests go next to the code

@@ -23,6 +23,12 @@ class LinuxPhaseTest {
         assertEquals(listOf(LinuxPhase.Checking, LinuxPhase.Absent, LinuxPhase.Installing, LinuxPhase.Installed), phases)
     }
 
+    @Test fun onlyAnInstalledLinuxIsStopped() {
+        assertEquals(LinuxPhase.Stopped, LinuxPhase.Installed.stopped(true))
+        assertEquals(LinuxPhase.Installed, LinuxPhase.Installed.stopped(false))
+        for (phase in listOf(LinuxPhase.Checking, LinuxPhase.Installing, LinuxPhase.Absent)) assertEquals(phase, phase.stopped(true))
+    }
+
     @Test fun failedRemovingAndNotInstalledAreAllAbsent() {
         val states = flowOf(LinuxState.Failed(Stage.Packages, "x", emptyList()), LinuxState.Removing, LinuxState.NotInstalled)
         assertEquals(listOf(LinuxPhase.Absent), runBlocking { states.phases().toList() })

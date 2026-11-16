@@ -78,7 +78,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val linux by runtime.bootstrap.state.collectAsState()
-    val installed = linux == LinuxState.Installed
+    // Stopped, Linux's rows send the user to start it, as they offer an install without it.
+    val installed = linux == LinuxState.Installed && !runtime.linuxStopped
     var localNetworkMissing by remember { mutableStateOf(LocalNetwork.missing(context)) }
     // Once Android won't show its dialog any more, a tap opens the app's own settings, where the switch then is.
     val askLocalNetwork = rememberAskPermission(LocalNetwork.PERMISSION) { localNetworkMissing = !it }
@@ -103,7 +104,7 @@ fun SettingsScreen(
     OverlayPanel(stringResource(R.string.settings_title), onDismiss, contentWidth = ReadingWidth) {
         val linuxStatus =
             when (val l = linux) {
-                LinuxState.Installed -> stringResource(R.string.settings_linux_installed)
+                LinuxState.Installed -> stringResource(if (runtime.linuxStopped) R.string.settings_linux_stopped else R.string.settings_linux_installed)
                 is LinuxState.Installing ->
                     l.progress?.let { stringResource(R.string.settings_linux_installing_percent, (it * 100).toInt(), stringResource(l.stage.label)) }
                         ?: stringResource(R.string.settings_linux_installing, stringResource(l.stage.label))

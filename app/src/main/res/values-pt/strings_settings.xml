@@ -16,6 +16,7 @@
     <string name="settings_language_phone">idioma do telefone</string>
     <string name="settings_linux">linux</string>
     <string name="settings_linux_installed">instalado · remover</string>
+    <string name="settings_linux_stopped">instalado · parado</string>
     <string name="settings_linux_installing_percent">instalando %1$d%% · %2$s</string>
     <string name="settings_linux_installing">instalando · %1$s</string>
     <string name="settings_linux_failed">a instalação parou · tentar de novo</string>

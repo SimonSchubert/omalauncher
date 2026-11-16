@@ -129,6 +129,15 @@
     <string name="linux_cpu_pinning_title">schnelle systemaufrufe</string>
     <string name="linux_cpu_pinning_on">an · hält linux auf einem schnellen cpu-kern · für ab jetzt gestartete programme</string>
     <string name="linux_cpu_pinning_off">aus · für ab jetzt gestartete programme</string>
+    <string name="linux_session_title">sitzung</string>
+    <string name="linux_session_running">läuft · linux-apps, terminals und agenten funktionieren</string>
+    <string name="linux_session_starting">startet…</string>
+    <string name="linux_session_stopped">gestoppt · nichts läuft und nichts wird gelöscht · bleibt auch nach einem neustart gestoppt</string>
+    <string name="linux_stop">stoppen</string>
+    <string name="linux_start">starten</string>
+    <string name="linux_stop_ask">linux stoppen?</string>
+    <string name="linux_stop_body">Schließt Linux-Apps, Terminals und Coding-Agenten und beendet, was sie gerade tun. Nichts wird gelöscht. Widgets und Apps, die Linux brauchen, warten, bis du es hier wieder startest.</string>
+    <string name="linux_stop_confirm">stoppen</string>
 
     <string name="linux_notification_channel">Linux-Sitzung</string>
     <string name="linux_notify_channel">Agenten und Skripte</string>

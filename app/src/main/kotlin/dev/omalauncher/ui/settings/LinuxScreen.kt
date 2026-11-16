@@ -137,7 +137,10 @@ private fun Installed(runtime: Runtime) {
             )
         }
     }
-    if (runtime.gpu.supported) {
+    Spacer(Modifier.height(8.dp))
+    RunningRow(runtime)
+    // Its job runs in Linux; stopped, its buttons would do nothing.
+    if (runtime.gpu.supported && !runtime.linuxStopped) {
         Spacer(Modifier.height(8.dp))
         GpuRow(runtime)
     }
@@ -162,6 +165,55 @@ private fun Installed(runtime: Runtime) {
             Row {
                 BracketAction(stringResource(R.string.linux_remove_confirm), Palette.red, Modifier.passesKeys(), runtime::removeLinux)
                 BracketAction(stringResource(R.string.linux_cancel), Palette.muted, Modifier.focusRequester(cancel).passesKeys(ask)) { confirm = false }
+            }
+        }
+    }
+}
+
+/**
+ * Whether Linux runs, with a way to stop it (after asking: it ends everything running in it) and to start it again.
+ * Stopping deletes nothing; see [Runtime.stopLinux].
+ */
+@Composable
+private fun RunningRow(runtime: Runtime) {
+    val stopped = runtime.linuxStopped
+    val running = runtime.linuxRunning
+    var asked by remember { mutableStateOf(false) }
+    // Only while there's something to stop; it's asked anew next time.
+    val confirm = asked && running && !stopped
+    Column(Modifier.card(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                BasicText(stringResource(R.string.linux_session_title), style = Mono.copy(fontSize = TextSize.Item))
+                val status =
+                    when {
+                        stopped -> R.string.linux_session_stopped
+                        running -> R.string.linux_session_running
+                        else -> R.string.linux_session_starting
+                    }
+                BasicText(
+                    stringResource(status),
+                    style = Mono.copy(color = if (running) Palette.green else Palette.muted, fontSize = TextSize.Small),
+                )
+            }
+            val passed = Modifier.takesPassedKeys().passesKeys()
+            when {
+                stopped -> BracketAction(stringResource(R.string.linux_start), Palette.accent, passed, runtime::startLinux)
+                running && !confirm -> BracketAction(stringResource(R.string.linux_stop), Palette.red, passed) { asked = true }
+            }
+        }
+        if (confirm) {
+            BasicText(stringResource(R.string.linux_stop_ask), style = Mono.copy(color = Palette.red))
+            BasicText(
+                stringResource(R.string.linux_stop_body),
+                style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
+            )
+            Row {
+                BracketAction(stringResource(R.string.linux_stop_confirm), Palette.red, Modifier.takesPassedKeys().passesKeys()) {
+                    asked = false
+                    runtime.stopLinux()
+                }
+                BracketAction(stringResource(R.string.linux_cancel), Palette.muted, Modifier.passesKeys()) { asked = false }
             }
         }
     }

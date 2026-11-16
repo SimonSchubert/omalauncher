@@ -127,6 +127,15 @@
     <string name="linux_cpu_pinning_title">高速システムコール</string>
     <string name="linux_cpu_pinning_on">オン · Linux を高速な CPU コアひとつに固定 · これから起動するプログラムに適用</string>
     <string name="linux_cpu_pinning_off">オフ · これから起動するプログラムに適用</string>
+    <string name="linux_session_title">セッション</string>
+    <string name="linux_session_running">実行中 · Linux アプリ、ターミナル、エージェントが使えます</string>
+    <string name="linux_session_starting">起動中…</string>
+    <string name="linux_session_stopped">停止中 · 何も実行されず、何も削除されません · 再起動後も停止したまま</string>
+    <string name="linux_stop">停止</string>
+    <string name="linux_start">開始</string>
+    <string name="linux_stop_ask">linux を停止しますか？</string>
+    <string name="linux_stop_body">Linux アプリ、ターミナル、コーディングエージェントを閉じ、実行中の処理を終了します。何も削除されません。Linux が必要なウィジェットやアプリは、ここで再び開始するまで待機します。</string>
+    <string name="linux_stop_confirm">停止</string>
 
     <string name="linux_notification_channel">Linux セッション</string>
     <string name="linux_notify_channel">エージェントとスクリプト</string>

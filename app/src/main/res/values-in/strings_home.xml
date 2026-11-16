@@ -39,6 +39,8 @@
     <string name="home_fix_with_agent">perbaiki dengan agen</string>
     <string name="home_widget_needs_linux">perlu Linux</string>
     <string name="home_widget_needs_linux_text">menjalankan perintah di Arch Linux opsional</string>
+    <string name="home_widget_linux_stopped">Linux berhenti</string>
+    <string name="home_start_linux">mulai</string>
 
     <string name="home_terminal_starting">memulai…</string>
     <string name="home_terminal_exited">berhenti · ketuk untuk memulai ulang</string>

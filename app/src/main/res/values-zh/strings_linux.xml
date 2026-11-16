@@ -127,6 +127,15 @@
     <string name="linux_cpu_pinning_title">快速系统调用</string>
     <string name="linux_cpu_pinning_on">已开启 · 让 Linux 运行在一个高性能 CPU 核心上 · 对之后启动的程序生效</string>
     <string name="linux_cpu_pinning_off">已关闭 · 对之后启动的程序生效</string>
+    <string name="linux_session_title">会话</string>
+    <string name="linux_session_running">运行中 · Linux 应用、终端和智能体可用</string>
+    <string name="linux_session_starting">正在启动…</string>
+    <string name="linux_session_stopped">已停止 · 不运行也不删除任何内容 · 重启后仍保持停止</string>
+    <string name="linux_stop">停止</string>
+    <string name="linux_start">启动</string>
+    <string name="linux_stop_ask">停止 linux？</string>
+    <string name="linux_stop_body">会关闭 Linux 应用、终端和编程智能体，并结束它们正在做的事。不会删除任何内容。需要 Linux 的小组件和应用会一直等待，直到你在这里重新启动它。</string>
+    <string name="linux_stop_confirm">停止</string>
 
     <string name="linux_notification_channel">Linux 会话</string>
     <string name="linux_notify_channel">智能体和脚本</string>

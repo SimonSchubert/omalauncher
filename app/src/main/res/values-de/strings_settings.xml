@@ -18,6 +18,7 @@
     <string name="settings_language_phone">sprache des smartphones</string>
     <string name="settings_linux">linux</string>
     <string name="settings_linux_installed">installiert · entfernen</string>
+    <string name="settings_linux_stopped">installiert · gestoppt</string>
     <!-- %2$s is the setup stage, like "download arch linux". -->
     <string name="settings_linux_installing_percent">wird installiert %1$d%% · %2$s</string>
     <string name="settings_linux_installing">wird installiert · %1$s</string>

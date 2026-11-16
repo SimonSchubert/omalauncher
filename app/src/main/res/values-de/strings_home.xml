@@ -41,6 +41,8 @@
     <string name="home_fix_with_agent">mit agent beheben</string>
     <string name="home_widget_needs_linux">braucht Linux</string>
     <string name="home_widget_needs_linux_text">führt befehle im optionalen Arch Linux aus</string>
+    <string name="home_widget_linux_stopped">Linux ist gestoppt</string>
+    <string name="home_start_linux">starten</string>
 
     <string name="home_terminal_starting">startet…</string>
     <string name="home_terminal_exited">beendet · zum neustarten tippen</string>

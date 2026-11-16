@@ -17,6 +17,7 @@
     <string name="settings_language_phone">язык телефона</string>
     <string name="settings_linux">linux</string>
     <string name="settings_linux_installed">установлен · удалить</string>
+    <string name="settings_linux_stopped">установлен · остановлен</string>
     <string name="settings_linux_installing_percent">установка %1$d%% · %2$s</string>
     <string name="settings_linux_installing">установка · %1$s</string>
     <string name="settings_linux_failed">установка остановлена · повторить</string>

@@ -14,6 +14,7 @@
     <string name="settings_language_phone">bahasa ponsel</string>
     <string name="settings_linux">linux</string>
     <string name="settings_linux_installed">terinstal · hapus</string>
+    <string name="settings_linux_stopped">terinstal · berhenti</string>
     <string name="settings_linux_installing_percent">menginstal %1$d%% · %2$s</string>
     <string name="settings_linux_installing">menginstal · %1$s</string>
     <string name="settings_linux_failed">penyiapan berhenti · coba lagi</string>

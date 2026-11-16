@@ -131,6 +131,15 @@
     <string name="linux_cpu_pinning_title">llamadas al sistema rápidas</string>
     <string name="linux_cpu_pinning_on">activadas · mantiene Linux en un núcleo de CPU rápido · para los programas que se inicien a partir de ahora</string>
     <string name="linux_cpu_pinning_off">desactivadas · para los programas que se inicien a partir de ahora</string>
+    <string name="linux_session_title">sesión</string>
+    <string name="linux_session_running">en marcha · las apps de Linux, las terminales y los agentes funcionan</string>
+    <string name="linux_session_starting">iniciando…</string>
+    <string name="linux_session_stopped">detenido · no se ejecuta ni se borra nada · sigue detenido tras reiniciar</string>
+    <string name="linux_stop">detener</string>
+    <string name="linux_start">iniciar</string>
+    <string name="linux_stop_ask">¿detener linux?</string>
+    <string name="linux_stop_body">Cierra las apps de Linux, las terminales y los agentes de programación, y termina lo que estaban haciendo. No se borra nada. Los widgets y las apps que necesitan Linux esperan hasta que lo vuelvas a iniciar aquí.</string>
+    <string name="linux_stop_confirm">detener</string>
 
     <string name="linux_notification_channel">Sesión de Linux</string>
     <string name="linux_notify_channel">Agentes y scripts</string>

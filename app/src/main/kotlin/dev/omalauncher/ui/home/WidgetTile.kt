@@ -83,7 +83,7 @@ internal fun WidgetTile(
         if (waitsForLinux != null) {
             // While an installed Linux starts up the tile stays empty; it only offers an install when there's none.
             if (waitsForLinux != LinuxPhase.Checking && waitsForLinux != LinuxPhase.Installed) {
-                LinuxPlaceholder(spec.name, installing = waitsForLinux == LinuxPhase.Installing, onInstallLinux)
+                LinuxPlaceholder(spec.name, waitsForLinux, onInstallLinux)
             }
         } else if (instance != null && needs.isNotEmpty()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -123,24 +123,34 @@ internal fun WidgetTile(
     }
 }
 
-/** A widget that runs Linux commands, before Linux is installed: its name and an offer to install. */
+/**
+ * A widget that runs Linux commands, before Linux is installed: its name and an offer to install. While Linux is
+ * stopped, an offer to start it; both buttons open Linux's settings.
+ */
 @Composable
 private fun LinuxPlaceholder(
     name: String,
-    installing: Boolean,
+    phase: LinuxPhase,
     onInstall: () -> Unit,
 ) {
+    val stopped = phase == LinuxPhase.Stopped
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         BasicText(name, style = Mono.copy(color = Palette.muted), maxLines = 1)
         Spacer(Modifier.weight(1f))
-        BasicText(stringResource(R.string.home_widget_needs_linux), style = Mono.copy(color = Palette.accent))
+        BasicText(stringResource(if (stopped) R.string.home_widget_linux_stopped else R.string.home_widget_needs_linux), style = Mono.copy(color = Palette.accent))
         BasicText(
             stringResource(R.string.home_widget_needs_linux_text),
             style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        TileButton(stringResource(if (installing) R.string.home_installing else R.string.home_install), Palette.accent, onInstall)
+        val button =
+            when (phase) {
+                LinuxPhase.Stopped -> R.string.home_start_linux
+                LinuxPhase.Installing -> R.string.home_installing
+                else -> R.string.home_install
+            }
+        TileButton(stringResource(button), Palette.accent, onInstall)
     }
 }
 
