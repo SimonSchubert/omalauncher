@@ -151,6 +151,8 @@ private fun DesktopScreen(
 
     // Only whether it shows is read here; the animation itself runs in the layer, without recomposing.
     val panelShown by remember(state) { derivedStateOf { state.drawer.value > 0.01f } }
+    // All the way open: the strip has slid away by then.
+    val drawerOpen by remember(state) { derivedStateOf { state.drawer.value >= 1f } }
     // Closing it forgets the search, like stock drawers: the next swipe up shows every app, not the old results.
     LaunchedEffect(panelShown) { if (!panelShown) state.query = "" }
 
@@ -289,8 +291,19 @@ private fun DesktopScreen(
                         // Home only: the open app list has everything.
                         // Swiping up from either does what it does on home, as from the dock on stock launchers.
                         // Keys go between it and home's tiles both ways, which Compose's search doesn't find (see PromptBar).
-                        if (LauncherStyle.recentApps && !panelShown) {
-                            RecentStrip(runtime, Modifier.homeSwipe(runtime, state, enabled = !locked).lockedTaps(locked).focusRequester(state.stripEntry).focusGroup(), home = state.homeEntry)
+                        // As the drawer opens it slides down behind the bar and fades, as the panel comes up; it stays
+                        // until the drawer is all the way open, so a swipe that started on it goes on opening the drawer.
+                        if (LauncherStyle.recentApps && !drawerOpen) {
+                            RecentStrip(
+                                runtime,
+                                Modifier
+                                    .leavesWith(state)
+                                    .homeSwipe(runtime, state, enabled = !locked)
+                                    .lockedTaps(locked)
+                                    .focusRequester(state.stripEntry)
+                                    .focusGroup(),
+                                home = state.homeEntry,
+                            )
                         }
                         // Insets itself by the grid gap, so it lines up with the tiles and the gap still takes taps.
                         PromptBar(runtime, state, modifier = Modifier.homeSwipe(runtime, state, enabled = !locked).lockedTaps(locked))
@@ -462,3 +475,21 @@ private fun Modifier.placedWhile(shown: () -> Boolean): Modifier {
         }
     }
 }
+
+/**
+ * The strip's way out as the drawer opens, the panel's way in turned around: it slides down behind the bar and fades
+ * with the drawer's first half, in the layer, so a drag doesn't recompose it. From the moment the drawer shows it takes
+ * no room, as when it left then, so the panel above gets the strip's height at once, while the strip still draws there.
+ */
+private fun Modifier.leavesWith(state: LauncherState): Modifier =
+    layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        val height = if (state.drawer.value > 0.01f) 0 else placeable.height
+        // Bottom-aligned where it took room: with none, it reaches up over the panel's bottom edge.
+        layout(placeable.width, height) { placeable.place(0, height - placeable.height) }
+    }.graphicsLayer {
+        // Gone by the time the drawer is half open, so it doesn't sit over the drawer's first row for long.
+        val out = (state.drawer.value * 2f).coerceIn(0f, 1f)
+        alpha = 1f - out
+        translationY = out * size.height
+    }
