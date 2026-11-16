@@ -354,6 +354,7 @@ internal fun HomeGrid(
     /** Where the strip and the bar stand beside the grid; null for below it. */
     side: HomeSide? = null,
     per: Int = 1,
+    allowPageSwipe: Boolean = true,
 ) {
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -525,7 +526,7 @@ internal fun HomeGrid(
                                 sorting = null
                                 outSince = 0L
                             }
-                            val edgeSide = if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
+                            val edgeSide = if (!allowPageSwipe) 0 else if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
                             when {
                                 edgeSide == 0 -> atEdgeSince = 0L
                                 atEdgeSince == 0L -> atEdgeSince = now
@@ -772,7 +773,7 @@ internal fun HomeGrid(
                 // and composing that one, a face's shaders drawn with it, held up the swipe's first frames. Their animated
                 // widgets wait until some of the page shows.
                 val homeCovered = LocalHomeCovered.current
-                HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 2, key = { slots.getOrNull(it)?.first() ?: -it }, userScrollEnabled = !locked) { slot ->
+                HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 2, key = { slots.getOrNull(it)?.first() ?: -it }, userScrollEnabled = allowPageSwipe && !locked) { slot ->
                     val shown = pagesAt(slot, slots)
                     val g = gridFor(shown, grid to wide)
                     val covered = remember(homeCovered, pager, slot) { { homeCovered() || pager.layoutInfo.visiblePagesInfo.none { it.index == slot } } }

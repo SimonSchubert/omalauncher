@@ -24,10 +24,11 @@ android {
         targetSdk = 37
         versionCode = 39
         versionName = "1.6.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += "arm64-v8a" }
     }
 
-    buildFeatures { buildConfig = true }
+    buildFeatures { buildConfig = true; aidl = true }
 
     // play: the AAB for Google Play, with Play's in-app updates, whose library is closed source. foss: the APK on
     // GitHub releases, which F-Droid builds too, without it; its LauncherUpdates asks GitHub releases instead.
@@ -129,4 +130,6 @@ dependencies {
     testImplementation(libs.junit)
     // android.jar only has stubs of org.json.
     testImplementation(libs.org.json)
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }

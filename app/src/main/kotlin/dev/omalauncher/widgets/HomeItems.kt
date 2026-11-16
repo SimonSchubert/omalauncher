@@ -90,8 +90,9 @@ data class FolderEntry(
 class Shortcuts(
     context: Context,
     private val layout: WidgetLayout,
+    profile: String? = null,
 ) {
-    private val prefs = context.getSharedPreferences("shortcuts", Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(profile?.let { "shortcuts_$it" } ?: "shortcuts", Context.MODE_PRIVATE)
     val items = mutableStateListOf<Shortcut>()
     private val folderEntries = mutableStateListOf<FolderEntry>()
 
@@ -114,6 +115,17 @@ class Shortcuts(
         layout.pageStamp
         return items.filter { it.folder == null }.map { it.copy(page = layout.page(it.key, screen) ?: screen.fromMain(it.page)) } +
             folderEntries.map { f -> Folder(f.key, layout.page(f.key, screen) ?: screen.fromMain(f.page), items.filter { it.folder == f.key }, f.name) }
+    }
+
+    /** A desktop uses MAIN: materialize the phone's shown-screen pages rather than its main-screen defaults. */
+    internal fun seedFrom(source: Shortcuts) {
+        items.clear()
+        items += source.items.map { item ->
+            if (item.folder == null) item.copy(page = source.layout.pageOn(item.key, item.page)) else item
+        }
+        folderEntries.clear()
+        folderEntries += source.folderEntries.map { folder -> folder.copy(page = source.layout.pageOn(folder.key, folder.page)) }
+        save()
     }
 
     /**

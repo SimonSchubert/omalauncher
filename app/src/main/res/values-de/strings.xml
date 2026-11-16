@@ -10,4 +10,6 @@
     <string name="activity_voice">Sprechen</string>
     <string name="activity_settings">Einstellungen</string>
     <string name="notification_listener">Omalauncher-Widgets</string>
+    <string name="settings_external_desktops">externe Desktops</string>
+    <string name="settings_external_desktops_subtitle">genehmigte Desktop-Hosts prüfen oder widerrufen</string>
 </resources>

@@ -10,4 +10,6 @@
     <string name="activity_voice">Voz</string>
     <string name="activity_settings">Configuración</string>
     <string name="notification_listener">Widgets de Omalauncher</string>
+    <string name="settings_external_desktops">escritorios externos</string>
+    <string name="settings_external_desktops_subtitle">revisar o revocar los hosts de escritorio autorizados</string>
 </resources>

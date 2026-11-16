@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="desktop_apps">apps</string>
+    <string name="desktop_widgets">widgets</string>
+    <string name="desktop_workspace_widgets">desktop widgets</string>
+    <string name="desktop_remove">remove from desktop</string>
+    <string name="desktop_terminal_phone">%1$s\nTerminal presentation is available on the phone</string>
+    <string name="desktop_pages">%1$d home pages</string>
+    <string name="desktop_page">page %1$d/%2$d</string>
+    <string name="desktop_pin">[pin]</string>
+    <string name="desktop_hosts">external desktops</string>
+    <string name="desktop_no_hosts">No approved desktop hosts</string>
+    <string name="desktop_revoke">%1$s  [revoke]</string>
+    <string name="desktop_request_expired">Desktop request expired. Connect again from the desktop host.</string>
+    <string name="desktop_allow_title">Allow external desktop?</string>
+    <string name="desktop_allow">Allow</string>
+    <string name="desktop_deny">Deny</string>
+    <string name="desktop_consent">%1$s\n%2$s\n\nThis app can display your widgets and themes, interact with widget data and actions, and request app launches. Linux and agent windows are unavailable through this bridge. You can revoke access in settings &gt; external desktops.\n\nSigning certificate: %3$s</string>
+</resources>

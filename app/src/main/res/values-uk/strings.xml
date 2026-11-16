@@ -10,4 +10,6 @@
     <string name="activity_voice">Голос</string>
     <string name="activity_settings">Налаштування</string>
     <string name="notification_listener">Віджети Omalauncher</string>
+    <string name="settings_external_desktops">зовнішні робочі столи</string>
+    <string name="settings_external_desktops_subtitle">перегляд або відкликання дозволів хостів робочого столу</string>
 </resources>

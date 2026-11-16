@@ -136,6 +136,9 @@ fun SettingsScreen(
                     SettingsRow(R.string.settings_agents, needsLinux, onLinux)
                 },
                 SettingsRow(R.string.settings_packages, if (installed) stringResource(R.string.settings_packages_subtitle) else needsLinux, if (installed) onPackages else onLinux),
+                SettingsRow(R.string.settings_external_desktops, stringResource(R.string.settings_external_desktops_subtitle)) {
+                    context.startActivity(Intent(context, dev.omalauncher.desktop.DesktopConsentActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                },
                 if (notHome) {
                     SettingsRow(R.string.settings_home_app, stringResource(R.string.settings_home_app_subtitle)) {
                         askHome.launch(roles.createRequestRoleIntent(RoleManager.ROLE_HOME))

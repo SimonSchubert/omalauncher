@@ -10,4 +10,6 @@
     <string name="activity_voice">Suara</string>
     <string name="activity_settings">Setelan</string>
     <string name="notification_listener">Widget Omalauncher</string>
+    <string name="settings_external_desktops">desktop eksternal</string>
+    <string name="settings_external_desktops_subtitle">tinjau atau cabut izin host desktop</string>
 </resources>

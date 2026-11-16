@@ -12,4 +12,6 @@
     <string name="activity_settings">Settings</string>
     <!-- In Android's notification access settings. -->
     <string name="notification_listener">Omalauncher widgets</string>
+    <string name="settings_external_desktops">external desktops</string>
+    <string name="settings_external_desktops_subtitle">review or revoke approved desktop hosts</string>
 </resources>

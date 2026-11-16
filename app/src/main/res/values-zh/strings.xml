@@ -10,4 +10,6 @@
     <string name="activity_voice">语音</string>
     <string name="activity_settings">设置</string>
     <string name="notification_listener">Omalauncher 小组件</string>
+    <string name="settings_external_desktops">外部桌面</string>
+    <string name="settings_external_desktops_subtitle">查看或撤销已批准的桌面主机</string>
 </resources>

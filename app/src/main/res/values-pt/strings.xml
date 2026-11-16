@@ -10,4 +10,6 @@
     <string name="activity_voice">Voz</string>
     <string name="activity_settings">Configurações</string>
     <string name="notification_listener">Widgets do Omalauncher</string>
+    <string name="settings_external_desktops">áreas de trabalho externas</string>
+    <string name="settings_external_desktops_subtitle">rever ou revogar os anfitriões de ambiente de trabalho autorizados</string>
 </resources>
