@@ -58,6 +58,11 @@ widget "owl" {
       music: "音楽"; minutes: n => "${n} 分"; hours: n => "${n} 時間"
       day: d => "${d} 日目"; tiredShort: b => "へとへと · ${b}%"; tired: b => "へとへと · バッテリー ${b}%"; fed: t => "ごはんは ${t}前"
     }
+    uk {
+      eggShort: "яйце · торкніться"; egg: "яйце · торкніться, і сова вилупиться"; hungryShort: "нагодувати"; hungry: "голодна · торкніться, щоб нагодувати"
+      music: "музика"; minutes: n => "${n} хв"; hours: n => "${n} год"
+      day: d => "день ${d}"; tiredShort: b => "втомилася · ${b}%"; tired: b => "втомилася · заряд ${b}%"; fed: t => "нагодована ${t} тому"
+    }
   }
 
   source now = clock every 1s

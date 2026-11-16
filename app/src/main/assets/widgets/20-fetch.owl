@@ -154,6 +154,25 @@ widget "fetch" {
         "failing": "異常", "wireless": "ワイヤレス", "dock": "ドック"
       }, w, w)
     }
+    uk {
+      uptime: "аптайм"; packages: "пакети"; display: "екран"; theme: "тема"; memory: "пам'ять"; disk: "диск"
+      battery: "батарея"; apps: "додатки"; byDefault: "типово"; phone: "телефон"; device: "пристрій"
+      hardware: "обладнання"; network: "мережа"; launcher: "лаунчер"; security: "безпека"; build: "збірка"
+      locale: "регіон"; cores: "ядра"; storage: "сховище"; speed: "швидкість"; received: "отримано"; sent: "надіслано"
+      mobile: "моб. мережа"; level: "заряд"; temperature: "температура"; voltage: "напруга"; health: "стан"
+      cycles: "цикли"; technology: "технологія"; version: "версія"; explicit: "вручну"; upgraded: "оновлено"
+      never: "ніколи"; unknown: "невідомо"; installLinux: "встановити linux"
+      notInstalled: "не встановлено. arch linux arm додає до лаунчера термінал, агентів і pacman."
+      upTo: ghz => " · до ${ghz} ГГц"
+      androidApps: n => "${n} " + (n % 10 == 1 && n % 100 != 11 ? "android-додаток" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "android-додатки" : "android-додатків")
+      appCount: n => "${n} " + (n % 10 == 1 && n % 100 != 11 ? "додаток" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "додатки" : "додатків")
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "заряджається", "plugged in": "підключено", "on battery": "розряджається", "good": "добрий",
+        "overheating": "перегрів", "dead": "несправність", "over voltage": "перенапруга", "cold": "переохолодження",
+        "failing": "знос", "wireless": "бездротова", "dock": "док-станція"
+      }, w, w)
+    }
   }
 
   // The phone, from Android: works without Linux.

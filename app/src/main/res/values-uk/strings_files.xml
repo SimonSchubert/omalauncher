@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files (ui/FilesScreen.kt, FilesChrome.kt, FileDialogs.kt), the editor (ui/EditorScreen.kt) and the prompt bar
+     with its speech input (ui/PromptBar.kt, ui/Speech.kt). -->
+<resources>
+    <!-- A file operation failed without saying why. -->
+    <string name="files_failed">не вдалося</string>
+    <!-- %1$s is a file name. -->
+    <string name="files_cant_hand_over">не вдається передати %1$s іншим додаткам</string>
+    <!-- %1$s is a file name. -->
+    <string name="files_no_app">%1$s немає чим відкрити</string>
+    <!-- Why a link can't be opened: its target doesn't exist. Shown as %2$s of files_cant_open. -->
+    <string name="files_leads_to_nothing">посилання нікуди не веде</string>
+    <!-- %1$s is a file name, %2$s why it can't be opened. -->
+    <string name="files_cant_open">не вдається відкрити %1$s: %2$s</string>
+    <!-- The title while files are selected. -->
+    <string name="files_selected">вибрано: %1$d</string>
+    <string name="files_filter_hint">фільтр у цій папці</string>
+    <!-- The home folder, /root: the title there and a quick jump. -->
+    <string name="files_home">домашня папка</string>
+    <!-- Quick jumps to /root/.config, /root/Downloads and / -->
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">завантаження</string>
+    <!-- The phone folders the user granted (PhoneFolders), and the list of them. -->
+    <string name="files_place_phone_folders">папки телефона</string>
+    <string name="files_add_phone_folder">додати папку телефона</string>
+    <string name="files_no_phone_folders">папок телефона ще немає: додайте їх через меню</string>
+    <string name="files_place_system">система</string>
+    <string name="files_search">пошук</string>
+    <string name="files_more">ще</string>
+    <string name="files_new_file">новий файл</string>
+    <string name="files_new_folder">нова папка</string>
+    <string name="files_hide_hidden">не показувати приховані файли</string>
+    <string name="files_show_hidden">показувати приховані файли</string>
+    <string name="files_open_terminal">відкрити термінал тут</string>
+    <string name="files_empty_folder">папка порожня</string>
+    <string name="files_no_matches">нічого не знайдено</string>
+    <string name="files_create">створити</string>
+    <string name="files_rename">перейменувати</string>
+    <!-- %1$s is a file or folder name. -->
+    <string name="files_delete_one">видалити %1$s?</string>
+    <plurals name="files_delete_items">
+        <item quantity="one">видалити %1$d елемент?</item>
+        <item quantity="few">видалити %1$d елементи?</item>
+        <item quantity="many">видалити %1$d елементів?</item>
+        <item quantity="other">видалити %1$d елемента?</item>
+    </plurals>
+    <string name="files_delete_message">Цю дію не можна скасувати.</string>
+    <string name="files_delete">видалити</string>
+    <!-- How many items a folder holds, or how many are copied or cut. -->
+    <plurals name="files_items">
+        <item quantity="one">%1$d елемент</item>
+        <item quantity="few">%1$d елементи</item>
+        <item quantity="many">%1$d елементів</item>
+        <item quantity="other">%1$d елемента</item>
+    </plurals>
+    <!-- A folder whose contents can't be counted. -->
+    <string name="files_folder">папка</string>
+    <string name="files_copy">копіювати</string>
+    <string name="files_cut">вирізати</string>
+    <string name="files_select_all">вибрати все</string>
+    <string name="files_edit">змінити</string>
+    <string name="files_open_with">відкрити в…</string>
+    <string name="files_share">поділитися</string>
+    <string name="files_cancel">скасувати</string>
+    <string name="files_move_here">перемістити сюди</string>
+    <string name="files_paste_here">вставити сюди</string>
+
+    <!-- The editor's name in Recents when it opens without a file. -->
+    <string name="editor_title">Редактор</string>
+    <!-- %1$s is a file name, %2$s why it can't be read. -->
+    <string name="editor_cant_read">не вдається прочитати %1$s: %2$s</string>
+    <!-- %1$s is a file name, %2$s why it can't be saved. -->
+    <string name="editor_cant_save">не вдається зберегти %1$s: %2$s</string>
+    <!-- Searching in the file found nothing. -->
+    <string name="editor_not_found">не знайдено</string>
+    <string name="editor_find_hint">знайти у файлі</string>
+    <!-- The title of a file with unsaved changes; %1$s is its name. -->
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">попередній збіг</string>
+    <string name="editor_next_match">наступний збіг</string>
+    <string name="editor_save">зберегти</string>
+    <string name="editor_find">знайти</string>
+    <string name="editor_no_wrap">не переносити рядки</string>
+    <string name="editor_wrap">переносити рядки</string>
+    <string name="editor_show_in_files">показати у файлах</string>
+    <!-- micro is a terminal text editor. -->
+    <string name="editor_open_in_micro">відкрити в micro</string>
+    <!-- %1$s is a file name. -->
+    <string name="editor_save_confirm">зберегти %1$s?</string>
+    <string name="editor_save_confirm_message">Є незбережені зміни.</string>
+    <string name="editor_discard">не зберігати</string>
+    <!-- Screen reader names of the editor's arrow, undo and redo keys. -->
+    <string name="editor_key_left">ліворуч</string>
+    <string name="editor_key_up">угору</string>
+    <string name="editor_key_down">униз</string>
+    <string name="editor_key_right">праворуч</string>
+    <string name="editor_key_undo">скасувати</string>
+    <string name="editor_key_redo">повторити</string>
+    <!-- The editor's own screen, with recent files. -->
+    <string name="editor_home_title">редактор</string>
+    <string name="editor_new">новий</string>
+    <string name="editor_browse">огляд</string>
+    <string name="editor_recent">нещодавні</string>
+    <string name="editor_recent_empty">Тут з\'являться файли, які ви редагуєте.</string>
+    <string name="editor_new_file_hint">шлях у Linux</string>
+
+    <string name="prompt_listening">слухаю…</string>
+    <string name="prompt_hint_apps">відкрити додаток…</string>
+    <!-- %1$s is a coding agent's command, like claude. -->
+    <string name="prompt_hint_ask">відкрити або спитати %1$s…</string>
+    <!-- Shown after typing: Enter sends the text to the coding agent. -->
+    <string name="prompt_enter_ask">⏎ спитати</string>
+    <!-- In place of the coding agent's name when none is picked. -->
+    <string name="prompt_agent">агент</string>
+    <!-- The leading spaces line it up with the agents above it. -->
+    <string name="prompt_manage_agents">"  керування агентами…"</string>
+
+    <!-- Speech input errors, in the prompt bar and to widgets. -->
+    <string name="prompt_speech_no_recognizer">на цьому телефоні немає розпізнавання мовлення</string>
+    <string name="prompt_speech_refused">розпізнавання мовлення на цьому телефоні закрите для інших додатків</string>
+    <!-- %1$d is the recognizer's error code. -->
+    <string name="prompt_speech_failed">помилка розпізнавання мовлення (%1$d)</string>
+    <string name="prompt_speech_language">розпізнавання мовлення недоступне для цієї мови</string>
+    <string name="prompt_speech_not_downloaded">розпізнавання мовлення для цієї мови не завантажено на телефон</string>
+    <string name="prompt_speech_mic_permission">потрібен дозвіл на доступ до мікрофона</string>
+    <string name="prompt_speech_network">для розпізнавання мовлення потрібен інтернет</string>
+</resources>

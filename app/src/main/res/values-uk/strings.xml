@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omalauncher</string>
+    <string name="wallpaper_label">Omarchy</string>
+    <string name="wallpaper_description">Фон поточної теми Omarchy. Системні кольори підлаштовуються під тему.</string>
+    <!-- Names of the app's windows in Recents. -->
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">Термінал</string>
+    <string name="activity_app">Додаток</string>
+    <string name="activity_files">Файли</string>
+    <string name="activity_voice">Голос</string>
+    <string name="activity_settings">Налаштування</string>
+    <!-- In Android's notification access settings. -->
+    <string name="notification_listener">Віджети Omalauncher</string>
+</resources>
