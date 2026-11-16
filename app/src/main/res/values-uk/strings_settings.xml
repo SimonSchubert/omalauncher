@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The settings hub (ui/SettingsScreen.kt). -->
 <resources>
     <string name="settings_title">налаштування</string>
 
@@ -13,14 +12,11 @@
         <item quantity="other">%1$d сторінки · порядок, зміна, видалення</item>
     </plurals>
     <string name="settings_gestures">жести</string>
-    <!-- What swiping up and down on home open: a panel's name, or nothing. -->
     <string name="settings_gestures_subtitle">вгору: %1$s · вниз: %2$s</string>
     <string name="settings_language">мова</string>
-    <!-- Following the language the phone is set to, rather than one picked here. -->
     <string name="settings_language_phone">мова телефона</string>
     <string name="settings_linux">linux</string>
     <string name="settings_linux_installed">встановлено · видалити</string>
-    <!-- %2$s is the setup stage, like "download arch linux". -->
     <string name="settings_linux_installing_percent">встановлення %1$d%% · %2$s</string>
     <string name="settings_linux_installing">встановлення · %1$s</string>
     <string name="settings_linux_failed">встановлення зупинилося · ще раз</string>
@@ -32,7 +28,6 @@
     <string name="settings_needs_linux">потрібен linux</string>
     <string name="settings_packages">пакети</string>
     <string name="settings_packages_subtitle">встановлюйте додатки й інструменти Linux через pacman і AUR</string>
-    <!-- Shown while Omalauncher isn't the default home app; tapping asks Android to make it one. -->
     <string name="settings_home_app">типовий головний екран</string>
     <string name="settings_home_app_subtitle">зробіть Omalauncher своїм головним екраном</string>
     <string name="settings_local_network">локальна мережа</string>
@@ -40,19 +35,15 @@
     <string name="settings_permissions">дозволи</string>
     <string name="settings_permissions_subtitle">мікрофон, місцезнаходження, файли, …</string>
 
-    <!-- The permissions screen (ui/settings/PermissionsScreen.kt). Its rows reuse settings_local_network. -->
     <string name="permissions_title">дозволи</string>
-    <!-- The phone folders Linux reaches (PhoneFoldersRow, on top of this screen); Files is the app's name. -->
     <string name="permissions_folders_title">папки телефона</string>
     <string name="permissions_folders_about">папки з вашими фото, завантаженнями й документами для linux: у Файлах, а для агентів і скриптів — через omalauncher</string>
-    <!-- After permissions_folders_about, on Android 11 and newer; %1$s: where Linux sees the phone's storage, /sdcard. -->
     <string name="permissions_folders_sdcard">те, що linux зберігає в %1$s/Download або %1$s/Documents, бачать і інші додатки</string>
     <string name="permissions_folders_add">додати папку</string>
     <string name="permissions_folders_remove">прибрати</string>
     <string name="permissions_folders_cant_keep">android не дозволив лаунчеру зберегти доступ до цієї папки</string>
     <string name="permissions_folders_no_picker">на цьому телефоні немає вікна вибору папки</string>
     <string name="permissions_note">віджети й агенти можуть користуватися всім, що тут увімкнено. перемикачами керує android: увімкнення запитує дозвіл, а вимкнення відкриває налаштування android</string>
-    <!-- %1$s is what uses the permission, like "the prompt bar's mic". -->
     <string name="permissions_on">увімк · %1$s</string>
     <string name="permissions_off">вимк · %1$s</string>
     <string name="permissions_mic">мікрофон</string>
@@ -73,17 +64,14 @@
     <string name="settings_licenses">ліцензії</string>
     <string name="settings_licenses_subtitle">програми з відкритим кодом в Omalauncher</string>
 
-    <!-- %1$s is what the running update does, like "upgrading packages". -->
     <string name="settings_system_updating">оновлення системи: %1$s…</string>
     <string name="settings_system_update_failed">оновлення системи не завершилося</string>
     <string name="settings_retry">ще раз</string>
     <string name="settings_system_updates">оновлення системи</string>
     <string name="settings_widget_updates">віджети</string>
-    <!-- The updates box's section for a newer launcher, on Google Play (Play builds) or GitHub releases (GitHub builds). -->
     <string name="settings_launcher_updates">лаунчер</string>
     <string name="settings_launcher_update_available">у Google Play є новий Omalauncher</string>
     <string name="settings_launcher_update_failed">Google Play не зміг оновити Omalauncher</string>
-    <!-- The running version and the newer one on GitHub releases (GitHub builds). -->
     <string name="settings_launcher_update_github">Omalauncher %1$s → %2$s на GitHub</string>
     <string name="settings_update_all">оновити все</string>
     <string name="settings_check">перевірити</string>
@@ -91,12 +79,9 @@
     <string name="settings_updating">оновлення…</string>
     <string name="settings_checking">перевірка…</string>
     <string name="settings_not_checked">ще не перевірено</string>
-    <!-- %1$s is how long ago, like "5m ago". -->
     <string name="settings_up_to_date">усе оновлено · перевірено %1$s</string>
     <string name="settings_store_unreachable">не вдалося зв\'язатися з магазином</string>
-    <!-- %1$s lists the edited widgets with their versions. -->
     <string name="settings_updates_held">змінені вами, тож тут не оновлюються: %1$s · оновлення в магазині замінить ваші зміни</string>
-    <!-- Below a list cut short: how many lines are left out. -->
     <string name="settings_more_lines">ще %1$d</string>
     <string name="settings_just_now">щойно</string>
     <string name="settings_minutes_ago">%1$d хв тому</string>

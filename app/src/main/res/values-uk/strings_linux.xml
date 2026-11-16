@@ -1,18 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Linux setup, updates and the session (linux/, ui/Setup.kt, ui/LinuxScreen.kt, LinuxService.kt), the packages
-     screen (packages_) and the licenses screen (licenses_). -->
 <resources>
-    <!-- The phases of a fresh install, as the setup screen lists them. -->
     <string name="linux_stage_download">завантаження arch linux</string>
     <string name="linux_stage_extract">розпакування системи</string>
     <string name="linux_stage_configure">налаштування pacman</string>
     <string name="linux_stage_packages">встановлення додатків omarchy</string>
     <string name="linux_stage_agents">встановлення ШІ-агентів</string>
-    <!-- The last phase when coding agents were picked. %1$s: their names, comma-separated (Claude Code, Codex). -->
     <string name="linux_stage_agents_named">встановлення: %1$s</string>
 
-    <!-- What setup is doing right now, under its phase on the setup screen. Settings shows these lowercased while an
-         update of an installed system runs them ("updating the system: installing packages…"). -->
     <string name="linux_step_download">Завантаження Arch Linux ARM</string>
     <string name="linux_step_configure">Налаштування системи</string>
     <string name="linux_step_forks">Перевірка запуску програм</string>
@@ -20,17 +14,11 @@
     <string name="linux_step_no_kernel">Видалення пакетів ядра</string>
     <string name="linux_step_packages">Встановлення пакетів</string>
     <string name="linux_step_keymap">Компіляція розкладки клавіатури</string>
-    <!-- cliamp is a music player's name. -->
     <string name="linux_step_cliamp">Встановлення cliamp</string>
-    <!-- %1$s: a coding agent's name. -->
     <string name="linux_step_agent">Встановлення %1$s</string>
-    <!-- Download progress in megabytes: %1$d done of %2$d. -->
     <string name="linux_step_downloaded">%1$d з %2$d МБ</string>
-    <!-- Download progress in megabytes when the total isn't known. -->
     <string name="linux_step_downloaded_unknown">%1$d МБ</string>
-    <!-- Unpacking the system has just begun. -->
     <string name="linux_step_extract_start">Початок</string>
-    <!-- Unpacking progress: how many files are unpacked so far. -->
     <plurals name="linux_step_extracted">
         <item quantity="one">%d файл</item>
         <item quantity="few">%d файли</item>
@@ -38,48 +26,31 @@
         <item quantity="other">%d файлу</item>
     </plurals>
 
-    <!-- Lines setup adds to the output it shows. %1$s: the error (technical, English). %2$d of %3$d: the attempt. -->
     <string name="linux_log_retrying">%1$s; ще одна спроба (%2$d з %3$d)</string>
-    <!-- %1$s: the step (Installing cliamp), %2$s: the error (technical, English). -->
     <string name="linux_log_step_failed">%1$s — помилка: %2$s; повторіть у налаштуваннях</string>
-    <!-- %1$s: a coding agent's name. -->
     <string name="linux_log_agent_failed">%1$s не встановився; спробуйте ще раз у налаштуваннях › ШІ-агенти</string>
 
-    <!-- Why setup stopped, in red under the phase. %1$s and %2$s: sizes like "3.0 GB". -->
     <string name="linux_error_no_space">замало місця: Linux потрібно %1$s вільного місця, а на телефоні %2$s; звільніть місце й спробуйте ще раз</string>
-    <!-- %1$s: a size like "3.0 GB". -->
     <string name="linux_error_out_of_space">на телефоні закінчилося місце; Linux потрібно близько %1$s вільного місця; звільніть місце й спробуйте ще раз</string>
-    <!-- %1$d: the HTTP status code. -->
     <string name="linux_error_http">не вдалося завантажити: HTTP %1$d</string>
     <string name="linux_error_cut_short">завантаження перервалося; повторіть, щоб продовжити</string>
     <string name="linux_error_move_download">не вдається перемістити завантажений файл</string>
-    <!-- %1$d: the exit code. -->
     <string name="linux_error_cant_run">Linux не може виконувати команди тут (код %1$d)</string>
     <string name="linux_error_kernel">ядро цього телефона не дозволяє програмам Linux запускати інші програми, тож налаштування не може продовжитися. кастомним прошивкам з ядром 4.14 потрібен коміт ядра 05b289263772 від їхнього розробника; див. github issue #105</string>
-    <!-- %1$s: the start of a shell command, %2$d: its exit code. -->
     <string name="linux_error_command">`%1$s` завершилася з помилкою (код %2$d)</string>
-    <!-- %1$s: the version expected, like v2.3.0. -->
     <string name="linux_error_cliamp_mismatch">завантажений cliamp не відповідає %1$s</string>
-    <!-- %1$s: a file path. -->
     <string name="linux_error_cant_replace">не вдається замінити %1$s</string>
 
-    <!-- What a job in the guest is doing, shown as "installing…" on its row. -->
     <string name="linux_job_installing">встановлення</string>
     <string name="linux_job_removing">видалення</string>
-    <!-- An AUR package is compiled on the phone. -->
     <string name="linux_job_building">збирання</string>
     <string name="linux_job_updating">оновлення</string>
-    <!-- Waiting for another package job to finish. -->
     <string name="linux_job_waiting">очікування</string>
-    <!-- The GPU driver being tested. -->
     <string name="linux_job_checking">перевірка</string>
-    <!-- A running job on its row. %1$s: one of the job words above. -->
     <string name="linux_job_working">%1$s…</string>
 
-    <!-- A system update check that failed, in settings' updates box. -->
     <string name="linux_updates_unreachable">не вдалося зв\'язатися з дзеркалами</string>
 
-    <!-- One line under each coding agent's name in the agent lists. -->
     <string name="linux_agent_claude">Агент для програмування від Anthropic</string>
     <string name="linux_agent_opencode">Відкритий агент, будь-який постачальник моделей</string>
     <string name="linux_agent_codex">Агент для програмування від OpenAI</string>
@@ -102,10 +73,8 @@
     <string name="linux_agent_amp">Агент для програмування від ampcode.com</string>
     <string name="linux_agent_commandcode">Агент для програмування від commandcode.ai</string>
 
-    <!-- The first-run screen. -->
     <string name="linux_welcome_title">omarchy на головному екрані</string>
     <string name="linux_welcome_body">Теми й шпалери Omarchy, ваші Android-додатки та віджети на головному екрані. Arch Linux додасть термінальні додатки та ШІ-агентів — зараз або пізніше в налаштуваннях.</string>
-    <!-- A section heading, shown in capitals. -->
     <string name="linux_welcome_linux">linux</string>
     <string name="linux_welcome_choice">також налаштувати Arch Linux</string>
     <string name="linux_welcome_choice_detail">термінальні додатки, агенти, pacman · ~1 ГБ завантаження, 3 ГБ місця</string>
@@ -113,33 +82,26 @@
     <string name="linux_welcome_start_linux">почати й налаштувати linux</string>
     <string name="linux_welcome_start_hint">Зараз завантажуються шпалери теми, а інші теми Omarchy (близько 70 МБ) — у фоні.</string>
     <string name="linux_welcome_start_linux_hint">Linux завантажує близько 1 ГБ, тож краще через Wi-Fi, і займає 3 ГБ місця. Він встановлюється у фоні за 10–20 хвилин; головний екран готовий одразу.</string>
-    <!-- %1$s: the theme's name, lowercased. -->
     <string name="linux_welcome_getting">завантаження %1$s</string>
     <string name="linux_welcome_theme_failed">тема не завантажилася</string>
     <string name="linux_welcome_wallpaper">завантажити її шпалери</string>
     <string name="linux_welcome_skip">продовжити без шпалер</string>
     <string name="linux_welcome_skip_hint">Кольори теми однаково застосуються. Лаунчер спробує ще раз пізніше, або завантажте їх у налаштуваннях › стиль.</string>
 
-    <!-- A section heading, shown in capitals. -->
     <string name="linux_agents_label">ші-агенти</string>
     <string name="linux_agents_hint">Виберіть будь-які, щоб встановити разом із Linux. Додати чи видалити їх можна пізніше в налаштуваннях.</string>
-    <!-- A section heading over the theme swatches, shown in capitals. -->
     <string name="linux_theme_label">тема</string>
-    <!-- The last tile of the theme swatches; opens the community themes. -->
     <string name="linux_more_themes">більше тем ›</string>
 
-    <!-- The install's checklist (setup and settings › linux). -->
     <string name="linux_progress_title">налаштування linux</string>
     <string name="linux_progress_stopped">налаштування зупинилося</string>
     <string name="linux_try_again">ще раз</string>
     <string name="linux_cancel_install">скасувати встановлення</string>
     <string name="linux_progress_background">Можете закрити це й користуватися лаунчером; налаштування триває у фоні.</string>
-    <!-- A heading over setup's command output, shown in capitals. -->
     <string name="linux_output">вивід</string>
     <string name="linux_output_less">менше</string>
     <string name="linux_output_more">більше</string>
 
-    <!-- Settings › linux. -->
     <string name="linux_title">linux</string>
     <string name="linux_removing">видалення linux…</string>
     <string name="linux_offer_title">arch linux, за бажанням</string>
@@ -152,7 +114,6 @@
         <item quantity="other">встановити linux і агентів: %d</item>
     </plurals>
     <string name="linux_arch">arch linux</string>
-    <!-- %1$s: the size on disk, like 2.1 GB, or "measuring…". -->
     <string name="linux_installed_size">встановлено · %1$s</string>
     <string name="linux_measuring">вимірювання…</string>
     <string name="linux_remove">видалити linux</string>
@@ -161,12 +122,10 @@
     <string name="linux_remove_confirm">видалити</string>
     <string name="linux_cancel">скасувати</string>
     <string name="linux_gpu_title">прискорення gpu</string>
-    <!-- %1$s: the GPU's name, like Mali-G715 MC7. -->
     <string name="linux_gpu_on">увімк · %1$s · для додатків, відкритих відтепер</string>
     <string name="linux_gpu_off_failed">вимк: GPU не пройшов перевірку після оновлення системи</string>
     <string name="linux_gpu_waiting">увімк · очікує перевірки</string>
     <string name="linux_gpu_failed">GPU не пройшов перевірку; додатки працюють програмно</string>
-    <!-- %1$s: the driver family, Mali or Adreno. -->
     <string name="linux_gpu_offer">експериментально · %1$s · швидші додатки й ігри на OpenGL і Vulkan; термінальні додатки не змінюються</string>
     <string name="linux_retry">ще раз</string>
     <string name="linux_gpu_turn_off">вимкнути</string>
@@ -175,48 +134,36 @@
     <string name="linux_cpu_pinning_on">увімк · тримає Linux на одному швидкому ядрі CPU · для програм, запущених відтепер</string>
     <string name="linux_cpu_pinning_off">вимк · для програм, запущених відтепер</string>
 
-    <!-- The ongoing notification while Linux runs. -->
     <string name="linux_notification_channel">Сеанс Linux</string>
-    <!-- Name of the notification channel for what agents and scripts in Linux post with `omalauncher notify`, shown in Android's notification settings. -->
     <string name="linux_notify_channel">Агенти й скрипти</string>
-    <!-- %1$s: the install's phase (download arch linux). -->
     <string name="linux_notification_installing">Встановлення Linux · %1$s</string>
-    <!-- %1$d: percent done, %2$s: the install's phase (download arch linux). -->
     <string name="linux_notification_installing_percent">Встановлення Linux · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">Налаштування Linux зупинилося · відкрийте налаштування › linux, щоб повторити</string>
     <string name="linux_notification_removing">Видалення Linux</string>
     <string name="linux_notification_running">Сеанс Linux працює</string>
 
-    <!-- Settings › packages. -->
     <string name="packages_title">пакети</string>
     <string name="packages_search">пошук пакетів</string>
     <string name="packages_intro">Пакети Arch Linux ARM через pacman і AUR через yay. Встановлення також оновлює систему, тож може тривати якийсь час. Пакети AUR додають користувачі, і вони збираються на пристрої: спершу перегляньте їхній PKGBUILD на aur.archlinux.org.</string>
     <string name="packages_loading">завантаження…</string>
     <string name="packages_searching">пошук…</string>
-    <!-- %1$d: how many packages are installed. -->
     <string name="packages_installed">встановлені (%1$d)</string>
     <string name="packages_none">немає відповідних пакетів</string>
-    <!-- Search results. English keeps "1 results" as the app always showed it. -->
     <plurals name="packages_results">
         <item quantity="one">%d результат</item>
         <item quantity="few">%d результати</item>
         <item quantity="many">%d результатів</item>
         <item quantity="other">%d результату</item>
     </plurals>
-    <!-- In place of remove, for packages the launcher needs. -->
     <string name="packages_required">потрібен</string>
-    <!-- A second tap to remove a package. -->
     <string name="packages_confirm">підтвердити</string>
     <string name="packages_remove">видалити</string>
     <string name="packages_install">встановити</string>
 
-    <!-- Settings › licenses. -->
     <string name="licenses_title">ліцензії</string>
-    <!-- %1$s: the app's version. -->
     <string name="licenses_header">Omalauncher %1$s · © 2026 Simon Schubert\n\nДо нього входить відкрите ПЗ, перелічене нижче.</string>
     <string name="licenses_website">вебсайт</string>
     <string name="licenses_source">вихідний код</string>
-    <!-- What each open source component does in the app, after its license. -->
     <string name="licenses_use_proot">запускає необов\'язкову систему Linux</string>
     <string name="licenses_use_talloc">розподільник пам\'яті для PRoot</string>
     <string name="licenses_use_shmem">спільна пам\'ять для PRoot</string>
@@ -234,7 +181,6 @@
     <string name="licenses_use_zxing">малює QR-коди, якими діляться віджетами</string>
     <string name="licenses_use_json">читає й записує JSON</string>
 
-    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
     <string name="share_in_saving">зберігаємо в linux…</string>
     <string name="share_in_saved">збережено в ~/Downloads</string>
     <string name="share_in_failed">не вдалося зберегти в linux</string>
