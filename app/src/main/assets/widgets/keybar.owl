@@ -21,6 +21,7 @@ keybar "terminal key bar" {
     zh { copy: "复制"; paste: "粘贴"; photos: "照片" }
     ru { copy: "копировать"; paste: "вставить"; photos: "фото" }
     ja { copy: "コピー"; paste: "貼り付け"; photos: "写真" }
+    uk { copy: "копіювати"; paste: "вставити"; photos: "фото" }
   }
   source kb = android.modifiers
   // The key under the finger, drawn pressed.

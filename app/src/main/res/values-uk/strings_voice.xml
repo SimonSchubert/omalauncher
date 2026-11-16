@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="voice_listening">слухаю</string>
+    <string name="voice_listening_working">слухаю · агент ще працює</string>
+    <string name="voice_starting">запуск</string>
+    <!-- Under the orb while an agent waits for an OK; %1$s is the time it has been working, like 0:12. -->
+    <string name="voice_needs_ok">чекає підтвердження · %1$s</string>
+    <string name="voice_working">працює · %1$s</string>
+    <!-- Under the orb while a reply is read aloud: a tap talks over it. -->
+    <string name="voice_tap_over">торкніться, щоб перебити</string>
+    <string name="voice_tap">торкніться й говоріть</string>
+    <!-- A toggle: every question the agent asks is answered yes. -->
+    <string name="voice_allow_all">дозволяти все</string>
+    <!-- Starts a new conversation; the last one can be resumed. -->
+    <string name="voice_new">нова</string>
+    <!-- Brings back the last conversation. -->
+    <string name="voice_resume">продовжити</string>
+    <string name="voice_no_speech">Для Голосу потрібне розпізнавання мовлення, а на цьому телефоні його немає. Встановіть його, наприклад «Розпізнавання й синтез мовлення» від Google, і виберіть у налаштуваннях голосового введення Android. Або пишіть текстом.</string>
+    <string name="voice_input_settings">голосове введення</string>
+    <!-- Switches from talking to typing. -->
+    <string name="voice_type">ввести текст</string>
+    <string name="voice_no_agent">Голос спілкується з ШІ-агентом у Linux. Встановіть агента, щоб із ним поговорити.</string>
+    <string name="voice_agents">агенти</string>
+    <string name="voice_log_in">увійти</string>
+    <string name="voice_thinking">думає</string>
+    <plurals name="voice_steps">
+        <item quantity="one">%1$d крок</item>
+        <item quantity="few">%1$d кроки</item>
+        <item quantity="many">%1$d кроків</item>
+        <item quantity="other">%1$d кроку</item>
+    </plurals>
+    <!-- The text field's hint; %1$s is the agent, like Claude Code. -->
+    <string name="voice_message">повідомлення для %1$s</string>
+    <string name="voice_answer_hint">так, ні або що зробити натомість</string>
+    <string name="voice_send">надіслати</string>
+    <string name="voice_stop">зупинити</string>
+    <!-- The approval card; %1$s is the agent, %2$s what it wants to do (a voice_do_ phrase, like "run a command"). -->
+    <string name="voice_wants">%1$s хоче %2$s</string>
+    <string name="voice_allow">дозволити</string>
+    <string name="voice_always">завжди</string>
+    <string name="voice_deny">заборонити</string>
+    <string name="voice_or_type">або напишіть: так, ні або що зробити натомість</string>
+    <string name="voice_or_say">або торкніться кулі й скажіть: так, ні або що зробити натомість</string>
+    <!-- Under a picture shown whole. -->
+    <string name="voice_tap_close">торкніться, щоб закрити</string>
+    <!-- Steps of a task, shown as they happen. %1$s is a command's description or the command. -->
+    <string name="voice_step_run">виконується: %1$s</string>
+    <!-- %1$s is a file name or a web site. -->
+    <string name="voice_step_read">читання: %1$s</string>
+    <string name="voice_step_write">запис: %1$s</string>
+    <string name="voice_step_edit">редагування: %1$s</string>
+    <string name="voice_step_delete">видалення: %1$s</string>
+    <string name="voice_step_search">пошук: %1$s</string>
+    <string name="voice_step_web">пошук в інтернеті: %1$s</string>
+    <string name="voice_step_subtask">підзадача: %1$s</string>
+    <string name="voice_step_plan">планування</string>
+    <!-- A step whose tool has no name. -->
+    <string name="voice_step_tool">інструмент</string>
+    <!-- What the agent wants to do, in "%1$s wants to %2$s" (voice_wants, voice_say_wants): an infinitive phrase. -->
+    <string name="voice_do_run">виконати команду: %1$s</string>
+    <!-- Like voice_do_run when the command itself is shown below. -->
+    <string name="voice_do_command">виконати команду</string>
+    <string name="voice_do_read">прочитати %1$s</string>
+    <string name="voice_do_write">записати %1$s</string>
+    <string name="voice_do_edit">змінити %1$s</string>
+    <string name="voice_do_delete">видалити %1$s</string>
+    <string name="voice_do_search">знайти %1$s</string>
+    <string name="voice_do_web">пошукати в інтернеті: %1$s</string>
+    <string name="voice_do_subtask">запустити підзадачу: %1$s</string>
+    <string name="voice_do_plan">скласти план</string>
+    <string name="voice_do_tool">використати %1$s</string>
+    <string name="voice_do_tool_unknown">використати інструмент</string>
+    <!-- Said aloud when the agent asks to do something; %2$s is one of the voice_do_ phrases. -->
+    <string name="voice_say_wants">%1$s хоче %2$s. Дозволити?</string>
+    <!-- Said aloud while the agent works quietly. -->
+    <string name="voice_say_moment">Хвилинку.</string>
+    <string name="voice_say_failed">Вибачте, не вийшло.</string>
+    <!-- In place of the agent's name when there is none. -->
+    <string name="voice_the_agent">агент</string>
+    <!-- Notes in the conversation, lower case. -->
+    <string name="voice_note_allow_all">усе, що запитує %1$s, дозволено</string>
+    <string name="voice_note_ask_again">підтвердження знову запитується перед кожною дією</string>
+    <string name="voice_note_task_stopped">останнє завдання зупинено; скажіть «продовжуй», щоб повернутися до нього</string>
+    <string name="voice_note_cant_continue">не вдалося продовжити минулу розмову; почато нову</string>
+    <string name="voice_cant_start">не вдалося запустити %1$s: %2$s</string>
+    <string name="voice_restarted">%1$s зупинився й був перезапущений; спитайте ще раз</string>
+    <!-- %2$s is what the agent printed last, in its own words. -->
+    <string name="voice_stopped">%1$s зупинився: %2$s</string>
+    <string name="voice_nothing_to_say">%1$s відповів порожнім повідомленням</string>
+    <string name="voice_no_answer">%1$s поки не відповідає; можливо, закінчилася квота або не виконано вхід</string>
+    <string name="voice_quiet">%1$s мовчить уже дві хвилини; якщо він завис, зупиніть його</string>
+    <!-- When the agent gave no reason for a failure. -->
+    <string name="voice_failed">не вдалося</string>
+    <!-- %1$s is the agent's error, like a network error. -->
+    <string name="voice_retrying">повтор: %1$s</string>
+    <!-- The voice settings: the chip in the top row and the dialog it opens. -->
+    <string name="voice_voice">голос</string>
+    <string name="voice_language">мова</string>
+    <!-- The language picked in the launcher, which Voice uses unless another is picked; %1$s is its name. -->
+    <string name="voice_language_launcher">за замовчуванням (%1$s)</string>
+    <string name="voice_default">за замовчуванням</string>
+    <string name="voice_default_named">за замовчуванням (%1$s)</string>
+    <!-- After a voice that needs the internet. -->
+    <string name="voice_online">онлайн</string>
+    <string name="voice_speed">швидкість</string>
+    <string name="voice_tts_settings">налаштування синтезу мовлення</string>
+    <string name="voice_no_voice">Для мови «%1$s» на телефоні поки немає голосу: завантажте його в налаштуваннях синтезу мовлення.</string>
+    <string name="voice_sample">Так звучатимуть відповіді.</string>
+</resources>

@@ -72,6 +72,14 @@ panel "app drawer" {
       open: "開く"; ask: "聞く"; askInstallLinux: "エージェントに聞く · linux をインストール"; askInstallAgent: "エージェントに聞く · まずインストール"
       askAgent: (bin, text) => "${bin} に聞く：${text}"
     }
+    uk {
+      personal: "особисті"; work: "робочі"; apps: "додатки"; linux: "linux"; shortcuts: "ярлики"; android: "android"
+      workApps: "робочі додатки"; workPaused: "робочі додатки призупинено"; linuxApps: "додатки linux"
+      pin: "додати на головний екран"; info: "про додаток"; uninstall: "видалити"; remove: "прибрати"; edit: "змінити"; share: "поділитися"
+      settings: "налаштування"; turnOn: "увімкнути"; pause: "призупинити"; installing: "встановлення…"; installLinux: "встановити linux"
+      open: "відкрити"; ask: "запитати"; askInstallLinux: "запитати агента · встановити linux"; askInstallAgent: "запитати агента · встановити агента"
+      askAgent: (bin, text) => "запитати ${bin}: ${text}"
+    }
   }
   source d = android.drawer
   source ag = android.agents
