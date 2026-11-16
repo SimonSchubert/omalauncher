@@ -142,6 +142,12 @@
     <string name="linux_notification_removing">Удаление Linux</string>
     <string name="linux_notification_running">Сеанс Linux запущен</string>
 
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">сохранение в linux…</string>
+    <string name="share_in_saved">сохранено в ~/Downloads</string>
+    <string name="share_in_failed">не удалось сохранить в linux</string>
+    <string name="share_in_no_linux">linux ещё не настроен</string>
+
     <string name="packages_title">пакеты</string>
     <string name="packages_search">поиск пакетов</string>
     <string name="packages_intro">Пакеты Arch Linux ARM через pacman и AUR через yay. Установка заодно обновляет систему, поэтому может занять время. Пакеты AUR публикуют пользователи, а собираются они прямо на устройстве: сначала проверьте их PKGBUILD на aur.archlinux.org.</string>

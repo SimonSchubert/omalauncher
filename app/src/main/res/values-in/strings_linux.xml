@@ -136,6 +136,12 @@
     <string name="linux_notification_removing">Menghapus Linux</string>
     <string name="linux_notification_running">Sesi Linux berjalan</string>
 
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">menyimpan ke linux…</string>
+    <string name="share_in_saved">tersimpan di ~/Downloads</string>
+    <string name="share_in_failed">tidak bisa menyimpannya ke linux</string>
+    <string name="share_in_no_linux">linux belum disiapkan</string>
+
     <string name="packages_title">paket</string>
     <string name="packages_search">cari paket</string>
     <string name="packages_intro">Paket Arch Linux ARM lewat pacman, dan AUR lewat yay. Menginstal juga memperbarui sistem, jadi bisa butuh waktu. Paket AUR dikirim pengguna dan dikompilasi di perangkat: periksa dulu PKGBUILD-nya di aur.archlinux.org.</string>

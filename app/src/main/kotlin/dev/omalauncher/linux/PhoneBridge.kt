@@ -116,7 +116,7 @@ class PhoneBridge(
                     "ls" -> withContext(Dispatchers.IO) { ls(args.getOrNull(1).orEmpty()) }
                     "get" -> withContext(Dispatchers.IO) { get(args.drop(1)) }
                     "put" -> withContext(Dispatchers.IO) { put(args.drop(1)) }
-                    "pick" -> pick(args.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: DOWNLOADS)
+                    "pick" -> pick(args.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: Proot.GUEST_DOWNLOADS)
                     else -> Answer.Usage("unknown command '${args[0]}'")
                 }
             } catch (e: Exception) {
@@ -258,7 +258,7 @@ class PhoneBridge(
 
     /** Android's file picker, for the user to choose files from anywhere on the phone; copied into [dir], as they're named. */
     private suspend fun pick(dir: String): Answer {
-        val into = withContext(Dispatchers.IO) { proot.guestFile(dir)?.takeIf { it.isDirectory || (dir == DOWNLOADS && it.mkdirs()) } } ?: return Answer.Usage("pick: $dir isn't a folder")
+        val into = withContext(Dispatchers.IO) { proot.guestFile(dir)?.takeIf { it.isDirectory || (dir == Proot.GUEST_DOWNLOADS && it.mkdirs()) } } ?: return Answer.Usage("pick: $dir isn't a folder")
         val picked = PickActivity.picked()
         try {
             context.startActivity(Intent(context, PickActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -343,7 +343,6 @@ class PhoneBridge(
         const val CONTROL_MS = 2_000L
         /** Under the script's 2 minutes, so a picker left open says nothing was picked. */
         const val PICK_MS = 110_000L
-        const val DOWNLOADS = "/root/Downloads"
         const val DAYS = 14
         const val MAX_DAYS = 366
         const val MAX_EVENTS = 1000

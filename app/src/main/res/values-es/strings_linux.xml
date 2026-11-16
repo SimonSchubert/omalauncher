@@ -140,6 +140,12 @@
     <string name="linux_notification_removing">Eliminando Linux</string>
     <string name="linux_notification_running">Sesión de Linux en ejecución</string>
 
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">guardando en linux…</string>
+    <string name="share_in_saved">guardado en ~/Downloads</string>
+    <string name="share_in_failed">no se pudo guardar en linux</string>
+    <string name="share_in_no_linux">linux aún no está configurado</string>
+
     <string name="packages_title">paquetes</string>
     <string name="packages_search">buscar paquetes</string>
     <string name="packages_intro">Paquetes de Arch Linux ARM con pacman, y el AUR con yay. Instalar también actualiza el sistema, así que puede tardar. Los paquetes del AUR los suben usuarios y se compilan en el dispositivo: revisa antes su PKGBUILD en aur.archlinux.org.</string>

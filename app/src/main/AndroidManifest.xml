@@ -116,6 +116,28 @@
             android:exported="false"
             android:taskAffinity=""
             android:theme="@style/Theme.Omalauncher.Dialog" />
+        <!-- The "Linux" destination in Android's share sheet. Only shows if a Linux environment is installed. -->
+        <activity
+            android:name=".ShareInActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
+
+        <activity-alias
+            android:name=".ShareToLinux"
+            android:enabled="false"
+            android:exported="true"
+            android:label="@string/activity_linux"
+            android:targetActivity=".ShareInActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity-alias>
         <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
              websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
              gone once left. Not exported: the system starts it, and other apps have no reason to. -->

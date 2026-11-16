@@ -14,6 +14,10 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.nio.file.Files
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.CancellationException
 
 /**
  * For Android's pickers: the phone's own storage among their places from the start. Android 10 otherwise shows only
@@ -36,6 +40,38 @@ internal fun storagePathOf(
  * like, which would never finish reading.
  */
 internal fun copiesOut(file: File) = !Files.isSymbolicLink(file.toPath()) && (file.isDirectory || file.isFile)
+
+/** [name] in [dir] if nothing has it, else "name (2)", "name (3)" and so on, the number before the extension. */
+internal fun freeFile(
+    dir: File,
+    name: String,
+): File {
+    if (!File(dir, name).exists()) return File(dir, name)
+    val stem = name.substringBeforeLast('.').takeIf { '.' in name && !name.startsWith('.') } ?: name
+    val ext = if (stem == name) "" else "." + name.substringAfterLast('.')
+    return generateSequence(2) { it + 1 }.map { File(dir, "$stem ($it)$ext") }.first { !it.exists() }
+}
+
+/**
+ * [write]'s file under [name] in [dir], or "name (2)" beside one already there. It's written under a hidden name and
+ * moved onto its own at the end, so a copy cut short leaves no half file.
+ */
+internal fun saveWhole(
+    dir: File,
+    name: String,
+    write: (File) -> Unit,
+): File {
+    val temp = File.createTempFile(".copy-", ".part", dir)
+    try {
+        write(temp)
+        val dest = freeFile(dir, name)
+        if (!temp.renameTo(dest)) throw IOException("cannot save $name")
+        return dest
+    } catch (e: Throwable) {
+        temp.delete()
+        throw e
+    }
+}
 
 /**
  * Makes [dest] safe to copy to from the phone: a link there goes, rather than being followed by Android on its own
@@ -225,14 +261,37 @@ class PhoneFolders(
     fun copyIn(
         uri: Uri,
         dir: File,
+        stopped: () -> Boolean = { false },
     ): File {
-        val name =
-            query(uri, arrayOf(Document.COLUMN_DISPLAY_NAME))?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
-                ?.substringAfterLast('/')?.takeIf { it.isNotBlank() && it != "." && it != ".." } ?: "file"
-        val dest = freeFile(dir, name)
-        (resolver.openInputStream(uri) ?: throw FileNotFoundException(name)).use { input -> dest.outputStream().use { input.copyTo(it) } }
-        return dest
+        val name = nameOf(uri)
+        return saveWhole(dir, name) { temp ->
+            (resolver.openInputStream(uri) ?: throw FileNotFoundException(name)).use { input ->
+                temp.outputStream().use { output ->
+                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                    while (true) {
+                        if (stopped()) throw CancellationException("copying $name stopped")
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+        }
     }
+
+    /** Text another app shared, into [dir] as a .txt file named after the moment. */
+    fun writeShared(
+        text: CharSequence,
+        dir: File,
+    ): File {
+        val moment = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
+        return saveWhole(dir, "shared-$moment.txt") { it.writeText(text.toString()) }
+    }
+
+    /** The name [uri]'s provider gives it, and one a file may have. */
+    private fun nameOf(uri: Uri): String =
+        query(uri, arrayOf(Document.COLUMN_DISPLAY_NAME))?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+            ?.substringAfterLast('/')?.takeIf { it.isNotBlank() && it != "." && it != ".." } ?: "file"
 
     private fun doc(
         tree: Uri,
@@ -276,16 +335,6 @@ class PhoneFolders(
 
         fun checkName(name: String) {
             if (name.isBlank() || '/' in name || name == "." || name == "..") throw IOException("invalid name")
-        }
-
-        fun freeFile(
-            dir: File,
-            name: String,
-        ): File {
-            if (!File(dir, name).exists()) return File(dir, name)
-            val stem = name.substringBeforeLast('.').takeIf { '.' in name && !name.startsWith('.') } ?: name
-            val ext = if (stem == name) "" else "." + name.substringAfterLast('.')
-            return generateSequence(2) { it + 1 }.map { File(dir, "$stem ($it)$ext") }.first { !it.exists() }
         }
     }
 }

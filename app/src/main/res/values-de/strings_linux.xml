@@ -138,6 +138,12 @@
     <string name="linux_notification_removing">Linux wird entfernt</string>
     <string name="linux_notification_running">Linux-Sitzung läuft</string>
 
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">wird in linux gespeichert…</string>
+    <string name="share_in_saved">in ~/Downloads gespeichert</string>
+    <string name="share_in_failed">konnte es nicht in linux speichern</string>
+    <string name="share_in_no_linux">linux ist noch nicht eingerichtet</string>
+
     <string name="packages_title">pakete</string>
     <string name="packages_search">pakete suchen</string>
     <string name="packages_intro">Arch-Linux-ARM-Pakete über pacman und das AUR über yay. Beim Installieren wird auch das System aktualisiert, das kann also etwas dauern. AUR-Pakete kommen von Nutzern und werden auf dem Gerät gebaut: Schau dir vorher ihr PKGBUILD auf aur.archlinux.org an.</string>

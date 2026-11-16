@@ -58,6 +58,33 @@ class PhoneFoldersTest {
         assertTrue(file.isFile && sub.isDirectory)
     }
 
+    @Test fun aSavedFileShowsOnlyWhenItsWhole() {
+        val dir = tmp.newFolder("d")
+        val saved =
+            saveWhole(dir, "a.txt") { temp ->
+                temp.writeText("x")
+                assertEquals("nothing under its name yet", false, File(dir, "a.txt").exists())
+            }
+        assertEquals(File(dir, "a.txt"), saved)
+        assertEquals("x", saved.readText())
+        assertEquals("a second one beside it", File(dir, "a (2).txt"), saveWhole(dir, "a.txt") { it.writeText("y") })
+        assertEquals("x", saved.readText())
+        assertEquals("no temp files stay", setOf("a.txt", "a (2).txt"), dir.list()!!.toSet())
+    }
+
+    @Test fun aCopyCutShortLeavesNothing() {
+        val dir = tmp.newFolder("d")
+        val cut =
+            runCatching {
+                saveWhole(dir, "a.txt") { temp ->
+                    temp.writeText("half")
+                    throw java.io.IOException("gone")
+                }
+            }
+        assertTrue(cut.isFailure)
+        assertEquals(0, dir.list()!!.size)
+    }
+
     @Test fun aGrantedFolderOpensAsTheGrant() {
         val grants = listOf("Pictures" to "Pictures", "Download/X" to "X", "Pictures/Trips" to "Trips")
         assertEquals("phone:/Pictures", FilesFs.viaGrant("/sdcard/Pictures", grants))
