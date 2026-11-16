@@ -1,5 +1,5 @@
 app "canyon run" {
-  meta { owl: 22; description: "A low-poly flight down an endless canyon in 3D: drag to steer between pillars and tumbling rocks, and thread the rings for points"; version: "1.1"; license: "MIT"; category: "games" }
+  meta { owl: 23; description: "A low-poly flight down an endless canyon in 3D: drag to steer between pillars and tumbling rocks, and thread the rings for points"; version: "1.2"; license: "MIT"; category: "games" }
   // How it works: the Canvas holds a scene(camera) { } of model(...) calls. The canyon is one terrain()
   // tile whose heights repeat every 40 units, drawn as a few copies end to end under the ship, so it
   // never runs out; fog in the background color hides where it ends. The ship flies toward -z, and
@@ -96,7 +96,7 @@ app "canyon run" {
       let through = count(rings, r => !r.done && r.z > -flown && dist([r.x, r.y], [sx, sy]) < 1)
       if through > 0 {
         bonus = bonus + 50 * through
-        haptic()
+        haptic("light")
       }
       rings = rings.map(r => !r.done && r.z > -flown ? merge(r, {done: true, got: dist([r.x, r.y], [sx, sy]) < 1}) : r).filter(r => r.z < -flown + 8)
       rocks = rocks.map(o => o.k == "r" ? merge(o, {s: o.s + 90 * dt}) : o).filter(o => o.z < -flown + 8)
@@ -105,7 +105,7 @@ app "canyon run" {
         mode = "over"
         overAt = gt
         best = max(best, score)
-        haptic()
+        haptic("strong")
         bits = range(18).map(j => {x: sx, y: sy, z: -flown, vx: random() * 12 - 6, vy: random() * 9, vz: random() * 8 - 2 - speed * 0.3, life: 1 + random(), s: random() * 360, c: j % 3 == 0 ? orange : accent})
       }
     }

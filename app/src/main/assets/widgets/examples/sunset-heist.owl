@@ -1,5 +1,5 @@
 app "sunset heist" {
-  meta { owl: 22; description: "A sunny city by the sea, seen from above: drive, get out, take any car, race rivals, chase down cars and run missions for cash, jump the ramps and shake off the police"; version: "1.1"; license: "MIT"; category: "games" }
+  meta { owl: 23; description: "A sunny city by the sea, seen from above: drive, get out, take any car, race rivals, chase down cars and run missions for cash, jump the ramps and shake off the police"; version: "1.2"; license: "MIT"; category: "games" }
   // How it works: the city is made from a seed in lets, 12 by 16 cells of 32 units, each a block with
   // roads along its edges, and a kind: docks on the north shore, a canal across the middle, hotels on the
   // beach, houses in the south, towers downtown and a few landmarks. Only the cells around the camera are drawn. Two scenes share one camera: the
@@ -471,7 +471,7 @@ app "sunset heist" {
           // How fast it met the wall: what of its speed the wall took.
           let impact = !hitXZ ? 0 : (both ? dist([vx1, vz1]) : (hitX ? abs(vx1) : abs(vz1)))
           if impact > 18 {
-            haptic()
+            haptic("strong")
             dmg = dmg + impact * 0.2 * T.armor
             fx = drop(fx, max(0, len(fx) - 30)) + range(8).map(i => {k: "spark", x: px + fx0 * 2, y: 0.8, z: pz + fz0 * 2, vx: random() * 16 - 8, vy: random() * 8, vz: random() * 16 - 8, life: 0.4 + random() * 0.3})
           }
@@ -525,7 +525,7 @@ app "sunset heist" {
           if air == null && (any(CELLS[floor(pz / C) * 12 + floor(px / C)].b ?? [], b => b.k == "water" && abs(px - b.x) < b.w / 2 && abs(pz - b.z) < b.d / 2) || !(px > -E - 3.3 && px < 12 * C && pz > -E && pz < 16 * C + E + 3.4 && (pz > 0 || px < 11 * C + E) || any(nearShore, s => !s.flat && pow((px - s.x) * 2 / s.w, 2) + pow((pz - s.z) * 2 / s.d, 2) < 1))) {
             sunk = {at: gt, x: px, z: pz, h: ph, t: ptype, c: pcol}
             fx = drop(fx, max(0, len(fx) - 30)) + range(16).map(i => {k: "drop", x: px, y: 0.5, z: pz, vx: random() * 10 - 5, vy: 5 + random() * 7, vz: random() * 10 - 5, life: 0.6 + random() * 0.5})
-            haptic()
+            haptic("strong")
             inCar = false
             firing = false
             pv = 0
@@ -626,7 +626,7 @@ app "sunset heist" {
         // Driving into people knocks them over: that's a crime, and the police take note.
         if inCar && py < 1 && abs(pv) > 6 && any(peds, p => p.down == 0 && dist([p.x, p.z], [px, pz]) < T.r * 0.8 + 0.3) {
           peds = peds.map(p => p.down == 0 && dist([p.x, p.z], [px, pz]) < T.r * 0.8 + 0.3 ? merge(p, {down: gt, v: 4.5, h: (p.h + 180) % 360}) : p)
-          haptic()
+          haptic("light")
           if gt - crimeAt > 1 {
             heat = min(5, heat + 1)
             crimeAt = gt
@@ -635,7 +635,7 @@ app "sunset heist" {
         // Officers on foot go down the same way, and that's a crime too.
         if inCar && py < 1 && abs(pv) > 6 && any(officers, o => o.down == 0 && dist([o.x, o.z], [px, pz]) < T.r * 0.8 + 0.3) {
           officers = officers.map(o => o.down == 0 && dist([o.x, o.z], [px, pz]) < T.r * 0.8 + 0.3 ? merge(o, {down: gt, hp: 0}) : o)
-          haptic()
+          haptic("light")
           if gt - crimeAt > 1 {
             heat = min(5, heat + 1)
             crimeAt = gt
@@ -676,7 +676,7 @@ app "sunset heist" {
             dmg = dmg + (took - 2) * 0.35 * T.armor
           }
           if took > 3 && gt - hitAt > 0.15 {
-            haptic()
+            haptic("light")
             hitAt = gt
           }
           if took > 7 {
@@ -751,7 +751,7 @@ app "sunset heist" {
           // A ram (on top of the bump itself) dents the car and slows it a little; the police car falls back and needs a
           // moment before it can ram again, so a car that keeps going gets away.
           dmg = dmg + 3 * T.armor
-          haptic()
+          haptic("strong")
           hitAt = gt
           pv = pv * 0.9
           pvx = pvx * 0.9
@@ -887,14 +887,14 @@ app "sunset heist" {
           fx = drop(fx, max(0, len(fx) - 40)) + flatten(blasts.map(b => range(14).map(i => {k: i % 3 == 0 ? "smoke" : "fire", x: b.x, y: 1, z: b.z, vx: random() * 10 - 5, vy: 3 + random() * 6, vz: random() * 10 - 5, life: 0.6 + random() * 0.8})))
           booms = booms + blasts.map(b => merge(b, {t: gt}))
           blasts = []
-          haptic()
+          haptic("strong")
         }
 
         // Pickups: walk or drive through one to take it; it comes back after a minute and a half.
         let got = first(nearPicks.filter(p => dist([p.x, p.z], [px, pz]) < (inCar ? 3.2 : 2)))
         if got != null {
           taken = drop(taken, max(0, len(taken) - 40)) + [{id: got.id, t: gt}]
-          haptic()
+          haptic("light")
           msgAt = gt
           if got.k == 0 {
             hp = min(100, hp + 50)
@@ -921,7 +921,7 @@ app "sunset heist" {
           armor = armor - fromArmor
           hp = hp - (hurt - fromArmor)
           hurt = 0
-          haptic()
+          haptic("strong")
         }
         if hp <= 0 {
           msg = (sunk != null ? "wasted · drowned · -$" : "wasted · -$") + fmtNum(min(cash, 100))
@@ -961,7 +961,7 @@ app "sunset heist" {
           rivals = rivals.map(r => [clamp(count(cum, c => c <= r.s) - 1, 0, len(rp) - 2)].map(i => merge(r, {v: r.v + ((r.s >= total ? 0 : (cum[i + 1] - r.s < 14 && i + 2 < len(rp) ? 17 : r.top * clamp(1 - (r.s - ps) / 400, 0.82, 1.15))) * (gt < r.slow ? 0.5 : 1) - r.v) * min(1, 2 * dt)}))[0])
           rivals = rivals.map(r => [min(r.s + r.v * dt, total)].map(s => [clamp(count(cum, c => c <= s) - 1, 0, len(rp) - 2)].map(i => [[rp[i], rp[i + 1], min(1, (s - cum[i]) / max(1, cum[i + 1] - cum[i]))]].map(g => [[g[0][0] + (g[1][0] - g[0][0]) * g[2] - sign(g[1][1] - g[0][1]) * r.lane, g[0][1] + (g[1][1] - g[0][1]) * g[2] + sign(g[1][0] - g[0][0]) * r.lane]].map(p => merge(r, {s: s, x: r.x + (p[0] - r.x) * min(1, 5 * dt), z: r.z + (p[1] - r.z) * min(1, 5 * dt), h: dist([p[0] - r.x, p[1] - r.z]) > 0.2 ? deg(atan2(p[0] - r.x, p[1] - r.z)) : r.h}))[0])[0])[0])[0])
           if dist(rp[mis.i], [px, pz]) < 11 {
-            haptic()
+            haptic("light")
             if mis.i == len(rp) - 1 {
               let pl = 1 + count(rivals, r => r.s >= total)
               let secs = gt - mis.go
