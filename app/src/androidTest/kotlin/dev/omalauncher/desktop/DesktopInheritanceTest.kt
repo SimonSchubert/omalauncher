@@ -4,8 +4,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.os.Process
 import androidx.test.platform.app.InstrumentationRegistry
-import dev.omalauncher.AndroidApp
+import dev.omalauncher.apps.AndroidApp
 import dev.omalauncher.widgets.Cell
+import dev.omalauncher.widgets.Screen
 import dev.omalauncher.widgets.Folder
 import dev.omalauncher.widgets.Shortcuts
 import dev.omalauncher.widgets.Shortcut
@@ -15,6 +16,73 @@ import org.junit.Test
 import java.util.UUID
 
 class DesktopInheritanceTest {
+    @Test fun shownFoldableLayoutSeedsIndependentDesktopMainAndSurvivesReload() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val sourceProfile = "foldable_" + UUID.randomUUID()
+        val desktopProfile = "desktop_" + UUID.randomUUID()
+        try {
+            instrumentation.runOnMainSync {
+                val source = WidgetLayout(context, sourceProfile)
+                val apps = Shortcuts(context, source, sourceProfile)
+                source.regrid(6, emptyList())
+                source.regrid(10, emptyList(), Screen.UNFOLDED)
+                val placements = mapOf(
+                    Screen.MAIN to Cell(0, 1, 2, 2),
+                    Screen.COVER to Cell(2, 2, 2, 2),
+                    Screen.UNFOLDED to Cell(7, 3, 3, 2),
+                )
+                for ((screen, cell) in placements) {
+                    source.set("widget.owl", cell, screen)
+                    source.setPage("widget.owl", screen.ordinal + 2, screen)
+                }
+                for (index in 1..3) {
+                    apps.addAndroid(AndroidApp("App $index", ComponentName("fixture.$index", "fixture.$index.Main"), Process.myUserHandle()), if (index == 3) 6 else 4)
+                }
+                val folder = apps.group(apps.items[1], apps.items[0])!!
+                source.setPage(folder, 7, Screen.UNFOLDED)
+                source.show(Screen.UNFOLDED)
+                source.save()
+                val shownApps = apps.onGrid()
+
+                val desktop = WidgetLayout(context, desktopProfile)
+                desktop.seedFrom(source)
+                val desktopApps = Shortcuts(context, desktop, desktopProfile)
+                desktopApps.seedFrom(apps)
+                assertEquals(Screen.MAIN, desktop.screen)
+                assertEquals(10, desktop.columns)
+                assertEquals(placements.getValue(Screen.UNFOLDED), desktop.cell("widget.owl"))
+                assertEquals(4, desktop.page("widget.owl"))
+                assertEquals(shownApps, desktopApps.onGrid())
+                assertEquals(setOf(3, 7), desktopApps.onGrid().map { it.page }.toSet())
+
+                val reloaded = WidgetLayout(context, desktopProfile)
+                assertEquals(Screen.MAIN, reloaded.screen)
+                assertEquals(10, reloaded.columns)
+                assertEquals(desktop.cell("widget.owl"), reloaded.cell("widget.owl"))
+                assertEquals(4, reloaded.page("widget.owl"))
+                assertEquals(shownApps, Shortcuts(context, reloaded, desktopProfile).onGrid())
+                reloaded.reflowDesktop(4, 5, listOf(Shortcut("widget.owl", 4, "Widget")))
+                reloaded.setPage("widget.owl", 1)
+
+                val original = WidgetLayout(context, sourceProfile)
+                for ((screen, cell) in placements) {
+                    assertEquals(cell, original.cell("widget.owl", screen))
+                    assertEquals(screen.ordinal + 2, original.page("widget.owl", screen))
+                    assertEquals(if (screen == Screen.UNFOLDED) 10 else 6, original.columnsOf(screen))
+                }
+                assertEquals(Screen.UNFOLDED, source.screen)
+                assertEquals(shownApps, apps.onGrid())
+            }
+        } finally {
+            for (profile in listOf(sourceProfile, desktopProfile)) {
+                for (name in listOf("widget_grid_$profile", "shortcuts_$profile")) {
+                    context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
+                }
+            }
+        }
+    }
+
     @Test fun desktopScaleReflowsItsOwnCellsWithoutChangingPhonePlacement() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val phone = "phone_" + UUID.randomUUID()

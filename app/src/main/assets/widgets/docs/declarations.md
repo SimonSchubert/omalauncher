@@ -6,26 +6,30 @@ Part of the widget docs: README.md, one folder up, comes first, and paths here a
 
 | declaration | meaning |
 |---|---|
-| `source x = cmd("...") every 5s` | runs a bash command in this Arch system; `x` is its output (stdout, trimmed). Add `json` to parse JSON output, `timeout 30s` to allow more than 10 s, `status` to get `{out, err, code, ok}` instead (see below), `optional` to let the widget work without Linux (see Without Linux). Default interval: 60 s |
+| `source x = cmd("...") every 5s` | runs a bash command in this Arch system; `x` is its output (stdout, trimmed). Add `json` to parse JSON output, `timeout 30s` to allow more than 10 s, `status` to get `{out, err, code, ok}` instead (see below), `optional` to let the widget work without Linux (see Without Linux). Output stops at 4 MB, and a command still writing then fails. Default interval: 60 s |
 | `source x = stream("...")` | a long-running command; every line it prints becomes the new value. Add `json` for JSON lines. At most 4 different streams run at once |
-| `source x = http("https://...") every 10m` | an HTTP GET from Android, no curl or shell needed. Takes `json`, `timeout` and `status` like cmd (with `status`, `code` is the HTTP status and `ok` means 2xx), and optionally headers: `http(url, {Accept: "application/json"})`. The response is capped at 1 MB and the interval at 5 s or more. Prefer it over `cmd("curl ...")`. A URL can hold values, through `enc()` (see Values in URLs); it's fetched again as soon as it changes, and a `null` URL pauses the source, keeping its last value: `http(tab == "news" ? "https://..." : null)` fetches only while that tab shows. A failed fetch (offline, an error status, a rate limit) is tried again after 30 s |
+| `source x = http("https://...") every 10m` | an HTTP GET from Android, no curl or shell needed. Takes `json`, `timeout` and `status` like cmd (with `status`, `code` is the HTTP status and `ok` means 2xx), and optionally headers: `http(url, {Accept: "application/json"})`, and `pin:` for a server with a certificate of its own (owl 17, see Sending). A response over 1 MB fails (`the response is over 1 MB`), and the interval is 5 s or more. Prefer it over `cmd("curl ...")`. A URL can hold values, through `enc()` (see Values in URLs); it's fetched again as soon as it changes, and a `null` URL pauses the source, keeping its last value: `http(tab == "news" ? "https://..." : null)` fetches only while that tab shows. A failed fetch (offline, an error status, a rate limit) is tried again after 30 s |
+| `source x = ws("wss://...")` | a WebSocket from Android (owl 17): every message the server sends becomes the new value. Takes `json`, headers and `pin:` like `http`, and `status` for `{out, open, err}`: the last message, whether it's connected, and why it last failed. Connected while its page shows, again when its URL changes, and again after it drops; a `null` URL keeps it closed. `send(x, message)` talks back, and `on x each { }` runs for every message. See WebSockets in docs/handlers.md |
 | `source x = file("~/.cache/x.json")` | a file in this system, read again whenever it changes (no polling, no shell). Add `json` to parse it. A missing file reads as `""`; at most 1 MB is read. Prefer it over `cmd("cat ...") every 5s` (owl 4) |
 | `source now = clock every 1s` | Unix time in seconds, with no shell involved. Use `fmtTime(now, "HH:mm")` |
 | `source bat = android.battery` | the phone's own data, from Android: the battery, what's playing, notifications, volume, the next alarm, modes, apps, the drawer, coding agents. See docs/android.md |
 | `state x = 0` | a value that handlers can change. Add `persist` to keep it across restarts: `state endsAt = 0 persist` |
-| `state token = null secret` | a token or password: kept across restarts encrypted, never in the persisted values, and it only goes into `http(...)`'s and `post(...)`'s headers and `post`'s body, or `token == null` (or `!= ""`) to see whether it's set, with the server written out in the URL; anything else that reads it is an error. Use it for every API key, token and password. See Tokens and passwords in docs/handlers.md (owl 12) |
+| `state token = null secret` | a token or password: kept across restarts encrypted, never in the persisted values, and it only goes into `http(...)`'s, `post(...)`'s and `ws(...)`'s headers, `post`'s body and `send`'s message, into their URL as `enc(token)`, or `token == null` (or `!= ""`) to see whether it's set, with the server written out in the URL; anything else that reads it is an error. Use it for every API key, token and password. See Tokens and passwords in docs/handlers.md (owl 12) |
 | `let x = expr` | a derived value, recomputed only when what it reads changes. It can use sources, state and earlier lets |
 | `let h = history(x, 60)` | the last 60 values of `x`, sampled whenever a source updates (for Sparkline). With `persist` it survives restarts, unless it's older than it would take to fill |
 | `let p = prev(x)` | the previous value of `x`, for rates: `let rate = (bytes - p) / 5` |
 | `component Name(a, b = 1) { ... }` | a reusable node; use it as `Name { a: 1 }` |
 | `asset logo = base64"iVBOR..."` | an embedded image (under 2 MB) for `Image { src: logo }`, or a font for `font: logo` (owl 10, see Fonts in docs/nodes.md), so the widget is one self-contained file |
+| `strings { en { title: "today" } id { title: "hari ini" } }` | the text a person reads, in more than one language: `str.title` is the phone's language's, or en's where it has none. See Text in more languages (owl 16) |
 | `requires { pacman: ["jq", "curl"] }` | packages the widget's commands need; see Dependencies |
 | `meta { description: "..."; version: "1.0"; license: "MIT"; category: "news" }` | needed to publish to the widget store (see docs/sharing.md) |
-| `meta { owl: 12 }` | the language version the file needs (this launcher has 12; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
+| `meta { owl: 12 }` | the language version the file needs (this launcher has 19; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see docs/screens.md (owl 5) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
 | `padding: 12` / `background: ...` | the tile's padding (dp) and background |
+| `lock: playing` | holds the home screen still while it's true and the tile shows: no page turn, swipe up or long press, so a game's or a drawing pad's swipes stay its own. Back and the chip it puts at the top let go until it turns false. Something that changes, never a fixed `true` (owl 18) |
+| `fps: hopping ? 30 : 10` | how many frames a second its `time` animation gets, 1 to 60 (60 without it): a pet that blinks and breathes needs 10, a slow drift 15 to 20, smooth swimming or a spinner 30, a game 60. Worked out as it changes, so it can rise for a moment after a tap and fall back. Fewer frames are less battery for as long as the page shows. A `time` in it doesn't keep the animation running on its own (owl 19; faces, apps and panels take it too). A widget that draws slowly, over 4 ms a frame, animates at half rate; an app that says `fps: 60` keeps 60 however long it draws, so a game doesn't lag behind the finger |
 
 Sources only run while their page (or a neighbour) is on screen, and
 identical commands in several widgets run once. A few commands run at the same
@@ -94,9 +98,10 @@ Statements that run on their own, written like handlers, at the top of the widge
 | trigger | runs |
 |---|---|
 | `every 10s { ... }` | every 10 seconds while the page is live (on screen or next to it), like a source. At least 1 s |
+| `every frame { ... }` | each frame the widget draws, while it's on screen, with `dt` the seconds since the last one: for a game that moves things by their speed, `x = x + vx * dt`. As many frames as `fps:` gives, 60 without it, and none while it's off screen or the screen is off; after a pause `dt` is at most 0.1, so nothing jumps. Keep it short: it runs up to 60 times a second (owl 21) |
 | `at endsAt { ... }` | when the clock reaches `endsAt`, a Unix time in seconds, even while the page is off screen. Again for each new time; 0 or null means none. A time that passed while the launcher wasn't running runs at the next start, so set it to 0 in the statements. While the phone sleeps it can run a little late, when it wakes |
 | `when cond { ... }` | each time `cond` turns true, including when it's already true as the widget starts |
-| `on x { ... }` | each time `x` changes, with `value` (the new one) and `old`. Not for its first value, and null (loading) doesn't count as a change. `on x first { ... }` runs for the first value too, with `old` null: for saving what a source fetched, from the first fetch on (owl 9) |
+| `on x { ... }` | each time `x` changes, with `value` (the new one) and `old`. Not for its first value, and null (loading) doesn't count as a change. `on x first { ... }` runs for the first value too, with `old` null: for saving what a source fetched, from the first fetch on (owl 9). `on x each { ... }`, for a `ws(...)` source `x`, runs for every message, in the order they came and repeats too, with `value` the message (owl 17); see WebSockets in docs/handlers.md |
 
 ```owl
 widget "focus" {
@@ -115,7 +120,8 @@ widget "focus" {
 
 `when` and `on` react to what they read: a source only updates while its page is live, so
 for a deadline use `at`, which doesn't need one. A trigger that runs more than 10 times a
-second is held back and reported (one that changes what it watches would otherwise loop).
+second is held back and reported (one that changes what it watches would otherwise loop);
+`on x each` may run 100 times a second, and `every frame` once a frame.
 
 ## Dependencies
 
@@ -168,3 +174,35 @@ widget "kernel" {
 
 `optional` works on `cmd`, `stream` and `file`. Keep such a widget's commands to base tools
 (coreutils, grep, sed, awk, bash, pacman): `requires` makes a widget need Linux again.
+
+## Text in more languages
+
+A widget only its owner uses can simply be written in their language. One for the store, which people
+read in many languages, keeps the text a person reads in `strings` (owl 16): an `en { }` set with every
+text in English, and a set for each other language, named by its code (`id`, `de`, `pt`, `es`, ...).
+`str.name` is the text in the phone's language, and en's where that set lacks it or the phone's language
+has none:
+
+```owl
+widget "inbox" {
+  meta { owl: 16 }
+  source n = android.notifications
+  strings {
+    en { title: "inbox"; empty: "all quiet"; count: k => k == 1 ? "1 new" : "${k} new" }
+    id { title: "kotak masuk"; empty: "semua tenang"; count: k => "${k} baru" }
+  }
+  Column {
+    Text { text: str.title; color: muted }
+    Text { text: len(n) == 0 ? str.empty : str.count(len(n)) }
+  }
+}
+```
+
+- A text that takes values is an arrow function, called like one: `str.count(len(n))`. Plurals and word
+  order go in there, per language.
+- Every name in another set must be in en, taking as many values; a set that lacks some gets a warning,
+  and those show in English.
+- Only the text: names of things from APIs, commands and the phone (apps, songs, cities) stay as they come.
+  Dates and numbers follow the phone's language already, through `fmtTime` and `fmtNum`.
+- `lang()` is the phone's language code, for an API that takes one: `http("https://wttr.in/?lang=${lang()}")`.
+- A widget follows a change of the phone's language when it compiles anew, which the launcher does then.

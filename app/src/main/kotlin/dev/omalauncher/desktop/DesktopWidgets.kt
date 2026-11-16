@@ -8,10 +8,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import dev.omalauncher.AndroidApp
+import dev.omalauncher.apps.AndroidApp
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.Runtime
-import dev.omalauncher.ui.EmbeddedTerminal
+import dev.omalauncher.ui.home.EmbeddedTerminal
+import dev.omalauncher.ui.EmbeddedBrowser
 import dev.omalauncher.widgets.HomeItem
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.Shortcuts
@@ -65,6 +66,9 @@ internal class DesktopWidgets(
     private val services = object : Services by runtime.widgets.desktopServices() {
         override fun terminal(command: String?, fontSize: Double?): EmbeddedTerminal = throw WidgetError("Terminal presentation is unavailable on external desktops")
 
+        // The phone owns browser focus, as it does terminals; never borrow that owner here.
+        override fun browser(url: String?, js: Boolean, zoom: Double): EmbeddedBrowser = throw WidgetError("Browser presentation is unavailable on external desktops")
+
         override fun act(name: String, args: List<Value>, done: () -> Unit) {
             if (!authorized()) return
             when (name) {
@@ -85,13 +89,17 @@ internal class DesktopWidgets(
 
     fun start() {
         scope.launch {
-            snapshotFlow { Triple(runtime.widgets.specs.toList(), runtime.widgets.linux, visibleNames) }.collect { (definitions, linux, _) ->
+            snapshotFlow { Triple(runtime.widgets.specs.filter(runtime.widgets::onHome), runtime.widgets.linux, visibleNames) }.collect { (definitions, linux, _) ->
                 var seeded = false
                 if (inheritPhoneLayout && !workspacePages && !prefs.getBoolean("phoneSeeded", false) && definitions.isNotEmpty()) {
                     layout.seedFrom(runtime.widgets.layout)
-                    // A phone home need not have been measured before its service starts.
-                    // Keep the compiled page even when no placement override exists yet.
-                    definitions.forEach { layout.setPage(it.file.name, it.page) }
+                    // Preserve the shown-screen overrides just copied. For an unplaced widget,
+                    // materialize that screen's inherited page, or its already repaged definition.
+                    definitions.forEach { spec ->
+                        if (layout.page(spec.file.name) == null) {
+                            layout.setPage(spec.file.name, runtime.widgets.layout.chosenPage(spec.file.name) ?: spec.page)
+                        }
+                    }
                     shortcuts.seedFrom(runtime.widgets.shortcuts)
                     inheritedPages.clear()
                     inheritedPages += runtime.widgets.pages
@@ -136,9 +144,9 @@ internal class DesktopWidgets(
                     if (spec.file.name in instances || (program.needsLinux && !linux)) continue
                     val name = spec.file.name
                     val saved = File(stateDir, "$name.json")
-                    val instance = WidgetInstance(program, services, { unavailable(it) }, saved,
+                    val instance = WidgetInstance(program, services, { unavailable(it) }, saved, secretFile = File(stateDir, "$name.secret"),
                         onScreen = { open -> if (open) openScreen = name else if (openScreen == name) openScreen = null },
-                        linux = { runtime.widgets.linux })
+                        linux = { runtime.widgets.linux }, foreground = { visible && openScreen == name })
                     // Preserve this desktop's values across edits/reconnections. Seed a new desktop from the phone once.
                     (existing[name] ?: runtime.widgets.instance(spec)?.takeIf { !saved.exists() })?.let(instance::adopt)
                     instances[name] = instance

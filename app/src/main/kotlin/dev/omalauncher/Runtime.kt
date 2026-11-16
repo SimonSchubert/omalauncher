@@ -10,6 +10,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -23,10 +24,14 @@ import dev.omalauncher.linux.AudioBridge
 import dev.omalauncher.linux.Bootstrap
 import dev.omalauncher.linux.EDIT_COMMAND
 import dev.omalauncher.linux.FILES_COMMAND
+import dev.omalauncher.linux.VOICE_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.LinuxWindowRoutes
+import dev.omalauncher.linux.LinuxDns
+import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.OpenBridge
+import dev.omalauncher.linux.PhoneBridge
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.SystemUpdates
@@ -40,10 +45,12 @@ import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.theme.ThemeStore
-import dev.omalauncher.ui.Gestures
+import dev.omalauncher.ui.home.Gestures
 import dev.omalauncher.ui.KeyboardBridge
-import dev.omalauncher.ui.SettingsPage
-import dev.omalauncher.ui.TerminalTiles
+import dev.omalauncher.ui.settings.SettingsPage
+import dev.omalauncher.ui.voice.Speaker
+import dev.omalauncher.voice.VoiceSession
+import dev.omalauncher.ui.home.TerminalTiles
 import dev.omalauncher.ui.WindowManager
 import dev.omalauncher.ui.bitmapMask
 import dev.omalauncher.ui.Palette
@@ -51,22 +58,39 @@ import dev.omalauncher.ui.decodeImageIcon
 import dev.omalauncher.ui.decodeSvgIcon
 import dev.omalauncher.upgrade.Provisioner
 import dev.omalauncher.wayland.AndroidClipboard
+import dev.omalauncher.wayland.GuestImages
 import dev.omalauncher.wayland.OutputInfo
 import dev.omalauncher.wayland.WaylandServer
 import dev.omalauncher.wayland.XdgToplevel
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.WidgetEngine
 import dev.omalauncher.widgets.WidgetSpec
+import dev.omalauncher.widgets.app
+import dev.omalauncher.widgets.lang.Program
+import dev.omalauncher.widgets.runtime.Dictation
+import dev.omalauncher.widgets.runtime.PhoneLocation
+import dev.omalauncher.widgets.runtime.PhoneCalendar
+import dev.omalauncher.widgets.runtime.NotificationDots
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
+import dev.omalauncher.apps.AndroidAppCatalog
+import dev.omalauncher.apps.AppUsage
+import dev.omalauncher.apps.androidAppKey
+import dev.omalauncher.apps.androidShortcutKey
+import dev.omalauncher.linux.LinuxAppCatalog
+import dev.omalauncher.storage.LauncherData
+import dev.omalauncher.storage.PhoneFolders
 
 /**
  * Process-wide state: the launcher (themes, widgets, Android apps) and the
@@ -78,7 +102,8 @@ class Runtime(
     val proot = Proot(context)
     val wm = WindowManager()
     val server = WaylandServer(proot.waylandSocket.path, wm).also { wm.server = it }
-    val keyboard = KeyboardBridge(wm)
+    private val guestImages = GuestImages(context, File(proot.tmpDir, "clipboard"), proot::guestPath)
+    val keyboard = KeyboardBridge(wm, guestImages)
     val terminals = TerminalTiles(this)
     val style = StyleStore(context)
     val terminalFont = TerminalFont(proot, style)
@@ -89,12 +114,48 @@ class Runtime(
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
-    private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onEdit = ::edit)
-    val agents = AgentStore(proot, onChanged = ::syncGuest)
+    private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onOpenVoice = ::openVoice, onEdit = ::edit)
+    val agents = AgentStore(proot, text = { id, arg -> context.getString(id, arg) }, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
+
+    /** Widgets' speech(...) and android.speech. */
+    val dictation = Dictation(context)
+
+    /** Widgets' location("request") and android.location. */
+    val location = PhoneLocation(context)
+
+    /** Widgets' android.calendar, calendar("request") and calendar("open"). */
+    val calendar = PhoneCalendar(context)
+
+    /** The phone's folders the user let Linux reach: in Files, and through `omalauncher`. */
+    val phoneFolders = PhoneFolders(context)
+
+    /** `omalauncher` in the guest (and `phone`, its old name): location, calendar and AirPods for agents, as far as widgets were allowed them; the phone folders. */
+    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, phoneFolders, scope) }
+
+    /** The voice screen's replies, in the phone's voice. */
+    val speaker = Speaker(context)
+
+    /** A spoken conversation with a coding agent: the voice screen's (VoiceActivity). */
+    private val voiceSession = lazy { VoiceSession(context, proot, agents, speaker) }
+    val voice by voiceSession
+
+    init {
+        // Not started just for this: a Voice that never ran has nothing to stop.
+        agents.release = { agent -> voiceSession.isInitialized() && voice.release(agent.bin) }
+    }
     val updates = SystemUpdates(proot, pacman, agents)
+
+    /** A newer launcher: on Google Play in the play build, on GitHub releases in the foss build. */
+    val launcherUpdates = LauncherUpdates(context)
+
+    /** Messages from the developer, shown on home. */
+    val announcements = dev.omalauncher.net.Announcements(context)
     val gpu = Gpu(context, proot, pacman)
+
+    /** The guest's resolv.conf, on the phone's DNS servers while Linux is up. */
+    private val dns = LinuxDns(context, proot.rootfs)
 
     /** The launcher's own provided files (default widgets, their docs); see [Provisioner]. */
     private val launcherFiles = Provisioner(proot.filesDir, LauncherData.LAUNCHER_MANIFEST, listOf(widgets::managed, style::managed))
@@ -108,6 +169,8 @@ class Runtime(
                 { defaultApps(proot.applications) },
                 { bundledIcons(context, proot.home) },
                 openBridge::managed,
+                { phoneBridge.managed() },
+                proot::managed,
                 pacman::managed,
                 agents::managed,
                 themes::managed,
@@ -132,15 +195,41 @@ class Runtime(
         private set
 
     /** Linux is installed and its services run: guest commands (like the update check) can go. */
-    private var linux = false
+    private var linux by mutableStateOf(false)
     val linuxAvailable get() = linux
 
-    /** The Linux install and removal; one at a time. */
+    /** Whether Linux is up: false while it starts, and while it's stopped or not installed. */
+    val linuxRunning get() = linux
+
+    /** The Linux install and removal, its stop and start; one at a time. */
     private var linuxJob: Job? = null
 
+    /**
+     * Linux is installed but stopped in settings: no guest process runs, there's no foreground service, and it stays
+     * so across restarts until it's started there. Features that need Linux send the user there, as without one.
+     */
+    var linuxStopped by mutableStateOf(prefs.getBoolean(LINUX_STOPPED, false))
+        private set
+
+    private fun saveStopped(stopped: Boolean) {
+        linuxStopped = stopped
+        prefs.edit().putBoolean(LINUX_STOPPED, stopped).apply()
+    }
+
     init {
+        proot.stopped = linuxStopped
         // Saved, so removing Linux later doesn't bring the first-run screen back.
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
+        // Android's share sheet lists Linux only while it's installed; ShareInActivity's alias starts off
+        scope.launch {
+            bootstrap.state.collect { state ->
+                when (state) {
+                    LinuxState.Installed -> ShareInActivity.listedInShareSheet(context, true)
+                    LinuxState.NotInstalled, LinuxState.Removing -> ShareInActivity.listedInShareSheet(context, false)
+                    else -> Unit
+                }
+            }
+        }
         themes.loadPalette()
         // An agent or the user edited style.toml; the rest of the style is read where it's drawn.
         style.onExternalChange = { old, new ->
@@ -153,6 +242,15 @@ class Runtime(
         }
         scope.launch {
             snapshotFlow { style.style[Style.FONT] }.drop(1).collect { launcherFont.apply() }
+        }
+        // The recent strip's and home's pinned apps.
+        androidApps.iconsFirst = {
+            usage.recent.take(20).filter { it.startsWith("a:") }.mapTo(HashSet()) { it.substringAfter(':') } + widgets.shortcuts.items.mapNotNull(::androidKeyOf)
+        }
+        // Read before start, so the first load draws the pack's icons rather than drawing every icon twice.
+        androidApps.iconPack = style.style[Style.ICON_PACK]
+        scope.launch {
+            snapshotFlow { style.style[Style.ICON_PACK] }.drop(1).collect { androidApps.iconPack = it }
         }
         androidApps.start()
         // Omarchy's Super bindings inside Linux windows; the home screen handles its own (see MainActivity).
@@ -199,12 +297,28 @@ class Runtime(
                 launcherFiles.sync()
                 agents.load()
             }
+            // Linux apps are files on disk: listed now for the recent strip, not after Linux has started.
+            if (bootstrap.wanted) scope.launch { linuxApps.refresh() } else linuxApps.listed = true
+            // Widgets don't wait for the theme: they draw with the palette, which is already loaded, and the
+            // wallpaper decode is the slow part of themes.load().
+            widgets.start()
             themes.load()
             style.start()
-            widgets.start()
             // On the first-run screen the download is the screen's job, with progress.
             if (launcherReady) scope.launch { themes.ensureRelease() }
-            if (bootstrap.wanted) runLinux { bootstrap.run() } else bootstrap.run()
+            when {
+                !bootstrap.wanted -> bootstrap.run()
+                // Stopped in settings, it stays stopped: no service, no guest command, until it's started there.
+                linuxStopped && bootstrap.installedWhileStopped() -> Unit
+                else -> {
+                    // Stopped mid-install can't happen through settings; an install always goes on.
+                    if (linuxStopped) {
+                        saveStopped(false)
+                        proot.stopped = false
+                    }
+                    runLinux { bootstrap.run() }
+                }
+            }
         }
     }
 
@@ -219,22 +333,70 @@ class Runtime(
     fun installLinux(agents: List<Agent>) = runLinux { bootstrap.install(agents) }
 
     /** Continues a failed install, or a failed update of an installed system. */
-    fun retryLinux() = runLinux { bootstrap.run() }
+    fun retryLinux() = if (linuxStopped) startLinux() else runLinux { bootstrap.run() }
+
+    /** Stops an install that hasn't completed, running or failed, and deletes what it downloaded and unpacked. */
+    fun cancelLinux() {
+        val install = linuxJob
+        if (!bootstrap.cancel()) return
+        linuxJob =
+            scope.launch {
+                install?.cancel()
+                withContext(Dispatchers.IO) { proot.killAll() }
+                install?.join()
+                bootstrap.remove()
+                setService(false)
+            }
+    }
 
     /** Runs [work] with the foreground service up, so it goes on outside the app; then starts Linux if it's installed. */
     private fun runLinux(work: suspend () -> Unit) {
         if (linuxJob?.isActive == true) return
+        linuxJob = scope.launch { withService(work) }
+    }
+
+    private suspend fun withService(work: suspend () -> Unit) {
+        setService(true)
+        withContext(Dispatchers.IO) {
+            if (!prepared) {
+                proot.prepare()
+                prepared = true
+            }
+        }
+        work()
+        if (bootstrap.isInstalled) onLinuxReady() else setService(false)
+    }
+
+    /**
+     * Stops an installed Linux without deleting anything: every guest process ends (Linux apps, terminals, agents,
+     * widgets' commands) and the foreground service goes. It stays stopped across restarts, until [startLinux].
+     */
+    fun stopLinux() {
+        if (linuxStopped || !bootstrap.isInstalled) return
+        saveStopped(true)
+        // After a start still under way, which would bring it up again.
+        val before = linuxJob
         linuxJob =
             scope.launch {
-                setService(true)
-                withContext(Dispatchers.IO) {
-                    if (!prepared) {
-                        proot.prepare()
-                        prepared = true
-                    }
-                }
-                work()
-                if (bootstrap.isInstalled) onLinuxReady() else setService(false)
+                before?.join()
+                linux = false
+                widgets.linuxChanged(false)
+                audio.stop()
+                withContext(Dispatchers.IO) { proot.stop() }
+                setService(false)
+            }
+    }
+
+    /** Starts a Linux stopped with [stopLinux]: as at launch, with update steps that waited. */
+    fun startLinux() {
+        if (!linuxStopped) return
+        saveStopped(false)
+        val before = linuxJob
+        linuxJob =
+            scope.launch {
+                before?.join()
+                proot.stopped = false
+                withService { bootstrap.run() }
             }
     }
 
@@ -259,14 +421,16 @@ class Runtime(
                 gpu.turnOff()
                 linuxApps.clear()
                 setService(false)
+                // Removed while stopped: the next install runs.
+                saveStopped(false)
+                proot.stopped = false
             }
     }
 
     /** The foreground service keeps the process, and with it Linux, alive; only while Linux is installed or installing. */
     private fun setService(on: Boolean) {
-        val intent = Intent(context, LinuxService::class.java)
         // Android 12+ refuses a foreground service started from the background; the work then goes on without it.
-        if (on) runCatching { context.startForegroundService(intent) }.onFailure { Log.w(TAG, "cannot start the service", it) } else context.stopService(intent)
+        runCatching { LinuxService.set(context, on) }.onFailure { Log.w(TAG, "cannot start the service", it) }
     }
 
     /** Guest configs follow the theme and the installed agents; only while there is a guest. */
@@ -282,7 +446,8 @@ class Runtime(
         if (!servicesStarted) {
             servicesStarted = true
             updateOutput()
-            synchronized(server) { server.selection.system = AndroidClipboard(context, server::clipboardChanged) }
+            val clipboard = AndroidClipboard(context, guestImages, server::clipboardChanged)
+            synchronized(server) { server.selection.system = clipboard }
             context.registerComponentCallbacks(
                 object : ComponentCallbacks {
                     override fun onConfigurationChanged(newConfig: Configuration) = updateOutput()
@@ -295,6 +460,8 @@ class Runtime(
                 server.start()
                 proot.procShim.start()
                 openBridge.start()
+                phoneBridge.start()
+                dns.start()
             }
         } else {
             // Linux installed again: its new home has no foot-font.ini yet.
@@ -334,6 +501,7 @@ class Runtime(
     /** Checks for updates now, on the runtime's scope: leaving settings doesn't cancel it. */
     fun checkUpdates() {
         if (linux) scope.launch { updates.check(force = true) }
+        launcherUpdates.check(force = true)
     }
 
     /** Runs every pending update (packages and agents); the drawer then lists what changed. */
@@ -393,6 +561,9 @@ class Runtime(
         if (screens == 0) proot.procShim.setActive(false)
     }
 
+    /** Whether every kind of app has been listed once: Android's, Linux's and owl's. Before, a list of them would be missing some. */
+    val appsListed get() = androidApps.listed && linuxApps.listed && widgets.loaded
+
     /** Rescans .desktop entries; see [LinuxAppCatalog.refresh]. */
     suspend fun refreshApps() {
         if (linux) linuxApps.refresh()
@@ -404,13 +575,19 @@ class Runtime(
         mono: Boolean,
     ): ImageBitmap? {
         androidKeyOf(shortcut)?.let { return if (mono) androidApps.masks[it] else androidApps.icons[it] }
-        shortcut.owl?.let { file -> return widgets.specs.firstOrNull { it.file.name == file }?.let { owlIcon(it, mono) } }
+        shortcut.owl?.let { file -> return widgets.specs.app(file)?.let { owlIcon(it, mono) } }
         val id = shortcut.linux?.id ?: return null
         return if (mono) linuxApps.masks[id] else linuxApps.icons[id]
     }
 
-    /** Owl apps' icons and silhouettes, by their SVG (or image) and the accent they were drawn in: a theme change draws them anew. */
-    private val owlIcons = HashMap<Pair<String, Int>, Pair<ImageBitmap, ImageBitmap>?>()
+    /**
+     * Owl apps' icons and silhouettes, by their SVG (or image) and the accent they were drawn in: a theme change draws
+     * them anew, and drops the ones in the accent before once it has.
+     */
+    private val owlIcons = mutableStateMapOf<Pair<String, Int>, Pair<ImageBitmap, ImageBitmap>>()
+
+    /** Icons drawn, or being drawn, into [owlIcons]; those with nothing to draw stay here and out of it. */
+    private val owlIconsAsked = ConcurrentHashMap.newKeySet<Pair<String, Int>>()
 
     /**
      * An owl app's icon, or its silhouette; null if it has none. An SVG is drawn with `currentColor` in the theme's
@@ -421,17 +598,41 @@ class Runtime(
         mono: Boolean,
     ): ImageBitmap? {
         val program = spec.program ?: return null
-        val image = program.iconImage
-        val svg = program.icon
-        if (image == null && svg == null) return null
+        val key = program.iconKey ?: return null
         val accent = Palette.accent.toArgb()
-        val size = (52 * context.resources.displayMetrics.density).toInt()
         val drawn =
-            owlIcons.getOrPut((svg ?: "image:" + image.contentHashCode()) to accent) {
-                val bmp = if (image != null) decodeImageIcon(image, size) else decodeSvgIcon(svg!!, size, accent)
-                bmp?.let { it.asImageBitmap() to bitmapMask(it).asImageBitmap() }
+            owlIcons[key to accent] ?: run {
+                // Drawn off the main thread, as Android's icons are: an SVG is slow to draw, and a theme change drew all of them in one frame.
+                if (owlIconsAsked.add(key to accent)) {
+                    scope.launch {
+                        val icon = withContext(Dispatchers.Default) { drawOwlIcon(program, accent) } ?: return@launch
+                        owlIcons[key to accent] = icon
+                        owlIcons.keys.removeAll { it.first == key && it.second != accent }
+                        owlIconsAsked.removeAll { it.first == key && it.second != accent }
+                    }
+                }
+                // Until then, the one drawn in the accent before.
+                owlIcons.entries.firstOrNull { it.key.first == key }?.value
             }
         return if (mono) drawn?.second else drawn?.first
+    }
+
+    /** Draws [specs]' icons in the accent now, all at once off the main thread: at start, so home and the recent apps have them from the first frame. */
+    suspend fun drawOwlIcons(specs: List<WidgetSpec>) {
+        val accent = Palette.accent.toArgb()
+        val programs = specs.mapNotNull { it.program }.filter { p -> p.iconKey.let { it != null && owlIconsAsked.add(it to accent) } }
+        val drawn = withContext(Dispatchers.Default) { programs.map { p -> async { p.iconKey!! to drawOwlIcon(p, accent) } }.awaitAll() }
+        for ((key, icon) in drawn) if (icon != null) owlIcons[key to accent] = icon
+    }
+
+    private fun drawOwlIcon(
+        program: Program,
+        accent: Int,
+    ): Pair<ImageBitmap, ImageBitmap>? {
+        val size = (52 * context.resources.displayMetrics.density).toInt()
+        val image = program.iconImage
+        val bmp = if (image != null) decodeImageIcon(image, size) else decodeSvgIcon(program.icon!!, size, accent)
+        return bmp?.let { it.asImageBitmap() to bitmapMask(it).asImageBitmap() }
     }
 
     /**
@@ -440,8 +641,14 @@ class Runtime(
      */
     fun shortcutLabel(shortcut: Shortcut) =
         androidKeyOf(shortcut)?.let { androidApps.labels[it] }
-            ?: shortcut.owl?.let { file -> widgets.specs.firstOrNull { it.file.name == file }?.name }
+            ?: shortcut.owl?.let { widgets.specs.app(it)?.name }
             ?: shortcut.label
+
+    /** Whether a pinned Android app or shortcut has a notification dot. */
+    fun hasDot(shortcut: Shortcut) =
+        shortcut.component?.let { NotificationDots.has(it.packageName, shortcut.profile) }
+            ?: shortcut.androidShortcut?.let { NotificationDots.has(it.packageName, shortcut.profile, it.id) }
+            ?: false
 
     /** A pinned Android app's or shortcut's key in [androidApps]; null for a Linux app. */
     private fun androidKeyOf(shortcut: Shortcut) =
@@ -509,6 +716,7 @@ class Runtime(
         // Our own Files app: open it directly rather than round-tripping through the guest.
         if (app.exec == FILES_COMMAND) return openFiles(displayId = displayId)
         if (app.exec == EDIT_COMMAND) return edit(displayId = displayId)
+        if (app.exec == VOICE_COMMAND) return openVoice(displayId)
         if (app.terminal) return terminal(app.exec, app.name, displayId = displayId, onDisplayError = onDisplayError)
         // Like an Android icon: an app that already has a window comes back to it. Single-instance
         // apps would otherwise just exit on a second launch, showing nothing. Quickshell apps (App Finder)
@@ -547,7 +755,7 @@ class Runtime(
     ): String {
         launchedNames[appId]?.let { return it }
         linuxApps.apps.firstOrNull { it.matches(appId) }?.let { return it.name }
-        return title.ifEmpty { appId.ifEmpty { "Linux" } }
+        return title.ifEmpty { appId.ifEmpty { context.getString(R.string.home_linux_window) } }
     }
 
     /** The agent running in a Linux window: one started for it, or one named after it. */
@@ -573,6 +781,11 @@ class Runtime(
     /** Opens the owl app in file [name] in its own task; nothing if it isn't running (removed, or broken). */
     fun openOwlApp(name: String) {
         if (widgets.isApp(name)) InstantActivity.startInstantly(context, OwlAppActivity.intent(context, name))
+    }
+
+    /** Opens the voice screen, a spoken conversation with a coding agent. */
+    fun openVoice(displayId: Int? = null) {
+        InstantActivity.startInstantly(context, Intent(context, VoiceActivity::class.java), displayId)
     }
 
     /** Opens the Files app, at [path] (a guest path) if given. */
@@ -613,5 +826,6 @@ class Runtime(
     companion object {
         private const val TAG = "runtime"
         private const val SETUP_DONE = "setup_done"
+        private const val LINUX_STOPPED = "linux_stopped"
     }
 }

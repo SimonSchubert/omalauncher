@@ -2,12 +2,15 @@
 # Builds proot from Termux's source with our patches (patches/proot) and downloads Termux's prebuilt
 # aarch64 runtime deps, placing them in app/src/main/jniLibs/arm64-v8a as lib*.so so Android
 # extracts them into nativeLibraryDir, the only place an app targeting API 29+ may exec from.
+# Also builds the fast lane library (patches/proot/fastpath), which the app copies into the guest.
 # Needs the Android NDK (NDK_VERSION below, in the SDK at ANDROID_HOME or local.properties) and bsdtar.
+# For benchmarking (scripts/proot-bench), PROOT_SRC builds an already patched source tree instead,
+# and OUT puts the libraries elsewhere.
 set -euo pipefail
 
 REPO=https://packages.termux.dev/apt/termux-main
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="$ROOT/app/src/main/jniLibs/arm64-v8a"
+OUT="${OUT:-$ROOT/app/src/main/jniLibs/arm64-v8a}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -41,16 +44,20 @@ fetch libtalloc pool/main/libt/libtalloc/libtalloc_${TALLOC}_aarch64.deb \
 fetch libandroid-shmem pool/main/liba/libandroid-shmem/libandroid-shmem_${SHMEM}_aarch64.deb \
   0da3a24d558b93c92bcf8d611e0826a99ff96e396b148e6cdf33b47c47c57ff6
 
-echo "fetching proot $PROOT source"
-curl -fsSL "https://github.com/termux/proot/archive/v$PROOT.zip" -o "$WORK/proot.zip"
-echo "75f654fe60dea92dabff2bf083ae8bfe4f91baa6a1a374786a6bf391015eebaa  $WORK/proot.zip" |
-  shasum -a 256 -c --status || { echo "proot $PROOT source: SHA256 mismatch" >&2; exit 1; }
-(cd "$WORK" && bsdtar xf proot.zip)
 SRC="$WORK/proot-$PROOT"
-for p in "$ROOT"/patches/proot/*.patch; do
-  echo "applying $(basename "$p")"
-  patch -d "$SRC" -p1 --quiet < "$p"
-done
+if [ -n "${PROOT_SRC:-}" ]; then
+  mkdir -p "$SRC" && (cd "$PROOT_SRC" && tar cf - --exclude .git .) | (cd "$SRC" && tar xf -)
+else
+  echo "fetching proot $PROOT source"
+  curl -fsSL "https://github.com/termux/proot/archive/v$PROOT.zip" -o "$WORK/proot.zip"
+  echo "75f654fe60dea92dabff2bf083ae8bfe4f91baa6a1a374786a6bf391015eebaa  $WORK/proot.zip" |
+    shasum -a 256 -c --status || { echo "proot $PROOT source: SHA256 mismatch" >&2; exit 1; }
+  (cd "$WORK" && bsdtar xf proot.zip)
+  for p in "$ROOT"/patches/proot/*.patch; do
+    echo "applying $(basename "$p")"
+    patch -d "$SRC" -p1 --quiet < "$p"
+  done
+fi
 
 SDK="${ANDROID_HOME:-$(sed -n 's/^sdk\.dir=//p' "$ROOT/local.properties" 2>/dev/null)}"
 # Not ANDROID_NDK_HOME: CI runners point it at an older default NDK.
@@ -92,6 +99,13 @@ printf '#include <unistd.h>\nconst ssize_t offset_to_pokedata_workaround=%d;\n' 
 build proot
 
 mkdir -p "$OUT"
+# The fast lane library is a guest library: built for glibc Linux, not Android, and without any
+# libc of its own. It travels in jniLibs like the rest and linux/Proot.kt copies it into the rootfs.
+# It must come from the same checkout as patch 0003 (FASTPATH_VERSION in both).
+echo "building the fast lane library"
+"$TC/clang" --target=aarch64-linux-gnu -O2 -fPIC -shared -nostdlib -ffreestanding -fvisibility=hidden \
+  -mno-outline-atomics -fno-stack-protector -Wall -Wextra -Werror -fuse-ld=lld -Wl,-z,now -Wl,--build-id=none \
+  -o "$OUT/libfastpath.so" "$ROOT/patches/proot/fastpath/fastpath.c"
 cp "$SRC/src/proot" "$OUT/libproot.so"
 cp "$SRC/src/loader/loader" "$OUT/libproot-loader.so"
 "$TC/llvm-strip" "$OUT/libproot.so"
@@ -102,4 +116,10 @@ cp "$WORK/libandroid-shmem/$P/lib/libandroid-shmem.so" "$OUT/libandroid-shmem.so
 # on a runtime symlink.
 perl -pi -e 's/libtalloc\.so\.2\0/libtalloc.so\0\0\0/g' "$OUT/libproot.so" "$OUT/libtalloc.so"
 chmod 755 "$OUT"/*.so
+# What these libraries were built from: app/build.gradle.kts hashes the same files the same way and
+# stops the build when they have changed since. Not for another source tree.
+if [ -z "${PROOT_SRC:-}" ]; then
+  (cd "$ROOT" && { echo scripts/fetch-proot.sh; find patches/proot -type f -not -name '.*' | LC_ALL=C sort; } |
+    xargs cat | shasum -a 256 | cut -d' ' -f1) >"$OUT/.source"
+fi
 ls -la "$OUT"

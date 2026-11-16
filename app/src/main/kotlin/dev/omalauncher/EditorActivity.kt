@@ -8,13 +8,11 @@ import android.os.Bundle
 import android.system.ErrnoException
 import android.system.Os
 import android.system.OsConstants
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.linux.shellQuote
-import dev.omalauncher.ui.EditorHome
-import dev.omalauncher.ui.EditorScreen
 import dev.omalauncher.ui.Palette
-import dev.omalauncher.ui.applySystemBars
+import dev.omalauncher.ui.files.EditorHome
+import dev.omalauncher.ui.files.EditorScreen
 
 /**
  * The text editor: one Recents card per file (documentLaunchMode), opened from
@@ -23,7 +21,6 @@ import dev.omalauncher.ui.applySystemBars
  * `git commit` wait for the message, as with a terminal editor.
  */
 class EditorActivity : InstantActivity() {
-    private val runtime get() = (application as App).runtime
 
     /** Host paths of the `omarchy-edit` FIFOs waiting for this file to close. */
     private val waiting = mutableListOf<String>()
@@ -33,11 +30,9 @@ class EditorActivity : InstantActivity() {
         val path = intent.data?.path?.takeIf { it.startsWith('/') }
         intent.getStringExtra(EXTRA_DONE)?.let(waiting::add)
         if (!runtime.bootstrap.wanted) return close()
-        val name = path?.substringAfterLast('/') ?: "Editor"
+        val name = path?.substringAfterLast('/') ?: getString(R.string.editor_title)
         setTaskDescription(ActivityManager.TaskDescription(name, null, Palette.background.toArgb()))
-        applySystemBars(this, Palette.isLight)
         setInstantContent {
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@EditorActivity, Palette.isLight) }
             if (path == null) {
                 EditorHome(runtime, onExit = ::close)
             } else {

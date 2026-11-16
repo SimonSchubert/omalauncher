@@ -1,11 +1,13 @@
 package dev.omalauncher.theme
 
+import dev.omalauncher.storage.LauncherData
 import android.system.Os
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.run
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
+import dev.omalauncher.upgrade.writeAtomically
 import java.io.File
 
 /**
@@ -27,7 +29,9 @@ class GuestThemeConfig(
      */
     fun render(theme: OmarchyTheme) {
         val themeDir = File(currentDir, "theme")
-        themeDir.deleteRecursively()
+        // In the guest's home, where Omarchy's own scripts make current/theme a link to a theme: emptied through
+        // the link, that theme would be lost.
+        LauncherData.deleteTree(themeDir)
         themeDir.mkdirs()
         theme.guestFiles().forEach { (name, file) -> file.copyTo(File(themeDir, name)) }
         File(currentDir, "theme.name").writeText(theme.name + "\n")
@@ -37,6 +41,17 @@ class GuestThemeConfig(
             if (!out.exists()) out.writeText(Templates.render(tpl.readText(), colors))
         }
         symlink("${Proot.GUEST_HOME}/.local/state/omarchy/current/theme/btop.theme", File(home, ".config/btop/themes/current.theme"))
+        // Like omarchy-theme-set-claude and -pi; both agents reload the file, so running sessions recolor too.
+        // Claude Code's is there to pick in /theme once it has been run; Pi's is picked from the start (see managed()).
+        if (File(home, ".claude").isDirectory) copyTheme(File(themeDir, "claude.json"), ".claude/themes/omarchy.json")
+        copyTheme(File(themeDir, "pi.json"), ".pi/agent/themes/omarchy-system.json")
+    }
+
+    private fun copyTheme(
+        src: File,
+        to: String,
+    ) {
+        if (src.isFile) writeAtomically(File(home, to), src.readBytes())
     }
 
     /** Mirrors Omarchy's ~/.local/state/omarchy/current/background symlink. */
@@ -74,8 +89,7 @@ class GuestThemeConfig(
         // Omarchy's bash setup (aliases, starship, zoxide, fzf) reads everything from $OMARCHY_PATH.
         seed(".bashrc") { BASHRC }
         File(omarchyDir, "etc/fastfetch/config.jsonc").takeIf { it.isFile }?.let { src ->
-            // In portrait the side-by-side logo leaves ~20 columns for the info; stack it on top.
-            seed(".config/fastfetch/config.jsonc") { src.readText().replaceFirst("\"type\": \"file\",", "\"type\": \"file\",\n    \"position\": \"top\",") }
+            seed(".config/fastfetch/config.jsonc") { guestFastfetch(src.readText()) }
         }
         // btop rewrites its config on exit; from then on it's the user's.
         copy("config/btop/btop.conf", ".config/btop/btop.conf")
@@ -84,6 +98,11 @@ class GuestThemeConfig(
         copy("config/starship.toml", ".config/starship.toml")
         copy("config/lazygit/config.yml", ".config/lazygit/config.yml")
         copy("config/tmux/tmux.conf", ".config/tmux/tmux.conf")
+        // Pi in the theme render() copies, as Omarchy's install runs omarchy-theme-set-pi --activate, and OpenCode
+        // in its system theme, which takes the terminal's colors; OpenCode 2 reads it from tui.json, not opencode.json.
+        seed(".pi/agent/settings.json") { "{\n  \"theme\": \"omarchy-system\"\n}\n" }
+        seed(".config/opencode/opencode.json") { OPENCODE_JSON }
+        seed(".config/opencode/tui.json") { "{\n  \"theme\": \"system\"\n}\n" }
         if (theme != null) {
             val dark = !theme.isLight
             val accent = theme.colors["accent"] ?: theme.colors["blue"]
@@ -186,6 +205,16 @@ class GuestThemeConfig(
             exec /usr/bin/btop -c "${'$'}narrow"
             """.trimIndent() + "\n"
 
+        /** OpenCode's updates come through mise with the other agents, as on Omarchy. */
+        val OPENCODE_JSON =
+            """
+            {
+              "${'$'}schema": "https://opencode.ai/config.json",
+              "theme": "system",
+              "autoupdate": false
+            }
+            """.trimIndent() + "\n"
+
         val BASHRC =
             """
             export OMARCHY_PATH=/root/.local/share/omarchy
@@ -195,3 +224,21 @@ class GuestThemeConfig(
             """.trimIndent() + "\n"
     }
 }
+
+/** Omarchy 4.5's OS Age line, which words its count with omarchy-i18n. */
+private const val OS_AGE_I18N = "omarchy-i18n --count \\\"\$days\\\" about.days \\\"\$days\\\""
+
+/** Omarchy 4.5's Uptime line: a command reading /proc/uptime, which Android denies apps, worded with omarchy-i18n. */
+private val UPTIME_COMMAND = Regex(""""type": "command",(\s*"key": "[^"]*Uptime",\s*"keyColor": "[^"]*"),\s*"text": "[^\n]*omarchy-i18n[^\n]*""")
+
+/**
+ * Omarchy's fastfetch config, made to fit the guest. In portrait the
+ * side-by-side logo leaves ~20 columns for the info, so it goes on top.
+ * omarchy-i18n isn't in the guest: OS Age says its days in English, and
+ * Uptime is fastfetch's own again, as before 4.5.
+ */
+internal fun guestFastfetch(config: String): String =
+    config
+        .replaceFirst("\"type\": \"file\",", "\"type\": \"file\",\n    \"position\": \"top\",")
+        .replace(OS_AGE_I18N, "echo \\\"\$days days\\\"")
+        .replace(UPTIME_COMMAND, "\"type\": \"uptime\",$1")

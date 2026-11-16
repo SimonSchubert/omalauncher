@@ -178,6 +178,13 @@ class WindowManager : WindowManagerHooks {
 
     fun touchUp(id: Int) = server.postInput { touchUp(id) }
 
+    /** Whether [hit] is on the row where its client last said its text cursor is: a terminal's prompt line. */
+    fun onTextCursorRow(hit: SurfaceHit) =
+        synchronized(server) {
+            val (_, y, _, height) = server.input.textCursor(hit.surface) ?: return@synchronized false
+            hit.y >= y && hit.y < y + height
+        }
+
     fun scrollStop() = server.postInput { pointerAxisStop() }
 
     /** Closes [window]'s popups, newest first. */

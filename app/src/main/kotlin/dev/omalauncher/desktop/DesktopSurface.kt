@@ -34,7 +34,7 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import dev.omalauncher.AndroidApp
+import dev.omalauncher.apps.AndroidApp
 import dev.omalauncher.Runtime
 import java.util.UUID
 

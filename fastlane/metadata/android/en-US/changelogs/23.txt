@@ -1,0 +1,1 @@
+A store update no longer replaces a widget or app you or your agent edited: settings leaves it out, and the store asks before replacing your changes. Fixes a home screen crash while swiping between pages. Animated widgets and games draw about twice as fast. Agents in Linux know where to find the launcher's source.

@@ -1,0 +1,38 @@
+widget "browser" {
+  page: 1
+  order: 8
+  size: 6x4
+  minSize: 3x2
+
+  meta { owl: 18; description: "A web page in a tile, drawn by Android's own WebView, so it needs no Linux: tap the tile to use the page, and the buttons go back, forward and reload"; version: "1.0"; license: "MIT"; category: "fun" }
+
+  // The URL is written out here: https only, and the host is text, not a value. A state can't hold the
+  // whole URL, but its values can be part of one, through enc(), as http(...)'s can:
+  // "https://example.com/search?q=${enc(query)}".
+  state title = ""
+  state loaded = 0
+
+  Column {
+    gap: 8
+
+    Row {
+      gap: 6
+      // A handler names no node, so these steer every Browser in this file. One does that here.
+      Button { text: "‹"; onTap: web("back") }
+      Button { text: "›"; onTap: web("forward") }
+      Button { text: "⟳"; onTap: web("reload") }
+      Text { text: title; style: muted; maxLines: 1; weight: 1 }
+      // onProgress is 0 to 1; hide it once the page is done.
+      Text { text: fmtNum(loaded * 100) + "%"; style: small; color: muted; visible: loaded > 0 && loaded < 1 }
+    }
+
+    // Script is off unless the node says js: true; this page doesn't need it.
+    Browser {
+      url: "https://lobste.rs/"
+      zoom: 0.9
+      weight: 1
+      onTitle: title = value
+      onProgress: loaded = value
+    }
+  }
+}

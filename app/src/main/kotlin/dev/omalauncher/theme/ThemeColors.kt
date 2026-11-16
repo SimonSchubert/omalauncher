@@ -62,7 +62,10 @@ object ThemeColors {
             "muted", "bright_red", "bright_green", "bright_yellow", "bright_blue", "bright_magenta",
             "bright_cyan", "bright_foreground",
         ).forEachIndexed { n, key -> alias("color$n", key) }
+        // theme_type is mode's older name: a theme may set either, and templates read both (Claude Code's base).
+        alias("mode", "theme_type")
         default("mode") { if (luminance(c["background"] ?: "#000000") > 0.5) "light" else "dark" }
+        c["theme_type"] = c.getValue("mode")
         return c
     }
 

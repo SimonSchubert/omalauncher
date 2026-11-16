@@ -11,11 +11,16 @@ object KeyNames {
         val held: List<Int>,
     )
 
+    private const val SHIFT = 42
+
     /** The modifiers a combo and `latch(...)` name, left-hand ones. */
-    val modifiers = linkedMapOf("ctrl" to 29, "alt" to 56, "shift" to 42, "super" to 125)
+    val modifiers = linkedMapOf("ctrl" to 29, "alt" to 56, "shift" to SHIFT, "super" to 125)
 
     /** The modifiers `latch(...)` holds for the next key: Super stays the launcher's. */
     val latches = listOf("ctrl", "alt", "shift")
+
+    /** What `latch(...)`'s second value may be; without one it turns the modifier on for the next key, or off. */
+    val hows = listOf("once", "locked", "off")
 
     private val named =
         buildMap {
@@ -39,8 +44,8 @@ object KeyNames {
             put("f12", 88)
         }
 
-    /** The names [combo] knows besides single characters, for error messages. */
-    val names: Set<String> get() = named.keys
+    /** What pressKey takes, for the compiler's errors and the runtime's when the name is built from values. */
+    val help = "pressKey takes a key, ${named.keys.joinToString()} or a character, with modifiers in front: \"ctrl+c\", \"shift+insert\", \"ctrl+alt+t\""
 
     private const val UNSHIFTED = "1234567890-=qwertyuiop[]asdfghjkl;'`\\zxcvbnm,./ "
     private const val SHIFTED = "!@#$%^&*()_+QWERTYUIOP{}ASDFGHJKL:\"~|ZXCVBNM<>? "
@@ -63,7 +68,9 @@ object KeyNames {
 
     /**
      * `esc`, `ctrl+c`, `shift+insert`, `ctrl+alt+t` or a character, `/` or `A`; null if it names no key. A shifted
-     * character holds Shift itself, so `ctrl+:` is Ctrl+Shift+;. The last `+` of `ctrl++` is the key.
+     * character holds Shift itself, so `ctrl+:` is Ctrl+Shift+;, but a letter after a modifier is the key as
+     * written on it: `ctrl+C` is Ctrl+C, as people write it, and Ctrl+Shift+C is `ctrl+shift+c`. The last `+` of
+     * `ctrl++` is the key.
      */
     fun combo(text: String): Combo? {
         if (text.isEmpty()) return null
@@ -81,8 +88,9 @@ object KeyNames {
         }
         named[key.lowercase()]?.let { return Combo(it, held) }
         if (key.length != 1) return null
-        val (code, shift) = forChar(key[0]) ?: return null
-        if (shift && 42 !in held) held += 42
+        val c = if (held.isNotEmpty() && key[0] in 'A'..'Z') key[0].lowercaseChar() else key[0]
+        val (code, shift) = forChar(c) ?: return null
+        if (shift && SHIFT !in held) held += SHIFT
         return Combo(code, held)
     }
 }

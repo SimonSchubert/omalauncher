@@ -1,0 +1,1 @@
+Widgets can take dictation and show how fast the phone charges. Screenshots and copied images paste into a terminal for your agent, and the key bar has a photos key. GTK apps lose their extra title bar, and oversized Linux windows shrink to fit. Empty home pages can be turned off. Fixes a home crash and widgets that stopped updating on another page.

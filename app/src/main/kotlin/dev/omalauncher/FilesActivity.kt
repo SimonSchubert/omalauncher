@@ -2,17 +2,13 @@ package dev.omalauncher
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import dev.omalauncher.ui.FilesScreen
-import dev.omalauncher.ui.Palette
-import dev.omalauncher.ui.applySystemBars
+import dev.omalauncher.ui.files.FilesScreen
 
 /** The Files app for the Linux file system: its own task and Recents card, opened from the drawer or `omarchy-files` in a terminal. */
 class FilesActivity : InstantActivity() {
-    private val runtime get() = (application as App).runtime
     private var startPath by mutableStateOf(DEFAULT_PATH)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -23,9 +19,7 @@ class FilesActivity : InstantActivity() {
             return
         }
         startPath = intent.getStringExtra(EXTRA_PATH) ?: DEFAULT_PATH
-        applySystemBars(this, Palette.isLight)
         setInstantContent {
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@FilesActivity, Palette.isLight) }
             FilesScreen(runtime, startPath, onExit = ::backInstantly)
         }
     }

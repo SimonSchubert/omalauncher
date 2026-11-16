@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omalauncher</string>
+    <string name="wallpaper_label">Omarchy</string>
+    <string name="wallpaper_description">現在の Omarchy テーマの背景です。システムカラーもテーマに合わせて変わります。</string>
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">ターミナル</string>
+    <string name="activity_app">アプリ</string>
+    <string name="activity_files">ファイル</string>
+    <string name="activity_voice">Voice</string>
+    <string name="activity_settings">設定</string>
+    <string name="notification_listener">Omalauncher ウィジェット</string>
+    <string name="settings_external_desktops">外部デスクトップ</string>
+    <string name="settings_external_desktops_subtitle">承認済みデスクトップホストの確認または取り消し</string>
+</resources>

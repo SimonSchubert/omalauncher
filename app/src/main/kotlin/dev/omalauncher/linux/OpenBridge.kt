@@ -3,7 +3,7 @@ package dev.omalauncher.linux
 import android.content.Context
 import android.system.Os
 import android.util.Log
-import dev.omalauncher.openUrl
+import dev.omalauncher.system.openUrl
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import java.io.File
@@ -21,6 +21,7 @@ class OpenBridge(
     private val context: Context,
     private val proot: Proot,
     private val onOpenFiles: (String) -> Unit,
+    private val onOpenVoice: () -> Unit,
     /** A guest path to edit, and the host path of the FIFO that gets the reply once it's closed. */
     private val onEdit: (String, String) -> Unit,
 ) {
@@ -52,10 +53,12 @@ class OpenBridge(
         val url = target.trim()
         // Written by the omarchy-files shim: open the Files app at a guest path.
         if (url.startsWith(FILES_PREFIX)) return onOpenFiles(url.removePrefix(FILES_PREFIX))
+        // Written by the omarchy-voice shim: open the voice screen.
+        if (url == VOICE_PREFIX) return onOpenVoice()
         // Written by the omarchy-edit shim: its reply FIFO (no spaces, made by mktemp) and the file.
         if (url.startsWith(EDIT_PREFIX)) {
             val (reply, path) = url.removePrefix(EDIT_PREFIX).split(' ', limit = 2).takeIf { it.size == 2 } ?: return
-            return onEdit(path, proot.hostFile(reply).path)
+            return onEdit(path, proot.guestFile(reply)?.path ?: return)
         }
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
             Log.i(TAG, "ignoring non-URL $url")
@@ -75,6 +78,15 @@ class OpenBridge(
                 timeout 2 sh -c 'printf "%s\n" "${'$'}1" > $guestFifo' sh "${'$'}1"
                 """.trimIndent() + "\n"
             },
+            // npm's open package (DeepSeek Harness, agents' logins) runs its own copy of xdg-utils' xdg-open, which
+            // skips BROWSER=xdg-open, so as not to call itself, and tries x-www-browser first.
+            Managed.text(File(bin, "x-www-browser"), Policy.Owned, executable = true) {
+                """
+                #!/bin/sh
+                # omalauncher: opens URLs in the Android browser, for scripts that look for a browser by this name
+                exec xdg-open "${'$'}@"
+                """.trimIndent() + "\n"
+            },
             Managed.text(File(bin, FILES_COMMAND), Policy.Owned, executable = true) {
                 """
                 #!/bin/sh
@@ -82,6 +94,13 @@ class OpenBridge(
                 dir=${'$'}(realpath -- "${'$'}{1:-.}" 2>/dev/null) || dir=${'$'}PWD
                 [ -d "${'$'}dir" ] || dir=${'$'}(dirname -- "${'$'}dir")
                 timeout 2 sh -c 'printf "%s\n" "${'$'}1" > $guestFifo' sh "$FILES_PREFIX${'$'}dir"
+                """.trimIndent() + "\n"
+            },
+            Managed.text(File(bin, VOICE_COMMAND), Policy.Owned, executable = true) {
+                """
+                #!/bin/sh
+                # omalauncher: opens the launcher's voice screen, a spoken conversation with an agent (see OpenBridge.kt)
+                timeout 2 sh -c 'printf "%s\n" "${'$'}1" > $guestFifo' sh "$VOICE_PREFIX"
                 """.trimIndent() + "\n"
             },
             Managed.text(File(bin, EDIT_COMMAND), Policy.Owned, executable = true) {
@@ -112,5 +131,6 @@ class OpenBridge(
     private companion object {
         const val FILES_PREFIX = "omarchy-files:"
         const val EDIT_PREFIX = "omarchy-edit:"
+        const val VOICE_PREFIX = "omarchy-voice:"
     }
 }

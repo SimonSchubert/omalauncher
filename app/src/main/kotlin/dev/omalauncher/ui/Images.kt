@@ -16,33 +16,44 @@ import kotlin.math.roundToInt
  * Decodes [file] as small as it can go, halving while both sides stay at
  * least [minWidth] by [minHeight]. Images are often far larger than where
  * they're shown (4K backgrounds, photos), and a full decode costs memory and time.
+ * Null rather than a bitmap over [maxBytes]: checked before decoding, as running
+ * out of memory while decoding kills the process.
  */
 fun decodeSampled(
     file: File,
     minWidth: Int,
     minHeight: Int = minWidth,
-): Bitmap? {
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.path, bounds)
-    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
-    var sample = 1
-    while (bounds.outWidth / (sample * 2) >= minWidth && bounds.outHeight / (sample * 2) >= minHeight) sample *= 2
-    return BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
-}
+    maxBytes: Long = Long.MAX_VALUE,
+): Bitmap? = decodeSampled(minWidth, minHeight, maxBytes) { options -> BitmapFactory.decodeFile(file.path, options) }
 
 /** [decodeSampled] for an image already in memory, like a download. */
 fun decodeSampled(
     bytes: ByteArray,
     minWidth: Int,
     minHeight: Int = minWidth,
+    maxBytes: Long = Long.MAX_VALUE,
+): Bitmap? = decodeSampled(minWidth, minHeight, maxBytes) { options -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) }
+
+/** [decodeSampled] with [decode], which decodes the image with the options it's given: once for its size, once for it. */
+private fun decodeSampled(
+    minWidth: Int,
+    minHeight: Int,
+    maxBytes: Long,
+    decode: (BitmapFactory.Options) -> Bitmap?,
 ): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    decode(bounds)
     if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
     var sample = 1
     while (bounds.outWidth / (sample * 2) >= minWidth && bounds.outHeight / (sample * 2) >= minHeight) sample *= 2
-    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+    if (4L * ceilDiv(bounds.outWidth, sample) * ceilDiv(bounds.outHeight, sample) > maxBytes) return null
+    return decode(BitmapFactory.Options().apply { inSampleSize = sample })
 }
+
+private fun ceilDiv(
+    a: Int,
+    b: Int,
+) = (a + b - 1) / b
 
 /** Decodes an app icon at about [size] px square: a PNG via [decodeSampled], an SVG rendered at exactly [size]. */
 fun decodeIcon(

@@ -122,8 +122,6 @@ class Event(
         Native.close(fd)
     }
 
-    fun array(data: ByteArray) = bytes(data, data.size)
-
     fun ints(values: IntArray) =
         apply {
             int(values.size * 4)

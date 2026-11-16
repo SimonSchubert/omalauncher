@@ -45,13 +45,23 @@ data class HomeLayout(
 /**
  * layout.toml: where home's tiles are and its pages' order, as a file the launcher writes as you rearrange home,
  * and agents and the user edit. Pages are `[[page]]` tables in order; see [numbers] for the page numbers they get.
- * Keys it doesn't know at the top are kept, as in style.toml.
+ * A foldable's cover screen has its own under `[cover]`: `columns` and `[[cover.page]]` tables, the same shape; without
+ * the section, home on the cover screen starts from the main pages (see [WidgetLayout.show]). Keys it doesn't know at
+ * the top are kept, as in style.toml.
  */
 object HomeFile {
     const val VERSION = 1
     private const val VERSION_KEY = "version"
     private const val COLUMNS = "columns"
     private const val PAGE = "page"
+
+    /** The file's keys for [screen]'s columns and pages: at the top for the main screen, in its section for another. */
+    private fun columnsKey(screen: Screen) = if (screen == Screen.MAIN) COLUMNS else "${screen.key}.$COLUMNS"
+
+    private fun pageKey(screen: Screen) = if (screen == Screen.MAIN) PAGE else "${screen.key}.$PAGE"
+
+    /** The keys the file's own: version, and each screen's columns and pages. */
+    private val OWN = listOf(VERSION_KEY) + Screen.entries.flatMap { listOf(columnsKey(it), pageKey(it)) }
 
     /** Columns a file may say its cells are on: more than [dev.omalauncher.theme.Style.COLUMNS] takes, for a newer launcher's. */
     private val COLUMN_RANGE = 1..20
@@ -65,12 +75,18 @@ object HomeFile {
         |# A widget file left out stays where it is, and a new one goes by its own page:, order: and size:;
         |# an app left out comes off home. An app is a package, "pkg/activity" (with "@profile" for a work
         |# profile's), "linux:<desktop id>" or "owl:<file>".
+        |# A foldable's cover screen has pages of its own under [cover], as [[cover.page]]; without them it
+        |# starts from the pages above. With home.unfolded-layout, a Fold's inner screen has its own under
+        |# [unfolded] (its columns home.unfolded-columns), starting from the pages above side by side.
         |# What couldn't be read is in errors.txt next to this file.
         |
         """.trimMargin()
 
     data class Decoded(
+        /** The main screen's layout. */
         val layout: HomeLayout,
+        /** Each screen's layout the file has; the main one always, the others when their section is there. */
+        val screens: Map<Screen, HomeLayout>,
         val problems: List<String>,
     )
 
@@ -86,20 +102,29 @@ object HomeFile {
     fun encode(
         table: Map<String, Any>,
         layout: HomeLayout,
+        screens: Map<Screen, HomeLayout> = emptyMap(),
     ): LinkedHashMap<String, Any> {
         val out = LinkedHashMap<String, Any>()
         out[VERSION_KEY] = VERSION.toDouble()
         out[COLUMNS] = layout.columns.toDouble()
-        for ((k, v) in table) if (k !in listOf(VERSION_KEY, COLUMNS, PAGE)) out[k] = v
-        out[PAGE] =
-            layout.pages.map { page ->
-                when (page) {
-                    is FacePage -> linkedMapOf<String, Any>("face" to page.file)
-                    is TilePage -> linkedMapOf<String, Any>("tiles" to page.tiles.map(::encodeTile))
-                }
-            }
+        for ((k, v) in table) if (k !in OWN) out[k] = v
+        out[PAGE] = encodePages(layout)
+        // A screen's section after the main pages, columns first; one the launcher doesn't write isn't in the file.
+        for ((screen, l) in screens) {
+            if (screen == Screen.MAIN) continue
+            out[columnsKey(screen)] = l.columns.toDouble()
+            out[pageKey(screen)] = encodePages(l)
+        }
         return out
     }
+
+    private fun encodePages(layout: HomeLayout) =
+        layout.pages.map { page ->
+            when (page) {
+                is FacePage -> linkedMapOf<String, Any>("face" to page.file)
+                is TilePage -> linkedMapOf<String, Any>("tiles" to page.tiles.map(::encodeTile))
+            }
+        }
 
     private fun encodeTile(tile: Tile): Map<String, Any> {
         val out = LinkedHashMap<String, Any>()
@@ -121,28 +146,45 @@ object HomeFile {
         return out
     }
 
-    /** The file's [table] as a layout; [columns] is the grid's when the file doesn't say. */
+    /** The file's [table] as layouts, the main screen's and each other screen's with a section; [columns] is the grid's when the file doesn't say. */
     fun decode(
         table: Map<String, Any>,
         columns: Int,
+        columnsOf: (Screen) -> Int = { columns },
     ): Decoded {
         val problems = ArrayList<String>()
+        val screens = LinkedHashMap<Screen, HomeLayout>()
+        for (screen in Screen.entries) {
+            if (screen != Screen.MAIN && pageKey(screen) !in table && columnsKey(screen) !in table) continue
+            screens[screen] = decodeScreen(table, screen, columnsOf(screen), problems)
+        }
+        return Decoded(screens.getValue(Screen.MAIN), screens, problems)
+    }
+
+    private fun decodeScreen(
+        table: Map<String, Any>,
+        screen: Screen,
+        columns: Int,
+        problems: MutableList<String>,
+    ): HomeLayout {
+        val prefix = if (screen == Screen.MAIN) "" else "${screen.key}."
+        val pageKey = pageKey(screen)
         val cols =
-            when (val v = table[COLUMNS]) {
+            when (val v = table[columnsKey(screen)]) {
                 null -> columns
-                else -> whole(v)?.takeIf { it in COLUMN_RANGE } ?: columns.also { problems += "$COLUMNS: takes a whole number of columns; reading the cells as on $columns" }
+                else -> whole(v)?.takeIf { it in COLUMN_RANGE } ?: columns.also { problems += "$prefix$COLUMNS: takes a whole number of columns; reading the cells as on $columns" }
             }
         val raw =
-            when (val v = table[PAGE]) {
+            when (val v = table[pageKey]) {
                 null -> emptyList()
                 is List<*> -> v
-                else -> emptyList<Any>().also { problems += "$PAGE: write each page as [[page]]" }
+                else -> emptyList<Any>().also { problems += "$pageKey: write each page as [[$pageKey]]" }
             }
         val pages = ArrayList<PageEntry>()
         raw.forEachIndexed { i, p ->
-            val where = "page ${i + 1}"
+            val where = "$prefix${PAGE} ${i + 1}"
             if (p !is Map<*, *>) {
-                problems += "$where: write each page as [[page]]"
+                problems += "$where: write each page as [[$pageKey]]"
                 return@forEachIndexed
             }
             for (k in p.keys) if (k != "face" && k != "tiles") problems += "$where: $k isn't a page's; a page has a face or tiles"
@@ -162,7 +204,7 @@ object HomeFile {
                 }
             }
         }
-        return Decoded(HomeLayout(cols, pages), problems)
+        return HomeLayout(cols, pages)
     }
 
     private fun tile(

@@ -1,10 +1,14 @@
 package dev.omalauncher.ui
 
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import dev.omalauncher.widgets.render.frost
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -13,6 +17,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -34,6 +41,15 @@ fun hexColor(hex: String?): Color? {
     }
 }
 
+/** WCAG's contrast ratio of two colors, from 1 (the same) to 21 (black on white). */
+private fun contrast(
+    a: Color,
+    b: Color,
+): Float {
+    val (light, dark) = listOf(a.luminance(), b.luminance()).sortedDescending()
+    return (light + 0.05f) / (dark + 0.05f)
+}
+
 /** A theme's colors, parsed once when it's applied rather than on every read. */
 @Immutable
 class ThemePalette(
@@ -52,7 +68,11 @@ class ThemePalette(
     val surface = color("lighter_background", 0xFF24283B)
     val overlay = background.copy(alpha = 0.9f)
     val foreground = color("foreground", 0xFFC0CAF5)
-    val muted = color("dark_foreground", 0xFF565F89)
+    val muted =
+        color("dark_foreground", 0xFF565F89).let { m ->
+            // Subtitles sit on the surface: White's dark_foreground is its lighter_background too, which hid them.
+            if (contrast(m, surface) < 1.2f) lerp(foreground, background, 0.5f) else m
+        }
     val accent = color("accent", 0xFF7AA2F7)
     val border = color("muted", 0xFF414868)
     val red = color("red", 0xFFF7768E)
@@ -91,7 +111,7 @@ object Palette {
     val green get() = current.green
 
     /** The translucent fill of tiles, bars and rails over the wallpaper. */
-    val glass get() = background.copy(alpha = Style.GLASS.toFloat())
+    val glass get() = background.copy(alpha = LauncherStyle.style[Style.TILE_OPACITY].toFloat())
 }
 
 /**
@@ -113,8 +133,23 @@ object LauncherStyle {
     /** The strip of recently used apps above the bar on home. */
     val recentApps get() = style[Style.RECENT_APPS]
 
+    /** The empty page left of home's leftmost, for a new face. */
+    val emptyPageLeft get() = style[Style.EMPTY_PAGE_LEFT]
+
+    /** The empty page after home's last, always (true) or only while a tile is carried (false). */
+    val emptyPageRight get() = style[Style.EMPTY_PAGE_RIGHT]
+
+    /** The page home opens on and returns to when Home is pressed; see [homePageIn]. */
+    val homePage get() = style[Style.HOME_PAGE]
+
     /** Forces one home page even on a screen [SideRail]'s auto-detect would otherwise split in two. */
     val forceSinglePage get() = style[Style.FORCE_SINGLE_PAGE]
+
+    /** Keeps home upright on a foldable's cover screen, whose window is wider than tall while the phone stands upright. */
+    val coverScreen get() = style[Style.COVER_SCREEN]
+
+    /** A home of its own on a foldable's unfolded inner screen, rather than the phone's pages side by side. */
+    val unfoldedLayout get() = style[Style.UNFOLDED_LAYOUT]
 
     /** The outline of tiles, the prompt bar and the rails. */
     val tileBorder: Color get() = color(style[Style.TILE_BORDER], Palette.border)
@@ -170,12 +205,12 @@ object LauncherStyle {
 enum class Corners(
     /** What launchers before style.toml saved. */
     val id: String,
-    val label: String,
+    @StringRes val label: Int,
     val scale: Float,
 ) {
-    Edge("edge", "edge", 0f),
-    Soft("soft", "soft", 0.5f),
-    Round("round", "round", 1f),
+    Edge("edge", R.string.style_corners_edge, 0f),
+    Soft("soft", R.string.style_corners_soft, 0.5f),
+    Round("round", R.string.style_corners_round, 1f),
     ;
 
     companion object {
@@ -212,9 +247,13 @@ val PanelGap: Dp get() = LauncherStyle.style[Style.SCREEN_GAPS_OUT].toFloat().dp
 /** The widest a column of text and rows gets on a big screen: the bar beside landscape home, text-heavy panels. */
 val ReadingWidth = 640.dp
 
-/** A home-screen surface over the wallpaper: tiles, the prompt bar, the rails; outlined as focused while [focused]. */
+/**
+ * A home-screen surface over the wallpaper: tiles, the prompt bar, the rails; outlined as focused while [focused].
+ * With widgets.frost, the wallpaper under its glass is blurred (only on home, which has a wallpaper behind).
+ */
+@Composable
 fun Modifier.tile(focused: Boolean = false): Modifier =
-    frame(
+    frost(if (LauncherStyle.style[Style.TILE_FROST]) Style.TILE_FROST_DP else 0.0) { 16f * LauncherStyle.cornerScale }.frame(
         if (focused) LauncherStyle.focusWidth else LauncherStyle.borderWidth,
         if (focused) LauncherStyle.focusBorder else LauncherStyle.tileBorder,
         Palette.glass,
@@ -291,6 +330,16 @@ fun applySystemBars(
             androidx.activity.SystemBarStyle.dark(transparent)
         }
     activity.enableEdgeToEdge(style, style)
+}
+
+/**
+ * [applySystemBars] whenever the theme turns light or dark, and after every configuration change: a fold put the bars
+ * back as the window had them at the start, white icons on a theme that had turned light since.
+ */
+@Composable
+fun SystemBarsEffect(activity: androidx.activity.ComponentActivity) {
+    val configuration = LocalConfiguration.current
+    LaunchedEffect(Palette.isLight, configuration) { applySystemBars(activity, Palette.isLight) }
 }
 
 /** Home's or an app's status bar, or none: a swipe down from the top edge still brings it back for a moment, and the shade. */

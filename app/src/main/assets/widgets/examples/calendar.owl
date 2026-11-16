@@ -1,0 +1,56 @@
+widget "calendar" {
+  page: 3
+  order: 5
+  size: 6x3
+  minSize: 3x2
+
+  meta { owl: 18; description: "Your next events from the calendars on the phone, synced ones too. Nothing is read until you tap to allow it."; version: "1.0"; license: "MIT"; category: "productivity" }
+
+  // The next 14 days of events, read on the phone while the tile shows. No Linux, no account, no network.
+  source c = android.calendar
+
+  if !c.granted {
+    Column {
+      justify: center
+      fill: true
+      Text { text: "calendar"; style: muted }
+      Text { text: "your next events"; style: small }
+      // Only a tap asks; after two refusals it opens the launcher's settings page in Android.
+      Button { text: "allow"; onTap: calendar("request") }
+    }
+  } else {
+    Column {
+      gap: 6
+      fill: true
+      // The calendar app on today.
+      Text { text: "calendar"; style: muted; onTap: calendar("open") }
+      if len(c.events) == 0 {
+        Text { text: "nothing in the next two weeks"; style: small }
+      }
+      Column {
+        gap: 8
+        weight: 1
+        scroll: true
+        for e in c.events key e.id {
+          // An all-day event runs midnight to midnight here, so its day shows right in any time zone.
+          let when = e.allDay ? fmtTime(e.start, "EEE d MMM") : fmtTime(e.start, "EEE d MMM HH:mm")
+          // A tap opens it in the calendar app, at this time of a repeating one.
+          Row {
+            gap: 8
+            onTap: calendar("open", e)
+            Text { text: "●"; color: e.color }
+            Column {
+              gap: 0
+              weight: 1
+              Text { text: when + (e.calendar != "" ? " · " + e.calendar : ""); style: label; maxLines: 1 }
+              Text { text: e.title; bold: true; maxLines: 1 }
+              if e.location != "" {
+                Text { text: e.location; style: small; maxLines: 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,135 @@
+strip "recent apps" {
+  // The apps you opened lately, above the prompt bar on home: tap one to open it, long-press it for its menu. It's yours
+  // to change: ask your agent to edit it, to pin apps, make the icons bigger or leave some apps out. .stock-strip.owl next
+  // to it is this file as the launcher ships it, kept up to date: compare the two to see what changed in a newer
+  // launcher. If this file is gone or doesn't compile, the stock strip shows instead.
+  meta { description: "The strip of recent apps above the prompt bar on home, with each app's long-press menu"; version: "1.0"; license: "MIT"; category: "system"; owl: 24 }
+  // The long-press menu's entries, by appAction's words, in the phone's language where it has a set.
+  strings {
+    en { pin: "add to home"; info: "app info"; uninstall: "uninstall"; remove: "remove"; edit: "edit"; share: "share" }
+    id { pin: "tambah ke layar utama"; info: "info aplikasi"; uninstall: "uninstal"; remove: "hapus"; edit: "edit"; share: "bagikan" }
+    es { pin: "agregar a inicio"; info: "info de la app"; uninstall: "desinstalar"; remove: "quitar"; edit: "editar"; share: "compartir" }
+    pt { pin: "adicionar à tela inicial"; info: "informações do app"; uninstall: "desinstalar"; remove: "remover"; edit: "editar"; share: "compartilhar" }
+    de { pin: "zum startbildschirm hinzufügen"; info: "app-info"; uninstall: "deinstallieren"; remove: "entfernen"; edit: "bearbeiten"; share: "teilen" }
+    zh { pin: "添加到主屏幕"; info: "应用信息"; uninstall: "卸载"; remove: "移除"; edit: "编辑"; share: "分享" }
+    ru { pin: "добавить на главный экран"; info: "о приложении"; uninstall: "удалить"; remove: "убрать"; edit: "изменить"; share: "поделиться" }
+    ja { pin: "ホームに追加"; info: "アプリ情報"; uninstall: "アンインストール"; remove: "削除"; edit: "編集"; share: "共有" }
+    uk { pin: "додати на головний екран"; info: "про додаток"; uninstall: "видалити"; remove: "прибрати"; edit: "змінити"; share: "поділитися" }
+  }
+  // The recent apps, last opened first, and how home draws its apps: vertical beside the grid in landscape, monochrome
+  // silhouettes, bare icons without a tile, and the tiles' outline color.
+  source s = android.strip
+  // The app whose long-press menu is open, by key, and the shortcuts it offers: null while they load.
+  state menu = ""
+  state menuShortcuts = null
+
+  // An app's icon as home draws it: its silhouette or its initials on a badge when home's apps are bare, so they read on
+  // any wallpaper.
+  component Icon(a) {
+    if s.bare && (s.monochrome || !a.hasIcon) {
+      Box {
+        size: 40
+        align: center
+        radius: 20 * corners
+        background: surface
+        if a.hasIcon {
+          Image { src: a.icon; size: 30; tint: accent; label: a.label }
+        } else {
+          Text { text: a.initials; fontSize: 14; color: accent }
+        }
+      }
+    } else {
+      if a.hasIcon {
+        Image { src: a.icon; size: s.monochrome ? 34 : 40; tint: s.monochrome ? accent : null; label: a.label }
+      } else {
+        Text { text: a.initials; fontSize: 16; color: accent }
+      }
+    }
+  }
+
+  component Cell(a) {
+    Box {
+      size: 48
+      align: center
+      radius: 12 * corners
+      clip: true
+      // Paused work apps show dimmed; opening one turns work apps back on.
+      opacity: a.paused ? 0.4 : 1
+      onTap: open(a.key)
+      onLongPress: {
+        haptic()
+        menuShortcuts = null
+        menu = a.key
+        menuShortcuts = shortcuts(a.key)
+      }
+      Icon { a: a }
+      Popup {
+        visible: menu == a.key && menuShortcuts != null
+        position: above
+        onDismiss: menu = ""
+        width: 200
+        gap: 0
+        // The app's shortcuts first, as stock launchers list them: tap to open, + to put one on home.
+        for sc in menuShortcuts key sc.key {
+          Row {
+            fill: width
+            align: center
+            gap: 10
+            padding: [12, 6]
+            onTap: { menu = ""; open(sc.key) }
+            Image { src: sc.icon; size: 24; tint: s.monochrome ? accent : null; label: sc.name }
+            Text { text: sc.name; weight: 1; maxLines: 1 }
+            Text { text: "[+]"; color: accent; onTap: { menu = ""; appAction("pin", sc.key) } }
+          }
+        }
+        Spacer { visible: len(menuShortcuts) > 0; height: 1; fill: width; background: border }
+        for w in a.actions {
+          Text { text: get(str, w, w); fontSize: 15; fill: width; padding: [12, 12]; onTap: { menu = ""; appAction(w, a.key) } }
+        }
+      }
+    }
+  }
+
+  // Nothing opened yet: no strip, but its room stays, so home doesn't shift when the first app shows up.
+  if len(s.apps) == 0 {
+    Spacer { size: 56 }
+  } else {
+    if s.vertical {
+      // Beside the grid in landscape, scrolling down.
+      Column {
+        width: 56
+        fill: height
+        scroll: true
+        gap: 0
+        align: center
+        padding: [0, 4]
+        // Home's tile glass and outline, unless home's apps are bare icons.
+        background: s.bare ? transparent : alpha(background, tileOpacity)
+        frost: s.bare ? 0 : tileFrost
+        border: s.bare ? 0 : borderWidth
+        borderColor: s.border
+        radius: 16 * corners
+        for a in s.apps key a.key {
+          Cell { a: a }
+        }
+      }
+    } else {
+      // Above the bar, scrolling sideways.
+      Row {
+        fill: width
+        height: 56
+        scroll: true
+        gap: 0
+        padding: [4, 0]
+        background: s.bare ? transparent : alpha(background, tileOpacity)
+        frost: s.bare ? 0 : tileFrost
+        border: s.bare ? 0 : borderWidth
+        borderColor: s.border
+        radius: 16 * corners
+        for a in s.apps key a.key {
+          Cell { a: a }
+        }
+      }
+    }
+  }
+}

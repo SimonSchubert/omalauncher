@@ -4,7 +4,7 @@ app "ntfy" {
   // The ntfy app for Android gets the same topic as notifications. Topics are public: anyone who knows
   // the name can read and send, so the one this starts with is random. Shows an app with two views
   // (back and onBack), a source whose URL takes a state, and post with a JSON body and its answer.
-  meta { description: "Send and read push messages on an ntfy.sh topic, from here or from scripts anywhere"; version: "1.0"; license: "MIT"; category: "productivity"; owl: 12 }
+  meta { description: "Send and read push messages on an ntfy.sh topic, from here or from scripts anywhere"; version: "1.1"; license: "MIT"; category: "productivity"; owl: 17 }
   title: view == "topic" ? "topic" : topic
   back: view != ""
   onBack: view = ""
@@ -52,6 +52,7 @@ app "ntfy" {
       }
       Column {
         scroll: true
+        onPull: refresh()
         weight: 1
         gap: 8
         if feed != null && len(messages) == 0 { Text { text: "Nothing on this topic today. Send something above."; style: muted } }

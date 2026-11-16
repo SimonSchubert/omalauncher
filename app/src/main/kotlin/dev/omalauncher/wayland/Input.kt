@@ -12,11 +12,11 @@ const val BTN_MIDDLE = 0x112
 const val AXIS_SOURCE_WHEEL = 0
 const val AXIS_SOURCE_FINGER = 1
 
-private const val MOD_SHIFT = 1
-private const val MOD_LOCK = 2
-private const val MOD_CTRL = 4
-private const val MOD_ALT = 8
-private const val MOD_SUPER = 64
+internal const val MOD_SHIFT = 1
+internal const val MOD_LOCK = 2
+internal const val MOD_CTRL = 4
+internal const val MOD_ALT = 8
+internal const val MOD_SUPER = 64
 
 /** Seat state: pointer and keyboard focus. All methods must be called with the server locked. */
 class Input(
@@ -89,6 +89,20 @@ class Input(
 
     private fun keyboardsOf(client: Client) = client.all(KeyboardResource::class.java)
 
+    private fun textInputsOf(client: Client) = client.all(TextInput::class.java)
+
+    /** A text input made while its client has keyboard focus enters that surface right away, as a keyboard does. */
+    fun addTextInput(t: TextInput) {
+        val focus = keyboardFocus
+        if (focus != null && focus.client === t.client) t.enter(focus)
+    }
+
+    /** Where [surface]'s client last said its text cursor is, while [surface] has the keyboard: x, y, width, height. */
+    fun textCursor(surface: Surface): IntArray? {
+        if (keyboardFocus !== surface) return null
+        return textInputsOf(surface.client).firstNotNullOfOrNull { it.cursor }
+    }
+
     private fun pointersOf(client: Client) = client.all(PointerResource::class.java)
 
     fun setKeyboardFocus(surface: Surface?) {
@@ -98,6 +112,7 @@ class Input(
         pressedKeys.clear()
         depressedMods = 0
         keyboardFocus?.let { old ->
+            textInputsOf(old.client).forEach { it.leave(old) }
             keyboardsOf(old.client).forEach { it.send(it.event(2).uint(server.nextSerial()).obj(old.id)) }
         }
         val previous = keyboardFocus
@@ -109,6 +124,8 @@ class Input(
                 it.send(it.event(1).uint(server.nextSerial()).obj(s.id).ints(IntArray(0)))
                 sendModifiers(it)
             }
+            // After the keyboard's enter: foot expects it first.
+            textInputsOf(s.client).forEach { it.enter(s) }
         }
     }
 
@@ -124,12 +141,12 @@ class Input(
         keyboardsOf(focus.client).forEach {
             it.send(it.event(3).uint(serial).uint(time).uint(code).uint(if (pressed) 1 else 0))
         }
-        val bit = modifierBit(code)
+        val bit = Keys.modifierBit(code)
         if (bit != 0) {
             if (bit == MOD_LOCK) {
                 if (pressed) lockedMods = lockedMods xor MOD_LOCK
             } else {
-                depressedMods = pressedKeys.fold(0) { acc, k -> acc or (modifierBit(k).takeIf { it != MOD_LOCK } ?: 0) }
+                depressedMods = pressedKeys.fold(0) { acc, k -> acc or (Keys.modifierBit(k).takeIf { it != MOD_LOCK } ?: 0) }
             }
             keyboardsOf(focus.client).forEach(::sendModifiers)
         }
@@ -139,15 +156,6 @@ class Input(
         k.send(k.event(4).uint(server.nextSerial()).uint(depressedMods).uint(0).uint(lockedMods).uint(0))
     }
 
-    private fun modifierBit(code: Int) =
-        when (code) {
-            42, 54 -> MOD_SHIFT
-            58 -> MOD_LOCK
-            29, 97 -> MOD_CTRL
-            56, 100 -> MOD_ALT
-            125, 126 -> MOD_SUPER
-            else -> 0
-        }
 
     /** Moves the pointer to surface-local ([x], [y]) on [surface], or off all surfaces. */
     fun pointerMotion(

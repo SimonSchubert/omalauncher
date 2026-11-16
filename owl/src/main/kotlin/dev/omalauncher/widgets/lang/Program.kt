@@ -24,7 +24,9 @@ interface Host {
      * Also screenWidth and screenHeight (its screen's size), screenInset (how much of its bottom the
      * navigation bar covers, for an app with `edge` and a face, or the keyboard while a face's field has it), screenTop (how
      * much of an app's top a camera cutout covers, with `statusBar: false`), linux: whether Linux is installed and running,
-     * and corners: the launcher's corner style as a radius scale, 0 (edge), 0.5 (soft) or 1 (round).
+     * corners: the launcher's corner style as a radius scale, 0 (edge), 0.5 (soft) or 1 (round), and gapsIn, gapsOut and
+     * borderWidth: its widgets' gaps and border width in dp, in a keybar the extra keys' own gapsOut and borderWidth, and
+     * tileOpacity and tileFrost: how much its widgets cover the wallpaper, 0 to 1, and how much they blur it in dp, 0 without frost.
      */
     fun tile(name: String): Value = Null
 
@@ -48,7 +50,7 @@ interface Host {
     /**
      * `post(url, body, headers)` in a handler: an HTTP POST, with a map or list [body] sent as JSON. With a
      * [slot] (`x = post(...)`), the answer goes there as `{code, ok, out}` when it arrives. [method] is
-     * POST, or `method:`'s PUT or DELETE.
+     * POST, or `method:`'s PUT, PATCH or DELETE, and [pin] is `pin:`'s certificate hash.
      */
     fun post(
         url: String,
@@ -56,6 +58,13 @@ interface Host {
         headers: Map<String, String>,
         slot: Int?,
         method: String,
+        pin: String?,
+    ) {}
+
+    /** `send(source, message)`: [message] on the connection of the ws(...) source in [slot], a map or list as JSON. */
+    fun send(
+        slot: Int,
+        message: Value,
     ) {}
 
     val budget: Budget
@@ -67,17 +76,50 @@ interface Host {
 /** Caps the work of one evaluation, so a widget can't freeze the launcher with nested maps over big lists. */
 class Budget(
     private val limit: Int = 200_000,
+    /**
+     * What match() and matchAll() may wait for in all, in one evaluation. Each gives up after half a second on its
+     * own, but a map of matches that each took a little under that held the main thread past Android's five seconds.
+     */
+    private val regexNanos: Long = 1_000_000_000L,
 ) {
     private var steps = 0
     private var depth = 0
+    private var regexLeft = 0L
+
+    private fun start() {
+        if (depth++ == 0) {
+            steps = 0
+            regexLeft = regexNanos
+        }
+    }
 
     fun <T> run(block: () -> T): T {
-        if (depth++ == 0) steps = 0
+        start()
         try {
             return block()
         } finally {
             depth--
         }
+    }
+
+    /** run { ev(env) } without a closure: it wraps every binding read and Canvas argument, per frame. */
+    fun eval(
+        ev: Ev,
+        env: Env,
+    ): Value {
+        start()
+        try {
+            return ev(env)
+        } finally {
+            depth--
+        }
+    }
+
+    /** Nanoseconds the regexes of this evaluation may still take; outside one (folding at compile time) there's no limit but each match's own. */
+    fun regexLeft(): Long = if (depth == 0) Long.MAX_VALUE else regexLeft
+
+    fun regexSpent(nanos: Long) {
+        if (depth > 0) regexLeft -= nanos
     }
 
     fun tick(n: Int = 1) {
@@ -137,6 +179,8 @@ class Ev internal constructor(
      * boxing saved in a Canvas that draws a value still loading every frame.
      */
     internal val fast: Fast?,
+    /** What [invoke] falls back to when [fast] gives NaN; [num] goes straight to it rather than through [fast] again. */
+    private val slow: Ev? = null,
 ) {
     constructor(const: Value?, f: (Env) -> Value) : this(const, f, null)
 
@@ -150,6 +194,7 @@ class Ev internal constructor(
         if (fast != null) {
             val d = fast.of(env)
             if (!d.isNaN()) return d
+            if (slow != null) return slow(env).let { if (it is Num) it.v else it.num() ?: default }
         }
         val v = invoke(env)
         return if (v is Num) v.v else v.num() ?: default
@@ -245,6 +290,8 @@ sealed interface Global {
         val headers: Ev? = null,
         /** cmd, stream or file that runs only while Linux is installed, and stays null until then. */
         val optional: Boolean = false,
+        /** http(..., pin: "…") or ws(..., pin: "…"): the SHA-256 of the only certificate the server may show. */
+        val pin: Ev? = null,
     ) : Global
 
     class State(
@@ -275,7 +322,10 @@ sealed interface Global {
     class Asset(
         override val name: String,
         val bytes: ByteArray,
-    ) : Global
+    ) : Global {
+        /** What the asset's name reads as: an image, font or sound source the app looks up by name. */
+        val value = Str("asset:$name")
+    }
 }
 
 /**
@@ -291,6 +341,9 @@ enum class TriggerKind(
     AT("at"),
     WHEN("when"),
     ON("on"),
+
+    /** `every frame { }` (owl 21): each frame the widget draws while it shows, with `dt`; run by the frame clock. */
+    FRAME("every frame"),
     ;
 
     companion object {
@@ -306,6 +359,16 @@ class Trigger(
     val pos: Int,
     /** `on x first`: also for x's first value, with `old` null. */
     val first: Boolean = false,
+    /**
+     * `on said.final` for a `source said = android.speech`: runs as a dictation ends, with what was heard, and may
+     * type it with typeText and pressKey, which other triggers can't (see WidgetInstance).
+     */
+    val dictation: Boolean = false,
+    /**
+     * `on feed each { }`: the slot of the ws(...) source whose every message runs it, in the order they came,
+     * repeats too, with `value` the message; it watches nothing else (see WidgetInstance).
+     */
+    val each: Int? = null,
 )
 
 class Program(
@@ -316,10 +379,12 @@ class Program(
     /** The tile's: an app has none of these. */
     val size: Pair<Int, Int>? = null,
     val minSize: Pair<Int, Int> = 1 to 1,
-    /** A face (`face "…" { }`): it is its home page, the whole screen with no frame, and nothing else goes on it. */
-    val isFace: Boolean = false,
     /** A face's or an app's `statusBar`: while false, the status bar hides as it shows; null keeps it. */
     val statusBar: Ev? = null,
+    /** A widget's or a face's `lock`: while it holds and the tile shows, the home screen holds still; null never does. */
+    val lock: Ev? = null,
+    /** `fps`: how many frames a second its `time` animation gets, from 1 to [MAX_FPS]; null is [MAX_FPS]. */
+    val fps: Ev? = null,
     val page: Int = 1,
     val order: Int = 0,
     /** Tile padding in dp, and an optional tile background. */
@@ -333,7 +398,7 @@ class Program(
     /** An app's `back`: while true, the frame shows a back chevron and Back runs [onBack] instead of closing it. */
     val back: Ev? = null,
     val onBack: Action? = null,
-    /** An app's `edge`: its view runs on under the navigation bar, which `screenInset` measures. */
+    /** An app's `edge`: its view runs on under the navigation bar, which `screenInset` measures. A face's: its nodes run on under the status bar and a camera cutout, which `screenTop`, `screenLeft` and `screenRight` measure. */
     val edge: Boolean = false,
     /** A panel's `onSubmit`: Enter in the prompt bar while it's open, with what's typed as `value`. */
     val onSubmit: Action? = null,
@@ -341,6 +406,10 @@ class Program(
     val onKey: Action? = null,
     /** A panel's `enter`: what the prompt bar says Enter does while it's open, like "▸ open". */
     val enter: Ev? = null,
+    /** A panel's `opacity`: how much the backdrop the launcher draws behind it covers home, 0 to 1; null for the default. */
+    val opacity: Ev? = null,
+    /** A panel's `keyboard`: whether the keyboard comes up as it opens above the prompt bar; false leaves it down until the bar is tapped. */
+    val keyboard: Boolean = true,
     val onTap: Action? = null,
     val triggers: List<Trigger>,
     /** Shell commands this widget can run, known without running it; for reviewing shared widgets. */
@@ -361,6 +430,10 @@ class Program(
     val animated: Boolean,
     /** Has a Terminal node. */
     val terminal: Boolean = false,
+    /** Has a Browser node: a web view in the tile, which keeps running while the widget shows. */
+    val browser: Boolean = false,
+    /** Each text a Shader's code can be (see Compiler's shaderTexts), null for one worked out while the widget runs: what the store checks the GPU work of. */
+    val shaders: List<String?> = emptyList(),
     val nodeCount: Int,
     /** A tile or an app; for an app [screen] is the whole view and [root] is empty. */
     val kind: OwlKind = OwlKind.Widget,
@@ -370,4 +443,13 @@ class Program(
     val iconImage: ByteArray? = null,
     /** What compiles but is likely wrong, one line each with its line:col, for owl-check: a URL value not put through enc(). */
     val warnings: List<String> = emptyList(),
-)
+) {
+    /** [icon] or [iconImage] as a cache key, hashed once: the launcher looks icons up on every recomposition. */
+    val iconKey: String? by lazy { icon ?: iconImage?.let { "image:" + it.contentHashCode() } }
+
+    /** A face (`face "…" { }`): it is its home page, the whole screen with no frame, and nothing else goes on it. */
+    val isFace get() = kind == OwlKind.Face
+
+    /** The bytes of the `asset` named [name], if there is one. */
+    fun asset(name: String): ByteArray? = (globals.firstOrNull { it.name == name } as? Global.Asset)?.bytes
+}

@@ -1,0 +1,31 @@
+widget "live price" {
+  size: 3x2
+  minSize: 3x2
+
+  // ws(): a WebSocket from Android, no Linux needed. Coinbase's public feed needs no account: it waits
+  // for a subscribe message, then pushes every trade's price as it happens.
+  meta { owl: 17 }
+  state price = null
+  source feed = ws("wss://ws-feed.exchange.coinbase.com") json status
+  let hist = history(price, 80)
+
+  // Each new connection (the first, and after a drop or the page coming back) is greeted again.
+  when feed.open { send(feed, {type: "subscribe", product_ids: ["BTC-USD"], channels: ["ticker"]}) }
+  // Every message, in order: the subscription's answer comes first, then one ticker per trade.
+  on feed each {
+    if value.type == "ticker" { price = num(value.price) }
+  }
+
+  Column {
+    gap: 2
+    Row {
+      Text { text: "BTC · coinbase"; style: muted; weight: 1 }
+      Text { text: "●"; color: feed.open ? green : red }
+    }
+    Text {
+      text: price == null ? (feed.err != "" ? feed.err : "connecting…") : "$${fmtNum(price, 2)}"
+      style: title
+    }
+    Sparkline { values: hist; area: true; fill: width; weight: 1 }
+  }
+}

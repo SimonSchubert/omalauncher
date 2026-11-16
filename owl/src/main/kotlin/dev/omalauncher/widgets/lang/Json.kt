@@ -7,13 +7,18 @@ object Json {
     /** JSON if it parses, otherwise the text itself. */
     fun parseOrText(text: String): Value = runCatching { parse(text.trim()) }.getOrElse { Str(text) }
 
-    /** JSON text for [v], or null if it holds something JSON can't (colors, gradients, functions). */
-    fun write(v: Value): String? = StringBuilder().takeIf { write(v, it) }?.toString()
+    /** [v] as JSON, or null for what JSON can't hold (colors, functions); past [limit] characters it throws. */
+    fun write(
+        v: Value,
+        limit: Int = Int.MAX_VALUE,
+    ): String? = StringBuilder().takeIf { write(v, it, limit) }?.toString()
 
     private fun write(
         v: Value,
         out: StringBuilder,
+        limit: Int,
     ): Boolean {
+        if (out.length > limit) throw WidgetError("JSON over ${limit shr 20}M characters")
         when (v) {
             Null -> out.append("null")
             is Bool -> out.append(v.v)
@@ -23,7 +28,7 @@ object Json {
                 out.append('[')
                 v.items.forEachIndexed { i, x ->
                     if (i > 0) out.append(',')
-                    if (!write(x, out)) return false
+                    if (!write(x, out, limit)) return false
                 }
                 out.append(']')
             }
@@ -33,7 +38,7 @@ object Json {
                     if (i > 0) out.append(',')
                     quote(k, out)
                     out.append(':')
-                    if (!write(x, out)) return false
+                    if (!write(x, out, limit)) return false
                 }
                 out.append('}')
             }

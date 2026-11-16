@@ -8,6 +8,7 @@
 # states to set first (`view = "watch"; openId = ""`), each starting from the screen before;
 # `wait = 60` there pauses first, for an API that allows only so many calls a minute.
 # The first is its preview as above; the rest go to apps/<author>/<name>/screens/<n>/<theme>.webp.
+# A face's other pages (page-2.owl, ...) go the same way, to faces/<author>/<name>/screens/<n>/<theme>.webp.
 #
 # Needs a debug build on an emulator (adb root) with Linux installed, so widgets
 # that run commands show real data, and the packages they require (curl, jq,
@@ -74,6 +75,17 @@ while True:
 PY
 }
 
+# A WebP at quality 80, or lower until it's within the store's 100 KB: busy pictures (halftones, photos) don't fit at 80.
+webp() {
+  local src=$1 out=$2 q
+  shift 2
+  for q in 80 70 60 50 40; do
+    cwebp -quiet -q "$q" "$@" "$src" -o "$out"
+    [ "$(wc -c < "$out")" -le 102400 ] && return 0
+  done
+  echo "  $(basename "$out") is over 100 KB even at quality 40" >&2
+}
+
 # Runs store-previews-demo.sh in the guest (through the debug build's exec intent) and waits for it.
 demo() {
   printf 'bash ~/.config/omalauncher/widgets/.demo.sh %s; touch ~/.config/omalauncher/widgets/.demo.done\n' "$1" > "$WORK/run.sh"
@@ -89,6 +101,7 @@ demo() {
 seed() {
   local json
   case $1 in
+    hourly-weather) json='{"place":{"name":"São Paulo","latitude":-23.5475,"longitude":-46.63611,"timezone":"America/Sao_Paulo","admin1":"São Paulo","country":"Brasil","country_code":"BR"},"country":"","region":"","city":"São Paulo"}' ;;
     google-calendar) json='{"cals":[{"name":"Personal","url":"https://calendar.google.com/calendar/ical/demo-personal/basic.ics","color":0,"on":true},{"name":"Work","url":"https://calendar.google.com/calendar/ical/demo-work/basic.ics","color":2,"on":true}],"days":14}' ;;
     gestures) json='{"apps":["com.android.chrome","com.google.android.youtube","com.google.android.apps.maps","com.android.camera2","com.google.android.apps.messaging","com.google.android.dialer","com.google.android.apps.photos","com.google.android.calendar"],"labels":["Chrome","YouTube","Maps","Camera","Messages","Phone","Photos","Calendar"],"migrated":true}' ;;
     bookmarks) json='{"nextId":4,"links":[{"id":"b3","title":"Omarchy","url":"https://omarchy.org","tag":"linux","auto":true,"desc":"Beautiful, modern and opinionated Linux.","img":""},{"id":"b2","title":"Hacker News","url":"https://news.ycombinator.com","tag":"news","auto":true,"desc":"","img":""},{"id":"b1","title":"Arch Wiki","url":"https://wiki.archlinux.org","tag":"linux","auto":true,"desc":"","img":""},{"id":"b0","title":"Sourdough recipe","url":"https://www.theperfectloaf.com","tag":"cooking","auto":false,"desc":"","img":""}]}' ;;
@@ -104,6 +117,8 @@ seed() {
     life) json='{"birthYear":"1990","lifespan":"80"}' ;;
     # A town in France, so it doesn't fall back to the IP's location.
     carburant) json='{"city":"Lyon"}' ;;
+    # A picked city, so the globe doesn't centre on the IP's location.
+    weather-net) json='{"zoom":1,"span":"h","unit":"c","selLat":51.5074,"selLon":-0.1278,"selName":"london","picked":1,"layers":15}' ;;
     # A made-up key: the demo's python3 answers lastfm's helper without calling Last.fm.
     lastfm) json='{"username":"demo","apiKey":"demo"}' ;;
     # A public landmark's postcode (the Empire State Building), so the passes show.
@@ -155,13 +170,72 @@ print(json.dumps({"days": days, "entries": [{"date": today.isoformat(), "v": v, 
     xfeed) json='{"users":["NASA","esa","Space_Station"]}' ;;
     # A city under the NWS's radars: the emulator's own location is outside them.
     nws-radar) json='{"city":"Oklahoma City"}' ;;
+    # A preset city: its default ("auto") would show the host's own location from its IP.
+    islamic) json='{"city":"Makkah","method":"4"}' ;;
     # Most of a day measured, with a few lost pings, so the day's figures show.
     network) json=$(printf '{"todayKey":"%s","todaySamples":5140,"todayFails":6,"todaySum":107800}' "$(adb shell date +%F | tr -d '\r')") ;;
+    # A public profile with a long streak, so Duo shows a streak instead of asking for a username.
+    duolingo) json='{"user":"luis"}' ;;
+    # Three weeks logged, the last two confirmed and a bit over the average, and 3 of 25 holidays taken, so the track and the graph show.
+    timesheet) json=$(python3 - <<'PY'
+import json, time, datetime as dt
+today = dt.date.today()
+def hm(m): return f"{m // 60:02d}:{m % 60:02d}"
+times = [(505, 745, 775, 1005), (515, 760, 790, 1020), (500, 740, 770, 990), (520, 760, 790, 1030), (495, 730, 760, 960)]
+weeks, hol = [], []
+for back in (0, 1, 2):
+    mon = today - dt.timedelta(days=today.weekday() + 7 * back)
+    noon = int(time.mktime(dt.datetime(mon.year, mon.month, mon.day, 12).timetuple()))
+    days = []
+    for di in range(7):
+        day = mon + dt.timedelta(days=di)
+        if di >= 5:
+            days.append({"amIn": "", "amOut": "", "pmIn": "", "pmOut": "", "amInM": None, "amOutM": None, "pmInM": None, "pmOutM": None, "done": False})
+            continue
+        a, b, c, d = times[(di + back) % 5]
+        if back == 2 and di == 2:
+            hol.append({"key": day.isoformat(), "days": 1})
+        done = day <= today
+        days.append({"amIn": hm(a), "amOut": hm(b), "pmIn": hm(c), "pmOut": hm(d), "amInM": a, "amOutM": b, "pmInM": c, "pmOutM": d, "done": done})
+    wk = int(mon.strftime("%V"))
+    weeks.append({"id": f"{wk}-{noon}", "week": wk, "monday": noon, "date": mon.strftime("%d/%m/%y"), "days": days})
+hol += [{"key": (today - dt.timedelta(days=today.weekday() + 7 * 4 - d)).isoformat(), "days": 1} for d in (3, 4)]
+print(json.dumps({"weeks": weeks, "openWeek": weeks[0]["id"], "holidayDays": 25, "holidayText": "25.00", "holDone": hol}))
+PY
+) ;;
     *) return 0 ;;
   esac
   printf '{"v":1,"savedAt":%s,"values":%s}' "$(date +%s)" "$json" > "$WORK/state.json"
   adb push "$WORK/state.json" /data/local/tmp/store-preview-state.json >/dev/null
   adb shell "cp /data/local/tmp/store-preview-state.json $STATE/$2.json && chown $owner $STATE/$2.json && chmod 600 $STATE/$2.json && chcon $(adb shell ls -Zd $STATE | cut -d' ' -f1) $STATE/$2.json"
+}
+
+# Draws a face's page [n] from $1 into $2/screens/<n>/<theme>.webp, as its own face under the name $3.
+draw_page() {
+  local page=$1 dir=$2 pname=$3 n hash
+  n=$(basename "$page" .owl)
+  n=${n#page-}
+  hash=$(shasum -a 256 "$page" | cut -d' ' -f1)
+  adb shell "rm -rf $APP/.preview/themes"
+  put "$page" "$pname"
+  if ! wait_for 30 "grep -q $hash $APP/.check/$pname.txt"; then
+    echo "  page $n didn't compile in time; skipped" >&2
+    adb shell "rm -f $APP/$pname"
+    return 1
+  fi
+  adb push "$WORK/empty.txt" /data/local/tmp/store-preview-screens.txt >/dev/null
+  adb shell "cp /data/local/tmp/store-preview-screens.txt $APP/.check/$pname.themes"
+  if ! wait_for 120 "test -f $APP/.preview/themes/$pname.done"; then
+    echo "  page $n: no previews in time; skipped" >&2
+    adb shell "rm -f $APP/$pname"
+    return 1
+  fi
+  mkdir -p "$dir/screens/$n"
+  for theme in $(adb shell "ls $APP/.preview/themes" | grep -v '\.done$'); do
+    adb exec-out cat "$APP/.preview/themes/$theme/$pname.png" > "$WORK/png/$theme.$n.png"
+    webp "$WORK/png/$theme.$n.png" "$dir/screens/$n/$theme.webp" -resize 540 0
+  done
+  adb shell "rm -f $APP/$pname; rm -rf $APP/.preview/themes"
 }
 
 demo on
@@ -210,17 +284,26 @@ for dir in "${dirs[@]}"; do
   rm -rf "$WORK/png" "$dir/screens" && mkdir -p "$WORK/png" "$dir/previews"
   for theme in $(adb shell "ls $APP/.preview/themes" | grep -v '\.done$'); do
     adb exec-out cat "$APP/.preview/themes/$theme/$name.png" > "$WORK/png/$theme.png"
-    cwebp -quiet -q 80 ${resize[@]+"${resize[@]}"} "$WORK/png/$theme.png" -o "$dir/previews/$theme.webp"
+    webp "$WORK/png/$theme.png" "$dir/previews/$theme.webp" ${resize[@]+"${resize[@]}"}
     # Not seq: on macOS, seq 2 1 counts down.
     for ((n = 2; n <= screens; n++)); do
       mkdir -p "$dir/screens/$n"
       adb exec-out cat "$APP/.preview/themes/$theme/$name.$n.png" > "$WORK/png/$theme.$n.png"
-      cwebp -quiet -q 80 ${resize[@]+"${resize[@]}"} "$WORK/png/$theme.$n.png" -o "$dir/screens/$n/$theme.webp"
+      webp "$WORK/png/$theme.$n.png" "$dir/screens/$n/$theme.webp" ${resize[@]+"${resize[@]}"}
     done
   done
   small_png "$WORK/png/$DEFAULT_THEME.png" "$dir/preview.png"
+  # A face's other pages, one at a time: all in this run, since it cleared screens/ above.
+  adb shell "rm -f $APP/$name"
+  : > "$WORK/empty.txt"
+  pages=1
+  for page in "$dir"/page-*.owl; do
+    [ -f "$page" ] || continue
+    draw_page "$page" "$dir" "store-$(basename "$dir").$(basename "$page")" && pages=$((pages + 1))
+  done
   extra=""
   [ "$screens" -gt 1 ] && extra=", $screens screens, $(du -sh "$dir/screens" | cut -f1) more"
+  [ "$pages" -gt 1 ] && extra=", $pages pages, $(du -sh "$dir/screens" | cut -f1) more"
   echo "  $(ls "$dir/previews" | wc -l | tr -d ' ') themes, $(du -sh "$dir/previews" | cut -f1)$extra"
   adb shell "rm -f $APP/$name; rm -rf $APP/.preview/themes"
 done

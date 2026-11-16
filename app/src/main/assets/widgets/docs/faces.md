@@ -31,12 +31,24 @@ face "morning" {
   left. Home opens on page 1, and an empty page always waits left of the leftmost one, inviting a new
   face there: only faces go left of page 1, never tiles. One whose place is taken goes to that empty
   page instead. A face can also take a page right of page 1 (`page: 3`) if no tiles are there.
+  `home.empty-page-left = false` in style.toml hides this empty page, and `home.empty-page-right = false`
+  the one after the last page of tiles (which still comes while a tile is carried, to drop it on); a face added from the store
+  still goes left of the leftmost page.
 - **The screen.** It fills the whole screen: the recent apps strip and the bar slide away with the tile
   pages (swipe up for the app drawer, which brings the bar back). The status bar stays, over the face,
   and the nodes keep clear of it; `statusBar: false` hides it while the face shows (a swipe down from the
   top brings it back for a moment), and they keep clear of a camera cutout only. The background runs
   under both. `statusBar` can be any expression, and the bar comes and goes as it changes: `statusBar: !playing`
-  keeps it while a game waits and hides it while one runs.
+  keeps it while a game waits and hides it while one runs. `lock: playing` (owl 18, a widget's too) holds the home
+  screen still while it's true: no page turn, no swipe up, no long press, and the prompt bar and recent strip open
+  nothing, so a game's swipes stay its own. A border and a chip at the top show it; the chip's `[ unlock ]` and Back
+  let go until the value turns false, so the next game holds it again. Only a page showing holds it, and a fixed
+  `lock: true` doesn't compile. With `edge: true` (owl 14) the nodes run on under the status bar too, and in landscape
+  under a camera cutout or a navigation bar at the side, as a photo or a drawing should: `screenTop` is how much of the
+  top the status bar covers (or a cutout, while it's hidden), and `screenLeft` and `screenRight` how much of each side a
+  cutout or navigation bar covers, in dp, so pad what has to stay readable by them,
+  `padding: [screenLeft + 12, screenTop + 8, screenRight + 12, 0]`. Only a face with `edge` has them. `edge` is `true` or
+  `false`, not an expression.
 - **The navigation bar.** The face runs on under it, like an app with `edge: true`: `screenInset` is how
   much of its bottom the navigation bar covers, in dp, so end it with `Spacer { height: screenInset }` or
   pad buttons along the bottom by it. While one of its `Input`s has the keyboard, `screenInset` is what the keyboard
@@ -44,7 +56,8 @@ face "morning" {
   (`if screenInset < 120 { ... }`) to make room. The face itself stays put, under the status bar and the keyboard.
 - **Looks.** There's no tile frame and no background: it draws straight on the wallpaper. Where text needs
   one to be readable, give the face `background: alpha(background, 0.7)` or a gradient (owl 10), or just the
-  nodes that hold it, which can be frosted glass (`frost`, owl 10).
+  nodes that hold it, which can be frosted glass (`frost`, owl 10). To look like home's tiles and follow the
+  user's widget opacity and frosted glass, give them `background: alpha(background, tileOpacity); frost: tileFrost` (owl 13).
   `padding` (12 by default) is around everything, as on a tile.
 - **Size.** `cols` and `rows` are the whole grid (6 or so by 12), and `tileWidth` and `tileHeight` the
   screen's size in dp: lay it out by those, since phones differ. It takes no `size` or `minSize`.

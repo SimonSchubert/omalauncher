@@ -8,14 +8,17 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import dev.omalauncher.LauncherData
+import dev.omalauncher.storage.LauncherData
+import dev.omalauncher.R
 import dev.omalauncher.linux.Proot
+import dev.omalauncher.system.assetText
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.decodeForScreen
 import dev.omalauncher.upgrade.appStamp
@@ -52,9 +55,20 @@ sealed interface ThemeInstall {
     ) : ThemeInstall
 
     data class Failed(
-        val message: String,
+        val error: ThemeError,
     ) : ThemeInstall
 }
+
+/** What went wrong, to show: [reason] with [detail] as its %1$s, or [detail] alone, an exception's message, when [reason] is null. */
+data class ThemeError(
+    @StringRes val reason: Int?,
+    val detail: String = "",
+)
+
+/** A failure we name ourselves, as a [ThemeError.reason]. */
+internal class ThemeFailure(
+    @StringRes val reason: Int,
+) : Exception()
 
 sealed interface ThemeDownload {
     data object Idle : ThemeDownload
@@ -104,7 +118,7 @@ class ThemeStore(
     /** Every Omarchy theme's colors, from the app's assets (see scripts/fetch-theme-colors.sh). Read off the main thread. */
     val bundled: List<BundledTheme> by lazy {
         context.assets.list("themes").orEmpty().sorted().map { file ->
-            val text = context.assets.open("themes/$file").bufferedReader().use { it.readText() }
+            val text = context.assetText("themes/$file")
             BundledTheme(file.removeSuffix(".toml"), ThemeColors.resolve(ThemeColors.parse(text)))
         }
     }
@@ -143,7 +157,7 @@ class ThemeStore(
         val theme = themes.firstOrNull { it.name == picked } ?: return false
         val backgrounds = theme.backgrounds()
         val bgName = style.style[Style.BACKGROUND]
-        val bg = bgName?.let { n -> backgrounds.firstOrNull { it.name == n } }
+        val bg = bgName?.let(theme::backgroundNamed)
         if (bgName != null && bg == null) style.report("background: \"$bgName\" isn't one of ${theme.name}'s backgrounds; showing its first")
         val target = bg ?: backgrounds.firstOrNull()
         when {
@@ -160,7 +174,7 @@ class ThemeStore(
      */
     fun loadPalette() {
         // A user's own theme has no bundled colors.
-        runCatching { ThemeColors.resolve(ThemeColors.parse(context.assets.open("themes/$picked.toml").bufferedReader().use { it.readText() })) }
+        runCatching { ThemeColors.resolve(ThemeColors.parse(context.assetText("themes/$picked.toml"))) }
             .recoverCatching { checkNotNull(dirs.load(picked)).colors }
             .onSuccess { Palette.apply(it) }
     }
@@ -207,10 +221,12 @@ class ThemeStore(
             withContext(Dispatchers.IO) { guest.render(theme) }
             prefs.edit().putString(RENDERED_BY, appStamp(context)).apply()
         }
-        val bg = theme.backgrounds().let { list -> list.firstOrNull { it.name == style.style[Style.BACKGROUND] } ?: list.firstOrNull() }
+        val bg = style.style[Style.BACKGROUND]?.let(theme::backgroundNamed) ?: theme.backgrounds().firstOrNull()
         // On reload a different background may replace one already showing; it stays up until the new one is decoded.
         val stale = wallpaper != null && bg != background
         background = bg
+        // A new release can move it (a dropped theme into the user's, renumbered backgrounds), leaving Linux's link dangling.
+        if (bg != null && isLinux()) withContext(Dispatchers.IO) { runCatching { guest.linkBackground(bg) } }
         // Decodes the wallpaper on first load, unless ours is the live one.
         refreshLiveWallpaper()
         if (stale && !liveWallpaperActive) wallpaper = decodeWallpaper(bg)
@@ -239,7 +255,7 @@ class ThemeStore(
 
     /** Each theme's first background at [OMARCHY_REF], bundled by scripts/fetch-theme-colors.sh. */
     private val firstBackgrounds: Map<String, String> by lazy {
-        runCatching { context.assets.open("theme-backgrounds.txt").bufferedReader().use { it.readLines() } }
+        runCatching { context.assetText("theme-backgrounds.txt").lines() }
             .getOrDefault(emptyList())
             .mapNotNull { line -> line.split(' ', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }
             .toMap()
@@ -304,7 +320,9 @@ class ThemeStore(
         withContext(Dispatchers.IO) {
             download = ThemeDownload.Running(0)
             try {
-                release.download { download = ThemeDownload.Running(it) }
+                val files = ReleaseFiles.parse(context.assetText(RELEASE_FILES))
+                check(files.ref == OMARCHY_REF) { "$RELEASE_FILES is for ${files.ref}, rerun scripts/fetch-theme-colors.sh" }
+                release.download(files, picked, dirs.user) { download = ThemeDownload.Running(it) }
                 themes = scan()
                 complete = true
                 download = ThemeDownload.Idle
@@ -331,7 +349,7 @@ class ThemeStore(
         if (installing is ThemeInstall.Running) return
         val repo = ThemeRepo.parse(url)
         if (repo == null) {
-            installing = ThemeInstall.Failed("not a GitHub repo: ${url.trim()}")
+            installing = ThemeInstall.Failed(ThemeError(R.string.store_theme_not_github, url.trim()))
             return
         }
         val name = repo.themeName
@@ -346,7 +364,7 @@ class ThemeStore(
                         val depth = path.count { it == '/' }
                         (depth == 0 || depth == 1 && path.startsWith("backgrounds/")) && path != "unlock.png"
                     }
-                    checkNotNull(ThemeDirs.colorsOf(staging)) { "it has no colors.toml or alacritty.toml" }
+                    ThemeDirs.colorsOf(staging) ?: throw ThemeFailure(R.string.store_theme_no_colors)
                     File(staging, ThemeDirs.SOURCE_MARKER).writeText(repo.url + "\n")
                     val target = File(dirs.user, name)
                     // The catalog's screenshot, for themes without a preview of their own; an update keeps the one it had.
@@ -358,12 +376,19 @@ class ThemeStore(
                         .onFailure { Log.w(TAG, "no catalog preview for $name", it) }
                     dirs.user.mkdirs()
                     LauncherData.deleteTree(target)
-                    check(staging.renameTo(target)) { "can't move the theme into place" }
+                    if (!staging.renameTo(target)) throw ThemeFailure(R.string.store_theme_cant_move)
                 }.onFailure { runCatching { LauncherData.deleteTree(staging) } }
             }
         done.exceptionOrNull()?.let { e ->
             Log.e(TAG, "installing $url failed", e)
-            installing = ThemeInstall.Failed(if (e is FileNotFoundException) "${repo.label} isn't on GitHub" else e.message ?: e.toString())
+            installing =
+                ThemeInstall.Failed(
+                    when (e) {
+                        is FileNotFoundException -> ThemeError(R.string.store_theme_not_on_github, repo.label)
+                        is ThemeFailure -> ThemeError(e.reason)
+                        else -> ThemeError(null, e.message ?: e.toString())
+                    },
+                )
             return
         }
         rescan()
@@ -526,8 +551,14 @@ class ThemeStore(
     private fun savedTheme(): OmarchyTheme? = runCatching { dirs.load(picked) }.getOrNull()
 
     companion object {
-        /** The Omarchy commit themes and configs come from. Changing it updates them on every install. */
-        const val OMARCHY_REF = "8b4eae66da2938ba9559f103b18dbf85cdf28a70"
+        /** The files [OmarchyRelease.download] fetches, by scripts/fetch-theme-colors.sh. */
+        const val RELEASE_FILES = "omarchy-files.txt"
+
+        /**
+         * The Omarchy commit themes and configs come from. Changing it updates them on every install;
+         * rerun scripts/fetch-theme-colors.sh after, for [RELEASE_FILES] and the bundled colors.
+         */
+        const val OMARCHY_REF = "ac2690cd7be4f47e4a255f5e2e78d904d436b068"
 
         private const val RENDERED_BY = "rendered_by"
         private const val DEFAULT_THEME = "tokyo-night"
@@ -554,7 +585,7 @@ class ThemeStore(
             val name = saved[Style.THEME] ?: DEFAULT_THEME
             val theme = runCatching { themeDirs(context).load(name) }.getOrNull() ?: return null
             // Unset, or not one of the theme's: its first, as the launcher shows.
-            val bg = theme.backgrounds().let { list -> list.firstOrNull { it.name == saved[Style.BACKGROUND] } ?: list.firstOrNull() }
+            val bg = saved[Style.BACKGROUND]?.let(theme::backgroundNamed) ?: theme.backgrounds().firstOrNull()
             return theme.colors to bg
         }
     }

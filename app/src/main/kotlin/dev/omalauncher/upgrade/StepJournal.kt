@@ -18,9 +18,9 @@ class StepJournal(
         private set
 
     init {
-        (Versioned.read(file.takeIf { it.exists() }?.readText(), VERSION) as? JSONObject)?.let { data ->
+        Versioned.readFile(file, VERSION)?.let { data ->
             setupComplete = data.optBoolean("setup")
-            data.optJSONArray("done")?.let { a -> for (i in 0 until a.length()) done += a.getString(i) }
+            data.optJSONArray("done")?.let { done += it.strings() }
         }
     }
 
@@ -42,11 +42,7 @@ class StepJournal(
         save()
     }
 
-    private fun save() =
-        writeAtomically(
-            file,
-            Versioned.write(VERSION, JSONObject().put("setup", setupComplete).put("done", JSONArray(done.sorted()))).toByteArray(),
-        )
+    private fun save() = Versioned.writeFile(file, VERSION, JSONObject().put("setup", setupComplete).put("done", JSONArray(done.sorted())))
 
     private companion object {
         const val VERSION = 1

@@ -1,12 +1,8 @@
 package dev.omalauncher.widgets
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.BroadcastReceiver
-import android.content.ClipData
-import android.content.ClipboardManager
+import dev.omalauncher.system.copyText
+import dev.omalauncher.system.registerNotExported
+import dev.omalauncher.system.shareText
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -24,17 +20,20 @@ import android.os.StatFs
 import android.view.Display
 import android.view.HapticFeedbackConstants
 import android.view.View
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.graphics.ImageBitmap
 import dev.omalauncher.BuildConfig
 import android.os.Process
+import android.net.TrafficStats
 import android.os.SystemClock
 import android.os.UserHandle
 import android.os.UserManager
 import android.util.Log
 import android.widget.Toast
-import dev.omalauncher.MainActivity
 import dev.omalauncher.R
+import dev.omalauncher.system.postNotification
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.LinuxState
@@ -43,44 +42,63 @@ import dev.omalauncher.linux.GuestShell
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.ShellPool
 import dev.omalauncher.linux.ShellResult
-import dev.omalauncher.SecretBox
-import dev.omalauncher.openHttp
-import dev.omalauncher.openUrl
-import dev.omalauncher.readUpTo
-import dev.omalauncher.sha256Hex
+import dev.omalauncher.widgets.runtime.SecretBox
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.resume
+import kotlin.concurrent.thread
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.suspendCancellableCoroutine
+import dev.omalauncher.net.WebSocket
+import dev.omalauncher.net.LocalNetwork
+import dev.omalauncher.net.openHttp
+import dev.omalauncher.net.pin
+import dev.omalauncher.system.openUrl
+import dev.omalauncher.system.readUpTo
+import dev.omalauncher.widgets.lang.sha256Hex
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.Builtins
 import dev.omalauncher.widgets.lang.KeyNames
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
+import dev.omalauncher.widgets.lang.Col
+import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.widgets.lang.Obj
+import dev.omalauncher.widgets.lang.Pins
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.bool
-import dev.omalauncher.androidAppKey
-import dev.omalauncher.OfferedShortcut
-import dev.omalauncher.ui.AppHandlers
-import dev.omalauncher.ui.ShortcutMenu
-import dev.omalauncher.ui.initials
-import dev.omalauncher.ui.AppHit
-import dev.omalauncher.ui.act
-import dev.omalauncher.ui.actionWords
-import dev.omalauncher.ui.kind
-import dev.omalauncher.ui.profileKind
+import dev.omalauncher.apps.androidAppKey
+import dev.omalauncher.apps.OfferedShortcut
+import dev.omalauncher.ui.home.AppHandlers
+import dev.omalauncher.ui.home.ShortcutMenu
+import dev.omalauncher.ui.home.initials
+import dev.omalauncher.ui.home.AppHit
+import dev.omalauncher.ui.EmbeddedBrowser
+import dev.omalauncher.ui.home.act
+import dev.omalauncher.ui.home.actionWords
+import dev.omalauncher.ui.home.kind
+import dev.omalauncher.ui.home.profileKind
 import dev.omalauncher.ui.LauncherStyle
-import dev.omalauncher.ui.SettingsPage
-import dev.omalauncher.ui.allApps
-import dev.omalauncher.ui.appIconOf
-import dev.omalauncher.ui.open
-import dev.omalauncher.ui.recentApps
+import dev.omalauncher.ui.settings.SettingsPage
+import dev.omalauncher.ui.home.allApps
+import dev.omalauncher.ui.home.appIconOf
+import dev.omalauncher.ui.home.open
+import dev.omalauncher.ui.home.recentApps
+import dev.omalauncher.widgets.runtime.battery
+import dev.omalauncher.widgets.runtime.AirPods
 import dev.omalauncher.widgets.runtime.Alarm
 import dev.omalauncher.widgets.runtime.Media
 import dev.omalauncher.widgets.runtime.Modes
+import dev.omalauncher.widgets.runtime.Motion
 import dev.omalauncher.widgets.runtime.Notifications
 import dev.omalauncher.widgets.runtime.Services
+import dev.omalauncher.widgets.runtime.Sim
 import dev.omalauncher.widgets.runtime.Streams
+import dev.omalauncher.widgets.runtime.SystemPanels
 import dev.omalauncher.widgets.runtime.Volume
 import dev.omalauncher.widgets.runtime.watchFile
 import kotlinx.coroutines.CoroutineScope
@@ -90,11 +108,14 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -104,14 +125,31 @@ import java.io.File
 import java.io.IOException
 import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
+import javax.net.ssl.HttpsURLConnection
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import dev.omalauncher.widgets.lang.textOrNull
 
 private const val MAX_HTTP_BYTES = 1 shl 20
+
+/** WebSockets open at once; a widget's page and its neighbours are live together. */
+private const val MAX_WEBSOCKETS = 8
+
+/** Why a request whose response is over [MAX_HTTP_BYTES] failed; it isn't tried again any sooner than its interval. */
+internal const val HTTP_TOO_BIG = "the response is over 1 MB, more than a widget reads"
+
+private const val MAX_REDIRECTS = 5
+
+private val REDIRECTS = setOf(301, 302, 303, 307, 308)
 
 /**
  * How often `android.drawer` changes at most. Icons load one at a time, and each changes `hasIcon`: without this a
  * cold start would rebuild the drawer, and everything a panel works out from it, once for every icon.
  */
 private const val DRAWER_EVERY_MS = 200L
+
+/** How many recent apps `android.strip` lists, as the strip always has. */
+private const val STRIP_APPS = 20
 
 /** How many shortcuts from shortcuts(...) stay openable by key: a few menus' worth. */
 private const val MAX_OFFERED = 64
@@ -141,11 +179,16 @@ class WidgetServices(
     private val streams = Streams(proot, scope)
 
     /** What's playing on the phone. */
-    private val media = Media(context)
+    val media = Media(context)
     private val notifications = Notifications(context, media, ::profileKind)
     private val volume = Volume(context)
     private val alarm = Alarm(context)
     private val modes = Modes(context)
+    private val sim = Sim(context)
+    private val motion = Motion(context)
+    /** android.airpods and airpods(...); each activity that shows widgets lets it ask for Bluetooth while it's in front. */
+    val airpods = AirPods(context, scope)
+    private val panels = SystemPanels(context)
 
     /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
     var launcherAction: ((String) -> Unit)? = null
@@ -180,33 +223,51 @@ class WidgetServices(
 
     override fun android(name: String): Value =
         when (name) {
-            "battery" -> battery()
+            "battery" -> battery(context)
+            "power" -> power()
             "device" -> device()
             "system" -> system()
+            "network" -> network()
             "media" -> media.value()
             "notifications" -> notifications.value()
             "volume" -> volume.value()
             "alarm" -> alarm.value()
             "modes" -> modes.value()
+            "sim" -> sim.value()
+            "airpods" -> airpods.value()
             "apps" -> apps()
             "agents" -> agents()
             "recent" -> recent()
             "drawer" -> drawer()
+            "strip" -> strip()
             "modifiers" -> modifiers()
             else -> throw WidgetError("unknown android source $name")
         }
 
+    /** One flow per source, however many widgets read it: each built its own, so the drawer's list was made once for each. */
+    private val shared = HashMap<String, Flow<Value>?>()
+
     override fun androidUpdates(name: String): Flow<Value>? =
+        shared.getOrPut(name) { updatesOf(name)?.shareIn(scope, SharingStarted.WhileSubscribed(0, 0), replay = 1) }
+
+    private fun updatesOf(name: String): Flow<Value>? =
         when (name) {
             "media" -> media.updates()
             "notifications" -> notifications.updates()
             "volume" -> volume.updates()
             "alarm" -> alarm.updates()
             "modes" -> modes.updates()
+            "sim" -> sim.updates()
+            "motion" -> motion.updates()
+            "location" -> runtime.location.updates()
+            "calendar" -> runtime.calendar.updates()
+            "airpods" -> airpods.updates()
             // Both read Compose state: the app list and its usage, the installed agents and the one picked.
-            "apps" -> snapshotFlow { apps() }
+            // The apps are up to a thousand values made on each change, as the drawer's are: not on the main thread.
+            "apps" -> snapshotFlow { apps() }.flowOn(Dispatchers.Default)
             "agents" -> snapshotFlow { agents() }
             "recent" -> snapshotFlow { recent() }
+            "strip" -> snapshotFlow { strip() }
             "modifiers" -> snapshotFlow { modifiers() }
             // Linux's state is a flow of its own, not Compose state: a change of its word starts the drawer's anew.
             "drawer" -> runtime.bootstrap.state.map(::linuxWord).distinctUntilChanged().flatMapLatest { snapshotFlow { drawer() } }
@@ -216,20 +277,12 @@ class WidgetServices(
                     emit(it)
                     delay(DRAWER_EVERY_MS)
                 }
+                // Hundreds of apps, made into values on each change: not on the main thread. All it reads is Compose state.
+                .flowOn(Dispatchers.Default)
             "battery" ->
                 callbackFlow {
-                    val receiver =
-                        object : BroadcastReceiver() {
-                            override fun onReceive(
-                                c: Context,
-                                intent: Intent,
-                            ) {
-                                trySend(battery())
-                            }
-                        }
-                    val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
                     // The broadcast is sticky: registering delivers the current state at once.
-                    if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED) else context.registerReceiver(receiver, filter)
+                    val receiver = context.registerNotExported(IntentFilter(Intent.ACTION_BATTERY_CHANGED)) { trySend(battery(context)) }
                     awaitClose { context.unregisterReceiver(receiver) }
                 }.distinctUntilChanged()
             else -> null
@@ -237,12 +290,24 @@ class WidgetServices(
 
     override fun androidImage(src: String) = media.art(src)
 
+    override fun speechUpdates(owner: Any) = runtime.dictation.updates(owner)
+
+    override fun speech(
+        owner: Any,
+        word: String,
+    ) = runtime.dictation.act(owner, word)
+
+    override fun heard(owner: Any) = runtime.dictation.heard(owner)
+
     /** "work" or "clone" for an app in a profile beside the launcher's own, as the drawer marks it; null for its own. */
-    private fun profileKind(user: UserHandle): String? {
-        if (user == Process.myUserHandle()) return null
-        val serial = context.getSystemService(UserManager::class.java).getSerialNumberForUser(user)
-        return if (runtime.androidApps.cloned(serial)) "clone" else "work"
-    }
+    private fun profileKind(user: UserHandle): String? =
+        if (user == Process.myUserHandle()) null else profileKind(context.getSystemService(UserManager::class.java).getSerialNumberForUser(user))
+
+    /** As above, by [profile]'s serial number (see [dev.omalauncher.apps.AndroidApp.profile]): no binder call. */
+    private fun profileKind(profile: Long?): String? = profile?.let { if (runtime.androidApps.cloned(it)) "clone" else "work" }
+
+    /** Apps by package, in the drawer's order: a widget listing every app asks for each one's icon, and a scan per icon was O(n²). */
+    private val appsByPackage by derivedStateOf { runtime.androidApps.apps.groupBy { it.component.packageName } }
 
     /**
      * An app's icon as the drawer shows it (its silhouette with monochrome icons), badge included. By package, the launcher's
@@ -250,12 +315,12 @@ class WidgetServices(
      */
     override fun appIcon(pkg: String): ImageBitmap? {
         val apps = runtime.androidApps
-        val name = pkg.substringBefore('@')
+        val copies = appsByPackage[pkg.substringBefore('@')] ?: return null
         val app =
             when (pkg.substringAfter('@', "")) {
-                "work" -> apps.apps.firstOrNull { it.component.packageName == name && it.work }
-                "clone" -> apps.apps.firstOrNull { it.component.packageName == name && it.clone }
-                "" -> apps.apps.firstOrNull { it.component.packageName == name && it.profile == null } ?: apps.apps.firstOrNull { it.component.packageName == name }
+                "work" -> copies.firstOrNull { it.work }
+                "clone" -> copies.firstOrNull { it.clone }
+                "" -> copies.firstOrNull { it.profile == null } ?: copies.first()
                 else -> null
             } ?: return null
         val key = androidAppKey(app.component, app.profile)
@@ -264,6 +329,8 @@ class WidgetServices(
 
     override fun launcherIcon(key: String) =
         offered[key]?.let { (_, s) -> if (LauncherStyle.monochromeIcons) s.mask else s.icon } ?: appIconOf(runtime, key, LauncherStyle.monochromeIcons)
+
+    override fun launcherMask(key: String) = offered[key]?.let { (_, s) -> s.mask } ?: appIconOf(runtime, key, mono = true)
 
     /**
      * Shortcuts handed out by shortcuts(...), by the key they got ("x:3"): open(...), appAction("pin", ...) and
@@ -299,11 +366,19 @@ class WidgetServices(
         fontSize: Double?,
     ) = runtime.terminals.create(command, fontSize)
 
-    override fun fileUpdates(path: String) = watchFile(guestFile(path))
+    /** A page for a Browser node: the tile draws it, so nothing runs until it shows. */
+    override fun browser(
+        url: String?,
+        js: Boolean,
+        zoom: Double,
+    ) = EmbeddedBrowser(runtime.terminals, url, js, zoom)
 
-    override fun guestFile(path: String): File {
+    // Resolved again for every read, so a folder swapped for a link out of Linux isn't followed.
+    override fun fileUpdates(path: String) = watchFile { guestFile(path) }
+
+    override fun guestFile(path: String): File? {
         val p = if (path.startsWith("~/")) Proot.GUEST_HOME + "/" + path.removePrefix("~/") else path
-        return proot.hostFile(p)
+        return proot.guestFile(p)
     }
 
     /** The phone itself, which the guest can't identify: it has no DMI tables, and /system isn't mounted. */
@@ -322,16 +397,36 @@ class WidgetServices(
      * What a fetch shows about the phone, all from Android, so it works without Linux:
      * kernel, uptime, memory, storage, CPU, display, build, locale and the launcher itself.
      */
+    /** Max clock over the cores in kHz, read once: it doesn't change, and system() runs every interval. Some phones don't let apps read it. */
+    private val maxFreq by lazy {
+        (0 until java.lang.Runtime.getRuntime().availableProcessors()).mapNotNull { i ->
+            runCatching { File("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_max_freq").readText().trim().toLong() }.getOrNull()
+        }.maxOrNull()
+    }
+
+    /**
+     * Bytes sent and received since boot, as Android counts them for every app (no permission needed), with when they
+     * were read: a widget's rate is the change in bytes over the change in [SystemClock.elapsedRealtime], whatever the
+     * gap. A phone that doesn't keep a counter answers -1 for it, null here.
+     */
+    private fun network(): Value {
+        fun bytes(v: Long) = if (v == TrafficStats.UNSUPPORTED.toLong()) Null else Num(v.toDouble())
+        return Obj(
+            mapOf(
+                "rx" to bytes(TrafficStats.getTotalRxBytes()),
+                "tx" to bytes(TrafficStats.getTotalTxBytes()),
+                "mobileRx" to bytes(TrafficStats.getMobileRxBytes()),
+                "mobileTx" to bytes(TrafficStats.getMobileTxBytes()),
+                "uptime" to Num(SystemClock.elapsedRealtime() / 1000.0),
+            ),
+        )
+    }
+
     private fun system(): Value {
         val memory = ActivityManager.MemoryInfo().also { context.getSystemService(ActivityManager::class.java).getMemoryInfo(it) }
         val data = StatFs(Environment.getDataDirectory().path)
         val display = context.getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)
         val mode = display?.mode
-        // Max clock per core in kHz; some phones don't let apps read it.
-        val maxFreq =
-            (0 until java.lang.Runtime.getRuntime().availableProcessors()).mapNotNull { i ->
-                runCatching { File("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_max_freq").readText().trim().toLong() }.getOrNull()
-            }.maxOrNull()
         fun num(v: Long) = Num(v.toDouble())
         return Obj(
             mapOf(
@@ -373,14 +468,14 @@ class WidgetServices(
 
     /**
      * Launchable Android apps for `source a = android.apps`, updated as apps come and go and are opened, each `{key, name, package, component, profile, system, icon, score, last}`.
-     * `key` is [dev.omalauncher.AndroidApp.key], unique across profiles, for `androidApp(a.key)`; `profile` is `work` or
+     * `key` is [dev.omalauncher.apps.AndroidApp.key], unique across profiles, for `androidApp(a.key)`; `profile` is `work` or
      * `clone` as on notifications, else null; `icon` is the `app:` src for that copy. `score` and `last` are what the
-     * search ranks by ([dev.omalauncher.AppUsage]), so a widget can rank apps the same way.
+     * search ranks by ([dev.omalauncher.apps.AppUsage]), so a widget can rank apps the same way.
      */
     private fun apps(): Value =
         Lst(
             runtime.androidApps.apps.take(Builtins.MAX_LIST).map { app ->
-                val kind = profileKind(app.user)
+                val kind = profileKind(app.profile)
                 val usage = "a:" + app.key
                 Obj(
                     mapOf(
@@ -411,7 +506,7 @@ class WidgetServices(
                 mapOf(
                     "bin" to Str(a.bin),
                     "name" to Str(a.name),
-                    "description" to Str(a.description),
+                    "description" to Str(context.getString(a.description)),
                     "command" to Str(a.command),
                     "key" to Str(key),
                     "icon" to Str("icon:$key"),
@@ -444,11 +539,59 @@ class WidgetServices(
             },
         )
 
+    /** One app as `android.drawer` and `android.strip` list them; see [drawer]. */
+    private fun appValue(hit: AppHit): Value {
+        val dot = hit.hasDot
+        return Obj(
+            mapOf(
+                "key" to Str(hit.key),
+                "kind" to Str(hit.kind),
+                "name" to Str(hit.label),
+                "label" to Str(if (dot) context.getString(R.string.home_app_has_notifications, hit.spoken) else hit.spoken),
+                "dot" to bool(dot),
+                "icon" to Str("icon:" + hit.key),
+                // Its silhouette whether or not icons are monochrome, to tint any color (owl 24).
+                "mask" to Str("mask:" + hit.key),
+                "profile" to (hit.profileKind?.let(::Str) ?: Null),
+                "alias" to (hit.alias?.let(::Str) ?: Null),
+                "paused" to bool(hit.paused(runtime)),
+                // Whether `icon` draws anything: its silhouette, with monochrome icons. Without one, the drawer shows the initials.
+                "hasIcon" to bool(appIconOf(runtime, hit.key, LauncherStyle.monochromeIcons) != null),
+                "initials" to Str(initials(hit.label)),
+                "actions" to Lst(hit.actionWords().map(::Str)),
+                "score" to Num(Math.round(runtime.usage.score(hit.key) * 10.0) / 10.0),
+                "last" to (runtime.usage.last(hit.key)?.let { Num((it / 1000).toDouble()) } ?: Null),
+            ),
+        )
+    }
+
+    /**
+     * The strip above home's prompt bar for `source s = android.strip` (owl 24): `{apps, vertical, monochrome, bare,
+     * border}`. `apps` are the recent apps, last opened first, each as `android.drawer` lists its apps; like
+     * `android.recent` they reorder only once home is out of sight. `vertical` while the strip stands beside the grid in
+     * landscape; `monochrome` while icons are silhouettes; `bare` while home's apps show as icons only, without a tile
+     * (settings › style › home apps); `border` the color of the tiles' outline.
+     */
+    private fun strip(): Value {
+        // Not before every kind of app is listed: the ones missing would push in as their kind arrived.
+        val apps = if (runtime.appsListed) recentApps(runtime, STRIP_APPS) else emptyList()
+        return Obj(
+            mapOf(
+                "apps" to Lst(apps.map(::appValue)),
+                "vertical" to bool(runtime.widgets.stripVertical),
+                "monochrome" to bool(LauncherStyle.monochromeIcons),
+                "bare" to bool(LauncherStyle.bareAppIcons),
+                "border" to Col(null, LauncherStyle.tileBorder.toArgb()),
+            ),
+        )
+    }
+
     /**
      * The drawer for `source d = android.drawer`: `{apps, linux, monochrome, work, updates}`. `apps` is every app in the drawer's
      * order (owl apps, Linux apps, shortcuts, Android apps, then the work profile's shortcuts and apps), each
-     * `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, actions, score, last}`:
+     * `{key, kind, name, label, icon, hasIcon, initials, profile, alias, paused, dot, actions, score, last}`:
      * - `label` what screen readers say for it ("WhatsApp work"), for an Image's `label`; `profile` as in `android.apps`; `alias` what search matches besides the name ("WhatsApp work");
+     * - `dot` whether it has a notification dot;
      * - `paused` for an app in a paused work profile; `actions` the words its long-press menu offers, for appAction(...);
      * - `hasIcon` whether `icon` draws anything yet; without, the drawer shows `initials` on a badge, as it does a
      *   silhouette when `monochrome`.
@@ -461,70 +604,44 @@ class WidgetServices(
             runtime.widgets.apps().map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } +
                 apps.shortcuts.filter { !it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { !it.work }.map { AppHit.Android(it) } +
                 apps.shortcuts.filter { it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.work }.map { AppHit.Android(it) }
-        val list =
-            hits.take(Builtins.MAX_LIST).map { hit ->
-                Obj(
-                    mapOf(
-                        "key" to Str(hit.key),
-                        "kind" to Str(hit.kind),
-                        "name" to Str(hit.label),
-                        "label" to Str(hit.spoken),
-                        "icon" to Str("icon:" + hit.key),
-                        "profile" to (hit.profileKind?.let(::Str) ?: Null),
-                        "alias" to (hit.alias?.let(::Str) ?: Null),
-                        "paused" to bool(hit.paused(runtime)),
-                        // Whether `icon` draws anything: its silhouette, with monochrome icons. Without one, the drawer shows the initials.
-                        "hasIcon" to bool(appIconOf(runtime, hit.key, LauncherStyle.monochromeIcons) != null),
-                        "initials" to Str(initials(hit.label)),
-                        "actions" to Lst(hit.actionWords().map(::Str)),
-                        "score" to Num(Math.round(runtime.usage.score(hit.key) * 10.0) / 10.0),
-                        "last" to (runtime.usage.last(hit.key)?.let { Num((it / 1000).toDouble()) } ?: Null),
-                    ),
-                )
-            }
+        val list = hits.take(Builtins.MAX_LIST).map(::appValue)
         val work = if (apps.workProfiles.isEmpty()) Null else Obj(mapOf("paused" to bool(apps.workProfiles.any { apps.paused(it) })))
         return Obj(mapOf("apps" to Lst(list), "linux" to Str(linuxWord(runtime.bootstrap.state.value)), "monochrome" to bool(LauncherStyle.monochromeIcons), "work" to work, "updates" to Num((runtime.updates.pending?.count ?: 0).toDouble())))
     }
 
-    /** Android hides the battery from the guest (/sys/class/power_supply), so expose it here. */
-    private fun battery(): Value {
+    /**
+     * `source p = android.power every 2s`: the battery's current, charge and the charger, polled, as Android sends no
+     * broadcast when the current changes. Phones disagree on units and sign, so they're made the same here.
+     */
+    private fun power(): Value {
+        val manager = context.getSystemService(BatteryManager::class.java)
         val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val level = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        // Some builds report no scale (0); dividing by it would throw inside the battery receiver.
-        val scale = (intent?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100).takeIf { it > 0 } ?: 100
         val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
-        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
-        fun extra(name: String) = intent?.getIntExtra(name, -1)?.takeIf { it >= 0 }
-        val health =
-            when (extra(BatteryManager.EXTRA_HEALTH)) {
-                BatteryManager.BATTERY_HEALTH_GOOD -> "good"
-                BatteryManager.BATTERY_HEALTH_OVERHEAT -> "overheating"
-                BatteryManager.BATTERY_HEALTH_DEAD -> "dead"
-                BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> "over voltage"
-                BatteryManager.BATTERY_HEALTH_COLD -> "cold"
-                BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE -> "failing"
-                else -> null
-            }
-        val plugged =
-            when (extra(BatteryManager.EXTRA_PLUGGED)) {
-                BatteryManager.BATTERY_PLUGGED_AC -> "ac"
-                BatteryManager.BATTERY_PLUGGED_USB -> "usb"
-                BatteryManager.BATTERY_PLUGGED_WIRELESS -> "wireless"
-                BatteryManager.BATTERY_PLUGGED_DOCK -> "dock"
-                else -> null
-            }
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING
+        val onBattery = (intent?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) == 0
+        // Integer.MIN_VALUE where the phone doesn't say.
+        fun property(id: Int) = manager?.getIntProperty(id)?.takeIf { it != Int.MIN_VALUE }
+        // Most phones report µA and µAh, some (OnePlus) mA and mAh: with the screen on a phone draws over 20 mA, and a
+        // battery holds more than 20 mAh until it's all but empty, so a smaller number is already in milli.
+        fun milli(v: Int) = if (abs(v) < 20_000) v.toDouble() else v / 1000.0
+        // Into the battery is positive. Some phones say it the other way round, which the direction it must flow shows.
+        fun current(id: Int) =
+            property(id)?.let(::milli)?.let { if ((charging && it < 0) || (onBattery && it > 0)) -it else it }?.roundToInt()
+        val now = current(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+        val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)?.takeIf { it > 0 }?.let { it / 1000.0 }
+        // Hidden extras most phones fill in while plugged in, in µA and µV, and 0 otherwise.
+        fun charger(name: String) = intent?.getIntExtra(name, 0)?.takeIf { it > 0 && !onBattery }
+        val chargeTime = if (Build.VERSION.SDK_INT >= 28) manager?.computeChargeTimeRemaining()?.takeIf { it >= 0 } else null
+        fun num(v: Number?) = v?.let { Num(it.toDouble()) } ?: Null
         return Obj(
             mapOf(
-                "level" to Num(if (level >= 0) (level * 100 / scale).toDouble() else 0.0),
-                "charging" to bool(charging),
-                "status" to Str(if (charging) "charging" else "on battery"),
-                // Reported in tenths of a degree and in millivolts.
-                "temp" to (extra(BatteryManager.EXTRA_TEMPERATURE)?.let { Num(it / 10.0) } ?: Null),
-                "voltage" to (extra(BatteryManager.EXTRA_VOLTAGE)?.let { Num(it / 1000.0) } ?: Null),
-                "health" to (health?.let(::Str) ?: Null),
-                "plugged" to (plugged?.let(::Str) ?: Null),
-                "technology" to (intent?.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY)?.takeIf { it.isNotBlank() }?.let(::Str) ?: Null),
-                "cycles" to ((if (Build.VERSION.SDK_INT >= 34) extra(BatteryManager.EXTRA_CYCLE_COUNT) else null)?.let { Num(it.toDouble()) } ?: Null),
+                "current" to num(now),
+                "currentAvg" to num(current(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE)),
+                "watts" to num(if (now != null && voltage != null) Math.round(now * voltage / 10.0) / 100.0 else null),
+                "charge" to num(property(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER)?.takeIf { it > 0 }?.let(::milli)?.roundToInt()),
+                "chargeTime" to num(chargeTime?.let { it / 1000 }),
+                "maxCurrent" to num(charger("max_charging_current")?.let { (it / 1000.0).roundToInt() }),
+                "maxVoltage" to num(charger("max_charging_voltage")?.let { Math.round(it / 100_000.0) / 10.0 }),
             ),
         )
     }
@@ -544,29 +661,60 @@ class WidgetServices(
         if (name == "run") return run(arg) { done() }
         // Keys go out as they're pressed, many a second while one repeats: nothing to refresh after them.
         when (name) {
-            "pressKey" -> return KeyNames.combo(arg)?.let(runtime.keyboard::press) ?: Unit
-            "typeText" -> return runtime.keyboard.type(arg)
-            "latch" -> return runtime.keyboard.latch(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
+            "pressKey" -> return KeyNames.combo(arg)?.let { runtime.keyboard.flush(); runtime.keyboard.press(it) } ?: Unit
+            "typeText" -> return runtime.keyboard.run { flush(); type(arg) }
+            "latch" -> return runtime.keyboard.latch(arg, args.getOrNull(1).textOrNull())
+            "pickImages" -> return runtime.keyboard.pickImages()
+            // Nothing to refresh: the source follows the grant itself.
+            "location" -> return runtime.location.request()
+            "calendar" ->
+                return when {
+                    arg == "request" -> runtime.calendar.request()
+                    // An event still loading (…) would open today instead.
+                    args.getOrNull(1) == Null -> Unit
+                    else -> runtime.calendar.open(args.getOrNull(1))
+                }
         }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.
             "terminal" -> runtime.terminal("$arg; exec bash", args.getOrNull(1)?.toString() ?: arg.substringBefore(' '))
             "app" -> runtime.launch(arg)
             // Any scheme an app handles: tel:, geo:, mailto:, ... One nothing handles mustn't crash the launcher.
-            "url" -> if (!context.openUrl(arg)) Toast.makeText(context, "no app opens $arg", Toast.LENGTH_SHORT).show()
+            "url" -> if (!context.openUrl(arg)) Toast.makeText(context, context.getString(R.string.widgets_no_app_opens, arg), Toast.LENGTH_SHORT).show()
             "launcher" -> launcherAction?.invoke(arg)
-            "media" -> media.control(arg)
-            "volume" -> volume.control(args[0])
-            "notification" -> args.getOrNull(1)?.takeIf { it != Null }?.let { notifications.control(arg, it.toString()) }
+            "media" -> media.control(arg, args.getOrNull(1))
+            "volume" -> volume.control(args[0], args.getOrNull(1).textOrNull())
+            "notification" -> notifications.control(arg, args.getOrNull(1).textOrNull(), args.getOrNull(2))
+            "settings" -> panels.open(arg, media.playingPackage())
             "androidApp" -> openAndroidApp(arg)
             "copy" -> copy(arg)
-            "notify" -> notify(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
+            "notify" -> notify(arg, args.getOrNull(1).textOrNull())
             "torch" -> modes.torch(args[0])
+            "airpods" -> airpods.control(arg, args.getOrNull(1))
+            // Notification access lets the launcher switch it; without it, the setting that grants it. Granted but not
+            // bound yet: Android's own DND setting this time, while the listener binds again for the next tap.
+            "dnd" ->
+                when {
+                    !media.granted -> media.openAccessSettings()
+                    !modes.dnd(args[0]) { panels.open("dnd") } -> {
+                        media.reconnect()
+                        panels.open("dnd")
+                    }
+                }
             "share" -> share(arg)
-            "haptic" -> view?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            // Android's own touch feedback effects, so the user's setting still decides; a word from a value it doesn't
+            // know is medium, as haptic() was before it took one.
+            "haptic" ->
+                view?.performHapticFeedback(
+                    when (args.firstOrNull().textOrNull()) {
+                        "light" -> HapticFeedbackConstants.CLOCK_TICK
+                        "strong" -> HapticFeedbackConstants.LONG_PRESS
+                        else -> HapticFeedbackConstants.VIRTUAL_KEY
+                    },
+                )
             "open" -> openApp(arg)
-            "ask" -> ask(arg, args.getOrNull(1)?.takeIf { it != Null }?.toString())
-            "appAction" -> args.getOrNull(1)?.takeIf { it != Null }?.let { appAction(arg, it.toString()) }
+            "ask" -> ask(arg, args.getOrNull(1).textOrNull())
+            "appAction" -> args.getOrNull(1).textOrNull()?.let { appAction(arg, it) }
             "workApps" -> workApps(arg)
         }
         // Anything the action changed should show up without waiting for the next interval.
@@ -590,35 +738,127 @@ class WidgetServices(
         timeoutSeconds: Int,
         body: ByteArray?,
         method: String,
+        pin: String?,
     ): ShellResult =
         withContext(Dispatchers.IO) {
             if (!url.startsWith("https://") && !url.startsWith("http://")) return@withContext ShellResult("", "not an http(s) URL: $url", -1)
-            try {
-                val connection = openHttp(url, timeoutSeconds * 1000, timeoutSeconds * 1000)
-                try {
-                    connection.setRequestProperty("User-Agent", "omalauncher-widgets")
-                    headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
-                    if (body != null) {
-                        connection.requestMethod = method
-                        // A DELETE usually has no body, and some servers refuse one.
-                        if (method != "DELETE" || body.isNotEmpty()) {
-                            connection.doOutput = true
-                            connection.setFixedLengthStreamingMode(body.size)
-                            connection.outputStream.use { it.write(body) }
-                        }
-                    }
-                    val code = connection.responseCode
-                    val stream = if (code >= 400) connection.errorStream else connection.inputStream
-                    // Widgets show a few values; a runaway response mustn't fill memory.
-                    val body = stream?.use { String(it.readUpTo(MAX_HTTP_BYTES), Charsets.UTF_8) }.orEmpty()
-                    if (code in 200..299) ShellResult(body.trimEnd(), "", code) else ShellResult(body.trimEnd(), connection.responseMessage.orEmpty(), code)
-                } finally {
-                    connection.disconnect()
+            val pinned =
+                pin?.let {
+                    if (!url.startsWith("https://")) return@withContext ShellResult("", "pin: needs an https:// URL: $url", -1)
+                    Pins.normalize(it) ?: return@withContext ShellResult("", "pin: isn't a SHA-256 (64 hex digits): $it", -1)
                 }
+            try {
+                var target = URL(url)
+                var sendMethod = if (body != null) method else "GET"
+                var sendBody = body
+                // Followed here rather than by HttpURLConnection, which would take the widget's headers (an API key, a
+                // secret) along to whatever server a redirect names: they go only to the server the widget wrote out.
+                repeat(MAX_REDIRECTS + 1) {
+                    val connection = openHttp(target.toString(), timeoutSeconds * 1000, timeoutSeconds * 1000)
+                    try {
+                        connection.instanceFollowRedirects = false
+                        if (pinned != null) (connection as HttpsURLConnection).pin(pinned)
+                        connection.setRequestProperty("User-Agent", "omalauncher-widgets")
+                        if (origin(target) == origin(URL(url))) headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
+                        connection.requestMethod = sendMethod
+                        // A DELETE usually has no body, and some servers refuse one.
+                        if (sendBody != null && (sendMethod != "DELETE" || sendBody.isNotEmpty())) {
+                            connection.doOutput = true
+                            connection.setFixedLengthStreamingMode(sendBody.size)
+                            connection.outputStream.use { it.write(sendBody) }
+                        }
+                        val code = connection.responseCode
+                        val location = connection.getHeaderField("Location")
+                        if (code in REDIRECTS && location != null) {
+                            // The pin is for this one server; wherever else it points isn't known to be it.
+                            if (pinned != null) return@withContext ShellResult("", "a pinned request was redirected (to $location), not followed", -1)
+                            val next = redirect(code, target, URL(target, location), sendMethod, sendBody)
+                            target = next.url
+                            sendMethod = next.method
+                            sendBody = next.body
+                            return@repeat
+                        }
+                        val stream = if (code >= 400) connection.errorStream else connection.inputStream
+                        // Widgets show a few values; a runaway response mustn't fill memory. One cut short would read as
+                        // what the server said, or as broken JSON taken for text: it fails instead.
+                        val bytes = stream?.use { it.readUpTo(MAX_HTTP_BYTES + 1) } ?: ByteArray(0)
+                        if (bytes.size > MAX_HTTP_BYTES) return@withContext ShellResult("", HTTP_TOO_BIG, -1)
+                        val text = String(bytes, Charsets.UTF_8)
+                        return@withContext if (code in 200..299) ShellResult(text.trimEnd(), "", code) else ShellResult(text.trimEnd(), connection.responseMessage.orEmpty(), code)
+                    } finally {
+                        connection.disconnect()
+                    }
+                }
+                ShellResult("", "too many redirects", -1)
             } catch (e: IOException) {
-                ShellResult("", e.message ?: e.toString(), -1)
+                ShellResult("", listOfNotNull(e.message ?: e.toString(), LocalNetwork.hint(context, url)).joinToString("; "), -1)
             }
         }
+
+
+    override suspend fun webSocket(
+        url: String,
+        headers: Map<String, String>,
+        pin: String?,
+        opened: ((String) -> Boolean) -> Unit,
+        onText: (String) -> Unit,
+        onBinary: () -> Unit,
+    ) {
+        val pinned = pin?.let { Pins.normalize(it) ?: throw IOException("pin: isn't a SHA-256 (64 hex digits): $it") }
+        // Each holds a thread and a connection the whole time its page shows.
+        if (webSockets.incrementAndGet() > MAX_WEBSOCKETS) {
+            webSockets.decrementAndGet()
+            throw IOException("over $MAX_WEBSOCKETS WebSockets are open at once on the pages around this one")
+        }
+        try {
+            connectWebSocket(url, headers, pinned, opened, onText, onBinary)
+        } catch (e: IOException) {
+            throw withContext(Dispatchers.IO) { LocalNetwork.hint(context, url) }?.let { IOException("${e.message}; $it", e) } ?: e
+        } finally {
+            webSockets.decrementAndGet()
+        }
+    }
+
+    /** WebSocket connections open now, all widgets together. */
+    private val webSockets = AtomicInteger()
+
+    private suspend fun connectWebSocket(
+        url: String,
+        headers: Map<String, String>,
+        pinned: String?,
+        opened: ((String) -> Boolean) -> Unit,
+        onText: (String) -> Unit,
+        onBinary: () -> Unit,
+    ) {
+        val socket = AtomicReference<WebSocket?>()
+        val gone = AtomicBoolean()
+        suspendCancellableCoroutine { cont ->
+            // Leaving the page says goodbye; the socket's thread finishes the close handshake on its own.
+            cont.invokeOnCancellation {
+                gone.set(true)
+                socket.get()?.close(1001)
+            }
+            // A thread of its own: the connection blocks it for as long as it's open.
+            thread(name = "owl-ws", isDaemon = true) {
+                try {
+                    val ws = WebSocket.connect(url, headers, pinned)
+                    socket.set(ws)
+                    if (gone.get()) return@thread ws.cancel()
+                    // Handlers send on the main thread; WebSocket writes on a thread of its own.
+                    opened(ws::send)
+                    val closed = ws.listen(onText) { onBinary() }
+                    // Going away (a server restarting) or no code is how a connection ends; anything else says why.
+                    if (closed.code !in setOf(1000, 1001, 1005)) {
+                        throw IOException("the server closed it with ${closed.code}" + closed.reason.ifEmpty { null }?.let { ": $it" }.orEmpty())
+                    }
+                    cont.resume(Unit)
+                } catch (e: Exception) {
+                    // Anything else thrown here would take the launcher down; the source reports it and connects again.
+                    cont.resumeWithException(e as? IOException ?: IOException(e.message ?: e.toString(), e))
+                }
+            }
+        }
+    }
 
     override fun seal(plain: ByteArray) = SecretBox.seal(plain)
 
@@ -814,42 +1054,54 @@ class WidgetServices(
     }
 
     private fun copy(text: String) {
-        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("widget", text))
+        context.copyText("widget", text)
         // Android 13+ confirms copies itself.
-        if (Build.VERSION.SDK_INT < 33) Toast.makeText(context, "copied", Toast.LENGTH_SHORT).show()
+        if (Build.VERSION.SDK_INT < 33) Toast.makeText(context, R.string.widgets_copied, Toast.LENGTH_SHORT).show()
     }
 
     /** share(text): Android's share sheet, to send the text to any app. */
     private fun share(text: String) {
-        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
-        context.startActivity(Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        context.shareText(text)
     }
-
-    private var notificationId = 1000
 
     /** notify(title, text): an Android notification that opens the home screen. Needs the notification permission. */
     private fun notify(
         title: String,
         text: String?,
     ) {
-        val nm = context.getSystemService(NotificationManager::class.java)
-        if (!nm.areNotificationsEnabled()) {
+        if (!context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.widgets_notify_channel), title, text)) {
             Log.w("widgets", "notify: notifications are off for the launcher")
-            return
         }
-        nm.createNotificationChannel(NotificationChannel(NOTIFY_CHANNEL, "Widgets", NotificationManager.IMPORTANCE_DEFAULT))
-        val open = PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val n =
-            Notification
-                .Builder(context, NOTIFY_CHANNEL)
-                .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle(title)
-                .setContentText(text)
-                .setContentIntent(open)
-                .setAutoCancel(true)
-                .build()
-        nm.notify(notificationId++, n)
     }
+}
+
+/** A widget's request after a redirect. */
+internal class Redirect(
+    val url: URL,
+    val method: String,
+    val body: ByteArray?,
+)
+
+/** A URL's scheme, host and port: a redirect that keeps them keeps the widget's headers. */
+internal fun origin(u: URL) = Triple(u.protocol, u.host.lowercase(), if (u.port == -1) u.defaultPort else u.port)
+
+/**
+ * The request a redirect [code] from [from] to [to] asks for, as browsers make it: 303 asks for a GET, as 301 and 302
+ * do for a POST; the others send the same again. Throws when it isn't followed: from https down to http, or a body
+ * (which may hold a secret, bound to the server the widget wrote out) to another server.
+ */
+internal fun redirect(
+    code: Int,
+    from: URL,
+    to: URL,
+    method: String,
+    body: ByteArray?,
+): Redirect {
+    if (to.protocol != "https" && to.protocol != "http") throw IOException("redirected to a URL that isn't http(s), not followed")
+    if (from.protocol == "https" && to.protocol == "http") throw IOException("redirected from https to http (${to.host}), not followed")
+    if (code == 303 || (code == 301 || code == 302) && method == "POST") return Redirect(to, "GET", null)
+    if (body != null && body.isNotEmpty() && origin(to) != origin(from)) throw IOException("redirected to another server (${to.host}), which would get the request's body: not followed")
+    return Redirect(to, method, body)
 }
 
 /** An embedded sound, `asset x = base64"..."`, for MediaPlayer. */

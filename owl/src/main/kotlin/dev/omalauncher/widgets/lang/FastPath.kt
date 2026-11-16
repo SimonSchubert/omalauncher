@@ -28,6 +28,7 @@ internal fun numeric(
             if (d.isNaN()) slow(env) else Num(d)
         },
         fast,
+        slow,
     )
 }
 
@@ -71,7 +72,7 @@ internal fun arithmetic(
     return Ev(null) { env ->
         val p = x.of(env)
         val q = y.of(env)
-        if (p.isNaN() || q.isNaN()) slow(env) else bool(test(p.compareTo(q)))
+        if (p.isNaN() || q.isNaN()) slow(env) else bool(test((p + 0.0).compareTo(q + 0.0)))
     }
 }
 

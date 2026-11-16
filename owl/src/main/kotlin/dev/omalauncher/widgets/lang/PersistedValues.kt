@@ -34,7 +34,7 @@ object PersistedValues {
         val saved = runCatching { Json.parse(text) }.getOrNull() as? Obj ?: return emptyMap()
         val values = saved.fields["values"] as? Obj ?: return emptyMap()
         val age = nowSeconds - (saved.fields["savedAt"]?.num() ?: 0.0)
-        val step = program.globals.filterIsInstance<Global.Source>().filter { it.kind != "stream" }.minOfOrNull { it.every }
+        val step = program.globals.filterIsInstance<Global.Source>().filter { it.kind != "stream" && it.kind != "ws" }.minOfOrNull { it.every }
         val out = LinkedHashMap<Int, Value>()
         for (i in slots(program)) {
             val g = program.globals[i]

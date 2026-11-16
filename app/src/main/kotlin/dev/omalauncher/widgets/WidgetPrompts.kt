@@ -30,9 +30,12 @@ private fun OwlKind.what() =
             "a panel (panel \"name\" { }: swiping up on my home screen opens it as my app drawer, or swiping down opens it from the top, " +
                 "as docs/panels.md says). Ask me which swipe it's for, and once it works, pick it for that swipe by setting " +
                 "gestures.swipe-up or gestures.swipe-down to its file name in ~/${StyleStore.GUEST_DIR}/style.toml"
-        OwlKind.Keys ->
-            "extra keys (keybar \"name\" { }: the bar over the soft keyboard while I type in a terminal, as docs/keybar.md " +
-                "says). The launcher shows ${WidgetEngine.KEYS}, so change that file rather than making a new one"
+        OwlKind.Keybar ->
+            "a terminal key bar (keybar \"name\" { }: the bar over the soft keyboard while I type in a terminal, as docs/keybar.md " +
+                "says). The launcher shows ${WidgetEngine.KEYBAR}, so change that file rather than making a new one"
+        OwlKind.Strip ->
+            "the app strip (strip \"name\" { }: the strip of recent apps above the prompt bar on my home screen, as docs/strip.md " +
+                "says). The launcher shows ${WidgetEngine.STRIP}, so change that file rather than making a new one"
     }
 
 /** A session in the widgets dir that creates an owl file of [kind]; a face for the empty [page] left of page 1, if given. */
@@ -60,7 +63,8 @@ fun editWidgetCommand(
             OwlKind.Face -> "face"
             OwlKind.App -> "app"
             OwlKind.Panel -> "panel"
-            OwlKind.Keys -> "extra keys"
+            OwlKind.Keybar -> "terminal key bar"
+            OwlKind.Strip -> "app strip"
         }
     val prompt =
         if (problem != null) {
@@ -83,18 +87,24 @@ fun publishWidgetCommand(
     val (what, place) =
         when (spec.kind) {
             OwlKind.Widget -> "home-screen widget" to "the widget as widgets/<my GitHub username in lowercase>/<a short name>/widget.owl, with the preview.png owl-check points to next to it"
-            OwlKind.Face -> "face" to "the face as faces/<my GitHub username in lowercase>/<a short name>/face.owl, with the preview.png owl-check points to next to it"
+            OwlKind.Face ->
+                "face" to "the face as faces/<my GitHub username in lowercase>/<a short name>/face.owl, with the preview.png owl-check points to next to it. " +
+                    "First ask me whether it goes with other faces of mine (the .owl files here that start with face) as one face with several " +
+                    "pages; if so, add the ones I pick beside it as page-2.owl, page-3.owl, ... in the order I want, as the README says, and " +
+                    "let face.owl's description cover them all"
             OwlKind.App ->
                 "app" to "the app as apps/<my GitHub username in lowercase>/<a short name>/app.owl (not a name a widget there has), " +
                     "with the screen picture owl-check points to next to it as preview.png. It needs an icon: (see docs/apps.md)"
             OwlKind.Panel -> "panel" to "the panel as panels/<my GitHub username in lowercase>/<a short name>/panel.owl, with the screen picture owl-check points to next to it as preview.png"
-            OwlKind.Keys -> "extra keys" to "the keys as keybars/<my GitHub username in lowercase>/<a short name>/keybar.owl, with the screen picture owl-check points to next to it as preview.png"
+            OwlKind.Keybar -> "terminal key bar" to "the keys as keybars/<my GitHub username in lowercase>/<a short name>/keybar.owl, with the screen picture owl-check points to next to it as preview.png"
+            OwlKind.Strip -> "app strip" to "the strip as strips/<my GitHub username in lowercase>/<a short name>/strip.owl, with the screen picture owl-check points to next to it as preview.png"
         }
     val prompt =
         "Publish my $what $file to the store at https://github.com/${Market.REPO}. " +
             "Use the GitHub CLI: install github-cli with pacman and run gh auth login if needed. Read the repo's README for the rules, " +
             "then fork it and add $place. Its meta needs a description, a version and a license (ask me which license; " +
-            "suggest MIT), and it should declare its packages in requires. Leave out anything personal: tokens, paths to my files, my " +
+            "suggest MIT), and it should declare its packages in requires. If the text people read is in one language only, ask me whether to put it in " +
+            "strings { } with an English set and that language's, as docs/declarations.md says under Text in more languages. Leave out anything personal: tokens, paths to my files, my " +
             "location. Show me the final file before pushing, then open the pull request, titled \"Add ${spec.kind.word}: ${spec.name}\", and give me " +
             "its link. If I'd rather not fork, or the pull request can't be opened, open an issue there instead with the same title and the " +
             "$what's file in a code block, and give me its link."

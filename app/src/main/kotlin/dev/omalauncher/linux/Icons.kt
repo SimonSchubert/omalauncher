@@ -19,8 +19,6 @@ fun bundledIcons(
 ): List<Managed> {
     val dir = File(home, ".local/share/icons/hicolor/256x256/apps")
     return context.assets.list("icons").orEmpty().filter { it.endsWith(".png") }.map { asset ->
-        Managed(File(dir, "${bundledIcon(asset.removeSuffix(".png"))}.png"), Policy.Owned) {
-            context.assets.open("icons/$asset").use { it.readBytes() }
-        }
+        Managed.asset(context, "icons/$asset", File(dir, "${bundledIcon(asset.removeSuffix(".png"))}.png"), Policy.Owned)
     }
 }

@@ -2,7 +2,7 @@
 
 Part of the widget docs: README.md, one folder up, comes first, and paths here are from the widgets folder.
 
-`meta { owl: N }` is the language version a file needs; this launcher has 12, and without `meta` it's 1. Declare
+`meta { owl: N }` is the language version a file needs; this launcher has 24, and without `meta` it's 1. Declare
 the highest level of what the file uses: using something from a later level than the file declares is an error,
 and a launcher older than the level says "update the launcher" instead of failing on what it doesn't know. For a
 file only this phone runs, `owl: 12` is fine; for the store, a lower level reaches older launchers too.
@@ -24,5 +24,22 @@ file only this phone runs, `owl: 12` is fine; for the store, a lower level reach
 - **11**: `android.drawer`, `appAction`, `workApps`, `rank`, `strongMatch`, `chunk`, Column's and Grid's `lazy` and
   `reverse`, `panel "…" { }` files with `query`, `enter`, `onSubmit` and `onKey`, `shortcuts`, Image's `label`, Text's
   `minLines` and an app's `statusBar`. A Column in a Row is as wide as its content
-- **12**: `screenTop`, `keybar "…" { }` files, `pressKey`, `typeText`, `latch`, `android.modifiers`, `onPress`,
+- **12**: `screenTop`, `gapsIn`, `gapsOut`, `borderWidth`, `keybar "…" { }` files, `pressKey`, `typeText`, `latch`, `android.modifiers`, `onPress`,
   `onRelease`, `repeats`, post's `method:`, `toBase64`, `fromBase64`, `secret` states and Input's `password`
+- **13**: `settings`, `notification("clear")`, `"action"` and `"reply"`, `volume`'s stream, `drag`, `onDragEnd`, `android.network`, `android.volume`'s
+  `output`, a panel's `opacity`, `android.sim`, `dnd`, `torch(level)`,
+  `notification("snooze")`, `"snoozeAll"`, `"unsnooze"` and `"unsnoozeAll"`, `animate offset`, `tileOpacity`, `tileFrost`, and in `android.modes` the radios, location, rotation, dark theme, brightness, `dndAllows` and `torchLevel`.
+  Only a brightness written out, `torch(40)`, asks for owl 13; `torch(value)` from a Slider can't be told from on and off when the file is
+  checked, so a file that dims the torch should say `owl: 13` itself, as older launchers do nothing with a number
+- **14**: a face's `edge`, with `screenTop`, `screenLeft` and `screenRight` in a face, and `ripple`
+- **15**: a panel's `keyboard`, `pickImages`, `android.speech` and `speech`, `android.power`, and `launcher("page:N")`, which older launchers ignore
+- **16**: `strings { }` and `str`, and `lang()`
+- **17**: `onPull`, `pin:` on `http`, `post` and `ws`, `ws`, `send` and `on … each`
+- **18**: `Input`'s `lines`, a widget's or a face's `lock:`, `Browser`, `web`, and the page's `onNavigate`, `onTitle` and `onProgress`, `android.location` and `location`, `android.airpods` and `airpods`, and `android.calendar` and `calendar`
+- **19**: `fps:` on a widget, face, app or panel
+- **20**: `dot` on the apps of `android.drawer`
+- **21**: `android.motion` and `every frame`
+- **22**: `onTouch`; 3D: Canvas `scene` and `model`, `cube`, `sphere`, `cylinder`, `cone`, `plane`, `terrain`, `mesh`, `parseObj`,
+  `project`, `turn`, `dot`, `cross`, `norm` and `dist`; Shader image uniforms (`uniform shader`) and array uniforms
+- **23**: `media("seek", seconds)`, `media("speed", ...)` and `media("action", id)`; `android.media`'s `canSeek`, `speed` and `actions`; `haptic("light")`, `"medium"` and `"strong"`
+- **24**: `strip "…" { }` files and `android.strip`, Row's `scroll`, and `mask` on the apps of `android.drawer` and `android.strip` (`Image { src: "mask:…" }`, an app's silhouette)

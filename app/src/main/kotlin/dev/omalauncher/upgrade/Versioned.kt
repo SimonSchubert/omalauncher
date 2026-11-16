@@ -4,6 +4,7 @@ import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
+import java.io.File
 
 /**
  * Persisted JSON carries its schema version: `{"v": N, "data": …}`. Readers
@@ -40,11 +41,25 @@ object Versioned {
             null
         }
     }
+
+    /** [file]'s document, an object, as [read] gives it: null while there's no file. */
+    fun readFile(
+        file: File,
+        current: Int,
+    ): JSONObject? = read(file.takeIf { it.exists() }?.readText(), current) as? JSONObject
+
+    fun writeFile(
+        file: File,
+        version: Int,
+        data: Any,
+    ) = writeAtomically(file, write(version, data).toByteArray())
 }
 
 /** Each object of [array], skipping entries that don't parse, so one bad entry can't take the rest with it. */
 fun <T : Any> JSONArray.mapObjects(parse: (JSONObject) -> T?): List<T> =
     (0 until length()).mapNotNull { i -> runCatching { optJSONObject(i)?.let(parse) }.getOrNull() }
+
+fun JSONArray.strings(): List<String> = (0 until length()).map { getString(it) }
 
 /** Each entry of [obj] by key, skipping entries that don't parse. */
 fun <T : Any> JSONObject.mapEntries(parse: (String, JSONObject) -> T?): Map<String, T> =

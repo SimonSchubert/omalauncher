@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widgets_no_app_opens">немає додатка, щоб відкрити %1$s</string>
+    <string name="widgets_copied">скопійовано</string>
+    <string name="widgets_notify_channel">Віджети</string>
+</resources>

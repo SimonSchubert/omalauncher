@@ -71,6 +71,11 @@ for arg in "$@"; do
     else
       echo "  no preview: $(grep -E "^preview-skipped $hash " "$check" | cut -d' ' -f3-)"
     fi
+    # A tile's cell on home, which may not be the file's size:.
+    if line=$(grep -E "^home $hash " "$check"); then
+      read -r _ _ x y w h <<<"$line"
+      echo "  on home: ${w}x$h cells at x=$x y=$y, as ~/.config/omalauncher/home/layout.toml has it; change it there, not with size:"
+    fi
     # A widget's screen { }, or an app's whole view.
     if line=$(grep -E "^screen $hash " "$check"); then
       read -r _ _ px <<<"$line"

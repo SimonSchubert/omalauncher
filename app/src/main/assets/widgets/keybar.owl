@@ -1,19 +1,36 @@
-keybar "extra keys" {
+keybar "terminal key bar" {
   // The keys a phone keyboard lacks, over it while you type in a terminal: on home and in a Linux app's window. They're
   // yours to change: ask your agent to edit them. .stock-keybar.owl next to it is this file as the launcher ships it, kept
   // up to date: compare the two to see what changed in a newer launcher. If this file is gone or doesn't compile, the
   // stock keys show instead.
-  meta { description: "The extra keys over the keyboard while typing in a terminal: esc, tab, ctrl, alt, the arrows, copy and paste"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  meta { description: "The key bar over the keyboard while typing in a terminal: esc, tab, ctrl, alt, the arrows, copy, paste and photos"; version: "1.4"; license: "MIT"; category: "system"; owl: 23 }
   // The launcher's chevron; currentColor takes the tint.
   asset chevron = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNNy40MSwxNS40MUwxMiwxMC44M2w0LjU5LDQuNThMMTgsMTRsLTYsLTYgLTYsNnoiLz48L3N2Zz4="
+  // Material Design Icons' copy, paste and image, for the clipboard keys and the one that pastes photos.
+  asset copyIcon = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTksMjFIOFY3SDE5TTE5LDVIOEEyLDIgMCAwLDAgNiw3VjIxQTIsMiAwIDAsMCA4LDIzSDE5QTIsMiAwIDAsMCAyMSwyMVY3QTIsMiAwIDAsMCAxOSw1TTE2LDFINEEyLDIgMCAwLDAgMiwzVjE3SDRWM0gxNlYxWiIvPjwvc3ZnPg=="
+  asset pasteIcon = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTksMjBINVY0SDdWN0gxN1Y0SDE5TTEyLDJBMSwxIDAgMCwxIDEzLDNBMSwxIDAgMCwxIDEyLDRBMSwxIDAgMCwxIDExLDNBMSwxIDAgMCwxIDEyLDJNMTksMkgxNC44MkMxNC40LDAuODQgMTMuMywwIDEyLDBDMTAuNywwIDkuNiwwLjg0IDkuMTgsMkg1QTIsMiAwIDAsMCAzLDRWMjBBMiwyIDAgMCwwIDUsMjJIMTlBMiwyIDAgMCwwIDIxLDIwVjRBMiwyIDAgMCwwIDE5LDJaIi8+PC9zdmc+"
+  asset photo = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTksMTlINVY1SDE5TTE5LDNINUEyLDIgMCAwLDAgMyw1VjE5QTIsMiAwIDAsMCA1LDIxSDE5QTIsMiAwIDAsMCAyMSwxOVY1QTIsMiAwIDAsMCAxOSwzTTEzLjk2LDEyLjI5TDExLjIxLDE1LjgzTDkuMjUsMTMuNDdMNi41LDE3SDE3LjVMMTMuOTYsMTIuMjlaIi8+PC9zdmc+"
   // Whether ctrl, alt and shift are latched: "off", "once" (for the next key) or "locked".
+  // The names TalkBack reads for the icon keys, in the phone's language where it has a set.
+  strings {
+    en { copy: "copy"; paste: "paste"; photos: "photos" }
+    id { copy: "salin"; paste: "tempel"; photos: "foto" }
+    es { copy: "copiar"; paste: "pegar"; photos: "fotos" }
+    pt { copy: "copiar"; paste: "colar"; photos: "fotos" }
+    de { copy: "kopieren"; paste: "einfügen"; photos: "fotos" }
+    zh { copy: "复制"; paste: "粘贴"; photos: "照片" }
+    ru { copy: "копировать"; paste: "вставить"; photos: "фото" }
+    ja { copy: "コピー"; paste: "貼り付け"; photos: "写真" }
+    uk { copy: "копіювати"; paste: "вставити"; photos: "фото" }
+  }
   source kb = android.modifiers
   // The key under the finger, drawn pressed.
   state down = ""
 
   // Each key: what it shows, then what it sends, pressKey(...)'s names, or the modifier it latches. repeats: held, it
-  // sends again and again, like a keyboard's arrows; arrow: a chevron turned that many degrees instead of the label.
-  // Ctrl+Insert and Shift+Insert are the clipboard keys foot, GTK and Qt all know.
+  // sends again and again, like a keyboard's arrows; arrow: a chevron turned that many degrees instead of the label;
+  // icon: an asset shown instead of the label. Ctrl+Insert and Shift+Insert are the clipboard keys foot, GTK and Qt all
+  // know. images: Android's photo picker, whose picks paste as their paths in Linux, which opencode and Claude Code attach.
   let rows = [
     [
       {label: "esc", key: "esc"},
@@ -23,7 +40,8 @@ keybar "extra keys" {
       {label: "up", key: "up", repeats: true, arrow: 0},
       {label: "end", key: "end"},
       {label: "pgup", key: "pgup", repeats: true},
-      {label: "copy", key: "ctrl+insert"}
+      {label: str.copy, key: "ctrl+insert", icon: copyIcon},
+      {label: "|", key: "|"}
     ],
     [
       {label: "tab", key: "tab"},
@@ -33,7 +51,8 @@ keybar "extra keys" {
       {label: "down", key: "down", repeats: true, arrow: 180},
       {label: "right", key: "right", repeats: true, arrow: 90},
       {label: "pgdn", key: "pgdn", repeats: true},
-      {label: "paste", key: "shift+insert"}
+      {label: str.paste, key: "shift+insert", icon: pasteIcon},
+      {label: str.photos, images: true, icon: photo}
     ]
   ]
 
@@ -48,16 +67,35 @@ keybar "extra keys" {
       onPress: {
         if repeat == 0 {
           down = k.label
-          haptic()
+          haptic("light")
         }
         pressKey(k.key)
       }
       onRelease: down = ""
       if k.arrow != null {
         Image { src: chevron; size: 20; rotation: k.arrow; tint: down == k.label ? background : foreground; label: k.label }
+      } else if k.icon != null {
+        Image { src: k.icon; size: 20; tint: down == k.label ? background : foreground; label: k.label }
       } else {
         Text { text: k.label; font: mono; fontSize: 14; maxLines: 1; align: center; color: down == k.label ? background : foreground }
       }
+    }
+  }
+
+  // The photo picker opens on a tap, not as the finger goes down: it covers the bar before the finger lifts.
+  component Images(k) {
+    Box {
+      fill: true
+      align: center
+      radius: 8 * corners
+      background: down == k.label ? accent : surface
+      onPress: {
+        down = k.label
+        haptic("light")
+      }
+      onRelease: down = ""
+      onTap: pickImages()
+      Image { src: k.icon; size: 20; tint: down == k.label ? background : foreground; label: k.label }
     }
   }
 
@@ -71,22 +109,23 @@ keybar "extra keys" {
       background: held == "locked" ? accent : surface
       border: held == "once" ? 2 : 0
       borderColor: accent
-      onPress: haptic()
+      onPress: haptic("light")
       onTap: latch(k.latch)
       onLongPress: latch(k.latch, "locked")
       Text { text: k.label; font: mono; fontSize: 14; align: center; color: held == "locked" ? background : held == "once" ? accent : foreground }
     }
   }
 
-  // Framed like the tiles above it, the tiles' gap from the screen's sides and the keyboard.
+  // Framed like the tiles above it, by the terminal key bar's gaps and border width in settings › style: gapsOut to the
+  // screen's sides and the keyboard. 6 between the keys and to the frame, half of it around each key.
   Column {
-    padding: [6, 0, 6, 6]
+    padding: [gapsOut, 0, gapsOut, gapsOut]
     gap: 0
     Column {
       gap: 0
       padding: 3
       background: background
-      border: 2
+      border: borderWidth
       borderColor: border
       radius: 12 * corners
       for row in rows {
@@ -100,6 +139,8 @@ keybar "extra keys" {
               padding: 3
               if k.latch != null {
                 Latched { k: k }
+              } else if k.images ?? false {
+                Images { k: k }
               } else {
                 Plain { k: k }
               }

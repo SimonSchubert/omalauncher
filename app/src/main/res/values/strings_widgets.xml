@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Toast when a widget opens a link no installed app handles. %1$s is the link (tel:, geo:, https://…). -->
+    <string name="widgets_no_app_opens">no app opens %1$s</string>
+    <!-- Toast after a widget copies text, shown only before Android 13 (which confirms copies itself). -->
+    <string name="widgets_copied">copied</string>
+    <!-- Name of the notification channel for notifications widgets post, shown in Android's notification settings. -->
+    <string name="widgets_notify_channel">Widgets</string>
+</resources>

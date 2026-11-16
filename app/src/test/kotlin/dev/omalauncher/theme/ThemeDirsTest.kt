@@ -114,4 +114,33 @@ class ThemeDirsTest {
         assertEquals("Preview.JPG", dirs.load("nord")!!.preview.name)
         assertEquals("a.jpg", dirs.load("bare")!!.preview.name)
     }
+
+    @Test fun findsARenumberedBackground() {
+        write("builtin/tokyo-night/colors.toml", colors("#1a1b26"))
+        for (f in listOf("0-liftoff.webp", "1-winding-road.webp", "2-quattro.webp", "3-2-swirl.webp")) write("builtin/tokyo-night/backgrounds/$f")
+        val theme = dirs.load("tokyo-night")!!
+        assertEquals("2-quattro.webp", theme.backgroundNamed("2-quattro.webp")!!.name)
+        assertEquals("2-quattro.webp", theme.backgroundNamed("1-quattro.webp")!!.name)
+        assertEquals("3-2-swirl.webp", theme.backgroundNamed("2-2-swirl.webp")!!.name)
+        assertNull(theme.backgroundNamed("quattro.webp"))
+        assertNull(theme.backgroundNamed("9-gone.webp"))
+    }
+
+    @Test fun keepsThePickedThemeAReleaseDrops() {
+        write("old/osaka-jade/colors.toml", colors("#111c18"))
+        write("old/osaka-jade/backgrounds/1-glowing-city.webp", "city")
+        write("old/nord/colors.toml", colors("#2e3440"))
+        write("new/nord/colors.toml", colors("#2e3440"))
+        write("user/osaka-jade/backgrounds/mine.webp", "mine")
+        write("user/osaka-jade/colors.toml", colors("#000000"))
+        val old = File(tmp.root, "old")
+        val new = File(tmp.root, "new")
+        keepDroppedTheme(old, new, dirs.user, "osaka-jade")
+        keepDroppedTheme(old, new, dirs.user, "nord")
+        keepDroppedTheme(old, new, dirs.user, "../old/nord")
+        assertEquals("city", File(tmp.root, "user/osaka-jade/backgrounds/1-glowing-city.webp").readText())
+        // The user's own files win.
+        assertEquals(colors("#000000"), File(tmp.root, "user/osaka-jade/colors.toml").readText())
+        assertFalse(File(tmp.root, "user/nord").exists())
+    }
 }

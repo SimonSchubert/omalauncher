@@ -34,37 +34,48 @@ class LauncherFont(
 
     /** Android's monospace with the symbols; Android's alone if its file isn't where AOSP keeps it. */
     private val system: FontFamily by lazy {
-        SYSTEM_MONO.takeIf { File(it).isFile }?.let { withSymbols(listOf(Face(400, false, it)), host = false) } ?: FontFamily.Monospace
+        SYSTEM_MONO.takeIf { File(it).isFile }?.let { withSymbols(listOf(Face(400, false, it)), guestPaths = false) } ?: FontFamily.Monospace
     }
+
+    /** The symbol fonts behind every family, read once: the same for all of them. */
+    private val symbols by lazy { listOf(single(R.font.noto_symbols), single(R.font.nerd_symbols)) }
+
+    /**
+     * The guest faces [LauncherStyle.font] is, null for [system]: applying the same ones again keeps it, since a new
+     * font lays out all text anew.
+     */
+    private var shown: List<Face>? = null
 
     /** Sets [LauncherStyle.font] from what [cache] remembers, without the guest; at start, before the first frame. */
     fun restore() {
         val family = style.style[Style.FONT]
-        LauncherStyle.font = system
-        if (family == Style.SYSTEM_FONT) return
-        val faces = cached(family) ?: return
-        LauncherStyle.font = load(faces) ?: return
+        show(if (family == Style.SYSTEM_FONT) null else cached(family), null)
     }
 
     /** Sets [LauncherStyle.font] for [Style.FONT], asking the guest for the family's files unless [cache] has them. */
     suspend fun apply() {
         val family = style.style[Style.FONT]
-        if (family == Style.SYSTEM_FONT) {
-            LauncherStyle.font = system
-            return
-        }
-        val loaded =
-            withContext(Dispatchers.IO) {
-                val faces = cached(family) ?: find(family).also { save(family, it) }
-                load(faces)
-            }
+        if (family == Style.SYSTEM_FONT) return show(null, null)
+        val faces = withContext(Dispatchers.IO) { cached(family) ?: find(family).also { save(family, it) } }
+        if (faces == shown) return
+        val font = withContext(Dispatchers.IO) { load(faces) }
         // The setting may have changed while the guest answered.
-        if (style.style[Style.FONT] == family) LauncherStyle.font = loaded ?: system
+        if (style.style[Style.FONT] == family) show(faces, font)
+    }
+
+    /** Shows [faces], loaded as [font] or here when null; [system] without them or when they don't load. */
+    private fun show(
+        faces: List<Face>?,
+        font: FontFamily?,
+    ) {
+        val built = font ?: faces?.let(::load)
+        LauncherStyle.font = built ?: system
+        shown = faces.takeIf { built != null }
     }
 
     /** Back to Android's font, as Linux and its font files are deleted; the setting stays for when it's back. */
     fun forget() {
-        LauncherStyle.font = system
+        show(null, null)
         cache.delete()
         loaded.clear()
     }
@@ -94,7 +105,7 @@ class LauncherFont(
         val lines = runCatching { cache.readLines() }.getOrNull() ?: return null
         if (lines.firstOrNull() != family) return null
         val faces = lines.drop(1).mapNotNull(Face::decode)
-        return faces.takeIf { it.isNotEmpty() && it.all { face -> proot.hostFile(face.path).isFile } }
+        return faces.takeIf { it.isNotEmpty() && it.all { face -> proot.guestFile(face.path)?.isFile == true } }
     }
 
     private fun save(
@@ -106,11 +117,11 @@ class LauncherFont(
     }
 
     /** [faces] (guest files) as a family, leaving out files Android can't read; null if that's all of them. */
-    private fun load(faces: List<Face>): FontFamily? = withSymbols(faces, host = true)
+    private fun load(faces: List<Face>): FontFamily? = withSymbols(faces, guestPaths = true)
 
     /**
      * [faces] with noto_symbols.ttf and Nerd Font's icons behind them, then Android's fallback;
-     * [host] when their paths are the guest's. noto_symbols.ttf is Noto Sans Symbols 2's
+     * [guestPaths] when their paths are the guest's. noto_symbols.ttf is Noto Sans Symbols 2's
      * Miscellaneous Technical and Dingbats (U+2300–23FF, U+2700–27BF) without the characters
      * that default to emoji, which stay color, and with Android monospace's ascent and descent
      * (928/-244 of 1000), so a line with one is no taller; made with fontTools; SIL OFL 1.1. Compose's FontFamily picks a face by weight
@@ -118,11 +129,12 @@ class LauncherFont(
      */
     private fun withSymbols(
         faces: List<Face>,
-        host: Boolean,
+        guestPaths: Boolean,
     ): FontFamily? {
         val fonts =
             faces.mapNotNull { face ->
-                val file = if (host) proot.hostFile(face.path) else File(face.path)
+                // Paths fontconfig in the guest gave, so read as the guest sees them.
+                val file = (if (guestPaths) proot.guestFile(face.path) else File(face.path)) ?: return@mapNotNull null
                 // A variable font's file is every weight; the axis picks this one, as Compose's Font(file) does.
                 runCatching {
                     Font.Builder(file)
@@ -137,8 +149,7 @@ class LauncherFont(
             val family = android.graphics.fonts.FontFamily.Builder(fonts.first()).apply { fonts.drop(1).forEach(::addFont) }.build()
             val typeface =
                 Typeface.CustomFallbackBuilder(family)
-                    .addCustomFallback(single(R.font.noto_symbols))
-                    .addCustomFallback(single(R.font.nerd_symbols))
+                    .apply { symbols.forEach(::addCustomFallback) }
                     .setSystemFallback("monospace")
                     .build()
             FontFamily(androidx.compose.ui.text.font.Typeface(typeface))

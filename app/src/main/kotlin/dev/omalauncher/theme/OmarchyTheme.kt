@@ -6,6 +6,9 @@ import java.nio.file.Files
 /** In the order omarchy-theme-switcher looks for a preview. */
 private val IMAGE_EXTENSIONS = listOf("png", "jpg", "jpeg", "webp")
 
+/** The number Omarchy puts in front of a background's name, to order them. */
+private val NUMBERED = Regex("^[0-9]+-")
+
 /** What omarchy-theme-set lets a theme name be; it names directories and goes into prefs. */
 private val THEME_NAME = Regex("^[a-z0-9_][a-z0-9._+-]*$")
 
@@ -57,6 +60,18 @@ class OmarchyTheme(
         val merged = LinkedHashMap<String, File>()
         for (dir in dirs) images(File(dir, "backgrounds")).forEach { merged[it.name] = it }
         return images(extraBackgrounds) + merged.values.sortedBy { it.name }
+    }
+
+    /**
+     * The background a style names, or null. Omarchy renumbers a theme's
+     * backgrounds when one joins (4.5's Tokyo Night: 1-quattro.webp is now
+     * 2-quattro.webp), so the one with the same name past its number counts too.
+     */
+    fun backgroundNamed(name: String): File? {
+        val all = backgrounds()
+        all.firstOrNull { it.name == name }?.let { return it }
+        val rest = name.replaceFirst(NUMBERED, "").takeIf { it != name } ?: return null
+        return all.singleOrNull { it.name.replaceFirst(NUMBERED, "") == rest }
     }
 
     /** Whether [file] is one of the user's extra backgrounds, which they may remove; the theme's own stay. */

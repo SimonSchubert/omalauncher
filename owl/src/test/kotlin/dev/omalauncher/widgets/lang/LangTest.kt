@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets.lang
 
+import dev.omalauncher.widgets.market.Review
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -61,8 +62,16 @@ class LangTest {
             headers: Map<String, String>,
             slot: Int?,
             method: String,
+            pin: String?,
         ) {
-            actions += "post $slot $url $body $headers" + (if (method != "POST") " $method" else "")
+            actions += "post $slot $url $body $headers" + (if (method != "POST") " $method" else "") + (pin?.let { " pin $it" } ?: "")
+        }
+
+        override fun send(
+            slot: Int,
+            message: Value,
+        ) {
+            actions += "send $slot $message"
         }
     }
 
@@ -172,6 +181,17 @@ class LangTest {
     @Test fun constantsFold() {
         val p = Compiler.compile("widget { Text { text: \"a${'$'}{1 + 1}\" } }")
         assertEquals(Str("a2"), (p.root[0] as WNode.Element).props["text"]!!.const)
+    }
+
+    /** A let that folded to a constant is used as its value, so what reads it folds too; one that reads a state isn't. */
+    @Test fun constantLetsFoldWhereTheyAreRead() {
+        val p = Compiler.compile("widget { let C = 32\n let D = C * 2\n state s = 1\n let E = s * C\n Text { text: \"${'$'}{C + 1} ${'$'}{E}\" } }")
+        assertEquals(Num(64.0), (p.globals.first { it.name == "D" } as Global.Let).value.const)
+        assertEquals(null, (p.globals.first { it.name == "E" } as Global.Let).value.const)
+        assertEquals(null, (p.root[0] as WNode.Element).props["text"]!!.const)
+        assertEquals("33 32", text("\"${'$'}{C + 1} ${'$'}{E}\"", "let C = 32\n state s = 1\n let E = s * C"))
+        val a = Compiler.compile("widget { asset logo = base64\"AAAA\"\n Image { src: logo } }")
+        assertEquals(Str("asset:logo"), (a.root[0] as WNode.Element).props["src"]!!.const)
     }
 
     @Test fun interpolationAndNulls() {
@@ -292,22 +312,100 @@ class LangTest {
         assertEquals(listOf("http POST (a URL built from widget values)"), Compiler.compile("app \"t\" {\n meta { owl: 8 }\n state u = \"\"\n back: true\n onBack: post(u)\n Text { text: 1 } }").commands)
     }
 
-    /** post's method: sends PUT or DELETE (owl 12), listed as what it is. */
+    /** post's method: sends PUT, PATCH or DELETE (owl 12), listed as what it is. */
     @Test fun postMethods() {
         val p =
             Compiler.compile(
                 "app \"t\" {\n meta { owl: 12 }\n back: true\n" +
-                    " onBack: { post(\"https://x.test/items/1\", null, {}, method: \"delete\"); post(\"https://x.test/b\", {a: 1}, {}, method: \"PUT\") }\n" +
+                    " onBack: { post(\"https://x.test/items/1\", null, {}, method: \"delete\"); post(\"https://x.test/b\", {a: 1}, {}, method: \"PUT\"); post(\"https://x.test/c\", {a: 2}, {}, method: \"patch\") }\n" +
                     " Text { text: 1 } }",
             )
         val host = TestHost(p)
         p.onBack!!.run(Env.root(host), emptyList())
-        assertEquals(listOf("post null https://x.test/items/1 null {} DELETE", "post null https://x.test/b {a: 1} {} PUT"), host.actions)
-        assertEquals(setOf("http DELETE https://x.test/items/1", "http PUT https://x.test/b"), p.commands.toSet())
+        assertEquals(listOf("post null https://x.test/items/1 null {} DELETE", "post null https://x.test/b {a: 1} {} PUT", "post null https://x.test/c {a: 2} {} PATCH"), host.actions)
+        assertEquals(setOf("http DELETE https://x.test/items/1", "http PUT https://x.test/b", "http PATCH https://x.test/c"), p.commands.toSet())
         val app = "app \"t\" {\n meta { owl: 12 }\n back: true\n onBack: post(\"https://x.test/\", null, {}, "
         assertTrue(compileError("app \"t\" {\n meta { owl: 11 }\n back: true\n onBack: post(\"https://x.test/\", null, {}, method: \"PUT\")\n Text { text: 1 } }").contains("needs owl 12"))
-        assertTrue(compileError(app + "method: \"PATCH\")\n Text { text: 1 } }").contains("method: is one of"))
+        assertTrue(compileError(app + "method: \"HEAD\")\n Text { text: 1 } }").contains("method: is one of"))
         assertTrue(compileError(app + "retries: 3)\n Text { text: 1 } }").contains("no other named arguments"))
+    }
+
+    /** pin: trusts one certificate (owl 17), on http(...) and post(...). */
+    @Test fun pinnedRequests() {
+        val pin = "AB:" + "cd".repeat(31)
+        val p =
+            Compiler.compile(
+                "app \"t\" {\n meta { owl: 17 }\n source h = http(\"https://pc.lan:8759/a\", {}, pin: \"$pin\") json\n back: true\n" +
+                    " onBack: post(\"https://pc.lan:8759/h/1\", null, {}, method: \"delete\", pin: \"$pin\")\n" +
+                    " Text { text: h } }",
+            )
+        val host = TestHost(p)
+        assertEquals(pin, (p.globals[0] as Global.Source).pin!!(Env.root(host)).toString())
+        p.onBack!!.run(Env.root(host), emptyList())
+        assertEquals(listOf("post null https://pc.lan:8759/h/1 null {} DELETE pin $pin"), host.actions)
+        assertEquals(setOf("http GET https://pc.lan:8759/a", "http DELETE https://pc.lan:8759/h/1"), p.commands.toSet())
+        assertEquals("ab" + "cd".repeat(31), Pins.normalize(pin))
+        assertEquals(null, Pins.normalize("abcd"))
+        val app = "app \"t\" {\n meta { owl: 17 }\n back: true\n onBack: post(\"https://x.test/\", null, {}, "
+        assertTrue(compileError("widget {\n meta { owl: 16 }\n source h = http(\"https://x.test/\", {}, pin: \"$pin\")\n Text { text: h } }").contains("needs owl 17"))
+        assertTrue(compileError(app + "pin: \"abcd\")\n Text { text: 1 } }").contains("64 hex digits"))
+        assertTrue(compileError("widget {\n meta { owl: 17 }\n source h = http(\"http://x.test/\", {}, pin: \"$pin\")\n Text { text: h } }").contains("pin: needs an https://"))
+        assertTrue(compileError("widget {\n meta { owl: 17 }\n source h = http(\"https://x.test/\", {}, retries: 3)\n Text { text: h } }").contains("http takes pin:, and no other"))
+    }
+
+    /** ws(...) listens to a WebSocket server, and send(...) talks back on its connection (owl 17). */
+    @Test fun webSockets() {
+        val pin = "ab".repeat(32)
+        val p =
+            Compiler.compile(
+                "app \"t\" {\n meta { owl: 17 }\n state token = null secret\n state cols = 80\n" +
+                    " source t = ws(token == null ? null : \"wss://pc.lan:8759/stream?viewport=1\", {Authorization: \"Bearer ${'$'}{token}\"}, pin: \"$pin\") json status\n" +
+                    " source h = ws(\"ws://192.168.1.2/harnesses\")\n" +
+                    " when t.open { send(t, {type: \"viewport\", columns: cols, auth: token}) }\n" +
+                    " every 10s { send(h, \"ping\") }\n Text { text: t.out } }",
+            )
+        val t = p.globals[2] as Global.Source
+        assertEquals("ws", t.kind)
+        assertTrue(t.json && t.status && t.headers != null && t.pin != null)
+        assertEquals(setOf("websocket wss://pc.lan:8759/stream?viewport=1", "websocket ws://192.168.1.2/harnesses"), p.commands.toSet())
+        assertFalse(p.needsLinux)
+        // A secret sent on a connection is bound to the server the source connects to, as one in its headers is.
+        assertEquals(mapOf("token" to listOf("wss://pc.lan:8759")), p.secretHosts)
+        val host = TestHost(p)
+        host.slots[0] = Str("tk")
+        p.triggers.forEach { it.action.run(Env.root(host), emptyList()) }
+        assertEquals(listOf("send 2 {type: viewport, columns: 80, auth: tk}", "send 3 ping"), host.actions)
+
+        val w = "widget {\n meta { owl: 17 }\n"
+        compileError(w + " source s = ws(\"https://x.test/\")\n Text { text: s } }").let { assertTrue(it, it.contains("ws:// or wss://")) }
+        compileError(w + " source s = ws(\"wss://x.test/\") every 5s\n Text { text: s } }").let { assertTrue(it, it.contains("no every or timeout")) }
+        compileError(w + " source s = http(\"https://x.test/\")\n Text { text: 1; onTap: send(s, 1) } }").let { assertTrue(it, it.contains("send's first value is a ws(...) source")) }
+        compileError(w + " source s = ws(\"wss://x.test/\")\n Text { text: 1; onTap: send(s) } }").let { assertTrue(it, it.contains("takes a ws(...) source and a message")) }
+        compileError(w + " source s = ws(\"ws://x.test/\", {}, pin: \"$pin\")\n Text { text: s } }").let { assertTrue(it, it.contains("pin: needs an https:// or wss:// URL")) }
+        compileError(w + " source s = ws(\"wss://x.test/\")\n Text { text: send(s, 1) } }").let { assertTrue(it, it.contains("is an action")) }
+        compileError(w + " state k = null secret\n source s = ws(\"ws://x.test/\")\n Text { text: 1; onTap: send(s, {k: k}) } }").let { assertTrue(it, it.contains("only to a wss:// server")) }
+        compileError(w + " state k = null secret\n source s = ws(\"ws://x.test/\", {A: k})\n Text { text: s } }").let { assertTrue(it, it.contains("only to a wss:// server")) }
+        compileError("widget {\n meta { owl: 16 }\n source s = ws(\"wss://x.test/\")\n Text { text: s } }").let { assertTrue(it, it.contains("ws needs owl 17")) }
+    }
+
+    /** `on x each` runs for every message of a ws(...) source, repeats too (owl 17). */
+    @Test fun onEachMessage() {
+        val p =
+            Compiler.compile(
+                "widget {\n meta { owl: 17 }\n state n = 0\n source feed = ws(\"wss://x.test/io\")\n" +
+                    " on feed each { if value == \"2\" { send(feed, \"3\") }; n = n + 1 }\n Text { text: n } }",
+            )
+        val tr = p.triggers.single()
+        assertEquals(1, tr.each)
+        val host = TestHost(p)
+        repeat(2) { tr.action.run(Env.root(host), listOf(Str("2"), Null)) }
+        tr.action.run(Env.root(host), listOf(Str("hello"), Null))
+        assertEquals(listOf("send 1 3", "send 1 3"), host.actions)
+        assertEquals(Num(3.0), host.slots[0])
+        val w = "widget {\n meta { owl: 17 }\n"
+        compileError(w + " source s = http(\"https://x.test/\")\n on s each { }\n Text { text: s } }").let { assertTrue(it, it.contains("every message of a ws(...) source")) }
+        compileError(w + " source s = ws(\"wss://x.test/\")\n on s.type each { }\n Text { text: s } }").let { assertTrue(it, it.contains("every message of a ws(...) source")) }
+        compileError("widget {\n meta { owl: 16 }\n source s = ws(\"wss://x.test/\")\n on s each { }\n Text { text: s } }").let { assertTrue(it, it.contains("needs owl 17")) }
     }
 
     /** A secret only goes into a request's headers and body, or a check that it's set (owl 12). */
@@ -329,11 +427,34 @@ class LangTest {
         }
         compileError(w + " on token { out = 1 }\n Text { text: 1 } }").let { assertTrue(it, it.contains("token is a secret")) }
         compileError(w + " source s = http(\"https://x.test/${'$'}{token}\")\n Text { text: 1 } }").let { assertTrue(it, it.contains("token is a secret")) }
+        // In a URL only as enc(token), for an API that takes its key in the query, on a server written out.
+        val inUrl = Compiler.compile(w + " source s = http(token == null ? null : \"https://Api.test/q?appid=${'$'}{enc(token)}\")\n onTap: post(\"https://b.test/${'$'}{enc(token)}\", {}, method: \"DELETE\")\n Text { text: 1 } }")
+        assertEquals(listOf("https://api.test", "https://b.test"), inUrl.secretHosts["token"])
+        assertTrue(inUrl.commands.toString(), inUrl.commands.none { "built from widget values" in it })
+        TestHost(inUrl).let { h ->
+            h.write(0, Str("a b"))
+            assertEquals("https://Api.test/q?appid=a%20b", (inUrl.globals.first { it.name == "s" } as Global.Source).arg!!(Env.root(h)).toString())
+        }
+        for (leak in listOf("\"https://x.test/?k=${'$'}{enc(upper(token))}\"", "\"https://${'$'}{enc(token)}.x.test/\"", "out ?? \"https://x.test/?k=${'$'}{enc(token)}\"")) {
+            assertTrue(leak, compileError("$w source s = http($leak)\n Text { text: 1 } }").contains("token is a secret"))
+        }
+        compileError(w + " Text { text: enc(token) } }").let { assertTrue(it, it.contains("token is a secret")) }
         // Bound to the servers it goes to, which are written out, so an edit can't send it elsewhere unnoticed.
         assertEquals(mapOf("token" to listOf("https://x.test")), p.secretHosts)
         compileError(w + " state h = \"x.test\"\n source s = http(\"https://${'$'}{h}/a\", {A: token})\n Text { text: 1 } }").let { assertTrue(it, it.contains("server it goes to is written out")) }
         compileError(w + " state u = \"https://x.test\"\n onTap: post(u, {t: token})\n Text { text: 1 } }").let { assertTrue(it, it.contains("server it goes to is written out")) }
         assertEquals(listOf("https://x.test:8443"), Compiler.compile(w + " onTap: post(\"https://X.test:8443\", {t: token})\n Text { text: 1 } }").secretHosts["token"])
+        compileError(w + " onTap: post(\"http://x.test/a\", {t: token})\n Text { text: 1 } }").let { assertTrue(it, it.contains("only to an https:// server")) }
+        // A user name before the host would bind it to "x.test@evil.test", and send it to evil.test.
+        compileError(w + " onTap: post(\"https://x.test@evil.test/a\", {t: token})\n Text { text: 1 } }").let { assertTrue(it, it.contains("server it goes to is written out")) }
+        // Bound to the server written out at the URL's start, whatever follows it: a value not through enc(), more ways than are listed.
+        val many = "${'$'}{out == null ? \"a\" : \"b\"}".repeat(4)
+        for (url in listOf("\"https://x.test/${'$'}{out}\"", "\"https://x.test/$many\"", "\"https://x.test?k=${'$'}{enc(token)}\"")) {
+            assertEquals(url, listOf("https://x.test"), Compiler.compile("$w source s = http($url, {A: token})\n Text { text: 1 } }").secretHosts["token"])
+        }
+        compileError(w + " source s = http(\"https://x.test${'$'}{out}\", {A: token})\n Text { text: 1 } }").let { assertTrue(it, it.contains("server it goes to is written out")) }
+        // A let can't hold it; the error says to write it out where it's sent.
+        compileError(w + " let auth = \"Bearer ${'$'}{token}\"\n Text { text: 1 } }").let { assertTrue(it, it.contains("not through a let")) }
         compileError("widget {\n meta { owl: 12 }\n state token = null secret persist\n Text { text: 1 } }").let { assertTrue(it, it.contains("without persist")) }
         compileError("widget {\n meta { owl: 11 }\n state token = null secret\n Text { text: 1 } }").let { assertTrue(it, it.contains("secret needs owl 12")) }
     }
@@ -528,6 +649,8 @@ class LangTest {
         assertEquals(true, needs("source r = cmd('date')\nText { text: r }"))
         assertEquals(true, needs("source r = stream('tail -f x')\nText { text: r }"))
         assertEquals(true, needs("meta { owl: 2 }\nTerminal { }"))
+        // A Browser is a web view, not a program: it works without Linux.
+        assertEquals(false, needs("$owl18\nBrowser { url: \"https://a.test/\" }"))
         // Without Linux, tapping app(...) or terminal(...) offers to install it instead.
         assertEquals(false, needs("onTap: app(\"btop\")\nText { text: \"x\" }"))
         assertEquals(true, needs("requires { pacman: [\"jq\"] }\nText { text: \"x\" }"))
@@ -593,6 +716,30 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 5 }\n Text { text: corners } }").contains("corners needs owl 6"))
     }
 
+    @Test fun gapsAndBorderFollowTheLauncherStyle() {
+        val style =
+            object : Host by TestHost(0) {
+                override fun tile(name: String): Value = mapOf("gapsIn" to Num(4.0), "gapsOut" to Num(6.0), "borderWidth" to Num(2.0))[name] ?: Null
+            }
+        val p = Compiler.compile("keybar \"k\" {\n meta { owl: 12 }\n Text { text: \"${'$'}{gapsIn / 2 + gapsOut + borderWidth}\" } }")
+        assertEquals("10", (p.screen!!.single() as WNode.Element).props["text"]!!(Env.root(style)).text())
+        assertTrue(compileError("widget {\n meta { owl: 11 }\n Box { border: borderWidth } }").contains("borderWidth needs owl 12"))
+        // A widget's own names win at any level, as with `rows`: files from before owl 12 may use them.
+        assertEquals("3", text("borderWidth", "state borderWidth = 3"))
+        assertEquals("5", text("gapsIn + 1", "let gapsIn = 4"))
+        Compiler.compile("widget {\n meta { owl: 10 }\n component C(gapsOut) { Box { padding: gapsOut } }\n C { gapsOut: 2 } }")
+    }
+
+    @Test fun tileGlassFollowsTheLauncherStyle() {
+        val style =
+            object : Host by TestHost(0) {
+                override fun tile(name: String): Value = mapOf("tileOpacity" to Num(0.5), "tileFrost" to Num(24.0))[name] ?: Null
+            }
+        val p = Compiler.compile("face \"f\" {\n meta { owl: 13 }\n Text { text: \"${'$'}{tileOpacity} ${'$'}{tileFrost}\" } }")
+        assertEquals("0.5 24", (p.root.single() as WNode.Element).props["text"]!!(Env.root(style)).text())
+        assertTrue(compileError("widget {\n meta { owl: 12 }\n Box { frost: tileFrost } }").contains("tileFrost needs owl 13"))
+    }
+
     @Test fun requiresDeclaresPackagesPerManager() {
         val p = Compiler.compile("widget {\n  requires { pacman: [\"jq\", \"curl\"] }\n  requires { pacman: \"jq\" }\n  Text { text: \"x\" }\n}")
         assertEquals(mapOf("pacman" to listOf("jq", "curl")), p.requires)
@@ -643,6 +790,133 @@ class LangTest {
         } catch (e: WidgetError) {
             assertTrue(e.message!!.contains("too much work"))
         }
+    }
+
+    /** Doubling takes few steps but would take gigabytes: an OutOfMemoryError took the launcher down. */
+    @Test fun textStopsGrowingPastItsCap() {
+        for (expr in listOf(
+            "len(reduce(range(n), (s, i) => s + s, \"a\"))",
+            "len(reduce(range(n), (s, i) => \"\${s}\${s}\", \"a\"))",
+            "len(toJson(reduce(range(n), (s, i) => [s, s], [1])))",
+            "len(str(reduce(range(n), (s, i) => [s, s], [1])))",
+            "len(join(reduce(range(n), (s, i) => [s + s], [\"a\"]), \",\"))",
+        )) {
+            try {
+                text(expr, "meta { owl: 9 }\nstate n = 30")
+                fail("expected $expr to stop at the cap")
+            } catch (e: WidgetError) {
+                assertTrue(e.message, e.message!!.contains("over 4M characters"))
+            }
+        }
+        assertEquals("1048576", text("len(reduce(range(n), (s, i) => s + s, \"a\"))", "meta { owl: 9 }\nstate n = 20"))
+    }
+
+    /** A pattern that backtracks without end gives up after a moment, rather than freezing the thread that builds home. */
+    @Test fun aRunawayRegexGivesUp() {
+        val started = System.nanoTime()
+        try {
+            text("match(pad(\"\", n, \"a\"), \"(.*a){27}b\")", "state n = 32")
+            fail("expected the regex to give up")
+        } catch (e: WidgetError) {
+            assertTrue(e.message, e.message!!.contains("takes too long"))
+        }
+        assertTrue((System.nanoTime() - started) / 1_000_000 < 2000)
+        // Refused at once from then on, and other patterns still work.
+        try {
+            text("match(s, \"(.*a){27}b\")", "state s = \"x\"")
+            fail("expected the slow pattern to be refused")
+        } catch (e: WidgetError) {
+            assertTrue(e.message!!.contains("takes too long"))
+        }
+        assertEquals("[12, ab]", text("match(s, \"(\\\\d+)-(\\\\w+)\")", "state s = \"x 12-ab\""))
+        assertEquals("[1, 2, 3]", text("matchAll(s, \"\\\\d\")", "state s = \"1a2b3\""))
+    }
+
+    /** Many matches in one update share one allowance: a map of them, each well under half a second, held home past Android's five seconds. */
+    @Test fun regexesShareOneUpdatesTime() {
+        val p =
+            Compiler.compile(
+                "widget \"t\" {\nstate n = 10\nstate k = 1\n" +
+                    "Text { text: map(range(k), i => match(pad(\"\", n, \"a\"), \"(.*a){4}b\")) }\n}",
+            )
+        val host = TestHost(p)
+        val ev = (p.root.single() as WNode.Element).props["text"]!!
+
+        fun timed(): Long {
+            val started = System.nanoTime()
+            host.budget.eval(ev, Env.root(host))
+            return (System.nanoTime() - started) / 1_000_000
+        }
+        // A text long enough that one match takes a while, on this machine, but gives up on its own.
+        while (timed() < 60) host.slots[0] = Num((host.slots[0] as Num).v + 4)
+        host.slots[1] = Num(40.0)
+        val started = System.nanoTime()
+        try {
+            host.budget.eval(ev, Env.root(host))
+            fail("expected the matches to give up together")
+        } catch (e: WidgetError) {
+            assertTrue(e.message, e.message!!.contains("in all in one update"))
+        }
+        // Over 40 times 60 ms before.
+        assertTrue((System.nanoTime() - started) / 1_000_000 < 1800)
+        // The pattern isn't refused, and the next update has its own allowance.
+        host.slots[1] = Num(1.0)
+        assertEquals("[null]", host.budget.eval(ev, Env.root(host)).toString())
+    }
+
+    /** A font in spans is listed for review like a `font:`, in a Text and in a Canvas text. */
+    @Test fun fontsInSpansAreListed() {
+        val p =
+            Compiler.compile(
+                "widget \"t\" {\nmeta { owl: 10 }\nstate u = \"x\"\n" +
+                    "Column { Text { spans: [\"a \", {text: \"b\", font: \"https://evil.test/f.ttf\"}] }\n" +
+                    "Canvas { text([{text: \"c\", font: u == \"x\" ? \"https://other.test/g.ttf\" : \"serif\"}], 0, 0) } }\n}",
+            )
+        assertEquals(setOf("font GET https://evil.test/f.ttf", "font GET https://other.test/g.ttf"), p.commands.toSet())
+    }
+
+    /** -0.0 is zero and nothing compares with NaN, on both the fast path and the general one. */
+    @Test fun negativeZeroAndNaNCompareAsNumbers() {
+        val d = "state x = 0\nstate t = \"-0\"\nstate nan = \"NaN\""
+        assertEquals("false", text("-x < 0", d))
+        assertEquals("false", text("x * -1 < 0", d))
+        assertEquals("true", text("-x >= 0", d))
+        assertEquals("false", text("t < 0", d))
+        assertEquals("false", text("nan > 5", d))
+        assertEquals("false", text("nan < 5", d))
+        assertEquals("false", text("num(nan) > 5", d))
+        assertEquals("[-1, 0, 2]", text("sort([2, -x, -1])", d))
+    }
+
+    @Test fun formattingWhatIsNoNumberGivesNull() {
+        val d = "meta { owl: 9 }\nstate z = 0"
+        assertEquals("null", text("fmtTime(num(\"NaN\") + z, \"HH:mm\")", d))
+        assertEquals("null", text("fmtNum(num(\"NaN\") + z)", d))
+        assertEquals("null", text("parseTime(\"2026-01-01T00:00:00+99:99\")", d))
+        assertEquals("1767225600", text("parseTime(\"2026-01-01T00:00:00Z\")", d))
+    }
+
+    /** A URL, command or image src with a value still loading waits for it, rather than asking with "…" in it. */
+    @Test fun aRequestWaitsForEveryPartOfIt() {
+        val p =
+            Compiler.compile(
+                "widget \"t\" {\nmeta { owl: 8 }\nstate n = null\nstate q = null\n" +
+                    "source a = http(\"https://a.example/x?d=\${int(n)}\")\nsource b = cmd(\"echo \${int(n)}\")\n" +
+                    "source c = http(\"https://a.example/x?q=\${enc(q)}\")\n" +
+                    "Column { Image { src: \"https://a.example/\${int(n)}.png\" }\nText { text: \"d=\${int(n)}\" } }\n}",
+            )
+        val host = TestHost(p)
+        fun source(name: String) = (p.globals.first { it.name == name } as Global.Source).arg!!(Env.root(host))
+        assertEquals(Null, source("a"))
+        assertEquals(Null, source("b"))
+        // enc() and sh() of null are empty on purpose: a search with nothing typed yet.
+        assertEquals("https://a.example/x?q=", source("c").toString())
+        val column = p.root.single() as WNode.Element
+        val (image, text) = column.children.map { it as WNode.Element }
+        assertEquals(Null, image.props["src"]!!(Env.root(host)))
+        assertEquals("d=…", text.props["text"]!!(Env.root(host)).toString())
+        host.slots[p.globals.indexOfFirst { it.name == "n" }] = Num(7.0)
+        assertEquals("https://a.example/x?d=7", source("a").toString())
     }
 
     @Test fun errorsPointAtTheProblem() {
@@ -751,6 +1025,29 @@ class LangTest {
         assertTrue(compileError("widget {\n source c = file(\"/x\")\n Text { text: c } }").contains("file needs owl 4"))
     }
 
+    @Test fun androidNetwork() {
+        val p =
+            Compiler.compile(
+                "widget {\n meta { owl: 13 }\n source n = android.network every 2s\n state down = 0\n" +
+                    " on n { if old != null && value.rx >= old.rx { down = (value.rx - old.rx) / (value.uptime - old.uptime) } }\n" +
+                    " Text { text: fmtBytes(down) + \"/s\" } }",
+            )
+        val n = p.globals.first() as Global.Source
+        assertEquals("android.network", n.kind)
+        assertEquals(2.0, n.every, 0.0)
+        assertTrue(!p.needsLinux)
+        assertTrue(compileError("widget {\n meta { owl: 12 }\n source n = android.network\n Text { text: 1 } }").contains("android.network needs owl 13"))
+    }
+
+    @Test fun androidPower() {
+        val p = Compiler.compile("widget {\n meta { owl: 15 }\n source p = android.power every 2s\n Text { text: p.current + \" mA \" + p.watts + \" W\" } }")
+        val s = p.globals.first() as Global.Source
+        assertEquals("android.power", s.kind)
+        assertEquals(2.0, s.every, 0.0)
+        assertTrue(!p.needsLinux)
+        assertTrue(compileError("widget {\n meta { owl: 14 }\n source p = android.power every 2s\n Text { text: 1 } }").contains("android.power needs owl 15"))
+    }
+
     @Test fun androidAlarmModesAndPhoneActions() {
         val p = Compiler.compile("widget {\n meta { owl: 7 }\n source a = android.alarm\n source m = android.modes\n Text { text: a.time; onTap: { torch(\"toggle\"); torch(!m.torch); share(\"hi\"); haptic() } } }")
         assertEquals(listOf("android.alarm", "android.modes"), p.globals.map { (it as Global.Source).kind })
@@ -759,6 +1056,14 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 6 }\n source m = android.modes\n Text { text: 1 } }").contains("android.modes needs owl 7"))
         assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: haptic() } }").contains("haptic needs owl 7"))
         assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: share(\"x\") } }").contains("share needs owl 7"))
+    }
+
+    @Test fun hapticStrength() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n state feel = \"light\"\n Text { text: 1; onTap: { haptic(\"light\"); haptic(\"strong\"); haptic(feel); haptic() } } }")
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: haptic(\"hard\") } }").contains("haptic takes light, medium, strong"))
+        assertTrue(compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: haptic(\"light\") } }").contains("needs owl 23"))
+        assertTrue(compileError("widget {\n meta { owl: 22 }\n state feel = \"light\"\n Text { text: 1; onTap: haptic(feel) } }").contains("needs owl 23"))
+        Compiler.compile("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: haptic() } }")
     }
 
     @Test fun androidApps() {
@@ -869,6 +1174,56 @@ class LangTest {
         Compiler.compile("panel {\n meta { owl: 11 }\n state query = 1\n Text { text: query } }")
     }
 
+    @Test fun aPanelSaysHowMuchItCoversHome() {
+        assertNull(Compiler.compile("panel {\n meta { owl: 11 }\n Text { text: 1 } }").opacity)
+        assertNotNull(Compiler.compile("panel {\n meta { owl: 13 }\n opacity: 0.9\n Text { text: 1 } }").opacity)
+        // Worked out as it shows, like the rest of the panel.
+        assertNotNull(Compiler.compile("panel {\n meta { owl: 13 }\n state dim = true\n opacity: dim ? 0.8 : 1\n Text { text: 1 } }").opacity)
+        assertTrue(compileError("panel {\n meta { owl: 12 }\n opacity: 0.9\n Text { text: 1 } }").contains("needs owl 13"))
+        for (bad in listOf("1.5", "-0.1", "\"half\"")) {
+            assertTrue(compileError("panel {\n meta { owl: 13 }\n opacity: $bad\n Text { text: 1 } }").contains("from 0 (home shows through) to 1"))
+        }
+        assertTrue(compileError("widget {\n meta { owl: 13 }\n opacity: 0.9\n Text { text: 1 } }").isNotEmpty())
+    }
+
+    @Test fun aPanelCanKeepTheKeyboardDown() {
+        assertTrue(Compiler.compile("panel {\n meta { owl: 11 }\n Text { text: 1 } }").keyboard)
+        assertFalse(Compiler.compile("panel {\n meta { owl: 15 }\n keyboard: false\n Text { text: 1 } }").keyboard)
+        assertTrue(Compiler.compile("panel {\n meta { owl: 15 }\n keyboard: true\n Text { text: 1 } }").keyboard)
+        assertTrue(compileError("panel {\n meta { owl: 14 }\n keyboard: false\n Text { text: 1 } }").contains("needs owl 15"))
+        assertTrue(compileError("panel {\n meta { owl: 15 }\n state k = false\n keyboard: k\n Text { text: 1 } }").contains("keyboard is true or false"))
+        assertTrue(compileError("widget {\n meta { owl: 15 }\n keyboard: false\n Text { text: 1 } }").isNotEmpty())
+    }
+
+    @Test fun theStripIsAFileOfItsOwn() {
+        val p =
+            Compiler.compile(
+                "strip \"mine\" {\n meta { owl: 24 }\n source s = android.strip\n state menu = \"\"\n" +
+                    " Row { scroll: true\n for a in s.apps key a.key { Box { onTap: open(a.key); onLongPress: menu = a.key\n" +
+                    " Image { src: a.icon; size: 40 } } } } }",
+            )
+        assertEquals(OwlKind.Strip, p.kind)
+        assertEquals("mine", p.name)
+        assertTrue(p.root.isEmpty())
+        assertEquals(1, p.screen!!.size)
+        assertFalse(p.needsLinux)
+        assertEquals(listOf("read the recently opened apps"), p.commands)
+        assertEquals(OwlKind.Strip, OwlKind.of("// apps\nstrip \"x\" { }"))
+
+        assertTrue(compileError("strip {\n meta { owl: 23 }\n Text { text: 1 } }").contains("needs owl 24"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n size: 2x2\n Text { text: 1 } }").contains("puts it above the prompt bar"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n onTap: open(\"a:x\")\n Text { text: 1 } }").contains("handlers go on the nodes inside"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n screen { Text { text: 1 } } }").contains("a strip has no screen { }"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n Text { text: 1; onTap: close() } }").contains("the strip stays on home"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n}").contains("a strip needs at least one node"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n Browser { url: \"https://example.com\" } }").contains("or the strip"))
+        // android.strip and a Row that scrolls are owl 24 wherever they're used.
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n source s = android.strip\n Text { text: 1 } }").contains("needs owl 24"))
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n Row { scroll: true; Text { text: 1 } } }").contains("needs owl 24"))
+        Compiler.compile("widget {\n meta { owl: 24 }\n Row { scroll: true; Text { text: 1 } } }")
+        assertTrue(compileError("widget {\n meta { owl: 24 }\n Row { scroll: true; wrap: true; Text { text: 1 } } }").contains("drop scroll or wrap"))
+    }
+
     @Test fun extraKeysAreAFileOfTheirOwn() {
         val p =
             Compiler.compile(
@@ -877,7 +1232,7 @@ class LangTest {
                     " Text { text: get(kb ?? {}, \"ctrl\", \"off\"); onTap: latch(\"ctrl\"); onLongPress: latch(\"ctrl\", \"locked\") }\n" +
                     " Button { text: \"ls\"; onPress: typeText(\"ls\\n\") } } }",
             )
-        assertEquals(OwlKind.Keys, p.kind)
+        assertEquals(OwlKind.Keybar, p.kind)
         assertEquals("mine", p.name)
         assertTrue(p.root.isEmpty())
         assertFalse(p.needsLinux)
@@ -895,10 +1250,10 @@ class LangTest {
         assertEquals(listOf("pressKey up", "pressKey up", "latch ctrl, locked"), host.actions)
 
         assertTrue(compileError("keybar {\n meta { owl: 11 }\n Text { text: 1 } }").contains("needs owl 12"))
-        assertTrue(compileError("keybar {\n meta { owl: 12 }\n size: 2x2\n Text { text: 1 } }").contains("take no properties"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n size: 2x2\n Text { text: 1 } }").contains("takes no properties"))
         assertTrue(compileError("keybar {\n meta { owl: 12 }\n onTap: pressKey(\"esc\")\n Text { text: 1 } }").contains("handlers go on the keys"))
         assertTrue(compileError("keybar {\n meta { owl: 12 }\n screen { Text { text: 1 } } }").contains("no screen { }"))
-        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: close() } }").contains("come and go with the keyboard"))
+        assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: close() } }").contains("comes and goes with the keyboard"))
         assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; repeats: true; onTap: pressKey(\"up\") } }").contains("add onPress"))
         assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: pressKey(\"ctrl+escape\") } }").contains("pressKey takes a key"))
         assertTrue(compileError("keybar {\n meta { owl: 12 }\n Text { text: 1; onTap: latch(\"super\") } }").contains("latch takes ctrl, alt, shift"))
@@ -912,10 +1267,145 @@ class LangTest {
         }
     }
 
+    @Test fun photosPickedPasteIntoTheWindow() {
+        val p = Compiler.compile("keybar {\n meta { owl: 15 }\n Box { onTap: pickImages(); Text { text: 1 } } }")
+        assertEquals(listOf("paste images you pick on Android into the Linux window you're typing in"), p.commands)
+        val host = TestHost(p)
+        (p.screen!!.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("pickImages "), host.actions)
+        assertTrue(compileError("keybar {\n meta { owl: 14 }\n Box { onTap: pickImages(); Text { text: 1 } } }").contains("needs owl 15"))
+        assertTrue(compileError("keybar {\n meta { owl: 15 }\n Box { onTap: pickImages(\"a\"); Text { text: 1 } } }").isNotEmpty())
+        for (h in listOf("onPress", "onRelease")) {
+            assertTrue(compileError("keybar {\n meta { owl: 15 }\n Box { $h: pickImages(); Text { text: 1 } } }").contains("put it in onTap"))
+        }
+        // A handler inside another node's doesn't carry over: the outer one is onTap again after it.
+        Compiler.compile("keybar {\n meta { owl: 15 }\n Box { onPress: haptic(); onTap: pickImages(); Text { text: 1 } } }")
+    }
+
+    @Test fun speechDictatesIntoASource() {
+        val src = "widget {\n meta { owl: 15 }\n source said = android.speech\n on said.final { if value { typeText(value) } }\n Text { text: said.text; onTap: speech(\"toggle\") } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.speech", (p.globals.single() as Global.Source).kind)
+        assertEquals("listen through the microphone after a tap, and read what you say", p.commands.first())
+        val host = TestHost(p)
+        (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("speech toggle"), host.actions)
+        assertTrue(compileError(src.replace("owl: 15", "owl: 14")).contains("needs owl 15"))
+        assertTrue(compileError(src.replace("\"toggle\"", "\"listen\"")).contains("speech takes start, stop, toggle, cancel"))
+        // Nothing comes back from it: what's heard is the source's.
+        assertTrue(compileError(src.replace("text: said.text", "text: speech(\"start\")")).contains("gives nothing back"))
+        assertTrue(compileError("widget {\n meta { owl: 15 }\n Text { text: 1; onTap: speech(\"start\") } }").contains("source said = android.speech"))
+        // Starting may ask for the microphone: from a tap, not a press or a trigger. Stopping from anywhere.
+        for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("start it in onTap"))
+        Compiler.compile(src.replace("onTap: speech(\"toggle\")", "onTap: speech(\"start\"); onRelease: speech(\"stop\")"))
+        assertTrue(compileError(src.replace("typeText(value)", "speech(\"start\")")).contains("not in a trigger"))
+        Compiler.compile(src.replace("typeText(value)", "speech(\"stop\")"))
+        // Only on said.final may type what was heard: not said.text, though it ends with the same words.
+        assertTrue(p.triggers.single().dictation)
+        assertFalse(Compiler.compile(src.replace("on said.final", "on said.text")).triggers.single().dictation)
+        val other = "widget {\n meta { owl: 15 }\n source said = android.speech\n state final = \"\"\n on final { typeText(value) }\n Text { text: said.text; onTap: speech(\"toggle\") } }"
+        assertFalse(Compiler.compile(other).triggers.single().dictation)
+    }
+
+    @Test fun androidLocationAskedForOnATap() {
+        val src = "widget {\n meta { owl: 18 }\n source here = android.location\n Text { text: here.available ? fixed(here.lat, 2) + \",\" + fixed(here.lon, 2) : \"where?\"; onTap: location(\"request\") } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.location", (p.globals.single() as Global.Source).kind)
+        assertEquals("read the phone's approximate location, once you allow it", p.commands.single())
+        val host = TestHost(p)
+        (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("location request"), host.actions)
+        assertTrue(compileError(src.replace("owl: 18", "owl: 17")).contains("needs owl 18"))
+        assertTrue(compileError(src.replace("\"request\"", "\"open\"")).contains("location takes request"))
+        assertTrue(compileError(src.replace("onTap: location", "text: location")).isNotEmpty())
+        // The permission dialog only for a tap: not as the finger goes down, not on a timer or a fetched value.
+        for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
+        assertTrue(compileError(src.replace(" Text {", " every 1m { location(\"request\") }\n Text {")).contains("not in a trigger"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n Text { text: \"where?\"; onTap: location(\"request\") } }").contains("declare it"))
+        // A widget's own name for something else still compiles.
+        Compiler.compile("widget {\n meta { owl: 18 }\n let location = \"home\"\n Text { text: location } }")
+        // The store's reviewer sees it flagged.
+        assertEquals(listOf("knows roughly where the phone is; check where it sends that"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
+    }
+
+    @Test fun reviewFlagsThePhonesStorage() {
+        val why = "reaches the phone's own files (photos, downloads); check nothing sends them elsewhere"
+        for (cmd in listOf("ls /sdcard/DCIM", "read file /sdcard/Download/notes.txt", "cp x \"/storage/emulated/0/Download\"", "cd /sdcard")) {
+            assertEquals(cmd, listOf(why), Review.risks(listOf(cmd)).map { it.removePrefix("command ").substringBefore(": ") })
+        }
+        for (cmd in listOf("ls ~/sdcards", "echo /sdcardish", "cat /root/sdcard")) assertTrue(cmd, Review.risks(listOf(cmd)).isEmpty())
+    }
+
+    @Test fun androidMotion() {
+        val src = "widget {\n meta { owl: 21 }\n source m = android.motion\n Text { text: m.available ? \"\${m.roll}° \${m.pitch}°\" : \"no sensor\" } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.motion", (p.globals.single() as Global.Source).kind)
+        assertTrue(!p.needsLinux)
+        assertEquals(listOf("read how the phone is tilted while it shows"), p.commands)
+        assertTrue(compileError(src.replace("owl: 21", "owl: 20")).contains("android.motion needs owl 21"))
+    }
+
+    @Test fun everyFrame() {
+        val src = "widget {\n meta { owl: 21 }\n state x = 0\n every frame { x = x + 100 * dt }\n Text { text: x } }"
+        val p = Compiler.compile(src)
+        assertEquals(TriggerKind.FRAME, p.triggers.single().kind)
+        assertEquals(listOf("dt"), p.triggers.single().action.params)
+        // The frame clock runs it, which only an animated widget has.
+        assertTrue(p.animated)
+        assertTrue(compileError(src.replace("owl: 21", "owl: 20")).contains("every frame needs owl 21"))
+    }
+
+    @Test fun androidCalendarAskedForOnATap() {
+        val src = "widget {\n meta { owl: 18 }\n source agenda = android.calendar\n Text { text: agenda.granted ? \"events\" : \"allow\"; onTap: calendar(\"request\") } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.calendar", (p.globals.single() as Global.Source).kind)
+        assertEquals(listOf("read events in the phone's calendars, once you allow it"), p.commands)
+        val host = TestHost(p)
+        (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("calendar request"), host.actions)
+        assertTrue(compileError(src.replace("owl: 18", "owl: 17")).contains("needs owl 18"))
+        assertTrue(compileError(src.replace("\"request\"", "\"close\"")).contains("calendar takes request or open"))
+        // Opening needs no permission, and works with an event or without, on today.
+        val open = Compiler.compile(src.replace("calendar(\"request\")", "calendar(\"open\", agenda.events[0])"))
+        val openHost = TestHost(open)
+        (open.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(openHost), listOf(Num(0.0), Num(0.0)))
+        assertEquals(1, openHost.actions.size)
+        assertTrue(openHost.actions.single().startsWith("calendar open"))
+        Compiler.compile(src.replace("calendar(\"request\")", "calendar(\"open\")"))
+        Compiler.compile(src.replace(" source agenda = android.calendar\n", "").replace("agenda.granted", "true").replace("\"request\"", "\"open\""))
+        for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
+        assertTrue(compileError(src.replace(" Text {", " every 1m { calendar(\"request\") }\n Text {")).contains("not in a trigger"))
+        assertTrue(compileError(src.replace(" source agenda = android.calendar\n", "").replace("agenda.granted", "true")).contains("declare it"))
+        assertEquals(listOf("sees calendar event titles, times and locations; check nothing sends them elsewhere"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
+    }
+
+    @Test fun airpodsAskedForOnATap() {
+        val src = "widget {\n meta { owl: 18 }\n source a = android.airpods\n Text { text: a.granted ? a.mode : \"allow\"; onTap: airpods(\"request\") } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.airpods", (p.globals.single() as Global.Source).kind)
+        assertEquals(listOf(AIRPODS_COMMAND), p.commands)
+        val host = TestHost(p)
+        (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("airpods request"), host.actions)
+        // The permission dialog only for a tap: not as the finger goes down, not on a timer or a fetched value.
+        for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
+        assertTrue(compileError(src.replace(" Text {", " every 1m { airpods(\"request\") }\n Text {")).contains("not in a trigger"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n Text { text: \"allow\"; onTap: airpods(\"request\") } }").contains("declare it"))
+        // The rest switch the AirPods from anywhere, a trigger too: they never ask.
+        Compiler.compile(src.replace(" Text {", " on a { airpods(\"anc\") }\n Text {").replace("onTap: airpods(\"request\")", "onPress: airpods(\"next\")"))
+        // airpods(...) alone, without the source, is listed too; and the store's reviewer sees it flagged.
+        assertEquals(listOf(AIRPODS_COMMAND), Compiler.compile("widget {\n meta { owl: 18 }\n Text { text: \"anc\"; onTap: airpods(\"anc\") } }").commands)
+        assertEquals(listOf("reads and changes the AirPods connected to the phone; check where it sends what it reads"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
+    }
+
     @Test fun keyNamesAndCombos() {
         assertEquals(KeyNames.Combo(1, emptyList()), KeyNames.combo("esc"))
         assertEquals(KeyNames.Combo(46, listOf(29)), KeyNames.combo("ctrl+c"))
         assertEquals(KeyNames.Combo(46, listOf(29)), KeyNames.combo("CTRL+c"))
+        // Ctrl+C as people write it, not Ctrl+Shift+C (a terminal's copy); a capital alone is still shifted.
+        assertEquals(KeyNames.Combo(46, listOf(29)), KeyNames.combo("ctrl+C"))
+        assertEquals(KeyNames.Combo(46, listOf(29, 42)), KeyNames.combo("ctrl+shift+c"))
+        assertEquals(KeyNames.Combo(30, listOf(42)), KeyNames.combo("A"))
         assertEquals(KeyNames.Combo(110, listOf(42)), KeyNames.combo("shift+insert"))
         assertEquals(KeyNames.Combo(20, listOf(29, 56)), KeyNames.combo("ctrl+alt+t"))
         // A shifted character holds Shift itself; + on its own, or last after a +, is the key.
@@ -968,8 +1458,22 @@ class LangTest {
     @Test fun appsWithoutAStatusBarStepAroundTheCamera() {
         Compiler.compile("app {\n meta { owl: 12 }\n statusBar: false\n Column { padding: [12, screenTop, 12, 0]\n Text { text: 1 } } }")
         assertTrue(compileError("app {\n meta { owl: 11 }\n statusBar: false\n Spacer { height: screenTop } }").contains("needs owl 12"))
-        assertTrue(compileError("face {\n meta { owl: 12 }\n Spacer { height: screenTop } }").contains("screenTop is for apps"))
         assertTrue(compileError("widget {\n meta { owl: 12 }\n Text { text: 1 }\n screen { Text { text: screenTop } } }").contains("screenTop is for apps"))
+    }
+
+    @Test fun edgeFacesDrawUnderTheStatusBar() {
+        val face = Compiler.compile("face {\n meta { owl: 14 }\n edge: true\n Column { padding: [12, screenTop, 12, 0]\n Text { text: 1 } } }")
+        assertTrue(face.edge)
+        assertFalse(Compiler.compile("face {\n meta { owl: 13 }\n Text { text: 1 } }").edge)
+        assertTrue(compileError("face {\n meta { owl: 13 }\n edge: true\n Text { text: 1 } }").contains("needs owl 14"))
+        assertTrue(compileError("face {\n meta { owl: 14 }\n state e = true\n edge: e\n Text { text: 1 } }").contains("edge is true or false"))
+        assertTrue(compileError("face {\n meta { owl: 14 }\n Text { text: 1 }\n screen { Text { text: screenTop } } }").contains("screenTop is for apps"))
+        Compiler.compile("face {\n meta { owl: 14 }\n edge: true\n Column { padding: [screenLeft, 0, screenRight, 0]\n Text { text: 1 } } }")
+        // Without edge a face starts below the status bar and beside a cutout, so there's nothing for them to measure.
+        assertTrue(compileError("face {\n meta { owl: 14 }\n Spacer { width: screenLeft } }").contains("screenLeft is for faces with edge"))
+        assertTrue(compileError("face {\n meta { owl: 14 }\n Spacer { height: screenTop } }").contains("screenTop is for apps"))
+        assertTrue(compileError("face {\n meta { owl: 14 }\n edge: false\n Spacer { height: screenTop } }").contains("screenTop is for apps"))
+        assertTrue(compileError("app {\n meta { owl: 14 }\n Spacer { width: screenRight } }").contains("screenRight is for faces"))
     }
 
     @Test fun longPressIsForPagesAppsAndScreens() {
@@ -1067,7 +1571,7 @@ class LangTest {
         assertEquals(OwlKind.Widget, Compiler.compile("widget {\n Text { text: 1 } }").kind)
 
         assertTrue(compileError("app {\n Text { text: 1 } }").contains("needs owl 8"))
-        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon, back, edge and statusBar"))
+        assertTrue(compileError("app {\n meta { owl: 8 }\n size: 2x2\n Text { text: 1 } }").contains("only takes title, icon, back, edge, statusBar and fps"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onTap: close()\n Text { text: 1 } }").contains("handlers go on the nodes"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n back: true\n Text { text: 1 } }").contains("back and onBack go together"))
         assertTrue(compileError("app {\n meta { owl: 8 }\n onBack: close()\n Text { text: 1 } }").contains("back and onBack go together"))
@@ -1114,6 +1618,104 @@ class LangTest {
         // The words themselves, and a level in percent for volume, compile.
         Compiler.compile("widget {\n meta { owl: 7 }\n Text { text: 1; onTap: { media(\"next\"); volume(\"50\"); volume(\"mute\"); torch(\"on\"); notification(\"dismiss\", \"k\") } } }")
         assertTrue(compileError("widget {\n Text { text: 1; onTap: volume(50) } }").contains("volume needs owl 4"))
+    }
+
+    /** Owl 13's phone controls: Android's panels, the other volume streams, and clearing, pressing and replying to notifications. */
+    @Test fun phoneControlsOfOwl13() {
+        val p =
+            Compiler.compile(
+                "widget {\n meta { owl: 13 }\n source n = android.notifications\n Text { text: 1; onTap: { settings(\"wifi\"); settings(\"output\"); volume(30, \"ring\"); notification(\"clear\"); " +
+                    "notification(\"action\", n.items[0].key, 0); notification(\"reply\", n.items[0].key, \"on my way\") } } }",
+            )
+        assertTrue(p.commands.contains("reply to notifications as you: on my way"))
+        assertTrue(p.commands.contains("press the buttons on notifications"))
+        val risks = Review.risks(p.commands)
+        assertTrue(risks.any { it.contains("sends messages as you") })
+        assertTrue(risks.any { it.contains("presses buttons on other apps' notifications") })
+        // Built while it runs, the text is what the reviewer can't see.
+        val built = Compiler.compile("widget {\n meta { owl: 13 }\n state t = \"\"\n Input { onSubmit: notification(\"reply\", \"k\", value) } }")
+        assertTrue(built.commands.contains("reply to notifications as you: text built from widget values"))
+        // Each is owl 13, even on actions that are older.
+        for (call in listOf("settings(\"wifi\")", "volume(30, \"ring\")", "notification(\"clear\")", "notification(\"reply\", \"k\", \"hi\")")) {
+            compileError("widget {\n meta { owl: 12 }\n Text { text: 1; onTap: $call } }").let { assertTrue(it, it.contains("needs owl 13")) }
+        }
+        // A word not written out, with three values, is a word from owl 13 too.
+        compileError("widget {\n meta { owl: 12 }\n state w = \"action\"\n Text { text: 1; onTap: notification(w, \"k\", 0) } }").let { assertTrue(it, it.contains("needs owl 13")) }
+        // Each word takes its own number of values.
+        compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"clear\", \"k\") } }").let { assertTrue(it, it.contains("notification(\"clear\")")) }
+        compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"reply\", \"k\") } }").let { assertTrue(it, it.contains("notification(\"reply\", key, text)")) }
+        compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"open\") } }").let { assertTrue(it, it.contains("notification(\"open\", key)")) }
+        assertTrue(compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: settings(\"hotspot\") } }").contains("settings takes"))
+        assertTrue(compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: volume(30, \"call\") } }").contains("volume's stream is"))
+    }
+
+    /** drag: picks the one direction onDrag follows, and onDragEnd says how fast the finger let go (owl 13). */
+    @Test fun dragsAlongOneDirection() {
+        Compiler.compile("widget {\n meta { owl: 13 }\n state x = 0\n Box { offset: [x, 0]; drag: horizontal; onDrag: x = x + dx; onDragEnd: { if abs(vx) > 1000 { x = 0 } } } }")
+        compileError("widget {\n meta { owl: 12 }\n state x = 0\n Box { drag: horizontal; onDrag: x = x + dx } }").let { assertTrue(it, it.contains("drag needs owl 13")) }
+        compileError("widget {\n meta { owl: 13 }\n state x = 0\n Box { drag: sideways; onDrag: x = x + dx } }").let { assertTrue(it, it.contains("drag is horizontal or vertical")) }
+        compileError("widget {\n meta { owl: 13 }\n Box { drag: vertical } }").let { assertTrue(it, it.contains("add onDrag")) }
+        compileError("widget {\n meta { owl: 13 }\n state v = 0\n Box { onDragEnd: v = vx } }").let { assertTrue(it, it.contains("onDragEnd runs when an onDrag drag ends")) }
+        compileError("widget {\n meta { owl: 13 }\n component C() { Box { } }\n C { drag: horizontal } }").let { assertTrue(it, it.contains("drag goes on the node inside C")) }
+    }
+
+    /** onPull runs when a list that scrolls is pulled down past its top (owl 17). */
+    @Test fun pullToRefresh() {
+        Compiler.compile("widget {\n meta { owl: 17 }\n Column { scroll: true; onPull: refresh(); Text { text: 1 } } }")
+        Compiler.compile("widget {\n meta { owl: 17 }\n Column { lazy: true; onPull: refresh(); Text { text: 1 } } }")
+        Compiler.compile("widget {\n meta { owl: 17 }\n Grid { lazy: true; onPull: refresh(); Text { text: 1 } } }")
+        compileError("widget {\n meta { owl: 16 }\n Column { scroll: true; onPull: refresh() } }").let { assertTrue(it, it.contains("onPull needs owl 17")) }
+        compileError("widget {\n meta { owl: 17 }\n Column { onPull: refresh() } }").let { assertTrue(it, it.contains("add scroll: true or lazy: true")) }
+        compileError("widget {\n meta { owl: 17 }\n Grid { onPull: refresh() } }").let { assertTrue(it, it.contains("add lazy: true")) }
+        compileError("widget {\n meta { owl: 17 }\n Box { onPull: refresh() } }").let { assertTrue(it, it.contains("onPull only works on Column and Grid")) }
+    }
+
+    /** An Input of more lines wraps and grows with what's typed (owl 18). */
+    @Test fun inputLines() {
+        Compiler.compile("widget {\n meta { owl: 18 }\n state draft = \"\"\n Input { lines: 6; onChange: draft = value } }")
+        compileError("widget {\n meta { owl: 17 }\n Input { lines: 6 } }").let { assertTrue(it, it.contains("lines needs owl 18")) }
+    }
+
+    /** ripple: false turns off the press shown on a node that takes taps (owl 14). */
+    @Test fun rippleOff() {
+        Compiler.compile("widget {\n meta { owl: 14 }\n state n = 0\n Box { ripple: false; onTap: n = n + 1 } }")
+        compileError("widget {\n meta { owl: 13 }\n state n = 0\n Box { ripple: false; onTap: n = n + 1 } }").let { assertTrue(it, it.contains("ripple needs owl 14")) }
+        compileError("widget {\n meta { owl: 14 }\n Box { ripple: false } }").let { assertTrue(it, it.contains("add onTap")) }
+        compileError("widget {\n meta { owl: 14 }\n component C() { Box { } }\n C { ripple: false } }").let { assertTrue(it, it.contains("ripple goes on the node inside C")) }
+    }
+
+    /** The SIM, Do Not Disturb switched, notifications snoozed, and offsets that ease back (owl 13). */
+    @Test fun simDndSnoozeAndSpringBack() {
+        Compiler.compile(
+            "widget {\n meta { owl: 13 }\n source s = android.sim\n state x = 0\n" +
+                " Box { offset: [x, 0]; animate offset: spring(0.8, 400); drag: horizontal; onDrag: x = x + dx; onDragEnd: x = 0\n" +
+                "  Text { text: s.carrier ?? \"no sim\"; onTap: { dnd(\"toggle\"); dnd(true); dnd(\"alarms\"); dnd(\"priority\"); dnd(\"none\"); dnd(\"all\"); torch(40); torch(\"60\"); notification(\"snoozeAll\", 3600); notification(\"snooze\", \"k\", 600); notification(\"unsnooze\", \"k\"); notification(\"unsnoozeAll\") } } } }",
+        )
+        for (old in listOf("source s = android.sim\n Text { text: 1 }", "Text { text: 1; onTap: dnd(\"on\") }", "Text { text: 1; onTap: notification(\"snoozeAll\", 60) }", "Text { text: 1; onTap: notification(\"snooze\", \"k\", 60) }", "Text { text: 1; onTap: notification(\"unsnoozeAll\") }", "Box { offset: [1, 0]; animate offset: spring() }", "Text { text: 1; onTap: torch(40) }")) {
+            compileError("widget {\n meta { owl: 12 }\n $old }").let { assertTrue(it, it.contains("needs owl 13")) }
+        }
+        assertTrue(compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: dnd(\"silence\") } }").contains("dnd takes"))
+        // A forgotten length is caught, not a snooze that silently does nothing.
+        compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"snooze\", \"k\") } }").let { assertTrue(it, it.contains("notification(\"snooze\", key, seconds)")) }
+        compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"snoozeAll\") } }").let { assertTrue(it, it.contains("notification(\"snoozeAll\", seconds)")) }
+    }
+
+    /** What's playing moved to a point in it (owl 23); the other media words still take nothing more. */
+    @Test fun mediaSeek() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n source m = android.media\n Text { text: 1; onTap: { media(\"seek\", 90); media(\"seek\", m.position + 10); media(\"toggle\") } } }")
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"seek\", 90) } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"seek\") } }").let { assertTrue(it, it.contains("media(\"seek\", seconds)")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"next\", 3) } }").let { assertTrue(it, it.contains("media(\"next\")")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"rewind\") } }").let { assertTrue(it, it.contains("media takes")) }
+    }
+
+    /** The player's speed and its own buttons (owl 23), next to seek. */
+    @Test fun mediaSpeedAndActions() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n source m = android.media\n Column { Text { text: m.speed; onTap: media(\"speed\", 1.5) }\n for a in m.actions { Text { text: a.title; onTap: media(\"action\", a.id) } } } }")
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"speed\", 2) } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"action\", \"like\") } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"action\") } }").let { assertTrue(it, it.contains("media(\"action\", a.id)")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"speed\") } }").let { assertTrue(it, it.contains("media(\"speed\", 1.5)")) }
     }
 
     @Test fun sliderAndInput() {
@@ -1222,6 +1824,12 @@ class LangTest {
         assertEquals(listOf("sed -i ${Compiler.NUMBER}d ~/todo.md"), commands("onTap: run(\"sed -i ${'$'}{int(n)}d ~/todo.md\")"))
         assertEquals(listOf("true", "curl -d ${Compiler.VALUE} https://ha.local"), commands("onTap: run(n > 1 ? \"true\" : \"curl -d ${'$'}{sh(v)} https://ha.local\")"))
         assertEquals(listOf("echo ${Compiler.VALUE}x"), commands("source o = cmd(\"echo \" + sh(v) + \"x\") every 1m"))
+        // A script kept in a let stays one value, as before lets folded: its text has quotes and # in it, which
+        // would make the command unlistable, and the store would drop the widget.
+        assertEquals(
+            listOf("bash -c ${Compiler.VALUE} x ${Compiler.VALUE}"),
+            commands("let script = \"echo 'hi' # a comment\"\n onTap: run(\"bash -c ${'$'}{sh(script)} x ${'$'}{sh(v)}\")"),
+        )
         // Unquoted, or quoted where bash would undo it: it could run anything.
         for (bad in listOf("echo ${'$'}{v}", "echo \\\"${'$'}{sh(v)}\\\"", "echo '${'$'}{sh(v)}'", "echo ok # ${'$'}{sh(v)}", "cat <<E\\n${'$'}{sh(v)}\\nE")) {
             assertEquals(bad, listOf("run(…) built from widget values"), commands("onTap: run(\"$bad\")"))
@@ -1251,6 +1859,9 @@ class LangTest {
         for (bad in listOf("\"https://${'$'}{enc(v)}/x\"", "\"https://a.b${'$'}{enc(v)}/x\"", "\"https://a.b/${'$'}{v}\"", "\"https://a.b/${'$'}{sh(v)}\"", "\"${'$'}{enc(v)}\"", "n > 1 ? null : null")) {
             assertEquals(bad, listOf("http GET (a URL built from widget values)"), commands(bad))
         }
+        // More ways than are listed, given up on as they add up: 2^30 strings would fill memory first.
+        val many = "${'$'}{n > 1 ? \"a\" : \"b\"}".repeat(30)
+        assertEquals(listOf("http GET (a URL built from widget values)"), commands("\"https://a.b/$many\""))
     }
 
     @Test fun urlValuesNotThroughEncAreWarnedAboutWithTheFix() {
@@ -1260,6 +1871,11 @@ class LangTest {
         assertTrue(warnings("\"https://a.b/${'$'}{sh(v)}\"").single().contains("enc(...) instead of sh(...)"))
         assertTrue(warnings("\"https://${'$'}{enc(v)}/x\"").single().contains("the server in this URL comes from a value"))
         assertEquals(emptyList<String>(), warnings("\"https://a.b/${'$'}{enc(v)}\""))
+        // A query right after the host, with no path, is a fixed server too.
+        assertEquals(emptyList<String>(), warnings("\"https://a.b?q=${'$'}{enc(v)}\""))
+        // Too many ways to list isn't a server from a value.
+        val many = "${'$'}{v == \"\" ? \"a\" : \"b\"}".repeat(4)
+        assertTrue(warnings("\"https://a.b/$many\"").single().contains("more than 8 ways"))
         // The whole URL from a value: enc() would break it, so the fix is to write it out.
         assertTrue(warnings("v").single().contains("this URL is all a value (v)"))
         assertTrue(warnings("v == \"\" ? null : v").single().contains("this URL is all a value"))
@@ -1286,6 +1902,8 @@ class LangTest {
 
 
     private val owl9 = "meta { owl: 9 }"
+
+    private val owl18 = "meta { owl: 18 }"
 
     private fun <T> inLocale(
         locale: Locale,
@@ -1574,5 +2192,179 @@ class LangTest {
         val slider = (p.root.single() as WNode.Element).children.first() as WNode.Element
         slider.handlers["onChange"]!!.run(Env.root(host), listOf(Num(70.0)))
         assertEquals(Num(70.0), host.slots[0])
+    }
+
+    /** A widget with strings, compiled for [language], showing [expr]. */
+    private fun texts(
+        expr: String,
+        language: String,
+        decls: String = "",
+    ): String {
+        val src = "widget \"t\" {\n meta { owl: 16 }\n strings {\n  en { feels: \"feels\"; today: \"today\"; items: n => n == 1 ? \"1 item\" : \"${'$'}{n} items\" }\n  id { feels: \"terasa\"; items: n => \"${'$'}{n} item\" }\n }\n$decls\nText { text: $expr }\n}"
+        val p = Compiler.compile(src, language)
+        return ((p.root.single() as WNode.Element).props["text"]!!(Env.root(TestHost(p)))).toString()
+    }
+
+    @Test fun stringsPickThePhonesLanguageAndFallBackToEnglish() {
+        assertEquals("terasa", texts("str.feels", "id"))
+        assertEquals("feels", texts("str.feels", "en"))
+        assertEquals("feels", texts("str.feels", "de"))
+        // id has no today: en's shows.
+        assertEquals("today", texts("str.today", "id"))
+        assertEquals("1 item", texts("str.items(1)", "en"))
+        assertEquals("3 items", texts("str.items(n)", "en", "state n = 3"))
+        assertEquals("3 item", texts("str.items(n)", "id", "state n = 3"))
+        assertEquals("id", texts("lang()", "id"))
+        // A built-in on the whole map, for a text picked by a value.
+        assertEquals("terasa", texts("get(str, k)", "id", "state k = \"feels\""))
+    }
+
+    @Test fun stringsCatchWhatDoesntMatchEnglish() {
+        fun error(strings: String, use: String = "str.a") = compileError("widget \"t\" {\n meta { owl: 16 }\n strings { $strings }\n Text { text: $use }\n}")
+        assertTrue(error("en { a: \"a\" }", "str.b").contains("strings has no b"))
+        assertTrue(error("id { a: \"a\" }").contains("strings needs en { }"))
+        assertTrue(error("en { a: \"a\" } id { a: \"a\"; b: \"b\" }").contains("id has b, which en doesn't"))
+        assertTrue(error("en { a: n => \"${'$'}{n}\" }").contains("str.a takes 1 value"))
+        assertTrue(error("en { a: \"a\" }", "str.a(1)").contains("str.a is text"))
+        assertTrue(error("en { a: n => \"${'$'}{n}\" } id { a: \"a\" }").contains("a takes 1 value in en, so it does in id too"))
+        assertTrue(error("EN { a: \"a\" }").contains("its code in lowercase"))
+        assertTrue(compileError("widget \"t\" {\n strings { en { a: \"a\" } }\n Text { text: str.a }\n}").contains("owl 16"))
+        val warned = Compiler.compile("widget \"t\" {\n meta { owl: 16 }\n strings { en { a: \"a\"; b: \"b\" } id { a: \"x\" } }\n Text { text: str.a }\n}", "en").warnings
+        assertEquals(listOf("3:2: id has no b, so those show in English"), warned)
+    }
+
+    @Test fun lockHoldsTheHomeScreenStill() {
+        val playing = "state playing = false\n Button { text: \"x\"; onTap: playing = !playing }"
+        assertTrue(compileError("widget {\n lock: playing\n $playing\n}").contains("lock needs owl 18: add meta { owl: 18 }"))
+        assertTrue(compileError("widget {\n meta { owl: 17 }\n lock: playing\n $playing\n}").contains("lock needs owl 18"))
+        val p = Compiler.compile("widget {\n meta { owl: 18 }\n lock: playing && true\n $playing\n}")
+        assertEquals(18, p.level)
+        assertTrue(p.lock != null)
+        // A face can hold it too, for its games.
+        assertTrue(Compiler.compile("face {\n meta { owl: 18 }\n lock: playing\n $playing\n}").lock != null)
+        // Something that changes: a fixed value would hold the screen whenever the page shows.
+        for (fixed in listOf("true", "false", "\"yes\"", "1")) {
+            val e = compileError("widget {\n meta { owl: 18 }\n lock: $fixed\n $playing\n}")
+            assertTrue(e, e.contains("lock holds the home screen still while what it says is true"))
+        }
+        // The action it once was isn't one.
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n Button { text: \"x\"; onTap: lock(true) }\n}").contains("'lock' isn't an action"))
+        // An app has no home screen to hold.
+        assertTrue(compileError("app {\n meta { owl: 18 }\n lock: playing\n $playing\n}").contains("an app only takes"))
+        // A widget without one is as it was: no lock is no version to ask for.
+        assertEquals(1, Compiler.compile("widget {\n Column {\n Button { text: \"x\"; onTap: refresh() }\n Text { text: \"y\" } }\n}").level)
+        assertEquals(null, Compiler.compile("widget {\n Text { text: \"y\" }\n}").lock)
+    }
+
+    @Test fun fpsSetsHowOftenTimeTicks() {
+        val canvas = "state busy = false\n Canvas { circle(10, 10, 5 + sin(time)) }"
+        assertTrue(compileError("widget {\n fps: 10\n $canvas\n}").contains("fps needs owl 19: add meta { owl: 19 }"))
+        assertTrue(compileError("widget {\n meta { owl: 18 }\n fps: 10\n $canvas\n}").contains("fps needs owl 19"))
+        val p = Compiler.compile("widget {\n meta { owl: 19 }\n fps: busy ? 30 : 10\n $canvas\n}")
+        assertEquals(19, p.level)
+        assertTrue(p.fps != null)
+        // A fixed one is checked as it's written: a number of frames a second, at most what the launcher draws.
+        assertEquals(Num(12.0), Compiler.compile("widget {\n meta { owl: 19 }\n fps: 12\n $canvas\n}").fps?.const)
+        for (wrong in listOf("0", "61", "-5", "\"fast\"", "true")) {
+            val e = compileError("widget {\n meta { owl: 19 }\n fps: $wrong\n $canvas\n}")
+            assertTrue(e, e.contains("fps is a number of frames a second, from 1 to 60"))
+        }
+        // Faces, apps and panels animate too.
+        assertTrue(Compiler.compile("face {\n meta { owl: 19 }\n fps: 20\n $canvas\n}").fps != null)
+        assertTrue(Compiler.compile("app {\n meta { owl: 19 }\n fps: 30\n Canvas { circle(10, 10, 5 + sin(time)) }\n}").fps != null)
+        assertTrue(Compiler.compile("panel {\n meta { owl: 19 }\n fps: 30\n Canvas { circle(10, 10, 5 + sin(time)) }\n}").fps != null)
+        // A key bar has no properties at all.
+        assertTrue(compileError("keybar {\n meta { owl: 19 }\n fps: 30\n Text { text: 1 }\n}").contains("takes no properties"))
+        // Without one, as it was.
+        assertEquals(null, Compiler.compile("widget {\n Text { text: \"y\" }\n}").fps)
+    }
+
+    private fun browserWidget(body: String) = Compiler.compile("widget {\n $owl18\n $body\n}")
+
+    private fun browserError(body: String) = compileError("widget {\n $owl18\n $body\n}")
+
+    @Test fun browserNeedsItsLevel() {
+        assertTrue(compileError("widget {\n Browser { url: \"https://a.test/\" }\n}").contains("Browser needs owl 18: add meta { owl: 18 }"))
+        assertTrue(compileError("widget {\n meta { owl: 10 }\n Browser { url: \"https://a.test/\" }\n}").contains("Browser needs owl 18"))
+        assertEquals(18, browserWidget("Browser { url: \"https://a.test/\" }").level)
+        // Steered from a node that isn't one: the action came with the Browser.
+        assertTrue(compileError("widget {\n meta { owl: 10 }\n Text { text: \"x\"; onTap: web(\"back\") }\n}").contains("web needs owl 18"))
+    }
+
+    @Test fun browserNodeAndItsHandlers() {
+        val p = browserWidget("state t = \"\"\n Browser { url: \"https://a.test/weather\"; onNavigate: t = value; onTitle: t = value; onProgress: t = value }")
+        val el = p.root.single() as WNode.Element
+        assertEquals("Browser", el.kind)
+        assertTrue(p.browser)
+        assertEquals(false, p.terminal)
+        assertEquals(listOf("browser GET https://a.test/weather"), p.commands)
+        assertEquals(listOf("value"), el.handlers["onNavigate"]!!.params)
+        // The three handlers are a Browser's: nothing else has a page.
+        assertTrue(browserError("state t = \"\"\n Text { text: \"x\"; onTitle: t = value }").contains("onTitle only works on Browser"))
+    }
+
+    @Test fun browsersLoadHttpsOnlyAtAFixedHost() {
+        assertTrue(browserError("Browser { }").contains("a Browser needs a url"))
+        assertTrue(browserError("Browser { url: \"http://a.test/\" }").contains("a Browser loads over https only"))
+        for (bad in listOf("file:///sdcard/x.html", "content://com.android.providers/x", "javascript:alert(1)", "data:text/html,hi")) {
+            val e = browserError("Browser { url: \"$bad\" }")
+            assertTrue(e, e.contains("a Browser loads pages from the web"))
+        }
+        // A value in the URL goes through enc(), and the host is written out in the file.
+        assertTrue(browserError("state v = \"x\"\n Browser { url: \"https://a.test/${'$'}{lower(v)}\" }").contains("isn't put through enc()"))
+        assertTrue(browserError("state v = \"x\"\n Browser { url: \"https://${'$'}{enc(v)}/x\" }").contains("the server in this URL comes from a value"))
+        assertTrue(browserError("state v = \"x\"\n Browser { url: v }").contains("this URL is all a value"))
+        // js and zoom are the Browser's own, and go through as any property's value.
+        val p = browserWidget("state v = \"x\"\n Browser { url: \"https://a.test/${'$'}{enc(v)}\"; js: \"document.title\"; zoom: 1.5 }")
+        assertEquals(listOf("browser GET https://a.test/${Compiler.VALUE}"), p.commands)
+        assertTrue(browserError("Browser { url: \"https://a.test/\"; tabs: 2 }").contains("Browser has no property 'tabs'"))
+        // A page that's null until a source loads is no page: nothing to list, and nothing to check.
+        assertEquals(listOf("http GET https://a.test/"), browserWidget("source s = http(\"https://a.test/\") json\n Browser { url: null }").commands)
+    }
+
+    @Test fun twoBrowsersAtMost() {
+        assertEquals(
+            listOf("browser GET https://a.test/", "browser GET https://b.test/"),
+            browserWidget("Column {\n Browser { url: \"https://a.test/\" }\n Browser { url: \"https://b.test/\" }\n }").commands,
+        )
+        val e = browserError("Column {\n Browser { url: \"https://a.test/\" }\n Browser { url: \"https://b.test/\" }\n Browser { url: \"https://c.test/\" }\n }")
+        assertTrue(e, e.contains("a widget has room for 2 Browsers"))
+        assertTrue(e, e.contains("setting a Browser's url instead"))
+    }
+
+    @Test fun aBrowserGoesOnATileOrAFaceOnce() {
+        val page = "Browser { url: \"https://a.test/\" }"
+        // A face's own page is fine, as a tile's is.
+        assertEquals(listOf("browser GET https://a.test/"), Compiler.compile("face {\n $owl18\n $page\n}").commands)
+        // Its page is the node's: drawn once per item or per use, the copies would close each other's.
+        val inFor = browserError("state xs = [1, 2]\n Column {\n for x in xs { $page }\n }")
+        assertTrue(inFor, inFor.contains("a Browser can't go inside a for or a component"))
+        val inComponent = browserError("component Page() { $page }\n Page { }")
+        assertTrue(inComponent, inComponent.contains("a Browser can't go inside a for or a component"))
+        // Off home nothing gives its touches back or takes Back for its history.
+        val elsewhere = "a Browser goes on a widget's tile or a face"
+        assertTrue(browserError("Text { text: \"x\" }\n screen { $page }").contains(elsewhere))
+        assertTrue(compileError("app {\n $owl18\n $page\n}").contains(elsewhere))
+        assertTrue(compileError("panel {\n $owl18\n $page\n}").contains(elsewhere))
+    }
+
+    @Test fun webWithoutABrowserDoesntCompile() {
+        val e = browserError("Button { text: \"‹\"; onTap: web(\"back\") }")
+        assertTrue(e, e.contains("web(...) steers this file's Browser, and it has none"))
+        // Written before the Browser it steers is fine: it's checked once the whole file is.
+        browserWidget("Column {\n Button { text: \"‹\"; onTap: web(\"back\") }\n Browser { url: \"https://a.test/\" }\n }")
+    }
+
+    @Test fun webSteersABrowser() {
+        val p = browserWidget("state t = \"\"\n Browser { url: \"https://a.test/\"; onNavigate: t = value; onTap: web(\"reload\") }")
+        val host = TestHost(p)
+        val el = p.root.single() as WNode.Element
+        el.handlers["onTap"]!!.run(Env.root(host), emptyList())
+        assertEquals(listOf("web reload"), host.actions)
+        el.handlers["onNavigate"]!!.run(Env.root(host), listOf(Str("https://a.test/next")))
+        assertEquals(Str("https://a.test/next"), host.slots[0])
+        // The word is one of four, and there's one of it.
+        assertTrue(browserError("Browser { url: \"https://a.test/\"; onTap: web(\"sideways\") }").contains("web takes back, forward, reload, stop"))
+        assertTrue(browserError("Browser { url: \"https://a.test/\"; onTap: web(\"back\", 2) }").contains("web takes 1-1 values"))
     }
 }

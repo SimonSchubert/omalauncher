@@ -6,6 +6,7 @@ import android.view.Choreographer
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+import kotlin.math.roundToInt
 
 /** A surface as placed in its window, in window pixels. [store] is null while it has no content. */
 data class Layer(
@@ -15,8 +16,8 @@ data class Layer(
     val y: Int,
     val width: Int,
     val height: Int,
-    /** Window pixels per logical pixel. */
-    val scale: Int,
+    /** Window pixels per logical pixel: the output scale, less when the window is shrunk to fit (see [fitScale]). */
+    val scale: Float,
     val inPopup: Boolean,
 )
 
@@ -26,20 +27,38 @@ data class SurfaceHit(
     val x: Float,
     val y: Float,
     val inPopup: Boolean = false,
+    /** Window pixels per logical pixel where the surface is drawn, to turn finger movement into the surface's units. */
+    val scale: Float = 1f,
 )
+
+/**
+ * How much a window of [w] x [h] window pixels is shrunk to show whole in a [viewW] x [viewH] view: 1 when it
+ * fits. Apps are told the view's size, but some can't get that small (a minimum size wider than a phone, a big
+ * dialog); they're drawn smaller instead of running off the screen.
+ */
+internal fun fitScale(
+    w: Int,
+    h: Int,
+    viewW: Int,
+    viewH: Int,
+): Float = if (w <= 0 || h <= 0 || viewW <= 0 || viewH <= 0) 1f else minOf(1f, viewW.toFloat() / w, viewH.toFloat() / h)
 
 /**
  * Draws one Linux window (its surface tree and popups) into the Android
  * surface of its activity's SurfaceView. It runs on its own thread, paced by
  * vsync: each frame snapshots the scene under the server lock (no pixels
  * move under it), redraws only what changed, posts, and then tells the
- * clients the frame is done, so they draw at most once per display frame
- * and not at all while the window is hidden.
+ * clients the frame is done, so they draw at most once per display frame,
+ * 60 times a second at most, and not at all while the window is hidden.
  */
 class WindowRenderer(
     private val server: WaylandServer,
     private val window: XdgToplevel,
+    /** Keeps the window's alpha, for a view that isn't opaque to show what's behind it; else it's filled with [background]. */
+    private val translucent: Boolean = false,
 ) {
+    private var lastFrame = 0L
+
     private val thread = HandlerThread("wl-render").apply { start() }
     private val handler = Handler(thread.looper)
     private var choreographer: Choreographer? = null
@@ -85,7 +104,7 @@ class WindowRenderer(
     ) {
         lock.withLock {
             if (native != 0L) Native.windowRelease(native)
-            native = Native.windowCreate(surface, w, h)
+            native = Native.windowCreate(surface, w, h, translucent)
             width = w
             height = h
             redrawAll = true
@@ -115,6 +134,12 @@ class WindowRenderer(
     }
 
     private fun frame(nanos: Long) {
+        // Too soon after the last: the next vsync, still requested, and the clients wait for it too.
+        if (nanos - lastFrame < MIN_INTERVAL) {
+            choreographer?.postFrameCallback(callback)
+            return
+        }
+        lastFrame = nanos
         frameRequested.set(false)
         lock.withLock {
             if (native == 0L) return
@@ -176,9 +201,10 @@ class WindowRenderer(
 
     /** The window's surfaces bottom to top, then its popups; call with the server locked. */
     private fun buildScene(): List<Layer> {
-        val scale = server.output.scale
-        val layers = ArrayList<Layer>()
         val g = window.xdg.effectiveGeometry
+        val output = server.output.scale
+        val scale = output * fitScale(g.width * output, g.height * output, width, visibleBottom())
+        val layers = ArrayList<Layer>()
         addTree(layers, window.surface, -g.x * scale, -g.y * scale, scale, inPopup = false)
         for (popup in server.popups) {
             if (server.toplevelOf(popup.surface) !== window) continue
@@ -192,38 +218,40 @@ class WindowRenderer(
     private fun addTree(
         layers: MutableList<Layer>,
         surface: Surface,
-        x: Int,
-        y: Int,
-        scale: Int,
+        x: Float,
+        y: Float,
+        scale: Float,
         inPopup: Boolean,
     ) {
         for (sub in surface.children) if (sub.below) addTree(layers, sub.surface, x + sub.x * scale, y + sub.y * scale, scale, inPopup)
         // Buffer pixels to window pixels: 1:1 when the client renders at our scale. The size of the pixels drawn: a
         // commit of a new size (a window resizing) has them only once they're copied, and till then the old ones would stretch.
         val store = surface.store
-        val w = (store?.width ?: surface.bufferWidth) * scale / surface.bufferScale
-        val h = (store?.height ?: surface.bufferHeight) * scale / surface.bufferScale
-        layers += Layer(surface, store, x, y, w, h, scale, inPopup)
+        val w = ((store?.width ?: surface.bufferWidth) * scale / surface.bufferScale).roundToInt()
+        val h = ((store?.height ?: surface.bufferHeight) * scale / surface.bufferScale).roundToInt()
+        layers += Layer(surface, store, x.roundToInt(), y.roundToInt(), w, h, scale, inPopup)
         for (sub in surface.children) if (!sub.below) addTree(layers, sub.surface, x + sub.x * scale, y + sub.y * scale, scale, inPopup)
     }
 
     /** Window-pixel position of [xdg]'s window geometry; popups slide back on screen instead of a full constraint solver. */
     private fun geometryOrigin(
         xdg: XdgSurface,
-        scale: Int,
+        scale: Float,
         depth: Int = 0,
-    ): Pair<Int, Int>? {
-        if (xdg.toplevel === window) return 0 to 0
+    ): Pair<Float, Float>? {
+        if (xdg.toplevel === window) return 0f to 0f
         val popup = xdg.popup ?: return null
         // Parents that loop (a client bug) would recurse forever.
         if (depth >= MAX_NESTING) return null
         val parent = geometryOrigin(popup.parent ?: return null, scale, depth + 1) ?: return null
         val p = popup.position
-        val x = (parent.first + p.x * scale).coerceIn(0, (width - p.width * scale).coerceAtLeast(0))
-        val bottom = visibleHeight.takeIf { it in 1..height } ?: height
-        val y = (parent.second + p.y * scale).coerceIn(0, (bottom - p.height * scale).coerceAtLeast(0))
+        val x = (parent.first + p.x * scale).coerceIn(0f, (width - p.width * scale).coerceAtLeast(0f))
+        val y = (parent.second + p.y * scale).coerceIn(0f, (visibleBottom() - p.height * scale).coerceAtLeast(0f))
         return x to y
     }
+
+    /** The bottom of the part of the view the window shows in: above the keyboard, if it's up. */
+    private fun visibleBottom() = visibleHeight.takeIf { it in 1..height } ?: height
 
     /** The surface under window pixel ([x], [y]) as last drawn: popups first, then the window, whose base surface takes what's left. */
     fun hitTest(
@@ -236,12 +264,21 @@ class WindowRenderer(
             val lx = (x - l.x) / l.scale
             val ly = (y - l.y) / l.scale
             if (!l.surface.takesInput(lx, ly)) continue
-            return SurfaceHit(l.surface, lx, ly, l.inPopup)
+            return SurfaceHit(l.surface, lx, ly, l.inPopup, l.scale)
         }
         val base = layers.firstOrNull { it.surface === window.surface } ?: return null
-        return SurfaceHit(base.surface, (x - base.x) / base.scale, (y - base.y) / base.scale)
+        return SurfaceHit(base.surface, (x - base.x) / base.scale, (y - base.y) / base.scale, scale = base.scale)
     }
 
     /** Whether this window has a popup open; a tap elsewhere closes it. */
     val hasPopups get() = scene.any { it.inPopup }
+
+    private companion object {
+        /**
+         * At most 60 frames a second, whatever the screen's rate: Linux apps draw in software under proot, and on a
+         * 120 Hz screen following it took twice the CPU and battery. The least time between frames, less a quarter so
+         * a frame a little early still takes its vsync.
+         */
+        const val MIN_INTERVAL = 1_000_000_000L / 60 * 3 / 4
+    }
 }

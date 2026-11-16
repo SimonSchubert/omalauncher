@@ -39,7 +39,7 @@ object Native {
     /** Copies [count] rects (x, y, w, h in buffer pixels) of a shm buffer into a store of its size. */
     @JvmStatic external fun storeCopy(shm: Long, offset: Int, stride: Int, format: Int, store: Long, rects: IntArray, count: Int): Int
 
-    @JvmStatic external fun windowCreate(surface: Surface, width: Int, height: Int): Long
+    @JvmStatic external fun windowCreate(surface: Surface, width: Int, height: Int, translucent: Boolean): Long
 
     @JvmStatic external fun windowRelease(window: Long)
 

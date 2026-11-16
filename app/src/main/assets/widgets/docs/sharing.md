@@ -5,7 +5,9 @@ Part of the widget docs: README.md, one folder up, comes first, and paths here a
 The **widget store** (long-press empty space on the home screen) installs reviewed widgets from
 https://github.com/SimonSchubert/omarchy-widgets. To publish one you made, long-press it and tap
 **publish**: the default agent opens a pull request there with the GitHub CLI (or an issue, if it
-can't). By hand, open a pull request that adds it as `widgets/<github-username>/<name>/widget.owl`.
+can't). By hand, open a pull request that adds it as `widgets/<github-username>/<name>/widget.owl`
+(a face as `faces/<github-username>/<name>/face.owl`). A face can have several pages, installed side
+by side: the others go beside it as `page-2.owl`, `page-3.owl`, ..., as the store's README says.
 The store needs:
 
 - `meta` with a `description` (10-200 characters), a `version` and a `license`, and ideally a `category`:

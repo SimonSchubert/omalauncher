@@ -2,6 +2,7 @@ package dev.omalauncher.widgets.render
 
 import androidx.compose.animation.Animatable
 import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -10,14 +11,17 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.structuralEqualityPolicy
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import dev.omalauncher.widgets.lang.Builtins
 import dev.omalauncher.widgets.lang.Env
+import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WNode
@@ -90,6 +94,32 @@ internal class Props(
         return remember(anim) { { anim.value } }
     }
 
+    /**
+     * The node's `offset` in dp, for placement. Animated when it says `animate offset: ...`, except while [held], its own
+     * drag: then it follows the finger, and only going back (or on) once let go animates.
+     */
+    @Composable
+    fun offset(held: State<Boolean>): () -> Offset {
+        val ev = el.props["offset"] ?: return { Offset.Zero }
+        val read =
+            remember(ev, env) {
+                val where = where("offset")
+                val read: () -> Offset = {
+                    val o = inst.eval(ev, env, where) as? Lst
+                    fun at(i: Int) = o?.items?.getOrNull(i)?.num()?.toFloat()?.takeIf { it.isFinite() } ?: 0f
+                    Offset(at(0), at(1))
+                }
+                read
+            }
+        val spec = el.animations["offset"] ?: return read
+        val anim = remember(ev, env) { androidx.compose.animation.core.Animatable(Snapshot.withoutReadObservation { read() }, Offset.VectorConverter) }
+        val animSpec = remember(spec) { offsetSpec(inst.eval(spec, env, "animate offset")) }
+        LaunchedEffect(anim) {
+            snapshotFlow { read() to held.value }.collectLatest { (to, dragging) -> if (dragging) anim.snapTo(to) else anim.animateTo(to, animSpec) }
+        }
+        return remember(anim) { { anim.value } }
+    }
+
     @Composable
     fun color(
         name: String,
@@ -132,5 +162,7 @@ internal class Props(
         fun floatSpec(v: Value): AnimationSpec<Float> = spec(v)
 
         fun colorSpec(v: Value): AnimationSpec<Color> = spec(v)
+
+        fun offsetSpec(v: Value): AnimationSpec<Offset> = spec(v)
     }
 }

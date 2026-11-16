@@ -1,11 +1,13 @@
 package dev.omalauncher
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
@@ -41,12 +43,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.ui.ExtraKeys
+import dev.omalauncher.ui.ImagePicker
 import dev.omalauncher.ui.KeyboardSink
+import dev.omalauncher.ui.WidgetAsks
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.linuxWindowInput
-import dev.omalauncher.ui.applySystemBars
-import dev.omalauncher.ui.interceptKeys
 import dev.omalauncher.wayland.WindowRenderer
 import dev.omalauncher.wayland.XdgToplevel
 import kotlinx.coroutines.flow.first
@@ -56,8 +58,9 @@ import kotlinx.coroutines.flow.first
  * Recents card and behaves like a separate app.
  */
 class LinuxWindowActivity : InstantActivity() {
-    private val runtime get() = (application as App).runtime
     private var window: XdgToplevel? = null
+    private val imagePicker = ImagePicker(this) { runtime }
+    private val asks = WidgetAsks(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,10 +71,7 @@ class LinuxWindowActivity : InstantActivity() {
             return
         }
         this.window = window
-        interceptKeys(runtime.keyboard::handle)
-        applySystemBars(this, Palette.isLight)
         setInstantContent {
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@LinuxWindowActivity, Palette.isLight) }
             AppWindow(runtime, window)
             BackHandler { backInstantly() }
             LaunchedEffect(window) {
@@ -93,6 +93,8 @@ class LinuxWindowActivity : InstantActivity() {
     override fun onResume() {
         super.onResume()
         window?.let(runtime.wm::focus)
+        runtime.keyboard.imagePicker = imagePicker
+        asks.resumed(runtime)
     }
 
     override fun onStop() {
@@ -107,6 +109,25 @@ class LinuxWindowActivity : InstantActivity() {
         if (isFinishing && w in runtime.wm.appWindows) runtime.wm.close(w)
     }
 
+    // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
+    @SuppressLint("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Super+Esc leaves the window as Back does, where Esc itself is the window's: it keeps running in Recents.
+        if (event.keyCode == KeyEvent.KEYCODE_ESCAPE && event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN) {
+            if (event.repeatCount == 0) backInstantly()
+            return true
+        }
+        if (runtime.keyboard.handle(event)) return true
+        return super.dispatchKeyEvent(event)
+    }
+
+    /** Keys held as the window goes, like Super, would stay down for it: Android sends their lift elsewhere. */
+    override fun onPause() {
+        super.onPause()
+        runtime.keyboard.releaseHeld()
+        if (runtime.keyboard.imagePicker === imagePicker) runtime.keyboard.imagePicker = null
+        asks.paused(runtime)
+    }
 }
 
 /**
@@ -183,7 +204,8 @@ private fun AppWindow(
                     .onSizeChanged { surfaceView?.visibleHeight = it.height },
             ) {
                 // Over the SurfaceView, which Compose's pointer input doesn't reach.
-                Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window))
+                // A tap on the prompt line brings the keyboard back, as the ⌨ button does.
+                Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window) { sink?.takeUnless { it.showing }?.show() })
                 Box(
                     Modifier
                         .align(Alignment.BottomEnd)

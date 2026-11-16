@@ -14,10 +14,10 @@ class Parser private constructor(
     companion object {
         fun parse(src: String): WidgetAst = Parser(src, Lexer(src).run()).widget()
 
-        /** Declarations written as a block: `meta { ... }`, `requires { ... }`. */
-        private val BLOCK_DECLS = setOf("meta", "requires")
+        /** Declarations written as a block: `meta { ... }`, `requires { ... }`, `strings { en { ... } }`. */
+        private val BLOCK_DECLS = setOf("meta", "requires", "strings")
 
-        private val DECLS = setOf("source", "state", "let", "asset", "component", "meta", "requires")
+        private val DECLS = setOf("source", "state", "let", "asset", "component", "meta", "requires", "strings")
 
         /** Statements that run on a timer or a change, not a touch: `when cond { ... }`. */
         val TRIGGERS = TriggerKind.entries.mapTo(HashSet()) { it.word }
@@ -57,7 +57,7 @@ class Parser private constructor(
     }
 
     private fun widget(): WidgetAst {
-        val kind = OwlKind.entries.firstOrNull { t.isId(it.word) } ?: fail("an owl file starts with: widget \"name\" {, face \"name\" {, app \"name\" {, panel \"name\" { or keybar \"name\" {")
+        val kind = OwlKind.entries.firstOrNull { t.isId(it.word) } ?: fail("an owl file starts with: widget \"name\" {, face \"name\" {, app \"name\" {, panel \"name\" {, keybar \"name\" { or strip \"name\" {")
         next()
         val name = if (t.type == T.Str) literalString(next()) else null
         punct("{")
@@ -88,11 +88,12 @@ class Parser private constructor(
                     if (!top) fail("'$word' is only allowed at the top of the widget")
                     next()
                     val e = expr()
-                    // `on x first { }`: for x's first value too.
+                    // `on x first { }`: for x's first value too; `on x each { }`: for every message of a ws(...) source.
                     val first = word == "on" && t.type == T.Ident && t.text == "first"
-                    if (first) next()
+                    val each = word == "on" && t.type == T.Ident && t.text == "each"
+                    if (first || each) next()
                     if (!t.isP("{")) fail("expected '{' with the statements to run: $word ... { ... }")
-                    decls += Decl.Trigger(word, e, handler(), start.pos, first)
+                    decls += Decl.Trigger(word, e, handler(), start.pos, first, each)
                 }
                 word == "if" -> items += ifItem()
                 word == "for" -> items += forItem()
@@ -187,8 +188,36 @@ class Parser private constructor(
         return Item.For(name, index, list, key, b, pos)
     }
 
+    /** `strings { en { feels: "feels" } id { feels: "terasa" } }`: a set of texts per language. */
+    private fun strings(kw: Token): Decl.Strings {
+        punct("{")
+        val sets = ArrayList<Pair<String, List<Prop>>>()
+        while (!t.isP("}")) {
+            if (accept(";") || accept(",")) continue
+            val first = t
+            val language = ident("language, like en")
+            if (!Regex("[a-z]{2,3}").matches(language)) fail("a language is its code in lowercase, like en, id or pt", first)
+            if (sets.any { it.first == language }) fail("strings has $language twice", first)
+            punct("{")
+            val fields = ArrayList<Prop>()
+            while (!t.isP("}")) {
+                if (accept(";") || accept(",")) continue
+                val at = t
+                val name = ident("string name")
+                if (fields.any { it.name == name }) fail("$language has $name twice", at)
+                punct(":")
+                fields += Prop(name, expr(), at.pos)
+            }
+            punct("}")
+            sets += language to fields
+        }
+        punct("}")
+        return Decl.Strings(sets, kw.pos)
+    }
+
     private fun decl(): Decl {
         val kw = next()
+        if (kw.text == "strings") return strings(kw)
         if (kw.text in BLOCK_DECLS) {
             punct("{")
             val fields = ArrayList<Prop>()

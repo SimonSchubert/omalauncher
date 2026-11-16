@@ -35,9 +35,11 @@ import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.Runtime
-import dev.omalauncher.widgets.render.WidgetKeys
+import dev.omalauncher.theme.Style
+import dev.omalauncher.widgets.render.WidgetKeybar
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
@@ -49,11 +51,14 @@ internal val KeyRowHeight = 40.dp
 internal val KeyGap = 3.dp
 internal val FrameWidth = 2.dp
 
-/** The gap between the bar and the keyboard, and to the screen's sides: the tiles' gap. */
-private val Gap = 6.dp
-
-/** The stock extra keys' full height, gap included: what home lifts a typing tile by until it has measured the keys. */
-val ExtraKeysHeight = KeyRowHeight * 2 + (FrameWidth + KeyGap) * 2 + Gap
+/**
+ * The stock key bar's full height at the user's keybar.gaps-out and keybar.border-width, its gap to the keyboard
+ * included: what home lifts a typing tile by until it has measured the bar.
+ */
+val ExtraKeysHeight: Dp
+    get() =
+        KeyRowHeight * 2 + (LauncherStyle.style[Style.KEYBAR_BORDER_WIDTH].toFloat().dp + KeyGap) * 2 +
+            LauncherStyle.style[Style.KEYBAR_GAPS_OUT].toFloat().dp
 
 /**
  * Whether the extra-keys row belongs on screen: only over a docked soft
@@ -82,18 +87,18 @@ fun ExtraKeys(
     val widgets = runtime.widgets
     // Before the file runs too, so it's live as soon as it does.
     DisposableEffect(widgets) {
-        widgets.keysShown(true)
-        onDispose { widgets.keysShown(false) }
+        widgets.keybarShown(true)
+        onDispose { widgets.keybarShown(false) }
     }
-    val inst = widgets.keysInstance() ?: return
-    WidgetKeys(inst, modifier.fillMaxWidth())
+    val inst = widgets.keybarInstance() ?: return
+    WidgetKeybar(inst, modifier.fillMaxWidth())
 }
 
 /** The extra keys at the bottom of a screen, where the keyboard would push them up, for owl-check's picture of them. */
 @Composable
-internal fun KeysPreview(inst: WidgetInstance) {
+internal fun KeybarPreview(inst: WidgetInstance) {
     Box(Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding(), contentAlignment = Alignment.BottomCenter) {
-        WidgetKeys(inst, Modifier.fillMaxWidth())
+        WidgetKeybar(inst, Modifier.fillMaxWidth())
     }
 }
 

@@ -1,0 +1,1 @@
+Widgets can show a web page in a tile, roughly where the phone is (for today's weather), your calendar's next events, and your AirPods' batteries and modes, each only after you tap to allow it. A game widget can hold the home screen still while you play. Text fields can take several lines. Voice also talks to Oh My Pi and Pi. Two crashes and a freeze are fixed.

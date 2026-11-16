@@ -22,7 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.omalauncher.AndroidApp
+import dev.omalauncher.apps.AndroidApp
 import dev.omalauncher.App
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.applySystemBars

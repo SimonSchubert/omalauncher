@@ -1,6 +1,6 @@
 # Desktop integration and bridge (proposed protocol 1)
 
-This is an initial implementation of [proposal #34](https://github.com/SimonSchubert/omalauncher/issues/34), updated through Omalauncher v0.10.1 for upstream review. The protocol is not yet an agreed public API. It exposes a provider-rendered home and existing OWL widgets to an individually approved Android host. Both apps keep their own Android sandbox. Omalauncher owns all widget execution and its existing Linux installation; no rootfs, credential or private-directory copy is involved.
+This is an initial implementation of [proposal #34](https://github.com/SimonSchubert/omalauncher/issues/34), integrated with Omalauncher v1.6.0 (`e821917`) for upstream review. The protocol is not yet an agreed public API. It exposes a provider-rendered home and existing OWL widgets to an individually approved Android host. Both apps keep their own Android sandbox. Omalauncher owns all widget execution and its existing Linux installation; no rootfs, credential or private-directory copy is involved.
 
 Omalateral needs this provider-side entry point to show the user's actual Omalauncher home on an external display. A separate app cannot safely read Omalauncher's private layout, widget state, theme, or Linux files. The bridge renders those in Omalauncher's process and gives the approved host only a surface, bounded input, appearance metadata and app-launch requests. Omalateral can then add its own tiling, cursor and phone controls around the home. The same contract is usable by other desktop shells, and Android's native desktop uses the separate secondary-home Activity without binding the service.
 
@@ -68,6 +68,14 @@ Android delivers physical input through the attached child surface. Events synth
 
 ## Validation
 
+Both FOSS and Play debug lint tasks passed (zero errors), as did FOSS debug assembly, both flavor Kotlin compilation, and Android-test Kotlin compilation. The final focused run passed all eight bridge/routing tests plus the hardcoded-UI-text check. The new foldable regression is compiled but has not run on a device. Lint emitted non-fatal SARIF quick-fix reporting exceptions; its XML/HTML reports were generated.
+
+Local Windows JVM validation at `e821917`: OWL 238/238 passing; app 335 tests, 18 failures, 15 skipped. The same clean upstream checkout has 327 tests with the identical 18 failures and 15 skips, confirming no additional JVM failures; all eight bridge/routing tests pass. These platform-dependent failures remain unresolved and are not counted as a green full test suite.
+
+The v1.6.0 integration preserves upstream's keyboard dispatch, foldable layouts, app language handling, Linux stop/start state, and FOSS/Play build variants. Cloning a foldable phone into a desktop snapshots the currently shown screen, including app/folder pages, into the desktop's independent main grid. Browser and terminal widget presentation remain isolated from the phone. Desktop text resources are provided for all locales; non-English desktop body strings currently use English fallback copy.
+
+Builds without `scripts/fetch-proot.sh` are compile/lint artifacts, not Linux-ready installation packages. Fetch/build fresh native runtime libraries before installing; do not reuse pre-v1.6.0 libraries.
+
 On the v0.10.1 merge, the Linux routing JVM test, `:owl:test`, debug and release APK builds, Android-test APK compilation, debug lint, and all three provider desktop emulator tests passed. On the v0.10.0 merge, `:owl:test`, focused desktop JVM tests, debug and release APK builds, debug lint, and instrumentation APK compilation passed. The emulator's independent external-grid reflow test passed against the v0.10.0 APK. On the earlier v0.9.0 refresh, `:owl:test`, the focused desktop JVM tests, debug and minified release APK builds, debug lint, and instrumentation APK compilation passed. The Pixel 9 API 35 emulator passed all three provider instrumentation tests: keyboard dispatch, independent cloned placement/folders/profile identity (including grid columns), and rendered native desktop sessions with resize and display moves. An isolated cross-process host fixture passed five checks against the minified v0.9.0 APK; the managed-profile check was skipped because the emulator has no work profile. Release APK signing and 16 KiB alignment were verified locally. A full Windows app JVM run had 12 failures outside the desktop package, including missing `sh`, Windows-reserved `nul`, managed-file replacement errors, and one OWL README sample assertion; it is not counted as passing.
 
 A downstream fork with the same `uiScale` and `workspacePages` provider behavior was exercised with Omalateral on a Nubia NX789J (Android 15) and a 1920 × 1200 VITURE Beast. A classic clock added to the blank external workspace survived provider restarts and in-place updates. Moving PhoneUI's UI + text scale from 1.45× to 1.80× enlarged the widget frame and glyphs, and returning to 1.45× restored their size. Calculator launched from the provider's app pane into an external window. The exact PR APK has not replaced the user's phone launcher. Linux app launches and reparenting an already-open Linux task still need physical-display verification; Android may reject an external activity launch on a particular OEM. OEM native-home selection, work-profile launch, unplug/replug and full external-launch coverage remain physical acceptance checks.
@@ -75,8 +83,11 @@ A downstream fork with the same `uiScale` and `workspacePages` provider behavior
 Build and run the provider checks with the existing Gradle project:
 
 ```sh
-./gradlew :owl:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease
-./gradlew :app:connectedDebugAndroidTest
+./gradlew :owl:test :app:testFossDebugUnitTest :owl:owlJar
+./gradlew :app:assembleFossDebug :app:lintFossDebug :app:lintPlayDebug
+./gradlew :app:assembleFossDebugAndroidTest
+# Requires an explicitly selected test device/emulator:
+./gradlew :app:connectedFossDebugAndroidTest
 ```
 
 The native test uses a captured virtual display to check rendered home content, separate Activity instances, keyboard input, resizing and moving an existing window between displays. Layout tests check that inherited cells, pages, folders and profile identities persist independently from the source home. JVM policy tests cover caller identity, revocation, closed leases, layout names and allocation bounds.

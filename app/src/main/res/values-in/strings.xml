@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omalauncher</string>
+    <string name="wallpaper_label">Omarchy</string>
+    <string name="wallpaper_description">Latar belakang tema Omarchy saat ini. Warna sistem mengikuti tema.</string>
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">Terminal</string>
+    <string name="activity_app">Aplikasi</string>
+    <string name="activity_files">File</string>
+    <string name="activity_voice">Suara</string>
+    <string name="activity_settings">Setelan</string>
+    <string name="notification_listener">Widget Omalauncher</string>
+    <string name="settings_external_desktops">desktop eksternal</string>
+    <string name="settings_external_desktops_subtitle">tinjau atau cabut izin host desktop</string>
+</resources>

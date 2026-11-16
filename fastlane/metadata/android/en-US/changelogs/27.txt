@@ -1,0 +1,1 @@
+Settings has a language, and the launcher now comes in Spanish and Portuguese. Linux install logs keep up with progress bars and open whole, with a copy button. pacman installs bubblewrap again. Frosted glass reaches the prompt bar and recent apps. Widgets can use WebSockets, pinned certificates for LAN servers and pull to refresh.

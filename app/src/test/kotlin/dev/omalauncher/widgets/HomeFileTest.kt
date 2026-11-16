@@ -43,6 +43,47 @@ class HomeFileTest {
         assertEquals("x", HomeFile.encode(table, layout)["future"])
     }
 
+    /** The cover screen's pages are a `[cover]` section after the main pages, and read back as that screen's layout. */
+    @Test fun writesAndReadsACoverSection() {
+        val cover = HomeLayout(4, listOf(TilePage(listOf(WidgetTile("50-memory.owl", Cell(0, 0, 4, 3)), AppTile("org.mozilla.firefox", Cell(0, 3, 1, 1)))), TilePage(listOf(WidgetTile("60-owl.owl", null)))))
+        val text = Toml.write(HomeFile.encode(emptyMap(), layout, mapOf(Screen.COVER to cover)), HomeFile.HEADER)
+        // The section comes after every main page, as one piece: its columns, then its pages. (The header names `[[cover.page]]` too.)
+        val mainPages = text.lastIndexOf("[[page]]")
+        val section = text.indexOf("[cover]\ncolumns = 4\n")
+        assertTrue(text, section > mainPages && text.indexOf("[[cover.page]]", section) > section)
+        val decoded = HomeFile.decode(Toml.parse(text), 6)
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertEquals(setOf(Screen.MAIN, Screen.COVER), decoded.screens.keys)
+        assertEquals(decoded.layout, decoded.screens[Screen.MAIN])
+        assertEquals(cover.copy(pages = cover.pages.map { p -> if (p is TilePage) TilePage(p.tiles.map(::unsized)) else p }), decoded.screens[Screen.COVER])
+    }
+
+    /** The unfolded screen's pages are an `[unfolded]` section beside the cover's, each on its own grid; a section without `columns` is on that screen's. */
+    @Test fun writesAndReadsAnUnfoldedSectionOnItsOwnGrid() {
+        val unfolded = HomeLayout(12, listOf(TilePage(listOf(WidgetTile("50-memory.owl", Cell(0, 0, 6, 4)), WidgetTile("60-owl.owl", Cell(6, 0, 6, 3))))))
+        val cover = HomeLayout(6, listOf(TilePage(listOf(WidgetTile("60-owl.owl", Cell(0, 0, 6, 3))))))
+        val text = Toml.write(HomeFile.encode(emptyMap(), layout, mapOf(Screen.COVER to cover, Screen.UNFOLDED to unfolded)), HomeFile.HEADER)
+        assertTrue(text, text.contains("[unfolded]\ncolumns = 12\n") && text.contains("[[unfolded.page]]"))
+        val decoded = HomeFile.decode(Toml.parse(text), 6)
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertEquals(unfolded, decoded.screens[Screen.UNFOLDED])
+        assertEquals(cover, decoded.screens[Screen.COVER])
+        val bare = HomeFile.decode(Toml.parse("[[page]]\nface = \"a.owl\"\n[[unfolded.page]]\ntiles = [ { widget = \"b.owl\", x = 6, y = 0, w = 6, h = 2 } ]\n"), 6) { if (it == Screen.UNFOLDED) 12 else 6 }
+        assertEquals(12, bare.screens.getValue(Screen.UNFOLDED).columns)
+        assertEquals(6, bare.layout.columns)
+    }
+
+    /** Without the section the cover screen has no layout in the file; a bad one is a problem named after its section. */
+    @Test fun aFileWithoutACoverSectionHasNoCoverLayout() {
+        val decoded = HomeFile.decode(Toml.parse("[[page]]\nface = \"a.owl\"\n"), 6)
+        assertEquals(setOf(Screen.MAIN), decoded.screens.keys)
+        val bad = HomeFile.decode(Toml.parse("[[page]]\nface = \"a.owl\"\n[cover]\ncolumns = 0\n[[cover.page]]\nother = 1\n"), 6)
+        assertEquals(setOf(Screen.MAIN, Screen.COVER), bad.screens.keys)
+        assertEquals(6, bad.screens.getValue(Screen.COVER).columns)
+        val problems = bad.problems.joinToString("\n")
+        assertTrue(problems, "cover.columns:" in problems && "cover.page 1: other isn't a page's" in problems)
+    }
+
     @Test fun numbersPagesFromTheFirstOfTiles() {
         assertEquals(listOf(-1, 0, 1, 2, 3), HomeFile.numbers(listOf(FacePage("a"), FacePage("b"), TilePage(emptyList()), FacePage("c"), TilePage(emptyList()))))
         assertEquals(listOf(1), HomeFile.numbers(listOf(TilePage(emptyList()))))

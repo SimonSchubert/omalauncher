@@ -1,28 +1,15 @@
 package dev.omalauncher.wayland
 
 import android.view.KeyEvent
-import dev.omalauncher.widgets.lang.KeyNames
 
 /** Maps Android key codes and characters to Linux evdev codes (US layout). */
 object Keys {
     const val KEY_LEFTSHIFT = 42
     const val KEY_BACKSPACE = 14
-    const val KEY_ENTER = 28
-    const val KEY_ESC = 1
-    const val KEY_TAB = 15
     const val KEY_MINUS = 12
     const val KEY_EQUAL = 13
-    const val KEY_SLASH = 53
     const val KEY_LEFTCTRL = 29
     const val KEY_LEFTALT = 56
-    const val KEY_HOME = 102
-    const val KEY_UP = 103
-    const val KEY_PAGEUP = 104
-    const val KEY_LEFT = 105
-    const val KEY_RIGHT = 106
-    const val KEY_END = 107
-    const val KEY_DOWN = 108
-    const val KEY_PAGEDOWN = 109
     const val KEY_INSERT = 110
 
     private val byKeyCode =
@@ -79,8 +66,16 @@ object Keys {
     fun evdev(event: KeyEvent): Int? = byKeyCode[event.keyCode]
 
     /** Shift, Ctrl, Alt, Super and Caps Lock, which a latched modifier shouldn't fold into. */
-    fun isModifier(code: Int) = code in setOf(29, 42, 54, 56, 58, 97, 100, 125, 126)
+    fun isModifier(code: Int) = modifierBit(code) != 0
 
-    /** Returns (evdev code, needs shift) for a character typed via the soft keyboard. */
-    fun forChar(c: Char): Pair<Int, Boolean>? = KeyNames.forChar(c)
+    /** The wl_keyboard modifier bit evdev [code] sets, 0 for a key that isn't a modifier. */
+    fun modifierBit(code: Int) =
+        when (code) {
+            42, 54 -> MOD_SHIFT
+            58 -> MOD_LOCK
+            29, 97 -> MOD_CTRL
+            56, 100 -> MOD_ALT
+            125, 126 -> MOD_SUPER
+            else -> 0
+        }
 }

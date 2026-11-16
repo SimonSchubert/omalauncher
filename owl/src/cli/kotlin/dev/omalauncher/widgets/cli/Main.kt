@@ -16,7 +16,8 @@ private const val USAGE = """owl: the widget language checker
 
   owl check <file.owl>...              compile; exit 1 on errors
   owl review <repo> <path>... [--base <dir>]
-                                       marketplace rules for widgets/<author>/<name>/widget.owl and
+                                       marketplace rules for widgets/<author>/<name>/widget.owl,
+                                       faces/<author>/<name>/face.owl (and its page-2.owl, ...) and
                                        apps/<author>/<name>/app.owl, Markdown on stdout; --base holds
                                        the main-branch copies
   owl programs <file.owl>...           programs and packages, one "<kind> <name>" per line
@@ -68,17 +69,45 @@ private fun review(args: List<String>): Int {
     var failed = 0
     for (path in paths) {
         val file = File(repo, path)
+        val previous = base?.let { File(it, path) }?.takeIf { it.exists() }?.readText()
         if (!file.exists()) {
             println("### 🗑️ `$path` removed\n")
+            pageChange(repo, base, path, previous, null)?.let {
+                println("- ❌ $it\n")
+                failed++
+            }
             continue
         }
-        val previous = base?.let { File(it, path) }?.takeIf { it.exists() }?.readText()
         val r = Review(path, file.readText(), previous)
-        if (File(file.parentFile, "preview.png").exists().not()) r.warnings += "no preview.png next to the ${r.kind.word}; the store shows a placeholder"
+        if (r.page == 1 && File(file.parentFile, "preview.png").exists().not()) r.warnings += "no preview.png next to the ${r.kind.word}; the store shows a placeholder"
+        if (r.page > 2 && !File(file.parentFile, "page-${r.page - 1}.owl").exists()) r.errors += "there's no page-${r.page - 1}.owl before it: pages are numbered from 2 without gaps"
+        pageChange(repo, base, path, previous, r.text)?.let { r.errors += it }
         println(r.markdown())
         if (r.errors.isNotEmpty()) failed++
     }
     return if (failed == 0) 0 else 1
+}
+
+/**
+ * A face's later page has no version of its own, so adding, changing or removing one at [path] of a face already in the
+ * store needs face.owl's version to go up, or launchers wouldn't offer the update; the error when it doesn't.
+ */
+private fun pageChange(
+    repo: File,
+    base: String?,
+    path: String,
+    previous: String?,
+    text: String?,
+): String? {
+    if (base == null || Review.PAGE.matchEntire(path) == null || previous == text) return null
+    val face = path.substringBeforeLast('/') + "/face.owl"
+    val old = File(base, face).takeIf { it.exists() } ?: return null
+    // Removed with its face.owl, it goes with the whole face.
+    val new = File(repo, face).takeIf { it.exists() } ?: return null
+    val oldVersion = Review(face, old.readText()).version
+    val version = Review(face, new.readText()).version
+    if (Catalog.compareVersions(version, oldVersion) > 0) return null
+    return "this changes a page of an existing face, so the version in its face.owl must go up (main has $oldVersion)"
 }
 
 private fun programs(files: List<String>): Int {
@@ -135,13 +164,25 @@ private fun index(args: List<String>): Int {
                     val ext = imageExtension(bytes) ?: return@let null
                     File(f.parentFile, "store-icon.$ext").apply { writeBytes(bytes) }.relativeTo(repo).invariantSeparatorsPath
                 }
-            // screens/<n>/<omarchy theme>.webp: an app's other screens, from 2 on, in each theme.
+            // screens/<n>/<omarchy theme>.webp: an app's other screens, or a face's other pages, from 2 on, in each theme.
             val screens =
                 File(f.parentFile, "screens").listFiles { d -> d.isDirectory && d.name.toIntOrNull() != null }.orEmpty().sortedBy { it.name.toInt() }
                     .flatMap { d -> d.listFiles { p -> p.extension in setOf("webp", "png") }.orEmpty().map { it.nameWithoutExtension to it.relativeTo(repo).invariantSeparatorsPath } }
                     .groupBy({ it.first }, { it.second }).toSortedMap()
+            // page-2.owl, page-3.owl, ...: a face's other pages, numbered without gaps; one that fails review takes its face out.
+            val pageFiles =
+                if (kind != OwlKind.Face) emptyList() else f.parentFile.listFiles().orEmpty().mapNotNull { p -> PAGE_FILE.matchEntire(p.name)?.let { it.groupValues[1].toInt() to p } }.sortedBy { it.first }
+            if (pageFiles.map { it.first } != (2 until 2 + pageFiles.size).toList()) {
+                System.err.println("skipped $path: its pages aren't numbered page-2.owl, page-3.owl, ... without gaps")
+                return@mapNotNull null
+            }
+            val pages = pageFiles.map { (_, p) -> Review(p.relativeTo(repo).invariantSeparatorsPath, p.readText()) }
+            pages.firstOrNull { it.errors.isNotEmpty() }?.let {
+                System.err.println("skipped $path: ${it.path}: ${it.errors.first().lines().first()}")
+                return@mapNotNull null
+            }
             val added = firstCommit(repo, path)
-            r.entry(preview, themes, iconFile).copy(screens = screens).copy(added = added, new = Catalog.isNew(added, today))
+            r.entry(preview, themes, iconFile, pages).copy(screens = screens).copy(added = added, new = Catalog.isNew(added, today))
         }.toList()
     val order = File(repo, "order.txt").takeIf { it.exists() }?.readText().orEmpty()
     val out = if (kind == OwlKind.Widget) "index.json" else "${kind.word}s.json"
@@ -149,6 +190,8 @@ private fun index(args: List<String>): Int {
     System.err.println("$out: ${entries.size} ${kind.word}s")
     return 0
 }
+
+private val PAGE_FILE = Regex("""page-(\d{1,3})\.owl""")
 
 /** The file extension for an image asset's bytes, by their signature; null for anything a store icon can't be. */
 private fun imageExtension(bytes: ByteArray): String? {

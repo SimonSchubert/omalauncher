@@ -4,8 +4,10 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.content.res.Resources
 import android.os.IBinder
 import dev.omalauncher.linux.LinuxState
 import kotlinx.coroutines.CoroutineScope
@@ -28,15 +30,24 @@ class LinuxService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /** The app's, so the notification is in the language picked in settings. */
+    override fun getResources(): Resources = application?.resources ?: super.getResources()
+
     override fun onStartCommand(
         intent: Intent?,
         flags: Int,
         startId: Int,
     ): Int {
         val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(CHANNEL, "Linux session", NotificationManager.IMPORTANCE_LOW))
+        nm.createNotificationChannel(NotificationChannel(CHANNEL, getString(R.string.linux_notification_channel), NotificationManager.IMPORTANCE_LOW))
         val state = (application as App).runtime.bootstrap.state
         startForeground(1, notification(state.value), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        pending = (pending - 1).coerceAtLeast(0)
+        // Stopped before it got here (see [set]): now it may go, unless a later start still has to come here too.
+        if (!wanted) {
+            if (pending == 0) stopSelf()
+            return START_NOT_STICKY
+        }
         if (watch == null) {
             watch =
                 scope.launch {
@@ -57,10 +68,12 @@ class LinuxService : Service() {
 
     private fun text(state: LinuxState): String =
         when (state) {
-            is LinuxState.Installing -> "Installing Linux" + (state.progress?.let { " · ${(it * 100).toInt()}%" } ?: "") + " · ${state.stage.label}"
-            is LinuxState.Failed -> "Linux setup stopped · open settings › linux to retry"
-            LinuxState.Removing -> "Removing Linux"
-            else -> "Linux session running"
+            is LinuxState.Installing ->
+                state.progress?.let { getString(R.string.linux_notification_installing_percent, (it * 100).toInt(), getString(state.stage.label)) }
+                    ?: getString(R.string.linux_notification_installing, getString(state.stage.label))
+            is LinuxState.Failed -> getString(R.string.linux_notification_failed)
+            LinuxState.Removing -> getString(R.string.linux_notification_removing)
+            else -> getString(R.string.linux_notification_running)
         }
 
     private fun build(text: String): Notification =
@@ -74,5 +87,30 @@ class LinuxService : Service() {
 
     companion object {
         private const val CHANNEL = "session"
+
+        // Main thread only, like onStartCommand.
+        private var wanted = false
+
+        /** startForegroundService() calls whose onStartCommand hasn't run yet. */
+        private var pending = 0
+
+        /**
+         * Starts or stops the service. Android kills the app when a service started with startForegroundService()
+         * is stopped before it calls startForeground(), as a setup that fails at once did on slow phones; a stop
+         * that early is left to onStartCommand.
+         */
+        fun set(
+            context: Context,
+            on: Boolean,
+        ) {
+            wanted = on
+            val intent = Intent(context, LinuxService::class.java)
+            if (on) {
+                context.startForegroundService(intent)
+                pending++
+            } else if (pending == 0) {
+                context.stopService(intent)
+            }
+        }
     }
 }

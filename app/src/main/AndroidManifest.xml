@@ -1,16 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 17+: widgets and Linux reaching 192.168.x and other local addresses. Asked for
          from a row in settings (LocalNetwork.kt). -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Speech input for the agent prompt bar; only recognized text reaches Linux. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
+    <!-- Widgets' android.location, after a tap on location("request"): approximate only, and only while on screen. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Widgets' android.calendar, only after a tap on calendar("request"). -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+
+    <!-- AirPods' batteries and settings for android.airpods (AirPods.kt), over their own link. Asked for by a widget's
+         first airpods(...); before Android 12, BLUETOOTH covers it. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
 
     <!-- Uninstall from the app drawer's long-press menu (ACTION_DELETE). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
@@ -24,9 +37,32 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <!-- Icon packs (Arcticons and the like) for the Style menu's picker. -->
+        <intent>
+            <action android:name="org.adw.launcher.THEMES" />
+        </intent>
+        <intent>
+            <action android:name="com.novalauncher.THEME" />
+        </intent>
+        <!-- Lets settings("output") see whether the phone's System UI has Android's output switcher. -->
+        <intent>
+            <action android:name="com.android.systemui.action.LAUNCH_MEDIA_OUTPUT_DIALOG" />
+        </intent>
+        <intent>
+            <action android:name="com.android.systemui.action.LAUNCH_SYSTEM_MEDIA_OUTPUT_DIALOG" />
+        </intent>
         <!-- Lets SpeechRecognizer find the phone's recognition service. -->
         <intent>
             <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <!-- A speech app's own "speak now" screen, for one without a recognition service (FUTO Voice Input). -->
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+        <!-- Lets TextToSpeech bind the phone's engine (the voice screen's replies). Google's was only visible as a
+             recognizer above; another default engine (Samsung's, eSpeak) wasn't, and Android fell back or said nothing. -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
     </queries>
 
@@ -65,6 +101,44 @@
             </intent-filter>
         </activity>
 
+        <!-- Opens a speech app's "speak now" screen for Speech and hands the words back; shows nothing itself. -->
+        <activity
+            android:name=".SpeakNowActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
+        <!-- Android's file picker for `omalauncher pick` (PhoneBridge); shows nothing itself. -->
+        <activity
+            android:name=".PickActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
+        <!-- The "Linux" destination in Android's share sheet. Only shows if a Linux environment is installed. -->
+        <activity
+            android:name=".ShareInActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
+
+        <activity-alias
+            android:name=".ShareToLinux"
+            android:enabled="false"
+            android:exported="true"
+            android:label="@string/activity_linux"
+            android:targetActivity=".ShareInActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity-alias>
         <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
              websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
              gone once left. Not exported: the system starts it, and other apps have no reason to. -->
@@ -83,7 +157,7 @@
 
         <activity
             android:name=".LinuxWindowActivity"
-            android:label="Linux"
+            android:label="@string/activity_linux"
             android:theme="@style/Theme.Omalauncher.Window"
             android:autoRemoveFromRecents="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
@@ -96,7 +170,7 @@
         <activity-alias
             android:name=".TerminalWindow"
             android:exported="false"
-            android:label="Terminal"
+            android:label="@string/activity_terminal"
             android:targetActivity=".LinuxWindowActivity" />
 
         <activity-alias
@@ -170,6 +244,13 @@
             android:targetActivity=".LinuxWindowActivity" />
 
         <activity-alias
+            android:name=".HermesWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_hermes"
+            android:label="Hermes"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
             android:name=".OmpWindow"
             android:exported="false"
             android:icon="@drawable/agent_omp"
@@ -197,13 +278,62 @@
             android:label="Kimi"
             android:targetActivity=".LinuxWindowActivity" />
 
+        <activity-alias
+            android:name=".QwenWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_qwen"
+            android:label="Qwen Code"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".McodeWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_mcode"
+            android:label="MiniMax Code"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".KiroCliWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_kiro_cli"
+            android:label="Kiro CLI"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".KiloWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_kilo"
+            android:label="Kilo"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".DevinWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_devin"
+            android:label="Devin CLI"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".AmpWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_amp"
+            android:label="Amp"
+            android:targetActivity=".LinuxWindowActivity" />
+
+        <activity-alias
+            android:name=".CommandcodeWindow"
+            android:exported="false"
+            android:icon="@drawable/agent_commandcode"
+            android:label="Command Code"
+            android:targetActivity=".LinuxWindowActivity" />
+
         <!-- One task per owl app, named after it; launched with its file name in the intent's data. -->
         <activity
             android:name=".OwlAppActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:documentLaunchMode="intoExisting"
             android:exported="false"
-            android:label="App"
+            android:label="@string/activity_app"
             android:resizeableActivity="true"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
@@ -213,7 +343,7 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:exported="false"
             android:icon="@drawable/files"
-            android:label="Files"
+            android:label="@string/activity_files"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:taskAffinity="${applicationId}.files"
@@ -221,10 +351,21 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".VoiceActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:exported="false"
+            android:icon="@drawable/voice"
+            android:label="@string/activity_voice"
+            android:launchMode="singleTask"
+            android:resizeableActivity="true"
+            android:taskAffinity="${applicationId}.voice"
+            android:theme="@style/Theme.Omalauncher.Window" />
+
+        <activity
             android:name=".SettingsActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:exported="false"
-            android:label="Settings"
+            android:label="@string/activity_settings"
             android:launchMode="singleTask"
             android:resizeableActivity="true"
             android:taskAffinity="${applicationId}.settings"
@@ -238,7 +379,7 @@
             android:documentLaunchMode="intoExisting"
             android:exported="false"
             android:icon="@drawable/editor"
-            android:label="Editor"
+            android:label="@string/editor_title"
             android:resizeableActivity="true"
             android:theme="@style/Theme.Omalauncher.Window"
             android:windowSoftInputMode="adjustResize" />
@@ -270,7 +411,7 @@
         <service
             android:name=".widgets.runtime.MediaListener"
             android:exported="true"
-            android:label="Omalauncher widgets"
+            android:label="@string/notification_listener"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />

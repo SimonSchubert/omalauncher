@@ -3,15 +3,12 @@ package dev.omalauncher
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
-import dev.omalauncher.ui.Palette
-import dev.omalauncher.ui.SettingsPage
-import dev.omalauncher.ui.SettingsPages
-import dev.omalauncher.ui.applySystemBars
+import dev.omalauncher.ui.settings.SettingsPage
+import dev.omalauncher.ui.settings.SettingsPages
 
 /**
  * The launcher's settings and the screens they open (style, agents, store, Linux, …):
@@ -20,7 +17,6 @@ import dev.omalauncher.ui.applySystemBars
  * directly; closing the last one closes the task.
  */
 class SettingsActivity : InstantActivity() {
-    private val runtime get() = (application as App).runtime
 
     private val stack = mutableStateListOf<SettingsPage>()
 
@@ -29,12 +25,26 @@ class SettingsActivity : InstantActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        open(intent)
-        applySystemBars(this, Palette.isLight)
+        // Brought back on its own after Android killed the process (turning phone storage off on its page does), the
+        // Linux screen would otherwise wait on Linux's check forever; home starts it too, once.
+        runtime.start()
+        // Android ends the process when a permission is turned off on its page: back from it, the same screens show.
+        val saved = savedInstanceState?.getStringArrayList(STATE_STACK)?.mapNotNull { name -> SettingsPage.entries.firstOrNull { it.name == name } }
+        if (saved.isNullOrEmpty()) {
+            open(intent)
+        } else {
+            homePage = savedInstanceState.getInt(EXTRA_HOME_PAGE, homePage)
+            stack += saved
+        }
         setInstantContent {
-            LaunchedEffect(Palette.isLight) { applySystemBars(this@SettingsActivity, Palette.isLight) }
             SettingsPages(runtime, stack, homePage, onClose = ::closeInstantly)
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putStringArrayList(STATE_STACK, ArrayList(stack.map { it.name }))
+        outState.putInt(EXTRA_HOME_PAGE, homePage)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -58,6 +68,7 @@ class SettingsActivity : InstantActivity() {
     companion object {
         private const val EXTRA_PAGE = "page"
         private const val EXTRA_HOME_PAGE = "home_page"
+        private const val STATE_STACK = "stack"
 
         fun intent(
             context: Context,

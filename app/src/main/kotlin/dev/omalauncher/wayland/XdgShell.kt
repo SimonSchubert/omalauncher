@@ -335,3 +335,53 @@ class ToplevelDecoration(
         }
     }
 }
+
+/**
+ * KDE's older decoration protocol, the only one GTK3 asks (so wxWidgets apps
+ * too): told the server decorates, it leaves out its own title bar and
+ * window buttons, which on a phone only take space. Always server-side, as
+ * with [DecorationManager]; the server draws none.
+ */
+class ServerDecorationManager(
+    client: Client,
+    id: Int,
+    version: Int,
+) : Resource(client, id, version) {
+    override val iface = "org_kde_kwin_server_decoration_manager"
+
+    init {
+        send(event(0).uint(SERVER_MODE)) // default_mode
+    }
+
+    override fun request(
+        opcode: Int,
+        args: Args,
+    ) {
+        if (opcode == 0) client.register(ServerDecoration(client, args.newId())).sendMode() // create; the surface doesn't matter
+    }
+
+    companion object {
+        const val SERVER_MODE = 2
+    }
+}
+
+class ServerDecoration(
+    client: Client,
+    id: Int,
+) : Resource(client, id, 1) {
+    override val iface = "org_kde_kwin_server_decoration"
+
+    fun sendMode(mode: Int = ServerDecorationManager.SERVER_MODE) = send(event(0).uint(mode))
+
+    override fun request(
+        opcode: Int,
+        args: Args,
+    ) {
+        when (opcode) {
+            0 -> destroy() // release
+            // request_mode: granted, as wlroots does. A header-bar window asks for client-side and, answered
+            // server-side, asks again at once, forever; the default already keeps plain windows server-side.
+            1 -> sendMode(args.uint())
+        }
+    }
+}

@@ -7,10 +7,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.toArgb
-import dev.omalauncher.AndroidApp
+import dev.omalauncher.apps.AndroidApp
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxApp
-import dev.omalauncher.ui.Arrange
+import dev.omalauncher.ui.home.Arrange
 import dev.omalauncher.ui.Palette
 
 /** Home state shared by Android's native desktop Activity and approved surface hosts. */

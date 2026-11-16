@@ -1,13 +1,16 @@
 package dev.omalauncher.linux
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.R
 import dev.omalauncher.upgrade.Versioned
 import dev.omalauncher.upgrade.mapObjects
-import dev.omalauncher.upgrade.writeAtomically
+import dev.omalauncher.upgrade.strings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -34,7 +37,7 @@ data class PendingUpdates(
     val packages: List<String>,
     val tools: List<ToolUpdate>,
     val checkedAt: Long,
-    val error: String? = null,
+    @StringRes val error: Int? = null,
 ) {
     val count get() = packages.size + tools.size
 }
@@ -63,10 +66,10 @@ class SystemUpdates(
 
     /** Reads the last result, so the settings dot shows right after a restart. */
     fun load() {
-        val data = Versioned.read(file.takeIf { it.exists() }?.readText(), VERSION) as? JSONObject ?: return
+        val data = Versioned.readFile(file, VERSION) ?: return
         pending =
             PendingUpdates(
-                packages = data.optJSONArray("packages")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty(),
+                packages = data.optJSONArray("packages")?.strings().orEmpty(),
                 tools =
                     data.optJSONArray("tools")?.mapObjects { ToolUpdate(it.getString("name"), it.getString("current"), it.getString("latest")) }.orEmpty(),
                 checkedAt = data.optLong("checkedAt"),
@@ -107,7 +110,7 @@ class SystemUpdates(
         val now = System.currentTimeMillis()
         if (code != 0 || "#pacman-error" in text) {
             Log.w(TAG, "check failed ($code): ${text.takeLast(300)}")
-            return PendingUpdates(pending?.packages.orEmpty(), pending?.tools.orEmpty(), pending?.checkedAt ?: 0L, error = "couldn't reach the mirrors")
+            return PendingUpdates(pending?.packages.orEmpty(), pending?.tools.orEmpty(), pending?.checkedAt ?: 0L, error = R.string.linux_updates_unreachable)
         }
         val packages =
             text
@@ -138,13 +141,15 @@ class SystemUpdates(
                 .put("packages", JSONArray(p.packages))
                 .put("tools", JSONArray(p.tools.map { JSONObject().put("name", it.name).put("current", it.current).put("latest", it.latest) }))
                 .put("checkedAt", p.checkedAt)
-        runCatching { writeAtomically(file, Versioned.write(VERSION, data).toByteArray()) }
+        runCatching { Versioned.writeFile(file, VERSION, data) }
     }
 
-    /** Upgrades everything: a full pacman sync, then mise's tools. Returns whether it worked. */
+    /** Upgrades everything: a full pacman sync, then mise's tools and the agents with their own updater. Returns whether it worked. */
     suspend fun updateAll(): Boolean {
         if (job is JobState.Working) return false
-        val (ok, _) = proot.trackedJob("updating", UPDATE_SCRIPT, pacman.lock) { job = it }
+        // mise's too, as agents install and remove with it: mise's first, as agent jobs never take pacman's.
+        job = JobState.Working(R.string.linux_job_waiting, emptyList())
+        val (ok, _) = agents.lock.withLock { proot.trackedJob(R.string.linux_job_updating, UPDATE_SCRIPT, pacman.lock) { job = it } }
         // Agents may have changed, and what's left to update is worth knowing either way.
         withContext(Dispatchers.IO) { agents.load() }
         check(force = true)
@@ -175,9 +180,14 @@ class SystemUpdates(
             true
             """.trimIndent()
 
-        /** Databases refreshed (-Syy) even if pacman thinks they're current: mirrors lag each other. */
+        /**
+         * Databases refreshed (-Syy) even if pacman thinks they're current: mirrors lag each other. The old
+         * versions go even when one tool fails to upgrade, or every updated agent stays installed twice
+         * (1.1 GB); the tool that failed keeps its old version, since its config still selects it.
+         */
         val UPDATE_SCRIPT =
             "pacman -Syyu --noconfirm && $CLEAN_PACMAN_CACHE && " +
-                "if command -v mise >/dev/null; then $MISE_SELF_UPDATE && $MISE_NODE_FOR_AGENTS && mise upgrade && mise prune -y && mise cache clear; fi"
+                "if command -v mise >/dev/null; then $MISE_SELF_UPDATE && $MISE_NODE_FOR_AGENTS && mise upgrade; " +
+                "ok=\$?; $MISE_PRUNE; $MISE_CLEANUP; [ \$ok -eq 0 ]; fi && $OWN_UPDATES"
     }
 }

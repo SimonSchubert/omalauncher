@@ -32,19 +32,21 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import dev.omalauncher.AndroidApp
+import dev.omalauncher.apps.AndroidApp
 import dev.omalauncher.Runtime
+import dev.omalauncher.R
+import androidx.compose.ui.res.stringResource
 import dev.omalauncher.linux.LinuxApp
-import dev.omalauncher.ui.FolderTile
-import dev.omalauncher.ui.GridPad
-import dev.omalauncher.ui.HomeGrid
+import dev.omalauncher.ui.home.FolderTile
+import dev.omalauncher.ui.home.GridPad
+import dev.omalauncher.ui.home.HomeGrid
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.OverlayPanel
 import dev.omalauncher.ui.Palette
-import dev.omalauncher.ui.ShortcutTile
-import dev.omalauncher.ui.WidgetScreenPanel
-import dev.omalauncher.ui.WidgetTile
+import dev.omalauncher.ui.home.ShortcutTile
+import dev.omalauncher.ui.home.WidgetScreenPanel
+import dev.omalauncher.ui.home.WidgetTile
 import dev.omalauncher.widgets.lang.rankMatches
 import dev.omalauncher.widgets.Shortcut
 import dev.omalauncher.widgets.Folder
@@ -110,12 +112,12 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
         Column(Modifier.fillMaxSize()) {
             HomeGrid(pager = pager, keepClear = GridPad(0, 0, 0, 0), slots = slots, full = ::full,
                 itemsOn = widgets::itemsOn, layout = widgets.layout, arrange = arrange,
-                selected = selected, onSelect = { selected = it },
+                selected = selected, locked = false, onSelect = { selected = it },
                 render = { item, tile, focused ->
                     when (item) {
                         is WidgetItem -> if (item.spec.program?.terminal == true) {
                             Box(tile.background(Palette.surface).padding(12.dp)) {
-                                BasicText("${item.spec.name}\nTerminal presentation is available on the phone", style = Mono)
+                                BasicText(stringResource(R.string.desktop_terminal_phone, item.spec.name), style = Mono)
                             }
                         } else WidgetTile(item.spec, widgets.instances[item.key], widgets.layout.cell(item.key)?.let { it.w to it.h }, focused, tile,
                             onTap = { widgets.tap(item.spec) }, needs = runtime.widgets.missing[item.key].orEmpty(), install = null,
@@ -131,15 +133,15 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                             focused, tile, onTap = { arrange.folder = item.key })
                     }
                 },
-                actions = { item -> BasicText("remove from desktop", Modifier.clickable { widgets.remove(item); selected = null }.padding(8.dp), style = Mono.copy(color = Palette.red)) },
-                onLongPressEmpty = { session.picker = true }, feed = {}, onNoRoom = widgets::noRoom, onMove = widgets::move,
+                actions = { item -> BasicText(stringResource(R.string.desktop_remove), Modifier.clickable { widgets.remove(item); selected = null }.padding(8.dp), style = Mono.copy(color = Palette.red)) },
+                onLongPressEmpty = { session.picker = true }, feed = {}, invite = {}, onNoRoom = widgets::noRoom, onMove = widgets::move,
                 onGroup = widgets::group, onReorder = widgets::reorder, onRenameFolder = widgets::renameFolder,
                 per = per, allowPageSwipe = !session.workspacePages,
                 modifier = Modifier.weight(1f).fillMaxWidth())
             Row(Modifier.fillMaxWidth().background(Palette.background).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                BasicText("apps", Modifier.clickable { session.uiAction("drawer") }, style = Mono)
-                BasicText("widgets", Modifier.clickable { session.uiAction("widgets") }, style = Mono)
-                BasicText(if (session.pagesSideBySide) "${pages.size} home pages" else "page ${pager.currentPage + 1}/${slots.size}", style = Mono.copy(color = Palette.muted))
+                BasicText(stringResource(R.string.desktop_apps), Modifier.clickable { session.uiAction("drawer") }, style = Mono)
+                BasicText(stringResource(R.string.desktop_widgets), Modifier.clickable { session.uiAction("widgets") }, style = Mono)
+                BasicText(if (session.pagesSideBySide) stringResource(R.string.desktop_pages, pages.size) else stringResource(R.string.desktop_page, pager.currentPage + 1, slots.size), style = Mono.copy(color = Palette.muted))
             }
             session.message?.let { text -> BasicText(text, Modifier.fillMaxWidth().background(Palette.background).clickable { session.message = null }.padding(8.dp), style = Mono.copy(color = Palette.muted)) }
         }
@@ -147,7 +149,7 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
             val apps = matchingApps(runtime, session.query)
             val searchFocus = remember { FocusRequester() }
             LaunchedEffect(Unit) { searchFocus.requestFocus() }
-            OverlayPanel("apps", session::dismiss) {
+            OverlayPanel(stringResource(R.string.desktop_apps), session::dismiss) {
                 BasicTextField(session.query, { session.query = it.take(2048) }, Modifier.fillMaxWidth().padding(12.dp).focusRequester(searchFocus), textStyle = Mono,
                     cursorBrush = SolidColor(Palette.accent), singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search), keyboardActions = KeyboardActions(onSearch = { apps.firstOrNull()?.let(session::launch) }))
@@ -162,7 +164,7 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                                 })?.let { Image(it, app.label, Modifier.size(40.dp)) }
                                 BasicText(app.label, style = Mono)
                             }
-                            BasicText("[pin]", Modifier.clickable {
+                            BasicText(stringResource(R.string.desktop_pin), Modifier.clickable {
                                 val page = slots.getOrNull(pager.currentPage)?.firstOrNull { it > 0 } ?: 1
                                 when (app) {
                                     is DesktopApp.Android -> widgets.pin(app.app, page)
@@ -175,7 +177,7 @@ internal fun DesktopHome(runtime: Runtime, session: DesktopHomeSession) {
                 }
             }
         }
-        if (session.picker) OverlayPanel(if (session.workspacePages) "desktop widgets" else "widgets", session::dismiss) {
+        if (session.picker) OverlayPanel(stringResource(if (session.workspacePages) R.string.desktop_workspace_widgets else R.string.desktop_widgets), session::dismiss) {
             val choices = if (session.workspacePages) widgets.specs.filter {
                 it.kind == OwlKind.Widget && !it.isFace && !widgets.isShown(it)
             } else widgets.specs

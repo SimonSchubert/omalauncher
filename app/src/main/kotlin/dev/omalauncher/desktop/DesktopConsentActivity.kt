@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.App
+import dev.omalauncher.R
+import androidx.compose.ui.res.stringResource
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.OverlayPanel
 import dev.omalauncher.ui.Palette
@@ -35,20 +37,20 @@ class DesktopConsentActivity : ComponentActivity() {
         }
         val identity = access.request(token)
         if (identity == null) {
-            Toast.makeText(this, "Desktop request expired. Connect again from the desktop host.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.desktop_request_expired), Toast.LENGTH_LONG).show()
             finish()
             return
         }
         val label = runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(identity.packageName, 0)) }.getOrDefault(identity.packageName)
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Allow external desktop?")
-            .setMessage("$label\n${identity.packageName}\n\nThis app can display your widgets and themes, interact with widget data and actions, and request app launches. Linux and agent windows are unavailable through this bridge. You can revoke access in settings → external desktops.\n\nSigning certificate: ${identity.certificate}")
-            .setPositiveButton("Allow") { _, _ ->
+            .setTitle(R.string.desktop_allow_title)
+            .setMessage(getString(R.string.desktop_consent, label, identity.packageName, identity.certificate))
+            .setPositiveButton(R.string.desktop_allow) { _, _ ->
                 if (access.grant(token)) setResult(RESULT_OK)
-                else Toast.makeText(this, "Desktop request expired. Connect again.", Toast.LENGTH_LONG).show()
+                else Toast.makeText(this, getString(R.string.desktop_request_expired), Toast.LENGTH_LONG).show()
                 finish()
             }
-            .setNegativeButton("Deny") { _, _ -> access.deny(token); finish() }
+            .setNegativeButton(R.string.desktop_deny) { _, _ -> access.deny(token); finish() }
             .setOnCancelListener { access.deny(token); finish() }
             .create()
         dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_POSITIVE).filterTouchesWhenObscured = true }
@@ -58,11 +60,11 @@ class DesktopConsentActivity : ComponentActivity() {
 
 @Composable
 private fun ApprovedDesktops(access: DesktopAccess, dismiss: () -> Unit) {
-    OverlayPanel("external desktops", dismiss) {
+    OverlayPanel(stringResource(R.string.desktop_hosts), dismiss) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (access.approvedPackages.isEmpty()) BasicText("No approved desktop hosts", style = Mono)
+            if (access.approvedPackages.isEmpty()) BasicText(stringResource(R.string.desktop_no_hosts), style = Mono)
             for (packageName in access.approvedPackages.toList()) {
-                BasicText("$packageName  [revoke]", Modifier.fillMaxWidth().clickable { access.revoke(packageName) }.padding(12.dp), style = Mono.copy(color = Palette.accent))
+                BasicText(stringResource(R.string.desktop_revoke, packageName), Modifier.fillMaxWidth().clickable { access.revoke(packageName) }.padding(12.dp), style = Mono.copy(color = Palette.accent))
             }
         }
     }

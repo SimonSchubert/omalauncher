@@ -14,6 +14,9 @@ private const val TAG = "wl.server"
 /** Deepest chain of subsurface and popup parents we follow. */
 internal const val MAX_NESTING = 32
 
+/** Most clients connected at once; far more than windows anyone opens, far fewer than run the heap out. */
+internal const val MAX_CLIENTS = 256
+
 data class OutputInfo(
     val widthPx: Int,
     val heightPx: Int,
@@ -49,6 +52,8 @@ class WaylandServer(
             Global("wl_data_device_manager", 3, ::DataDeviceManager),
             Global("xdg_wm_base", 3, ::XdgWmBase),
             Global("zxdg_decoration_manager_v1", 1, ::DecorationManager),
+            Global("zwp_text_input_manager_v3", 1, ::TextInputManager),
+            Global("org_kde_kwin_server_decoration_manager", 1, ::ServerDecorationManager),
         )
 
     val clients = mutableListOf<Client>()
@@ -70,6 +75,9 @@ class WaylandServer(
     /** Called from the UI when Android's clipboard changed; see [Selection.systemChanged]. */
     fun clipboardChanged() = inputThread.execute { synchronized(this) { selection.systemChanged() } }
 
+    /** Offers [text] to the focused window's next paste, ahead of the clipboard; see [Selection.insert]. */
+    fun insertText(text: String) = inputThread.execute { synchronized(this) { selection.insert(text) } }
+
     private val serial = AtomicInteger(1)
     private var listenFd = -1
 
@@ -86,6 +94,13 @@ class WaylandServer(
                     // Transient (a client gave up, out of fds): keep serving after a pause.
                     Log.w(TAG, "accept failed: errno ${-fd}")
                     SystemClock.sleep(100)
+                    continue
+                }
+                // Each client costs two threads and their buffers: a program that only opens connections
+                // would otherwise run the launcher out of memory (about 1,700 did).
+                if (synchronized(this) { clients.size } >= MAX_CLIENTS) {
+                    Log.w(TAG, "refusing a client: $MAX_CLIENTS already connected")
+                    Native.close(fd)
                     continue
                 }
                 val client = Client(this, fd)

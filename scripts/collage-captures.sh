@@ -26,7 +26,7 @@ SCENES=(
   "gruvbox           fetch crypto earthquakes releases"
   "everforest        planes-overhead today launches lobsters"
   "retro-82          free-games github-trending air-and-pollen departures"
-  "osaka-jade        koi-pond focus countdown wikipedia"
+  "jade-horse        koi-pond focus countdown wikipedia"
   "matte-black       fetch year-progress releases github-trending"
   "ristretto         today crypto exchange-rates hacker-news"
   "hackerman         fetch crypto earthquakes uptime"

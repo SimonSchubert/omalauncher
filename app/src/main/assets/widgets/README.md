@@ -4,14 +4,15 @@ Each `*.owl` file in this folder is a widget on the Android home screen,
 written in OWL, a small declarative language in the spirit of QML. Its first
 word says what it is: `widget "name" { }` is a home-screen tile, `face "name" { }` a face, a whole home page
 left of your first one (docs/faces.md), and `app "name" { }` an app in the app drawer that opens full screen
-(docs/apps.md). `panel "name" { }` is a view a swipe on home opens (docs/panels.md), and `keybar "name" { }` the extra keys
-over the keyboard while typing in a terminal (docs/keybar.md). Everything here and in docs/ is about widgets unless it says otherwise; the others are written
+(docs/apps.md). `panel "name" { }` is a view a swipe on home opens (docs/panels.md), and `keybar "name" { }` the terminal key bar
+over the keyboard while typing in a terminal (docs/keybar.md), and `strip "name" { }` the strip of recent apps above home's prompt bar (docs/strip.md). Everything here and in docs/ is about widgets unless it says otherwise; the others are written
 the same way. Save a file and it appears within a second. Then run `owl-check <file>`:
 
 ```
 $ owl-check 50-memory.owl
 50-memory.owl: compiles
   preview: ~/.config/omalauncher/widgets/.preview/50-memory.owl.png (3x4 cells, 528x712 px, with live data); look at it to check the layout
+  on home: 3x4 cells at x=0 y=2, as ~/.config/omalauncher/home/layout.toml has it; change it there, not with size:
 ```
 
 A widget with a `screen { }` (docs/screens.md) gets a second picture, of the screen as it opens. An
@@ -21,14 +22,17 @@ It waits until the launcher has loaded the file as saved, prints compile errors
 and problems found while running, and exits 1 if there are any. The preview is
 the tile as it looks on the home screen, at its size there, after its sources
 have loaded: open it to see whether text fits and the layout works, since you
-can't see the phone. Terminal tiles aren't previewed. Errors also go to
-`.errors/<file>.txt`, and the tile shows them.
+can't see the phone. It's the running tile, so to see another state, set it and check again:
+`owl-send <file> set <state> <value>` (docs/home.md), then `owl-check <file>`; set it back when
+you're done, since that's the tile on the user's home. Terminal and Browser tiles aren't previewed. Errors also
+go to `.errors/<file>.txt`, and the tile shows them.
 
 Widgets sit on a grid of roughly square cells, 6 columns by default (a phone
 has about 12 rows), bordered like Omarchy windows and colored by the current
 Omarchy theme. Users move and resize them on the phone; where everything is
 lives in ~/.config/omalauncher/home/layout.toml, which you can edit too (see
-docs/home.md).
+docs/home.md). The launcher puts a new file on home itself, by its `page:`, `order:` and `size:`:
+don't add it to layout.toml, move it there afterwards if it should be elsewhere.
 
 ```owl
 widget "memory" {
@@ -36,6 +40,8 @@ widget "memory" {
   order: 2                // placement order on the page when first placed (lower = first)
   size: 3x4               // size in grid cells when first placed: columns x rows
   minSize: 2x3            // users can't shrink it below this
+  // lock: playing        // holds the home screen still while true, for a game or a drawing pad (owl 18)
+  // fps: busy ? 30 : 10  // frames a second a `time` animation needs, up to 60; fewer save battery (owl 19)
 
   source mem = cmd("free -b | awk '/Mem:/ {print $2, $3}'") every 5s
   let used = num(words(mem)[1])
@@ -62,7 +68,7 @@ that read it redraw. Properties are separated by newlines or `;`.
 A file holds declarations, then the nodes it shows:
 
 - `source x = cmd("...") every 5s` runs a bash command in this Arch system, and `x` is its output (`json` parses
-  it). `http("https://...")` fetches from Android, with no Linux needed; `stream`, `file` and `clock` are sources
+  it). `http("https://...")` fetches from Android, with no Linux needed, and `ws("wss://...")` listens to a WebSocket; `stream`, `file` and `clock` are sources
   too, and `android.battery`, `android.media`, `android.notifications` and more read the phone.
 - `state x = 0` is a value handlers change (`persist` keeps it across restarts), and `let x = ...` a value worked
   out from the others, again whenever they change.
@@ -71,31 +77,37 @@ A file holds declarations, then the nodes it shows:
   `Slider`, `Input`, `Canvas`, `Shader`, `Terminal` and `Spacer` show things. Every node takes `width`, `height`,
   `weight`, `fill`, `padding`, `background`, `radius`, `visible` and more.
 - Handlers, like `onTap: count = count + 1`, set state and run actions: `terminal("btop")`, `run("cmd")`,
-  `url("https://...")`, `notify("title", "text")`, `post(url, body)`.
+  `url("https://...")`, `notify("title", "text")`, `post(url, body)`. An API key or a token is a
+  `state key = null secret`, typed in on the phone.
 - Text interpolates (`"${round(pct)}%"`). What's missing is `null`, never an error, and shows as `…`; `a ?? b` is b
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 12.
+  it's 1. This launcher has 23.
+- Text is written in the language of whoever uses the widget. One meant for the store keeps its text in
+  `strings { en { ... } id { ... } }` and shows `str.name`, the phone's language's (owl 16, see Text in more
+  languages in docs/declarations.md).
 
 ## The docs
 
 The rest is in `docs/`. Read the ones for what you're making before you write: a widget usually needs
-declarations.md and nodes.md, a face, an app, a panel or extra keys their own file too.
+declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a panel, a key bar or the strip their own file too.
 
 | read | for |
 |---|---|
-| docs/declarations.md | sources (`cmd`, `http`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `at`, `when`, `on`), putting values into commands and URLs, `requires` and working without Linux |
-| docs/android.md | the phone's data: battery, media, notifications, volume, the next alarm, modes, apps, the drawer, agents |
+| docs/declarations.md | sources (`cmd`, `http`, `ws`, `stream`, `file`, `clock`), state, lets, triggers (`every`, `every frame`, `at`, `when`, `on`, `on … each`), putting values into commands and URLs, `requires` and working without Linux |
+| docs/android.md | the phone's data: battery, media, notifications, volume, the next alarm, modes, apps, the drawer, agents, AirPods |
 | docs/expressions.md | operators and every function, dates and times, numbers, changing lists and maps, chance |
-| docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal |
+| docs/nodes.md | every node and its properties, the tile's size, text in pieces, fonts, gradients, frosted glass, images from the web, components, Terminal, Browser |
 | docs/handlers.md | handlers, every action, sending to web APIs with `post`, tokens and passwords, sounds |
-| docs/drawing.md | Canvas and Shader |
+| docs/drawing.md | Canvas, 3D scenes and Shader |
 | docs/screens.md | a widget's full-screen view behind its tile |
 | docs/faces.md | faces: a whole home page |
 | docs/apps.md | apps in the app drawer, and their icons |
+| docs/browser.md | a web page in a tile: `Browser`, and `web` to steer it |
 | docs/panels.md | panels a swipe opens, the app drawer among them |
-| docs/keybar.md | the extra keys over the keyboard |
+| docs/keybar.md | the terminal key bar over the keyboard |
+| docs/strip.md | the strip of recent apps above home's prompt bar |
 | docs/home.md | home's layout.toml, and reaching a running widget from scripts with `owl-send` |
 | docs/sharing.md | the widget store, and sharing a file as a link or QR code |
 | docs/versions.md | what each owl version added |
@@ -110,15 +122,17 @@ OWL looks like QML and JavaScript but isn't either; these are what code written 
 - An arrow function can't be kept in a `let` and called: `let f = x => x * 2` then `f(3)` is "unknown function 'f'". Write the expression out where it's used, or make a component for repeated nodes.
 - Words like `start` and `title` stand alone, as in `align: start`; in an expression they're names, so `align: mine ? start : end` is "'start' isn't a value here". Quote them there: `align: mine ? "start" : "end"`, `style: big ? "title" : "body"`. Colors are values, so `color: hot ? red : foreground` works as it is.
 - Handlers and `animate` go inside a component, not where it's used: `Chip { label: "a"; onTap: n = 1 }` is an error. Wrap the use instead, `Box { onTap: n = 1; Chip { label: "a" } }`.
+- `animate offset` follows the finger only during the same node's `onDrag`: `Box { onDrag: x = x + dx; Row { offset: [x, 0]; animate offset: spring() } }` lags behind the finger. Put `offset`, `animate offset`, `onDrag` and `onDragEnd` on one node (owl 13).
 - `on x { }` doesn't run for x's first value, so to save what a source fetched the first time, write `on x first { }` (owl 9).
 - `Progress`, `Ring`, `Slider` and other nodes with a default size lose it once they have `width`, `height`, `size`, `fill` or `weight`: `Progress { fill: width }` is zero high. A Progress is full width already; leave `fill` off, or give it a `height`.
 - In a handler each statement sees the writes before it: read what a later statement needs before changing it.
+- Never write an API key, a token or a password into the file: keep it in `state key = null secret`, asked for with `Input { password: true }`, and write it out in each request's headers, `{Authorization: "Bearer ${key}"}`, or as `enc(key)` in its URL; a `let` can't hold it (owl 12, see Tokens and passwords in docs/handlers.md).
 - `random()` and `shuffle(list)` only work in handlers and a state's first value; for values that look random but stay put, use `hash` (see Chance in docs/expressions.md).
 
 ## Examples
 
-Read the one closest to what you're making before you start. Files at the top of this folder are on
-home already; the rest are in `examples/`, off home until you move one up into this folder. Examples without `meta { owl: … }` are written for owl 1,
+Read the one closest to what you're making before you start. Files at the top of this folder are in use
+already (on home, or as the drawer, the terminal key bar and the strip); the rest are in `examples/`, off home until you move one up into this folder. Examples without `meta { owl: … }` are written for owl 1,
 so they don't use what came later, like `if` in handlers or a Row's Texts as wide as their text; the
 docs say what's current.
 
@@ -126,23 +140,26 @@ docs say what's current.
 |---|---|
 | a shell command shown as text | `examples/10-clock` (clock, theme name), `examples/30-disk` (df, a bar) |
 | a number over time | `examples/20-system` (history, Sparkline, requires), `examples/93-latency` (stream: one long-running command) |
-| JSON and lists from commands | `examples/80-system-info` (json), `examples/70-processes` (lines into maps, a bar per row), `examples/94-scripts`, `examples/96-ai-usage` (jq in a `"""` command), `examples/60-agents` (for, if, Button) |
-| the web, no Linux needed | `examples/50-weather` (http), `examples/86-whats-new` (a screen behind the tile), `10-today` (weather, Input for a city, persist) |
-| the phone's own data | `examples/40-battery` (Ring), `examples/85-quick` (alarm, modes, torch), `examples/97-now-playing` (media, album art), `examples/98-notifications`, `examples/99-volume` (Slider), `20-fetch` (with or without Linux) |
+| JSON and lists from commands | `examples/80-system-info` (json), `examples/70-processes` (lines into maps, a bar per row), `examples/94-scripts`, `examples/96-ai-usage` (jq in a `"""` command) |
+| the web, no Linux needed | `examples/50-weather` (http), `examples/86-whats-new` (a screen behind the tile), `10-today` (weather, Input for a city, persist), `examples/75-live-price` (ws: a WebSocket, greeting each connection, every message) |
+| the phone's own data | `examples/40-battery` (Ring), `examples/60-agents` (the coding agents installed, for, if, Button), `examples/85-quick` (alarm, modes, torch), `examples/97-now-playing` (media, album art), `examples/98-notifications`, `examples/99-volume` (Slider), `examples/airpods` (AirPods' batteries and settings, a screen), `examples/calendar` (the phone's calendars, asked for on a tap), `20-fetch` (with or without Linux) |
 | state, buttons and timers | `examples/91-focus` (persist, `at`, notify), `examples/87-breathe` (a session paced by the clock), `examples/88-notes` (Input, a saved list) |
 | drawing | `examples/90-analog-clock` (Canvas), `50-koi` (pixel art, taps), `60-owl` (sprites, a pet that keeps its state), `examples/92-aurora` and `examples/89-lava` (Shader) |
+| a game | `examples/space-bounce` (an app: `every frame` moving things by their speed, steering by tilting with `android.motion`, aiming with a finger, a Shader grid behind a Canvas), `examples/sky-raid` (a pixel-art scrolling shooter: sprites in one palette, a pixel font drawn with `sprite`, scrolling ground from a Shader, stages and a boss, keeping under the 2000 drawing calls), `examples/sunset-heist` (a 3D city seen from above, made from a seed: two scenes on one camera, the ground first; traffic on a road grid, police that chase, getting in and out of seven kinds of vehicle, each a convex body made with `mesh` so it never sorts wrong, jobs, guns with auto-aim and a held fire button, health and armor, pickups placed from the seed that come back after a while, police that follow the road grid and get out to chase on foot, a minimap; a joystick wherever the thumb goes down, from `onTouch`), `examples/canyon-run` (3D: a Canvas `scene` of terrain tiles laid end to end, models spawned ahead and dropped behind, hits as distances, a camera following the ship, `project` for a sun behind the scene) |
 | faces, a whole page | `examples/00-start` (frost, Grid, spans), `examples/01-minimal`, `examples/02-pixel`, `examples/03-matrix` |
 | panels and the prompt bar | `drawer.owl` (lazy lists, search with rank, Popup), `examples/65-ai-bar` (android.agents, ask, open) |
-| extra keys | `keybar.owl`, `examples/keybar-layers` (latch, layers), `examples/keybar-vim`, `examples/keybar-gamepad`, `examples/keybar-commands` (typeText) |
+| the strip above the prompt bar | `strip.owl` (android.strip, a Row that scrolls, a long-press menu), `examples/strip-pinned` (apps kept in place, sized to fit) |
+| the terminal key bar | `keybar.owl`, `examples/keybar-layers` (latch, layers), `examples/keybar-vim`, `examples/keybar-gamepad`, `examples/keybar-commands` (typeText) |
 | a live terminal | `45-terminal` |
-| an app that sends | `examples/ntfy` (two views with `back`, a source whose URL takes a state, `post` with a JSON body, and what it answers shown at once) |
+| a web page in a tile | `examples/46-browser`, and a face with a terminal and a page in tabs in docs/browser.md |
+| an app that sends | `examples/ntfy` (two views with `back`, a source whose URL takes a state, `post` with a JSON body, and what it answers shown at once), `examples/github-inbox` (a token kept as a `secret`, `post` with `method: "PATCH"`) |
 
 ## Limits
 
 A widget has at most 500 nodes (a page 1000), 2000 drawing calls per frame, lists of 1000
-items, 32 images and 128 SVGs on show at once (a view with more keeps loading them
-again and shows none for long), and a step budget per update. A widget that draws slowly animates at
-half rate. Errors never take the home screen down: the failing value shows `…`
+items, 32 images and 128 SVGs on show at once (a view with more draws only those, and says so
+in `.errors/`), and a step budget per update. A widget that draws slowly animates at
+half rate (an app with `fps: 60` keeps its 60). Errors never take the home screen down: the failing value shows `…`
 and the message goes to `.errors/`.
 
 ## Tips
@@ -155,4 +172,4 @@ and the message goes to `.errors/`.
 - A `Text` without `width`, `weight` or `fill` takes the full width, except in a `Row` or `Flow` since owl 10,
   where it's as wide as its text, or in an unsized Column in one since owl 11. Before owl 10, give the Texts next to a `weight: 1` one a `width`, or the
   weighted one is squeezed to nothing.
-- Look at the examples for patterns: Examples, near the top, says which one shows what.
+- Look at the examples for patterns: Examples, above, says which one shows what.

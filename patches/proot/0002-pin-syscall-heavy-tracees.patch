@@ -1,0 +1,611 @@
+Keep the tracer and its syscall-heavy tracees on one CPU
+
+Every intercepted syscall is a round trip between tracee and tracer. On
+different CPUs each half wakes an idle CPU, and phones power idle CPUs down
+deeply: 455 us to wake a Pixel 9a big core, so an intercepted stat() took
+~250 us there and a getcwd() ~150 us. On one CPU the stop hands the CPU
+straight to the tracer and back: ~30 us.
+
+The tracer pins itself to the CPU with the highest capacity, and a tracee
+that stops twice in a row after runs under 1 ms joins it. A pinned tracee
+goes back to every CPU after two long runs in a row, or when it hasn't
+stopped between two 20 ms checks, whether it computes or waits, so that
+worker threads don't pile up on the tracer's CPU when they wake. The
+checks only run while a pinned tracee is busy, so an idle shell doesn't
+wake the tracer.
+
+The guest doesn't see the pinning: sched_getaffinity() of a pinned thread
+reports the device's CPUs (nproc, make -j, thread pools), and a thread
+whose affinity the guest set itself is left alone, as are its children.
+
+Android resets the affinities of an app's processes when it moves them
+between cpusets (background/foreground). Every 250 ms the tracer checks
+that it and the tracees it believes pinned are still pinned, and pins
+again; while its CPU isn't available it pins nothing. Releasing a tracee
+asks for every CPU of the device and the kernel limits that to its
+current cpuset, so a proot started in the background isn't kept to the
+CPUs it had then.
+
+PROOT_HOME_CPU=<n> picks the CPU, PROOT_HOME_CPU=off disables it.
+
+diff --git a/src/GNUmakefile b/src/GNUmakefile
+index 5ade279..6aaef1d 100644
+--- a/src/GNUmakefile
++++ b/src/GNUmakefile
+@@ -54,6 +54,7 @@ OBJECTS += \
+ 	tracee/mem.o		\
+ 	tracee/reg.o		\
+ 	tracee/event.o		\
++	tracee/affinity.o	\
+ 	tracee/seccomp.o        \
+ 	tracee/statx.o		\
+ 	ptrace/ptrace.o		\
+diff --git a/src/syscall/exit.c b/src/syscall/exit.c
+index 2fe81b0..285b67a 100644
+--- a/src/syscall/exit.c
++++ b/src/syscall/exit.c
+@@ -31,6 +31,7 @@
+ 
+ #include "cli/note.h"
+ #include "syscall/syscall.h"
++#include "tracee/affinity.h"
+ #include "syscall/sysnum.h"
+ #include "syscall/socket.h"
+ #include "syscall/chain.h"
+@@ -515,6 +516,11 @@ void translate_syscall_exit(Tracee *tracee)
+ 	}
+ #endif
+ 
++	case PR_sched_getaffinity:
++	case PR_sched_setaffinity:
++		affinity_translate_exit(tracee, syscall_number, syscall_result);
++		goto end;
++
+ 	case PR_execve:
+ 	case PR_execveat:
+ 		translate_execve_exit(tracee);
+diff --git a/src/syscall/pipe_shadow.c b/src/syscall/pipe_shadow.c
+index 8c9f361..a76ddca 100644
+--- a/src/syscall/pipe_shadow.c
++++ b/src/syscall/pipe_shadow.c
+@@ -274,16 +274,22 @@ bool shadow_pipes_held(void)
+ }
+ 
+ void shadow_pipes_set_timer(bool enabled)
++{
++	shadow_pipes_set_timer_ms(enabled ? SHADOW_TIMER_MS : 0);
++}
++
++void shadow_pipes_set_timer_ms(long ms)
+ {
+ 	static bool armed = false;
+ 	struct itimerval timer;
++	bool enabled = ms > 0;
+ 
+ 	if (!enabled && !armed)
+ 		return;
+ 
+ 	bzero(&timer, sizeof(timer));
+ 	if (enabled)
+-		timer.it_value.tv_usec = SHADOW_TIMER_MS * 1000;
++		timer.it_value.tv_usec = ms * 1000;
+ 
+ 	if (setitimer(ITIMER_REAL, &timer, NULL) < 0)
+ 		return;
+diff --git a/src/syscall/pipe_shadow.h b/src/syscall/pipe_shadow.h
+index 82edecb..17dceaa 100644
+--- a/src/syscall/pipe_shadow.h
++++ b/src/syscall/pipe_shadow.h
+@@ -59,5 +59,7 @@ bool shadow_pipes_held(void);
+  * The caller must handle SIGALRM without SA_RESTART.
+  */
+ void shadow_pipes_set_timer(bool enabled);
++/* The same with a period in milliseconds, 0 to disarm.  */
++void shadow_pipes_set_timer_ms(long ms);
+ 
+ #endif /* PIPE_SHADOW_H */
+diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
+index 198a2d1..58deeb3 100644
+--- a/src/syscall/seccomp.c
++++ b/src/syscall/seccomp.c
+@@ -404,6 +404,8 @@ static FilteredSysnum proot_sysnums[] = {
+ 	{ PR_renameat,		FILTER_SYSEXIT },
+ 	{ PR_renameat2,		FILTER_SYSEXIT },
+ 	{ PR_rmdir,		0 },
++	{ PR_sched_getaffinity,	FILTER_SYSEXIT },
++	{ PR_sched_setaffinity,	FILTER_SYSEXIT },
+ 	{ PR_setrlimit,		FILTER_SYSEXIT },
+ 	{ PR_setxattr,		0 },
+ 	{ PR_socketcall,	FILTER_SYSEXIT },
+diff --git a/src/tracee/affinity.c b/src/tracee/affinity.c
+new file mode 100644
+index 0000000..cea062c
+--- /dev/null
++++ b/src/tracee/affinity.c
+@@ -0,0 +1,332 @@
++/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
++ *
++ * This file is part of PRoot.
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License as
++ * published by the Free Software Foundation; either version 2 of the
++ * License, or (at your option) any later version.
++ */
++
++/* Keeping the tracer and its syscall-heavy tracees on one CPU.
++ *
++ * Every intercepted syscall is a round trip: the tracee stops, the
++ * tracer wakes, handles it and resumes the tracee.  When the two run on
++ * different CPUs, each half of the trip wakes an idle CPU, and phones
++ * power idle CPUs down deeply (a 455 us exit latency on the Pixel 9a's
++ * big cores): an intercepted syscall then costs hundreds of
++ * microseconds.  On one CPU the stop hands that CPU straight to the
++ * tracer and back, ~25 us.
++ *
++ * So the tracer stays on the CPU with the highest capacity, and a
++ * tracee that keeps stopping after short runs joins it there.  A
++ * pinned tracee that stops doing so goes back to every CPU, so it
++ * neither competes with the tracer nor wakes up later to compute on the
++ * tracer's CPU: that is noticed after long runs between its stops, or
++ * by a timer when it doesn't stop at all, since most syscalls (read,
++ * write, mmap, futex...) never stop a tracee under seccomp.
++ *
++ * PROOT_HOME_CPU=<n> picks the CPU, PROOT_HOME_CPU=off disables this.
++ */
++
++#define _GNU_SOURCE
++#include <sched.h>     /* sched_*affinity, CPU_*, */
++#include <stdio.h>     /* snprintf, */
++#include <stdlib.h>    /* getenv, atoi, strtoull, */
++#include <string.h>    /* strcmp, */
++#include <fcntl.h>     /* open, */
++#include <unistd.h>    /* read, close, */
++#include <time.h>      /* clock_gettime, */
++#include <errno.h>     /* errno, */
++
++#include "tracee/affinity.h"
++#include "tracee/tracee.h"
++#include "tracee/reg.h"
++#include "tracee/mem.h"
++#include "syscall/sysnum.h"
++#include "cli/note.h"
++#include "attribute.h"
++
++/* A run between two stops shorter than this counts as syscall-heavy.  */
++#define SHORT_RUN_NS     (1000 * 1000L)
++/* How often running pinned tracees are checked.  */
++#define CHECK_INTERVAL_MS 20
++#define CHECK_INTERVAL_NS (CHECK_INTERVAL_MS * 1000 * 1000L)
++/* How often the tracer checks that it is still on its CPU.  */
++#define VERIFY_INTERVAL_NS (250 * 1000 * 1000L)
++/* Consecutive short runs before a tracee is pinned.  */
++#define SHORT_RUNS_TO_PIN 2
++/* Consecutive long runs before a pinned tracee is released.  */
++#define LONG_RUNS_TO_UNPIN 2
++
++static int home_cpu = -1;
++static cpu_set_t home_set;
++/* Every CPU of the device, not the CPUs available when proot started:
++ * the kernel limits it to what the tracee's cpuset allows at that moment,
++ * and Android changes that as the app moves between the foreground and
++ * the background.  */
++static cpu_set_t all_set;
++
++/* Whether a pinned tracee used CPU since the last check: the timer is
++ * only needed then.  */
++static bool pinned_busy = false;
++static uint64_t last_check_ns;
++
++/* Android moves an app's processes between cpusets as it goes to the
++ * background and back, which resets their affinities: the tracer then
++ * isn't on its CPU, and tracees marked pinned may not be.  */
++static bool home_lost = false;
++static uint64_t last_verify_ns;
++
++static uint64_t now_ns(void)
++{
++	struct timespec t;
++	clock_gettime(CLOCK_MONOTONIC, &t);
++	return t.tv_sec * 1000000000ULL + t.tv_nsec;
++}
++
++static ssize_t read_file(const char *path, char *buf, size_t size)
++{
++	ssize_t length;
++	int fd;
++
++	fd = open(path, O_RDONLY | O_CLOEXEC);
++	if (fd < 0)
++		return -1;
++	length = read(fd, buf, size - 1);
++	close(fd);
++	if (length < 0)
++		return -1;
++	buf[length] = '\0';
++	return length;
++}
++
++static int read_capacity(int cpu)
++{
++	char path[80];
++	char buf[16];
++
++	snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpu_capacity", cpu);
++	return read_file(path, buf, sizeof(buf)) > 0 ? atoi(buf) : 0;
++}
++
++void affinity_init(void)
++{
++	const char *env = getenv("PROOT_HOME_CPU");
++	long cpus;
++	int cpu;
++
++	if (env != NULL && strcmp(env, "off") == 0)
++		return;
++
++	cpus = sysconf(_SC_NPROCESSORS_CONF);
++	if (cpus < 2)
++		return;
++	CPU_ZERO(&all_set);
++	for (cpu = 0; cpu < cpus && cpu < CPU_SETSIZE; cpu++)
++		CPU_SET(cpu, &all_set);
++
++	if (env != NULL) {
++		home_cpu = atoi(env);
++		if (!CPU_ISSET(home_cpu, &all_set))
++			home_cpu = -1;
++	}
++	else {
++		int best = -1;
++		for (cpu = 0; cpu < CPU_SETSIZE; cpu++) {
++			int capacity;
++			if (!CPU_ISSET(cpu, &all_set))
++				continue;
++			capacity = read_capacity(cpu);
++			if (capacity >= best) {
++				best = capacity;
++				home_cpu = cpu;
++			}
++		}
++	}
++	if (home_cpu < 0)
++		return;
++
++	CPU_ZERO(&home_set);
++	CPU_SET(home_cpu, &home_set);
++	/* Started in the background its CPU may not be available yet:
++	 * verify_home() keeps trying.  */
++	home_lost = sched_setaffinity(0, sizeof(home_set), &home_set) < 0;
++	if (getenv("PROOT_VERBOSE") != NULL)
++		note(NULL, INFO, USER, "tracer pinned to CPU %d", home_cpu);
++}
++
++static void set_pinned(Tracee *tracee, bool pinned)
++{
++	const cpu_set_t *set = pinned ? &home_set : &all_set;
++
++	/* The scheduler can leave a released tracee on this CPU for a long
++	 * while: excluding the CPU for a moment moves it now.  */
++	if (!pinned) {
++		cpu_set_t others = all_set;
++		CPU_CLR(home_cpu, &others);
++		(void) sched_setaffinity(tracee->pid, sizeof(others), &others);
++	}
++
++	if (sched_setaffinity(tracee->pid, sizeof(*set), set) < 0)
++		return;
++	tracee->affinity.pinned = pinned;
++	tracee->affinity.short_runs = 0;
++	tracee->affinity.long_runs = 0;
++	tracee->affinity.checked_ns = 0;
++	VERBOSE(tracee, 3, "pid %d: %s", tracee->pid, pinned ? "pinned" : "unpinned");
++}
++
++/* A tracee marked pinned that isn't (any more) is pinned again after
++ * its next short runs.  */
++static void verify_pin(Tracee *tracee, void *data UNUSED)
++{
++	cpu_set_t set;
++
++	if (!tracee->affinity.pinned || tracee->terminated)
++		return;
++	if (sched_getaffinity(tracee->pid, sizeof(set), &set) == 0 && CPU_EQUAL(&set, &home_set))
++		return;
++	tracee->affinity.pinned = false;
++	tracee->affinity.short_runs = 0;
++}
++
++/* Put the tracer back on its CPU if Android moved it, see home_lost,
++ * and check the tracees it moved too.  The kernel updates the tasks of
++ * a cpuset one after another, so this is checked periodically rather
++ * than once when the tracer's move is noticed.  */
++static void verify_home(Tracee *tracee, uint64_t now)
++{
++	cpu_set_t set;
++
++	if (now - last_verify_ns < VERIFY_INTERVAL_NS)
++		return;
++	last_verify_ns = now;
++
++	if (sched_getaffinity(0, sizeof(set), &set) < 0 || !CPU_EQUAL(&set, &home_set)) {
++		if (!home_lost)
++			VERBOSE(tracee, 3, "tracer moved off CPU %d", home_cpu);
++		home_lost = sched_setaffinity(0, sizeof(home_set), &home_set) < 0;
++	}
++	else
++		home_lost = false;
++
++	foreach_tracee(verify_pin, NULL);
++}
++
++void affinity_on_stop(Tracee *tracee)
++{
++	uint64_t now, run;
++
++	if (home_cpu < 0)
++		return;
++
++	now = now_ns();
++	verify_home(tracee, now);
++	if (!tracee->affinity.known) {
++		/* New tracees inherit their parent's affinity, and the
++		 * kernel may have changed it (see home_lost).  The guest
++		 * restricting it, e.g. taskset, passes to its children.  */
++		cpu_set_t set;
++		tracee->affinity.known = true;
++		tracee->affinity.pinned = sched_getaffinity(tracee->pid, sizeof(set), &set) == 0
++			&& CPU_EQUAL(&set, &home_set);
++		if (tracee->parent != NULL && tracee->parent->affinity.guest)
++			tracee->affinity.guest = true;
++		return;
++	}
++	if (tracee->affinity.resumed_ns == 0 || tracee->affinity.guest)
++		return;
++
++	run = now - tracee->affinity.resumed_ns;
++	if (run >= SHORT_RUN_NS) {
++		tracee->affinity.short_runs = 0;
++		if (tracee->affinity.pinned
++		    && ++tracee->affinity.long_runs >= LONG_RUNS_TO_UNPIN)
++			set_pinned(tracee, false);
++		return;
++	}
++
++	tracee->affinity.long_runs = 0;
++	if (!tracee->affinity.pinned && !home_lost
++	    && ++tracee->affinity.short_runs >= SHORT_RUNS_TO_PIN)
++		set_pinned(tracee, true);
++}
++
++void affinity_on_restart(Tracee *tracee)
++{
++	if (home_cpu < 0)
++		return;
++	tracee->affinity.resumed_ns = now_ns();
++	if (tracee->affinity.pinned)
++		pinned_busy = true;
++}
++
++/* The period the event loop's timer needs for affinity_check(), in
++ * milliseconds, 0 if none.  */
++long affinity_timer_ms(void)
++{
++	return pinned_busy ? CHECK_INTERVAL_MS : 0;
++}
++
++/* A pinned tracee that hasn't stopped between two checks is released,
++ * whether it computes or waits: one left pinned while it waits would
++ * compute on the tracer's CPU when it wakes, with no stop to notice it
++ * by, and no timer running as nothing pinned looks busy any more.  */
++static void check_tracee(Tracee *tracee, void *data)
++{
++	uint64_t now = *(uint64_t *) data;
++
++	if (!tracee->running || !tracee->affinity.pinned || tracee->affinity.guest || tracee->terminated)
++		return;
++
++	if (tracee->affinity.checked_ns > tracee->affinity.resumed_ns)
++		set_pinned(tracee, false);
++	else {
++		tracee->affinity.checked_ns = now;
++		pinned_busy = true;
++	}
++}
++
++void affinity_check(void)
++{
++	uint64_t now;
++
++	if (home_cpu < 0 || !pinned_busy)
++		return;
++	now = now_ns();
++	if (now - last_check_ns < CHECK_INTERVAL_NS)
++		return;
++	last_check_ns = now;
++	pinned_busy = false;
++	foreach_tracee(check_tracee, &now);
++}
++
++/* The guest sees and sets affinities as if nothing were pinned: a pinned
++ * thread reports every CPU (nproc, make -j, thread pools), and a thread
++ * whose affinity the guest set is left alone from then on.  */
++void affinity_translate_exit(Tracee *tracee, word_t sysnum, word_t result)
++{
++	pid_t pid;
++	Tracee *target;
++
++	if (home_cpu < 0 || (long) result < 0)
++		return;
++
++	pid = (pid_t) peek_reg(tracee, ORIGINAL, SYSARG_1);
++	target = pid == 0 ? tracee : get_tracee(tracee, pid, false);
++	if (target == NULL)
++		return;
++
++	if (sysnum == PR_sched_setaffinity) {
++		target->affinity.known = true;
++		target->affinity.guest = true;
++		target->affinity.pinned = false;
++		return;
++	}
++
++	if (target->affinity.pinned && result > 0) {
++		size_t size = (size_t) result < sizeof(all_set) ? (size_t) result : sizeof(all_set);
++		(void) write_data(tracee, peek_reg(tracee, ORIGINAL, SYSARG_3), &all_set, size);
++	}
++}
+diff --git a/src/tracee/affinity.h b/src/tracee/affinity.h
+new file mode 100644
+index 0000000..e2120af
+--- /dev/null
++++ b/src/tracee/affinity.h
+@@ -0,0 +1,15 @@
++#ifndef TRACEE_AFFINITY_H
++#define TRACEE_AFFINITY_H
++
++#include <stdbool.h>
++#include "tracee/tracee.h"
++#include "arch.h"
++
++void affinity_init(void);
++void affinity_on_stop(Tracee *tracee);
++void affinity_on_restart(Tracee *tracee);
++long affinity_timer_ms(void);
++void affinity_check(void);
++void affinity_translate_exit(Tracee *tracee, word_t sysnum, word_t result);
++
++#endif /* TRACEE_AFFINITY_H */
+diff --git a/src/tracee/event.c b/src/tracee/event.c
+index 6141e19..44eb68d 100644
+--- a/src/tracee/event.c
++++ b/src/tracee/event.c
+@@ -38,6 +38,7 @@
+ 
+ #include "tracee/event.h"
+ #include "tracee/seccomp.h"
++#include "tracee/affinity.h"
+ #include "tracee/mem.h"
+ #include "cli/note.h"
+ #include "path/path.h"
+@@ -310,6 +311,9 @@ int event_loop()
+ 	long status;
+ 	int signum;
+ 
++	/* Keep the tracer and its syscall-heavy tracees on one CPU.  */
++	affinity_init();
++
+ 	/* Kill all tracees when exiting.  */
+ 	status = atexit(kill_all_tracees);
+ 	if (status != 0)
+@@ -397,13 +401,20 @@ int event_loop()
+ 		 * anymore.  */
+ 		shadow_pipes_reap();
+ 
++		/* Unpin tracees that compute rather than stop.  */
++		affinity_check();
++
+ 		/* As long as shadows are held, wake up periodically to
+ 		 * re-check them; the tracees concerned may all be
+ 		 * blocked, in which case no event is ever coming.  The
+-		 * timer is disarmed as soon as waitpid(2) returns, so
+-		 * SIGALRM cannot interfere with the ptrace helpers that
+-		 * do their own waitpid(2).  */
+-		shadow_pipes_set_timer(shadow_pipes_held());
++		 * same goes for pinned tracees that may be computing
++		 * (affinity_check).  The timer is disarmed as soon as
++		 * waitpid(2) returns, so SIGALRM cannot interfere with
++		 * the ptrace helpers that do their own waitpid(2).  */
++		if (affinity_timer_ms() > 0)
++			shadow_pipes_set_timer_ms(affinity_timer_ms());
++		else
++			shadow_pipes_set_timer(shadow_pipes_held());
+ 
+ 		/* Wait for the next tracee's stop. */
+ 		pid = waitpid(-1, &tracee_status, __WALL);
+@@ -426,6 +437,7 @@ int event_loop()
+ 		assert(tracee != NULL);
+ 
+ 		tracee->running = false;
++		affinity_on_stop(tracee);
+ 
+ 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
+ 		if (status != 0)
+@@ -941,6 +953,7 @@ bool restart_tracee(Tracee *tracee, int signal)
+ 	tracee->last_restart_how = tracee->restart_how;
+ 	tracee->restart_how = 0;
+ 	tracee->running = true;
++	affinity_on_restart(tracee);
+ 
+ 	return true;
+ }
+diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
+index dcc9bbe..5da396f 100644
+--- a/src/tracee/tracee.c
++++ b/src/tracee/tracee.c
+@@ -235,6 +235,17 @@ static Tracee *new_tracee(pid_t pid)
+ 	return tracee;
+ }
+ 
++/**
++ * Call @callback for every tracee; it must not free any.
++ */
++void foreach_tracee(void (*callback)(Tracee *tracee, void *data), void *data)
++{
++	Tracee *tracee;
++
++	LIST_FOREACH(tracee, &tracees, link)
++		callback(tracee, data);
++}
++
+ /**
+  * Return the first [stopped?] tracee with the given
+  * @pid (-1 for any) which has the given @ptracer, and which has a
+@@ -688,6 +699,10 @@ static int attach_child(Tracee *parent, word_t clone_flags, pid_t pid)
+ 
+ 	child->load_info = talloc_reference(child, parent->load_info);
+ 
++	/* A thread or process whose affinity the guest set passes that
++	 * on: see tracee/affinity.c.  */
++	child->affinity.guest = parent->affinity.guest;
++
+ 	/* If CLONE_PARENT is set, then the parent of the new child
+ 	 * (as returned by getppid(2)) will be the same as that of the
+ 	 * calling process.
+diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
+index eaf8625..b95ff78 100644
+--- a/src/tracee/tracee.h
++++ b/src/tracee/tracee.h
+@@ -89,6 +89,18 @@ typedef struct tracee {
+ 	/* Is it currently running or not?  */
+ 	bool running;
+ 
++	/* CPU placement, see tracee/affinity.c.  */
++	struct {
++		bool known;
++		bool pinned;
++		/* The guest set this thread's affinity itself.  */
++		bool guest;
++		int short_runs;
++		int long_runs;
++		uint64_t resumed_ns;
++		uint64_t checked_ns;
++	} affinity;
++
+ 	/* Is this tracee ready to be freed?  TODO: move to a list
+ 	 * dedicated to terminated tracees instead.  */
+ 	bool terminated;
+@@ -400,11 +412,13 @@ typedef struct tracee {
+ 
+ } Tracee;
+ 
++
+ #define HOST_ROOTFS "/host-rootfs"
+ 
+ #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
+ 
+ extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
++extern void foreach_tracee(void (*callback)(Tracee *tracee, void *data), void *data);
+ extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
+ 				bool only_with_pevent, word_t wait_options);
+ extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);

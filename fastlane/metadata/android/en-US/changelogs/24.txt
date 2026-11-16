@@ -1,0 +1,1 @@
+Faces can draw to the screen's edge, under the status bar and, in landscape, a side camera cutout. Store faces can come with several pages, installed side by side: each stays yours to remove, and the store adds a removed one back. Your agent can publish your faces together as one. Fixes a face's bottom jumping after updates, and the store's toggle with square corners.

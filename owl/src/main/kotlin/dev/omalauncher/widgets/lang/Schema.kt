@@ -22,7 +22,7 @@ internal class DrawOp(
 internal val KINDS: Map<String, Kind> =
     mapOf(
         "Column" to Kind(setOf("gap", "align", "justify", "scroll", "lazy", "reverse"), Children.UI),
-        "Row" to Kind(setOf("gap", "align", "justify", "wrap"), Children.UI),
+        "Row" to Kind(setOf("gap", "align", "justify", "wrap", "scroll"), Children.UI),
         "Flow" to Kind(setOf("gap", "align", "justify"), Children.UI),
         "Box" to Kind(setOf("align"), Children.UI),
         "Grid" to Kind(setOf("columns", "gap", "lazy", "reverse"), Children.UI),
@@ -37,9 +37,11 @@ internal val KINDS: Map<String, Kind> =
         "Spacer" to Kind(emptySet(), Children.NONE),
         // owl 2: a live terminal (foot) inside the tile.
         "Terminal" to Kind(setOf("command", "fontSize"), Children.NONE),
+        // owl 18: a live page from the web, another surface in the tile beside it.
+        "Browser" to Kind(setOf("url", "js", "zoom"), Children.NONE),
         // owl 4: input.
         "Slider" to Kind(setOf("value", "min", "max", "step", "color", "track", "live"), Children.NONE),
-        "Input" to Kind(setOf("text", "placeholder", "color", "fontSize", "clear", "focus", "underline", "password"), Children.NONE),
+        "Input" to Kind(setOf("text", "placeholder", "color", "fontSize", "clear", "focus", "underline", "password", "lines"), Children.NONE),
         // owl 10: a menu over everything else, next to the node that holds it.
         "Popup" to Kind(setOf("position", "gap", "align"), Children.UI),
     )
@@ -47,10 +49,10 @@ internal val KINDS: Map<String, Kind> =
 internal val COMMON =
     setOf(
         "width", "height", "size", "fill", "weight", "padding", "background", "border", "borderColor",
-        "radius", "opacity", "rotation", "scale", "offset", "clip", "visible", "frost", "repeats",
+        "radius", "opacity", "rotation", "scale", "offset", "clip", "visible", "frost", "repeats", "drag", "ripple",
     )
 
-internal val ANIMATABLE = setOf("opacity", "rotation", "scale", "value", "color", "background")
+internal val ANIMATABLE = setOf("opacity", "rotation", "scale", "offset", "value", "color", "background")
 
 internal val ALIGN = setOf("start", "center", "end", "top", "bottom", "topStart", "topEnd", "bottomStart", "bottomEnd")
 internal val ENUMS =
@@ -63,6 +65,8 @@ internal val ENUMS =
         "fill" to setOf("width", "height"),
         "cap" to setOf("round", "butt", "square"),
         "position" to setOf("above", "below"),
+        // The one direction onDrag follows (owl 13); without it, any.
+        "drag" to setOf("horizontal", "vertical"),
     )
 
 /** text(...)'s options beyond size, color, align and bold, as Text has them (owl 10). */
@@ -85,8 +89,16 @@ internal val DRAW: Map<String, DrawOp> =
         "layer" to DrawOp(1..1, group = true),
         // owl 3: pixel art from rows of letters, one color per letter.
         "sprite" to DrawOp(4..4),
+        // owl 22: 3D, models seen through a camera.
+        "scene" to DrawOp(1..1, group = true),
+        "model" to DrawOp(1..1),
     )
-internal val DRAW_NAMED = setOf("fill", "stroke", "width", "cap", "radius", "closed", "size", "color", "align", "bold", "palette") + TEXT_STYLE
+
+/** The options of scene(...) and model(...), which take only these (owl 22). */
+internal val SCENE_NAMED = setOf("light", "ambient", "fog")
+internal val MODEL_NAMED = setOf("at", "turn", "scale", "color", "image", "ambient", "smooth", "twoSided")
+
+internal val DRAW_NAMED = setOf("fill", "stroke", "width", "cap", "radius", "closed", "size", "color", "align", "bold", "palette") + TEXT_STYLE + SCENE_NAMED + MODEL_NAMED
 
 /** What needs a newer language than 1, with the version: using one without `meta { owl: N }` is an error. */
 internal val SINCE =
@@ -122,26 +134,131 @@ internal val SINCE =
         // owl 12: how much of an app's top a camera cutout covers, once it hides the status bar.
         mapOf("screenTop" to 12) +
         // owl 12: the extra keys over the soft keyboard as a file; keys for the focused Linux window; touches as they go down.
-        listOf(KEYS_FILE, "pressKey", "typeText", "latch", "android.modifiers", "onPress", "onRelease", "repeats").associateWith { 12 } +
+        listOf(KEYBAR_FILE, "pressKey", "typeText", "latch", "android.modifiers", "onPress", "onRelease", "repeats").associateWith { 12 } +
+        // owl 12: the launcher's gaps and border width, the extra keys' own in a keybar.
+        listOf("gapsIn", "gapsOut", "borderWidth").associateWith { 12 } +
         // owl 12: requests other than POST; base64 text.
         listOf(POST_METHOD, "toBase64", "fromBase64").associateWith { 12 } +
         // owl 12: tokens kept encrypted, which only go into requests, and fields that hide what's typed.
-        listOf(SECRET, "Input.password").associateWith { 12 }
+        listOf(SECRET, "Input.password").associateWith { 12 } +
+        // owl 13: more of the phone, still without new permissions: Android's own panels for what a launcher may show but
+        // not switch, the other volume streams, and a notification's buttons and replies.
+        listOf("settings", VOLUME_STREAM, "notification(\"clear\")", "notification(\"action\")", "notification(\"reply\")").associateWith { 13 } +
+        // owl 13: drags along one direction, which leave the other to the list they're in, and their end.
+        listOf("drag", "onDragEnd").associateWith { 13 } +
+        // owl 13: how much a panel covers home, set by the panel itself.
+        listOf(PANEL_OPACITY).associateWith { 13 } +
+        // owl 13: the bytes the phone sent and received, for throughput.
+        mapOf("android.network" to 13) +
+        // owl 13: the SIM and its signal; Do Not Disturb switched and notifications snoozed through notification access;
+        // offsets that ease back when a drag lets go; the torch dimmed.
+        listOf("android.sim", "dnd", "notification(\"snooze\")", "notification(\"snoozeAll\")", "notification(\"unsnooze\")", "notification(\"unsnoozeAll\")", ANIMATE_OFFSET, TORCH_LEVEL).associateWith { 13 } +
+        // owl 13: the glass home's tiles have, for a face's or a widget's own windows.
+        listOf("tileOpacity", "tileFrost").associateWith { 13 } +
+        // owl 14: a face whose nodes run on under the status bar and the camera cutout, which screenTop, screenLeft and
+        // screenRight measure.
+        mapOf(FACE_EDGE to 14, "screenLeft" to 14, "screenRight" to 14) +
+        // owl 14: no ripple under the finger, for a node that shows its press itself.
+        mapOf("ripple" to 14) +
+        // owl 15: a drawer that leaves the keyboard down as it opens.
+        mapOf(PANEL_KEYBOARD to 15) +
+        // owl 15: photos picked on Android pasted into the Linux window being typed in, as paths agents attach.
+        mapOf("pickImages" to 15) +
+        // owl 15: dictation, what the user says on a tap becoming text the widget reads.
+        listOf("android.speech", "speech").associateWith { 15 } +
+        // owl 15: the battery's current, charge and time to full, and the charger's, for a charging widget.
+        mapOf("android.power" to 15) +
+        // owl 16: texts per language, the phone's picked, and the language itself, for an API that takes it.
+        mapOf(STRINGS_DECL to 16, "lang" to 16) +
+        // owl 17: a list pulled down past its top, to fetch again.
+        mapOf("onPull" to 17) +
+        // owl 17: servers with a certificate of their own, pinned; WebSockets, and a trigger for each of their messages.
+        listOf(HTTP_PIN, "ws", "send", ON_EACH).associateWith { 17 } +
+        // owl 18: a field that wraps what's typed and grows with it, for messages longer than a line.
+        mapOf("Input.lines" to 18) +
+        // owl 18: holding the home screen still while the widget is being used, as long as its lock: holds.
+        mapOf(HOME_LOCK to 18) +
+        // owl 18: a web page in the tile, and the taps that steer it.
+        listOf("Browser", "web").associateWith { 18 } +
+        // owl 18: where the phone roughly is, once a tap has asked for it.
+        listOf("android.location", "location").associateWith { 18 } +
+        // owl 18: AirPods, read and set over their own link, with the Bluetooth permission.
+        listOf("android.airpods", "airpods").associateWith { 18 } +
+        // owl 18: events in the phone's calendars, only after a tap asks for read access.
+        listOf("android.calendar", "calendar").associateWith { 18 } +
+        // owl 19: how many frames a second an animation needs, so a slow one costs the battery less.
+        mapOf(FRAME_RATE to 19) +
+        // owl 21: how the phone is tilted, for tilt games and spirit levels.
+        mapOf("android.motion" to 21) +
+        // owl 21: statements each frame, for games that move things by what they were a frame before.
+        mapOf(EVERY_FRAME to 21) +
+        // owl 22: every finger at once, for a game's two thumbs.
+        mapOf("onTouch" to 22) +
+        // owl 22: 3D scenes in a Canvas, the meshes they draw and the vector math of a 3D game.
+        listOf("scene", "model", "cube", "plane", "sphere", "cylinder", "cone", "terrain", "mesh", "parseObj", "project", "turn", "dot", "cross", "norm", "dist").associateWith { 22 } +
+        // owl 22: Shader images to sample, and uniforms that are arrays.
+        listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 } +
+        // owl 23: what's playing moved to a point in it, for a scrubber or a record turned by hand; its speed, and the
+        // player's own buttons.
+        listOf("media(\"seek\")", "media(\"speed\")", "media(\"action\")").associateWith { 23 } +
+        // owl 23: how strong a haptic() is.
+        mapOf(HAPTIC_STRENGTH to 23) +
+        // owl 24: the strip of apps above home's prompt bar as a file, and what it shows; Rows that scroll sideways.
+        listOf(STRIP_FILE, "android.strip", "Row.scroll").associateWith { 24 }
+
+/** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
+internal const val SHADER_IMAGE = "uniform shader"
+
+/** A Shader's array uniform, like `uniform float3 enemies[8];`, named like this in [SINCE]. */
+internal const val SHADER_ARRAY = "an array uniform"
+
+/** `every frame { }`, named like this in [SINCE]. */
+internal const val EVERY_FRAME = "every frame"
+
+/** `strings { ... }`, named like this in [SINCE]. */
+internal const val STRINGS_DECL = "strings { }"
+
+/** `animate offset: ...`, named like this in [SINCE]. */
+internal const val ANIMATE_OFFSET = "animate offset"
+
+/** volume(level, stream), named like this in [SINCE]. */
+internal const val VOLUME_STREAM = "volume(…, stream)"
+
+/** `torch(40)`, a brightness, named like this in [SINCE]. */
+internal const val TORCH_LEVEL = "torch(level)"
+
+/** `haptic("light")`, a strength, named like this in [SINCE]. */
+internal const val HAPTIC_STRENGTH = "haptic(strength)"
+
+/** volume(...)'s second value; media without one. */
+internal val VOLUME_STREAMS = setOf("media", "ring", "notification", "alarm")
 
 /** `state x = null secret`, named like this in [SINCE]. */
 internal const val SECRET = "secret"
 
+/** `pin:` on http(...), post(...) and ws(...), named like this in [SINCE]. */
+internal const val HTTP_PIN = "pin:"
+
 /** `method:` on post(...), named like this in [SINCE]. */
 internal const val POST_METHOD = "method:"
 
-/** The methods post(...) sends; Android's HttpURLConnection has no PATCH. */
-internal val POST_METHODS = setOf("POST", "PUT", "DELETE")
+/** The methods post(...) sends. */
+internal val POST_METHODS = setOf("POST", "PUT", "PATCH", "DELETE")
 
 internal const val FACE_FILE = "face \"…\" { }"
 
 internal const val PANEL_FILE = "panel \"…\" { }"
 
-internal const val KEYS_FILE = "keybar \"…\" { }"
+/** A panel's own `opacity:`, named like this in [SINCE]. */
+internal const val PANEL_OPACITY = "panel opacity"
+
+/** A panel's own `keyboard:`, named like this in [SINCE]. */
+internal const val PANEL_KEYBOARD = "panel keyboard"
+
+internal const val KEYBAR_FILE = "keybar \"…\" { }"
+
+/** A `strip "…" { }` file, named like this in [SINCE]. */
+internal const val STRIP_FILE = "strip \"…\" { }"
 
 /** A panel's read-only name for the prompt bar's text. */
 internal const val QUERY = "query"
@@ -149,6 +266,17 @@ internal const val QUERY = "query"
 internal const val GRADIENT_BACKGROUND = "a gradient background"
 
 internal const val APP_STATUS_BAR = "an app's statusBar"
+
+/** `fps:` on a widget, face, app or panel, named like this in [SINCE]. */
+internal const val FRAME_RATE = "fps"
+
+/** The most frames a second `fps:` asks for, and what an animation gets without it. */
+const val MAX_FPS = 60
+
+/** A widget's or a face's `lock:`, named like this in [SINCE]. */
+internal const val HOME_LOCK = "lock"
+
+internal const val FACE_EDGE = "a face's edge"
 
 internal const val FONT_FILE = "a font of its own"
 
@@ -161,6 +289,9 @@ internal const val FMT_TIME_ZONE = "fmtTime with a time zone or language"
 internal const val FLATTEN_DEPTH = "flatten with a depth"
 
 internal const val ON_FIRST = "on … first"
+
+/** `on x each { }`, named like this in [SINCE]. */
+internal const val ON_EACH = "on … each"
 
 internal const val HANDLER_IF = "if in a handler"
 
@@ -182,55 +313,158 @@ internal val HANDLER_PARAMS =
         "onPress" to listOf("x", "y", "repeat"),
         "onRelease" to emptyList(),
         "onDrag" to listOf("dx", "dy", "x", "y"),
+        // How fast the finger was moving as it let go, in dp a second: a flick dismisses what a slow drag puts back.
+        "onDragEnd" to listOf("vx", "vy"),
+        // owl 22: every finger down, as {id, x, y, startX, startY}, on each change; [] once they've all lifted.
+        "onTouch" to listOf("touches"),
+        // A Column or Grid that scrolls, pulled down past its top and let go there: refresh(), mostly.
+        "onPull" to emptyList(),
         "onChange" to listOf("value"),
         "onSubmit" to listOf("value"),
         "onDismiss" to emptyList(),
         // A panel's, at its top: a key pressed in the prompt bar while it's open.
         "onKey" to listOf("value"),
+        // owl 18: the page a Browser went to, its title, and how far it has loaded.
+        "onNavigate" to listOf("value"),
+        "onTitle" to listOf("value"),
+        "onProgress" to listOf("value"),
     )
 
 /** Handlers only some nodes have. */
-internal val HANDLER_KINDS = mapOf("onChange" to setOf("Slider", "Input"), "onSubmit" to setOf("Input"), "onDismiss" to setOf("Popup"))
+internal val HANDLER_KINDS =
+    mapOf(
+        "onChange" to setOf("Slider", "Input"),
+        "onSubmit" to setOf("Input"),
+        "onDismiss" to setOf("Popup"),
+        "onPull" to setOf("Column", "Grid"),
+        // owl 18: only a Browser has a page to report on.
+        "onNavigate" to setOf("Browser"),
+        "onTitle" to setOf("Browser"),
+        "onProgress" to setOf("Browser"),
+    )
 
 /** What triggers bind in their statements. */
 internal val TRIGGER_PARAMS = mapOf("on" to listOf("value", "old"))
 
-/** Data from the phone and the launcher; device is fixed, system is polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers")
+/**
+ * speech(...)'s words that work from anywhere, a trigger or a press too: they only turn the microphone off. The others
+ * may turn it on, and with it ask for the microphone, so only from onTap; the compiler and WidgetInstance both check.
+ */
+val SPEECH_ANYWHERE = setOf("stop", "cancel")
 
-/** The words an action's first value may be, when it's written out; [numbers] also allows a number. */
+/**
+ * The android sources a widget asks Android's permission for, each with x("request") from a tap: never a press, before
+ * the finger lifts, or a trigger, so a widget can't ask on its own. The compiler and WidgetInstance both check.
+ */
+val ASKS = setOf("location", "calendar", "airpods")
+
+/** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar", "motion", "strip")
+
+/**
+ * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the
+ * words that take another number of values than the action's usual, with how many and how they're written.
+ */
 internal class Words(
     val words: Set<String>,
     val message: String,
     val numbers: Boolean = false,
+    val forms: Map<String, Pair<IntRange, String>> = emptyMap(),
 )
+
+/** What the store's review lists for a widget that reads or changes AirPods, from the source or airpods(...). */
+internal const val AIRPODS_COMMAND = "read and change the AirPods connected to the phone over Bluetooth, once you allow it"
+
+/** AirPods' listening modes, as android.airpods' `mode` and `modes` name them. */
+internal val AIRPODS_MODES = setOf("off", "anc", "transparency", "adaptive")
+
+/** settings("...")'s pages. */
+internal val SETTINGS_PAGES = setOf("internet", "wifi", "bluetooth", "airplane", "data", "location", "cast", "nfc", "volume", "output", "sound", "dnd", "display", "dark", "battery", "notifications")
 
 internal val ACTION_WORDS =
     mapOf(
-        "media" to setOf("toggle", "play", "pause", "next", "previous", "open").let { Words(it, "media takes ${it.joinToString()}") },
+        // seek takes where to go, in seconds from the start, speed how fast, action which of the app's buttons (owl 23);
+        // the others take nothing more.
+        "media" to
+            setOf("toggle", "play", "pause", "next", "previous", "open").let { plain ->
+                Words(
+                    plain + setOf("seek", "speed", "action"),
+                    "media takes ${plain.joinToString()}, seek, speed or action",
+                    forms =
+                        plain.associateWith { 1..1 to "media(\"$it\")" } +
+                            mapOf(
+                                "seek" to (2..2 to "media(\"seek\", seconds)"),
+                                "speed" to (2..2 to "media(\"speed\", 1.5)"),
+                                "action" to (2..2 to "media(\"action\", a.id), with a from the source's actions"),
+                            ),
+                )
+            },
         // A number sets the level in percent.
         "volume" to setOf("up", "down", "mute", "unmute", "toggle").let { Words(it, "volume takes a level in percent, or ${it.joinToString()}", numbers = true) },
         // true and false also turn it on and off.
-        "torch" to setOf("on", "off", "toggle").let { Words(it, "torch takes true, false, ${it.joinToString()}") },
-        "notification" to setOf("open", "dismiss").let { Words(it, "notification takes ${it.joinToString()} and a notification's key") },
+        // A number turns it on at that brightness, in percent.
+        "torch" to setOf("on", "off", "toggle").let { Words(it, "torch takes a brightness in percent, true, false, ${it.joinToString()}", numbers = true) },
+        // Besides on, off and toggle, what android.modes' dndAllows says, so dnd(m.dndAllows) sets back what it read.
+        "dnd" to setOf("on", "off", "toggle", "all", "priority", "alarms", "none").let { Words(it, "dnd takes true, false, ${it.joinToString()}") },
+        "notification" to
+            Words(
+                setOf("open", "dismiss", "clear", "action", "reply", "snooze", "snoozeAll", "unsnooze", "unsnoozeAll"),
+                "notification takes open, dismiss, clear, action, reply, snooze, snoozeAll, unsnooze or unsnoozeAll",
+                forms =
+                    mapOf(
+                        "open" to (2..2 to "notification(\"open\", key)"),
+                        "dismiss" to (2..2 to "notification(\"dismiss\", key)"),
+                        "clear" to (1..1 to "notification(\"clear\")"),
+                        "action" to (3..3 to "notification(\"action\", key, i)"),
+                        "reply" to (3..3 to "notification(\"reply\", key, text)"),
+                        "snooze" to (3..3 to "notification(\"snooze\", key, seconds)"),
+                        "snoozeAll" to (2..2 to "notification(\"snoozeAll\", seconds)"),
+                        "unsnooze" to (2..2 to "notification(\"unsnooze\", key)"),
+                        "unsnoozeAll" to (1..1 to "notification(\"unsnoozeAll\")"),
+                    ),
+            ),
+        // How strong, from Android's own touch feedback; haptic() alone is medium.
+        "haptic" to setOf("light", "medium", "strong").let { Words(it, "haptic takes ${it.joinToString()}, or nothing for medium") },
+        // Android's panel (a sheet over home) where it has one, else its settings screen.
+        "settings" to SETTINGS_PAGES.let { Words(it, "settings takes ${it.joinToString()}") },
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
+        "speech" to setOf("start", "stop", "toggle", "cancel").let { Words(it, "speech takes ${it.joinToString()}; what's heard is in source x = android.speech") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },
+        "location" to setOf("request").let { Words(it, "location takes request; where the phone is is in source x = android.location") },
+        "calendar" to
+            Words(
+                setOf("request", "open"),
+                "calendar takes request or open; the events are in source x = android.calendar",
+                forms = mapOf("request" to (1..1 to "calendar(\"request\")"), "open" to (1..2 to "calendar(\"open\"), or calendar(\"open\", event)")),
+            ),
+        // owl 18: where a Browser goes, or how it loads where it is.
+        "web" to setOf("back", "forward", "reload", "stop").let { Words(it, "web takes ${it.joinToString()}") },
+        // A listening mode, the next one, or a setting: on and off ones turn over without a value.
+        "airpods" to
+            Words(
+                AIRPODS_MODES + setOf("next", "request", "connect", "conversation", "oneBud", "earDetection", "adaptiveLevel"),
+                "airpods takes ${AIRPODS_MODES.joinToString()}, next, request, connect, conversation, oneBud, earDetection or adaptiveLevel",
+                forms =
+                    (AIRPODS_MODES + setOf("next", "request", "connect")).associateWith { 1..1 to "airpods(\"$it\")" } +
+                        setOf("conversation", "oneBud", "earDetection").associateWith { 1..2 to "airpods(\"$it\"), or airpods(\"$it\", on)" } +
+                        ("adaptiveLevel" to (2..2 to "airpods(\"adaptiveLevel\", level)")),
+            ),
     )
 
 /** The tile's size, readable anywhere a declaration of the same name doesn't shadow it. */
-internal val TILE = setOf("cols", "rows", "tileWidth", "tileHeight", "screenWidth", "screenHeight", "screenInset", "screenTop", "corners")
+internal val TILE = setOf("cols", "rows", "tileWidth", "tileHeight", "screenWidth", "screenHeight", "screenInset", "screenTop", "screenLeft", "screenRight", "corners", "gapsIn", "gapsOut", "borderWidth", "tileOpacity", "tileFrost")
 
 /** Builtins that always give a number (or null, which reads as …). */
 internal val NUMBERS = setOf("int", "round", "floor", "ceil", "abs", "fixed", "len", "count", "sum", "min", "max", "clamp")
 
-internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding", "background")
+internal val WIDGET_PROPS = setOf("size", "minSize", "page", "order", "padding", "background", "lock", "fps")
 
 /** A face has no tile's size; it says where it goes and whether the status bar stays over it. */
-internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar")
+internal val FACE_PROPS = setOf("page", "order", "padding", "background", "statusBar", "edge", "lock", "fps")
 
-/** What `latch(...)`'s second value may be; without one it turns the modifier on for the next key, or off. */
-internal val LATCHES = setOf("once", "locked", "off")
+/** `uniform shader name;` in a Shader's code; see [SHADER_IMAGE]. */
+internal val SHADER_IMAGE_RE = Regex("""\buniform\s+shader\s+(\w+)""")
 
-internal val KEY_NAMES =
-    "pressKey takes a key, ${KeyNames.names.joinToString()} or a character, with modifiers in front: \"ctrl+c\", \"shift+insert\", \"ctrl+alt+t\""
+/** `uniform float3 name[8];` in a Shader's code; see [SHADER_ARRAY]. */
+internal val SHADER_ARRAY_RE = Regex("""\buniform\s+\w+\s+\w+\s*\[""")

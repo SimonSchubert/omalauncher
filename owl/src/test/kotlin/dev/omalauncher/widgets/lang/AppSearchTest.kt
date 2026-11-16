@@ -87,4 +87,17 @@ class AppSearchTest {
         assertEquals(foldAccents("Café Deluxe"), foldAccents(foldAccents("Café Deluxe")))
         assertEquals("İstanbul", rankMatches(listOf("Istria", "İstanbul"), "istanbul", { it }).first().first)
     }
+
+    @Test fun wordsBreakAtAnythingButLettersAndNumbers() {
+        // Punctuation, spaces and symbols between words, however many; numbers and other scripts are words too.
+        val named = listOf("pocket-blocks 2", "Mail (Work)", "東京 地図", "Ⅻ Clock", "Notes²")
+        assertEquals("pocket-blocks 2", rankMatches(named, "blocks 2", { it }).first().first)
+        assertEquals("Mail (Work)", rankMatches(named, "work", { it }).first().first)
+        assertEquals("東京 地図", rankMatches(named, "地図", { it }).first().first)
+        assertEquals("Ⅻ Clock", rankMatches(named, "clock", { it }).first().first)
+        assertEquals(400, matchScore("Mail (Work)", "work"))
+        assertEquals(400, matchScore("Notes² beta", "beta"))
+        // A letter outside the BMP is a letter, not a break.
+        assertEquals(400, matchScore("𝒜pp Store", "store"))
+    }
 }

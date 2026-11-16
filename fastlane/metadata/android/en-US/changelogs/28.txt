@@ -1,0 +1,1 @@
+Voice: a spoken conversation with Claude Code, Grok or OpenCode, or typed if you'd rather, from the drawer or the AI bar's mic. The launcher now comes in German and Simplified Chinese. Settings offers to make Omalauncher your home app. The today and fetch widgets shrink to 2x2. The drawer and faces with shaders run smoothly on slow tablets.

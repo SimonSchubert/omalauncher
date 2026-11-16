@@ -1,6 +1,6 @@
 default_platform(:android)
 
-AAB = 'app/build/outputs/bundle/release/app-release.aab'
+AAB = 'app/build/outputs/bundle/playRelease/app-play-release.aab'
 
 platform :android do
   desc "Upload the store listing text and images (no build)"
@@ -14,7 +14,7 @@ platform :android do
 
   desc "Build and upload an AAB to the internal testing track"
   lane :internal do
-    gradle(task: ':app:bundleRelease')
+    gradle(task: ':app:bundlePlayRelease')
     upload_to_play_store(
       track: 'internal',
       aab: AAB,
@@ -39,7 +39,7 @@ platform :android do
 
   desc "Build and upload an AAB straight to production"
   lane :deploy do
-    gradle(task: ':app:bundleRelease')
+    gradle(task: ':app:bundlePlayRelease')
     upload_to_play_store(
       track: 'production',
       aab: AAB,
