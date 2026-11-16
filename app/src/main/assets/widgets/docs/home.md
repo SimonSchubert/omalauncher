@@ -43,6 +43,9 @@ tiles = [
 - What couldn't be read is in `errors.txt` next to it, and on the phone's home.
   A file that doesn't parse changes nothing, and isn't saved over until it's fixed.
 
+A widget can read this file as well, with `file(...)` or a command: `tab-view.owl` does, with `awk`, to draw
+home's pages as tabs and jump to one when it's tapped.
+
 On a foldable, the cover screen has pages of its own, under `[cover]`: the
 same tiles, placed for a screen a third as tall. The pages at the top say
 what's on home; `[cover]` only says where it goes there. A tile left out of
