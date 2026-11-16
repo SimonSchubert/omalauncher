@@ -109,7 +109,8 @@ const val VOICE_PROMPT =
         "and at the end say the outcome in a sentence or two, not everything you did. Names are what speech-to-text " +
         "gets wrong most: the launcher you run in, and its command `omalauncher` (`omalauncher --help`), often come " +
         "as \"all my launcher\", \"home alarm show\" or the like. Take what they most likely meant and go ahead; ask " +
-        "only when it could be quite different things, rather than searching for words that were misheard."
+        "only when it could be quite different things, rather than searching for words that were misheard. When " +
+        "the user turns down something you asked to do, don't do it another way: say what you'd do instead or ask."
 
 /** Where agents work in Linux, unless one needs a folder of its own. */
 const val GUEST_HOME = "/root"
@@ -453,7 +454,7 @@ class AcpLink(
         asked[id] = rpcId to (params.optJSONArray("options") ?: JSONArray())
         val raw = call.optJSONObject("rawInput") ?: JSONObject()
         val key = if (call.optString("kind") == "execute" && raw.has("command")) Steps.commandKey(raw.optString("command")) else "acp:" + call.optString("kind")
-        return LinkEvent.Ask(id, Steps.acpLabel(call), raw.firstString("command", "path", "file_path", "url"), key)
+        return LinkEvent.Ask(id, Steps.acpLabel(call), raw.firstString("command", "path", "file_path", "url").ifEmpty { Steps.acpPaths(call).firstOrNull().orEmpty() }, key)
     }
 
     companion object {
@@ -840,10 +841,12 @@ object Steps {
             else -> Act(Act.Verb.Tool, name.lowercase())
         }
 
+    /** The files a tool call names: its locations, its input's path, and the files its diffs change (Hermes names an edit only there). */
     fun acpPaths(u: JSONObject): List<String> {
         val raw = u.optJSONObject("rawInput") ?: JSONObject()
         val locations = u.optJSONArray("locations")?.objects()?.mapNotNull { it.optString("path").takeIf(String::isNotEmpty) } ?: emptyList()
-        return locations + listOf("path", "file_path").mapNotNull { k -> raw.optString(k).takeIf(String::isNotEmpty) }
+        val diffs = u.optJSONArray("content")?.objects()?.filter { it.optString("type") == "diff" }?.mapNotNull { it.optString("path").takeIf(String::isNotEmpty) } ?: emptyList()
+        return locations + listOf("path", "file_path").mapNotNull { k -> raw.optString(k).takeIf(String::isNotEmpty) } + diffs
     }
 
     fun acpLabel(u: JSONObject): Act {
