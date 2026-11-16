@@ -54,6 +54,13 @@ data class OwnInstaller(
 )
 
 /**
+ * Hermes keeps what its installer and updater downloaded (pnpm's store and uv's wheels): 140 MB after an install
+ * and 600 MB after an update, needed by neither once they are done. What it runs from is linked out of them,
+ * and stays.
+ */
+const val HERMES_CLEANUP = "rm -rf ~/.hermes/cache/pnpm ~/.hermes/cache/uv"
+
+/**
  * Omarchy's agent list (omarchy-default-agent), limited to ones mise can install on arm64, plus Hermes,
  * which Omarchy also installs with Hermes's own installer.
  */
@@ -81,8 +88,9 @@ val AGENTS =
                     // Without the browser and computer-use extras: Playwright's Chromium has no place on a phone.
                     install =
                         "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | " +
-                            "bash -s -- --non-interactive --skip-browser --skip-computer-use",
-                    update = "hermes update --yes",
+                            "bash -s -- --non-interactive --skip-browser --skip-computer-use && $HERMES_CLEANUP",
+                    // The downloads go even when the update fails, as with mise's.
+                    update = "{ hermes update --yes; ok=\$?; $HERMES_CLEANUP; [ \$ok -eq 0 ]; }",
                     // Its own uninstall stops what it left running and takes the program, but keeps the 1.7 GB
                     // of runtimes and caches it downloaded next to the user's settings, keys and memories,
                     // which stay as with the other agents. Best effort: a broken install can't run it.
@@ -176,9 +184,11 @@ val MISE_NODE_FOR_AGENTS =
  * an option, MiniMax Code, Kiro, Devin and Command Code take it after --, and Amp reads its first
  * message from stdin (an argument would be one turn that exits), as Omarchy's omarchy-agent starts them.
  * [readOnly], for reading something untrusted: Claude Code and Antigravity start in plan mode, where they
- * can read but not run commands or change files whatever the user's settings say. Hermes starts without
- * --yolo, so it asks before a dangerous command. The others have no flag for that we can rely on inside
- * proot, and only have the prompt.
+ * can read but not run commands or change files whatever the user's settings say. Hermes starts with its
+ * file tools alone (-t file): no terminal, web or browser, so it can read and write files but not run or
+ * send anything. Leaving out --yolo isn't enough: its approvals default to "smart", where its own model
+ * approves a dangerous command, and other commands never ask. The others have no flag for that we can
+ * rely on inside proot, and only have the prompt.
  */
 fun agentInvocation(
     agentBin: String,
@@ -190,7 +200,7 @@ fun agentInvocation(
     return when {
         agentBin == "opencode" -> "$agentBin --prompt $quoted"
         agentBin == "copilot" -> "$agentBin -i $quoted"
-        agentBin == "hermes" && readOnly -> "hermes chat --query=$quoted"
+        agentBin == "hermes" && readOnly -> "hermes chat -t file --query=$quoted"
         agentBin == "hermes" -> "hermes chat --yolo --query=$quoted"
         agentBin == "claude" && readOnly -> "$agentBin --permission-mode plan $quoted"
         agentBin == "ori" -> "ori code --interactive --prompt $quoted"

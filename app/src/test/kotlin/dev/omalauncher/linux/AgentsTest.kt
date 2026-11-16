@@ -104,8 +104,18 @@ class AgentsTest {
         assertEquals(0, update())
         assertTrue("updated without an install", !File(home, "ran").exists())
         File(home, ".hermes/hermes-agent/.hermes-bootstrap-complete").apply { parentFile.mkdirs() }.writeText("")
+        val downloads = listOf("pnpm", "uv").map { File(home, ".hermes/cache/$it/x").apply { parentFile.mkdirs() } }
+        downloads.forEach { it.writeText("") }
+        val kept = File(home, ".hermes/cache/web/x").apply { parentFile.mkdirs() }.also { it.writeText("") }
         assertEquals(0, update())
         assertEquals("update --yes\n", File(home, "ran").readText())
+        assertTrue("the updater's downloads stay", downloads.none { it.parentFile.exists() })
+        assertTrue("another cache went too", kept.exists())
+        // A failed update still fails the system update, and its downloads go all the same.
+        stub.writeText("#!/bin/sh\nexit 3\n")
+        downloads.forEach { it.parentFile.mkdirs() }
+        assertTrue("a failed update passed", update() != 0)
+        assertTrue(downloads.none { it.parentFile.exists() })
         home.deleteRecursively()
     }
 
@@ -142,8 +152,8 @@ class AgentsTest {
             stub(bin, "printf '%s\\0' \"${'$'}(basename \"${'$'}0\")\" \"${'$'}@\"")
             assertEquals(bin, args, run(agentInvocation(bin, prompt)).split('\u0000').dropLast(1))
         }
-        // Reading something untrusted, Hermes keeps asking before dangerous commands.
-        assertEquals(listOf("hermes", "chat", "--query=$prompt"), run(agentInvocation("hermes", prompt, readOnly = true)).split('\u0000').dropLast(1))
+        // Reading something untrusted, Hermes has only its file tools: no terminal, web or browser.
+        assertEquals(listOf("hermes", "chat", "-t", "file", "--query=$prompt"), run(agentInvocation("hermes", prompt, readOnly = true)).split('\u0000').dropLast(1))
         // Amp reads its first message from stdin, then stays interactive.
         stub("amp", "cat")
         assertEquals(prompt + "\n", run(agentInvocation("amp", prompt)))

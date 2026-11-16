@@ -1220,7 +1220,8 @@ class WidgetEngine(
                 "It's Arch Linux ARM under proot, not a booted system: you are root already (no sudo needed), and there is " +
                 "no systemd (systemctl, services and timers don't work), no cron, no Docker and no kernel modules. A server, " +
                 "bot or gateway keeps running in the background, but only as long as the terminal or window it was started in " +
-                "stays open, and nothing starts it again: run it in the foreground there. Install " +
+                "stays open, and nothing starts it again: run it in the foreground there. An agent's own scheduler is such a " +
+                "program: Hermes's cron jobs and messaging bots only run while a window with Hermes is open. Install " +
                 "packages with pacman or yay, command-line tools with mise. A Chromium that a tool downloads (Playwright, " +
                 "an agent's browser) needs --no-sandbox, as you are root, and its libraries from pacman: nss at-spi2-core " +
                 "libcups libxcomposite libxdamage libxrandr mesa cairo pango. /sdcard is the phone's own storage, but it shows only " +
