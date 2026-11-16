@@ -129,14 +129,26 @@
     <string name="gestures_title">gestos</string>
     <string name="gestures_swipe_up">deslizar hacia arriba</string>
     <string name="gestures_swipe_down">deslizar hacia abajo</string>
+    <string name="gestures_double_tap">doble toque</string>
+    <string name="gestures_hold">mantener pulsado</string>
+    <string name="gestures_two_finger_up">deslizar hacia arriba con dos dedos</string>
+    <string name="gestures_two_finger_down">deslizar hacia abajo con dos dedos</string>
+    <string name="gestures_on_home">en el inicio</string>
+    <string name="gestures_on_empty">en el inicio vacío</string>
     <string name="gestures_nothing">nada</string>
+    <string name="gestures_lock">bloquear pantalla</string>
+    <string name="gestures_menu">menú de inicio</string>
+    <string name="gestures_panels">paneles</string>
     <string name="gestures_has_errors">%1$s (tiene errores)</string>
     <string name="gestures_missing">%1$s (falta)</string>
     <string name="gestures_edit">editar</string>
-    <string name="gestures_hint">los paneles son archivos owl, el cajón de apps entre ellos: edítalos como widgets, o crea uno con tu agente desde el menú de inicio. sin nada al deslizar hacia arriba, tocar la barra sigue abriendo el cajón</string>
+    <string name="gestures_allow">permitir</string>
+    <string name="gestures_lock_needs_admin">bloquear la pantalla necesita omalauncher como administrador del dispositivo</string>
+    <string name="gestures_hint">los paneles son archivos owl, el cajón de apps entre ellos: edítalos como widgets, o crea uno con tu agente desde el menú de inicio. bloquear la pantalla y el menú al mantener también son acciones. sin nada al deslizar hacia arriba, tocar la barra sigue abriendo el cajón</string>
     <string name="gestures_stock_drawer">el cajón original</string>
     <string name="gestures_drawer_shows">el cajón muestra %1$s</string>
     <string name="gestures_swipe_down_nothing">deslizar hacia abajo no abre nada</string>
+    <string name="gestures_opens_nothing">este gesto no abre nada</string>
     <string name="gestures_until_fixed">%1$s hasta que se arregle: %2$s</string>
     <string name="gestures_keybar_until_fixed">la barra de teclas de la terminal es la original hasta que se arregle: %1$s</string>
 

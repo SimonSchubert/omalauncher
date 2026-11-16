@@ -83,6 +83,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.res.stringResource
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
+import dev.omalauncher.LockAdmin
 import dev.omalauncher.linux.LinuxState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.text.BasicText
@@ -321,6 +322,27 @@ fun HomeScreen(
         state.homeMenuOpen = true
     }
 
+    /**
+     * Runs what a gesture on home is set to beyond opening a panel: locking the screen, home's menu, or a panel
+     * coming down from the top. False for nothing, and for a panel that's gone or doesn't compile.
+     */
+    fun runGesture(choice: String): Boolean =
+        when (choice) {
+            Gestures.NONE -> false
+            Gestures.LOCK -> {
+                LockAdmin.lock(runtime.gestures.context)
+                true
+            }
+            Gestures.MENU -> {
+                openMenu(null)
+                true
+            }
+            else -> runtime.panelOf(choice)?.let { panel ->
+                state.openPull(panel)
+                true
+            } ?: false
+        }
+
     fun remove(item: HomeItem) {
         state.editing = null
         when (item) {
@@ -387,7 +409,12 @@ fun HomeScreen(
             // Swiping up opens the drawer, like stock launchers, or what gesture settings say; not while editing, in a
             // folder or typing in a tile, nor while a widget holds the screen still. A long-press drag takes its touches
             // first, and the pager only wants sideways ones.
-            .homeSwipe(runtime, state, enabled = !terminals.typing && state.editing == null && arrange.folder == null && !terminals.locked)
+            .homeSwipe(
+                runtime,
+                state,
+                enabled = !terminals.typing && state.editing == null && arrange.folder == null && !terminals.locked,
+                onAction = { runGesture(it) },
+            )
             // Typing in a tile (its terminal or a widget's text field): lift the pages so the tile stays above the keyboard,
             // but not under the status bar; a tile too tall for both gives up the rest at its bottom.
             .graphicsLayer {
@@ -514,7 +541,8 @@ fun HomeScreen(
             turned = turned,
             side = side,
             per = per,
-            onLongPressEmpty = { openMenu(null) },
+            onLongPressEmpty = { runGesture(runtime.gestures.hold) },
+            onDoubleTapEmpty = runtime.gestures.doubleTap.takeUnless { it == Gestures.NONE }?.let { choice -> { runGesture(choice) } },
             feed = { page ->
                 val agent = runtime.agents.default?.name
                 PageInvite(

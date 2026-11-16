@@ -336,7 +336,10 @@ internal fun HomeGrid(
     onSelect: (String?) -> Unit,
     render: @Composable (HomeItem, Modifier, Boolean) -> Unit,
     actions: @Composable (HomeItem) -> Unit,
-    onLongPressEmpty: () -> Unit,
+    /** Runs the hold gesture on empty home; false when it's set to nothing, so it doesn't buzz. */
+    onLongPressEmpty: () -> Boolean,
+    /** Runs the double-tap gesture on empty home; null when it's set to nothing, so a tap doesn't wait for a second. */
+    onDoubleTapEmpty: (() -> Unit)?,
     /** What a page left of the first ([isFacePage]) shows while no face is there; it gets the page's number. */
     feed: @Composable (Int) -> Unit,
     /** What an empty tile page shows while no tile is carried. */
@@ -429,6 +432,9 @@ internal fun HomeGrid(
         val current by rememberUpdatedState(Triple(slots, grid to wide, selected))
         // Read inside the gesture below, which outlives recomposition: a lock that comes and goes is seen there too.
         val lockedNow by rememberUpdatedState(locked)
+        // A gesture the user picks in settings while home is composed (over it) takes effect without making it anew.
+        val holdNow by rememberUpdatedState(onLongPressEmpty)
+        val doubleTapNow by rememberUpdatedState(onDoubleTapEmpty)
 
         fun placedOn(
             page: Int,
@@ -613,6 +619,56 @@ internal fun HomeGrid(
                         }
                     } == null
 
+                    /**
+                     * Waits out a press on empty home without taking it: null if it became a long press (the hold gesture),
+                     * true if it lifted as a tap, false if it moved away or went away.
+                     */
+                    suspend fun AwaitPointerEventScope.awaitEmptyPress(
+                        downId: PointerId,
+                        start: Offset,
+                    ): Boolean? =
+                        withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                            var tap: Boolean? = null
+                            while (tap == null) {
+                                val event = awaitPointerEvent(PointerEventPass.Initial)
+                                val c = event.changes.firstOrNull { it.id == downId }
+                                tap =
+                                    when {
+                                        c == null -> false
+                                        !c.pressed -> true
+                                        // A second finger makes it a gesture of its own, not a press on empty home.
+                                        event.changes.count { it.pressed } > 1 -> false
+                                        (c.position - start).getDistance() > viewConfiguration.touchSlop -> false
+                                        else -> null
+                                    }
+                            }
+                            tap
+                        }
+
+                    /**
+                     * After a tap on empty home, waits for a second one within Android's double-tap time, starting on
+                     * empty home too: true if that second one was a tap as well. One that lasts is the hold gesture,
+                     * and runs it instead, so a slow double tap still gets home's menu; one on a tile is the tile's.
+                     */
+                    suspend fun AwaitPointerEventScope.awaitSecondTap(
+                        empty: (Offset) -> Boolean,
+                        hold: () -> Boolean,
+                    ): Boolean {
+                        val second =
+                            withTimeoutOrNull(viewConfiguration.doubleTapTimeoutMillis) {
+                                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            } ?: return false
+                        if (!empty(second.position)) return false
+                        return when (awaitEmptyPress(second.id, second.position)) {
+                            true -> true
+                            null -> {
+                                if (hold()) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                false
+                            }
+                            false -> false
+                        }
+                    }
+
                     /** Takes [downId]'s moves until it lifts, giving [onMove] each position while pressed; where it lifted, or null if it went away. */
                     suspend fun AwaitPointerEventScope.trackUntilUp(
                         downId: PointerId,
@@ -734,24 +790,33 @@ internal fun HomeGrid(
 
                         val hit = placed.lastOrNull { (i, c) -> g.rect(i, c).has(at) }
                         // A face's long presses are its own nodes' (onLongPress), which it's not lifted by (it's
-                        // arranged in settings › pages). One that none of them takes opens the menu, as empty space does:
-                        // they take it as the press times out, so give them a moment to say so.
+                        // arranged in settings › pages). One that none of them takes runs the hold gesture, as empty
+                        // space does: they take it as the press times out, so give them a moment to say so.
                         if (hit?.first?.isFace == true) {
                             if (!awaitLongPress(down.id, start)) return@awaitEachGesture
                             val held = SystemClock.uptimeMillis()
                             withTimeoutOrNull(CLAIM_MS) { while (true) awaitPointerEvent(PointerEventPass.Initial) }
-                            if (claims.at < held - viewConfiguration.longPressTimeoutMillis) {
+                            if (claims.at < held - viewConfiguration.longPressTimeoutMillis && holdNow()) {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onLongPressEmpty()
+                            }
+                            return@awaitEachGesture
+                        }
+                        if (hit == null) {
+                            // Empty space: a press that lasts is the hold gesture; one that lifts is a tap, which may
+                            // be the first of a double tap.
+                            when (awaitEmptyPress(down.id, start)) {
+                                null -> if (holdNow()) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                true ->
+                                    doubleTapNow?.let { doubleTap ->
+                                        val empty = { p: Offset -> placed.lastOrNull { (i, c) -> g.rect(i, c).has(g.local(p, side)) } == null }
+                                        if (awaitSecondTap(empty, holdNow)) doubleTap()
+                                    }
+                                false -> {}
                             }
                             return@awaitEachGesture
                         }
                         if (!awaitLongPress(down.id, start)) return@awaitEachGesture
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (hit == null) {
-                            onLongPressEmpty()
-                            return@awaitEachGesture
-                        }
                         // Lifted: select it, and let the same finger drag it without letting go.
                         onSelect(hit.first.key)
                         arrange.holding = true

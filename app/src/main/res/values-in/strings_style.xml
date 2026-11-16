@@ -125,14 +125,26 @@
     <string name="gestures_title">gestur</string>
     <string name="gestures_swipe_up">geser ke atas</string>
     <string name="gestures_swipe_down">geser ke bawah</string>
+    <string name="gestures_double_tap">ketuk dua kali</string>
+    <string name="gestures_hold">tahan</string>
+    <string name="gestures_two_finger_up">geser ke atas dengan dua jari</string>
+    <string name="gestures_two_finger_down">geser ke bawah dengan dua jari</string>
+    <string name="gestures_on_home">di layar utama</string>
+    <string name="gestures_on_empty">di layar utama kosong</string>
     <string name="gestures_nothing">tidak ada</string>
+    <string name="gestures_lock">kunci layar</string>
+    <string name="gestures_menu">menu layar utama</string>
+    <string name="gestures_panels">panel</string>
     <string name="gestures_has_errors">%1$s (ada error)</string>
     <string name="gestures_missing">%1$s (hilang)</string>
     <string name="gestures_edit">edit</string>
-    <string name="gestures_hint">panel adalah file owl, termasuk laci aplikasi: edit seperti widget, atau buat baru dengan agenmu dari menu layar utama. jika geser ke atas diatur ke tidak ada, mengetuk bilah tetap membuka laci aplikasi</string>
+    <string name="gestures_allow">izinkan</string>
+    <string name="gestures_lock_needs_admin">kunci layar memerlukan omalauncher sebagai admin perangkat ponsel</string>
+    <string name="gestures_hint">panel adalah file owl, termasuk laci aplikasi: edit seperti widget, atau buat baru dengan agenmu dari menu layar utama. kunci layar dan menu saat menahan juga tindakan. jika geser ke atas diatur ke tidak ada, mengetuk bilah tetap membuka laci aplikasi</string>
     <string name="gestures_stock_drawer">laci aplikasi bawaan</string>
     <string name="gestures_drawer_shows">laci aplikasi: %1$s</string>
     <string name="gestures_swipe_down_nothing">geser ke bawah tidak membuka apa pun</string>
+    <string name="gestures_opens_nothing">gestur ini tidak membuka apa pun</string>
     <string name="gestures_until_fixed">%1$s sampai diperbaiki: %2$s</string>
     <string name="gestures_keybar_until_fixed">bilah tombol terminal memakai bawaan sampai diperbaiki: %1$s</string>
 

@@ -10,4 +10,7 @@
     <string name="activity_voice">Голос</string>
     <string name="activity_settings">Настройки</string>
     <string name="notification_listener">Виджеты Omalauncher</string>
+    <string name="lock_admin_label">Блокировка Omalauncher</string>
+    <string name="lock_admin_description">Позволяет Omalauncher блокировать экран жестом на главном экране. Больше ничего не требуется.</string>
+    <string name="lock_admin_why">Omalauncher блокирует экран, когда об этом просит жест на главном экране. Никакого другого контроля над телефоном он не получает.</string>
 </resources>

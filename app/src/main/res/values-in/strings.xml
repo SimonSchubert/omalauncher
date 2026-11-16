@@ -10,4 +10,7 @@
     <string name="activity_voice">Suara</string>
     <string name="activity_settings">Setelan</string>
     <string name="notification_listener">Widget Omalauncher</string>
+    <string name="lock_admin_label">Kunci layar Omalauncher</string>
+    <string name="lock_admin_description">Memungkinkan Omalauncher mengunci layar lewat gestur di layar utama. Tidak meminta hal lain.</string>
+    <string name="lock_admin_why">Omalauncher mengunci layar saat gestur di layar utama memintanya. Tidak ada kendali lain atas ponsel.</string>
 </resources>

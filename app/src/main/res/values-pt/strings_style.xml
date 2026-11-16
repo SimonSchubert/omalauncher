@@ -129,14 +129,26 @@
     <string name="gestures_title">gestos</string>
     <string name="gestures_swipe_up">deslizar para cima</string>
     <string name="gestures_swipe_down">deslizar para baixo</string>
+    <string name="gestures_double_tap">toque duplo</string>
+    <string name="gestures_hold">manter premido</string>
+    <string name="gestures_two_finger_up">deslizar para cima com dois dedos</string>
+    <string name="gestures_two_finger_down">deslizar para baixo com dois dedos</string>
+    <string name="gestures_on_home">no início</string>
+    <string name="gestures_on_empty">no início vazio</string>
     <string name="gestures_nothing">nada</string>
+    <string name="gestures_lock">bloquear ecrã</string>
+    <string name="gestures_menu">menu do início</string>
+    <string name="gestures_panels">painéis</string>
     <string name="gestures_has_errors">%1$s (tem erros)</string>
     <string name="gestures_missing">%1$s (ausente)</string>
     <string name="gestures_edit">editar</string>
-    <string name="gestures_hint">os painéis são arquivos owl, a gaveta entre eles: edite-os como widgets, ou crie um com seu agente pelo menu do início. sem nada em deslizar para cima, tocar na barra ainda abre a gaveta</string>
+    <string name="gestures_allow">permitir</string>
+    <string name="gestures_lock_needs_admin">bloquear o ecrã precisa do omalauncher como administrador do dispositivo</string>
+    <string name="gestures_hint">os painéis são arquivos owl, a gaveta entre eles: edite-os como widgets, ou crie um com seu agente pelo menu do início. bloquear o ecrã e o menu ao manter também são ações. sem nada em deslizar para cima, tocar na barra ainda abre a gaveta</string>
     <string name="gestures_stock_drawer">a gaveta original</string>
     <string name="gestures_drawer_shows">a gaveta mostra %1$s</string>
     <string name="gestures_swipe_down_nothing">deslizar para baixo não abre nada</string>
+    <string name="gestures_opens_nothing">este gesto não abre nada</string>
     <string name="gestures_until_fixed">%1$s até ser corrigido: %2$s</string>
     <string name="gestures_keybar_until_fixed">a barra de teclas do terminal é a original até ser corrigida: %1$s</string>
 

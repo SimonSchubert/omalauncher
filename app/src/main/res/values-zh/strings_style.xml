@@ -125,14 +125,26 @@
     <string name="gestures_title">手势</string>
     <string name="gestures_swipe_up">上滑</string>
     <string name="gestures_swipe_down">下滑</string>
+    <string name="gestures_double_tap">双击</string>
+    <string name="gestures_hold">长按</string>
+    <string name="gestures_two_finger_up">双指上滑</string>
+    <string name="gestures_two_finger_down">双指下滑</string>
+    <string name="gestures_on_home">在主屏幕</string>
+    <string name="gestures_on_empty">在主屏幕空白处</string>
     <string name="gestures_nothing">无</string>
+    <string name="gestures_lock">锁定屏幕</string>
+    <string name="gestures_menu">主屏幕菜单</string>
+    <string name="gestures_panels">面板</string>
     <string name="gestures_has_errors">%1$s（有错误）</string>
     <string name="gestures_missing">%1$s（缺失）</string>
     <string name="gestures_edit">编辑</string>
-    <string name="gestures_hint">面板是 owl 文件，应用抽屉也是其中之一：可以像小组件一样编辑，也可以在主屏幕菜单里让智能体新建一个。上滑未设置时，点按输入栏仍会打开应用抽屉</string>
+    <string name="gestures_allow">允许</string>
+    <string name="gestures_lock_needs_admin">锁定屏幕需要 omalauncher 成为手机的设备管理员</string>
+    <string name="gestures_hint">面板是 owl 文件，应用抽屉也是其中之一：可以像小组件一样编辑，也可以在主屏幕菜单里让智能体新建一个。锁定屏幕和主屏幕菜单也是动作。上滑未设置时，点按输入栏仍会打开应用抽屉</string>
     <string name="gestures_stock_drawer">默认抽屉</string>
     <string name="gestures_drawer_shows">应用抽屉改用“%1$s”</string>
     <string name="gestures_swipe_down_nothing">下滑不会打开任何内容</string>
+    <string name="gestures_opens_nothing">此手势不会打开任何内容</string>
     <string name="gestures_until_fixed">修复之前，%1$s：%2$s</string>
     <string name="gestures_keybar_until_fixed">修复之前，终端按键栏使用默认按键：%1$s</string>
 

@@ -131,14 +131,26 @@
     <string name="gestures_title">жесты</string>
     <string name="gestures_swipe_up">свайп вверх</string>
     <string name="gestures_swipe_down">свайп вниз</string>
+    <string name="gestures_double_tap">двойное касание</string>
+    <string name="gestures_hold">удержание</string>
+    <string name="gestures_two_finger_up">свайп вверх двумя пальцами</string>
+    <string name="gestures_two_finger_down">свайп вниз двумя пальцами</string>
+    <string name="gestures_on_home">на главном экране</string>
+    <string name="gestures_on_empty">на пустом главном экране</string>
     <string name="gestures_nothing">ничего</string>
+    <string name="gestures_lock">заблокировать экран</string>
+    <string name="gestures_menu">меню главного экрана</string>
+    <string name="gestures_panels">панели</string>
     <string name="gestures_has_errors">%1$s (с ошибками)</string>
     <string name="gestures_missing">%1$s (нет файла)</string>
     <string name="gestures_edit">изменить</string>
-    <string name="gestures_hint">панели — это owl-файлы, и список приложений тоже: меняйте их как виджеты или создайте новую через агента в меню главного экрана. если на свайп вверх ничего не назначено, нажатие на строку ввода всё равно открывает список приложений</string>
+    <string name="gestures_allow">разрешить</string>
+    <string name="gestures_lock_needs_admin">для блокировки экрана omalauncher должен быть администратором устройства</string>
+    <string name="gestures_hint">панели — это owl-файлы, и список приложений тоже: меняйте их как виджеты или создайте новую через агента в меню главного экрана. блокировка экрана и меню при удержании — тоже действия. если на свайп вверх ничего не назначено, нажатие на строку ввода всё равно открывает список приложений</string>
     <string name="gestures_stock_drawer">стандартный список приложений</string>
     <string name="gestures_drawer_shows">список приложений → %1$s</string>
     <string name="gestures_swipe_down_nothing">свайп вниз ничего не открывает</string>
+    <string name="gestures_opens_nothing">этот жест ничего не открывает</string>
     <string name="gestures_until_fixed">%1$s, пока ошибка не исправлена: %2$s</string>
     <string name="gestures_keybar_until_fixed">панель клавиш терминала будет стандартной, пока ошибка не исправлена: %1$s</string>
 

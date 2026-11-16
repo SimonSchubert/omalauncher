@@ -2,21 +2,30 @@
 
 Part of the widget docs: README.md, one folder up, comes first, and paths here are from the widgets folder.
 
-A panel is a file of its own that a swipe on home opens: swiping up opens the app drawer, above the prompt bar;
-swiping down brings one from the top. The app drawer is a panel too, `drawer.owl`: edit it to change the drawer, or
+A panel is a file of its own that a gesture on home opens: swiping up opens the app drawer, above the prompt bar;
+swiping down brings one from the top, and so does a two-finger swipe, a double tap or a long press on empty home when
+one of those is picked. The app drawer is a panel too, `drawer.owl`: edit it to change the drawer, or
 read it to see how a whole drawer is put together. The launcher ships one more, `controls.owl`, for swiping down: the
-phone's switches, the volume, what's playing, the next alarm and the notifications. Which panel each swipe opens
+phone's switches, the volume, what's playing, the next alarm and the notifications. Which panel each gesture opens
 is picked in settings › gestures, or in style.toml as the panel's file name (see `defaults.toml`):
 
 ```toml
 [gestures]
 swipe-up = "my-drawer.owl"     # drawer.owl by default; "none" leaves the swipe to tapping the bar
 swipe-down = "controls.owl"    # "none" nothing
+double-tap = "lock"            # locks the screen; "menu", a panel's name, or "none" too
+hold = "my-panel.owl"          # home's menu by default, where themes and new widgets start
+two-finger-up = "none"         # each two-finger swipe is a gesture of its own
+two-finger-down = "none"
 ```
+
+Alongside panels, every gesture takes "lock" for the screen and "menu" for home's menu, the same one a long press
+opens by default. Locking asks Android once to make the launcher the phone's device admin, and until that's allowed
+the gesture opens the screen that allows it.
 
 The drawer is the panel picked for swiping up, else `drawer.owl`, else `.stock-drawer.owl`: the drawer as this
 launcher ships it, which it keeps that way. So a drawer that's removed or stops compiling never locks anyone out of
-their apps (a panel picked for swiping down that's broken opens nothing). Home's banner says which, and settings list it
+their apps (a panel picked for another gesture that's broken opens nothing). Home's banner says which, and settings list it
 with "(has errors)". Compare `drawer.owl` with `.stock-drawer.owl` to see what changed in the stock drawer since. With
 nothing on swipe up, tapping the bar still opens the drawer.
 
