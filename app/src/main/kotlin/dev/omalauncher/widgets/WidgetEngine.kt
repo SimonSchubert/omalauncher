@@ -324,9 +324,26 @@ class WidgetEngine(
     /** Whether the strip shows stood up beside the grid, in landscape: `vertical` in `android.strip`. */
     var stripVertical by mutableStateOf(false)
 
-    /** How tall the strip measured above the bar, and how wide stood up beside the grid, in pixels; -1 until it has. */
-    var stripHeightPx by mutableIntStateOf(-1)
-    var stripWidthPx by mutableIntStateOf(-1)
+    private val stripPrefs = LauncherData.prefs(context)
+
+    /**
+     * How tall the strip measured above the bar, and how wide stood up beside the grid, in pixels; -1 until it ever has.
+     * Kept across starts: home's tiles are where they stay from the first frame, however tall the user's strip is.
+     */
+    var stripHeightPx by mutableIntStateOf(stripPrefs.getInt(STRIP_HEIGHT, -1))
+        private set
+    var stripWidthPx by mutableIntStateOf(stripPrefs.getInt(STRIP_WIDTH, -1))
+        private set
+
+    /** The strip measured [px] tall above the bar, or wide stood up [vertical] beside the grid. */
+    fun stripMeasured(
+        vertical: Boolean,
+        px: Int,
+    ) {
+        if (px == if (vertical) stripWidthPx else stripHeightPx) return
+        if (vertical) stripWidthPx = px else stripHeightPx = px
+        stripPrefs.edit().putInt(if (vertical) STRIP_WIDTH else STRIP_HEIGHT, px).apply()
+    }
 
     /** On a home page: a widget's tile, or a face; not an app, a panel, the extra keys or the strip. */
     fun onHome(spec: WidgetSpec) = spec.kind == OwlKind.Widget || spec.kind == OwlKind.Face
@@ -1189,6 +1206,8 @@ class WidgetEngine(
 
         /** The strip as this launcher ships it, kept that way: the fallback, and what an edited strip.owl compares with. */
         const val STOCK_STRIP = ".stock-strip.owl"
+        private const val STRIP_HEIGHT = "strip_height_px"
+        private const val STRIP_WIDTH = "strip_width_px"
         private const val TERMINAL_PREFIX = "terminal-"
         private const val AGENT_PREFIX = "agent-"
 

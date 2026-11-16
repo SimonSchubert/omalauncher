@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.Dp
 import dev.omalauncher.widgets.render.WidgetStrip
 import dev.omalauncher.widgets.runtime.WidgetInstance
+import dev.omalauncher.widgets.lang.Bool
+import dev.omalauncher.widgets.lang.Obj
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -292,8 +294,13 @@ internal fun RecentStrip(
     val widgets = runtime.widgets
     LaunchedEffect(widgets, vertical) { widgets.stripVertical = vertical }
     val inst = widgets.stripInstance()
-    if (inst == null) {
-        Spacer(if (vertical) modifier.width(RecentStripHeight) else modifier.height(RecentStripHeight))
+    // Not while the file still lays itself out for the other way: `vertical` in android.strip reaches it some frames
+    // after home has turned, and a Column as tall as the screen above the bar, or a Row as wide beside the grid, would
+    // take all the strip may have and squeeze home's tiles until it did. Its room stays as it last measured this way.
+    val turning = ((inst?.androidValue("strip") as? Obj)?.fields?.get("vertical") as? Bool)?.let { it.v != vertical } == true
+    if (inst == null || turning) {
+        val room = stripRoom(runtime, vertical)
+        Spacer(if (vertical) modifier.width(room) else modifier.height(room))
         return
     }
     val focusManager = LocalFocusManager.current
@@ -325,7 +332,7 @@ internal fun RecentStrip(
                 .then(if (vertical) Modifier.fillMaxHeight() else Modifier.padding(horizontal = EdgeGap).fillMaxWidth())
                 .then(if (vertical) Modifier.widthIn(max = stripMax(true)) else Modifier.heightIn(max = stripMax(false)))
                 .clipToBounds()
-                .onSizeChanged { if (vertical) widgets.stripWidthPx = it.width else widgets.stripHeightPx = it.height }
+                .onSizeChanged { widgets.stripMeasured(vertical, if (vertical) it.width else it.height) }
                 .then(keys),
         )
     }
