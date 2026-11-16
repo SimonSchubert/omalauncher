@@ -182,6 +182,9 @@ class VoiceSession(
     private val always = HashSet<String>()
     private var buffer = ""
     private var afterTool = false
+
+    /** The turn in progress has its reply so far in the transcript already ([ask]), so it did say something. */
+    private var keptEarly = false
     private var lastSaid = 0L
     private var lastEvent = 0L
     private var doneAt = 0L
@@ -316,8 +319,12 @@ class VoiceSession(
         if (said.isEmpty()) return
         if (agent == null) return
         notice = null
+        // What it said so far comes first: the reply in progress is shown last, and would end up below this.
+        val kept = reply.isNotBlank()
+        keepReply()
         // An answer to the question on screen: yes, no, or what to do instead.
         approvals.firstOrNull()?.let { a ->
+            if (kept) keptEarly = true
             transcript += Entry("you", said)
             saveTranscript()
             when {
@@ -331,6 +338,8 @@ class VoiceSession(
         // It didn't start: start() said why, and there's no one to wait for.
         if (process == null) return
         val fresh = turns == 0
+        // A turn that ended without its answer (stopped, the agent gone) leaves nothing for the next one.
+        keptEarly = !fresh && (keptEarly || kept)
         if (fresh) {
             steps.clear()
             since = System.currentTimeMillis()
@@ -706,7 +715,8 @@ class VoiceSession(
                     turns = (turns - 1).coerceAtLeast(0)
                     doneAt = System.currentTimeMillis()
                     restarts = 0
-                    val had = reply.isNotBlank() || transcript.lastOrNull()?.who == "image"
+                    val had = reply.isNotBlank() || keptEarly || transcript.lastOrNull()?.who == "image"
+                    keptEarly = false
                     endReply()
                     saveSession()
                     if (prompted && e.error != null) {
@@ -791,12 +801,17 @@ class VoiceSession(
     /** The reply so far into the transcript, as its own paragraph. */
     private fun endReply() {
         handOver(final = true)
+        keepReply()
+        afterTool = false
+    }
+
+    /** What's written of the reply into the transcript, while the voice goes on with it: what follows is a new paragraph. */
+    private fun keepReply() {
         if (reply.isNotBlank()) {
             transcript += Entry("agent", reply.trim())
             saveTranscript()
         }
         reply = ""
-        afterTool = false
     }
 
     /** A picture it read, like a widget's preview: copied now, as the next owl-check overwrites it, after what it said so far. */
