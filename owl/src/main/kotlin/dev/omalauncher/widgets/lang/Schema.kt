@@ -22,7 +22,7 @@ internal class DrawOp(
 internal val KINDS: Map<String, Kind> =
     mapOf(
         "Column" to Kind(setOf("gap", "align", "justify", "scroll", "lazy", "reverse"), Children.UI),
-        "Row" to Kind(setOf("gap", "align", "justify", "wrap"), Children.UI),
+        "Row" to Kind(setOf("gap", "align", "justify", "wrap", "scroll"), Children.UI),
         "Flow" to Kind(setOf("gap", "align", "justify"), Children.UI),
         "Box" to Kind(setOf("align"), Children.UI),
         "Grid" to Kind(setOf("columns", "gap", "lazy", "reverse"), Children.UI),
@@ -202,7 +202,9 @@ internal val SINCE =
         // player's own buttons.
         listOf("media(\"seek\")", "media(\"speed\")", "media(\"action\")").associateWith { 23 } +
         // owl 23: how strong a haptic() is.
-        mapOf(HAPTIC_STRENGTH to 23)
+        mapOf(HAPTIC_STRENGTH to 23) +
+        // owl 24: the strip of apps above home's prompt bar as a file, and what it shows; Rows that scroll sideways.
+        listOf(STRIP_FILE, "android.strip", "Row.scroll").associateWith { 24 }
 
 /** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
 internal const val SHADER_IMAGE = "uniform shader"
@@ -254,6 +256,9 @@ internal const val PANEL_OPACITY = "panel opacity"
 internal const val PANEL_KEYBOARD = "panel keyboard"
 
 internal const val KEYBAR_FILE = "keybar \"…\" { }"
+
+/** A `strip "…" { }` file, named like this in [SINCE]. */
+internal const val STRIP_FILE = "strip \"…\" { }"
 
 /** A panel's read-only name for the prompt bar's text. */
 internal const val QUERY = "query"
@@ -354,7 +359,7 @@ val SPEECH_ANYWHERE = setOf("stop", "cancel")
 val ASKS = setOf("location", "calendar", "airpods")
 
 /** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar", "motion")
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar", "motion", "strip")
 
 /**
  * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the

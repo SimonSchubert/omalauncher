@@ -65,10 +65,6 @@
     <string name="home_settings">configuración</string>
 
     <string name="home_linux_window">Linux</string>
-
-    <string name="drawer_action_pin">agregar a inicio</string>
-    <string name="drawer_action_info">info de la app</string>
-    <string name="drawer_action_uninstall">desinstalar</string>
     <string name="home_news_close">cerrar</string>
     <string name="home_news_off">no mostrar más novedades</string>
     <string name="home_news_days">días</string>

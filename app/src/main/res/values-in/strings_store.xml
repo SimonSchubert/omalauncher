@@ -18,6 +18,9 @@
     <string name="store_pick_app">pilih aplikasi untuk melihat apa yang diinstal dan dijalankannya</string>
     <string name="store_pick_panel">pilih panel untuk melihat apa yang diinstal dan dijalankannya</string>
     <string name="store_pick_keybar">pilih keybar untuk melihat apa yang diinstal dan dijalankannya</string>
+    <string name="store_kind_strips">bilah aplikasi</string>
+    <string name="store_kind_strip">bilah aplikasi</string>
+    <string name="store_pick_strip">pilih bilah aplikasi untuk melihat apa yang diinstal dan dijalankannya</string>
 
     <string name="store_search">cari %1$d %2$s</string>
     <string name="store_tab_all">semua</string>

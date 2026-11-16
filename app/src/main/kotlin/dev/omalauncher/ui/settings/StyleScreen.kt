@@ -144,7 +144,7 @@ fun StyleScreen(
     onDismiss: () -> Unit,
     /** Opens the community themes over this screen. */
     onBrowse: () -> Unit,
-    /** Opens the agent on keybar.owl. */
+    /** Opens the agent on keybar.owl or strip.owl. */
     onAgent: (title: String, command: (bin: String) -> String) -> Unit,
 ) {
     val store = runtime.themes
@@ -172,6 +172,7 @@ fun StyleScreen(
             IconPackOption(style)
             Flag(R.string.style_home_apps, R.string.style_boxed, R.string.style_icon_only, style, Style.APP_TILES)
             Flag(R.string.style_recent_apps, R.string.style_shown, R.string.style_hidden, style, Style.RECENT_APPS)
+            if (style.style[Style.RECENT_APPS]) BarFileOption(runtime, onAgent, STRIP_TEXTS)
             Flag(R.string.style_empty_page_left, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_LEFT)
             Flag(R.string.style_empty_page_right, R.string.style_shown, R.string.style_hidden, style, Style.EMPTY_PAGE_RIGHT)
             CountOption(R.string.style_columns, Style.COLUMNS, style)
@@ -194,7 +195,7 @@ fun StyleScreen(
             Stepper(R.string.style_border_width, style, Style.SCREEN_BORDER_WIDTH)
             // keybar.owl reads these as gapsOut and borderWidth.
             Heading(R.string.style_keybar)
-            KeybarOption(runtime, onAgent)
+            BarFileOption(runtime, onAgent, KEYBAR_TEXTS)
             Stepper(R.string.style_gaps_out, style, Style.KEYBAR_GAPS_OUT)
             Stepper(R.string.style_border_width, style, Style.KEYBAR_BORDER_WIDTH)
             // Both bars at once; style.toml can set them apart. Background is the band behind their icons.
@@ -245,59 +246,103 @@ fun StyleScreen(
     }
 }
 
+/** What a [BarFileOption] says, for one of the bars that are files of the user's. */
+private class BarTexts(
+    val file: String,
+    val stockFile: String,
+    @StringRes val label: Int,
+    @StringRes val removed: Int,
+    @StringRes val stock: Int,
+    @StringRes val edited: Int,
+    @StringRes val backToStock: Int,
+    @StringRes val gone: Int,
+    @StringRes val restoreTitle: Int,
+    @StringRes val restoreMessage: Int,
+)
+
+private val KEYBAR_TEXTS =
+    BarTexts(
+        WidgetEngine.KEYBAR,
+        WidgetEngine.STOCK_KEYBAR,
+        R.string.style_keys,
+        R.string.style_keybar_removed,
+        R.string.style_keybar_stock,
+        R.string.style_keybar_edited,
+        R.string.style_keybar_back_to_stock,
+        R.string.style_keybar_gone,
+        R.string.style_keybar_restore_title,
+        R.string.style_keybar_restore_message,
+    )
+
+private val STRIP_TEXTS =
+    BarTexts(
+        WidgetEngine.STRIP,
+        WidgetEngine.STOCK_STRIP,
+        R.string.style_strip,
+        R.string.style_strip_removed,
+        R.string.style_strip_stock,
+        R.string.style_strip_edited,
+        R.string.style_strip_back_to_stock,
+        R.string.style_strip_gone,
+        R.string.style_strip_restore_title,
+        R.string.style_strip_restore_message,
+    )
+
 /**
- * The terminal key bar over the keyboard: keybar.owl, as stock, edited, broken or removed, with a dropdown to start the
- * agent on it or put the stock keys back. Here because nothing else says the bar is a file of the user's; removed, the
- * stock keys show, and back to stock is the way to have the file again.
+ * A bar that's a file of the user's: the terminal key bar over the keyboard (keybar.owl) or the strip above home's bar
+ * (strip.owl), as stock, edited, broken or removed, with a dropdown to start the agent on it or put the stock one back.
+ * Here because nothing else says the bar is a file of the user's; removed, the stock one shows, and back to stock is the
+ * way to have the file again.
  */
 @Composable
-private fun KeybarOption(
+private fun BarFileOption(
     runtime: Runtime,
     onAgent: (title: String, command: (bin: String) -> String) -> Unit,
+    texts: BarTexts,
 ) {
-    val spec = runtime.widgets.specs.firstOrNull { it.file.name == WidgetEngine.KEYBAR }
-    val file = File(runtime.widgets.dir, WidgetEngine.KEYBAR)
-    val stockFile = File(runtime.widgets.dir, WidgetEngine.STOCK_KEYBAR)
+    val spec = runtime.widgets.specs.firstOrNull { it.file.name == texts.file }
+    val file = File(runtime.widgets.dir, texts.file)
+    val stockFile = File(runtime.widgets.dir, texts.stockFile)
     // Whether it's still the bar as shipped; read again when the file reloads, which makes a new spec.
     val stock = remember(spec) { spec != null && runCatching { spec.file.readBytes().contentEquals(stockFile.readBytes()) }.getOrDefault(false) }
     val scope = rememberCoroutineScope()
     var restoring by remember { mutableStateOf(false) }
-    val actions = listOfNotNull(KeybarAction.Edit.takeIf { spec != null }, KeybarAction.Stock.takeIf { !stock })
+    val actions = listOfNotNull(BarAction.Edit.takeIf { spec != null }, BarAction.Stock.takeIf { !stock })
 
     fun restore() {
         // The widgets folder is watched: the new file reloads the bar.
         scope.launch(Dispatchers.IO) { runCatching { stockFile.copyTo(file, overwrite = true) } }
     }
     DropdownOption(
-        stringResource(R.string.style_keys),
+        stringResource(texts.label),
         value = {
             BasicText(
                 stringResource(
                     when {
-                        spec == null -> R.string.style_keybar_removed
+                        spec == null -> texts.removed
                         spec.program == null -> R.string.style_keybar_errors
-                        stock -> R.string.style_keybar_stock
-                        else -> R.string.style_keybar_edited
+                        stock -> texts.stock
+                        else -> texts.edited
                     },
                 ),
                 style = Mono.copy(color = if (spec != null && spec.program == null) Palette.red else Palette.foreground),
             )
         },
     ) { close ->
-        val labels = KeybarAction.entries.associateWith { stringResource(it.label) }
+        val labels = mapOf(BarAction.Edit to stringResource(R.string.style_keybar_edit), BarAction.Stock to stringResource(texts.backToStock))
         ChoicePopup(actions, null, BelowAnchorStart, onDismiss = close, onPick = { action ->
             when (action) {
-                KeybarAction.Edit -> spec?.let { onAgent("Edit ${it.name}") { bin -> editWidgetCommand(bin, it) } }
+                BarAction.Edit -> spec?.let { onAgent("Edit ${it.name}") { bin -> editWidgetCommand(bin, it) } }
                 // Nothing of the user's to replace.
-                KeybarAction.Stock -> if (spec == null) restore() else restoring = true
+                BarAction.Stock -> if (spec == null) restore() else restoring = true
             }
         }, label = { labels.getValue(it) })
     }
-    OptionHint(if (spec == null) stringResource(R.string.style_keybar_gone, file.name) else file.name)
+    OptionHint(if (spec == null) stringResource(texts.gone, file.name) else file.name)
     if (restoring) {
         ConfirmDialog(
-            stringResource(R.string.style_keybar_restore_title),
-            stringResource(R.string.style_keybar_restore_message),
+            stringResource(texts.restoreTitle),
+            stringResource(texts.restoreMessage),
             stringResource(R.string.style_replace),
             onDismiss = { restoring = false },
         ) {
@@ -307,9 +352,9 @@ private fun KeybarOption(
     }
 }
 
-private enum class KeybarAction(@StringRes val label: Int) {
-    Edit(R.string.style_keybar_edit),
-    Stock(R.string.style_keybar_back_to_stock),
+private enum class BarAction {
+    Edit,
+    Stock,
 }
 
 /** The installed themes in a row, starting at the current one; browse has Omarchy's whole catalog. */

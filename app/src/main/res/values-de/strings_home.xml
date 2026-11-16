@@ -63,10 +63,6 @@
     <string name="home_settings">einstellungen</string>
 
     <string name="home_linux_window">Linux</string>
-
-    <string name="drawer_action_pin">zum startbildschirm hinzufügen</string>
-    <string name="drawer_action_info">app-info</string>
-    <string name="drawer_action_uninstall">deinstallieren</string>
     <string name="home_news_close">schließen</string>
     <string name="home_news_off">keine neuigkeiten mehr zeigen</string>
     <string name="home_news_days">tage</string>

@@ -1,13 +1,24 @@
 package dev.omalauncher.ui.home
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.Dp
+import dev.omalauncher.widgets.render.WidgetStrip
+import dev.omalauncher.widgets.runtime.WidgetInstance
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,20 +27,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.ImageBitmap
@@ -37,10 +41,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import dev.omalauncher.R
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -48,34 +50,21 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.foundation.layout.width
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.graphics.ColorFilter
 import dev.omalauncher.apps.AndroidApp
 import dev.omalauncher.apps.AndroidShortcut
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.widgets.WidgetSpec
-import dev.omalauncher.widgets.render.LocalMenuOpened
 import dev.omalauncher.widgets.runtime.NotificationDots
 import dev.omalauncher.ui.EdgeGap
+import dev.omalauncher.ui.HomeGap
 import dev.omalauncher.ui.Icons
 import dev.omalauncher.ui.LauncherStyle
-import dev.omalauncher.ui.MenuItems
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.TextSize
-import dev.omalauncher.ui.holdsKeys
 import dev.omalauncher.ui.leavesUpDown
-import dev.omalauncher.ui.menuLongPresses
-import dev.omalauncher.ui.tile
 
 /** One app the drawer lists: an owl app, a Linux or Android app, or a shortcut. */
 internal sealed interface AppHit {
@@ -162,9 +151,6 @@ internal class AppHandlers(
     val removeOwl: (WidgetSpec) -> Unit,
 )
 
-/** The shortcuts an Android app offers above its menu's actions; null for anything else. */
-private fun AppHit.shortcutMenu(handlers: AppHandlers): ShortcutMenu? = (this as? AppHit.Android)?.let { handlers.shortcuts(it.app) }
-
 /** What `android.drawer` and `android.recent` call its kind. */
 internal val AppHit.kind: String
     get() =
@@ -196,16 +182,6 @@ internal fun AppHit.actionWords(): List<String> =
         is AppHit.Shortcut -> listOf("pin", "remove")
     }
 
-private val ACTION_LABELS =
-    mapOf(
-        "pin" to R.string.drawer_action_pin,
-        "info" to R.string.drawer_action_info,
-        "uninstall" to R.string.drawer_action_uninstall,
-        "edit" to R.string.home_edit,
-        "share" to R.string.home_share,
-        "remove" to R.string.home_remove,
-    )
-
 /** Runs the menu entry [word], from the menu or a widget's `appAction(...)`; one the app's menu doesn't offer does nothing. */
 internal fun AppHit.act(
     word: String,
@@ -226,11 +202,6 @@ internal fun AppHit.act(
         "share" -> (this as? AppHit.Owl)?.let { handlers.share(it.spec) }
     }
 }
-
-/** The long-press menu of an app cell, labeled as stock launchers label it. */
-@Composable
-private fun AppHit.actions(handlers: AppHandlers): List<Pair<String, () -> Unit>> =
-    actionWords().map { word -> (ACTION_LABELS[word]?.let { stringResource(it) } ?: word) to { act(word, handlers) } }
 
 /** The app's icon and its silhouette, each null until loaded or if it has none. */
 internal fun AppHit.icons(runtime: Runtime): Pair<ImageBitmap?, ImageBitmap?> =
@@ -270,111 +241,87 @@ internal fun appIconOf(
     }
 }
 
-/** Height of the recent apps strip; home keeps this much room for it above the bar, even while it's empty. */
+/** The stock strip's height, which home keeps for the strip above the bar until the strip has measured its own. */
 val RecentStripHeight = 56.dp
 
 /**
- * The apps opened lately, on home right above the bar, scrolling sideways; [vertical] stands it up
- * beside the grid in landscape, scrolling down. A home tile like the others: frame, fill and gaps,
- * or bare when home icons are. Can be hidden in themes.
+ * The room home keeps for the strip: as tall as it measured above the bar, or as wide as it measured [vertical] beside
+ * the grid; [RecentStripHeight] until it has. The file decides, so home's tiles make way for a taller strip.
+ */
+@Composable
+internal fun stripRoom(
+    runtime: Runtime,
+    vertical: Boolean,
+): Dp {
+    val px = if (vertical) runtime.widgets.stripWidthPx else runtime.widgets.stripHeightPx
+    return if (px > 0) with(LocalDensity.current) { px.toDp() } else RecentStripHeight
+}
+
+/**
+ * The strip above the bar on home, strip.owl (`strip "…" { }`, else the stock one): the apps opened lately, scrolling
+ * sideways, as the stock file draws them. [vertical] stands it up beside the grid in landscape, which `android.strip`
+ * tells the file. Can be hidden in settings › style.
  */
 @Composable
 internal fun RecentStrip(
     runtime: Runtime,
-    handlers: AppHandlers,
     modifier: Modifier = Modifier,
     vertical: Boolean = false,
     /**
-     * Where keys go from its apps toward the grid: Up, or stood up on [side], across to it. On each, as the list's own
-     * focus group keeps it from reaching them from outside.
+     * Where keys go from its apps toward the grid: Up, or stood up on [side], across to it. Compose's own search doesn't
+     * find home's tiles from the strip, so an arrow that has nowhere further to go in the strip goes there.
      */
     home: FocusRequester? = null,
     side: HomeSide? = null,
 ) {
-    // Not before every kind of app is listed: the ones missing would push in as their kind arrived.
-    val apps = if (runtime.appsListed) recentApps(runtime, 20) else emptyList()
-    // Nothing opened yet: no strip, but its room stays, so home doesn't shift when the first app shows up.
-    if (apps.isEmpty()) {
+    val widgets = runtime.widgets
+    LaunchedEffect(widgets, vertical) { widgets.stripVertical = vertical }
+    val inst = widgets.stripInstance()
+    if (inst == null) {
         Spacer(if (vertical) modifier.width(RecentStripHeight) else modifier.height(RecentStripHeight))
         return
     }
-    val bare = LauncherStyle.bareAppIcons
-    val listState = rememberLazyListState()
-    // Back on home, the strip starts at the app opened last, wherever it was scrolled to before.
-    LaunchedEffect(runtime.usage.settled) { listState.scrollToItem(0) }
-    Box(
-        modifier
-            .then(if (vertical) Modifier.fillMaxHeight().width(RecentStripHeight) else Modifier.padding(horizontal = EdgeGap).fillMaxWidth().height(RecentStripHeight))
-            .then(if (bare) Modifier else Modifier.tile()),
-        contentAlignment = if (vertical) Alignment.TopCenter else Alignment.CenterStart,
-    ) {
-        val cells: LazyListScope.() -> Unit = {
-            items(apps, key = { it.key }) { hit ->
-                val (icon, mask) = hit.icons(runtime)
-                Box(if (home != null) Modifier.focusProperties { toHome(side, home) } else Modifier) {
-                    StripCell(hit.label, icon, mask, onClick = { handlers.launch(hit) }, actions = { hit.actions(handlers) }, shortcuts = { hit.shortcutMenu(handlers) }, spoken = hit.spoken, paused = hit.paused(runtime))
-                }
+    val focusManager = LocalFocusManager.current
+    val inside = remember { booleanArrayOf(false) }
+    val (towardHome, direction) =
+        when (side) {
+            null -> Key.DirectionUp to FocusDirection.Up
+            HomeSide.Left -> Key.DirectionRight to FocusDirection.Right
+            HomeSide.Right -> Key.DirectionLeft to FocusDirection.Left
+        }
+    val keys =
+        if (home == null) {
+            Modifier
+        } else {
+            Modifier.onFocusChanged { inside[0] = it.hasFocus }.onKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown || e.key != towardHome) return@onKeyEvent false
+                // Further within the strip first, as in a strip of several rows; else on to home's tiles.
+                if (!(focusManager.moveFocus(direction) && inside[0])) home.requestFocus()
+                true
             }
         }
-        if (vertical) {
-            LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, content = cells)
-        } else {
-            LazyRow(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically, content = cells)
-        }
+    // Back on home, the strip starts again at its beginning, wherever it was scrolled to before: the app opened last
+    // is first now.
+    key(runtime.usage.settled) {
+        WidgetStrip(
+            inst,
+            vertical,
+            modifier
+                .then(if (vertical) Modifier.fillMaxHeight() else Modifier.padding(horizontal = EdgeGap).fillMaxWidth())
+                .onSizeChanged { if (vertical) widgets.stripWidthPx = it.width else widgets.stripHeightPx = it.height }
+                .then(keys),
+        )
     }
 }
 
-/** An app in the recent strip, drawn like a pinned app's tile: the icon alone, or on a badge when bare. */
+/** The strip where home has it, above the bar at the bottom of a screen, for owl-check's picture of it. */
 @Composable
-private fun StripCell(
-    label: String,
-    icon: ImageBitmap?,
-    mask: ImageBitmap?,
-    onClick: () -> Unit,
-    /** Built when the menu opens: a fresh list of lambdas would keep the cell from skipping recomposition. */
-    actions: @Composable () -> List<Pair<String, () -> Unit>>,
-    /** Also built when the menu opens. */
-    shortcuts: () -> ShortcutMenu? = { null },
-    /** As in [AppHit.spoken]. */
-    spoken: String = label,
-    /** As in [AppHit.paused]: drawn dimmed, like stock launchers. */
-    paused: Boolean = false,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
-    val haptics = LocalHapticFeedback.current
-    val mono = LauncherStyle.monochromeIcons
-    val bare = LauncherStyle.bareAppIcons
-    val size = 40.dp
+internal fun StripPreview(inst: WidgetInstance) {
     Box(
-        Modifier
-            .size(48.dp)
-            .alpha(if (paused) PausedAlpha else 1f)
-            .clip(LauncherStyle.shape(12.dp))
-            .menuLongPresses { menuOpen = true }
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    menuOpen = true
-                },
-            ),
-        contentAlignment = Alignment.Center,
+        Modifier.fillMaxSize().background(Palette.background).safeDrawingPadding().padding(bottom = PromptBarHeight + HomeGap + EdgeGap),
+        contentAlignment = Alignment.BottomCenter,
     ) {
-        val bmp = if (mono) mask else icon
-        when {
-            // Bare silhouettes and initials sit on a badge, as pinned apps do, so they read on any wallpaper.
-            bare && (mono || bmp == null) ->
-                IconBadge(size) {
-                    if (bmp != null) {
-                        Image(bmp, spoken, Modifier.size(size * 0.75f), colorFilter = ColorFilter.tint(Palette.accent))
-                    } else {
-                        BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Body))
-                    }
-                }
-            bmp != null -> Image(bmp, spoken, Modifier.size(size * if (mono) 0.85f else 1f), colorFilter = if (mono) ColorFilter.tint(Palette.accent) else null)
-            else -> BasicText(initials(label), style = Mono.copy(color = Palette.accent, fontSize = TextSize.Large))
-        }
-        if (menuOpen) AppActions(actions(), shortcuts, onDismiss = { menuOpen = false })
+        WidgetStrip(inst, vertical = false, Modifier.padding(horizontal = EdgeGap).fillMaxWidth())
     }
 }
 
@@ -472,45 +419,6 @@ internal fun SearchField(
             }
         },
     )
-}
-
-/** The long-press popup: sits above the cell (below it when there's no room), closes on outside tap. */
-@Composable
-private fun AppActions(
-    actions: List<Pair<String, () -> Unit>>,
-    shortcuts: () -> ShortcutMenu?,
-    onDismiss: () -> Unit,
-) {
-    val opened = LocalMenuOpened.current
-    LaunchedEffect(Unit) { opened() }
-    val (menu, offered) = offeredShortcuts(Unit, shortcuts)
-    if (offered == null) return
-    val gap = with(LocalDensity.current) { 8.dp.roundToPx() }
-    // From the screen's sides, as far as home's tiles are.
-    val edge = with(LocalDensity.current) { EdgeGap.roundToPx() }
-    val position =
-        remember(gap, edge) {
-            object : PopupPositionProvider {
-                override fun calculatePosition(
-                    anchorBounds: IntRect,
-                    windowSize: IntSize,
-                    layoutDirection: LayoutDirection,
-                    popupContentSize: IntSize,
-                ): IntOffset {
-                    val x = (anchorBounds.center.x - popupContentSize.width / 2).coerceIn(edge, (windowSize.width - edge - popupContentSize.width).coerceAtLeast(edge))
-                    val above = anchorBounds.top - popupContentSize.height - gap
-                    val y = if (above >= 0) above else anchorBounds.bottom + gap
-                    return IntOffset(x, y)
-                }
-            }
-        }
-    Popup(popupPositionProvider = position, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        Box(Modifier.holdsKeys()) {
-            MenuItems(actions, onDismiss, minWidth = 160.dp, itemPadding = 12.dp) {
-                if (menu != null) ShortcutRows(offered, menu, onDismiss, TextSize.Item)
-            }
-        }
-    }
 }
 
 /** The gear that opens settings, in the drawer and the home menu; a dot while system updates wait. */

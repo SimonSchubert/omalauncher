@@ -87,9 +87,6 @@
     <string name="home_linux_window">Linux</string>
 
     <!-- The drawer's long-press menu of an app. -->
-    <string name="drawer_action_pin">add to home</string>
-    <string name="drawer_action_info">app info</string>
-    <string name="drawer_action_uninstall">uninstall</string>
     <!-- A message from the developer, shown once over home. -->
     <string name="home_news_close">close</string>
     <string name="home_news_off">don\'t show news again</string>

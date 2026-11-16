@@ -73,6 +73,14 @@
     <string name="style_keybar_gone">%1$s 不见了，所以显示默认按键</string>
     <string name="style_keybar_restore_title">恢复默认按键？</string>
     <string name="style_keybar_restore_message">你的 keybar.owl 会被替换为这个启动器自带的版本。</string>
+    <string name="style_strip">应用栏</string>
+    <string name="style_strip_removed">已移除</string>
+    <string name="style_strip_stock">默认</string>
+    <string name="style_strip_edited">已修改</string>
+    <string name="style_strip_back_to_stock">恢复默认</string>
+    <string name="style_strip_gone">%1$s 不见了，所以显示默认应用栏</string>
+    <string name="style_strip_restore_title">恢复默认应用栏？</string>
+    <string name="style_strip_restore_message">你的 strip.owl 会被替换为这个启动器自带的版本。</string>
     <string name="style_replace">替换</string>
 
     <string name="style_browse">浏览</string>
@@ -135,6 +143,7 @@
     <string name="gestures_swipe_down_nothing">下滑不会打开任何内容</string>
     <string name="gestures_until_fixed">修复之前，%1$s：%2$s</string>
     <string name="gestures_keybar_until_fixed">修复之前，终端按键栏使用默认按键：%1$s</string>
+    <string name="gestures_strip_until_fixed">修复之前，应用栏使用默认版本：%1$s</string>
 
     <string name="agents_title">编程智能体</string>
     <string name="agents_intro">和 Omarchy 一样安装，大多数用 mise。登录会在浏览器中打开；用键盘的剪贴板粘贴密钥。</string>

@@ -1195,6 +1195,35 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 15 }\n keyboard: false\n Text { text: 1 } }").isNotEmpty())
     }
 
+    @Test fun theStripIsAFileOfItsOwn() {
+        val p =
+            Compiler.compile(
+                "strip \"mine\" {\n meta { owl: 24 }\n source s = android.strip\n state menu = \"\"\n" +
+                    " Row { scroll: true\n for a in s.apps key a.key { Box { onTap: open(a.key); onLongPress: menu = a.key\n" +
+                    " Image { src: a.icon; size: 40 } } } } }",
+            )
+        assertEquals(OwlKind.Strip, p.kind)
+        assertEquals("mine", p.name)
+        assertTrue(p.root.isEmpty())
+        assertEquals(1, p.screen!!.size)
+        assertFalse(p.needsLinux)
+        assertEquals(listOf("read the recently opened apps"), p.commands)
+        assertEquals(OwlKind.Strip, OwlKind.of("// apps\nstrip \"x\" { }"))
+
+        assertTrue(compileError("strip {\n meta { owl: 23 }\n Text { text: 1 } }").contains("needs owl 24"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n size: 2x2\n Text { text: 1 } }").contains("puts it above the prompt bar"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n onTap: open(\"a:x\")\n Text { text: 1 } }").contains("handlers go on the nodes inside"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n screen { Text { text: 1 } } }").contains("a strip has no screen { }"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n Text { text: 1; onTap: close() } }").contains("the strip stays on home"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n}").contains("a strip needs at least one node"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n Browser { url: \"https://example.com\" } }").contains("or the strip"))
+        // android.strip and a Row that scrolls are owl 24 wherever they're used.
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n source s = android.strip\n Text { text: 1 } }").contains("needs owl 24"))
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n Row { scroll: true; Text { text: 1 } } }").contains("needs owl 24"))
+        Compiler.compile("widget {\n meta { owl: 24 }\n Row { scroll: true; Text { text: 1 } } }")
+        assertTrue(compileError("widget {\n meta { owl: 24 }\n Row { scroll: true; wrap: true; Text { text: 1 } } }").contains("drop scroll or wrap"))
+    }
+
     @Test fun extraKeysAreAFileOfTheirOwn() {
         val p =
             Compiler.compile(

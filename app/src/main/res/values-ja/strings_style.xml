@@ -73,6 +73,14 @@
     <string name="style_keybar_gone">%1$s が見つからないため、標準のキーを表示しています</string>
     <string name="style_keybar_restore_title">標準のキーに戻しますか？</string>
     <string name="style_keybar_restore_message">現在の keybar.owl は、このランチャーに付属のものに置き換えられます。</string>
+    <string name="style_strip">アプリのバー</string>
+    <string name="style_strip_removed">削除済み</string>
+    <string name="style_strip_stock">標準</string>
+    <string name="style_strip_edited">編集済み</string>
+    <string name="style_strip_back_to_stock">標準に戻す</string>
+    <string name="style_strip_gone">%1$s が見つからないため、標準のアプリのバーを表示しています</string>
+    <string name="style_strip_restore_title">標準のアプリのバーに戻しますか？</string>
+    <string name="style_strip_restore_message">現在の strip.owl は、このランチャーに付属のものに置き換えられます。</string>
     <string name="style_replace">置き換える</string>
 
     <string name="style_browse">探す</string>
@@ -135,6 +143,7 @@
     <string name="gestures_swipe_down_nothing">下スワイプでは何も開きません</string>
     <string name="gestures_until_fixed">修正されるまで、%1$s：%2$s</string>
     <string name="gestures_keybar_until_fixed">修正されるまで、ターミナルのキーバーは標準のものになります：%1$s</string>
+    <string name="gestures_strip_until_fixed">修正されるまで、アプリのバーは標準のものになります：%1$s</string>
 
     <string name="agents_title">コーディングエージェント</string>
     <string name="agents_intro">Omarchy と同じ方法でインストールします（ほとんどは mise を使用）。ログイン画面はブラウザで開きます。API キーは、キーボードのクリップボードから貼り付けてください。</string>

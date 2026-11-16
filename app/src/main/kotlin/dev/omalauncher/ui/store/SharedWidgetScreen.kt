@@ -117,7 +117,7 @@ fun SharedWidgetScreen(
                                     OwlKind.Face -> stringResource(R.string.store_add_as_face)
                                     OwlKind.Widget -> stringResource(R.string.store_add_to_page, page)
                                     OwlKind.Panel -> stringResource(R.string.store_add_to_panels)
-                                    OwlKind.Keybar -> stringResource(R.string.store_add_to_widgets_folder)
+                                    OwlKind.Keybar, OwlKind.Strip -> stringResource(R.string.store_add_to_widgets_folder)
                                 },
                                 Palette.accent,
                             ) {

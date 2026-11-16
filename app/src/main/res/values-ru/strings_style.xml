@@ -73,6 +73,14 @@
     <string name="style_keybar_gone">файла %1$s нет, поэтому показаны стандартные клавиши</string>
     <string name="style_keybar_restore_title">вернуть стандартные клавиши?</string>
     <string name="style_keybar_restore_message">Ваш keybar.owl будет заменён тем, что поставляется с лаунчером.</string>
+    <string name="style_strip">панель приложений</string>
+    <string name="style_strip_removed">удалена</string>
+    <string name="style_strip_stock">стандартная</string>
+    <string name="style_strip_edited">изменена</string>
+    <string name="style_strip_back_to_stock">вернуть стандартную</string>
+    <string name="style_strip_gone">файла %1$s нет, поэтому показана стандартная панель</string>
+    <string name="style_strip_restore_title">вернуть стандартную панель?</string>
+    <string name="style_strip_restore_message">Ваш strip.owl будет заменён тем, что поставляется с лаунчером.</string>
     <string name="style_replace">заменить</string>
 
     <string name="style_browse">обзор</string>
@@ -141,6 +149,7 @@
     <string name="gestures_swipe_down_nothing">свайп вниз ничего не открывает</string>
     <string name="gestures_until_fixed">%1$s, пока ошибка не исправлена: %2$s</string>
     <string name="gestures_keybar_until_fixed">панель клавиш терминала будет стандартной, пока ошибка не исправлена: %1$s</string>
+    <string name="gestures_strip_until_fixed">панель приложений будет стандартной, пока ошибка не исправлена: %1$s</string>
 
     <string name="agents_title">ИИ-агенты</string>
     <string name="agents_intro">Устанавливаются как в Omarchy, большинство через mise. Вход открывается в браузере; ключи вставляйте из буфера обмена клавиатуры.</string>

@@ -290,7 +290,7 @@ private fun DesktopScreen(
                         // Swiping up from either does what it does on home, as from the dock on stock launchers.
                         // Keys go between it and home's tiles both ways, which Compose's search doesn't find (see PromptBar).
                         if (LauncherStyle.recentApps && !panelShown) {
-                            RecentStrip(runtime, handlers, Modifier.homeSwipe(runtime, state, enabled = !locked).lockedTaps(locked).focusRequester(state.stripEntry).focusGroup(), home = state.homeEntry)
+                            RecentStrip(runtime, Modifier.homeSwipe(runtime, state, enabled = !locked).lockedTaps(locked).focusRequester(state.stripEntry).focusGroup(), home = state.homeEntry)
                         }
                         // Insets itself by the grid gap, so it lines up with the tiles and the gap still takes taps.
                         PromptBar(runtime, state, modifier = Modifier.homeSwipe(runtime, state, enabled = !locked).lockedTaps(locked))

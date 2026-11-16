@@ -18,6 +18,9 @@
     <string name="store_pick_app">elige una app para ver qué instala y ejecuta</string>
     <string name="store_pick_panel">elige un panel para ver qué instala y ejecuta</string>
     <string name="store_pick_keybar">elige una barra de teclas para ver qué instala y ejecuta</string>
+    <string name="store_kind_strips">barras de apps</string>
+    <string name="store_kind_strip">barra de apps</string>
+    <string name="store_pick_strip">elige una barra de apps para ver qué instala y ejecuta</string>
 
     <string name="store_search">buscar en %1$d %2$s</string>
     <string name="store_tab_all">todo</string>

@@ -60,10 +60,6 @@
     <string name="home_settings">設定</string>
 
     <string name="home_linux_window">Linux</string>
-
-    <string name="drawer_action_pin">ホームに追加</string>
-    <string name="drawer_action_info">アプリ情報</string>
-    <string name="drawer_action_uninstall">アンインストール</string>
     <string name="home_news_close">閉じる</string>
     <string name="home_news_off">今後お知らせを表示しない</string>
     <string name="home_news_days">日</string>

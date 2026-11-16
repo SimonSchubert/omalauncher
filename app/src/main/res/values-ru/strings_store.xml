@@ -18,6 +18,9 @@
     <string name="store_pick_app">выберите приложение, чтобы увидеть, что оно устанавливает и запускает</string>
     <string name="store_pick_panel">выберите панель, чтобы увидеть, что она устанавливает и запускает</string>
     <string name="store_pick_keybar">выберите панель клавиш, чтобы увидеть, что она устанавливает и запускает</string>
+    <string name="store_kind_strips">панели приложений</string>
+    <string name="store_kind_strip">панель приложений</string>
+    <string name="store_pick_strip">выберите панель приложений, чтобы увидеть, что она устанавливает и запускает</string>
 
     <string name="store_search">поиск: %2$s (%1$d)</string>
     <string name="store_tab_all">все</string>

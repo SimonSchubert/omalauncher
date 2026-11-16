@@ -1,0 +1,111 @@
+strip "pinned apps" {
+  // The strip with apps kept in place, like a dock: long-press an app and pick "keep in strip", and it stays first, in
+  // the order you kept them, sized to share the strip. The recent apps follow, scrolling. Move it up to the widgets folder
+  // as strip.owl to use it.
+  meta { description: "The strip above the prompt bar with apps you keep in place first, sized to fit, then the recent ones"; version: "1.0"; license: "MIT"; category: "system"; owl: 24 }
+  source s = android.strip
+  // Every app, to show the kept ones that weren't opened lately.
+  source d = android.drawer
+  // The kept apps' keys, in the order they were kept.
+  state kept = [] persist
+  state menu = ""
+  // What the long-press menu calls appAction's words.
+  let labels = {pin: "add to home", info: "app info", uninstall: "uninstall", remove: "remove", edit: "edit", share: "share"}
+
+  let keptApps = filter(map(kept, k => find(d.apps ?? [], a => a.key == k)), a => a != null)
+  let recent = filter(s.apps, a => indexOf(kept, a.key) < 0)
+  // Kept apps share the strip's length: 48 dp each while they fit, smaller for more, but never under 32.
+  let room = (s.vertical ? screenHeight : screenWidth) - 16
+  let keptSize = clamp(floor(room / max(len(keptApps), 1)), 32, 48)
+
+  component Cell(a, size, isKept) {
+    Box {
+      size: size
+      align: center
+      radius: 12 * corners
+      opacity: a.paused ? 0.4 : 1
+      onTap: open(a.key)
+      onLongPress: {
+        haptic()
+        menu = a.key
+      }
+      if a.hasIcon {
+        Image { src: a.icon; size: size - 8; tint: s.monochrome ? accent : null; label: a.label }
+      } else {
+        Text { text: a.initials; color: accent }
+      }
+      Popup {
+        visible: menu == a.key
+        position: above
+        onDismiss: menu = ""
+        width: 200
+        gap: 0
+        Text {
+          text: isKept ? "take out of strip" : "keep in strip"
+          fontSize: 15
+          fill: width
+          padding: [12, 12]
+          onTap: {
+            menu = ""
+            kept = isKept ? filter(kept, k => k != a.key) : flatten([kept, [a.key]])
+          }
+        }
+        for w in a.actions {
+          Text { text: get(labels, w, w); fontSize: 15; fill: width; padding: [12, 12]; onTap: { menu = ""; appAction(w, a.key) } }
+        }
+      }
+    }
+  }
+
+  if s.vertical {
+    Column {
+      width: 56
+      fill: height
+      gap: 0
+      align: center
+      padding: [0, 4]
+      background: s.bare ? transparent : alpha(background, tileOpacity)
+      frost: s.bare ? 0 : tileFrost
+      border: s.bare ? 0 : borderWidth
+      borderColor: s.border
+      radius: 16 * corners
+      for a in keptApps key a.key {
+        Cell { a: a; size: keptSize; isKept: true }
+      }
+      Spacer { visible: len(keptApps) > 0 && len(recent) > 0; width: 32; height: 1; background: border }
+      Column {
+        weight: 1
+        scroll: true
+        gap: 0
+        align: center
+        for a in recent key a.key {
+          Cell { a: a; size: 48; isKept: false }
+        }
+      }
+    }
+  } else {
+    Row {
+      fill: width
+      height: 56
+      gap: 0
+      padding: [4, 0]
+      background: s.bare ? transparent : alpha(background, tileOpacity)
+      frost: s.bare ? 0 : tileFrost
+      border: s.bare ? 0 : borderWidth
+      borderColor: s.border
+      radius: 16 * corners
+      for a in keptApps key a.key {
+        Cell { a: a; size: keptSize; isKept: true }
+      }
+      Spacer { visible: len(keptApps) > 0 && len(recent) > 0; width: 1; height: 32; background: border }
+      Row {
+        weight: 1
+        scroll: true
+        gap: 0
+        for a in recent key a.key {
+          Cell { a: a; size: 48; isKept: false }
+        }
+      }
+    }
+  }
+}

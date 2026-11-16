@@ -73,6 +73,14 @@
     <string name="style_keybar_gone">файлу %1$s немає, тому показано стандартні клавіші</string>
     <string name="style_keybar_restore_title">повернути стандартні клавіші?</string>
     <string name="style_keybar_restore_message">Ваш keybar.owl буде замінено тим, що постачається з лаунчером.</string>
+    <string name="style_strip">панель додатків</string>
+    <string name="style_strip_removed">видалена</string>
+    <string name="style_strip_stock">стандартна</string>
+    <string name="style_strip_edited">змінена</string>
+    <string name="style_strip_back_to_stock">повернути стандартну</string>
+    <string name="style_strip_gone">файлу %1$s немає, тому показано стандартну панель</string>
+    <string name="style_strip_restore_title">повернути стандартну панель?</string>
+    <string name="style_strip_restore_message">Ваш strip.owl буде замінено тим, що постачається з лаунчером.</string>
     <string name="style_replace">замінити</string>
 
     <string name="style_browse">огляд</string>
@@ -141,6 +149,7 @@
     <string name="gestures_swipe_down_nothing">свайп униз нічого не відкриває</string>
     <string name="gestures_until_fixed">%1$s, доки помилку не виправлено: %2$s</string>
     <string name="gestures_keybar_until_fixed">панель клавіш терміналу буде стандартною, доки помилку не виправлено: %1$s</string>
+    <string name="gestures_strip_until_fixed">панель додатків буде стандартною, доки помилку не виправлено: %1$s</string>
 
     <string name="agents_title">ШІ-агенти</string>
     <string name="agents_intro">Встановлюються як в Omarchy, більшість через mise. Вхід відкривається в браузері; ключі вставляйте з буфера обміну клавіатури.</string>

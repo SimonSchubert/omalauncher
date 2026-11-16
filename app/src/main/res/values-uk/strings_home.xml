@@ -66,10 +66,6 @@
     <string name="home_settings">налаштування</string>
 
     <string name="home_linux_window">Linux</string>
-
-    <string name="drawer_action_pin">додати на головний екран</string>
-    <string name="drawer_action_info">про додаток</string>
-    <string name="drawer_action_uninstall">видалити</string>
     <string name="home_news_close">закрити</string>
     <string name="home_news_off">більше не показувати новини</string>
     <string name="home_news_days">дн</string>

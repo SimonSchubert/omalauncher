@@ -45,6 +45,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -266,6 +267,17 @@ fun WidgetKeybar(
     inst: WidgetInstance,
     modifier: Modifier = Modifier,
 ) = ScreenNodes(inst, modifier, Modifier.fillMaxWidth(), ripple = false)
+
+/**
+ * The strip above home's prompt bar (`strip "…" { }`, owl 24): its nodes, as wide as home and as tall as they are, or
+ * [vertical], stood up beside the grid in landscape, as tall as home and as wide as they are.
+ */
+@Composable
+fun WidgetStrip(
+    inst: WidgetInstance,
+    vertical: Boolean,
+    modifier: Modifier = Modifier,
+) = ScreenNodes(inst, modifier, if (vertical) Modifier.fillMaxHeight() else Modifier.fillMaxWidth(), ripple = true)
 
 @Composable
 private fun ScreenNodes(
@@ -601,7 +613,9 @@ private fun Element(
                         Nodes(children, env, inst, this)
                     }
                 } else {
-                    Row(m, horizontalArrangement = arr, verticalAlignment = vertical) { Nodes(children, env, inst, this) }
+                    // Sideways, as wide as its nodes, when it scrolls (owl 24): the strip's apps, more than fit.
+                    val scroll = if (p.observe("scroll")?.truthy == true) Modifier.horizontalScroll(rememberScrollState()) else Modifier
+                    Row(m.then(scroll), horizontalArrangement = arr, verticalAlignment = vertical) { Nodes(children, env, inst, this) }
                 }
             }
         }

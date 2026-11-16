@@ -23,6 +23,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dev.omalauncher.ui.KeybarPreview
+import dev.omalauncher.ui.home.StripPreview
 import dev.omalauncher.ui.home.LocalOffscreen
 import dev.omalauncher.ui.home.OwlAppWindow
 import dev.omalauncher.ui.home.PanelPreview
@@ -89,6 +90,7 @@ internal class Previews(
                 OwlKind.App -> OwlAppWindow(spec, instance)
                 OwlKind.Panel -> PanelPreview(instance)
                 OwlKind.Keybar -> KeybarPreview(instance)
+                OwlKind.Strip -> StripPreview(instance)
                 else -> WidgetScreenPanel(spec, instance, onDismiss = {})
             }
         }

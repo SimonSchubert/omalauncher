@@ -464,6 +464,7 @@ private fun kindPlural(kind: OwlKind) =
         OwlKind.App -> R.string.store_kind_apps
         OwlKind.Panel -> R.string.store_kind_panels
         OwlKind.Keybar -> R.string.store_kind_keybars
+        OwlKind.Strip -> R.string.store_kind_strips
     }
 
 /** What one [kind] is called. */
@@ -475,6 +476,7 @@ internal fun kindName(kind: OwlKind) =
         OwlKind.App -> R.string.store_kind_app
         OwlKind.Panel -> R.string.store_kind_panel
         OwlKind.Keybar -> R.string.store_kind_keybar
+        OwlKind.Strip -> R.string.store_kind_strip
     }
 
 @StringRes
@@ -485,6 +487,7 @@ private fun pickText(kind: OwlKind) =
         OwlKind.App -> R.string.store_pick_app
         OwlKind.Panel -> R.string.store_pick_panel
         OwlKind.Keybar -> R.string.store_pick_keybar
+        OwlKind.Strip -> R.string.store_pick_strip
     }
 
 @Composable
@@ -883,7 +886,7 @@ private fun Detail(
                     when (market.kind) {
                         OwlKind.Widget -> stringResource(R.string.store_add_to_page, page)
                         OwlKind.Face -> stringResource(R.string.store_add_as_face)
-                        OwlKind.App, OwlKind.Panel, OwlKind.Keybar -> stringResource(R.string.store_install)
+                        OwlKind.App, OwlKind.Panel, OwlKind.Keybar, OwlKind.Strip -> stringResource(R.string.store_install)
                     },
                     Palette.accent,
                     // Keys on it wait out the install, for the open an app ends with.
@@ -949,8 +952,8 @@ internal fun AddedMark(kind: OwlKind) =
             OwlKind.Face -> stringResource(R.string.store_added_face)
             OwlKind.App -> stringResource(R.string.store_added_app)
             OwlKind.Panel -> stringResource(R.string.store_added_panel)
-            // Shown only as keybar.owl, the file's name in the widgets folder.
-            OwlKind.Keybar -> stringResource(R.string.store_added_keybar)
+            // Shown only as keybar.owl or strip.owl, the file's name in the widgets folder.
+            OwlKind.Keybar, OwlKind.Strip -> stringResource(R.string.store_added_keybar)
         },
         style = Mono.copy(color = Palette.green),
     )

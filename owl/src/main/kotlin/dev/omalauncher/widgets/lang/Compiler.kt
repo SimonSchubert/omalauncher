@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 23
+        const val LEVEL = 24
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -312,8 +312,8 @@ class Compiler private constructor(
         val level = levelField?.let { constant(it.value, "meta values").num()?.toInt() ?: fail("owl: takes a number, like owl: 1", it.pos) } ?: 1
         if (level > LEVEL) fail("this widget needs owl $level; the launcher supports up to $LEVEL, so update the launcher", levelField!!.pos)
         if (body.animations.isNotEmpty()) fail("animate belongs inside a node", body.animations[0].pos)
-        // An app, a panel and keys check their own (onBack, onSubmit).
-        if (ast.kind != OwlKind.App && ast.kind != OwlKind.Panel && ast.kind != OwlKind.Keybar) {
+        // An app, a panel, keys and the strip check their own (onBack, onSubmit).
+        if (ast.kind != OwlKind.App && ast.kind != OwlKind.Panel && ast.kind != OwlKind.Keybar && ast.kind != OwlKind.Strip) {
             for (h in body.handlers) if (h.name != "onTap") fail("a ${ast.kind.word} only takes onTap at the top level", h.pos)
         }
 
@@ -364,7 +364,7 @@ class Compiler private constructor(
         val requires = requires(body.decls.filterIsInstance<Decl.Requires>().flatMap { it.fields })
         if (ast.kind == OwlKind.App) return app(body, meta, level, requires, globals.map { it!! }, triggers)
         if (ast.kind == OwlKind.Panel) return panel(body, meta, level, requires, globals.map { it!! }, triggers)
-        if (ast.kind == OwlKind.Keybar) return keybar(body, meta, level, requires, globals.map { it!! }, triggers)
+        if (ast.kind == OwlKind.Keybar || ast.kind == OwlKind.Strip) return bar(body, meta, level, requires, globals.map { it!! }, triggers)
         // A face is a widget that fills a home page of its own, the whole screen: it gets a screen's room, and
         // has no tile's size.
         val allowed = if (isFace) FACE_PROPS else WIDGET_PROPS
@@ -623,7 +623,11 @@ class Compiler private constructor(
      * puts it there, and keeps it from taking focus, so the keyboard stays up; `pressKey(...)` and `latch(...)` reach the
      * terminal.
      */
-    private fun keybar(
+    /**
+     * A bar the launcher puts in a place of its own, as tall as its nodes: the extra keys over the keyboard (`keybar`),
+     * or the strip of apps above home's prompt bar (`strip`, owl 24). Its nodes are the whole file.
+     */
+    private fun bar(
         body: Body,
         meta: Map<String, Value>,
         level: Int,
@@ -631,19 +635,26 @@ class Compiler private constructor(
         globals: List<Global>,
         triggers: List<Trigger>,
     ): Program {
-        since(KEYBAR_FILE, 0)
-        body.props.firstOrNull()?.let { fail("a key bar takes no properties; the launcher puts it over the keyboard, as tall as its nodes", it.pos) }
-        body.handlers.firstOrNull()?.let { fail("handlers go on the keys inside, like onPress: pressKey(\"esc\")", it.pos) }
-        body.items.firstOrNull { it is Item.Node && it.type == "screen" }?.let { fail("a key bar has no screen { }: its nodes are the bar", it.pos) }
+        val keys = ast.kind == OwlKind.Keybar
+        since(if (keys) KEYBAR_FILE else STRIP_FILE, 0)
+        body.props.firstOrNull()?.let {
+            fail(if (keys) "a key bar takes no properties; the launcher puts it over the keyboard, as tall as its nodes" else "a strip takes no properties; the launcher puts it above the prompt bar, as tall as its nodes", it.pos)
+        }
+        body.handlers.firstOrNull()?.let { fail(if (keys) "handlers go on the keys inside, like onPress: pressKey(\"esc\")" else "handlers go on the nodes inside, like onTap: open(a.key)", it.pos) }
+        body.items.firstOrNull { it is Item.Node && it.type == "screen" }?.let { fail("a ${if (keys) "key bar" else "strip"} has no screen { }: its nodes are the bar", it.pos) }
         nodes = 0
         maxNodes = MAX_SCREEN_NODES
         inScreen = true
         val tree = items(body.items, root, Children.UI)
-        if (tree.isEmpty()) fail("a key bar needs at least one node, like Button { text: \"esc\"; onPress: pressKey(\"esc\") }", 0)
-        (screenAction ?: openScreen)?.let { fail("screen() and close() open and close a widget's screen { }; the key bar comes and goes with the keyboard", it) }
+        if (tree.isEmpty()) {
+            fail(if (keys) "a key bar needs at least one node, like Button { text: \"esc\"; onPress: pressKey(\"esc\") }" else "a strip needs at least one node, like Row { for a in s.apps key a.key { Image { src: a.icon; size: 40; onTap: open(a.key) } } }", 0)
+        }
+        (screenAction ?: openScreen)?.let {
+            fail("screen() and close() open and close a widget's screen { }; " + if (keys) "the key bar comes and goes with the keyboard" else "the strip stays on home", it)
+        }
         finish(level)
         return Program(
-            name = ast.name ?: "keybar",
+            name = ast.name ?: ast.kind.word,
             meta = meta,
             level = level,
             globals = globals,
@@ -953,7 +964,7 @@ class Compiler private constructor(
                 // Listed with the commands, so the store shows it before anyone installs the widget.
                 if (e.name == "notifications") commands += "read Android notifications (apps, titles and text)"
                 if (e.name == "apps") commands += "read installed Android apps (names, packages and icons)"
-                if (e.name == "recent") commands += "read the recently opened apps"
+                if (e.name == "recent" || e.name == "strip") commands += "read the recently opened apps"
                 if (e.name == "drawer") commands += "read the launcher's apps (names and icons)"
                 if (e.name == "speech") commands += "listen through the microphone after a tap, and read what you say"
                 if (e.name == "location") commands += "read the phone's approximate location, once you allow it"
@@ -1237,6 +1248,7 @@ class Compiler private constructor(
             if (p.name == "focus" && inScreen == false) fail("focus only works in a screen { }", p.pos)
             since("${n.type}.${p.name}", p.pos)
             if (p.name == "reverse" && body.props.none { it.name == "lazy" }) fail("reverse lists a lazy ${n.type} from its end: add lazy: true", p.pos)
+            if (n.type == "Row" && p.name == "scroll" && body.props.any { it.name == "wrap" }) fail("a Row that wraps grows down instead of scrolling: drop scroll or wrap", p.pos)
             if (p.name == "background" && gradient(p.value)) since(GRADIENT_BACKGROUND, p.pos)
             if (p.name == "frost") since("frost", p.pos)
             if (p.name == "drag") {
@@ -1296,7 +1308,7 @@ class Compiler private constructor(
             if (repeated > 0) fail("a Browser can't go inside a for or a component: its page is the node's, so each copy would close the others'; write it out, two at most", n.pos)
             // A home tile's or a face's only: elsewhere nothing gives its touches back to home or lets Back reach its history.
             if (inScreen != false || (ast.kind != OwlKind.Widget && ast.kind != OwlKind.Face)) {
-                fail("a Browser goes on a widget's tile or a face, not in a screen { }, an app, a panel or the key bar", n.pos)
+                fail("a Browser goes on a widget's tile or a face, not in a screen { }, an app, a panel, the key bar or the strip", n.pos)
             }
             if (++browsers > MAX_BROWSERS) {
                 fail("a widget has room for $MAX_BROWSERS Browsers, each a web view of its own: show another page by setting a Browser's url instead", n.pos)

@@ -18,6 +18,9 @@
     <string name="store_pick_app">виберіть додаток, щоб побачити, що він встановлює й запускає</string>
     <string name="store_pick_panel">виберіть панель, щоб побачити, що вона встановлює й запускає</string>
     <string name="store_pick_keybar">виберіть панель клавіш, щоб побачити, що вона встановлює й запускає</string>
+    <string name="store_kind_strips">панелі додатків</string>
+    <string name="store_kind_strip">панель додатків</string>
+    <string name="store_pick_strip">виберіть панель додатків, щоб побачити, що вона встановлює й запускає</string>
 
     <string name="store_search">пошук: %1$d · %2$s</string>
     <string name="store_tab_all">усі</string>

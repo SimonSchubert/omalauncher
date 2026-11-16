@@ -66,10 +66,6 @@
     <string name="home_settings">настройки</string>
 
     <string name="home_linux_window">Linux</string>
-
-    <string name="drawer_action_pin">добавить на главный экран</string>
-    <string name="drawer_action_info">о приложении</string>
-    <string name="drawer_action_uninstall">удалить</string>
     <string name="home_news_close">закрыть</string>
     <string name="home_news_off">больше не показывать новости</string>
     <string name="home_news_days">дн</string>

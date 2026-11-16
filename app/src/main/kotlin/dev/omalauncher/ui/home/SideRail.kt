@@ -204,11 +204,13 @@ private val TWO_PAGES_MIN_WIDTH = 320.dp
  * Added up in whole pixels, each part rounded as [SideRail] lays it out, so the grid ends exactly where the strip starts.
  */
 @Composable
-internal fun sideWidth(): Dp =
-    with(LocalDensity.current) {
+internal fun sideWidth(runtime: Runtime): Dp {
+    val strip = stripRoom(runtime, vertical = true)
+    return with(LocalDensity.current) {
         val gap = HomeGap.roundToPx()
-        ((if (LauncherStyle.recentApps) RecentStripHeight.roundToPx() + gap else 0) + PromptBarHeight.roundToPx() + EdgeGap.roundToPx()).toDp()
+        ((if (LauncherStyle.recentApps) strip.roundToPx() + gap else 0) + PromptBarHeight.roundToPx() + EdgeGap.roundToPx()).toDp()
     }
+}
 
 /**
  * Landscape home's side: portrait's bottom turned with the grid. The recent apps strip stands
@@ -234,7 +236,6 @@ internal fun SideRail(
             if (LauncherStyle.recentApps) {
                 RecentStrip(
                     runtime,
-                    handlers,
                     if (alone) Modifier else Modifier.focusRequester(state.stripEntry).focusGroup(),
                     vertical = true,
                     home = state.homeEntry,

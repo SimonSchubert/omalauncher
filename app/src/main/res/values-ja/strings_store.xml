@@ -18,6 +18,9 @@
     <string name="store_pick_app">アプリを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
     <string name="store_pick_panel">パネルを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
     <string name="store_pick_keybar">キーバーを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
+    <string name="store_kind_strips">アプリのバー</string>
+    <string name="store_kind_strip">アプリのバー</string>
+    <string name="store_pick_strip">アプリのバーを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
 
     <string name="store_search">%1$d 件の%2$sを検索</string>
     <string name="store_tab_all">すべて</string>

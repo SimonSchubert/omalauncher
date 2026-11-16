@@ -9,7 +9,7 @@ when lists reorder), and `let x = ...` inside any node.
 | node | properties |
 |---|---|
 | `Column` | `gap` (dp, default 4), `align: start/center/end`, `justify: start/center/end/spaceBetween/spaceAround/spaceEvenly`, `scroll: true`, `lazy: true` (scrolls, and a `for` right inside builds its rows only as they come into view, so a list of hundreds opens as fast as a short one; give it a height to fill, such as `weight: 1`, since inside a scrolling Column it builds everything, owl 11), `reverse: true` with `lazy` (lists from the end: the first item at the bottom, as search results sit right above a bar; when its items change it scrolls back to the first, owl 11) |
-| `Row` | `gap` (8), `align: top/center/bottom`, `justify`, `wrap: true` |
+| `Row` | `gap` (8), `align: top/center/bottom`, `justify`, `wrap: true`, `scroll: true` (as wide as its nodes, scrolling sideways when that's wider than its room, like the strip's apps; not with `wrap`, owl 24) |
 | `Flow` | a Row that wraps to new lines |
 | `Box` | stacks children on top of each other; `align: center/top/bottom/start/end/topStart/topEnd/bottomStart/bottomEnd` |
 | `Grid` | `columns` (2), `gap`, `lazy: true` (as Column's: scrolls, and builds the cells of a `for` right inside as they come into view, owl 11), `reverse` as Column's; children fill cells left to right |

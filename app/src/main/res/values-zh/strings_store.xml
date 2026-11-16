@@ -18,6 +18,9 @@
     <string name="store_pick_app">选一个应用，看看它会安装和运行什么</string>
     <string name="store_pick_panel">选一个面板，看看它会安装和运行什么</string>
     <string name="store_pick_keybar">选一个按键栏，看看它会安装和运行什么</string>
+    <string name="store_kind_strips">应用栏</string>
+    <string name="store_kind_strip">应用栏</string>
+    <string name="store_pick_strip">选一个应用栏，看看它会安装和运行什么</string>
 
     <string name="store_search">搜索 %1$d 个%2$s</string>
     <string name="store_tab_all">全部</string>
