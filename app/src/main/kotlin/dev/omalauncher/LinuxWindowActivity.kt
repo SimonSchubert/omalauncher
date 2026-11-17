@@ -236,7 +236,7 @@ private class WindowSurfaceView(
     private val window: XdgToplevel,
 ) : SurfaceView(context),
     SurfaceHolder.Callback {
-    private val renderer = WindowRenderer(runtime.server, window)
+    private val renderer = WindowRenderer(runtime.server, window, overlays = true)
 
     var background by renderer::background
 

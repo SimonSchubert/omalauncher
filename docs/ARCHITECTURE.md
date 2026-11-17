@@ -71,6 +71,18 @@ snapshots the surface tree, redraws only the dirty region of the SurfaceView
 callbacks. Hidden windows get no frame callbacks, so their clients stop
 drawing.
 
+GPU clients can render into buffers of ours instead (`oma_ahb_allocator_v1`,
+a private protocol in `scripts/zero-copy/oma-ahb-v1.xml`): the compositor
+allocates AHardwareBuffers, hands out their dma-bufs, and the client attaches
+them as wl_buffers. It offers RGBA everywhere and BGRA (which zink renders
+into) only with an Adreno GPU: on Mali, SurfaceFlinger aborts when it has to
+draw a BGRA buffer itself (a screenshot, an animation). The renderer shows
+such a surface as a child layer of the SurfaceView's surface
+(`ASurfaceControl`, `cpp/ahb.c`), which the display composes without a copy;
+a buffer goes back to the client once the display let go of it. Where that
+can't work, in a TextureView tile or with shm content over the buffer (it
+would end up beneath it), the buffer is copied in like shm content.
+
 ## Browser tiles
 
 A widget's `Browser` node draws an Android System WebView inside the tile

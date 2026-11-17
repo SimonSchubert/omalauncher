@@ -109,7 +109,8 @@ class Surface(
 ) : Resource(client, id, version) {
     override val iface = "wl_surface"
 
-    private var pendingBuffer: ShmBuffer? = null
+    /** A [ShmBuffer] or an [AhbBuffer]. */
+    private var pendingBuffer: Resource? = null
     private var pendingAttach = false
     private var pendingScale = 1
     private var pendingInput: List<IntArray>? = null
@@ -128,6 +129,11 @@ class Surface(
     /** What's on screen. Replaced (never resized) when the buffer size or opacity changes. */
     @Volatile
     var store: PixelStore? = null
+        private set
+
+    /** What's on screen instead of [store] when the client renders into our AHardwareBuffers; held while it is. */
+    @Volatile
+    var ahb: AhbBuffer? = null
         private set
 
     var bufferScale = 1
@@ -174,7 +180,7 @@ class Surface(
         when (opcode) {
             0 -> destroy()
             1 -> { // attach
-                pendingBuffer = client.get<ShmBuffer>(args.obj())
+                pendingBuffer = client.objects[args.obj()]?.takeIf { it is ShmBuffer || it is AhbBuffer }
                 pendingAttach = true
             }
             2 -> pendingDamage += intArrayOf(args.int(), args.int(), args.int(), args.int())
@@ -202,16 +208,28 @@ class Surface(
             pendingAttach = false
             // A buffer destroyed since the attach counts as none (as in libwayland): its pool may be
             // gone too, and referencing it again would unmap and close the pool's fd a second time.
-            val buffer = pendingBuffer?.takeIf { client.objects[it.id] === it }
+            val buffer = pendingBuffer?.takeIf { client.objects[it.id] === it && (it !is AhbBuffer || it.ptr != 0L) }
             pendingBuffer = null
-            if (buffer == null) {
-                bufferWidth = 0
-                bufferHeight = 0
-                replaceStore(null)
-            } else {
-                bufferWidth = buffer.width
-                bufferHeight = buffer.height
-                upload(buffer, full = scaleChanged)
+            when (buffer) {
+                is ShmBuffer -> {
+                    replaceAhb(null)
+                    bufferWidth = buffer.width
+                    bufferHeight = buffer.height
+                    upload(buffer, full = scaleChanged)
+                }
+                is AhbBuffer -> {
+                    // Nothing to copy: the window shows this very buffer.
+                    replaceStore(null)
+                    replaceAhb(buffer)
+                    bufferWidth = buffer.width
+                    bufferHeight = buffer.height
+                }
+                else -> {
+                    bufferWidth = 0
+                    bufferHeight = 0
+                    replaceStore(null)
+                    replaceAhb(null)
+                }
             }
         }
         pendingDamage.clear()
@@ -281,6 +299,13 @@ class Surface(
         old?.free()
     }
 
+    private fun replaceAhb(next: AhbBuffer?) {
+        next?.hold()
+        val old = ahb
+        ahb = next
+        old?.unhold()
+    }
+
     /** Sends wl_callback.done for pending frame callbacks: right after the window showed this surface's content. */
     fun flushFrames(timeMs: Int) {
         frames.forEach { cb ->
@@ -302,6 +327,7 @@ class Surface(
         pendingFrames.clear()
         children.toList().forEach { it.parentDestroyed() }
         replaceStore(null)
+        replaceAhb(null)
         bufferWidth = 0
         role = null
         client.server.surfaceDestroyed(this)
