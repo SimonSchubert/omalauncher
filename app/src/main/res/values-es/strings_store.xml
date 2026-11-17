@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="store_title">tienda</string>
+    <string name="store_widgets_title">tienda de widgets</string>
+    <string name="store_apps_title">tienda de apps</string>
+    <string name="store_featured">destacadas</string>
 
     <string name="store_kind_widgets">widgets</string>
     <string name="store_kind_faces">widgets de pantalla completa</string>

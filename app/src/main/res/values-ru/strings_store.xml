@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="store_title">магазин</string>
+    <string name="store_widgets_title">магазин виджетов</string>
+    <string name="store_apps_title">магазин приложений</string>
+    <string name="store_featured">рекомендуемые</string>
 
     <string name="store_kind_widgets">виджеты</string>
     <string name="store_kind_faces">полноэкранные виджеты</string>

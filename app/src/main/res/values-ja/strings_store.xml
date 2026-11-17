@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="store_title">ストア</string>
+    <string name="store_widgets_title">ウィジェットストア</string>
+    <string name="store_apps_title">アプリストア</string>
+    <string name="store_featured">おすすめ</string>
 
     <string name="store_kind_widgets">ウィジェット</string>
     <string name="store_kind_faces">全画面ウィジェット</string>

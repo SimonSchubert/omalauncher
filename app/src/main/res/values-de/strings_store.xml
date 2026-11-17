@@ -3,7 +3,9 @@
      with you (ui/SharedWidgetScreen.kt), adding an app's shortcut (ui/PinShortcutDialog.kt) and the community themes
      (ui/ThemeCatalogScreen.kt). -->
 <resources>
-    <string name="store_title">store</string>
+    <string name="store_widgets_title">widget-store</string>
+    <string name="store_apps_title">app-store</string>
+    <string name="store_featured">empfohlen</string>
 
     <!-- What the store holds, one of; the toggle in the store's header, and the %s in the store's sentences below. -->
     <string name="store_kind_widgets">widgets</string>

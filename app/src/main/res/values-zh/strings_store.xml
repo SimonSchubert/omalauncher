@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="store_title">商店</string>
+    <string name="store_widgets_title">小组件商店</string>
+    <string name="store_apps_title">应用商店</string>
+    <string name="store_featured">精选</string>
 
     <string name="store_kind_widgets">小组件</string>
     <string name="store_kind_faces">全屏小组件</string>

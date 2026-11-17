@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -114,7 +115,7 @@ fun StoreScreen(
     /** The Omarchy theme in use, so previews show widgets in its colors. */
     theme: String?,
     onDismiss: () -> Unit,
-    /** The kind it opens on; faces open the widgets on their full screen tab. */
+    /** The kind it opens on: the widget store, or the app store; faces open the widget store on its full screen tab. */
     initialKind: OwlKind = OwlKind.Widget,
     /** Opens the installed app in this file, as the drawer does. */
     onOpenApp: (String) -> Unit = {},
@@ -147,12 +148,12 @@ fun StoreScreen(
         // On its own, an entry's page takes the header: a chevron back to the grid and its name, nothing else.
         val alone = detail?.takeIf { !wide }
         OverlayPanel(
-            alone?.e?.name ?: stringResource(R.string.store_title),
+            alone?.e?.name ?: stringResource(if (kind == OwlKind.App) R.string.store_apps_title else R.string.store_widgets_title),
             onDismiss,
             onBack = if (alone != null) back else LocalPanelBack.current,
             actions = {
                 if (alone == null) {
-                    KindToggle(kind, engine.markets.map { it.kind }.filter { it != OwlKind.Face }) {
+                    StoreSwitch(kind) {
                         kind = it
                         open = null
                         message = null
@@ -203,7 +204,7 @@ fun StoreScreen(
                     )
                 }
                 val list = @Composable { modifier: Modifier ->
-                    StoreList(engine, market, faces, agents, page, theme, filter, if (wide) picked?.key else null, modifier, select, onDismiss)
+                    StoreList(engine, market, faces, agents, page, theme, filter, if (wide) picked?.key else null, modifier, select, onDismiss, onOpenApp)
                 }
                 when {
                     // Side by side: the grid, and the picked widget's page beside it.
@@ -236,29 +237,14 @@ fun StoreScreen(
     }
 }
 
-/** Widgets, faces or apps: segments in the store's header, the shown one filled. */
+/** The other store's button in the header: apps in the widget store, widgets in the app store. */
 @Composable
-private fun KindToggle(
+private fun StoreSwitch(
     kind: OwlKind,
-    /** The kinds the store has; panels have none. */
-    kinds: List<OwlKind>,
-    onPick: (OwlKind) -> Unit,
+    onSwitch: (OwlKind) -> Unit,
 ) {
-    Row(Modifier.padding(end = 4.dp).frame(1.dp, Palette.border, radius = 14.dp)) {
-        for (k in kinds) {
-            val label = stringResource(kindPlural(k))
-            val on = k == kind
-            BasicText(
-                label,
-                Modifier
-                    .background(if (on) Palette.accent.copy(alpha = 0.15f) else Color.Transparent)
-                    // The shown one still takes a tap, doing nothing, so keys on it as it's picked stay there.
-                    .clickable { if (!on) onPick(k) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                style = Mono.copy(color = if (on) Palette.accent else Palette.muted, fontSize = TextSize.Small),
-            )
-        }
-    }
+    val other = if (kind == OwlKind.App) OwlKind.Widget else OwlKind.App
+    Box(Modifier.padding(end = 4.dp)) { Chip(stringResource(kindPlural(other)), selected = false) { onSwitch(other) } }
 }
 
 /** What the grid shows and where it's scrolled, kept while an entry's page covers it or the layout changes. */
@@ -294,6 +280,8 @@ private fun StoreList(
     modifier: Modifier,
     onOpen: (Listed) -> Unit,
     onDismiss: () -> Unit,
+    /** Opens an installed app, by its file. */
+    onOpenApp: (String) -> Unit,
 ) {
     val apps = market.kind == OwlKind.App
     // Faces get a "new" tab like widgets; apps have never had one.
@@ -306,7 +294,8 @@ private fun StoreList(
         val tabs =
             buildList {
                 // Full-screen widgets have their own tab, not a place in all, until a search looks through everything.
-                add(ALL to market.entries.size)
+                // An app store's all leaves out the apps already installed, which the installed tab lists.
+                add(ALL to if (apps) market.entries.size - installed.size else market.entries.size)
                 // There even when nothing is new.
                 if (!apps) add(NEW to all.count { it.e.new })
                 // Faces have a tab of their own rather than their categories, which are the widgets'.
@@ -322,7 +311,13 @@ private fun StoreList(
                 add(INSTALLED to installed.size)
             }
         val q = filter.query.trim().lowercase()
-        val shown = shownEntries(market, faces, filter)
+        // Apps start with the store's highest ranked that aren't installed, its first few in the catalog's order, as a
+        // row of big screenshots to swipe through, and the list under it goes on from there. Installed ones are left out
+        // of both, so installing a featured app brings up the next; a search and the installed tab still find them.
+        val featuring = apps && filter.tab == ALL && q.isEmpty()
+        val notInstalled = { l: Listed -> l.market.installedVersion(l.e) == null }
+        val featured = if (featuring) all.filter { it.e.supported && notInstalled(it) }.take(FEATURED) else emptyList()
+        val shown = shownEntries(market, faces, filter).filter { !featuring || notInstalled(it) } - featured.toSet()
         val updates = installed.count { it.market.hasUpdate(it.e) }
         val loading = market.loading || faces?.loading == true
         val error = market.error ?: faces?.error
@@ -338,7 +333,8 @@ private fun StoreList(
         }
         Spacer(Modifier.height(10.dp))
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(150.dp),
+            // Apps are rows, as app stores list them: one column on a phone, more on a tablet.
+            columns = GridCells.Adaptive(if (apps) AppRowMinWidth else 150.dp),
             modifier = Modifier.fillMaxSize(),
             state = filter.grid,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -379,6 +375,19 @@ private fun StoreList(
                     }
                 }
             }
+            // The featured row is there while the catalog loads too, empty: the grid keeps its first item in view, which
+            // would otherwise be the caption below, with the row scrolled away above it once it came.
+            if (featuring) {
+                item(key = "featured", span = { GridItemSpan(maxLineSpan) }) {
+                    if (featured.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Caption(stringResource(R.string.store_featured))
+                        LazyRow(Modifier.bleed(PanelPadding), contentPadding = PaddingValues(horizontal = PanelPadding), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            items(featured, key = { it.key }) { l -> FeaturedCard(l.market, l.e, theme, engine.linux, selected = l.key == selected) { onOpen(l) } }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                    }
+                }
+            }
             item(key = "catalog", span = { GridItemSpan(maxLineSpan) }) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Caption(stringResource(R.string.store_reviewed, noun, Market.REPO))
@@ -397,7 +406,9 @@ private fun StoreList(
                 }
             }
             items(shown, key = { it.key }) { l ->
-                if (filter.tab == FULL_SCREEN) {
+                if (apps) {
+                    AppRow(l.market, l.e, engine.linux, selected = l.key == selected, onOpen = { onOpen(l) }, onOpenApp = onOpenApp)
+                } else if (filter.tab == FULL_SCREEN) {
                     FullScreenCard(l.market, l.e, theme, engine.linux, selected = l.key == selected) { onOpen(l) }
                 } else {
                     Card(l.market, l.e, theme, engine.linux, selected = l.key == selected) { onOpen(l) }
@@ -498,6 +509,7 @@ private val CardIconSize = 32.dp
 /** A built-in entry's width, room for "tap to add to page 10". */
 private val BuiltInWidth = 180.dp
 private val DetailIconSize = 48.dp
+private val AppDetailIconSize = 72.dp
 
 /** How tall an entry's page shows its preview and screens, so its description stays in view. */
 private val ScreenHeight = 320.dp
@@ -625,14 +637,15 @@ private fun rememberCardPreview(
     market: Market,
     e: CatalogEntry,
     theme: String?,
-    /** As a portrait screenshot, [FullScreenPreviewTop] of its width high, for the full screen tab. */
-    fullScreen: Boolean = false,
+    /** As a portrait screenshot's top, this much of its width high: the full screen tab's cards, the featured apps. */
+    portrait: Float? = null,
+    width: Dp = CardPreviewWidth,
 ): ImageBitmap? {
     val density = LocalDensity.current
-    val w = with(density) { CardPreviewWidth.roundToPx() }
+    val w = with(density) { width.roundToPx() }
     val (h, top) =
         when {
-            fullScreen -> (w * FullScreenPreviewTop).toInt() to FullScreenPreviewTop
+            portrait != null -> (w * portrait).toInt() to portrait
             else -> with(density) { CardPreviewHeight.roundToPx() } to (if (market.kind == OwlKind.Widget) null else CardPreviewHeight / CardPreviewMinWidth)
         }
     val preview by produceState<ImageBitmap?>(null, e.previewFor(theme), w, h) { value = market.thumbnail(e, theme, w, h, top) }
@@ -669,32 +682,53 @@ private fun Card(
         }
         // An app's icon goes before its name and status, as in the drawer; widgets have none.
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (e.icon != null || e.iconFile != null) {
-                val icon = rememberIcon(market, e, CardIconSize)
-                Box(Modifier.size(CardIconSize)) { icon?.let { Image(it, null, Modifier.fillMaxSize()) } }
-            }
+            EntryIcon(market, e, CardIconSize)
             CardLabel(market, e, linux, Modifier.weight(1f))
         }
     }
 }
 
-/** A grid cell's frame, accented while [selected], with [content] in a column. */
+/** Every card's frame, a grid cell's, a featured app's or an app's row: accented while [selected], tapped to open. */
+private fun Modifier.card(
+    selected: Boolean,
+    onOpen: () -> Unit,
+) = frame(1.dp, if (selected) Palette.accent else Palette.border, radius = 12.dp).clickable(onClick = onOpen)
+
+/** A card with [content] in a column: a grid cell, as wide as the grid gives it, or a featured app, [modifier]'s width. */
 @Composable
 private fun CardFrame(
     selected: Boolean,
     onOpen: () -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    padding: Dp = 8.dp,
+    gap: Dp = 4.dp,
     content: @Composable ColumnScope.() -> Unit,
-) = Column(
-    Modifier
-        .fillMaxWidth()
-        .frame(1.dp, if (selected) Palette.accent else Palette.border, radius = 12.dp)
-        .clickable(onClick = onOpen)
-        .padding(8.dp),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
-    content = content,
-)
+) = Column(modifier.card(selected, onOpen).padding(padding), verticalArrangement = Arrangement.spacedBy(gap), content = content)
 
-/** A card's name, marked when it's new, and its [cardStatus] under it. */
+/** [e]'s icon at [size], as the drawer draws it, wherever the store shows one; nothing for a widget, which has none. */
+@Composable
+private fun EntryIcon(
+    market: Market,
+    e: CatalogEntry,
+    size: Dp,
+) {
+    if (e.icon == null && e.iconFile == null) return
+    val icon = rememberIcon(market, e, size)
+    Box(Modifier.size(size)) { icon?.let { Image(it, null, Modifier.fillMaxSize()) } }
+}
+
+/** A portrait screenshot's top, [top] of its width high, or [name] while it loads: a full-screen widget's card, a featured app's. */
+@Composable
+private fun ScreenTop(
+    preview: ImageBitmap?,
+    name: String,
+    top: Float,
+) = Box(Modifier.fillMaxWidth().aspectRatio(1 / top).clip(RoundedCornerShape(8.dp)).background(Palette.surface), contentAlignment = Alignment.Center) {
+    preview?.let { Image(it, null, Modifier.fillMaxSize(), alignment = Alignment.TopCenter, contentScale = ContentScale.FillWidth) }
+        ?: BasicText(name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+}
+
+/** A card's name, marked when it's new, an app row's [description] under it, and its [cardStatus] last. */
 @Composable
 private fun CardLabel(
     market: Market,
@@ -702,6 +736,7 @@ private fun CardLabel(
     linux: Boolean,
     modifier: Modifier = Modifier,
     shape: Boolean = true,
+    description: String? = null,
 ) {
     val (status, color) = cardStatus(market, e, linux, shape)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -709,6 +744,7 @@ private fun CardLabel(
             BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (e.new) NewBadge()
         }
+        description?.let { BasicText(it, style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Small), maxLines = 2, overflow = TextOverflow.Ellipsis) }
         BasicText(status, style = Mono.copy(color = color, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -746,12 +782,9 @@ private fun FullScreenCard(
     selected: Boolean,
     onOpen: () -> Unit,
 ) {
-    val preview = rememberCardPreview(market, e, theme, fullScreen = true)
+    val preview = rememberCardPreview(market, e, theme, portrait = FullScreenPreviewTop)
     CardFrame(selected, onOpen) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1 / FullScreenPreviewTop).clip(RoundedCornerShape(6.dp)).background(Palette.surface), contentAlignment = Alignment.Center) {
-            preview?.let { Image(it, null, Modifier.fillMaxSize(), alignment = Alignment.TopCenter, contentScale = ContentScale.FillWidth) }
-                ?: BasicText(e.name, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
-        }
+        ScreenTop(preview, e.name, FullScreenPreviewTop)
         // The tab says they're full screen, so their status leaves it out.
         CardLabel(market, e, linux, shape = false)
     }
@@ -759,6 +792,63 @@ private fun FullScreenCard(
 
 /** A full-screen card's preview is twice as high as it's wide: a phone screen less a little of its bottom. */
 private const val FullScreenPreviewTop = 2f
+
+/** How many apps the app store's featured row shows. */
+private const val FEATURED = 5
+
+/** A featured card's width, and its screenshot's height over that: most of a phone screen, so a game reads as one. */
+private val FeaturedWidth = 168.dp
+private const val FeaturedTop = 1.7f
+
+/** The narrowest an app's row gets before the grid puts one fewer in a line. */
+private val AppRowMinWidth = 320.dp
+private val AppRowIconSize = 56.dp
+
+/** A card in the app store's featured row: a big portrait screenshot of the app, its icon, name and status under it. */
+@Composable
+private fun FeaturedCard(
+    market: Market,
+    e: CatalogEntry,
+    theme: String?,
+    linux: Boolean,
+    selected: Boolean,
+    onOpen: () -> Unit,
+) {
+    val preview = rememberCardPreview(market, e, theme, portrait = FeaturedTop, width = FeaturedWidth)
+    CardFrame(selected, onOpen, Modifier.width(FeaturedWidth), padding = 6.dp, gap = 6.dp) {
+        ScreenTop(preview, e.name, FeaturedTop)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            EntryIcon(market, e, CardIconSize)
+            CardLabel(market, e, linux, Modifier.weight(1f), shape = false)
+        }
+    }
+}
+
+/**
+ * An app in the app store's list: its icon, big as on a phone's home, its name, what it does and its status, and
+ * open at its end once it's installed. A tap anywhere else shows its page, which installs it.
+ */
+@Composable
+private fun AppRow(
+    market: Market,
+    e: CatalogEntry,
+    linux: Boolean,
+    selected: Boolean,
+    onOpen: () -> Unit,
+    onOpenApp: (String) -> Unit,
+) = Row(
+    Modifier.fillMaxWidth().card(selected, onOpen).padding(10.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+) {
+    EntryIcon(market, e, AppRowIconSize)
+    CardLabel(market, e, linux, Modifier.weight(1f), shape = false, description = e.description)
+    // Opens as the drawer does, unless it waits for Linux or an update; the page says why.
+    val installed = market.installedVersion(e)
+    if (installed != null && market.busy[e.id] == null && !market.hasUpdate(e) && (linux || !e.needsLinux)) {
+        BracketAction(stringResource(R.string.store_open), Palette.accent) { onOpenApp(installed.file) }
+    }
+}
 
 /** Marks an entry added to the store in the last few days, beside its name; its status stays as it is. */
 @Composable
@@ -821,27 +911,31 @@ private fun Detail(
     val busy = market.busy[e.id]
     // Keyed by the widget, so picking another one beside the grid starts its page at the top.
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // An app's page reads like an app store's: its icon, name and install first, then its screens and what it does.
+        val appPage = market.kind == OwlKind.App
         val screens = e.screensFor(theme)
-        if (screens.isNotEmpty()) {
-            Screens(market, preview, screens, onView)
-        } else {
-            preview?.let {
-                // As wide as the panel, but no taller than 320 dp, so a tall widget doesn't push its description off screen:
-                // narrowing the width keeps the image inside its slot instead of drawing over the text below.
-                val ratio = it.width.toFloat() / it.height
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    // A whole screen, an app's or a face's, is shown bigger on a tap; a widget is already its full size here.
-                    val tap = if (market.kind == OwlKind.Widget) Modifier else Modifier.clickable { onView(it) }
-                    Image(it, null, Modifier.widthIn(max = ScreenHeight * ratio).fillMaxWidth().aspectRatio(ratio).then(tap), contentScale = ContentScale.Fit)
+        val shots = @Composable {
+            if (screens.isNotEmpty()) {
+                Screens(market, preview, screens, onView)
+            } else {
+                preview?.let {
+                    // As wide as the panel, but no taller than 320 dp, so a tall widget doesn't push its description off screen:
+                    // narrowing the width keeps the image inside its slot instead of drawing over the text below.
+                    val ratio = it.width.toFloat() / it.height
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        // A whole screen, an app's or a face's, is shown bigger on a tap; a widget is already its full size here.
+                        val tap = if (market.kind == OwlKind.Widget) Modifier else Modifier.clickable { onView(it) }
+                        Image(it, null, Modifier.widthIn(max = ScreenHeight * ratio).fillMaxWidth().aspectRatio(ratio).then(tap), contentScale = ContentScale.Fit)
+                    }
                 }
             }
         }
-        Spacer(Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (e.icon != null || e.iconFile != null) {
-                val icon = rememberIcon(market, e, DetailIconSize)
-                Box(Modifier.size(DetailIconSize)) { icon?.let { Image(it, null, Modifier.fillMaxSize()) } }
-            }
+        if (!appPage) {
+            shots()
+            Spacer(Modifier.height(4.dp))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (appPage) 14.dp else 10.dp)) {
+            EntryIcon(market, e, if (appPage) AppDetailIconSize else DetailIconSize)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     BasicText(e.name, Modifier.weight(1f, fill = false), style = Mono.copy(fontSize = TextSize.Title))
@@ -850,8 +944,10 @@ private fun Detail(
                 BasicText("${category(e)} · ${e.author} · v${e.version} · ${e.license}${shapeText(market, e)}", style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
             }
         }
-        BasicText(e.description, style = Mono.copy(fontSize = TextSize.Body))
-        Spacer(Modifier.height(4.dp))
+        if (!appPage) {
+            BasicText(e.description, style = Mono.copy(fontSize = TextSize.Body))
+            Spacer(Modifier.height(4.dp))
+        }
         when {
             busy != null -> BasicText(stringResource(busy), style = Mono.copy(color = Palette.accent))
             !e.supported -> BasicText(stringResource(R.string.store_needs_newer_detail, e.owl), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
@@ -918,6 +1014,12 @@ private fun Detail(
         }
         message?.let { BasicText(it.resolve(), style = Mono.copy(color = Palette.red, fontSize = TextSize.Small)) }
         if (!linux && e.needsLinux) NeedsLinuxNote(market.kind == OwlKind.App)
+        if (appPage) {
+            Spacer(Modifier.height(6.dp))
+            shots()
+            Spacer(Modifier.height(4.dp))
+            BasicText(e.description, style = Mono.copy(fontSize = TextSize.Body))
+        }
 
         Spacer(Modifier.height(4.dp))
         InstallDisclosure(e.requires, e.commands) {

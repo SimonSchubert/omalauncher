@@ -201,6 +201,7 @@ fun HomeScreen(
                 "style", "themes" -> state.show(SettingsPage.Style)
                 "agents" -> state.show(SettingsPage.Agents)
                 "store" -> state.show(SettingsPage.Store)
+                "store:apps" -> state.show(SettingsPage.AppStore)
                 "linux" -> state.show(SettingsPage.Linux)
                 "drawer" -> state.open()
                 "settings" -> state.show()

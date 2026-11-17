@@ -2,15 +2,17 @@ panel "app drawer" {
   // The app drawer: swiping up on home opens it, above the prompt bar. It's a panel like any other, so it's yours to
   // change: ask your agent to edit it, or pick another panel in settings › gestures. .stock-drawer.owl next to it is
   // this file as the launcher ships it, kept up to date: compare the two to see what changed in a newer launcher.
-  meta { description: "The launcher's app drawer, written in owl: your apps by kind, search as you type in the prompt bar, and each app's long-press menu"; version: "1.3"; license: "MIT"; category: "system"; owl: 16 }
+  meta { description: "The launcher's app drawer, written in owl: your apps by kind, search as you type in the prompt bar, and each app's long-press menu"; version: "1.4"; license: "MIT"; category: "system"; owl: 16 }
   // The launcher's gear, as its settings buttons draw it; currentColor takes the accent.
   asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
+  // A shopping bag with a sparkle cut out of it, the app store tile's icon; currentColor takes the tint.
+  asset bag = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjUgNiAzOCAzOCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xNyAxN3YtMmE3IDcgMCAwIDEgMTQgMHYyaC0zdi0yYTQgNCAwIDAgMC04IDB2MnpNMTIuMiAxN2gyMy42YTIuMiAyLjIgMCAwIDEgMi4yIDJsMS41IDE5LjZhMy4yIDMuMiAwIDAgMS0zLjIgMy40SDExLjdhMy4yIDMuMiAwIDAgMS0zLjItMy40TDEwIDE5YTIuMiAyLjIgMCAwIDEgMi4yLTJ6TTI0IDIzLjVxMS4xIDUuNCA2LjUgNi41cS01LjQgMS4xLTYuNSA2LjVxLTEuMS01LjQtNi41LTYuNXE1LjQtMS4xIDYuNS02LjV6Ii8+PC9zdmc+"
   // What the drawer says, in the phone's language where it has a set, and in English where it doesn't. The action
   // words (pin, info, ...) are appAction's, so a long-press menu names each with get(str, word).
   strings {
     en {
       personal: "personal"; work: "work"; apps: "apps"; linux: "linux"; shortcuts: "shortcuts"; android: "android"
-      workApps: "work apps"; workPaused: "work apps paused"; linuxApps: "linux apps"
+      workApps: "work apps"; workPaused: "work apps paused"; linuxApps: "linux apps"; appStore: "app store"
       pin: "add to home"; info: "app info"; uninstall: "uninstall"; remove: "remove"; edit: "edit"; share: "share"
       settings: "settings"; turnOn: "turn on"; pause: "pause"; installing: "installing…"; installLinux: "install linux"
       open: "open"; ask: "ask"; askInstallLinux: "ask an agent · install linux"; askInstallAgent: "ask an agent · install one"
@@ -18,7 +20,7 @@ panel "app drawer" {
     }
     id {
       personal: "pribadi"; work: "kerja"; apps: "aplikasi"; linux: "linux"; shortcuts: "pintasan"; android: "android"
-      workApps: "aplikasi kerja"; workPaused: "aplikasi kerja dijeda"; linuxApps: "aplikasi linux"
+      workApps: "aplikasi kerja"; workPaused: "aplikasi kerja dijeda"; linuxApps: "aplikasi linux"; appStore: "toko aplikasi"
       pin: "tambah ke layar utama"; info: "info aplikasi"; uninstall: "uninstal"; remove: "hapus"; edit: "edit"; share: "bagikan"
       settings: "setelan"; turnOn: "aktifkan"; pause: "jeda"; installing: "menginstal…"; installLinux: "instal linux"
       open: "buka"; ask: "tanya"; askInstallLinux: "tanya agen · instal linux"; askInstallAgent: "tanya agen · instal satu"
@@ -26,7 +28,7 @@ panel "app drawer" {
     }
     es {
       personal: "personal"; work: "trabajo"; apps: "apps"; linux: "linux"; shortcuts: "accesos directos"; android: "android"
-      workApps: "apps de trabajo"; workPaused: "apps de trabajo en pausa"; linuxApps: "apps de linux"
+      workApps: "apps de trabajo"; workPaused: "apps de trabajo en pausa"; linuxApps: "apps de linux"; appStore: "tienda de apps"
       pin: "agregar a inicio"; info: "info de la app"; uninstall: "desinstalar"; remove: "quitar"; edit: "editar"; share: "compartir"
       settings: "configuración"; turnOn: "activar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
       open: "abrir"; ask: "preguntar"; askInstallLinux: "preguntar a un agente · instalar linux"; askInstallAgent: "preguntar a un agente · instalar uno"
@@ -34,7 +36,7 @@ panel "app drawer" {
     }
     pt {
       personal: "pessoal"; work: "trabalho"; apps: "apps"; linux: "linux"; shortcuts: "atalhos"; android: "android"
-      workApps: "apps de trabalho"; workPaused: "apps de trabalho pausados"; linuxApps: "apps linux"
+      workApps: "apps de trabalho"; workPaused: "apps de trabalho pausados"; linuxApps: "apps linux"; appStore: "loja de apps"
       pin: "adicionar à tela inicial"; info: "informações do app"; uninstall: "desinstalar"; remove: "remover"; edit: "editar"; share: "compartilhar"
       settings: "configurações"; turnOn: "ativar"; pause: "pausar"; installing: "instalando…"; installLinux: "instalar linux"
       open: "abrir"; ask: "perguntar"; askInstallLinux: "perguntar a um agente · instalar linux"; askInstallAgent: "perguntar a um agente · instalar um"
@@ -42,7 +44,7 @@ panel "app drawer" {
     }
     de {
       personal: "persönlich"; work: "arbeit"; apps: "apps"; linux: "linux"; shortcuts: "verknüpfungen"; android: "android"
-      workApps: "arbeits-apps"; workPaused: "arbeits-apps pausiert"; linuxApps: "linux-apps"
+      workApps: "arbeits-apps"; workPaused: "arbeits-apps pausiert"; linuxApps: "linux-apps"; appStore: "app-store"
       pin: "zum startbildschirm hinzufügen"; info: "app-info"; uninstall: "deinstallieren"; remove: "entfernen"; edit: "bearbeiten"; share: "teilen"
       settings: "einstellungen"; turnOn: "aktivieren"; pause: "pausieren"; installing: "wird installiert…"; installLinux: "linux installieren"
       open: "öffnen"; ask: "fragen"; askInstallLinux: "einen agenten fragen · linux installieren"; askInstallAgent: "einen agenten fragen · einen installieren"
@@ -50,7 +52,7 @@ panel "app drawer" {
     }
     zh {
       personal: "个人"; work: "工作"; apps: "应用"; linux: "linux"; shortcuts: "快捷方式"; android: "android"
-      workApps: "工作应用"; workPaused: "工作应用已暂停"; linuxApps: "linux 应用"
+      workApps: "工作应用"; workPaused: "工作应用已暂停"; linuxApps: "linux 应用"; appStore: "应用商店"
       pin: "添加到主屏幕"; info: "应用信息"; uninstall: "卸载"; remove: "移除"; edit: "编辑"; share: "分享"
       settings: "设置"; turnOn: "开启"; pause: "暂停"; installing: "正在安装…"; installLinux: "安装 linux"
       open: "打开"; ask: "提问"; askInstallLinux: "问智能体 · 安装 linux"; askInstallAgent: "问智能体 · 先装一个"
@@ -58,7 +60,7 @@ panel "app drawer" {
     }
     ru {
       personal: "личные"; work: "рабочие"; apps: "приложения"; linux: "linux"; shortcuts: "ярлыки"; android: "android"
-      workApps: "рабочие приложения"; workPaused: "рабочие приложения приостановлены"; linuxApps: "приложения linux"
+      workApps: "рабочие приложения"; workPaused: "рабочие приложения приостановлены"; linuxApps: "приложения linux"; appStore: "магазин приложений"
       pin: "добавить на главный экран"; info: "о приложении"; uninstall: "удалить"; remove: "убрать"; edit: "изменить"; share: "поделиться"
       settings: "настройки"; turnOn: "включить"; pause: "приостановить"; installing: "установка…"; installLinux: "установить linux"
       open: "открыть"; ask: "спросить"; askInstallLinux: "спросить агента · установить linux"; askInstallAgent: "спросить агента · установить агента"
@@ -66,7 +68,7 @@ panel "app drawer" {
     }
     ja {
       personal: "個人用"; work: "仕事用"; apps: "アプリ"; linux: "linux"; shortcuts: "ショートカット"; android: "android"
-      workApps: "仕事用アプリ"; workPaused: "仕事用アプリは一時停止中"; linuxApps: "linux アプリ"
+      workApps: "仕事用アプリ"; workPaused: "仕事用アプリは一時停止中"; linuxApps: "linux アプリ"; appStore: "アプリストア"
       pin: "ホームに追加"; info: "アプリ情報"; uninstall: "アンインストール"; remove: "削除"; edit: "編集"; share: "共有"
       settings: "設定"; turnOn: "オンにする"; pause: "一時停止"; installing: "インストール中…"; installLinux: "linux をインストール"
       open: "開く"; ask: "聞く"; askInstallLinux: "エージェントに聞く · linux をインストール"; askInstallAgent: "エージェントに聞く · まずインストール"
@@ -74,7 +76,7 @@ panel "app drawer" {
     }
     uk {
       personal: "особисті"; work: "робочі"; apps: "додатки"; linux: "linux"; shortcuts: "ярлики"; android: "android"
-      workApps: "робочі додатки"; workPaused: "робочі додатки призупинено"; linuxApps: "додатки linux"
+      workApps: "робочі додатки"; workPaused: "робочі додатки призупинено"; linuxApps: "додатки linux"; appStore: "магазин додатків"
       pin: "додати на головний екран"; info: "про додаток"; uninstall: "видалити"; remove: "прибрати"; edit: "змінити"; share: "поділитися"
       settings: "налаштування"; turnOn: "увімкнути"; pause: "призупинити"; installing: "встановлення…"; installLinux: "встановити linux"
       open: "відкрити"; ask: "запитати"; askInstallLinux: "запитати агента · встановити linux"; askInstallAgent: "запитати агента · встановити агента"
@@ -101,7 +103,8 @@ panel "app drawer" {
       {id: "shortcuts", title: str.shortcuts, apps: mine.filter(a => a.kind == "shortcut")},
       {id: "work", title: d.work.paused ? str.workPaused : str.workApps, apps: mine.filter(a => a.kind == "android"), work: true}
     ] : [
-      {id: "apps", title: str.apps, apps: mine.filter(a => a.kind == "owl")},
+      // The store first, then the apps from it, so there's always a way to get more; not while the list loads.
+      {id: "apps", title: str.apps, apps: flatten([len(d.apps) > 0 ? [{store: true}] : [], mine.filter(a => a.kind == "owl")])},
       {id: "linux", title: str.linux, apps: mine.filter(a => a.kind == "linux"), linux: true},
       {id: "shortcuts", title: str.shortcuts, apps: mine.filter(a => a.kind == "shortcut")},
       {id: "android", title: str.android, apps: mine.filter(a => a.kind == "android")}
@@ -217,6 +220,27 @@ panel "app drawer" {
     }
   }
 
+  // The app store, before the apps it installs: the bag in the accent on the theme's surface, as the settings button
+  // draws its gear, shaped like the apps' icons.
+  component StoreCell() {
+    Column {
+      weight: 1
+      align: center
+      gap: 6
+      padding: [4, 10]
+      radius: 16 * corners
+      onTap: launcher("store:apps")
+      Box {
+        size: 52
+        radius: 12
+        background: surface
+        align: center
+        Image { src: bag; size: 34; tint: accent; label: str.appStore }
+      }
+      Text { text: str.appStore; fontSize: 12; align: center; maxLines: 2; minLines: 2; fill: width }
+    }
+  }
+
   Column {
     gap: 0
     padding: [12, 0]
@@ -262,7 +286,13 @@ panel "app drawer" {
           Row {
             fill: width
             gap: 0
-            for a in row.cells { Cell { a: a; picked: false } }
+            for a in row.cells {
+              if a.store == true {
+                StoreCell { }
+              } else {
+                Cell { a: a; picked: false }
+              }
+            }
             // A short last row keeps its cells the width of the others'.
             for s in range(0, cols - len(row.cells)) { Spacer { weight: 1 } }
           }
