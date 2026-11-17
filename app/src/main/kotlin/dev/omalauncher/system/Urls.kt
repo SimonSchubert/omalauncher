@@ -1,5 +1,6 @@
 package dev.omalauncher.system
 
+import android.app.SearchManager
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -15,6 +16,20 @@ fun Context.openUrl(url: String): Boolean =
     } catch (e: ActivityNotFoundException) {
         false
     }
+
+/** Sends a query to the Google app; without it, opens the results in a browser. */
+fun Context.openGoogleSearch(query: String) {
+    try {
+        startActivity(
+            Intent(Intent.ACTION_WEB_SEARCH)
+                .setPackage("com.google.android.googlequicksearchbox")
+                .putExtra(SearchManager.QUERY, query)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    } catch (e: ActivityNotFoundException) {
+        openUrl(Uri.parse("https://www.google.com/search").buildUpon().appendQueryParameter("q", query).build().toString())
+    }
+}
 
 /** Puts [text] on the clipboard, [label] saying what it is. */
 fun Context.copyText(
