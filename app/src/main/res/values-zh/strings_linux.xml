@@ -127,6 +127,9 @@
     <string name="linux_cpu_pinning_title">快速系统调用</string>
     <string name="linux_cpu_pinning_on">已开启 · 让 Linux 运行在一个高性能 CPU 核心上 · 对之后启动的程序生效</string>
     <string name="linux_cpu_pinning_off">已关闭 · 对之后启动的程序生效</string>
+    <string name="linux_zero_copy_title">GPU 画面免拷贝</string>
+    <string name="linux_zero_copy_off">已关闭 · 实验性 · GPU 应用直接绘制到屏幕显示的缓冲区：更流畅，CPU 占用更少 · 对之后打开的应用生效</string>
+    <string name="linux_zero_copy_on">已开启 · 实验性 · 如果 GPU 应用的窗口变黑或花屏，请关闭此项 · 对之后打开的应用生效</string>
     <string name="linux_session_title">会话</string>
     <string name="linux_session_running">运行中 · Linux 应用、终端和智能体可用</string>
     <string name="linux_session_starting">正在启动…</string>

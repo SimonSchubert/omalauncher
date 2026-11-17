@@ -120,8 +120,15 @@ the compositor only offers `wl_shm`, stock Mesa clears zink after the Wayland
 DRM path fails, and the shm buffer stays black while frames still count.
 `MESA_LOADER_DRIVER_OVERRIDE=zink` keeps zink set so kopper presents through
 Vulkan WSI. The patched libraries live under `/usr/local/omalauncher-mesa`,
-off the default linker path. Frames still arrive as wl_shm buffers
-(`MESA_VK_WSI_DEBUG=sw`), so the compositor is the same either way.
+off the default linker path. Frames arrive as wl_shm buffers
+(`MESA_VK_WSI_DEBUG=sw`), unless the user turns on the experimental "gpu
+frames without copies" under it (`Gpu.zeroCopy`, off by default): then apps
+started afterwards get `OMA_ZERO_COPY=1`, which loads the Vulkan layer the
+launcher keeps in `/usr/local` (`scripts/zero-copy/oma_zero_copy_layer.c`,
+built into `assets/zero-copy` by `scripts/zero-copy/build.sh`, installed as
+managed files). It puts Wayland swapchains into the compositor's buffers
+(see Rendering) and leaves what it can't take to the driver's `sw` path. One
+app can opt out with `OMA_ZERO_COPY_DISABLE=1 app`.
 
 `linux/Gpu.kt` only switches guest apps to the GPU (`Proot.graphicsEnv`)
 after a check passes (vulkaninfo finds PanVK or Turnip, eglinfo gets zink),

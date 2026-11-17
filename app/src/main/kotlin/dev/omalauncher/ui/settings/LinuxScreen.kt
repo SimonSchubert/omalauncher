@@ -143,6 +143,10 @@ private fun Installed(runtime: Runtime) {
     if (runtime.gpu.supported && !runtime.linuxStopped) {
         Spacer(Modifier.height(8.dp))
         GpuRow(runtime)
+        if (runtime.gpu.wanted) {
+            Spacer(Modifier.height(8.dp))
+            ZeroCopyRow(runtime)
+        }
     }
     Spacer(Modifier.height(8.dp))
     CpuPinningRow(runtime)
@@ -254,6 +258,28 @@ private fun GpuRow(runtime: Runtime) {
             }
         }
         JobLog(state)
+    }
+}
+
+/** The experimental switch for GPU apps' frames without copies; see [dev.omalauncher.linux.Gpu.zeroCopy]. */
+@Composable
+private fun ZeroCopyRow(runtime: Runtime) {
+    val gpu = runtime.gpu
+    val on = gpu.zeroCopy
+    Row(Modifier.card(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            BasicText(stringResource(R.string.linux_zero_copy_title), style = Mono.copy(fontSize = TextSize.Item))
+            BasicText(
+                stringResource(if (on) R.string.linux_zero_copy_on else R.string.linux_zero_copy_off),
+                style = Mono.copy(color = if (on) Palette.green else Palette.muted, fontSize = TextSize.Small),
+            )
+        }
+        val passed = Modifier.takesPassedKeys().passesKeys()
+        if (on) {
+            BracketAction(stringResource(R.string.linux_gpu_turn_off), Palette.red, passed) { gpu.changeZeroCopy(false) }
+        } else {
+            BracketAction(stringResource(R.string.linux_gpu_turn_on), Palette.accent, passed) { gpu.changeZeroCopy(true) }
+        }
     }
 }
 
