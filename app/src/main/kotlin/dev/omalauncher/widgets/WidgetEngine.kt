@@ -856,7 +856,7 @@ class WidgetEngine(
             return
         }
         val inst = instance(spec)!!
-        if (program.kind == OwlKind.App || program.kind == OwlKind.Panel || program.kind == OwlKind.Keybar || program.kind == OwlKind.Strip) return previewView(spec, inst, hash)
+        if (!onHome(spec)) return previewView(spec, inst, hash)
         val cells = tileCells(spec)
         val (w, h) = if (spec.isFace) layout.pagePx(context.resources.displayMetrics) else layout.tilePx(cells, context.resources.displayMetrics)
         previewing += name
@@ -968,7 +968,7 @@ class WidgetEngine(
                 for (theme in themes) {
                     Palette.apply(theme.colors)
                     val out = File(dir, "${theme.name}/$name${if (n > 0) ".${n + 1}" else ""}.png")
-                    if (spec.kind == OwlKind.App || spec.kind == OwlKind.Panel || spec.kind == OwlKind.Keybar || spec.kind == OwlKind.Strip) {
+                    if (!onHome(spec)) {
                         previews.renderScreen(spec, inst, dm.widthPixels, dm.heightPixels, out, ready)
                     } else {
                         previews.render(spec, inst, shownCells(cells), w, h, out, ready)

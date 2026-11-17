@@ -16,7 +16,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import androidx.core.content.FileProvider
-import dev.omalauncher.system.postNotification
+import dev.omalauncher.system.postLinuxNotification
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import dev.omalauncher.upgrade.writeAtomically
@@ -153,7 +153,7 @@ class PhoneBridge(
         text: String?,
     ): Answer {
         if (title.isBlank()) return Answer.Usage("notify: a title")
-        val posted = context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.linux_notify_channel), title, text)
+        val posted = context.postLinuxNotification(title, text)
         return if (posted) Answer.Ok(null) else Answer.Denied(NO_NOTIFICATIONS)
     }
 
@@ -335,7 +335,6 @@ class PhoneBridge(
         const val SCRIPT = "$COMMAND.sh"
         /** What this launcher's `omalauncher` answers, for `omalauncher version`. */
         val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "version")
-        const val NOTIFY_CHANNEL = "linux"
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
         const val LOCATION_MS = 10_000L

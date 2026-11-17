@@ -1,5 +1,6 @@
 package dev.omalauncher.voice
 
+import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.widgets.WidgetEngine
 import org.json.JSONArray
@@ -112,9 +113,6 @@ const val VOICE_PROMPT =
         "only when it could be quite different things, rather than searching for words that were misheard. When " +
         "the user turns down something you asked to do, don't do it another way: say what you'd do instead or ask."
 
-/** Where agents work in Linux, unless one needs a folder of its own. */
-const val GUEST_HOME = "/root"
-
 /** The agents that can talk, by bin, with the link that talks to each. */
 val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
     mapOf(
@@ -123,7 +121,7 @@ val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
         "grok" to { w -> AcpLink(w, "grok agent stdio") },
         // OpenCode snapshots its folder with git before every turn, and all of home took minutes before its first
         // word; the widgets are what voice is mostly for.
-        "opencode" to { w -> AcpLink(w, "opencode acp", "$GUEST_HOME/${WidgetEngine.GUEST_DIR}") },
+        "opencode" to { w -> AcpLink(w, "opencode acp", "${Proot.GUEST_HOME}/${WidgetEngine.GUEST_DIR}") },
         "copilot" to { w -> AcpLink(w, "copilot --acp") },
         "kimi" to { w -> AcpLink(w, "kimi acp") },
         "cursor-agent" to { w -> AcpLink(w, "cursor-agent acp") },
@@ -133,7 +131,7 @@ val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
         // Kiro can't load a session, so a conversation picked up later starts a new one.
         "kiro-cli" to { w -> AcpLink(w, "kiro-cli acp") },
         // Kilo is OpenCode underneath, with its snapshots: the widgets, as for OpenCode.
-        "kilo" to { w -> AcpLink(w, "kilo acp", "$GUEST_HOME/${WidgetEngine.GUEST_DIR}") },
+        "kilo" to { w -> AcpLink(w, "kilo acp", "${Proot.GUEST_HOME}/${WidgetEngine.GUEST_DIR}") },
         "devin" to { w -> AcpLink(w, "devin acp") },
         "commandcode" to { w -> AcpLink(w, "commandcode acp") },
         "agy" to { w -> AcpLink(w, "agy acp") },
@@ -350,7 +348,7 @@ class AcpLink(
     /** The guest command that serves ACP on stdio, such as `grok agent stdio` or `kimi acp`. */
     private val serve: String,
     /** Where its sessions work. */
-    private val cwd: String = GUEST_HOME,
+    private val cwd: String = Proot.GUEST_HOME,
 ) : RpcLink(write, jsonrpc = true) {
     private var session: String? = null
     private var loading = false
@@ -480,7 +478,7 @@ class AcpLink(
  */
 class CodexLink(
     write: (String) -> Unit,
-    private val cwd: String = GUEST_HOME,
+    private val cwd: String = Proot.GUEST_HOME,
 ) : RpcLink(write, jsonrpc = false) {
     override val instructed = true
 
@@ -769,7 +767,7 @@ class PiLink(
             }
             "tool_execution_start" -> {
                 val args = ev.optJSONObject("args") ?: JSONObject()
-                val path = args.optString("path").let { if (it.isEmpty() || it.startsWith('/')) it else "$GUEST_HOME/$it" }
+                val path = args.optString("path").let { if (it.isEmpty() || it.startsWith('/')) it else "${Proot.GUEST_HOME}/$it" }
                 val images = if (ev.optString("toolName") == "read" && isImage(path)) listOf(path) else emptyList()
                 listOf(LinkEvent.Working, LinkEvent.Step(act(ev.optString("toolName"), args), images))
             }

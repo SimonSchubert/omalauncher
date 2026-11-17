@@ -313,7 +313,7 @@ class Compiler private constructor(
         if (level > LEVEL) fail("this widget needs owl $level; the launcher supports up to $LEVEL, so update the launcher", levelField!!.pos)
         if (body.animations.isNotEmpty()) fail("animate belongs inside a node", body.animations[0].pos)
         // An app, a panel, keys and the strip check their own (onBack, onSubmit).
-        if (ast.kind != OwlKind.App && ast.kind != OwlKind.Panel && ast.kind != OwlKind.Keybar && ast.kind != OwlKind.Strip) {
+        if (ast.kind == OwlKind.Widget || isFace) {
             for (h in body.handlers) if (h.name != "onTap") fail("a ${ast.kind.word} only takes onTap at the top level", h.pos)
         }
 
@@ -619,13 +619,10 @@ class Compiler private constructor(
     }
 
     /**
-     * The extra keys: the bar over the soft keyboard while typing in a terminal, as tall as its nodes. The launcher
-     * puts it there, and keeps it from taking focus, so the keyboard stays up; `pressKey(...)` and `latch(...)` reach the
-     * terminal.
-     */
-    /**
-     * A bar the launcher puts in a place of its own, as tall as its nodes: the extra keys over the keyboard (`keybar`),
-     * or the strip of apps above home's prompt bar (`strip`, owl 24). Its nodes are the whole file.
+     * A bar the launcher puts in a place of its own, as tall as its nodes: the extra keys over the soft keyboard while
+     * typing in a terminal (`keybar`), or the strip of apps above home's prompt bar (`strip`, owl 24). Its nodes are the
+     * whole file. The launcher keeps the key bar from taking focus, so the keyboard stays up; `pressKey(...)` and
+     * `latch(...)` reach the terminal.
      */
     private fun bar(
         body: Body,

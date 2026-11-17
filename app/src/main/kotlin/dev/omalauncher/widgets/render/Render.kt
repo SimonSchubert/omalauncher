@@ -614,7 +614,7 @@ private fun Element(
                     }
                 } else {
                     // Sideways, as wide as its nodes, when it scrolls (owl 24): the strip's apps, more than fit.
-                    val scroll = if (p.observe("scroll")?.truthy == true) Modifier.horizontalScroll(rememberScrollState()) else Modifier
+                    val scroll = if (p.observe("scroll")?.truthy == true) Modifier.scrolls(rememberScrollState(), sideways = true) else Modifier
                     Row(m.then(scroll), horizontalArrangement = arr, verticalAlignment = vertical) { Nodes(children, env, inst, this) }
                 }
             }
@@ -835,24 +835,29 @@ private fun boxAlign(a: String?) =
     }
 
 /**
- * A Column's `scroll: true`. Inside something that already scrolls up and down it has no limit to its height, and
- * Compose throws on a scroll measured so, which took home down (Play, 1.4.0). There it's as tall as its rows and
- * what it's in scrolls, as a `lazy:` one does.
+ * A Column's `scroll: true`, or a Row's, [sideways]. Inside something that already scrolls the same way it has no limit
+ * to its height (a Row: its width), and Compose throws on a scroll measured so, which took home down (Play, 1.4.0).
+ * There it's as tall as its rows (as wide as its nodes) and what it's in scrolls, as a `lazy:` one does.
  */
-private fun Modifier.scrolls(state: ScrollState): Modifier =
+private fun Modifier.scrolls(
+    state: ScrollState,
+    sideways: Boolean = false,
+): Modifier =
     layout { measurable, constraints ->
         val bounded =
-            if (constraints.hasBoundedHeight) {
-                constraints
-            } else {
-                Constraints.fitPrioritizingWidth(constraints.minWidth, constraints.maxWidth, constraints.minHeight, UNBOUNDED_HEIGHT_PX)
+            when {
+                sideways && !constraints.hasBoundedWidth ->
+                    Constraints.fitPrioritizingHeight(constraints.minWidth, UNBOUNDED_PX, constraints.minHeight, constraints.maxHeight)
+                !sideways && !constraints.hasBoundedHeight ->
+                    Constraints.fitPrioritizingWidth(constraints.minWidth, constraints.maxWidth, constraints.minHeight, UNBOUNDED_PX)
+                else -> constraints
             }
         val placeable = measurable.measure(bounded)
         layout(placeable.width, placeable.height) { placeable.place(0, 0) }
-    }.verticalScroll(state)
+    }.then(if (sideways) Modifier.horizontalScroll(state) else Modifier.verticalScroll(state))
 
-/** Taller than any Column gets, and small enough to fit a Constraints next to any screen's width. */
-private const val UNBOUNDED_HEIGHT_PX = 1 shl 17
+/** Taller than any Column and wider than any Row gets, and small enough to fit a Constraints next to any screen's other side. */
+private const val UNBOUNDED_PX = 1 shl 17
 
 private fun padding(v: Value?): PaddingValues? {
     val n = v?.num()

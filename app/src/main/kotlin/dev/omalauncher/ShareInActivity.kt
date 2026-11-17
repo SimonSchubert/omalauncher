@@ -24,7 +24,7 @@ import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.system.AppLanguage
-import dev.omalauncher.system.postNotification
+import dev.omalauncher.system.postLinuxNotification
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
@@ -57,8 +57,10 @@ class ShareInActivity : ComponentActivity() {
             Toast.makeText(this, R.string.share_in_no_linux, Toast.LENGTH_LONG).show()
             return finish()
         }
-        val uris = sharedUris(intent)
-        val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.takeIf { uris.isEmpty() && it.isNotBlank() }
+        // Another app's extras, which fail to read when it put a class of its own in them: nothing was shared then,
+        // rather than the launcher going down with it.
+        val uris = runCatching { sharedUris(intent) }.getOrDefault(emptyList())
+        val text = runCatching { intent.getCharSequenceExtra(Intent.EXTRA_TEXT) }.getOrNull()?.takeIf { uris.isEmpty() && it.isNotBlank() }
         if (uris.isEmpty() && text == null) {
             Toast.makeText(this, R.string.share_in_failed, Toast.LENGTH_LONG).show()
             return finish()
@@ -106,7 +108,7 @@ class ShareInActivity : ComponentActivity() {
                 }
             if (saved == null) {
                 Toast.makeText(this@ShareInActivity, R.string.share_in_failed, Toast.LENGTH_LONG).show()
-            } else if (!postNotification(NOTIFY_CHANNEL, getString(R.string.linux_notify_channel), getString(R.string.activity_linux), getString(R.string.share_in_saved))) {
+            } else if (!postLinuxNotification(getString(R.string.activity_linux), getString(R.string.share_in_saved))) {
                 Toast.makeText(this@ShareInActivity, R.string.share_in_saved, Toast.LENGTH_SHORT).show()
             }
             finish()
@@ -115,9 +117,6 @@ class ShareInActivity : ComponentActivity() {
 
     internal companion object {
         const val TAG = "share"
-
-        /** As PhoneBridge's, so everything the launcher says about Linux sits on one channel. */
-        const val NOTIFY_CHANNEL = "linux"
 
         /** The alias the manifest exports to the share sheet; this activity itself isn't exported. */
         private val SHARE_SHEET = ComponentName(BuildConfig.APPLICATION_ID, "dev.omalauncher.ShareToLinux")

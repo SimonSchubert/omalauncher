@@ -49,3 +49,12 @@ private object NotificationIds {
         return last
     }
 }
+
+/**
+ * A notification about Linux, all on one channel: what `omalauncher notify` posts, and that what another app shared
+ * was saved. False as [postNotification]'s.
+ */
+fun Context.postLinuxNotification(
+    title: String,
+    text: String?,
+) = postNotification("linux", getString(R.string.linux_notify_channel), title, text)
