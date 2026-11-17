@@ -3,6 +3,7 @@ package dev.omalauncher.ui.voice
 import android.Manifest
 import android.content.Intent
 import android.graphics.BitmapFactory
+import android.net.ConnectivityManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -176,6 +177,11 @@ fun VoiceScreen(
     val session = runtime.voice
     val speaker = runtime.speaker
     val speech = remember { Speech(context.applicationContext) { speaker.locale } }
+    // The model stays loaded while Voice is in sight, so a tap never waits for it.
+    LifecycleResumeEffect(Unit) {
+        Parakeet.keep(context, speaker.locale)
+        onPauseOrDispose { Parakeet.letGo() }
+    }
     val haptics = LocalHapticFeedback.current
     var viewing by remember { mutableStateOf<String?>(null) }
     var picking by remember { mutableStateOf(false) }
@@ -201,14 +207,17 @@ fun VoiceScreen(
 
     fun listen() {
         speaker.stop()
-        speech.start(hold = false) { heard -> if (heard.isNotBlank()) session.ask(heard) }
+        // Held: a pause as long as the settings say ends the turn, or with none picked only a tap on the orb; half a
+        // minute with nothing heard ends it too. Not the recognizers' own end of speech, which cuts in at a breath.
+        val after = session.sendAfter.takeIf { it > 0 } ?: QUIET_STOP_MS
+        speech.start(hold = true, quietStop = after, waitStop = QUIET_STOP_MS) { heard -> if (heard.isNotBlank()) session.ask(heard) }
     }
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (granted) listen() }
 
     fun talk() {
-        if (speech.listening) return speech.stop()
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        if (speech.listening) return speech.stop()
         if (context.hasPermission(Manifest.permission.RECORD_AUDIO)) listen() else permission.launch(Manifest.permission.RECORD_AUDIO)
     }
 
@@ -251,6 +260,7 @@ fun VoiceScreen(
     // Under the orb: what it's doing, or what a tap on it does. The agent's name is at the top.
     val status =
         when {
+            speech.listening && speech.preparing -> stringResource(R.string.voice_listening_preparing)
             speech.listening -> stringResource(if (session.busy) R.string.voice_listening_working else R.string.voice_listening)
             session.phase == Phase.Starting -> stringResource(R.string.voice_starting)
             session.approvals.isNotEmpty() -> stringResource(R.string.voice_needs_ok, elapsed)
@@ -630,6 +640,17 @@ private fun VoiceSettings(
             }
         }
 
+        Recognition(speaker.locale)
+
+        Setting(stringResource(R.string.voice_send_after)) {
+            Row {
+                for (ms in VoiceSession.SEND_AFTER) {
+                    val label = if (ms == 0L) stringResource(R.string.voice_send_after_off) else stringResource(R.string.voice_seconds, (ms / 1000).toInt())
+                    Chip(label, if (ms == session.sendAfter) Palette.accent else Palette.muted) { session.useSendAfter(ms) }
+                }
+            }
+        }
+
         if (voices.isNotEmpty()) {
             var pickVoice by remember { mutableStateOf(false) }
             // Numbered in each region: the engine's names (de-de-x-deb-local) say nothing to most. A voice and its
@@ -692,6 +713,68 @@ private fun VoiceSettings(
     }
 }
 
+/**
+ * Which recognizer listens: the phone's, or [Parakeet] once its 670 MB are downloaded here. The download carries on
+ * with the dialog closed; picking or deleting it applies to the prompt bar's and widgets' dictation too.
+ */
+@Composable
+private fun Recognition(locale: Locale) {
+    val context = LocalContext.current
+    val model = ParakeetModel
+    val downloaded = remember(model.changes) { model.downloaded(context) }
+    val on = model.on(context)
+    Setting(stringResource(R.string.voice_recognition)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            val phone = stringResource(R.string.voice_recognition_phone)
+            val parakeet = stringResource(R.string.voice_recognition_parakeet)
+            if (downloaded) {
+                var picking by remember { mutableStateOf(false) }
+                Box {
+                    Pick(if (on) parakeet else phone) { picking = true }
+                    if (picking) {
+                        ChoicePopup(
+                            options = listOf(true, false),
+                            selected = on,
+                            position = BelowAnchorStart,
+                            onDismiss = { picking = false },
+                            onPick = { model.setOn(context, it) },
+                            label = { if (it) parakeet else phone },
+                        )
+                    }
+                }
+                if (on && !model.speaks(locale)) Note(stringResource(R.string.voice_parakeet_language, AppLanguage.name(locale.language)), Palette.muted)
+                BracketAction(stringResource(R.string.voice_parakeet_delete, model.size(context, model.SIZE)), Palette.muted) { model.delete(context) }
+            } else {
+                BasicText(phone, Modifier.padding(vertical = 6.dp), style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Item))
+                Note(stringResource(R.string.voice_parakeet_about, model.size(context, model.SIZE)), Palette.muted)
+                if (model.downloading) {
+                    val fraction = (model.done.toFloat() / model.SIZE).coerceIn(0f, 1f)
+                    Box(Modifier.fillMaxWidth().height(4.dp).clip(LauncherStyle.shape(2.dp)).background(Palette.muted.copy(alpha = 0.25f))) {
+                        Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(Palette.accent))
+                    }
+                    Note(
+                        if (model.checking) stringResource(R.string.voice_parakeet_checking) else stringResource(R.string.voice_parakeet_progress, model.size(context, model.done), model.size(context, model.SIZE)),
+                        Palette.muted,
+                    )
+                    BracketAction(stringResource(R.string.voice_parakeet_cancel), Palette.muted) { model.cancel() }
+                } else {
+                    model.error?.let { Note(stringResource(R.string.voice_parakeet_failed, it), Palette.red) }
+                    val metered = remember { context.getSystemService(ConnectivityManager::class.java)?.isActiveNetworkMetered == true }
+                    if (metered) Note(stringResource(R.string.voice_parakeet_mobile_data), Palette.named("yellow") ?: Palette.accent)
+                    BracketAction(stringResource(R.string.voice_parakeet_download), Palette.accent) { model.download(context) }
+                }
+            }
+        }
+    }
+}
+
+/** A line of small print in [VoiceSettings]. */
+@Composable
+private fun Note(
+    text: String,
+    color: Color,
+) = BasicText(text, style = Mono.copy(color = color, fontSize = TextSize.Small))
+
 /** How fast replies can be read; 1 is the engine's normal speed. */
 private val RATES = listOf(0.8f, 1f, 1.25f, 1.5f)
 
@@ -715,6 +798,9 @@ private fun Pick(
     Modifier.clip(LauncherStyle.shape(8.dp)).clickable(onClick = onClick).padding(vertical = 6.dp),
     style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Item),
 )
+
+/** How long Voice listens with nothing heard before it stops: a turn whose tap to send was forgotten. */
+private const val QUIET_STOP_MS = 30_000L
 
 /** The status line's room under the orb. */
 private val CAPTION = 28.dp

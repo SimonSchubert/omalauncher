@@ -193,6 +193,21 @@ refuses to start another until it's started again. The `linux_stopped`
 preference keeps it stopped across restarts; meanwhile the Wayland server and
 the bridges stay up, and whatever needs Linux opens its settings.
 
+## Speech
+
+`ui/voice/Speech.kt` turns speech into text for Voice, the prompt bar and
+widgets' dictation. It listens with Parakeet (`Parakeet.kt`) when the user has
+downloaded it in the voice settings and the language is one of its 25;
+otherwise with the phone's recognizer: Google's on-device one first, then the
+default `RecognitionService`, then a "speak now" screen. Parakeet is NVIDIA's
+Parakeet TDT 0.6B v3 run by sherpa-onnx on the CPU: the launcher records the
+microphone itself, Silero VAD splits phrases and each is decoded whole, with
+the unfinished phrase decoded again for the live text. `ParakeetModel.kt`
+downloads its 670 MB (resumable, SHA-256 checked) into `noBackupFilesDir`.
+sherpa-onnx isn't on Maven: `app/build.gradle.kts` fetches its release AAR
+into the gitignored `app/libs`. The model loads on a tap with the microphone
+already open, and stays loaded while Voice is in sight.
+
 ## Where to change what
 
 Each recipe lists what a complete change touches. Tests go next to the code

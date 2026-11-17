@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="voice_listening">mendengarkan</string>
+    <string name="voice_listening">mendengarkan · ketuk untuk kirim</string>
     <string name="voice_listening_working">mendengarkan · masih bekerja</string>
+    <string name="voice_listening_preparing">bersiap · kamu sudah bisa bicara</string>
     <string name="voice_starting">memulai</string>
     <string name="voice_needs_ok">perlu OK kamu · %1$s</string>
     <string name="voice_working">bekerja · %1$s</string>
@@ -79,4 +80,21 @@
     <string name="voice_tts_settings">setelan teks ke ucapan</string>
     <string name="voice_no_voice">Belum ada suara untuk %1$s di ponsel ini: unduh di setelan teks ke ucapan.</string>
     <string name="voice_sample">Seperti inilah jawaban akan terdengar.</string>
+    <string name="voice_recognition">pengenalan ucapan</string>
+    <string name="voice_recognition_phone">bawaan ponsel</string>
+    <string name="voice_recognition_parakeet">Parakeet, di ponsel ini</string>
+    <string name="voice_parakeet_about">Parakeet mengenali ucapan langsung di ponsel ini: offline, tanpa bunyi bip, dalam 25 bahasa Eropa. Unduhan %1$s.</string>
+    <string name="voice_parakeet_download">unduh</string>
+    <string name="voice_parakeet_mobile_data">kamu memakai data seluler</string>
+    <string name="voice_parakeet_progress">%1$s dari %2$s</string>
+    <string name="voice_parakeet_checking">memeriksa unduhan…</string>
+    <string name="voice_parakeet_cancel">batal</string>
+    <string name="voice_parakeet_delete">hapus Parakeet · %1$s</string>
+    <string name="voice_parakeet_failed">unduhan terhenti: %1$s</string>
+    <string name="voice_parakeet_space">ruang tidak cukup: perlu %1$s lagi</string>
+    <string name="voice_parakeet_damaged">unduhan rusak; coba lagi</string>
+    <string name="voice_parakeet_language">Parakeet tidak mengenal bahasa %1$s: pengenalan ucapan ponsel yang mendengarkan.</string>
+    <string name="voice_send_after">kirim setelah jeda</string>
+    <string name="voice_send_after_off">mati</string>
+    <string name="voice_seconds">%1$d dtk</string>
 </resources>

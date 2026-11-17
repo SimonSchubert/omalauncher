@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="voice_listening">слухаю</string>
+    <string name="voice_listening">слухаю · натисніть, щоб надіслати</string>
     <string name="voice_listening_working">слухаю · агент ще працює</string>
+    <string name="voice_listening_preparing">підготовка · вже можна говорити</string>
     <string name="voice_starting">запуск</string>
     <string name="voice_needs_ok">чекає підтвердження · %1$s</string>
     <string name="voice_working">працює · %1$s</string>
@@ -82,4 +83,21 @@
     <string name="voice_tts_settings">налаштування синтезу мовлення</string>
     <string name="voice_no_voice">Для мови «%1$s» на телефоні поки немає голосу: завантажте його в налаштуваннях синтезу мовлення.</string>
     <string name="voice_sample">Так звучатимуть відповіді.</string>
+    <string name="voice_recognition">розпізнавання мовлення</string>
+    <string name="voice_recognition_phone">вбудоване в телефон</string>
+    <string name="voice_recognition_parakeet">Parakeet, на цьому телефоні</string>
+    <string name="voice_parakeet_about">Parakeet розпізнає мовлення просто на телефоні: без інтернету, без звукових сигналів, 25 європейськими мовами. Завантаження — %1$s.</string>
+    <string name="voice_parakeet_download">завантажити</string>
+    <string name="voice_parakeet_mobile_data">ви використовуєте мобільний інтернет</string>
+    <string name="voice_parakeet_progress">%1$s з %2$s</string>
+    <string name="voice_parakeet_checking">перевірка завантаження…</string>
+    <string name="voice_parakeet_cancel">скасувати</string>
+    <string name="voice_parakeet_delete">видалити Parakeet · %1$s</string>
+    <string name="voice_parakeet_failed">завантаження перервалося: %1$s</string>
+    <string name="voice_parakeet_space">недостатньо місця: потрібно ще %1$s</string>
+    <string name="voice_parakeet_damaged">завантажені файли пошкоджені; спробуйте ще раз</string>
+    <string name="voice_parakeet_language">Parakeet не знає мову «%1$s»: замість нього слухає розпізнавання мовлення телефона.</string>
+    <string name="voice_send_after">надсилати після паузи</string>
+    <string name="voice_send_after_off">ні</string>
+    <string name="voice_seconds">%1$d с</string>
 </resources>

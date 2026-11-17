@@ -237,12 +237,17 @@ class VoiceSession(
     var rate by mutableFloatStateOf(DEFAULT_RATE)
         private set
 
+    /** How long a pause after what's been said sends it, in milliseconds; 0 for only a tap on the orb. */
+    var sendAfter by mutableLongStateOf(DEFAULT_SEND_AFTER)
+        private set
+
     init {
         readJson(settingsFile)?.let { s ->
             // Saved in three letters ("deu") before Speaker named the engine's languages in two.
             language = s.optString("language").ifEmpty { null }?.let(AppLanguage::short)
             voice = s.optString("voice").ifEmpty { null }
             rate = s.optDouble("rate", DEFAULT_RATE.toDouble()).toFloat().takeIf { it in 0.5f..2f } ?: DEFAULT_RATE
+            sendAfter = s.optLong("sendAfter", DEFAULT_SEND_AFTER).takeIf { it in SEND_AFTER } ?: DEFAULT_SEND_AFTER
         }
         speaker.use(language, voice, rate)
     }
@@ -257,6 +262,12 @@ class VoiceSession(
         this.voice = voice
         this.rate = rate
         speaker.use(language, voice, rate)
+        saveSettings()
+    }
+
+    /** Sends what's been said after a pause of [ms], one of [SEND_AFTER]; 0 for only on a tap. */
+    fun useSendAfter(ms: Long) {
+        sendAfter = ms
         saveSettings()
     }
 
@@ -872,7 +883,7 @@ class VoiceSession(
     private fun saveSettings() =
         writeFile(
             settingsFile,
-            json("agent" to agent?.bin, "approveAll" to approveAll, "typing" to typing, "language" to language, "voice" to voice, "rate" to rate.toDouble()).toString(),
+            json("agent" to agent?.bin, "approveAll" to approveAll, "typing" to typing, "language" to language, "voice" to voice, "rate" to rate.toDouble(), "sendAfter" to sendAfter).toString(),
         )
 
     private fun writeFile(
@@ -954,6 +965,12 @@ class VoiceSession(
             )
 
         const val DEFAULT_RATE = 1.25f
+
+        /** The pauses that can send what's been said, 0 for none (a tap sends). */
+        val SEND_AFTER = listOf(0L, 1_000L, 2_000L, 4_000L)
+
+        /** Hands-free as before tap-to-send, with more room to pause than the recognizers' own end of speech. */
+        const val DEFAULT_SEND_AFTER = 2_000L
         const val IDLE_STOP_MS = 10 * 60_000L
         const val RESUME_MS = 12 * 3_600_000L
         const val QUIET_MS = 120_000L
