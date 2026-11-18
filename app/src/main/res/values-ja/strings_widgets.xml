@@ -3,4 +3,5 @@
     <string name="widgets_no_app_opens">%1$s を開けるアプリがありません</string>
     <string name="widgets_copied">コピーしました</string>
     <string name="widgets_notify_channel">ウィジェット</string>
+    <string name="widgets_status_channel">ウィジェットのタイマーと状態</string>
 </resources>
