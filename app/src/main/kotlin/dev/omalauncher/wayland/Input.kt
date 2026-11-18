@@ -107,6 +107,15 @@ class Input(
 
     fun setKeyboardFocus(surface: Surface?) {
         if (surface === keyboardFocus || surface?.destroyed == true) return
+        try {
+            moveKeyboardFocus(surface)
+        } finally {
+            // A lock only holds in the window that has the keys.
+            updateLock()
+        }
+    }
+
+    private fun moveKeyboardFocus(surface: Surface?) {
         // Android doesn't tell a window about keys released after it lost focus; start clean
         // so a key held across the switch isn't swallowed as "already down" next time.
         pressedKeys.clear()
@@ -163,6 +172,10 @@ class Input(
         x: Float,
         y: Float,
     ) {
+        // A locked pointer stays put on its surface. Android's cursor leaving the window as the mouse is captured
+        // mustn't take it away: winit only unlocks a pointer that is over its window, so the lock would outlive the
+        // game's grab and keep the mouse captured over its menus.
+        if (locks.any { it.active }) return
         // Hit testing ran on the UI thread; the surface may have gone since.
         if (surface?.destroyed == true) return pointerMotion(null, 0f, 0f)
         if (surface !== pointerFocus) {
@@ -278,9 +291,78 @@ class Input(
         }
     }
 
+    /** Pointer locks clients asked for, oldest first; see [PointerConstraints]. */
+    private val locks = mutableListOf<LockedPointer>()
+
+    /** The window Android captured the mouse for, if any. */
+    private var capturedFor: XdgToplevel? = null
+
+    /** The window whose lock wants the mouse captured; [onCaptureWanted] hears of each change. */
+    private var captureWanted: XdgToplevel? = null
+
+    /** Told with the server locked when a different window (or none) wants Android to capture the mouse. */
+    var onCaptureWanted: (XdgToplevel?) -> Unit = {}
+
+    fun addLock(lock: LockedPointer) {
+        locks += lock
+        updateLock()
+    }
+
+    fun removeLock(lock: LockedPointer) {
+        locks -= lock
+        updateLock()
+    }
+
+    /** Android captured the mouse for [window], or let it go: the lock there starts or ends. */
+    fun pointerCaptured(
+        window: XdgToplevel,
+        on: Boolean,
+    ) {
+        if (on) {
+            capturedFor = window
+        } else if (capturedFor === window) {
+            capturedFor = null
+        }
+        updateLock()
+    }
+
+    /** The lock that applies: one on a surface of the window that has the keys, not used up. */
+    private fun wantedLock(): LockedPointer? {
+        val window = keyboardFocus?.let(server::toplevelOf) ?: return null
+        return locks.firstOrNull { !it.spent && !it.surface.destroyed && server.toplevelOf(it.surface) === window }
+    }
+
+    private fun updateLock() {
+        val wanted = wantedLock()
+        val window = wanted?.let { server.toplevelOf(it.surface) }
+        val holds = wanted != null && capturedFor === window
+        locks.forEach { if (it !== wanted || !holds) it.unlock() }
+        if (window !== captureWanted) {
+            captureWanted = window
+            onCaptureWanted(window)
+        }
+        if (wanted != null && holds && !wanted.active) {
+            // Buttons and the wheel go where the pointer is; Android's cursor may have been elsewhere.
+            if (pointerFocus !== wanted.surface) pointerMotion(wanted.surface, wanted.hintX, wanted.hintY)
+            wanted.lock()
+        }
+    }
+
+    /** The captured mouse moved: to the relative pointers of the client whose lock is on. */
+    fun relativeMotion(
+        dx: Float,
+        dy: Float,
+    ) {
+        val lock = locks.firstOrNull { it.active } ?: return
+        val timeUs = SystemClock.uptimeMillis() * 1000
+        lock.client.all(RelativePointer::class.java).forEach { it.motion(timeUs, dx, dy) }
+        pointersOf(lock.client).forEach { it.frame() }
+    }
+
     fun surfaceDestroyed(surface: Surface) {
         if (pointerFocus === surface) pointerFocus = null
         if (keyboardFocus === surface) keyboardFocus = null
         touchFocus.values.removeAll { it === surface }
+        if (locks.any { it.surface === surface }) updateLock()
     }
 }

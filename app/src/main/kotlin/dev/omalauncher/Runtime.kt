@@ -24,6 +24,7 @@ import dev.omalauncher.linux.Bootstrap
 import dev.omalauncher.linux.EDIT_COMMAND
 import dev.omalauncher.linux.FILES_COMMAND
 import dev.omalauncher.linux.VOICE_COMMAND
+import dev.omalauncher.linux.Gamepads
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
 import dev.omalauncher.linux.LinuxDns
@@ -35,6 +36,7 @@ import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.SystemUpdates
 import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.TerminalFont
+import dev.omalauncher.linux.UdevRecords
 import dev.omalauncher.linux.bundledIcons
 import dev.omalauncher.linux.defaultApps
 import dev.omalauncher.linux.matches
@@ -99,7 +101,11 @@ class Runtime(
 ) {
     val proot = Proot(context)
     val wm = WindowManager()
-    val server = WaylandServer(proot.waylandSocket.path, wm).also { wm.server = it }
+    val server =
+        WaylandServer(proot.waylandSocket.path, wm).also {
+            wm.server = it
+            it.input.onCaptureWanted = wm::captureWanted
+        }
     private val guestImages = GuestImages(context, File(proot.tmpDir, "clipboard"), proot::guestPath)
     val keyboard = KeyboardBridge(wm, guestImages)
     val terminals = TerminalTiles(this)
@@ -112,6 +118,7 @@ class Runtime(
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
+    val gamepads = Gamepads(context, proot.inputDir, UdevRecords(proot.sysDir, File(proot.udevDir, "data")))
     private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onOpenVoice = ::openVoice, onEdit = ::edit)
     val agents = AgentStore(proot, text = { id, arg -> context.getString(id, arg) }, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
@@ -454,6 +461,7 @@ class Runtime(
                 proot.procShim.start()
                 openBridge.start()
                 phoneBridge.start()
+                gamepads.start()
                 dns.start()
             }
         } else {

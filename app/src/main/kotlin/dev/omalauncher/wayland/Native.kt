@@ -20,6 +20,9 @@ object Native {
     /** Writes [len] bytes of direct [buf], passing the first [nfds] of [fds] along. */
     @JvmStatic external fun send(fd: Int, buf: ByteBuffer, len: Int, fds: IntArray, nfds: Int): Int
 
+    /** Sends [len] bytes of direct [buf] if [fd] has room for them now: bytes sent, or -errno (-EAGAIN when full). */
+    @JvmStatic external fun sendNow(fd: Int, buf: ByteBuffer, len: Int): Int
+
     @JvmStatic external fun close(fd: Int)
 
     @JvmStatic external fun shutdown(fd: Int)

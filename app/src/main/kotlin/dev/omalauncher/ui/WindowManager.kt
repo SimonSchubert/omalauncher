@@ -28,6 +28,28 @@ class WindowManager : WindowManagerHooks {
     var focused by mutableStateOf<XdgToplevel?>(null)
         private set
 
+    /** The window a game locked the pointer in, to look around with the mouse: its activity captures the mouse. */
+    var pointerLock by mutableStateOf<XdgToplevel?>(null)
+        private set
+
+    /** Whether the window with the keys is a game that locked the pointer. */
+    val inGame get() = pointerLock != null && pointerLock === focused
+
+    /** Called by the server, locked, when a different window (or none) wants the mouse captured. */
+    fun captureWanted(window: XdgToplevel?) = main.post { pointerLock = window }
+
+    /** Android captured the mouse for [window], or let it go. */
+    fun pointerCaptured(
+        window: XdgToplevel,
+        on: Boolean,
+    ) = server.postInput { pointerCaptured(window, on) }
+
+    /** The captured mouse moved by [dx], [dy]. */
+    fun relativeMotion(
+        dx: Float,
+        dy: Float,
+    ) = server.postInput { relativeMotion(dx, dy) }
+
     /** Toplevels that have (or are getting) their own Android task. */
     val appWindows = mutableStateListOf<XdgToplevel>()
 

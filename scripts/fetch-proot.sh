@@ -2,7 +2,8 @@
 # Builds proot from Termux's source with our patches (patches/proot) and downloads Termux's prebuilt
 # aarch64 runtime deps, placing them in app/src/main/jniLibs/arm64-v8a as lib*.so so Android
 # extracts them into nativeLibraryDir, the only place an app targeting API 29+ may exec from.
-# Also builds the fast lane library (patches/proot/fastpath), which the app copies into the guest.
+# Also builds the fast lane library (patches/proot/fastpath) and the game controller library
+# (patches/proot/gamepads), which the app copies into the guest.
 # Needs the Android NDK (NDK_VERSION below, in the SDK at ANDROID_HOME or local.properties) and bsdtar.
 # For benchmarking (scripts/proot-bench), PROOT_SRC builds an already patched source tree instead,
 # and OUT puts the libraries elsewhere.
@@ -106,6 +107,12 @@ echo "building the fast lane library"
 "$TC/clang" --target=aarch64-linux-gnu -O2 -fPIC -shared -nostdlib -ffreestanding -fvisibility=hidden \
   -mno-outline-atomics -fno-stack-protector -Wall -Wextra -Werror -fuse-ld=lld -Wl,-z,now -Wl,--build-id=none \
   -o "$OUT/libfastpath.so" "$ROOT/patches/proot/fastpath/fastpath.c"
+# The game controller library is a guest library of the same kind, preloaded ahead of the fast lane
+# (linux/Gamepads.kt).
+echo "building the game controller library"
+"$TC/clang" --target=aarch64-linux-gnu -O2 -fPIC -shared -nostdlib -ffreestanding -fvisibility=hidden \
+  -mno-outline-atomics -fno-stack-protector -Wall -Wextra -Werror -fuse-ld=lld -Wl,-z,now -Wl,--build-id=none \
+  -o "$OUT/libgamepads.so" "$ROOT/patches/proot/gamepads/gamepads.c"
 cp "$SRC/src/proot" "$OUT/libproot.so"
 cp "$SRC/src/loader/loader" "$OUT/libproot-loader.so"
 "$TC/llvm-strip" "$OUT/libproot.so"
