@@ -69,6 +69,7 @@
     <string name="voice_nothing_to_say">%1$s hat nichts geantwortet</string>
     <string name="voice_no_answer">noch keine antwort von %1$s; vielleicht ist das kontingent aufgebraucht oder du bist nicht angemeldet</string>
     <string name="voice_quiet">%1$s ist seit zwei minuten still; stopp es, wenn es hängt</string>
+    <string name="voice_offline">kein internet: %1$s kann erst antworten, wenn das handy online ist</string>
     <string name="voice_failed">hat nicht geklappt</string>
     <string name="voice_retrying">neuer versuch: %1$s</string>
     <string name="voice_voice">stimme</string>

@@ -24,6 +24,9 @@ sealed interface LinkEvent {
         val text: String,
     ) : LinkEvent
 
+    /** It's thinking, which isn't shown or said: only that it's at work. */
+    data object Thinking : LinkEvent
+
     /** It started using a tool; what for comes with the [Step]. */
     data object Working : LinkEvent
 
@@ -208,7 +211,10 @@ class ClaudeLink(
                 val e = ev.optJSONObject("event") ?: return out
                 when (e.optString("type")) {
                     "content_block_delta" ->
-                        e.optJSONObject("delta")?.takeIf { it.optString("type") == "text_delta" }?.let { out += LinkEvent.Text(it.optString("text")) }
+                        when (e.optJSONObject("delta")?.optString("type")) {
+                            "text_delta" -> out += LinkEvent.Text(e.getJSONObject("delta").optString("text"))
+                            "thinking_delta" -> out += LinkEvent.Thinking
+                        }
                     "content_block_start" ->
                         if (e.optJSONObject("content_block")?.optString("type") == "tool_use") out += LinkEvent.Working
                 }
@@ -440,6 +446,7 @@ class AcpLink(
                     ?.takeUnless { NOTICE.matches(it) }
                     ?.let { listOf(LinkEvent.Text(it)) } ?: emptyList()
             "tool_call" -> listOf(LinkEvent.Working, LinkEvent.Step(Steps.acpLabel(u), Steps.acpPaths(u).filter(::isImage)))
+            "agent_thought_chunk" -> listOf(LinkEvent.Thinking)
             else -> emptyList()
         }
 

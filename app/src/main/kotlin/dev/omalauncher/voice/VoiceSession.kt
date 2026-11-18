@@ -1,6 +1,8 @@
 package dev.omalauncher.voice
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -192,6 +194,9 @@ class VoiceSession(
     /** When the turn in progress was asked, and whether anything came back since. */
     private var asked = 0L
     private var heardBack = false
+
+    /** The notice the watch put up for an agent that's silent: it goes once the agent is heard from again. */
+    private var silentNotice: String? = null
     private var restarts = 0
     private var screens = 0
     private val complaints = ArrayDeque<String>()
@@ -339,6 +344,7 @@ class VoiceSession(
             transcript += Entry("you", said)
             saveTranscript()
             when {
+                ALWAYS.containsMatchIn(said) -> answer(a.id, true, always = true)
                 YES.containsMatchIn(said) -> answer(a.id, true)
                 NO.matches(said) -> answer(a.id, false)
                 else -> answer(a.id, false, instead = said)
@@ -416,7 +422,13 @@ class VoiceSession(
         transcript += Entry("note", (if (allow) "✓ " else "✗ ") + what + if (always) " · " + str(R.string.voice_always) else "")
         saveTranscript()
         val took = link?.answer(id, allow, always, instead) ?: true
-        if (!took && instead != null) link?.prompt(instead)
+        // The agent can't take it with the refusal (ACP): a prompt of its own, so a turn of its own, as the refused
+        // one ends cancelled. Not counted, the screen showed the agent as idle, with no stop, while it went on.
+        if (!took && instead != null) {
+            turns++
+            lastEvent = System.currentTimeMillis()
+            link?.prompt(withNote(instead))
+        }
         // Questions that came while this one was up and that "always" now covers.
         for (other in approvals.toList()) if (approveAll || Steps.covered(other.key, this.always)) answer(other.id, true)
         settle()
@@ -674,6 +686,8 @@ class VoiceSession(
     private fun events(list: List<LinkEvent>) {
         if (list.isEmpty()) return
         lastEvent = System.currentTimeMillis()
+        if (notice != null && notice == silentNotice) notice = null
+        silentNotice = null
         for (e in list) {
             when (e) {
                 is LinkEvent.Session -> {
@@ -695,6 +709,8 @@ class VoiceSession(
                     handOver(final = false)
                     if (phase != Phase.Approval) phase = Phase.Working
                 }
+                // Nothing to show, but it's at work: no "no answer yet" while it thinks for a minute or two.
+                LinkEvent.Thinking -> heardBack = true
                 LinkEvent.Working -> {
                     heardBack = true
                     handOver(final = true)
@@ -856,11 +872,24 @@ class VoiceSession(
                     settle()
                 }
                 // Nothing at all since the prompt: OpenCode out of its free quota leaves a prompt hanging without a word.
-                if (turns > 0 && !heardBack && now - asked > SILENT_MS && notice == null) notice = str(R.string.voice_no_answer, name)
-                if (turns > 0 && now - lastEvent > QUIET_MS && notice == null) notice = str(R.string.voice_quiet, name)
+                if (turns > 0 && !heardBack && now - asked > SILENT_MS && notice == null) silent(R.string.voice_no_answer)
+                if (turns > 0 && now - lastEvent > QUIET_MS && notice == null) silent(R.string.voice_quiet)
                 if (process != null) main.postDelayed(this, 1000)
             }
+
+            /** Says the agent is silent, and why when it's plain: the phone is offline, and agents just wait then. */
+            private fun silent(why: Int) {
+                silentNotice = str(if (online()) why else R.string.voice_offline, name)
+                notice = silentNotice
+            }
         }
+
+    /** Whether the phone has a network; airplane mode or no signal is none. */
+    private fun online(): Boolean {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return true
+        val caps = connectivity.getNetworkCapabilities(connectivity.activeNetwork) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
 
     private fun startWatch() {
         main.removeCallbacks(watch)
@@ -991,13 +1020,30 @@ class VoiceSession(
         internal val YES =
             Regex(
                 "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|allow|allowed|approve|go ahead|do it|go|fine|alright|please do|" +
-                    "ja|klar|si|sí|vale|claro|oui|sim|pode|ya|iya|boleh|oke)(?![\\p{L}\\p{N}])|是|好|可以|行|对|嗯)",
+                    "ja|klar|si|sí|vale|claro|oui|sim|pode|ya|iya|boleh|oke|да|конечно|давай|хорошо|ладно|можно|" +
+                    "звісно|гаразд|добре|можна)(?![\\p{L}\\p{N}])" +
+                    // Ukrainian yes, but only alone: a Russian sentence often starts with it ("so, …").
+                    "|так(?=$EDGE$)" +
+                    "|是|好|可以|行|对|嗯|はい|ええ|うん|いいよ|どうぞ|お願い)",
                 RegexOption.IGNORE_CASE,
             )
         internal val NO =
             Regex(
                 "^$EDGE(?:no|nope|deny|don't|do not|stop|cancel|never mind|nevermind|nein|non|não|nao|tidak|jangan|" +
-                    "nggak|gak|enggak|不要|不用|不行|不|别|算了)$EDGE$",
+                    "nggak|gak|enggak|нет|не надо|не нужно|стоп|отмена|ні|не треба|скасуй|" +
+                    "不要|不用|不行|不|别|算了|いいえ|いや|だめ|ダメ|やめて|キャンセル)$EDGE$",
+                RegexOption.IGNORE_CASE,
+            )
+
+        /**
+         * "Always", the card's own word, maybe after a yes or before an "allow": allowed, and from now on without
+         * asking. The whole answer only: "always ask me first" is something to do instead.
+         */
+        internal val ALWAYS =
+            Regex(
+                "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|ja|si|sí|oui|sim|ya|iya|да|так)$EDGE|(?:是|好|はい)$EDGE)?" +
+                    "(?:allow always|always|immer|siempre|toujours|sempre|selalu|всегда|завжди|总是|始终|一直|永远|いつも|常に|ずっと)" +
+                    "(?:$EDGE(?:allow it|allow|erlauben|允许|許可))?$EDGE$",
                 RegexOption.IGNORE_CASE,
             )
 

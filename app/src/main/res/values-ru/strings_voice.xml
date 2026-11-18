@@ -71,6 +71,7 @@
     <string name="voice_nothing_to_say">%1$s ответил пустым сообщением</string>
     <string name="voice_no_answer">%1$s пока не отвечает; возможно, закончилась квота или не выполнен вход</string>
     <string name="voice_quiet">%1$s молчит уже две минуты; если он завис, остановите его</string>
+    <string name="voice_offline">нет интернета: %1$s сможет ответить, когда телефон будет в сети</string>
     <string name="voice_failed">не удалось</string>
     <string name="voice_retrying">повтор: %1$s</string>
     <string name="voice_voice">голос</string>

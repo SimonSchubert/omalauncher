@@ -68,6 +68,7 @@
     <string name="voice_nothing_to_say">%1$s 回答了，但什么也没说</string>
     <string name="voice_no_answer">%1$s 还没有回答；可能额度用完了，或者没有登录</string>
     <string name="voice_quiet">%1$s 已经两分钟没动静了；如果卡住了就停止它</string>
+    <string name="voice_offline">没有网络：手机联网之前 %1$s 无法回答</string>
     <string name="voice_failed">失败了</string>
     <string name="voice_retrying">重试中：%1$s</string>
     <string name="voice_voice">声音</string>

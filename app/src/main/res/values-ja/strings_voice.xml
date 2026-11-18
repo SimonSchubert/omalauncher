@@ -68,6 +68,7 @@
     <string name="voice_nothing_to_say">%1$s の返答は空でした</string>
     <string name="voice_no_answer">%1$s からまだ返答がありません。利用枠を使い切ったか、サインインしていない可能性があります</string>
     <string name="voice_quiet">%1$s が 2 分間応答していません。止まっているようなら停止してください</string>
+    <string name="voice_offline">インターネットに接続されていません。スマートフォンがオンラインになるまで %1$s は応答できません</string>
     <string name="voice_failed">失敗しました</string>
     <string name="voice_retrying">再試行中：%1$s</string>
     <string name="voice_voice">音声</string>

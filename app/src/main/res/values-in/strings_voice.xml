@@ -68,6 +68,7 @@
     <string name="voice_nothing_to_say">%1$s menjawab tanpa isi</string>
     <string name="voice_no_answer">belum ada jawaban dari %1$s; mungkin kuotanya habis atau belum masuk</string>
     <string name="voice_quiet">%1$s sudah diam dua menit; hentikan kalau macet</string>
+    <string name="voice_offline">tidak ada internet: %1$s baru bisa menjawab setelah ponsel online</string>
     <string name="voice_failed">gagal</string>
     <string name="voice_retrying">mencoba lagi: %1$s</string>
     <string name="voice_voice">suara</string>

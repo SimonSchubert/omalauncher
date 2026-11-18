@@ -89,6 +89,7 @@
     <string name="voice_nothing_to_say">%1$s answered with nothing to say</string>
     <string name="voice_no_answer">no answer from %1$s yet; it may be out of quota or not signed in</string>
     <string name="voice_quiet">%1$s has been quiet for two minutes; stop it if it\'s stuck</string>
+    <string name="voice_offline">no internet: %1$s can\'t answer until the phone is online</string>
     <!-- When the agent gave no reason for a failure. -->
     <string name="voice_failed">failed</string>
     <!-- %1$s is the agent's error, like a network error. -->

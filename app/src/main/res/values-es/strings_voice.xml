@@ -70,6 +70,7 @@
     <string name="voice_nothing_to_say">%1$s respondió sin decir nada</string>
     <string name="voice_no_answer">%1$s aún no responde; quizá se acabó la cuota o no has iniciado sesión</string>
     <string name="voice_quiet">%1$s lleva dos minutos en silencio; detenlo si se quedó atascado</string>
+    <string name="voice_offline">sin internet: %1$s no puede responder hasta que el teléfono tenga conexión</string>
     <string name="voice_failed">falló</string>
     <string name="voice_retrying">reintentando: %1$s</string>
     <string name="voice_voice">voz</string>

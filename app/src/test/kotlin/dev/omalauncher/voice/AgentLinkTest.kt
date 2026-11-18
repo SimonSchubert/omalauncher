@@ -109,6 +109,21 @@ class AgentLinkTest {
         assertEquals("and again", written.last().getJSONObject("params").getJSONArray("prompt").getJSONObject(0).getString("text"))
     }
 
+    @Test fun thinkingIsWork() {
+        assertEquals(
+            listOf(LinkEvent.Thinking),
+            AcpLink(write, "grok agent stdio").read(
+                """{"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"g1","update":{"sessionUpdate":"agent_thought_chunk","content":{"type":"text","text":"Hmm"}}}}""",
+            ),
+        )
+        assertEquals(
+            listOf(LinkEvent.Thinking),
+            ClaudeLink(write).read(
+                """{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"Hmm"}},"parent_tool_use_id":null}""",
+            ),
+        )
+    }
+
     @Test fun acpAsksAboutAnEditNamedInItsDiff() {
         val link = AcpLink(write, "hermes-acp")
         // Hermes 0.23.1: no locations, the path in rawInput.arguments and in the diff, and a title of its own.

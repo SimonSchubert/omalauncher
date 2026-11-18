@@ -282,8 +282,17 @@ class Speech(
                     override fun onSupportResult(support: RecognitionSupport) {
                         if (pending !== r) return
                         pending = null
-                        language = closestLanguage(support)
-                        Log.i(TAG, "recognizing ${language ?: "the default language"}")
+                        val closest = closestLanguage(support)
+                        // It knows languages, but not this one (German on a Pixel that has only English on the
+                        // phone): it would listen in its own and hear German as English words. The regular one next.
+                        if (closest == null && onDevice && knowsAny(support) && regularService(context) != null) {
+                            Log.i(TAG, "no on-device model for ${mainRegion()}, using the regular recognizer")
+                            onDevice = false
+                            return listen()
+                        }
+                        // Nothing known either way: asked for by name, it says if it can't (see Listener.onError).
+                        language = closest ?: mainRegion()
+                        Log.i(TAG, "recognizing $language")
                         begin(r)
                     }
 
@@ -357,6 +366,10 @@ class Speech(
      * region: installed models first, then the language's home region (de-DE),
      * then en-US style defaults, then any.
      */
+    @androidx.annotation.RequiresApi(33)
+    private fun knowsAny(support: RecognitionSupport) =
+        listOf(support.installedOnDeviceLanguages, support.supportedOnDeviceLanguages, support.onlineLanguages).any { it.isNotEmpty() }
+
     @androidx.annotation.RequiresApi(33)
     private fun closestLanguage(support: RecognitionSupport): String? {
         val locale = wanted()
