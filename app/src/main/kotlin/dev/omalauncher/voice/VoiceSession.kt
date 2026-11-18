@@ -998,8 +998,8 @@ class VoiceSession(
         /** The pauses that can send what's been said, 0 for none (a tap sends). */
         val SEND_AFTER = listOf(0L, 1_000L, 2_000L, 4_000L)
 
-        /** Hands-free as before tap-to-send, with more room to pause than the recognizers' own end of speech. */
-        const val DEFAULT_SEND_AFTER = 2_000L
+        /** Off: a tap on the orb sends, so a pause to think doesn't send half a sentence. */
+        const val DEFAULT_SEND_AFTER = 0L
         const val IDLE_STOP_MS = 10 * 60_000L
         const val RESUME_MS = 12 * 3_600_000L
         const val QUIET_MS = 120_000L
