@@ -1,7 +1,7 @@
 package dev.omalauncher.linux
 
 import android.util.Log
-import dev.omalauncher.httpGet
+import dev.omalauncher.net.httpGet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject

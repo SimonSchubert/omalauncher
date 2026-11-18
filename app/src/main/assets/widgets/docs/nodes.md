@@ -9,7 +9,7 @@ when lists reorder), and `let x = ...` inside any node.
 | node | properties |
 |---|---|
 | `Column` | `gap` (dp, default 4), `align: start/center/end`, `justify: start/center/end/spaceBetween/spaceAround/spaceEvenly`, `scroll: true`, `lazy: true` (scrolls, and a `for` right inside builds its rows only as they come into view, so a list of hundreds opens as fast as a short one; give it a height to fill, such as `weight: 1`, since inside a scrolling Column it builds everything, owl 11), `reverse: true` with `lazy` (lists from the end: the first item at the bottom, as search results sit right above a bar; when its items change it scrolls back to the first, owl 11) |
-| `Row` | `gap` (8), `align: top/center/bottom`, `justify`, `wrap: true` |
+| `Row` | `gap` (8), `align: top/center/bottom`, `justify`, `wrap: true`, `scroll: true` (as wide as its nodes, scrolling sideways when that's wider than its room, like the strip's apps; not with `wrap`, owl 24) |
 | `Flow` | a Row that wraps to new lines |
 | `Box` | stacks children on top of each other; `align: center/top/bottom/start/end/topStart/topEnd/bottomStart/bottomEnd` |
 | `Grid` | `columns` (2), `gap`, `lazy: true` (as Column's: scrolls, and builds the cells of a `for` right inside as they come into view, owl 11), `reverse` as Column's; children fill cells left to right |
@@ -18,7 +18,7 @@ when lists reorder), and `let x = ...` inside any node.
 | `Progress` | `value`, `max` (100), `color`, `track` |
 | `Ring` | circular progress: `value`, `max` (1), `color`, `track`, `thickness` (6), `start`/`sweep` (degrees; `start: 225; sweep: 270` makes a gauge). 64 dp unless sized |
 | `Sparkline` | `values` (a list, usually a `history`), `min` (0), `max`, `color`, `area: true` or a color, `thickness` |
-| `Image` | `src`: an `asset`, a path in this system (`"~/pics/a.png"`), an `https://` URL (owl 8, see Images from the web) or an Android app's icon (`"app:org.pkg"`, as the drawer shows it, badge included; a silhouette in the foreground color with monochrome icons; `"app:org.pkg@work"` and `"@clone"` ask for the copy in a work profile or the clone, owl 7), or any app's icon by its `android.recent` key (`"icon:l:foot"`, Linux and owl apps and shortcuts too; `android.recent` and `android.agents` give it as `icon`), `fit: contain/cover/fill`, `tint`, `label` (what screen readers say for it, owl 11) |
+| `Image` | `src`: an `asset`, a path in this system (`"~/pics/a.png"`), an `https://` URL (owl 8, see Images from the web) or an Android app's icon (`"app:org.pkg"`, as the drawer shows it, badge included; a silhouette in the foreground color with monochrome icons; `"app:org.pkg@work"` and `"@clone"` ask for the copy in a work profile or the clone, owl 7), or any app's icon by its `android.recent` key (`"icon:l:foot"`, Linux and owl apps and shortcuts too; `android.recent` and `android.agents` give it as `icon`), or its silhouette whatever the icon style (`"mask:l:foot"`, to `tint` any color; `android.drawer` and `android.strip` give it as `mask`, owl 24), `fit: contain/cover/fill`, `tint`, `label` (what screen readers say for it, owl 11) |
 | `Canvas` | free drawing, see docs/drawing.md. Fills the space unless sized |
 | `Shader` | an AGSL shader, see docs/drawing.md. Fills the space unless sized |
 | `Spacer` | empty space: `size`, `width`, `height` or `weight` |

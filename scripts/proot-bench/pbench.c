@@ -2,12 +2,19 @@
 // pbench <op> <iterations> [arg] [parallel]
 //   getpid           not intercepted by proot's seccomp filter: the floor
 //   stat <path>      path translation on every call
+//   lstat <path>
+//   nostat <path>    stat of a path that must not exist
 //   open <path>      open + close
+//   noopen <path>    open of a path that must not exist
+//   statx <path>
+//   access <path>
+//   fstat <path>     of a descriptor opened once
 //   getcwd           needs proot's exit-stage fixup
 //   readlink <path>
 //   exec <path>      fork + execve + wait
 // With parallel > 1, that many processes run the loop at once and the result is
 // wall time per op over all of them (throughput), which shows proot's single tracer.
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,10 +34,18 @@ static long now_ns(void) {
 static int loop(const char *op, long n, const char *arg) {
     struct stat st;
     char buf[4096];
+    struct statx stx;
+    int fd = !strcmp(op, "fstat") ? open(arg, O_RDONLY) : -1;
     for (long i = 0; i < n; i++) {
         if (!strcmp(op, "getpid")) syscall(SYS_getpid);
         else if (!strcmp(op, "stat")) { if (stat(arg, &st)) return perror(arg), 1; }
+        else if (!strcmp(op, "lstat")) { if (lstat(arg, &st)) return perror(arg), 1; }
+        else if (!strcmp(op, "nostat")) { if (!stat(arg, &st)) return fprintf(stderr, "%s exists\n", arg), 1; }
         else if (!strcmp(op, "open")) { int fd = open(arg, O_RDONLY); if (fd < 0) return perror(arg), 1; close(fd); }
+        else if (!strcmp(op, "noopen")) { if (open(arg, O_RDONLY) >= 0) return fprintf(stderr, "%s exists\n", arg), 1; }
+        else if (!strcmp(op, "statx")) { if (statx(AT_FDCWD, arg, 0, STATX_BASIC_STATS, &stx)) return perror(arg), 1; }
+        else if (!strcmp(op, "access")) { if (access(arg, R_OK)) return perror(arg), 1; }
+        else if (!strcmp(op, "fstat")) { if (fstat(fd, &st)) return perror(arg), 1; }
         else if (!strcmp(op, "getcwd")) { if (!getcwd(buf, sizeof buf)) return perror("getcwd"), 1; }
         else if (!strcmp(op, "readlink")) { if (readlink(arg, buf, sizeof buf) < 0) return perror(arg), 1; }
         else if (!strcmp(op, "exec")) {

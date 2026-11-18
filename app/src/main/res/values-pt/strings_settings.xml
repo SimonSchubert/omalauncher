@@ -16,6 +16,7 @@
     <string name="settings_language_phone">idioma do telefone</string>
     <string name="settings_linux">linux</string>
     <string name="settings_linux_installed">instalado · remover</string>
+    <string name="settings_linux_stopped">instalado · parado</string>
     <string name="settings_linux_installing_percent">instalando %1$d%% · %2$s</string>
     <string name="settings_linux_installing">instalando · %1$s</string>
     <string name="settings_linux_failed">a instalação parou · tentar de novo</string>
@@ -68,6 +69,10 @@
     <string name="settings_retry">tentar de novo</string>
     <string name="settings_system_updates">atualizações do sistema</string>
     <string name="settings_widget_updates">widgets</string>
+    <string name="settings_launcher_updates">launcher</string>
+    <string name="settings_launcher_update_available">há um Omalauncher novo no Google Play</string>
+    <string name="settings_launcher_update_failed">o Google Play não conseguiu atualizar o Omalauncher</string>
+    <string name="settings_launcher_update_github">Omalauncher %1$s → %2$s no GitHub</string>
     <string name="settings_update_all">atualizar tudo</string>
     <string name="settings_check">verificar</string>
     <string name="settings_update">atualizar</string>

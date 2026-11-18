@@ -5,8 +5,8 @@ import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import dev.omalauncher.LauncherData
-import dev.omalauncher.PhoneStorage
+import dev.omalauncher.storage.LauncherData
+import dev.omalauncher.storage.PhoneStorage
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import java.io.File
@@ -46,8 +46,9 @@ class Proot(
     private val prefs = LauncherData.prefs(context)
 
     /**
-     * proot keeping itself and programs making many syscalls on one fast CPU (patches/proot/0002): Linux runs
-     * several times faster. On unless the user turned it off; applies to what starts after a change.
+     * What makes Linux's system calls fast: proot keeping itself and programs making many syscalls on one fast
+     * CPU (patches/proot/0002), and the fast lane, [fastLane]. On unless the user turned it off; applies to what
+     * starts after a change.
      */
     var cpuPinning by mutableStateOf(prefs.getBoolean(CPU_PINNING, true))
         private set
@@ -56,6 +57,26 @@ class Proot(
         cpuPinning = on
         prefs.edit().putBoolean(CPU_PINNING, on).apply()
     }
+
+    /** Linux was stopped in settings: no guest command starts until it's started again; see [stop]. */
+    @Volatile var stopped = false
+
+    /**
+     * The fast lane library (patches/proot/fastpath): preloaded into guest programs, it answers stat, access,
+     * readlink and read-only open for plain rootfs paths itself, without a stop in proot (patches/proot/0003).
+     * Built by scripts/fetch-proot.sh next to proot and copied into the guest by [managed], so the two always
+     * come from the same APK; a build without it runs as before.
+     */
+    private val fastLaneSource = File(nativeDir, "libfastpath.so")
+    private val fastLane = File(rootfs, FAST_LANE.removePrefix("/"))
+
+    /**
+     * Where proot keeps the files behind hard links, which Android denies apps: each link is a symlink into here
+     * (--link2symlink, PROOT_L2S_DIR). Without it they sit next to the link, and a program that links a directory
+     * entry by entry (uv out of its cache) trips over them; links made before stay where they are and keep working
+     * (patches/proot/0004). Inside the rootfs, so they are on its filesystem and go when it does.
+     */
+    private val linkStore = File(rootfs, "var/lib/proot/l2s")
 
     /** Launcher data the guest sees in its home, kept outside the rootfs; see [LauncherData]. */
     private val dataBinds =
@@ -122,7 +143,8 @@ class Proot(
 
     /**
      * Resets what only lives as long as our process (guest processes die with
-     * it): /tmp, the runtime dir, a stale pacman lock. Writes the host-side
+     * it): /tmp, the runtime dir, a stale pacman lock and the database entries
+     * of a pacman killed mid-install. Writes the host-side
      * stand-ins every guest command needs. Call once, before any guest runs.
      */
     fun prepare() {
@@ -137,7 +159,7 @@ class Proot(
         }
         // Its mount point, so / lists it; Android 10 has none (an empty one is all that's left there).
         if (rootfs.isDirectory) storageMount.let { if (PhoneStorage.supported()) it.mkdirs() else it.delete() }
-        File(rootfs, "var/lib/pacman/db.lck").delete()
+        releasePacman()
         // An empty stand-in, so fontconfig lists the bound font when it reads the directory.
         if (rootfs.isDirectory) {
             val stub = File(rootfs, GUEST_CJK_FONT.removePrefix("/"))
@@ -154,6 +176,22 @@ class Proot(
         // bwrap is never empty.
         File(rootfs, "usr/bin/bwrap").takeIf { it.isFile && it.length() == 0L }?.delete()
         File(filesDir, "bwrap-shim").delete()
+    }
+
+    /** pacman's lock and the database entries of an install it didn't finish, left by a pacman that was killed. */
+    private fun releasePacman() {
+        File(rootfs, "var/lib/pacman/db.lck").delete()
+        Pacman.dropUnfinished(File(rootfs, "var/lib/pacman/local")).takeIf { it.isNotEmpty() }?.let { Log.w("proot", "unfinished pacman entries dropped: $it") }
+    }
+
+    /**
+     * Stops Linux without deleting anything: no guest command starts from now on, every running one is killed, and
+     * what a pacman killed mid-install left is cleaned up as after a restart. Setting [stopped] to false undoes it.
+     */
+    fun stop() {
+        stopped = true
+        killAll()
+        releasePacman()
     }
 
     /** Old /tmp contents waiting to be deleted; see [discardTmp]. */
@@ -178,7 +216,8 @@ class Proot(
      * fails. glycin and Codex look for bwrap on PATH, where /usr/local/bin precedes the package's /usr/bin.
      */
     fun managed(): List<Managed> =
-        listOf(Managed.asset(context, "bwrap-shim.sh", File(rootfs, "usr/local/bin/bwrap"), Policy.Owned, executable = true))
+        listOf(Managed.asset(context, "bwrap-shim.sh", File(rootfs, "usr/local/bin/bwrap"), Policy.Owned, executable = true)) +
+            if (fastLaneSource.isFile) listOf(Managed(fastLane, Policy.Owned) { fastLaneSource.readBytes() }) else emptyList()
 
     private fun command(script: String): List<String> {
         return listOf(
@@ -234,7 +273,10 @@ class Proot(
                 "QT_QPA_PLATFORM=wayland",
                 "MOZ_ENABLE_WAYLAND=1",
                 "SDL_VIDEODRIVER=wayland",
-            ) + graphicsEnv + listOf("/bin/sh", "-c", script)
+            ) + graphicsEnv +
+            // Only once the library is there: the dynamic linker complains on every start about one it can't find.
+            (if (cpuPinning && fastLane.isFile) listOf("LD_PRELOAD=$FAST_LANE") else emptyList()) +
+            listOf("/bin/sh", "-c", script)
     }
 
     /**
@@ -255,26 +297,38 @@ class Proot(
         }
     }
 
-    /** A guest `sh -c [script]`, stderr merged into stdout. Needs [prepare] to have run. */
-    fun process(script: String): ProcessBuilder =
-        ProcessBuilder(command(script)).apply {
+    /** A guest `sh -c [script]`, stderr merged into stdout. Needs [prepare] to have run; fails while Linux is [stopped]. */
+    fun process(script: String): ProcessBuilder {
+        if (stopped) throw java.io.IOException("Linux is stopped")
+        return ProcessBuilder(command(script)).apply {
             environment().apply {
                 clear()
                 put("PROOT_LOADER", File(nativeDir, "libproot-loader.so").path)
                 put("PROOT_TMP_DIR", tmpDir.path)
                 put("LD_LIBRARY_PATH", nativeDir.path)
-                if (!cpuPinning) put("PROOT_HOME_CPU", "off")
+                // The real path: proot compares it with the ones it resolved, and /data/user/0 is a symlink.
+                if (rootfs.isDirectory && (linkStore.isDirectory || linkStore.mkdirs())) put("PROOT_L2S_DIR", linkStore.canonicalPath)
+                if (!cpuPinning) {
+                    put("PROOT_HOME_CPU", "off")
+                    put("PROOT_FASTPATH", "off")
+                }
             }
             redirectErrorStream(true)
         }
+    }
 
     companion object {
         private const val CPU_PINNING = "proot_cpu_pinning"
 
         const val GUEST_HOME = "/root"
 
+        /** Where `omalauncher pick` and a share from another app put the files: the guest's own Downloads. */
+        const val GUEST_DOWNLOADS = "$GUEST_HOME/Downloads"
+
         /** XDG_RUNTIME_DIR in the guest, bound to [runtimeDir]. */
         const val GUEST_RUNTIME_DIR = "/run/user/0"
+
+        private const val FAST_LANE = "/usr/local/lib/libfastpath.so"
 
         private const val GUEST_CJK_FONT = "/usr/share/fonts/android/NotoSansCJK-Regular.ttc"
     }

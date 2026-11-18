@@ -5,13 +5,14 @@ written in OWL, a small declarative language in the spirit of QML. Its first
 word says what it is: `widget "name" { }` is a home-screen tile, `face "name" { }` a face, a whole home page
 left of your first one (docs/faces.md), and `app "name" { }` an app in the app drawer that opens full screen
 (docs/apps.md). `panel "name" { }` is a view a swipe on home opens (docs/panels.md), and `keybar "name" { }` the terminal key bar
-over the keyboard while typing in a terminal (docs/keybar.md). Everything here and in docs/ is about widgets unless it says otherwise; the others are written
+over the keyboard while typing in a terminal (docs/keybar.md), and `strip "name" { }` the strip of recent apps above home's prompt bar (docs/strip.md). Everything here and in docs/ is about widgets unless it says otherwise; the others are written
 the same way. Save a file and it appears within a second. Then run `owl-check <file>`:
 
 ```
 $ owl-check 50-memory.owl
 50-memory.owl: compiles
   preview: ~/.config/omalauncher/widgets/.preview/50-memory.owl.png (3x4 cells, 528x712 px, with live data); look at it to check the layout
+  on home: 3x4 cells at x=0 y=2, as ~/.config/omalauncher/home/layout.toml has it; change it there, not with size:
 ```
 
 A widget with a `screen { }` (docs/screens.md) gets a second picture, of the screen as it opens. An
@@ -21,14 +22,17 @@ It waits until the launcher has loaded the file as saved, prints compile errors
 and problems found while running, and exits 1 if there are any. The preview is
 the tile as it looks on the home screen, at its size there, after its sources
 have loaded: open it to see whether text fits and the layout works, since you
-can't see the phone. Terminal and Browser tiles aren't previewed. Errors also
+can't see the phone. It's the running tile, so to see another state, set it and check again:
+`owl-send <file> set <state> <value>` (docs/home.md), then `owl-check <file>`; set it back when
+you're done, since that's the tile on the user's home. Terminal and Browser tiles aren't previewed. Errors also
 go to `.errors/<file>.txt`, and the tile shows them.
 
 Widgets sit on a grid of roughly square cells, 6 columns by default (a phone
 has about 12 rows), bordered like Omarchy windows and colored by the current
 Omarchy theme. Users move and resize them on the phone; where everything is
 lives in ~/.config/omalauncher/home/layout.toml, which you can edit too (see
-docs/home.md).
+docs/home.md). The launcher puts a new file on home itself, by its `page:`, `order:` and `size:`:
+don't add it to layout.toml, move it there afterwards if it should be elsewhere.
 
 ```owl
 widget "memory" {
@@ -87,7 +91,7 @@ A file holds declarations, then the nodes it shows:
 ## The docs
 
 The rest is in `docs/`. Read the ones for what you're making before you write: a widget usually needs
-declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a panel or a key bar their own file too.
+declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a panel, a key bar or the strip their own file too.
 
 | read | for |
 |---|---|
@@ -103,6 +107,7 @@ declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a pan
 | docs/browser.md | a web page in a tile: `Browser`, and `web` to steer it |
 | docs/panels.md | panels a swipe opens, the app drawer among them |
 | docs/keybar.md | the terminal key bar over the keyboard |
+| docs/strip.md | the strip of recent apps above home's prompt bar |
 | docs/home.md | home's layout.toml, and reaching a running widget from scripts with `owl-send` |
 | docs/sharing.md | the widget store, and sharing a file as a link or QR code |
 | docs/versions.md | what each owl version added |
@@ -127,7 +132,7 @@ OWL looks like QML and JavaScript but isn't either; these are what code written 
 ## Examples
 
 Read the one closest to what you're making before you start. Files at the top of this folder are in use
-already (on home, or as the drawer and the terminal key bar); the rest are in `examples/`, off home until you move one up into this folder. Examples without `meta { owl: … }` are written for owl 1,
+already (on home, or as the drawer, the terminal key bar and the strip); the rest are in `examples/`, off home until you move one up into this folder. Examples without `meta { owl: … }` are written for owl 1,
 so they don't use what came later, like `if` in handlers or a Row's Texts as wide as their text; the
 docs say what's current.
 
@@ -135,14 +140,15 @@ docs say what's current.
 |---|---|
 | a shell command shown as text | `examples/10-clock` (clock, theme name), `examples/30-disk` (df, a bar) |
 | a number over time | `examples/20-system` (history, Sparkline, requires), `examples/93-latency` (stream: one long-running command) |
-| JSON and lists from commands | `examples/80-system-info` (json), `examples/70-processes` (lines into maps, a bar per row), `examples/94-scripts`, `examples/96-ai-usage` (jq in a `"""` command), `examples/60-agents` (for, if, Button) |
+| JSON and lists from commands | `examples/80-system-info` (json), `examples/70-processes` (lines into maps, a bar per row), `examples/94-scripts`, `examples/96-ai-usage` (jq in a `"""` command) |
 | the web, no Linux needed | `examples/50-weather` (http), `examples/86-whats-new` (a screen behind the tile), `10-today` (weather, Input for a city, persist), `examples/75-live-price` (ws: a WebSocket, greeting each connection, every message) |
-| the phone's own data | `examples/40-battery` (Ring), `examples/85-quick` (alarm, modes, torch), `examples/97-now-playing` (media, album art), `examples/98-notifications`, `examples/99-volume` (Slider), `examples/airpods` (AirPods' batteries and settings, a screen), `examples/calendar` (the phone's calendars, asked for on a tap), `20-fetch` (with or without Linux) |
+| the phone's own data | `examples/40-battery` (Ring), `examples/60-agents` (the coding agents installed, for, if, Button), `examples/85-quick` (alarm, modes, torch), `examples/97-now-playing` (media, album art), `examples/98-notifications`, `examples/99-volume` (Slider), `examples/airpods` (AirPods' batteries and settings, a screen), `examples/calendar` (the phone's calendars, asked for on a tap), `20-fetch` (with or without Linux) |
 | state, buttons and timers | `examples/91-focus` (persist, `at`, notify), `examples/87-breathe` (a session paced by the clock), `examples/88-notes` (Input, a saved list) |
 | drawing | `examples/90-analog-clock` (Canvas), `50-koi` (pixel art, taps), `60-owl` (sprites, a pet that keeps its state), `examples/92-aurora` and `examples/89-lava` (Shader) |
-| a game | `examples/space-bounce` (an app: `every frame` moving things by their speed, steering by tilting with `android.motion`, aiming with a finger, a Shader grid behind a Canvas), `examples/sky-raid` (a pixel-art scrolling shooter: sprites in one palette, a pixel font drawn with `sprite`, scrolling ground from a Shader, stages and a boss, keeping under the 2000 drawing calls), `examples/sky-forge` (the same shooter with a hangar between rounds: persisted upgrades, a weight limit on what's fitted, sectors that get harder without end), `examples/sunset-heist` (a 3D city seen from above, made from a seed: two scenes on one camera, the ground first; traffic on a road grid, police that chase, getting in and out of seven kinds of vehicle, each a convex body made with `mesh` so it never sorts wrong, jobs, guns with auto-aim and a held fire button, health and armor, pickups placed from the seed that come back after a while, police that follow the road grid and get out to chase on foot, a minimap; a joystick wherever the thumb goes down, from `onTouch`), `examples/canyon-run` (3D: a Canvas `scene` of terrain tiles laid end to end, models spawned ahead and dropped behind, hits as distances, a camera following the ship, `project` for a sun behind the scene), `examples/boomtown` (a city builder on an isometric map: a weekly simulation in `every frame` over the map kept in persisted lists, slow numbers in lets per block of tiles, a Shader for the ground and only the tiles on screen drawn, with less detail the more there are), `examples/last-outpost` (tower defense on a grid of tiles: a road as a list of corners that the Shader draws and enemies walk by how far along they are, towers that fire when their time comes round with hits summed per enemy once a frame, taps on the map and a bar of buttons, research at command that persists between battles) |
+| a game | `examples/space-bounce` (an app: `every frame` moving things by their speed, steering by tilting with `android.motion`, aiming with a finger, a Shader grid behind a Canvas), `examples/sky-raid` (a pixel-art scrolling shooter: sprites in one palette, a pixel font drawn with `sprite`, scrolling ground from a Shader, stages and a boss, keeping under the 2000 drawing calls), `examples/sunset-heist` (a 3D city seen from above, made from a seed: two scenes on one camera, the ground first; traffic on a road grid, police that chase, getting in and out of seven kinds of vehicle, each a convex body made with `mesh` so it never sorts wrong, jobs, guns with auto-aim and a held fire button, health and armor, pickups placed from the seed that come back after a while, police that follow the road grid and get out to chase on foot, a minimap; a joystick wherever the thumb goes down, from `onTouch`), `examples/canyon-run` (3D: a Canvas `scene` of terrain tiles laid end to end, models spawned ahead and dropped behind, hits as distances, a camera following the ship, `project` for a sun behind the scene) |
 | faces, a whole page | `examples/00-start` (frost, Grid, spans), `examples/01-minimal`, `examples/02-pixel`, `examples/03-matrix` |
 | panels and the prompt bar | `drawer.owl` (lazy lists, search with rank, Popup), `examples/65-ai-bar` (android.agents, ask, open) |
+| the strip above the prompt bar | `strip.owl` (android.strip, a Row that scrolls, a long-press menu), `examples/strip-pinned` (apps kept in place, sized to fit) |
 | the terminal key bar | `keybar.owl`, `examples/keybar-layers` (latch, layers), `examples/keybar-vim`, `examples/keybar-gamepad`, `examples/keybar-commands` (typeText) |
 | a live terminal | `45-terminal` |
 | a web page in a tile | `examples/46-browser`, and a face with a terminal and a page in tabs in docs/browser.md |

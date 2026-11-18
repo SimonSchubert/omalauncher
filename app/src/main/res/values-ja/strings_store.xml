@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="store_widgets_title">ウィジェットストア</string>
+    <string name="store_apps_title">アプリストア</string>
+    <string name="store_featured">おすすめ</string>
+
+    <string name="store_kind_widgets">ウィジェット</string>
+    <string name="store_kind_faces">全画面ウィジェット</string>
+    <string name="store_kind_apps">アプリ</string>
+    <string name="store_kind_panels">パネル</string>
+    <string name="store_kind_keybars">キーバー</string>
+    <string name="store_kind_widget">ウィジェット</string>
+    <string name="store_kind_face">全画面ウィジェット</string>
+    <string name="store_kind_app">アプリ</string>
+    <string name="store_kind_panel">パネル</string>
+    <string name="store_kind_keybar">キーバー</string>
+
+    <string name="store_pick_widget">ウィジェットを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
+    <string name="store_pick_face">全画面ウィジェットを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
+    <string name="store_pick_app">アプリを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
+    <string name="store_pick_panel">パネルを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
+    <string name="store_pick_keybar">キーバーを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
+    <string name="store_kind_strips">アプリのバー</string>
+    <string name="store_kind_strip">アプリのバー</string>
+    <string name="store_pick_strip">アプリのバーを選ぶと、インストールされるものと実行されるコマンドを確認できます</string>
+
+    <string name="store_search">%1$d 件の%2$sを検索</string>
+    <string name="store_tab_all">すべて</string>
+    <string name="store_tab_new">新着</string>
+    <string name="store_tab_installed">インストール済み</string>
+    <string name="store_category_other">その他</string>
+    <string name="store_tab">%1$s %2$d</string>
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <string name="store_builtin">組み込み</string>
+    <string name="store_terminal">ターミナル</string>
+    <string name="store_terminal_details">6x4 · シェル</string>
+    <string name="store_agent_details">6x6 · %1$s を実行</string>
+    <string name="store_on_home">✓ ホームに追加済み</string>
+    <string name="store_tap_to_add">%1$d ページ目に追加</string>
+
+    <string name="store_reviewed">github.com/%2$s のレビュー済み%1$s</string>
+    <string name="store_loading">読み込み中…</string>
+    <string name="store_empty">%1$sはまだありません</string>
+    <string name="store_no_new">新しい%1$sはありません</string>
+    <string name="store_none_installed">ストアからインストールした%1$sはありません</string>
+    <string name="store_no_match">「%1$s」に一致するものはありません</string>
+
+    <string name="store_update_available">アップデートあり</string>
+    <string name="store_installed">✓ インストール済み</string>
+    <string name="store_needs_newer">ランチャーの更新が必要</string>
+    <string name="store_needs_linux">linux が必要</string>
+    <string name="store_full_screen">全画面</string>
+    <plurals name="store_pages">
+        <item quantity="other">%1$d ページ</item>
+    </plurals>
+    <string name="store_badge_new">新着</string>
+
+    <string name="store_needs_newer_detail">新しいバージョンのランチャーが必要です（owl %1$d）。インストールするには、ランチャーを更新してください</string>
+    <string name="store_may_have_changes">変更を加えている可能性があり、更新すると上書きされます</string>
+    <string name="store_you_changed">変更を加えているため、更新すると上書きされます</string>
+    <string name="store_update_anyway">それでも更新 %1$s → %2$s</string>
+    <string name="store_update">更新 %1$s → %2$s</string>
+    <string name="store_open">開く</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="other">足りない %1$d ページを追加</item>
+    </plurals>
+    <string name="store_add_to_page">%1$d ページ目に追加</string>
+    <string name="store_add_as_face">全画面ウィジェットとして追加</string>
+    <string name="store_install">インストール</string>
+    <string name="store_uninstall">アンインストール</string>
+    <string name="store_remove">削除</string>
+    <string name="store_uninstall_confirm">%1$s をアンインストールしますか？</string>
+    <string name="store_remove_confirm">%1$s を削除しますか？</string>
+    <string name="store_remove_file">ファイルはウィジェットフォルダ内の .removed/ に移動されます。</string>
+    <string name="store_remove_files">ファイルはウィジェットフォルダ内の .removed/ に移動されます。</string>
+    <string name="store_changed_since_approval">承認したバージョンから、コマンドまたはパッケージが変更されています</string>
+
+    <string name="store_added_widget">✓ ホーム画面に追加しました</string>
+    <string name="store_added_face">✓ 最初のページの左に追加しました</string>
+    <string name="store_added_app">✓ アプリドロワーに追加しました</string>
+    <string name="store_added_panel">✓ ジェスチャー設定に追加しました</string>
+    <string name="store_added_keybar">✓ ウィジェットフォルダに追加しました</string>
+
+    <string name="store_needs_linux_app">Linux が必要です：Arch でコマンドを実行するアプリです。設定で Linux をインストールすると、アプリドロワーに表示されます</string>
+    <string name="store_needs_linux_widget">Linux が必要です：Arch でコマンドを実行するため、設定で Linux をインストールするまではプレースホルダーとして表示されます</string>
+
+    <string name="store_installs_packages">インストールされるパッケージ：%1$s</string>
+    <string name="store_packages_none">なし</string>
+    <string name="store_runs_no_commands">コマンドは実行しません</string>
+    <string name="store_runs_commands">Arch で次のコマンドを実行します：</string>
+
+    <string name="store_installing">インストール中…</string>
+    <string name="store_updating">更新中…</string>
+    <string name="store_adding_pages">ページを追加中…</string>
+    <string name="store_load_failed">ストアを読み込めませんでした：%1$s</string>
+    <string name="store_download_mismatch">ダウンロードした内容がレビュー済みのバージョンと一致しません。しばらくしてから、もう一度お試しください</string>
+    <string name="store_install_failed">インストールに失敗しました：%1$s</string>
+
+    <string name="store_shared_title">共有された%1$s</string>
+    <string name="store_shared_fetching">%1$s から取得中…</string>
+    <string name="store_shared_unreadable">読み込めません</string>
+    <string name="store_shared_not_widget">このリンクにはウィジェットが含まれていません：%1$s</string>
+    <string name="store_shared_unnamed_app">アプリ</string>
+    <string name="store_shared_unnamed_widget">ウィジェット</string>
+    <string name="store_shared_info">共有されました%1$s · %2$.1f KB</string>
+    <string name="store_shared_warning">送り主を信頼できる場合にだけ追加してください。以下のコマンドが Arch 内であなたの権限で実行され、あなたのファイルとネットワークにアクセスできます。</string>
+    <string name="store_shared_needs_newer">新しいバージョンのランチャーが必要です（owl %1$d）。追加するには、ランチャーを更新してください</string>
+    <string name="store_shared_replace">以前共有された %1$s を置き換える</string>
+    <string name="store_add_to_drawer">アプリドロワーに追加</string>
+    <string name="store_add_to_panels">ジェスチャーのパネルに追加</string>
+    <string name="store_add_to_widgets_folder">ウィジェットフォルダに追加</string>
+    <string name="store_hide_file">ファイルを隠す</string>
+    <string name="store_show_file">ファイル全体を表示</string>
+    <string name="store_review_with_agent">エージェントでレビュー</string>
+
+    <string name="store_share_title">%1$s を共有</string>
+    <string name="store_check_secrets">エージェントで機密情報をチェック</string>
+    <string name="store_share_unreadable">%1$s を読み込めません</string>
+    <string name="store_share_too_big">%1$s は %2$d KB を超えているため、ランチャーで受け取れません</string>
+    <string name="store_uploading">アップロード中…</string>
+    <string name="store_share_get_code">QR コードを作成</string>
+    <string name="store_something_wrong">問題が発生しました</string>
+    <string name="store_share_uploads">%1$s に誰でも見られる状態でアップロードされ、%2$d 日間保存されます</string>
+    <string name="store_share_send_link">リンクで送ることもできます。期限はなく、ウィジェット全体がリンクに含まれます。</string>
+    <string name="store_share_too_big_link">リンクで送るには大きすぎます。QR コードで共有してください。</string>
+    <string name="store_share_pasted_permanent">%1$s へのリンクです。%2$d 日後に消えます。下のリンクには期限がありません。</string>
+    <string name="store_share_pasted">%1$s へのリンクです。%2$d 日後に消えます。</string>
+    <string name="store_share_permanent">期限なし：ウィジェット全体が画像に含まれています。</string>
+    <string name="store_share_code">QR コードを共有</string>
+    <string name="store_share_link">リンクを共有</string>
+    <string name="store_copied">コピーしました</string>
+    <string name="store_copy_link">リンクをコピー</string>
+    <string name="store_share_subject">%1$s ウィジェット</string>
+    <string name="store_share_code_clip">%1$s の QR コード</string>
+    <string name="store_share_chooser">%1$s を共有</string>
+    <string name="store_in_store">ストアに公開</string>
+    <string name="store_issue_info">github.com/%1$s に issue を作成します。レビューが済むと、誰でもインストールできるようになります。</string>
+    <string name="store_pr_info">または、エージェントからプルリクエストを送ります。プレビューも追加できます：</string>
+    <string name="store_create_pr">エージェントでプルリクエストを作成</string>
+    <string name="store_open_issue">GitHub issue を作成</string>
+    <string name="store_no_browser">%1$s を開けるブラウザがありません</string>
+    <string name="store_issue_uploads">レビューのため、%1$s に誰でも見られる状態でアップロードされます</string>
+    <string name="store_upload_failed">✗ アップロードできませんでした：%1$s</string>
+
+    <string name="store_pin_title">ホーム画面に追加しますか？</string>
+    <string name="store_pin_from">%1$s から</string>
+    <string name="store_cancel">キャンセル</string>
+    <string name="store_add">追加</string>
+
+    <string name="store_theme_title">コミュニティテーマ</string>
+    <string name="store_theme_search">%1$d 件のテーマを検索</string>
+    <string name="store_theme_header">コミュニティ製、omarchy.org/themes に掲載 · GitHub からインストール</string>
+    <string name="store_theme_in_use">✓ 使用中</string>
+    <string name="store_theme_install_confirm">%1$s をインストールしますか？</string>
+    <string name="store_theme_install_message">提供元：%1$s。Linux に適用されるのは色と壁紙だけで、スクリプトやターミナルの設定は適用されません。</string>
+    <string name="store_theme_install_message_replaces">提供元：%1$s。Linux に適用されるのは色と壁紙だけで、スクリプトやターミナルの設定は適用されません。\n\n現在の %2$s は置き換えられます。</string>
+    <string name="store_theme_install_message_over">提供元：%1$s。Linux に適用されるのは色と壁紙だけで、スクリプトやターミナルの設定は適用されません。\n\nOmarchy の %2$s の代わりに使われます。削除すると Omarchy 版に戻ります。</string>
+    <string name="store_theme_installing">%1$s をインストール中… %2$d MB</string>
+    <string name="store_theme_catalog_failed">omarchy.org/themes を読み込めませんでした：%1$s</string>
+    <string name="store_theme_page_changed">ページの構成が変わったため、読み込めません</string>
+    <string name="store_theme_not_github">GitHub リポジトリではありません：%1$s</string>
+    <string name="store_theme_not_on_github">%1$s は GitHub にありません</string>
+    <string name="store_theme_no_colors">colors.toml も alacritty.toml もありません</string>
+    <string name="store_theme_cant_move">テーマを所定の場所に移動できません</string>
+</resources>

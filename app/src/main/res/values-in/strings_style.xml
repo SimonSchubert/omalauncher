@@ -15,6 +15,8 @@
     <string name="style_icons">ikon</string>
     <string name="style_monochrome">monokrom</string>
     <string name="style_colored">berwarna</string>
+    <string name="style_icon_pack">paket ikon</string>
+    <string name="style_icon_pack_none">tidak ada</string>
     <string name="style_home_apps">aplikasi layar utama</string>
     <string name="style_boxed">dalam kotak</string>
     <string name="style_icon_only">ikon saja</string>
@@ -71,6 +73,14 @@
     <string name="style_keybar_gone">%1$s hilang, jadi tombol bawaan yang tampil</string>
     <string name="style_keybar_restore_title">kembali ke tombol bawaan?</string>
     <string name="style_keybar_restore_message">keybar.owl milikmu diganti dengan bawaan launcher ini.</string>
+    <string name="style_strip">bilah aplikasi</string>
+    <string name="style_strip_removed">dihapus</string>
+    <string name="style_strip_stock">bawaan</string>
+    <string name="style_strip_edited">diedit</string>
+    <string name="style_strip_back_to_stock">kembali ke bawaan</string>
+    <string name="style_strip_gone">%1$s hilang, jadi bilah bawaan yang tampil</string>
+    <string name="style_strip_restore_title">kembali ke bilah bawaan?</string>
+    <string name="style_strip_restore_message">strip.owl milikmu diganti dengan bawaan launcher ini.</string>
     <string name="style_replace">ganti</string>
 
     <string name="style_browse">jelajahi</string>
@@ -133,9 +143,10 @@
     <string name="gestures_swipe_down_nothing">geser ke bawah tidak membuka apa pun</string>
     <string name="gestures_until_fixed">%1$s sampai diperbaiki: %2$s</string>
     <string name="gestures_keybar_until_fixed">bilah tombol terminal memakai bawaan sampai diperbaiki: %1$s</string>
+    <string name="gestures_strip_until_fixed">bilah aplikasi memakai bawaan sampai diperbaiki: %1$s</string>
 
     <string name="agents_title">agen coding</string>
-    <string name="agents_intro">Diinstal dengan mise, seperti di Omarchy. Login terbuka di browser; tempel kunci API lewat papan klip keyboard.</string>
+    <string name="agents_intro">Diinstal seperti di Omarchy, sebagian besar dengan mise. Login terbuka di browser; tempel kunci API lewat papan klip keyboard.</string>
     <string name="agents_open">buka</string>
     <string name="agents_remove">hapus</string>
     <string name="agents_still_running">%1$s masih berjalan: tutup dulu, lalu hapus lagi</string>

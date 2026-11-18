@@ -43,6 +43,8 @@
     <string name="home_fix_with_agent">arreglar con agente</string>
     <string name="home_widget_needs_linux">requiere Linux</string>
     <string name="home_widget_needs_linux_text">ejecuta comandos en el Arch Linux opcional</string>
+    <string name="home_widget_linux_stopped">Linux está detenido</string>
+    <string name="home_start_linux">iniciar</string>
 
     <string name="home_terminal_starting">iniciando…</string>
     <string name="home_terminal_exited">terminó · toca para reiniciar</string>
@@ -65,8 +67,10 @@
     <string name="home_settings">configuración</string>
 
     <string name="home_linux_window">Linux</string>
-
-    <string name="drawer_action_pin">agregar a inicio</string>
-    <string name="drawer_action_info">info de la app</string>
-    <string name="drawer_action_uninstall">desinstalar</string>
+    <string name="home_news_close">cerrar</string>
+    <string name="home_news_off">no mostrar más novedades</string>
+    <string name="home_news_days">días</string>
+    <string name="home_news_hours">horas</string>
+    <string name="home_news_minutes">min</string>
+    <string name="home_news_seconds">seg</string>
 </resources>

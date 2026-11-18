@@ -3,7 +3,7 @@ package dev.omalauncher.linux
 import android.content.Context
 import android.system.Os
 import android.util.Log
-import dev.omalauncher.openUrl
+import dev.omalauncher.system.openUrl
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import java.io.File

@@ -3,9 +3,13 @@
      with you (ui/SharedWidgetScreen.kt), adding an app's shortcut (ui/PinShortcutDialog.kt) and the community themes
      (ui/ThemeCatalogScreen.kt). -->
 <resources>
-    <string name="store_title">store</string>
+    <!-- The store's two titles, the widgets' and the apps'; a button in the header switches between them. -->
+    <string name="store_widgets_title">widget store</string>
+    <string name="store_apps_title">app store</string>
+    <!-- Over the apps store's row of picked apps, above the list of every app. -->
+    <string name="store_featured">featured</string>
 
-    <!-- What the store holds, one of; the toggle in the store's header, and the %s in the store's sentences below. -->
+    <!-- What the store holds, one of; the button to the other store in the header, and the %s in the store's sentences below. -->
     <string name="store_kind_widgets">widgets</string>
     <string name="store_kind_faces">full-screen widgets</string>
     <string name="store_kind_apps">apps</string>
@@ -24,6 +28,9 @@
     <string name="store_pick_app">pick an app to see what it installs and runs</string>
     <string name="store_pick_panel">pick a panel to see what it installs and runs</string>
     <string name="store_pick_keybar">pick a keybar to see what it installs and runs</string>
+    <string name="store_kind_strips">strips</string>
+    <string name="store_kind_strip">strip</string>
+    <string name="store_pick_strip">pick a strip to see what it installs and runs</string>
 
     <!-- %1$d is how many there are, %2$s what they are, like "widgets". -->
     <string name="store_search">search %1$d %2$s</string>

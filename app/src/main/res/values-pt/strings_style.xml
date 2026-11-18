@@ -15,6 +15,8 @@
     <string name="style_icons">ícones</string>
     <string name="style_monochrome">monocromáticos</string>
     <string name="style_colored">coloridos</string>
+    <string name="style_icon_pack">pacote de ícones</string>
+    <string name="style_icon_pack_none">nenhum</string>
     <string name="style_home_apps">apps no início</string>
     <string name="style_boxed">em caixa</string>
     <string name="style_icon_only">só ícone</string>
@@ -71,6 +73,14 @@
     <string name="style_keybar_gone">%1$s não existe mais, então aparecem as teclas originais</string>
     <string name="style_keybar_restore_title">voltar às teclas originais?</string>
     <string name="style_keybar_restore_message">Seu keybar.owl é substituído pelo que vem com este launcher.</string>
+    <string name="style_strip">barra de apps</string>
+    <string name="style_strip_removed">removida</string>
+    <string name="style_strip_stock">original</string>
+    <string name="style_strip_edited">editada</string>
+    <string name="style_strip_back_to_stock">voltar à original</string>
+    <string name="style_strip_gone">%1$s não existe mais, então aparece a barra original</string>
+    <string name="style_strip_restore_title">voltar à barra original?</string>
+    <string name="style_strip_restore_message">Seu strip.owl é substituído pelo que vem com este launcher.</string>
     <string name="style_replace">substituir</string>
 
     <string name="style_browse">explorar</string>
@@ -137,9 +147,10 @@
     <string name="gestures_swipe_down_nothing">deslizar para baixo não abre nada</string>
     <string name="gestures_until_fixed">%1$s até ser corrigido: %2$s</string>
     <string name="gestures_keybar_until_fixed">a barra de teclas do terminal é a original até ser corrigida: %1$s</string>
+    <string name="gestures_strip_until_fixed">a barra de apps é a original até ser corrigida: %1$s</string>
 
     <string name="agents_title">agentes de programação</string>
-    <string name="agents_intro">Instalados com o mise, como no Omarchy. Os logins abrem no navegador; cole chaves com a área de transferência do teclado.</string>
+    <string name="agents_intro">Instalados como no Omarchy, a maioria com o mise. Os logins abrem no navegador; cole chaves com a área de transferência do teclado.</string>
     <string name="agents_open">abrir</string>
     <string name="agents_remove">remover</string>
     <string name="agents_still_running">%1$s ainda está aberto: feche e remova de novo</string>

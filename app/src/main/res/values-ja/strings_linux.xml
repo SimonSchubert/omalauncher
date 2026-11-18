@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="linux_stage_download">arch linux をダウンロード</string>
+    <string name="linux_stage_extract">システムを展開</string>
+    <string name="linux_stage_configure">pacman を設定</string>
+    <string name="linux_stage_packages">omarchy のアプリをインストール</string>
+    <string name="linux_stage_agents">コーディングエージェントをインストール</string>
+    <string name="linux_stage_agents_named">%1$s をインストール</string>
+
+    <string name="linux_step_download">Arch Linux ARM のダウンロード</string>
+    <string name="linux_step_configure">システムの設定</string>
+    <string name="linux_step_forks">プログラムの起動確認</string>
+    <string name="linux_step_keyring">pacman キーリングの初期化</string>
+    <string name="linux_step_no_kernel">カーネルパッケージの削除</string>
+    <string name="linux_step_packages">パッケージのインストール</string>
+    <string name="linux_step_keymap">キーマップのコンパイル</string>
+    <string name="linux_step_cliamp">cliamp のインストール</string>
+    <string name="linux_step_agent">%1$s のインストール</string>
+    <string name="linux_step_downloaded">%1$d / %2$d MB</string>
+    <string name="linux_step_downloaded_unknown">%1$d MB</string>
+    <string name="linux_step_extract_start">準備中</string>
+    <plurals name="linux_step_extracted">
+        <item quantity="other">%d 個のファイル</item>
+    </plurals>
+
+    <string name="linux_log_retrying">%1$s。再試行します（%2$d/%3$d）</string>
+    <string name="linux_log_step_failed">%1$sに失敗しました：%2$s。設定から再試行できます</string>
+    <string name="linux_log_agent_failed">%1$s をインストールできませんでした。設定 › コーディングエージェント からもう一度お試しください</string>
+
+    <string name="linux_error_no_space">空き容量が足りません：Linux には %1$s の空きが必要ですが、スマートフォンの空きは %2$s です。空きを増やしてから、もう一度お試しください</string>
+    <string name="linux_error_out_of_space">スマートフォンの空き容量がなくなりました。Linux には約 %1$s の空きが必要です。空きを増やしてから、もう一度お試しください</string>
+    <string name="linux_error_http">ダウンロードに失敗しました：HTTP %1$d</string>
+    <string name="linux_error_cut_short">ダウンロードが途中で切れました。再試行すると続きから再開します</string>
+    <string name="linux_error_move_download">ダウンロードしたファイルを所定の場所に移動できません</string>
+    <string name="linux_error_cant_run">このスマートフォンでは Linux のコマンドを実行できません（終了コード %1$d）</string>
+    <string name="linux_error_kernel">このスマートフォンのカーネルでは、Linux のプログラムがほかのプログラムを起動できないため、セットアップを続けられません。4.14 カーネルのカスタム ROM では、メンテナーがカーネルコミット 05b289263772 を取り込む必要があります。GitHub の issue #105 をご覧ください</string>
+    <string name="linux_error_command">`%1$s` が失敗しました（終了コード %2$d）</string>
+    <string name="linux_error_cliamp_mismatch">ダウンロードした cliamp が %1$s と一致しません</string>
+    <string name="linux_error_cant_replace">%1$s を置き換えられません</string>
+
+    <string name="linux_job_installing">インストール中</string>
+    <string name="linux_job_removing">削除中</string>
+    <string name="linux_job_building">ビルド中</string>
+    <string name="linux_job_updating">更新中</string>
+    <string name="linux_job_waiting">待機中</string>
+    <string name="linux_job_checking">確認中</string>
+    <string name="linux_job_working">%1$s…</string>
+
+    <string name="linux_updates_unreachable">ミラーに接続できませんでした</string>
+
+    <string name="linux_agent_claude">Anthropic のエージェント</string>
+    <string name="linux_agent_opencode">オープンソース、どのモデルにも対応</string>
+    <string name="linux_agent_codex">OpenAI のエージェント</string>
+    <string name="linux_agent_grok">xAI のエージェント</string>
+    <string name="linux_agent_copilot">GitHub のエージェント</string>
+    <string name="linux_agent_crush">Charm のターミナル用エージェント</string>
+    <string name="linux_agent_cursor">Cursor のターミナル用エージェント</string>
+    <string name="linux_agent_antigravity">Google の Gemini エージェント</string>
+    <string name="linux_agent_pi">ミニマルで拡張可能なエージェント</string>
+    <string name="linux_agent_hermes">Nous Research 製、約 2.5 GB</string>
+    <string name="linux_agent_omp">ツールとプラグイン内蔵の Pi</string>
+    <string name="linux_agent_ori">OpenRouter のエージェント</string>
+    <string name="linux_agent_muse">Meta のエージェント</string>
+    <string name="linux_agent_kimi">Moonshot AI のエージェント</string>
+    <string name="linux_agent_qwen">Alibaba の Qwen エージェント</string>
+    <string name="linux_agent_mcode">MiniMax のエージェント</string>
+    <string name="linux_agent_kiro">Amazon のエージェント</string>
+    <string name="linux_agent_kilo">OpenCode ベースのオープンソース</string>
+    <string name="linux_agent_devin">Cognition のエージェント</string>
+    <string name="linux_agent_amp">ampcode.com のエージェント</string>
+    <string name="linux_agent_commandcode">commandcode.ai のエージェント</string>
+
+    <string name="linux_welcome_title">ホーム画面に omarchy を</string>
+    <string name="linux_welcome_body">Omarchy のテーマと壁紙、Android アプリ、そしてホーム画面のウィジェット。Arch Linux を追加すると、ターミナルアプリとコーディングエージェントも使えます。追加は今すぐでも、あとから設定でもできます。</string>
+    <string name="linux_welcome_linux">linux</string>
+    <string name="linux_welcome_choice">Arch Linux もセットアップする</string>
+    <string name="linux_welcome_choice_detail">ターミナルアプリ、エージェント、pacman · ダウンロード約 1 GB、空き容量 3 GB</string>
+    <string name="linux_welcome_start">はじめる</string>
+    <string name="linux_welcome_start_linux">linux もセットアップしてはじめる</string>
+    <string name="linux_welcome_start_hint">テーマの壁紙を今すぐダウンロードし、Omarchy のほかのテーマ（約 70 MB）はバックグラウンドでダウンロードします。</string>
+    <string name="linux_welcome_start_linux_hint">Linux は約 1 GB をダウンロードするため Wi-Fi がおすすめです。空き容量は 3 GB 必要です。インストールはバックグラウンドで進み、10〜20 分ほどかかります。ホーム画面はすぐに使えます。</string>
+    <string name="linux_welcome_getting">%1$s を取得中</string>
+    <string name="linux_welcome_theme_failed">テーマをダウンロードできませんでした</string>
+    <string name="linux_welcome_wallpaper">壁紙をダウンロード</string>
+    <string name="linux_welcome_skip">壁紙なしで続ける</string>
+    <string name="linux_welcome_skip_hint">テーマの色は壁紙がなくても適用されます。ランチャーがあとでもう一度試します。設定 › スタイル からダウンロードすることもできます。</string>
+
+    <string name="linux_agents_label">コーディングエージェント</string>
+    <string name="linux_agents_hint">Linux と一緒にインストールするものを選べます。あとから設定で追加・削除できます。</string>
+    <string name="linux_theme_label">テーマ</string>
+    <string name="linux_more_themes">ほかのテーマ ›</string>
+
+    <string name="linux_progress_title">linux をセットアップ中</string>
+    <string name="linux_progress_stopped">セットアップが停止しました</string>
+    <string name="linux_try_again">再試行</string>
+    <string name="linux_cancel_install">インストールをキャンセル</string>
+    <string name="linux_progress_background">この画面を閉じてランチャーを使えます。セットアップはバックグラウンドで続きます。</string>
+    <string name="linux_output">出力</string>
+    <string name="linux_output_less">折りたたむ</string>
+    <string name="linux_output_more">もっと見る</string>
+
+    <string name="linux_title">linux</string>
+    <string name="linux_removing">linux を削除中…</string>
+    <string name="linux_offer_title">arch linux（任意）</string>
+    <string name="linux_offer_body">Linux アプリ、ターミナルウィジェット、コーディングエージェント、pacman、そして「ファイル」。ダウンロードは約 1 GB、空き容量は 3 GB 必要です。バックグラウンドでインストールされます。</string>
+    <string name="linux_install">linux をインストール</string>
+    <plurals name="linux_install_with_agents">
+        <item quantity="other">linux とエージェント %d 個をインストール</item>
+    </plurals>
+    <string name="linux_arch">arch linux</string>
+    <string name="linux_installed_size">インストール済み · %1$s</string>
+    <string name="linux_measuring">計測中…</string>
+    <string name="linux_remove">linux を削除</string>
+    <string name="linux_remove_ask">linux を削除しますか？</string>
+    <string name="linux_remove_body">Linux アプリ、コーディングエージェント、パッケージのほか、Downloads など /root 内のすべてが削除されます。テーマ、壁紙、ウィジェット、ホーム画面は残ります。</string>
+    <string name="linux_remove_confirm">削除</string>
+    <string name="linux_cancel">キャンセル</string>
+    <string name="linux_gpu_title">gpu アクセラレーション</string>
+    <string name="linux_gpu_on">オン · %1$s · これから開くアプリに適用</string>
+    <string name="linux_gpu_off_failed">オフ：システムアップデート後の GPU チェックに失敗しました</string>
+    <string name="linux_gpu_waiting">オン · チェック待ち</string>
+    <string name="linux_gpu_failed">GPU チェックに失敗しました。アプリはソフトウェア描画のままです</string>
+    <string name="linux_gpu_offer">試験運用版 · %1$s · OpenGL や Vulkan のアプリとゲームが速くなります。ターミナルアプリは変わりません</string>
+    <string name="linux_retry">再試行</string>
+    <string name="linux_gpu_turn_off">オフにする</string>
+    <string name="linux_gpu_turn_on">オンにする</string>
+    <string name="linux_cpu_pinning_title">高速システムコール</string>
+    <string name="linux_cpu_pinning_on">オン · Linux を高速な CPU コアひとつに固定 · これから起動するプログラムに適用</string>
+    <string name="linux_cpu_pinning_off">オフ · これから起動するプログラムに適用</string>
+    <string name="linux_session_title">セッション</string>
+    <string name="linux_session_running">実行中 · Linux アプリ、ターミナル、エージェントが使えます</string>
+    <string name="linux_session_starting">起動中…</string>
+    <string name="linux_session_stopped">停止中 · 何も実行されず、何も削除されません · 再起動後も停止したまま</string>
+    <string name="linux_stop">停止</string>
+    <string name="linux_start">開始</string>
+    <string name="linux_stop_ask">linux を停止しますか？</string>
+    <string name="linux_stop_body">Linux アプリ、ターミナル、コーディングエージェントを閉じ、実行中の処理を終了します。何も削除されません。Linux が必要なウィジェットやアプリは、ここで再び開始するまで待機します。</string>
+    <string name="linux_stop_confirm">停止</string>
+
+    <string name="linux_notification_channel">Linux セッション</string>
+    <string name="linux_notify_channel">エージェントとスクリプト</string>
+    <string name="linux_notification_installing">Linux をインストール中 · %1$s</string>
+    <string name="linux_notification_installing_percent">Linux をインストール中 · %1$d%% · %2$s</string>
+    <string name="linux_notification_failed">Linux のセットアップが停止しました · 設定 › linux から再試行できます</string>
+    <string name="linux_notification_removing">Linux を削除中</string>
+    <string name="linux_notification_running">Linux セッションを実行中</string>
+
+    <string name="share_in_saving">linux に保存中…</string>
+    <string name="share_in_saved">~/Downloads に保存しました</string>
+    <string name="share_in_failed">linux に保存できませんでした</string>
+    <string name="share_in_no_linux">linux はまだセットアップされていません</string>
+
+    <string name="packages_title">パッケージ</string>
+    <string name="packages_search">パッケージを検索</string>
+    <string name="packages_intro">Arch Linux ARM のパッケージは pacman で、AUR のパッケージは yay でインストールします。インストール時にシステムも更新されるため、時間がかかることがあります。AUR のパッケージはユーザーが投稿したもので、このデバイス上でビルドされます。事前に aur.archlinux.org で PKGBUILD を確認してください。</string>
+    <string name="packages_loading">読み込み中…</string>
+    <string name="packages_searching">検索中…</string>
+    <string name="packages_installed">インストール済み（%1$d）</string>
+    <string name="packages_none">一致するパッケージがありません</string>
+    <plurals name="packages_results">
+        <item quantity="other">%d 件</item>
+    </plurals>
+    <string name="packages_required">必須</string>
+    <string name="packages_confirm">確定</string>
+    <string name="packages_remove">削除</string>
+    <string name="packages_install">インストール</string>
+
+    <string name="licenses_title">ライセンス</string>
+    <string name="licenses_header">Omalauncher %1$s · © 2026 Simon Schubert\n\n以下のオープンソースソフトウェアが含まれています。</string>
+    <string name="licenses_website">ウェブサイト</string>
+    <string name="licenses_source">ソースコード</string>
+    <string name="licenses_use_proot">追加でインストールできる Linux システムを実行</string>
+    <string name="licenses_use_talloc">PRoot が使うメモリアロケータ</string>
+    <string name="licenses_use_shmem">PRoot 用の共有メモリ</string>
+    <string name="licenses_use_mesa">追加の Linux システムで使う Adreno GPU 向け OpenGL</string>
+    <string name="licenses_use_wayland">Mesa に同梱のプロトコルファイル</string>
+    <string name="licenses_use_omarchy">初回起動用に同梱しているテーマカラー</string>
+    <string name="licenses_use_nerd_fonts">記号フォント</string>
+    <string name="licenses_use_weather_icons">記号フォント内の天気グリフ</string>
+    <string name="licenses_use_mdi">記号フォント内のグリフ</string>
+    <string name="licenses_use_compose">ユーザーインターフェース</string>
+    <string name="licenses_use_jetpack">Activity、Compose などの AndroidX ライブラリ</string>
+    <string name="licenses_use_kotlin">言語ランタイム</string>
+    <string name="licenses_use_commons_compress">ダウンロードの展開</string>
+    <string name="licenses_use_androidsvg">SVG アイコンの描画</string>
+    <string name="licenses_use_zxing">ウィジェット共有用 QR コードの描画</string>
+    <string name="licenses_use_json">JSON の読み書き</string>
+</resources>

@@ -1,31 +1,36 @@
 <!doctype html>
 <!-- Play Store screenshots. Rendered one slide at a time by scripts/render-screenshots.sh (frame.html?s=N).
-     Each is a capture from scripts/store-captures.sh (1080x1670) under a caption band. -->
+     Each is a capture from scripts/store-captures.sh (1080x2400), scaled down under a caption. -->
 <html>
 <head>
 <meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Noto+Sans+SC:wght@800&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Noto+Sans+SC:wght@800&family=Noto+Sans+JP:wght@800&display=block" rel="stylesheet">
 <style>
   * { margin: 0; box-sizing: border-box; }
   html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
   .slide { position: relative; width: 1080px; height: 1920px; overflow: hidden; font-family: 'JetBrains Mono', monospace; }
-  /* The band is the shot's own top row drawn tall, so its colors run straight on into the screen below. */
-  .band { position: absolute; top: 0; left: 0; width: 1080px; height: 250px; background-repeat: no-repeat;
-          background-position: top left; background-size: 1080px 417500px; }
+  /* The backdrop is the shot's own top row drawn tall, so it has the screen's colors, softened so a single bright
+     pixel in that row doesn't become a line down the slide. It overhangs the slide so the blur has no faded edge. */
+  .band { position: absolute; inset: -80px; background-repeat: no-repeat; filter: blur(40px);
+          background-position: top left; background-size: 1240px 1920000px; }
   .band::after { content: ''; position: absolute; inset: 0; background: var(--veil); }
-  .caption { position: absolute; z-index: 1; left: 64px; right: 64px; bottom: 34px; color: var(--ink);
+  .caption { position: absolute; z-index: 1; left: 64px; right: 64px; top: 0; height: 240px; display: flex; align-items: center; justify-content: center;
+             text-align: center; color: var(--ink);
              font-size: 66px; font-weight: 800; line-height: 1.1; letter-spacing: -2px; }
   .caption em { font-style: normal; color: var(--accent); }
-  /* JetBrains Mono has no Chinese; its letter-spacing would squeeze the characters together. */
+  /* JetBrains Mono has no Chinese or Japanese; its letter-spacing would squeeze the characters together. */
   :lang(zh) .caption { font-family: 'JetBrains Mono', 'Noto Sans SC', sans-serif; letter-spacing: 0; }
-  .shot { position: absolute; top: 250px; left: 0; display: block; width: 1080px; height: 1670px; }
+  :lang(ja) .caption { font-family: 'JetBrains Mono', 'Noto Sans JP', sans-serif; letter-spacing: 0; }
+  /* 20:9, a phone's screen shape, with a phone's round corners. */
+  .shot { position: absolute; top: 240px; left: 171px; display: block; width: 738px; height: 1640px;
+          border-radius: 56px; box-shadow: 0 0 0 2px rgba(255,255,255,0.10), 0 24px 64px rgba(0,0,0,0.45); }
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script>
 // ink and accent come from each theme's colors (app/src/main/assets/themes/<theme>.toml); veil evens out the
-// band under the caption where the top of the wallpaper is busy. ?l= picks the language: captures from raw/<l>/
+// backdrop under the caption where the top of the wallpaper is busy. ?l= picks the language: captures from raw/<l>/
 // and the caption in it.
 const SLIDES = [
   { shot: '1-home', ink: '#e4eff7', accent: '#ff503e', veil: 'rgba(7,11,18,0.30)' },
@@ -55,6 +60,15 @@ const TITLES = {
        'Buat jadi <em>milikmu</em>'],
   zh: ['手机上的 <em>Arch Linux</em>', '主屏幕，<em>百变风格</em>', '和 <em>编程智能体</em> 对话', '真正的 <em>终端</em>',
        '会 <em>动</em> 的小组件', '22 款主题，<em>一键切换</em>', '<em>小组件商店</em>', '打造 <em>你的</em> 风格'],
+  ru: ['Arch Linux на <em>телефоне</em>', 'Ваш экран, <em>любой стиль</em>', 'Говорите с <em>ИИ-агентом</em>',
+       'Настоящий <em>терминал</em>', 'Виджеты, которые <em>двигаются</em>', '22 темы, <em>одно касание</em>',
+       '<em>Магазин виджетов</em>', 'Настройте <em>под себя</em>'],
+  ja: ['スマホで <em>Arch Linux</em>', 'ホームを <em>好みのスタイルに</em>', '<em>コーディングエージェント</em><br>と話そう',
+       '本物の <em>ターミナル</em>', '<em>動く</em> ウィジェット', '22 のテーマを <em>ワンタップで</em>', '<em>ウィジェットストア</em>',
+       '<em>自分だけ</em> の画面に'],
+  uk: ['Arch Linux на <em>телефоні</em>', 'Екран у <em>будь-якому стилі</em>', 'Говоріть з <em>ШІ-агентом</em>',
+       'Справжній <em>термінал</em>', 'Віджети, що <em>рухаються</em>', '22 теми, <em>один дотик</em>',
+       '<em>Магазин віджетів</em>', 'Налаштуйте <em>під себе</em>'],
 };
 const params = new URLSearchParams(location.search);
 const n = +(params.get('s') || 1);
@@ -64,7 +78,8 @@ const img = `raw/${l}/${s.shot}.png`;
 document.documentElement.lang = l;
 document.getElementById('root').innerHTML = `
   <div class="slide" style="--ink:${s.ink};--accent:${s.accent};--veil:${s.veil}">
-    <div class="band" style="background-image:url(${img})"><div class="caption">${TITLES[l][n - 1]}</div></div>
+    <div class="band" style="background-image:url(${img})"></div>
+    <div class="caption"><span>${TITLES[l][n - 1]}</span></div>
     <img class="shot" src="${img}">
   </div>`;
 document.title = String(SLIDES.length);

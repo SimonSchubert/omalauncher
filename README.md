@@ -84,6 +84,11 @@ rename and delete files and copy them to and from Linux; agents reach them
 through the `omalauncher` commands above. Android keeps the access until you
 remove the folder there.
 
+Files also get into Linux from Android's share sheet: while Linux is installed,
+other apps' share sheets list **Linux**, and what you share there is saved in
+Linux's `~/Downloads`, where `omalauncher pick` saves what you pick. A link or
+text becomes a small `shared-<date>-<time>.txt` file.
+
 Touch input in Linux windows: tap is a left click, long press is a right
 click, drag scrolls; apps with touch support (foot, GTK) get real touch.
 
@@ -114,12 +119,12 @@ itself, so Omarchy's Super+Space and Super+Enter can't be used.
 
 ```sh
 ./scripts/fetch-proot.sh          # Termux's proot -> app/src/main/jniLibs (needs bsdtar)
-./gradlew :app:installDebug
+./gradlew :app:installFossDebug
 # optional: skip the 830 MB download on the device
 adb push ArchLinuxARM-aarch64-latest.tar.gz /sdcard/Android/data/dev.omalauncher/files/
 ```
 
-Tests: `./gradlew :owl:test :app:testDebugUnitTest`. `./gradlew :owl:owlJar`
+Tests: `./gradlew :owl:test :app:testFossDebugUnitTest`. `./gradlew :owl:owlJar`
 builds `owl/build/cli/owl.jar`, the checker the widget store's CI runs.
 
 In debug builds you can launch guest commands with

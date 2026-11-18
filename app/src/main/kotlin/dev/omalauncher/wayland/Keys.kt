@@ -66,5 +66,16 @@ object Keys {
     fun evdev(event: KeyEvent): Int? = byKeyCode[event.keyCode]
 
     /** Shift, Ctrl, Alt, Super and Caps Lock, which a latched modifier shouldn't fold into. */
-    fun isModifier(code: Int) = code in setOf(29, 42, 54, 56, 58, 97, 100, 125, 126)
+    fun isModifier(code: Int) = modifierBit(code) != 0
+
+    /** The wl_keyboard modifier bit evdev [code] sets, 0 for a key that isn't a modifier. */
+    fun modifierBit(code: Int) =
+        when (code) {
+            42, 54 -> MOD_SHIFT
+            58 -> MOD_LOCK
+            29, 97 -> MOD_CTRL
+            56, 100 -> MOD_ALT
+            125, 126 -> MOD_SUPER
+            else -> 0
+        }
 }

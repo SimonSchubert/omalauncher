@@ -108,6 +108,9 @@ private class Kept {
 
     /** Images models are textured with. */
     val textures = Textures(unit = false)
+
+    /** A layer's paint: saveLayer copies it, so one serves every layer, nested ones too. */
+    val layerPaint by lazy { Paint() }
     val vertexPaint by lazy { android.graphics.Paint().apply { isFilterBitmap = true } }
 }
 
@@ -571,7 +574,8 @@ private class Painter(
         val first = if (values > 0) eval(n.args[0], env) else Null
         val v = numbers
         for (i in values until n.args.size) v[i] = n.args[i].num(env, 0.0).toFloat()
-        // Transforms take no paint: skip evaluating it (this runs per op, per frame).
+        val named = NamedArgs(n.named, env)
+        // Transforms, text, images, clips and layers take no paint: skip evaluating it (this runs per op, per frame).
         when (n.op) {
             "scene" -> return scene(n, env, first)
             "model" -> return model(n, env, first)
@@ -581,40 +585,6 @@ private class Painter(
                 val sx = v[0]
                 val sy = if (n.args.size > 1) v[1] else sx
                 return scale(sx, sy, Offset(v.opt(n, 2), v.opt(n, 3))) { inside(n.children!!, env) }
-            }
-        }
-        val named = NamedArgs(n.named, env)
-        val width = named["width"]?.num()?.toFloat() ?: 1f
-        val cap =
-            when (named["cap"]?.toString()) {
-                "round" -> StrokeCap.Round
-                "square" -> StrokeCap.Square
-                else -> StrokeCap.Butt
-            }
-        val stroke = brush(named["stroke"])
-        val fill = brush(named["fill"]) ?: if (stroke == null) brush(named["color"]) ?: solid(Palette.foreground.toArgb()) else null
-        val styles = styles(fill, stroke, width, cap)
-
-        when (n.op) {
-            "rect" -> {
-                val r = CornerRadius(named["radius"]?.num()?.toFloat() ?: 0f)
-                for ((b, s) in styles) drawRoundRect(b, Offset(v[0], v[1]), Size(v[2], v[3]), r, alpha = alpha, style = s)
-            }
-            "circle" -> for ((b, s) in styles) drawCircle(b, v[2], Offset(v[0], v[1]), alpha = alpha, style = s)
-            "arc" -> {
-                val r = v[2]
-                val topLeft = Offset(v[0] - r, v[1] - r)
-                // 0 degrees is 12 o'clock, clockwise, like a clock or a gauge.
-                for ((b, s) in styles) drawArc(b, v[3] - 90f, v[4], s is Fill, topLeft, Size(2 * r, 2 * r), alpha = alpha, style = s)
-            }
-            "line" -> drawLine(stroke ?: fill!!, Offset(v[0], v[1]), Offset(v[2], v[3]), width, cap, alpha = alpha)
-            "path" -> {
-                val path = path(first, named["closed"]?.truthy == true) ?: return
-                for ((b, s) in styles) {
-                    // An unclosed path is a line: only fill it when asked to.
-                    if (s is Fill && named["fill"] == null) continue
-                    drawPath(path, b, alpha = alpha, style = s)
-                }
             }
             "text" -> {
                 val color = Builtins.argb(named["color"] ?: named["fill"] ?: Num(0.0), inst)?.let { androidx.compose.ui.graphics.Color(it) } ?: Palette.foreground
@@ -643,6 +613,7 @@ private class Painter(
                 // Text is measured in pixels; undo the dp scale while drawing it.
                 val y = v[2] - h / 2
                 scale(1 / density, 1 / density, pivot = Offset.Zero) { drawText(layout, topLeft = Offset(x * density, y * density)) }
+                return
             }
             "image" -> {
                 val color = named["color"]?.let { Builtins.argb(it, inst) }
@@ -671,6 +642,70 @@ private class Painter(
                             drawPicture(it.nativeCanvas, image.picture, v[1].toFloat(), v[2].toFloat(), v[3].toFloat(), v[4].toFloat(), tint)
                         }
                 }
+                return
+            }
+            "clip" -> return clipRect(v[0], v[1], v[0] + v[2], v[1] + v[3]) { inside(n.children!!, env) }
+            "layer" -> {
+                val alpha = v[0].coerceIn(0f, 1f)
+                val children = n.children!!
+                // Fully opaque, a layer looks the same as no layer; fully clear, nothing inside shows.
+                if (alpha >= 1f) return inside(children, env)
+                if (alpha <= 0f) return
+                // A layer is an offscreen buffer the size of the canvas. One op that doesn't overlap itself looks
+                // the same drawn at the layer's alpha, as a coin fading out does, and that needs no buffer.
+                val only = children.singleOrNull() as? WNode.Draw
+                if (only != null && fadesAlone(only)) {
+                    val before = this@Painter.alpha
+                    this@Painter.alpha = before * alpha
+                    try {
+                        return draw(only, env)
+                    } finally {
+                        this@Painter.alpha = before
+                    }
+                }
+                drawIntoCanvas { c ->
+                    c.saveLayer(Rect(Offset.Zero, size), kept.layerPaint.apply { this.alpha = alpha })
+                    // Restored even when a nested op throws (too many ops), or the rest of the screen draws into the layer.
+                    try {
+                        inside(children, env)
+                    } finally {
+                        c.restore()
+                    }
+                }
+                return
+            }
+        }
+        val width = named["width"]?.num()?.toFloat() ?: 1f
+        val cap =
+            when (named["cap"]?.toString()) {
+                "round" -> StrokeCap.Round
+                "square" -> StrokeCap.Square
+                else -> StrokeCap.Butt
+            }
+        val stroke = brush(named["stroke"])
+        val fill = brush(named["fill"]) ?: if (stroke == null) brush(named["color"]) ?: solid(Palette.foreground.toArgb()) else null
+        val styles = styles(fill, stroke, width, cap)
+
+        when (n.op) {
+            "rect" -> {
+                val r = CornerRadius(named["radius"]?.num()?.toFloat() ?: 0f)
+                for ((b, s) in styles) drawRoundRect(b, Offset(v[0], v[1]), Size(v[2], v[3]), r, alpha = alpha, style = s)
+            }
+            "circle" -> for ((b, s) in styles) drawCircle(b, v[2], Offset(v[0], v[1]), alpha = alpha, style = s)
+            "arc" -> {
+                val r = v[2]
+                val topLeft = Offset(v[0] - r, v[1] - r)
+                // 0 degrees is 12 o'clock, clockwise, like a clock or a gauge.
+                for ((b, s) in styles) drawArc(b, v[3] - 90f, v[4], s is Fill, topLeft, Size(2 * r, 2 * r), alpha = alpha, style = s)
+            }
+            "line" -> drawLine(stroke ?: fill!!, Offset(v[0], v[1]), Offset(v[2], v[3]), width, cap, alpha = alpha)
+            "path" -> {
+                val path = path(first, named["closed"]?.truthy == true) ?: return
+                for ((b, s) in styles) {
+                    // An unclosed path is a line: only fill it when asked to.
+                    if (s is Fill && "fill" !in n.named) continue
+                    drawPath(path, b, alpha = alpha, style = s)
+                }
             }
             "sprite" -> {
                 val sprite = inst.sprite(first)
@@ -693,35 +728,6 @@ private class Painter(
                     val left = snap(x + col * px)
                     val top = snap(y + row * px)
                     drawRect(b, Offset(left, top), Size(snap(x + (col + sprite.runs[3 * i + 2]) * px) - left, snap(y + (row + 1) * px) - top), alpha = alpha)
-                }
-            }
-            "clip" -> clipRect(v[0], v[1], v[0] + v[2], v[1] + v[3]) { inside(n.children!!, env) }
-            "layer" -> {
-                val alpha = v[0].coerceIn(0f, 1f)
-                val children = n.children!!
-                // Fully opaque, a layer looks the same as no layer; fully clear, nothing inside shows.
-                if (alpha >= 1f) return inside(children, env)
-                if (alpha <= 0f) return
-                // A layer is an offscreen buffer the size of the canvas. One op that doesn't overlap itself looks
-                // the same drawn at the layer's alpha, as a coin fading out does, and that needs no buffer.
-                val only = children.singleOrNull() as? WNode.Draw
-                if (only != null && fadesAlone(only)) {
-                    val before = this@Painter.alpha
-                    this@Painter.alpha = before * alpha
-                    try {
-                        return draw(only, env)
-                    } finally {
-                        this@Painter.alpha = before
-                    }
-                }
-                drawIntoCanvas { c ->
-                    c.saveLayer(Rect(Offset.Zero, size), Paint().apply { this.alpha = alpha })
-                    // Restored even when a nested op throws (too many ops), or the rest of the screen draws into the layer.
-                    try {
-                        inside(children, env)
-                    } finally {
-                        c.restore()
-                    }
                 }
             }
         }
@@ -902,13 +908,20 @@ private val CLEAR_PIXEL: android.graphics.Bitmap by lazy { android.graphics.Bitm
 
 /** [v]'s numbers in order, lists inside it flattened, at most 4096 of them. */
 private fun flatFloats(v: Lst): FloatArray {
-    val out = ArrayList<Float>()
+    // Filled in place: a list of boxed Floats would allocate one per number, every frame a Shader reads time.
+    var out = FloatArray(16)
+    var n = 0
     fun walk(x: Value) {
-        if (out.size >= 4096) return
-        if (x is Lst) x.items.forEach(::walk) else out += x.num()?.toFloat() ?: 0f
+        if (n >= 4096) return
+        if (x is Lst) {
+            x.items.forEach(::walk)
+        } else {
+            if (n == out.size) out = out.copyOf(minOf(2 * n, 4096))
+            out[n++] = x.num()?.toFloat() ?: 0f
+        }
     }
     walk(v)
-    return out.toFloatArray()
+    return out.copyOf(n)
 }
 
 /** A full-bleed AGSL fragment shader: `half4 main(float2 fragCoord)`, redrawn every frame it reads time. */

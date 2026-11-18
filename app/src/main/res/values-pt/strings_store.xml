@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="store_title">loja</string>
+    <string name="store_widgets_title">loja de widgets</string>
+    <string name="store_apps_title">loja de apps</string>
+    <string name="store_featured">destaques</string>
 
     <string name="store_kind_widgets">widgets</string>
     <string name="store_kind_faces">widgets de tela cheia</string>
@@ -18,6 +20,9 @@
     <string name="store_pick_app">escolha um app para ver o que ele instala e executa</string>
     <string name="store_pick_panel">escolha um painel para ver o que ele instala e executa</string>
     <string name="store_pick_keybar">escolha uma barra de teclas para ver o que ela instala e executa</string>
+    <string name="store_kind_strips">barras de apps</string>
+    <string name="store_kind_strip">barra de apps</string>
+    <string name="store_pick_strip">escolha uma barra de apps para ver o que ela instala e executa</string>
 
     <string name="store_search">pesquisar %1$d %2$s</string>
     <string name="store_tab_all">todos</string>

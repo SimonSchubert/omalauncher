@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_edit">編集</string>
+    <string name="home_share">共有</string>
+    <string name="home_remove">削除</string>
+
+    <string name="home_create_with">%1$s で作成</string>
+    <string name="home_create_with_an_agent">エージェントで作成</string>
+    <string name="home_browse_store">ストアを見る</string>
+    <string name="home_create_widget">ウィジェット</string>
+    <string name="home_create_app">アプリ</string>
+    <string name="home_create_panel">パネル</string>
+
+    <string name="home_face_invite_title">自分だけの全画面ウィジェット</string>
+    <string name="home_face_invite_text">このページには、全画面ウィジェットを自由に置けます。フィード、ダッシュボード、スタートページ、ゲームなど。作りたいものを伝えると、%1$s がここに作ります。</string>
+    <string name="home_face_invite_text_no_agent">このページには、全画面ウィジェットを自由に置けます。フィード、ダッシュボード、スタートページ、ゲームなど。作りたいものを伝えると、エージェントがここに作ります。</string>
+    <string name="home_widget_invite_title">ウィジェットを置くスペース</string>
+    <string name="home_widget_invite_text">このページにはまだ何もありません。時計、天気、ToDo リスト、作業中のエージェントなど、ウィジェットを並べましょう。作りたいものを伝えると、%1$s が作ります。</string>
+    <string name="home_widget_invite_text_no_agent">このページにはまだ何もありません。時計、天気、ToDo リスト、作業中のエージェントなど、ウィジェットを並べましょう。作りたいものを伝えると、エージェントが作ります。</string>
+
+    <string name="home_drop_here">ここにドロップ</string>
+    <string name="home_drop_face_only">ここに置けるのは全画面ウィジェットだけです</string>
+    <string name="home_lock_locked">画面ロック中</string>
+    <string name="home_lock_unlock">ロック解除</string>
+
+    <plurals name="home_file_problems">
+        <item quantity="other">%1$s：問題 %2$d 件</item>
+    </plurals>
+    <plurals name="home_file_problems_more">
+        <item quantity="other">errors.txt にほか %1$d 件 · タップで非表示</item>
+    </plurals>
+    <string name="home_file_problems_hide">タップで非表示</string>
+
+    <string name="home_widget_needs">%1$s が必要</string>
+    <string name="home_installing">インストール中…</string>
+    <string name="home_install">インストール</string>
+    <string name="home_retry">再試行</string>
+    <string name="home_fix_with_agent">エージェントで修正</string>
+    <string name="home_widget_needs_linux">Linux が必要</string>
+    <string name="home_widget_needs_linux_text">追加インストールする Arch Linux でコマンドを実行します</string>
+    <string name="home_widget_linux_stopped">Linux は停止中</string>
+    <string name="home_start_linux">開始</string>
+
+    <string name="home_terminal_starting">起動中…</string>
+    <string name="home_terminal_exited">終了しました · タップで再起動</string>
+
+    <string name="home_prompt_hint_agent">アプリを開く、%1$s に聞く</string>
+    <string name="home_prompt_hint">アプリを開く</string>
+    <string name="home_prompt_hint_short">アプリ</string>
+
+    <string name="home_folder_named">フォルダ「%1$s」</string>
+    <string name="home_app_has_notifications">%1$s、通知あり</string>
+    <string name="home_folder">フォルダ</string>
+    <string name="home_folder_tap_to_name">タップして名前を付ける</string>
+
+    <string name="home_refresh">再読み込み</string>
+    <string name="home_refreshing">再読み込み中</string>
+    <string name="home_job_failed">失敗：</string>
+    <string name="home_job_whole_log">ログ全体</string>
+    <string name="home_job_less">折りたたむ</string>
+    <string name="home_job_copy">コピー</string>
+    <string name="home_settings">設定</string>
+
+    <string name="home_linux_window">Linux</string>
+    <string name="home_news_close">閉じる</string>
+    <string name="home_news_off">今後お知らせを表示しない</string>
+    <string name="home_news_days">日</string>
+    <string name="home_news_hours">時間</string>
+    <string name="home_news_minutes">分</string>
+    <string name="home_news_seconds">秒</string>
+</resources>

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="store_title">商店</string>
+    <string name="store_widgets_title">小组件商店</string>
+    <string name="store_apps_title">应用商店</string>
+    <string name="store_featured">精选</string>
 
     <string name="store_kind_widgets">小组件</string>
     <string name="store_kind_faces">全屏小组件</string>
@@ -18,6 +20,9 @@
     <string name="store_pick_app">选一个应用，看看它会安装和运行什么</string>
     <string name="store_pick_panel">选一个面板，看看它会安装和运行什么</string>
     <string name="store_pick_keybar">选一个按键栏，看看它会安装和运行什么</string>
+    <string name="store_kind_strips">应用栏</string>
+    <string name="store_kind_strip">应用栏</string>
+    <string name="store_pick_strip">选一个应用栏，看看它会安装和运行什么</string>
 
     <string name="store_search">搜索 %1$d 个%2$s</string>
     <string name="store_tab_all">全部</string>

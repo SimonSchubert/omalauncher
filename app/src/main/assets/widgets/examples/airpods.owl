@@ -4,7 +4,7 @@ widget "airpods" {
   size: 6x2
   minSize: 2x1
 
-  meta { owl: 18; description: "Your AirPods: each bud's and the case's battery, the listening mode and the settings, more of it the bigger the tile. Tap the mode to switch it, the tile for the rest."; version: "1.0"; license: "MIT"; category: "system" }
+  meta { owl: 23; description: "Your AirPods: each bud's and the case's battery, the listening mode and the settings, more of it the bigger the tile. Tap the mode to switch it, the tile for the rest."; version: "1.1"; license: "MIT"; category: "system" }
 
   // Read over the AirPods' own link while the tile shows. Until the launcher may use Bluetooth, a tap asks for it; on a
   // phone that can't link to them, it says so instead.
@@ -75,7 +75,7 @@ widget "airpods" {
     if !a.connected {
       Text { text: short && a.granted ? "offline" : away; style: small; color: a.granted || !a.supported ? dim : accent; maxLines: 1 }
     } else if p.mode != null {
-      Text { text: get(modeShort, p.mode, p.mode); style: small; color: p.mode == "off" ? dim : accent; padding: [10, 4]; radius: 3 * corners; background: p.mode == "off" ? surface : alpha(accent, 0.2); onTap: { haptic(); airpods("next") } }
+      Text { text: get(modeShort, p.mode, p.mode); style: small; color: p.mode == "off" ? dim : accent; padding: [10, 4]; radius: 3 * corners; background: p.mode == "off" ? surface : alpha(accent, 0.2); onTap: { haptic("light"); airpods("next") } }
     }
   }
 
@@ -158,14 +158,14 @@ widget "airpods" {
         fill: width
         gap: 6
         for m in p.modes {
-          Text { text: get(modeShort, m, m); style: small; align: center; weight: 1; color: p.mode == m ? accent : dim; padding: [10, 5]; radius: 3 * corners; background: p.mode == m ? alpha(accent, 0.2) : surface; onTap: { haptic(); airpods(m) } }
+          Text { text: get(modeShort, m, m); style: small; align: center; weight: 1; color: p.mode == m ? accent : dim; padding: [10, 5]; radius: 3 * corners; background: p.mode == m ? alpha(accent, 0.2) : surface; onTap: { haptic("light"); airpods(m) } }
         }
       }
     } else {
       Flow {
         gap: 6
         for m in p.modes {
-          Text { text: get(modeShort, m, m); style: small; color: p.mode == m ? accent : dim; padding: [10, 5]; radius: 3 * corners; background: p.mode == m ? alpha(accent, 0.2) : surface; onTap: { haptic(); airpods(m) } }
+          Text { text: get(modeShort, m, m); style: small; color: p.mode == m ? accent : dim; padding: [10, 5]; radius: 3 * corners; background: p.mode == m ? alpha(accent, 0.2) : surface; onTap: { haptic("light"); airpods(m) } }
         }
       }
     }
@@ -262,7 +262,7 @@ widget "airpods" {
           Text { text: lowest != null ? "${lowest}%" : "--"; style: title; maxLines: 1; opacity: fade }
           // No room for a chip's padding either: the mode as plain text, still a tap to the next.
           if a.connected && p.mode != null {
-            Text { text: get(modeShort, p.mode, p.mode); style: small; color: p.mode == "off" ? dim : accent; maxLines: 1; onTap: { haptic(); airpods("next") } }
+            Text { text: get(modeShort, p.mode, p.mode); style: small; color: p.mode == "off" ? dim : accent; maxLines: 1; onTap: { haptic("light"); airpods("next") } }
           } else {
             ModeChip { short: true }
           }
@@ -367,7 +367,7 @@ widget "airpods" {
                   gap: 10
                   align: center
                   padding: [0, 6]
-                  onTap: { haptic(); airpods(m) }
+                  onTap: { haptic("light"); airpods(m) }
                   Text { text: p.mode == m ? "●" : "○"; color: p.mode == m ? green : dim }
                   Text { text: get(modeNames, m, m); color: p.mode == m ? green : foreground; weight: 1 }
                 }

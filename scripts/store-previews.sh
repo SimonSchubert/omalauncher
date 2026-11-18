@@ -101,6 +101,7 @@ demo() {
 seed() {
   local json
   case $1 in
+    hourly-weather) json='{"place":{"name":"São Paulo","latitude":-23.5475,"longitude":-46.63611,"timezone":"America/Sao_Paulo","admin1":"São Paulo","country":"Brasil","country_code":"BR"},"country":"","region":"","city":"São Paulo"}' ;;
     google-calendar) json='{"cals":[{"name":"Personal","url":"https://calendar.google.com/calendar/ical/demo-personal/basic.ics","color":0,"on":true},{"name":"Work","url":"https://calendar.google.com/calendar/ical/demo-work/basic.ics","color":2,"on":true}],"days":14}' ;;
     gestures) json='{"apps":["com.android.chrome","com.google.android.youtube","com.google.android.apps.maps","com.android.camera2","com.google.android.apps.messaging","com.google.android.dialer","com.google.android.apps.photos","com.google.android.calendar"],"labels":["Chrome","YouTube","Maps","Camera","Messages","Phone","Photos","Calendar"],"migrated":true}' ;;
     bookmarks) json='{"nextId":4,"links":[{"id":"b3","title":"Omarchy","url":"https://omarchy.org","tag":"linux","auto":true,"desc":"Beautiful, modern and opinionated Linux.","img":""},{"id":"b2","title":"Hacker News","url":"https://news.ycombinator.com","tag":"news","auto":true,"desc":"","img":""},{"id":"b1","title":"Arch Wiki","url":"https://wiki.archlinux.org","tag":"linux","auto":true,"desc":"","img":""},{"id":"b0","title":"Sourdough recipe","url":"https://www.theperfectloaf.com","tag":"cooking","auto":false,"desc":"","img":""}]}' ;;
@@ -116,6 +117,8 @@ seed() {
     life) json='{"birthYear":"1990","lifespan":"80"}' ;;
     # A town in France, so it doesn't fall back to the IP's location.
     carburant) json='{"city":"Lyon"}' ;;
+    # A picked city, so the globe doesn't centre on the IP's location.
+    weather-net) json='{"zoom":1,"span":"h","unit":"c","selLat":51.5074,"selLon":-0.1278,"selName":"london","picked":1,"layers":15}' ;;
     # A made-up key: the demo's python3 answers lastfm's helper without calling Last.fm.
     lastfm) json='{"username":"demo","apiKey":"demo"}' ;;
     # A public landmark's postcode (the Empire State Building), so the passes show.

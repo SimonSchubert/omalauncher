@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="voice_listening">escuchando</string>
+    <string name="voice_listening">escuchando · toca para enviar</string>
     <string name="voice_listening_working">escuchando · sigue trabajando</string>
+    <string name="voice_listening_preparing">preparándose · ya puedes hablar</string>
     <string name="voice_starting">iniciando</string>
     <string name="voice_needs_ok">necesita tu OK · %1$s</string>
     <string name="voice_working">trabajando · %1$s</string>
@@ -81,4 +82,21 @@
     <string name="voice_tts_settings">ajustes de texto a voz</string>
     <string name="voice_no_voice">Aún no hay una voz para %1$s en este teléfono: descarga una en los ajustes de texto a voz.</string>
     <string name="voice_sample">Así sonarán las respuestas.</string>
+    <string name="voice_recognition">reconocimiento de voz</string>
+    <string name="voice_recognition_phone">el del teléfono</string>
+    <string name="voice_recognition_parakeet">Parakeet, en este teléfono</string>
+    <string name="voice_parakeet_about">Parakeet reconoce la voz en el propio teléfono: sin conexión, sin pitidos, en 25 idiomas europeos. Una descarga de %1$s.</string>
+    <string name="voice_parakeet_download">descargar</string>
+    <string name="voice_parakeet_mobile_data">estás usando datos móviles</string>
+    <string name="voice_parakeet_progress">%1$s de %2$s</string>
+    <string name="voice_parakeet_checking">comprobando la descarga…</string>
+    <string name="voice_parakeet_cancel">cancelar</string>
+    <string name="voice_parakeet_delete">eliminar Parakeet · %1$s</string>
+    <string name="voice_parakeet_failed">la descarga se detuvo: %1$s</string>
+    <string name="voice_parakeet_space">no hay espacio suficiente: faltan %1$s</string>
+    <string name="voice_parakeet_damaged">la descarga llegó dañada; inténtalo de nuevo</string>
+    <string name="voice_parakeet_language">Parakeet no conoce el idioma %1$s: escucha el reconocimiento de voz del teléfono.</string>
+    <string name="voice_send_after">enviar tras una pausa</string>
+    <string name="voice_send_after_off">no</string>
+    <string name="voice_seconds">%1$d s</string>
 </resources>

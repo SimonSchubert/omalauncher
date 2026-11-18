@@ -11,7 +11,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import dev.omalauncher.AppLanguage
+import dev.omalauncher.system.AppLanguage
 import dev.omalauncher.R
 import dev.omalauncher.linux.AGENTS
 import dev.omalauncher.linux.Agent
@@ -19,8 +19,8 @@ import dev.omalauncher.linux.AgentStore
 import dev.omalauncher.linux.JobState
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.killTree
-import dev.omalauncher.ui.Speaker
-import dev.omalauncher.ui.Speech
+import dev.omalauncher.ui.voice.Speaker
+import dev.omalauncher.ui.voice.Speech
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -137,7 +137,7 @@ class VoiceSession(
     var notice by mutableStateOf<String?>(null)
 
     /** Whether [notice] says the agent isn't signed in ("Not logged in · Please run /login"), for a way to. */
-    val needsLogin get() = notice?.let(LOGIN::containsMatchIn) == true
+    val needsLogin get() = notice?.let(::needsLogin) == true
 
     /** Signing in, in the agent's own terminal: this one stops, so the next prompt starts it signed in. */
     fun loggingIn() {
@@ -182,6 +182,9 @@ class VoiceSession(
     private val always = HashSet<String>()
     private var buffer = ""
     private var afterTool = false
+
+    /** The turn in progress has its reply so far in the transcript already ([ask]), so it did say something. */
+    private var keptEarly = false
     private var lastSaid = 0L
     private var lastEvent = 0L
     private var doneAt = 0L
@@ -234,12 +237,17 @@ class VoiceSession(
     var rate by mutableFloatStateOf(DEFAULT_RATE)
         private set
 
+    /** How long a pause after what's been said sends it, in milliseconds; 0 for only a tap on the orb. */
+    var sendAfter by mutableLongStateOf(DEFAULT_SEND_AFTER)
+        private set
+
     init {
         readJson(settingsFile)?.let { s ->
             // Saved in three letters ("deu") before Speaker named the engine's languages in two.
             language = s.optString("language").ifEmpty { null }?.let(AppLanguage::short)
             voice = s.optString("voice").ifEmpty { null }
             rate = s.optDouble("rate", DEFAULT_RATE.toDouble()).toFloat().takeIf { it in 0.5f..2f } ?: DEFAULT_RATE
+            sendAfter = s.optLong("sendAfter", DEFAULT_SEND_AFTER).takeIf { it in SEND_AFTER } ?: DEFAULT_SEND_AFTER
         }
         speaker.use(language, voice, rate)
     }
@@ -254,6 +262,12 @@ class VoiceSession(
         this.voice = voice
         this.rate = rate
         speaker.use(language, voice, rate)
+        saveSettings()
+    }
+
+    /** Sends what's been said after a pause of [ms], one of [SEND_AFTER]; 0 for only on a tap. */
+    fun useSendAfter(ms: Long) {
+        sendAfter = ms
         saveSettings()
     }
 
@@ -316,8 +330,12 @@ class VoiceSession(
         if (said.isEmpty()) return
         if (agent == null) return
         notice = null
+        // What it said so far comes first: the reply in progress is shown last, and would end up below this.
+        val kept = reply.isNotBlank()
+        keepReply()
         // An answer to the question on screen: yes, no, or what to do instead.
         approvals.firstOrNull()?.let { a ->
+            if (kept) keptEarly = true
             transcript += Entry("you", said)
             saveTranscript()
             when {
@@ -331,6 +349,8 @@ class VoiceSession(
         // It didn't start: start() said why, and there's no one to wait for.
         if (process == null) return
         val fresh = turns == 0
+        // A turn that ended without its answer (stopped, the agent gone) leaves nothing for the next one.
+        keptEarly = !fresh && (keptEarly || kept)
         if (fresh) {
             steps.clear()
             since = System.currentTimeMillis()
@@ -706,12 +726,14 @@ class VoiceSession(
                     turns = (turns - 1).coerceAtLeast(0)
                     doneAt = System.currentTimeMillis()
                     restarts = 0
-                    val had = reply.isNotBlank() || transcript.lastOrNull()?.who == "image"
+                    val had = reply.isNotBlank() || keptEarly || transcript.lastOrNull()?.who == "image"
+                    val said = reply
+                    keptEarly = false
                     endReply()
                     saveSession()
                     if (prompted && e.error != null) {
                         say(spoken(R.string.voice_say_failed))
-                        notice = e.error.take(200).ifEmpty { str(R.string.voice_failed) }
+                        notice = failure(e.error, said).take(200).ifEmpty { str(R.string.voice_failed) }
                     } else if (prompted && !had && !e.cancelled) {
                         notice = str(R.string.voice_nothing_to_say, name)
                     }
@@ -791,12 +813,17 @@ class VoiceSession(
     /** The reply so far into the transcript, as its own paragraph. */
     private fun endReply() {
         handOver(final = true)
+        keepReply()
+        afterTool = false
+    }
+
+    /** What's written of the reply into the transcript, while the voice goes on with it: what follows is a new paragraph. */
+    private fun keepReply() {
         if (reply.isNotBlank()) {
             transcript += Entry("agent", reply.trim())
             saveTranscript()
         }
         reply = ""
-        afterTool = false
     }
 
     /** A picture it read, like a widget's preview: copied now, as the next owl-check overwrites it, after what it said so far. */
@@ -856,7 +883,7 @@ class VoiceSession(
     private fun saveSettings() =
         writeFile(
             settingsFile,
-            json("agent" to agent?.bin, "approveAll" to approveAll, "typing" to typing, "language" to language, "voice" to voice, "rate" to rate.toDouble()).toString(),
+            json("agent" to agent?.bin, "approveAll" to approveAll, "typing" to typing, "language" to language, "voice" to voice, "rate" to rate.toDouble(), "sendAfter" to sendAfter).toString(),
         )
 
     private fun writeFile(
@@ -885,8 +912,30 @@ class VoiceSession(
     companion object {
         private const val TAG = "voice"
 
-        /** An agent's error that it isn't signed in: Claude's "Not logged in", Grok's "Authentication required". */
-        private val LOGIN = Regex("log ?in|sign ?in|authenticat|api key|credential", RegexOption.IGNORE_CASE)
+        /**
+         * An agent's error that it isn't signed in: Claude's "Not logged in", Grok's "Authentication required", Hermes's
+         * "not connected to any AI provider yet".
+         */
+        private val LOGIN = Regex("log ?in|sign ?in|authenticat|api key|credential|not connected to any (ai )?provider", RegexOption.IGNORE_CASE)
+
+        /**
+         * What a failed prompt's notice says: its [error], or, when only the reply it [said] tells it isn't signed in, that
+         * reply's first sentence (the reply above it has the rest). Hermes answers "⚠️ Hermes is not connected to any AI
+         * provider yet. Run `hermes model`…" and then fails with just "admitted_turn_failed".
+         */
+        internal fun failure(
+            error: String,
+            said: String,
+        ): String {
+            if (LOGIN.containsMatchIn(error)) return error
+            val line = said.lineSequence().map { it.trim() }.firstOrNull { it.isNotEmpty() } ?: return error
+            val sentence = line.split(SENTENCE_END, limit = 2).first()
+            return if (LOGIN.containsMatchIn(sentence)) sentence else error
+        }
+
+        private val SENTENCE_END = Regex("(?<=[.!?])\\s+")
+
+        internal fun needsLogin(notice: String) = LOGIN.containsMatchIn(notice)
 
         /** How a step is shown ([shown]) and how what it wants to do is said ([said]), by verb; each takes [Act.what]. */
         private val STEP =
@@ -916,6 +965,12 @@ class VoiceSession(
             )
 
         const val DEFAULT_RATE = 1.25f
+
+        /** The pauses that can send what's been said, 0 for none (a tap sends). */
+        val SEND_AFTER = listOf(0L, 1_000L, 2_000L, 4_000L)
+
+        /** Hands-free as before tap-to-send, with more room to pause than the recognizers' own end of speech. */
+        const val DEFAULT_SEND_AFTER = 2_000L
         const val IDLE_STOP_MS = 10 * 60_000L
         const val RESUME_MS = 12 * 3_600_000L
         const val QUIET_MS = 120_000L

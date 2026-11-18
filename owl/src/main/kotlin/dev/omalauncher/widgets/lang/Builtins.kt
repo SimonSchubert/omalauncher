@@ -87,7 +87,7 @@ object Builtins {
     val constants = mapOf("pi" to Num(PI), "transparent" to Col(null, 0))
 
     /** Handler-only calls; they reach [Host.act]. */
-    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..1, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..2, "notification" to 1..3, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "dnd" to 1..1, "share" to 1..1, "haptic" to 0..0, "sound" to 1..1, "open" to 1..1, "ask" to 1..2, "appAction" to 2..2, "workApps" to 1..1, "shortcuts" to 1..1, "send" to 2..2, "pressKey" to 1..1, "typeText" to 1..1, "latch" to 1..2, "settings" to 1..1, "pickImages" to 0..0, "speech" to 1..1, "web" to 1..1, "location" to 1..1, "airpods" to 1..2, "calendar" to 1..2)
+    val actions = mapOf("terminal" to 1..2, "app" to 1..1, "run" to 1..1, "post" to 1..3, "url" to 1..1, "launcher" to 1..1, "refresh" to 0..1, "media" to 1..2, "androidApp" to 1..1, "copy" to 1..1, "notify" to 1..2, "volume" to 1..2, "notification" to 1..3, "screen" to 0..0, "close" to 0..0, "torch" to 1..1, "dnd" to 1..1, "share" to 1..1, "haptic" to 0..1, "sound" to 1..1, "open" to 1..1, "ask" to 1..2, "appAction" to 2..2, "workApps" to 1..1, "shortcuts" to 1..1, "send" to 2..2, "pressKey" to 1..1, "typeText" to 1..1, "latch" to 1..2, "settings" to 1..1, "pickImages" to 0..0, "speech" to 1..1, "web" to 1..1, "location" to 1..1, "airpods" to 1..2, "calendar" to 1..2)
 
     private fun lst(items: List<Value>) = Lst(capped(items))
 
@@ -931,7 +931,11 @@ object Builtins {
         i: Value,
     ): Value =
         when (v) {
-            is Lst -> i.num()?.toInt()?.let { v.items.getOrNull(if (it < 0) v.items.size + it else it) } ?: Null
+            // Every xs[i] runs this: a Num index skips num()'s boxed Double?.
+            is Lst -> {
+                val k = if (i is Num) i.v.toInt() else i.num()?.toInt() ?: return Null
+                v.items.getOrNull(if (k < 0) v.items.size + k else k) ?: Null
+            }
             is Obj -> v.fields[i.toString()] ?: Null
             is Str -> i.num()?.toInt()?.let { v.v.getOrNull(if (it < 0) v.v.length + it else it)?.toString()?.let(::Str) } ?: Null
             else -> Null

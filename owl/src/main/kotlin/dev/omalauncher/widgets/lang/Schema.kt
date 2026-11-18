@@ -22,7 +22,7 @@ internal class DrawOp(
 internal val KINDS: Map<String, Kind> =
     mapOf(
         "Column" to Kind(setOf("gap", "align", "justify", "scroll", "lazy", "reverse"), Children.UI),
-        "Row" to Kind(setOf("gap", "align", "justify", "wrap"), Children.UI),
+        "Row" to Kind(setOf("gap", "align", "justify", "wrap", "scroll"), Children.UI),
         "Flow" to Kind(setOf("gap", "align", "justify"), Children.UI),
         "Box" to Kind(setOf("align"), Children.UI),
         "Grid" to Kind(setOf("columns", "gap", "lazy", "reverse"), Children.UI),
@@ -198,8 +198,15 @@ internal val SINCE =
         listOf("scene", "model", "cube", "plane", "sphere", "cylinder", "cone", "terrain", "mesh", "parseObj", "project", "turn", "dot", "cross", "norm", "dist").associateWith { 22 } +
         // owl 22: Shader images to sample, and uniforms that are arrays.
         listOf(SHADER_IMAGE, SHADER_ARRAY).associateWith { 22 } +
-        // owl 23: a notification of the widget's own, which Android counts down on the lock screen, and its buttons.
-        listOf(WIDGET_NOTIFICATION, "onNotification").associateWith { 23 }
+        // owl 23: what's playing moved to a point in it, for a scrubber or a record turned by hand; its speed, and the
+        // player's own buttons.
+        listOf("media(\"seek\")", "media(\"speed\")", "media(\"action\")").associateWith { 23 } +
+        // owl 23: how strong a haptic() is.
+        mapOf(HAPTIC_STRENGTH to 23) +
+        // owl 24: the strip of apps above home's prompt bar as a file, and what it shows; Rows that scroll sideways.
+        listOf(STRIP_FILE, "android.strip", "Row.scroll").associateWith { 24 } +
+        // owl 25: a notification of the widget's own, which Android counts down on the lock screen, and its buttons.
+        listOf(WIDGET_NOTIFICATION, "onNotification").associateWith { 25 }
 
 /** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
 internal const val SHADER_IMAGE = "uniform shader"
@@ -221,6 +228,9 @@ internal const val VOLUME_STREAM = "volume(…, stream)"
 
 /** `torch(40)`, a brightness, named like this in [SINCE]. */
 internal const val TORCH_LEVEL = "torch(level)"
+
+/** `haptic("light")`, a strength, named like this in [SINCE]. */
+internal const val HAPTIC_STRENGTH = "haptic(strength)"
 
 /** volume(...)'s second value; media without one. */
 internal val VOLUME_STREAMS = setOf("media", "ring", "notification", "alarm")
@@ -248,6 +258,9 @@ internal const val PANEL_OPACITY = "panel opacity"
 internal const val PANEL_KEYBOARD = "panel keyboard"
 
 internal const val KEYBAR_FILE = "keybar \"…\" { }"
+
+/** A `strip "…" { }` file, named like this in [SINCE]. */
+internal const val STRIP_FILE = "strip \"…\" { }"
 
 /** A panel's read-only name for the prompt bar's text. */
 internal const val QUERY = "query"
@@ -319,7 +332,7 @@ internal val HANDLER_PARAMS =
         "onDismiss" to emptyList(),
         // A panel's, at its top: a key pressed in the prompt bar while it's open.
         "onKey" to listOf("value"),
-        // owl 23: a widget's or a face's, at its top: a button of its notification pressed, with the button's value.
+        // owl 25: a widget's or a face's, at its top: a button of its notification pressed, with the button's value.
         "onNotification" to listOf("value"),
         // owl 18: the page a Browser went to, its title, and how far it has loaded.
         "onNavigate" to listOf("value"),
@@ -356,7 +369,7 @@ val SPEECH_ANYWHERE = setOf("stop", "cancel")
 val ASKS = setOf("location", "calendar", "airpods")
 
 /** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar", "motion")
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar", "motion", "strip")
 
 /**
  * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the
@@ -380,7 +393,22 @@ internal val SETTINGS_PAGES = setOf("internet", "wifi", "bluetooth", "airplane",
 
 internal val ACTION_WORDS =
     mapOf(
-        "media" to setOf("toggle", "play", "pause", "next", "previous", "open").let { Words(it, "media takes ${it.joinToString()}") },
+        // seek takes where to go, in seconds from the start, speed how fast, action which of the app's buttons (owl 23);
+        // the others take nothing more.
+        "media" to
+            setOf("toggle", "play", "pause", "next", "previous", "open").let { plain ->
+                Words(
+                    plain + setOf("seek", "speed", "action"),
+                    "media takes ${plain.joinToString()}, seek, speed or action",
+                    forms =
+                        plain.associateWith { 1..1 to "media(\"$it\")" } +
+                            mapOf(
+                                "seek" to (2..2 to "media(\"seek\", seconds)"),
+                                "speed" to (2..2 to "media(\"speed\", 1.5)"),
+                                "action" to (2..2 to "media(\"action\", a.id), with a from the source's actions"),
+                            ),
+                )
+            },
         // A number sets the level in percent.
         "volume" to setOf("up", "down", "mute", "unmute", "toggle").let { Words(it, "volume takes a level in percent, or ${it.joinToString()}", numbers = true) },
         // true and false also turn it on and off.
@@ -405,6 +433,8 @@ internal val ACTION_WORDS =
                         "unsnoozeAll" to (1..1 to "notification(\"unsnoozeAll\")"),
                     ),
             ),
+        // How strong, from Android's own touch feedback; haptic() alone is medium.
+        "haptic" to setOf("light", "medium", "strong").let { Words(it, "haptic takes ${it.joinToString()}, or nothing for medium") },
         // Android's panel (a sheet over home) where it has one, else its settings screen.
         "settings" to SETTINGS_PAGES.let { Words(it, "settings takes ${it.joinToString()}") },
         "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },

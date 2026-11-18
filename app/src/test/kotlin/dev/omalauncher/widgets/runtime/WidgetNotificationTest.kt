@@ -2,7 +2,7 @@ package dev.omalauncher.widgets.runtime
 
 import dev.omalauncher.linux.ShellResult
 import dev.omalauncher.ui.EmbeddedBrowser
-import dev.omalauncher.ui.EmbeddedTerminal
+import dev.omalauncher.ui.home.EmbeddedTerminal
 import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.FALSE
 import dev.omalauncher.widgets.lang.Lst
@@ -111,7 +111,7 @@ class WidgetNotificationTest {
     @Test fun aPressRunsOnNotificationWithTheTimeNow() {
         val errors = ArrayList<String>()
         val src =
-            "widget {\n meta { owl: 23 }\n source now = clock every 1s\n state got = null\n state at = 0\n" +
+            "widget {\n meta { owl: 25 }\n source now = clock every 1s\n state got = null\n state at = 0\n" +
                 " notification: {title: \"t\", buttons: [\"stop\"]}\n onNotification: { got = value; at = now }\n Text { text: got } }"
         val w = WidgetInstance(Compiler.compile(src), Nothing(), { errors += it })
         // Off screen the clock hasn't run: the press sets it before onNotification reads it.

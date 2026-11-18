@@ -1,7 +1,7 @@
 package dev.omalauncher.theme
 
-import dev.omalauncher.CountingInputStream
-import dev.omalauncher.openHttp
+import dev.omalauncher.system.CountingInputStream
+import dev.omalauncher.net.openHttp
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.io.File
 import java.io.IOException
@@ -17,8 +17,8 @@ import java.util.zip.GZIPInputStream
 internal fun unpackTarball(
     url: String,
     into: File,
-    onProgress: (Int) -> Unit = {},
-    maxMegabytes: Int = Int.MAX_VALUE,
+    onProgress: (Int) -> Unit,
+    maxMegabytes: Int,
     keep: (String) -> Boolean,
 ) {
     val conn = openHttp(url)
@@ -39,6 +39,9 @@ internal fun unpackTarball(
     }
 }
 
+/** The file at [path] under this directory, which must be canonical, or null when the path leads out of it. */
+internal fun File.inside(path: String): File? = File(this, path).takeIf { it.canonicalPath.startsWith(this.path + File.separator) }
+
 private fun unpack(
     input: InputStream,
     into: File,
@@ -51,8 +54,7 @@ private fun unpack(
             // Entries look like <repo>-<ref>/path...
             val path = entry.name.substringAfter('/')
             if (!entry.isFile || path.isEmpty() || !keep(path)) continue
-            val out = File(root, path)
-            if (!out.canonicalPath.startsWith(root.path + File.separator)) continue
+            val out = root.inside(path) ?: continue
             out.parentFile?.mkdirs()
             out.outputStream().use { tar.copyTo(it) }
         }

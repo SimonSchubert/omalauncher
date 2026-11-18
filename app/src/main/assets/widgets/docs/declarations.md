@@ -26,7 +26,7 @@ Part of the widget docs: README.md, one folder up, comes first, and paths here a
 | `meta { owl: 12 }` | the language version the file needs (this launcher has 19; the default is 1). Older launchers say "update the launcher" instead of failing on what they don't know. Using what a later level added without declaring it is an error; docs/versions.md lists what came when |
 | `onTap: ...` | runs when the tile (not a button inside it) is tapped |
 | `screen { ... }` | a full-screen view of the widget, opened with `screen()`; see docs/screens.md (owl 5) |
-| `notification: running ? {title: "tea", until: endsAt} : null` | a notification of the widget's own, on the lock screen and in the shade while it's a map, gone while it's null; `onNotification: ...` runs when one of its buttons is pressed. See A notification of its own (owl 23) |
+| `notification: running ? {title: "tea", until: endsAt} : null` | a notification of the widget's own, on the lock screen and in the shade while it's a map, gone while it's null; `onNotification: ...` runs when one of its buttons is pressed. See A notification of its own (owl 25) |
 | `every 10s { ... }`, `at t { ... }`, `when c { ... }`, `on x { ... }` | statements that run without a tap; see Triggers |
 | `padding: 12` / `background: ...` | the tile's padding (dp) and background |
 | `lock: playing` | holds the home screen still while it's true and the tile shows: no page turn, swipe up or long press, so a game's or a drawing pad's swipes stay its own. Back and the chip it puts at the top let go until it turns false. Something that changes, never a fixed `true` (owl 18) |
@@ -127,7 +127,7 @@ second is held back and reported (one that changes what it watches would otherwi
 ## A notification of its own
 
 `notification:` at the top of a widget or a face is a notification that stays while it's a map and
-goes while it's null, read as it changes like a node's properties: a timer's says what runs, pauses and rings (owl 23).
+goes while it's null, read as it changes like a node's properties: a timer's says what runs, pauses and rings (owl 25).
 It shows on the lock screen in full, so keep what's private out of it. Its map takes:
 
 | field | is |
@@ -148,7 +148,7 @@ is, since a press sets the clocks first.
 
 ```owl
 widget "tea" {
-  meta { owl: 23 }
+  meta { owl: 25 }
   source now = clock every 1s
   state endsAt = 0 persist
   notification: endsAt > 0 ? {title: "tea", until: endsAt, buttons: ["+1m", "stop"]} : null
