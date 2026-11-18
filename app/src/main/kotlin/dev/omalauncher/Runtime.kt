@@ -215,6 +215,8 @@ class Runtime(
 
     init {
         proot.stopped = linuxStopped
+        // Guest processes left by an earlier run of the app (their proot was SIGKILLed) spin on, untraced.
+        proot.killAll()
         // Saved, so removing Linux later doesn't bring the first-run screen back.
         if (launcherReady) prefs.edit().putBoolean(SETUP_DONE, true).apply()
         // Android's share sheet lists Linux only while it's installed; ShareInActivity's alias starts off
