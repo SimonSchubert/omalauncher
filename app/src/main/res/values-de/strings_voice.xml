@@ -57,7 +57,6 @@
     <string name="voice_do_tool">%1$s benutzen</string>
     <string name="voice_do_tool_unknown">ein werkzeug benutzen</string>
     <string name="voice_say_wants">%1$s will %2$s. Erlauben?</string>
-    <string name="voice_say_moment">Moment.</string>
     <string name="voice_say_failed">Sorry, das hat nicht geklappt.</string>
     <string name="voice_the_agent">agent</string>
     <string name="voice_note_allow_all">erlaube alles, was %1$s fragt</string>

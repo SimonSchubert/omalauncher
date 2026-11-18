@@ -187,7 +187,6 @@ class VoiceSession(
 
     /** The turn in progress has its reply so far in the transcript already ([ask]), so it did say something. */
     private var keptEarly = false
-    private var lastSaid = 0L
 
     /** Talked over: the rest of this reply is shown, not read aloud, so the microphone doesn't hear it. Until [ask]. */
     private var hushed = false
@@ -725,7 +724,6 @@ class VoiceSession(
                     heardBack = true
                     handOver(final = true)
                     afterTool = true
-                    if (System.currentTimeMillis() - lastSaid > PROGRESS_MS) say(spoken(R.string.voice_say_moment))
                     if (phase != Phase.Approval) phase = Phase.Working
                 }
                 is LinkEvent.Step -> {
@@ -832,7 +830,6 @@ class VoiceSession(
         if (typing || hushed) return
         val clean = spokenText(text)
         if (clean.isEmpty()) return
-        lastSaid = System.currentTimeMillis()
         speaker.speak(clean)
     }
 
@@ -1014,7 +1011,6 @@ class VoiceSession(
         const val RESUME_MS = 12 * 3_600_000L
         const val QUIET_MS = 120_000L
         const val SILENT_MS = 45_000L
-        const val PROGRESS_MS = 12_000L
         private const val REMIND_EVERY = 5
         private const val VOICE_REMINDER = "Still a voice conversation: keep it short."
         private const val TYPING_NOTE =

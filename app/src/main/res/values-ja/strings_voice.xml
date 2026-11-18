@@ -56,7 +56,6 @@
     <string name="voice_do_tool">%1$s を使用</string>
     <string name="voice_do_tool_unknown">ツールを使用</string>
     <string name="voice_say_wants">%1$s が「%2$s」の許可を求めています。許可しますか？</string>
-    <string name="voice_say_moment">少々お待ちください。</string>
     <string name="voice_say_failed">すみません、うまくいきませんでした。</string>
     <string name="voice_the_agent">エージェント</string>
     <string name="voice_note_allow_all">%1$s の要求をすべて許可します</string>

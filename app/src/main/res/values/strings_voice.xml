@@ -74,7 +74,6 @@
     <!-- Said aloud when the agent asks to do something; %2$s is one of the voice_do_ phrases. -->
     <string name="voice_say_wants">%1$s wants to %2$s. Allow it?</string>
     <!-- Said aloud while the agent works quietly. -->
-    <string name="voice_say_moment">One moment.</string>
     <string name="voice_say_failed">Sorry, that didn\'t work.</string>
     <!-- In place of the agent's name when there is none. -->
     <string name="voice_the_agent">the agent</string>

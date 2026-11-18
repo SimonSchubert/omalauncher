@@ -56,7 +56,6 @@
     <string name="voice_do_tool">使用 %1$s</string>
     <string name="voice_do_tool_unknown">使用一个工具</string>
     <string name="voice_say_wants">%1$s 想要%2$s。允许吗？</string>
-    <string name="voice_say_moment">稍等。</string>
     <string name="voice_say_failed">抱歉，没成功。</string>
     <string name="voice_the_agent">智能体</string>
     <string name="voice_note_allow_all">允许 %1$s 请求的一切</string>

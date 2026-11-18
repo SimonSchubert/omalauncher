@@ -56,7 +56,6 @@
     <string name="voice_do_tool">memakai %1$s</string>
     <string name="voice_do_tool_unknown">memakai sebuah alat</string>
     <string name="voice_say_wants">%1$s ingin %2$s. Izinkan?</string>
-    <string name="voice_say_moment">Sebentar.</string>
     <string name="voice_say_failed">Maaf, itu tidak berhasil.</string>
     <string name="voice_the_agent">agen</string>
     <string name="voice_note_allow_all">mengizinkan semua yang diminta %1$s</string>
