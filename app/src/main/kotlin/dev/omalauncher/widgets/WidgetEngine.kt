@@ -14,9 +14,9 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import dev.omalauncher.AppLanguage
+import dev.omalauncher.system.AppLanguage
 import dev.omalauncher.BuildConfig
-import dev.omalauncher.LauncherData
+import dev.omalauncher.storage.LauncherData
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.Proot
@@ -40,6 +40,7 @@ import dev.omalauncher.widgets.market.Shared
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -127,7 +128,7 @@ class WidgetEngine(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val services = WidgetServices(context, proot, runtime, scope)
 
-    /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
+    /** Opens launcher screens ("style" or "themes", "agents", "store" or "store:apps", "drawer"); set by the UI. */
     var launcherAction by services::launcherAction
 
     /** What the drawer's long-press menu does, for appAction(...); set by the UI. */
@@ -311,7 +312,40 @@ class WidgetEngine(
         keybarShown += if (shown) 1 else -1
     }
 
-    /** On a home page: a widget's tile, or a face; not an app, a panel or the extra keys. */
+    /**
+     * The strip above home's prompt bar: strip.owl, else the stock one, so a strip that's gone or broken still shows the
+     * recent apps. Null while neither compiles.
+     */
+    fun stripSpec(): WidgetSpec? = listOf(STRIP, STOCK_STRIP).firstNotNullOfOrNull { name -> specs.firstOrNull { it.file.name == name && it.kind == OwlKind.Strip && it.program != null } }
+
+    /** The running [stripSpec]; null until it runs. Through specs, which are snapshot state, so home follows a reload. */
+    fun stripInstance(): WidgetInstance? = stripSpec()?.let(::instance)
+
+    /** Whether the strip shows stood up beside the grid, in landscape: `vertical` in `android.strip`. */
+    var stripVertical by mutableStateOf(false)
+
+    private val stripPrefs = LauncherData.prefs(context)
+
+    /**
+     * How tall the strip measured above the bar, and how wide stood up beside the grid, in pixels; -1 until it ever has.
+     * Kept across starts: home's tiles are where they stay from the first frame, however tall the user's strip is.
+     */
+    var stripHeightPx by mutableIntStateOf(stripPrefs.getInt(STRIP_HEIGHT, -1))
+        private set
+    var stripWidthPx by mutableIntStateOf(stripPrefs.getInt(STRIP_WIDTH, -1))
+        private set
+
+    /** The strip measured [px] tall above the bar, or wide stood up [vertical] beside the grid. */
+    fun stripMeasured(
+        vertical: Boolean,
+        px: Int,
+    ) {
+        if (px == if (vertical) stripWidthPx else stripHeightPx) return
+        if (vertical) stripWidthPx = px else stripHeightPx = px
+        stripPrefs.edit().putInt(if (vertical) STRIP_WIDTH else STRIP_HEIGHT, px).apply()
+    }
+
+    /** On a home page: a widget's tile, or a face; not an app, a panel, the extra keys or the strip. */
     fun onHome(spec: WidgetSpec) = spec.kind == OwlKind.Widget || spec.kind == OwlKind.Face
 
     /** The running widget whose screen is open, with its spec (for the title fallback). */
@@ -666,7 +700,10 @@ class WidgetEngine(
         }
     }
 
-    private fun widgetFiles() = dir.listFiles { f -> (!f.name.startsWith(".") || f.name == STOCK_DRAWER || f.name == STOCK_KEYBAR) && f.extension == "owl" }.orEmpty().sortedBy { it.name }
+    private fun widgetFiles() = dir.listFiles { f -> (!f.name.startsWith(".") || f.name == STOCK_DRAWER || f.name == STOCK_KEYBAR || f.name == STOCK_STRIP) && f.extension == "owl" }.orEmpty().sortedBy { it.name }
+
+    /** New files that haven't compiled yet: home placed them at the default size. Main thread. */
+    private val unsized = HashSet<String>()
 
     private suspend fun reload(files: List<File>) {
         // Compiled for another language, a file's texts would stay in it.
@@ -678,6 +715,16 @@ class WidgetEngine(
             withContext(Dispatchers.IO) {
                 files.map { f -> async { old[f.name]?.takeIf { !relanguaged && it.stamp == f.lastModified() } ?: compile(f, old[f.name]) } }.awaitAll()
             }
+        // A new file that didn't compile was placed with no size: to go by; once it compiles, its page places it again, at its size.
+        unsized.retainAll(parsed.mapTo(HashSet()) { it.file.name })
+        for (spec in parsed) {
+            val name = spec.file.name
+            if (spec.program == null) {
+                if (old[name] == null && Screen.entries.none { layout.cell(name, it) != null }) unsized += name
+            } else if (unsized.remove(name) && spec.size != null) {
+                for (screen in Screen.entries) layout.clearCell(name, screen)
+            }
+        }
         val changed = parsed.filter { old[it.file.name] !== it }.map { it.file.name }
         specs.clear()
         specs += parsed.sortedWith(compareBy({ it.page }, { it.order }, { it.file.name }))
@@ -763,6 +810,8 @@ class WidgetEngine(
                 parts.getOrNull(1) == "set" -> inst.setState(parts.getOrNull(2).orEmpty(), Json.parseOrText(parts.getOrNull(3).orEmpty()))?.let { "error: $it" } ?: "ok"
                 else -> "error: unknown command '${parts.getOrNull(1).orEmpty()}'"
             }
+        // The picture owl-check has is of the widget before this: without its preview line, the next check asks for a new one.
+        if (reply == "ok") hashes[name]?.let { writeCheck(spec!!.file, it, "ok").join() }
         withContext(Dispatchers.IO) {
             runCatching { writeAtomically(File(inboxDir, "$id.done"), (reply + "\n").toByteArray()) }
         }
@@ -802,9 +851,12 @@ class WidgetEngine(
                 instance(spec) == null -> "it isn't running"
                 else -> null
             }
-        if (skip != null) return writeCheck(spec.file, hash, "ok", "preview-skipped $hash $skip")
+        if (skip != null) {
+            writeCheck(spec.file, hash, "ok", "preview-skipped $hash $skip")
+            return
+        }
         val inst = instance(spec)!!
-        if (program.kind == OwlKind.App || program.kind == OwlKind.Panel || program.kind == OwlKind.Keybar) return previewView(spec, inst, hash)
+        if (!onHome(spec)) return previewView(spec, inst, hash)
         val cells = tileCells(spec)
         val (w, h) = if (spec.isFace) layout.pagePx(context.resources.displayMetrics) else layout.tilePx(cells, context.resources.displayMetrics)
         previewing += name
@@ -827,7 +879,9 @@ class WidgetEngine(
         // The file may have changed while this rendered; its own preview follows.
         if (hashes[name] != hash) return
         val line = if (ok) shownCells(cells).let { (c, r) -> "preview $hash ${c}x$r ${w}x$h" } else "preview-skipped $hash rendering failed"
-        writeCheck(spec.file, hash, "ok", listOfNotNull(line, screen).joinToString("\n"))
+        // Where home put the tile, which the file's size: only decides the first time.
+        val home = if (spec.isFace) null else layout.cell(name)?.let { "home $hash ${it.x} ${it.y} ${it.w} ${it.h}" }
+        writeCheck(spec.file, hash, "ok", listOfNotNull(line, screen, home).joinToString("\n"))
     }
 
     /** The tile's cells as it's laid out on home, else as the file sizes it; a face's are the whole grid. */
@@ -863,6 +917,7 @@ class WidgetEngine(
                 when (spec.kind) {
                     OwlKind.Panel -> "a panel has no tile"
                     OwlKind.Keybar -> "the terminal key bar has no tile"
+                    OwlKind.Strip -> "the strip has no tile"
                     else -> "an app has no tile"
                 }
         writeCheck(spec.file, hash, "ok", if (ok) "$tile\nscreen $hash ${dm.widthPixels}x${dm.heightPixels}" else "$tile; rendering its screen failed")
@@ -913,7 +968,7 @@ class WidgetEngine(
                 for (theme in themes) {
                     Palette.apply(theme.colors)
                     val out = File(dir, "${theme.name}/$name${if (n > 0) ".${n + 1}" else ""}.png")
-                    if (spec.kind == OwlKind.App || spec.kind == OwlKind.Panel || spec.kind == OwlKind.Keybar) {
+                    if (!onHome(spec)) {
                         previews.renderScreen(spec, inst, dm.widthPixels, dm.heightPixels, out, ready)
                     } else {
                         previews.render(spec, inst, shownCells(cells), w, h, out, ready)
@@ -939,6 +994,8 @@ class WidgetEngine(
         // Over a Linux window too, while home is hidden.
         if (spec.kind == OwlKind.Keybar) return keybarShown > 0
         if (!visible) return false
+        // The strip shows with home, the one of strip.owl and the stock strip that home shows.
+        if (spec.kind == OwlKind.Strip) return LauncherStyle.recentApps && stripSpec()?.file?.name == spec.file.name
         // Its screen is open: it's on screen wherever the pages are.
         if (spec.file.name == openScreen) return true
         if (spec.kind == OwlKind.Panel) return spec.file.name in shownPanels || spec.file.name in gesturePanels()
@@ -1020,7 +1077,8 @@ class WidgetEngine(
     /**
      * Writes .check/<file>.txt for `owl-check`: `sha256 <hash>`, `result ok` or
      * `result error`, and once rendered, `preview <hash> <cells> <pixels>` or
-     * `preview-skipped <hash> <why>`, then `screen <hash> <pixels>` for a screen { }. After the error file, in the same order,
+     * `preview-skipped <hash> <why>`, then `screen <hash> <pixels>` for a screen { } and `home <hash> <x> <y> <w> <h>`
+     * for a tile's cell on home. After the error file, in the same order,
      * so a check that sees the hash also sees that version's errors.
      */
     private fun writeCheck(
@@ -1028,9 +1086,9 @@ class WidgetEngine(
         hash: String,
         result: String,
         preview: String? = null,
-    ) {
+    ): Job {
         val text = "sha256 $hash\nresult $result\n" + (preview?.let { "$it\n" } ?: "")
-        scope.launch(errorWriter) {
+        return scope.launch(errorWriter) {
             runCatching { writeAtomically(File(checkDir, "${file.name}.txt"), text.toByteArray()) }
         }
     }
@@ -1104,9 +1162,10 @@ class WidgetEngine(
             for (name in assets.list("widgets/docs").orEmpty()) add(asset("widgets/docs/$name", File(dir, "docs/$name"), Policy.Owned))
             for (name in assets.list("widgets/examples").orEmpty()) add(asset("widgets/examples/$name", File(dir, "examples/$name"), Policy.Seeded))
             for (name in assets.list("widgets").orEmpty().filter { it.endsWith(".owl") }) add(asset("widgets/$name", File(dir, name), Policy.Seeded))
-            // Always as this launcher ships them, whatever became of drawer.owl and keybar.owl.
+            // Always as this launcher ships them, whatever became of drawer.owl, keybar.owl and strip.owl.
             add(asset("widgets/$DRAWER", File(dir, STOCK_DRAWER), Policy.Owned))
             add(asset("widgets/$KEYBAR", File(dir, STOCK_KEYBAR), Policy.Owned))
+            add(asset("widgets/$STRIP", File(dir, STOCK_STRIP), Policy.Owned))
         }
     }
 
@@ -1141,6 +1200,14 @@ class WidgetEngine(
 
         /** The extra keys as this launcher ships them, kept that way: the fallback, and what an edited keybar.owl compares with. */
         const val STOCK_KEYBAR = ".stock-keybar.owl"
+
+        /** The strip of apps above home's prompt bar: the user's to change, like the drawer. */
+        const val STRIP = "strip.owl"
+
+        /** The strip as this launcher ships it, kept that way: the fallback, and what an edited strip.owl compares with. */
+        const val STOCK_STRIP = ".stock-strip.owl"
+        private const val STRIP_HEIGHT = "strip_height_px"
+        private const val STRIP_WIDTH = "strip_width_px"
         private const val TERMINAL_PREFIX = "terminal-"
         private const val AGENT_PREFIX = "agent-"
 
@@ -1151,12 +1218,18 @@ class WidgetEngine(
             "# omalauncher\n\nThis Arch system runs inside an Android launcher, omalauncher; its source is at " +
                 "https://github.com/SimonSchubert/omalauncher, should you need to understand how the launcher works.\n\n" +
                 "It's Arch Linux ARM under proot, not a booted system: you are root already (no sudo needed), and there is " +
-                "no systemd (systemctl, services and timers don't work), no cron, no Docker and no kernel modules. Install " +
-                "packages with pacman or yay, command-line tools with mise. /sdcard is the phone's own storage, but it shows only " +
+                "no systemd (systemctl, services and timers don't work), no cron, no Docker and no kernel modules. A server, " +
+                "bot or gateway keeps running in the background, but only as long as the terminal or window it was started in " +
+                "stays open, and nothing starts it again: run it in the foreground there. An agent's own scheduler is such a " +
+                "program: Hermes's cron jobs and messaging bots only run while a window with Hermes is open. Install " +
+                "packages with pacman or yay, command-line tools with mise. A Chromium that a tool downloads (Playwright, " +
+                "an agent's browser) needs --no-sandbox, as you are root, and its libraries from pacman: nss at-spi2-core " +
+                "libcups libxcomposite libxdamage libxrandr mesa cairo pango. /sdcard is the phone's own storage, but it shows only " +
                 "the files Linux put there itself: save files for the user's other apps in /sdcard/Download or /sdcard/Documents " +
                 "(pictures in /sdcard/Pictures). The user's other files are in the phone folders they let Linux reach, which have " +
                 "no path: `omalauncher folders` lists them, `omalauncher ls`, `get` and `put` list and copy files in and out, and " +
-                "`omalauncher pick` lets the user choose any file on the phone. xdg-open opens http(s) links in Android's browser; `omarchy-edit <file>` opens a file in the " +
+                "`omalauncher pick` lets the user choose any file on the phone. What the user shares to Linux from another app's " +
+                "share sheet is saved in ~/Downloads, text and links as a shared-<date>-<time>.txt file. xdg-open opens http(s) links in Android's browser; `omarchy-edit <file>` opens a file in the " +
                 "launcher's editor and `omarchy-files [folder]` its file manager; GUI apps (Wayland) open as windows on the launcher.\n\n" +
                 "Home-screen widgets are `.owl` files in " +
                 "~/$GUEST_DIR, written in a small declarative language documented in README.md there (and docs/ next to it); so are apps for the " +
@@ -1164,7 +1237,8 @@ class WidgetEngine(
                 "gestures.swipe-up and gestures.swipe-down in ~/${StyleStore.GUEST_DIR}/style.toml). The app drawer is the panel " +
                 "drawer.owl there: to change the drawer, edit it; .stock-drawer.owl is the drawer as this launcher ships it. " +
                 "Likewise keybar.owl (`keybar \"name\" { }`) is the terminal key bar over the soft keyboard while typing in a terminal, " +
-                "and .stock-keybar.owl the bar as shipped. " +
+                "and .stock-keybar.owl the bar as shipped; strip.owl (`strip \"name\" { }`) is the strip of recent apps above home's " +
+                "prompt bar, and .stock-strip.owl the strip as shipped. " +
                 "Saved files show up on the phone within seconds. After saving, run `owl-check <file>`: it prints the errors " +
                 "and the path of a PNG of the tile or view, drawn with live data; look at it to check the layout. " +
                 "examples/ holds more widgets to learn from or move up to use. Scripts and hooks can set a running " +

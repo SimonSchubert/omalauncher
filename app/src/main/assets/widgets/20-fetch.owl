@@ -3,7 +3,7 @@ widget "fetch" {
   order: 2
   size: 3x3
   minSize: 2x2
-  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.10"; license: "MIT"; category: "system"; owl: 16 }
+  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.11"; license: "MIT"; category: "system"; owl: 16 }
 
   // What it says, in the phone's language where it has a set. Words fastfetch and Linux use as names (os, host,
   // kernel, cpu, shell) stay as they are. Android's battery words come in English, so a set names them itself.
@@ -116,6 +116,63 @@ widget "fetch" {
         "failing": "故障", "wireless": "无线", "dock": "底座"
       }, w, w)
     }
+    ru {
+      uptime: "аптайм"; packages: "пакеты"; display: "экран"; theme: "тема"; memory: "память"; disk: "диск"
+      battery: "батарея"; apps: "приложения"; byDefault: "по умолчанию"; phone: "телефон"; device: "устройство"
+      hardware: "оборудование"; network: "сеть"; launcher: "лаунчер"; security: "безопасность"; build: "сборка"
+      locale: "регион"; cores: "ядра"; storage: "хранилище"; speed: "скорость"; received: "получено"; sent: "отправлено"
+      mobile: "по моб. сети"; level: "заряд"; temperature: "температура"; voltage: "напряжение"; health: "состояние"
+      cycles: "циклы"; technology: "технология"; version: "версия"; explicit: "вручную"; upgraded: "обновлено"
+      never: "никогда"; unknown: "неизвестно"; installLinux: "установить linux"
+      notInstalled: "не установлен. arch linux arm добавляет в лаунчер терминал, агентов и pacman."
+      upTo: ghz => " · до ${ghz} ГГц"
+      androidApps: n => "${n} " + (n % 10 == 1 && n % 100 != 11 ? "android-приложение" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "android-приложения" : "android-приложений")
+      appCount: n => "${n} " + (n % 10 == 1 && n % 100 != 11 ? "приложение" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "приложения" : "приложений")
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "заряжается", "plugged in": "подключено", "on battery": "разряжается", "good": "хорошее",
+        "overheating": "перегрев", "dead": "неисправность", "over voltage": "перенапряжение", "cold": "переохлаждение",
+        "failing": "износ", "wireless": "беспроводная", "dock": "док-станция"
+      }, w, w)
+    }
+    ja {
+      uptime: "稼働時間"; packages: "パッケージ"; display: "画面"; theme: "テーマ"; memory: "メモリ"; disk: "ディスク"
+      battery: "バッテリー"; apps: "アプリ"; byDefault: "デフォルト"; phone: "スマートフォン"; device: "デバイス"
+      hardware: "ハードウェア"; network: "ネットワーク"; launcher: "ランチャー"; security: "セキュリティ"; build: "ビルド"
+      locale: "ロケール"; cores: "コア"; storage: "ストレージ"; speed: "速度"; received: "受信"; sent: "送信"
+      mobile: "モバイル"; level: "残量"; temperature: "温度"; voltage: "電圧"; health: "状態"
+      cycles: "サイクル数"; technology: "種類"; version: "バージョン"; explicit: "個は明示的にインストール"; upgraded: "最終更新"
+      never: "なし"; unknown: "不明"; installLinux: "linux をインストール"
+      notInstalled: "未インストール。arch linux arm を入れると、ランチャーでターミナル、エージェント、pacman が使えます。"
+      upTo: ghz => " · 最大 ${ghz} GHz"
+      androidApps: n => "android アプリ ${n} 個"
+      appCount: n => "アプリ ${n} 個"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "充電中", "plugged in": "電源に接続", "on battery": "バッテリー駆動", "good": "良好",
+        "overheating": "過熱", "dead": "寿命", "over voltage": "過電圧", "cold": "低温",
+        "failing": "異常", "wireless": "ワイヤレス", "dock": "ドック"
+      }, w, w)
+    }
+    uk {
+      uptime: "аптайм"; packages: "пакети"; display: "екран"; theme: "тема"; memory: "пам'ять"; disk: "диск"
+      battery: "батарея"; apps: "додатки"; byDefault: "типово"; phone: "телефон"; device: "пристрій"
+      hardware: "обладнання"; network: "мережа"; launcher: "лаунчер"; security: "безпека"; build: "збірка"
+      locale: "регіон"; cores: "ядра"; storage: "сховище"; speed: "швидкість"; received: "отримано"; sent: "надіслано"
+      mobile: "моб. мережа"; level: "заряд"; temperature: "температура"; voltage: "напруга"; health: "стан"
+      cycles: "цикли"; technology: "технологія"; version: "версія"; explicit: "вручну"; upgraded: "оновлено"
+      never: "ніколи"; unknown: "невідомо"; installLinux: "встановити linux"
+      notInstalled: "не встановлено. arch linux arm додає до лаунчера термінал, агентів і pacman."
+      upTo: ghz => " · до ${ghz} ГГц"
+      androidApps: n => "${n} " + (n % 10 == 1 && n % 100 != 11 ? "android-додаток" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "android-додатки" : "android-додатків")
+      appCount: n => "${n} " + (n % 10 == 1 && n % 100 != 11 ? "додаток" : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? "додатки" : "додатків")
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "заряджається", "plugged in": "підключено", "on battery": "розряджається", "good": "добрий",
+        "overheating": "перегрів", "dead": "несправність", "over voltage": "перенапруга", "cold": "переохолодження",
+        "failing": "знос", "wireless": "бездротова", "dock": "док-станція"
+      }, w, w)
+    }
   }
 
   // The phone, from Android: works without Linux.
@@ -155,6 +212,9 @@ widget "fetch" {
   // A narrow tile (two columns on a phone) has room for a label and a number: no os, host or kernel,
   // uptime in its largest unit, and memory, disk and battery as percentages.
   let narrow = tileWidth != null && tileWidth < 170
+  // Japanese and Chinese labels come from a taller font than the mono one, and eleven lines of them run past
+  // the bottom of a phone's 3x3 tile: shell or display gives way there.
+  let tall = (lang() == "ja" || lang() == "zh") && tileHeight != null && tileHeight < 215
 
   // Bytes a second over the last two reads; null until there are two, and after a reboot restarts the counters.
   state down = null
@@ -266,10 +326,12 @@ widget "fetch" {
         Line { key: str.packages; value: linux ? (lx.pkgs == null ? null : onAndroid ? "${lx.pkgs} (pacman), ${sys.apps} (${str.apps})" : "${lx.pkgs} (pacman)") : "${sys.apps} (${str.apps})" }
       }
       if !short {
-        if linux {
-          Line { key: "shell"; value: lx.shell }
-        } else {
-          Line { key: str.display; value: shown.width == null ? null : "${shown.width}x${shown.height} @ ${shown.hz}Hz" }
+        if !tall {
+          if linux {
+            Line { key: "shell"; value: lx.shell }
+          } else {
+            Line { key: str.display; value: shown.width == null ? null : "${shown.width}x${shown.height} @ ${shown.hz}Hz" }
+          }
         }
         Line { key: str.theme; value: sys.theme ?? str.byDefault }
         Line { key: "cpu"; value: sys.cpu == null ? null : "${sys.cpu.soc == "" ? sys.cpu.hardware : sys.cpu.soc} (${sys.cpu.cores})" }

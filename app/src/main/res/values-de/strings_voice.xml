@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="voice_listening">hört zu</string>
+    <string name="voice_listening">hört zu · tippen zum senden</string>
     <string name="voice_listening_working">hört zu · arbeitet weiter</string>
+    <string name="voice_listening_preparing">macht sich bereit · du kannst schon reden</string>
     <string name="voice_starting">startet</string>
     <string name="voice_needs_ok">braucht dein OK · %1$s</string>
     <string name="voice_working">arbeitet · %1$s</string>
@@ -80,4 +81,21 @@
     <string name="voice_tts_settings">sprachausgabe-einstellungen</string>
     <string name="voice_no_voice">Noch keine Stimme für %1$s auf diesem Smartphone: lad eine in den Sprachausgabe-Einstellungen herunter.</string>
     <string name="voice_sample">So werden die Antworten klingen.</string>
+    <string name="voice_recognition">spracherkennung</string>
+    <string name="voice_recognition_phone">die des smartphones</string>
+    <string name="voice_recognition_parakeet">Parakeet, auf diesem smartphone</string>
+    <string name="voice_parakeet_about">Parakeet erkennt Sprache direkt auf diesem Smartphone: offline, ohne Pieptöne, in 25 europäischen Sprachen. Ein Download von %1$s.</string>
+    <string name="voice_parakeet_download">herunterladen</string>
+    <string name="voice_parakeet_mobile_data">du bist im mobilen netz</string>
+    <string name="voice_parakeet_progress">%1$s von %2$s</string>
+    <string name="voice_parakeet_checking">download wird geprüft …</string>
+    <string name="voice_parakeet_cancel">abbrechen</string>
+    <string name="voice_parakeet_delete">Parakeet löschen · %1$s</string>
+    <string name="voice_parakeet_failed">der download wurde unterbrochen: %1$s</string>
+    <string name="voice_parakeet_space">nicht genug speicher: es fehlen %1$s</string>
+    <string name="voice_parakeet_damaged">der download war beschädigt; versuch es noch mal</string>
+    <string name="voice_parakeet_language">Parakeet kann kein %1$s: stattdessen hört die Spracherkennung des Smartphones zu.</string>
+    <string name="voice_send_after">nach einer pause senden</string>
+    <string name="voice_send_after_off">aus</string>
+    <string name="voice_seconds">%1$d s</string>
 </resources>

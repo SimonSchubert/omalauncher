@@ -271,7 +271,7 @@ class WidgetAst(
 
 /**
  * What an owl file is: a home-screen tile, a face (a whole home page), an app in the drawer, a panel a swipe on home
- * opens, or the extra keys over the soft keyboard while typing in a terminal.
+ * opens, the extra keys over the soft keyboard while typing in a terminal, or the strip of apps above home's prompt bar.
  */
 enum class OwlKind(
     val word: String,
@@ -281,6 +281,7 @@ enum class OwlKind(
     App("app"),
     Panel("panel"),
     Keybar("keybar"),
+    Strip("strip"),
     ;
 
     companion object {

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="store_title">toko</string>
+    <string name="store_widgets_title">toko widget</string>
+    <string name="store_apps_title">toko aplikasi</string>
+    <string name="store_featured">unggulan</string>
 
     <string name="store_kind_widgets">widget</string>
     <string name="store_kind_faces">widget layar penuh</string>
@@ -18,6 +20,9 @@
     <string name="store_pick_app">pilih aplikasi untuk melihat apa yang diinstal dan dijalankannya</string>
     <string name="store_pick_panel">pilih panel untuk melihat apa yang diinstal dan dijalankannya</string>
     <string name="store_pick_keybar">pilih keybar untuk melihat apa yang diinstal dan dijalankannya</string>
+    <string name="store_kind_strips">bilah aplikasi</string>
+    <string name="store_kind_strip">bilah aplikasi</string>
+    <string name="store_pick_strip">pilih bilah aplikasi untuk melihat apa yang diinstal dan dijalankannya</string>
 
     <string name="store_search">cari %1$d %2$s</string>
     <string name="store_tab_all">semua</string>

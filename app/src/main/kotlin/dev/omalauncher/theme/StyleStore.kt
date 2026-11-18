@@ -1,8 +1,8 @@
 package dev.omalauncher.theme
 
 import android.content.Context
-import dev.omalauncher.LauncherData
 import dev.omalauncher.linux.TerminalText
+import dev.omalauncher.storage.LauncherData
 import dev.omalauncher.ui.Corners
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.upgrade.Managed

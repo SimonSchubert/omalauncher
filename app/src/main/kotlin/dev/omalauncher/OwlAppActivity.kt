@@ -11,7 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import dev.omalauncher.ui.WidgetAsks
-import dev.omalauncher.ui.OwlAppWindow
+import dev.omalauncher.ui.home.OwlAppWindow
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.holdsKeys
 import dev.omalauncher.ui.showStatusBar

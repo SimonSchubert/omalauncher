@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
-import dev.omalauncher.ui.TileField
+import dev.omalauncher.ui.home.TileField
 import dev.omalauncher.ui.keyStepped
 import dev.omalauncher.ui.leavesUpDown
 import dev.omalauncher.widgets.lang.Null

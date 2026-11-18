@@ -15,6 +15,8 @@
     <string name="style_icons">iconos</string>
     <string name="style_monochrome">monocromo</string>
     <string name="style_colored">color</string>
+    <string name="style_icon_pack">paquete de iconos</string>
+    <string name="style_icon_pack_none">ninguno</string>
     <string name="style_home_apps">apps de inicio</string>
     <string name="style_boxed">con recuadro</string>
     <string name="style_icon_only">solo icono</string>
@@ -71,6 +73,14 @@
     <string name="style_keybar_gone">%1$s no está, así que se muestran las teclas originales</string>
     <string name="style_keybar_restore_title">¿volver a las teclas originales?</string>
     <string name="style_keybar_restore_message">Tu keybar.owl se reemplaza por el que incluye este launcher.</string>
+    <string name="style_strip">barra de apps</string>
+    <string name="style_strip_removed">eliminada</string>
+    <string name="style_strip_stock">original</string>
+    <string name="style_strip_edited">editada</string>
+    <string name="style_strip_back_to_stock">volver a la original</string>
+    <string name="style_strip_gone">%1$s no está, así que se muestra la barra original</string>
+    <string name="style_strip_restore_title">¿volver a la barra original?</string>
+    <string name="style_strip_restore_message">Tu strip.owl se reemplaza por el que incluye este launcher.</string>
     <string name="style_replace">reemplazar</string>
 
     <string name="style_browse">explorar</string>
@@ -137,9 +147,10 @@
     <string name="gestures_swipe_down_nothing">deslizar hacia abajo no abre nada</string>
     <string name="gestures_until_fixed">%1$s hasta que se arregle: %2$s</string>
     <string name="gestures_keybar_until_fixed">la barra de teclas de la terminal es la original hasta que se arregle: %1$s</string>
+    <string name="gestures_strip_until_fixed">la barra de apps es la original hasta que se arregle: %1$s</string>
 
     <string name="agents_title">agentes de programación</string>
-    <string name="agents_intro">Se instalan con mise, como en Omarchy. Los inicios de sesión se abren en tu navegador; pega las claves con el portapapeles del teclado.</string>
+    <string name="agents_intro">Se instalan como en Omarchy, la mayoría con mise. Los inicios de sesión se abren en tu navegador; pega las claves con el portapapeles del teclado.</string>
     <string name="agents_open">abrir</string>
     <string name="agents_remove">desinstalar</string>
     <string name="agents_still_running">%1$s sigue abierto: ciérralo y vuelve a desinstalarlo</string>

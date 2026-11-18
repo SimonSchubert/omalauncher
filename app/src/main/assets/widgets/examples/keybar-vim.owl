@@ -1,7 +1,7 @@
 keybar "vim" {
   // A key bar for vim and neovim: esc where your thumb is, saving and quitting in one tap, and hjkl that repeat while
   // held. Keys that are commands type them whole (:w and Enter). To use it, copy it over keybar.owl in the folder above.
-  meta { description: "A key bar for vim: esc, :w, :q, undo and redo, hjkl that repeat, and the motions you reach for most"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  meta { description: "A key bar for vim: esc, :w, :q, undo and redo, hjkl that repeat, and the motions you reach for most"; version: "1.1"; license: "MIT"; category: "system"; owl: 23 }
   state down = ""
 
   // l: what it shows; k: a key to press, or t: text to type; r: repeats while held; c: its color.
@@ -44,7 +44,7 @@ keybar "vim" {
         onPress: {
           if repeat == 0 {
             down = k.l
-            haptic()
+            haptic("light")
           }
           if k.t != null {
             typeText(k.t)

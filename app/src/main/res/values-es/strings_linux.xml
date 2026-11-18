@@ -59,6 +59,7 @@
     <string name="linux_agent_cursor">El agente de Cursor para la terminal</string>
     <string name="linux_agent_antigravity">El agente de programación Gemini de Google</string>
     <string name="linux_agent_pi">Agente de programación mínimo y extensible</string>
+    <string name="linux_agent_hermes">El agente de Nous Research, unos 2,5 GB</string>
     <string name="linux_agent_omp">Pi con herramientas y plugins incluidos</string>
     <string name="linux_agent_ori">El agente de programación de OpenRouter</string>
     <string name="linux_agent_muse">El agente de programación de Meta</string>
@@ -130,6 +131,15 @@
     <string name="linux_cpu_pinning_title">llamadas al sistema rápidas</string>
     <string name="linux_cpu_pinning_on">activadas · mantiene Linux en un núcleo de CPU rápido · para los programas que se inicien a partir de ahora</string>
     <string name="linux_cpu_pinning_off">desactivadas · para los programas que se inicien a partir de ahora</string>
+    <string name="linux_session_title">sesión</string>
+    <string name="linux_session_running">en marcha · las apps de Linux, las terminales y los agentes funcionan</string>
+    <string name="linux_session_starting">iniciando…</string>
+    <string name="linux_session_stopped">detenido · no se ejecuta ni se borra nada · sigue detenido tras reiniciar</string>
+    <string name="linux_stop">detener</string>
+    <string name="linux_start">iniciar</string>
+    <string name="linux_stop_ask">¿detener linux?</string>
+    <string name="linux_stop_body">Cierra las apps de Linux, las terminales y los agentes de programación, y termina lo que estaban haciendo. No se borra nada. Los widgets y las apps que necesitan Linux esperan hasta que lo vuelvas a iniciar aquí.</string>
+    <string name="linux_stop_confirm">detener</string>
 
     <string name="linux_notification_channel">Sesión de Linux</string>
     <string name="linux_notify_channel">Agentes y scripts</string>
@@ -139,6 +149,12 @@
     <string name="linux_notification_failed">La instalación de Linux se detuvo · abre configuración › linux para reintentar</string>
     <string name="linux_notification_removing">Eliminando Linux</string>
     <string name="linux_notification_running">Sesión de Linux en ejecución</string>
+
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">guardando en linux…</string>
+    <string name="share_in_saved">guardado en ~/Downloads</string>
+    <string name="share_in_failed">no se pudo guardar en linux</string>
+    <string name="share_in_no_linux">linux aún no está configurado</string>
 
     <string name="packages_title">paquetes</string>
     <string name="packages_search">buscar paquetes</string>

@@ -57,6 +57,7 @@
     <string name="linux_agent_cursor">Cursor 的终端智能体</string>
     <string name="linux_agent_antigravity">Google 的 Gemini 编程智能体</string>
     <string name="linux_agent_pi">精简、可扩展的编程智能体</string>
+    <string name="linux_agent_hermes">Nous Research 的智能体，约 2.5 GB</string>
     <string name="linux_agent_omp">内置工具和插件的 Pi</string>
     <string name="linux_agent_ori">OpenRouter 的编程智能体</string>
     <string name="linux_agent_muse">Meta 的编程智能体</string>
@@ -126,6 +127,15 @@
     <string name="linux_cpu_pinning_title">快速系统调用</string>
     <string name="linux_cpu_pinning_on">已开启 · 让 Linux 运行在一个高性能 CPU 核心上 · 对之后启动的程序生效</string>
     <string name="linux_cpu_pinning_off">已关闭 · 对之后启动的程序生效</string>
+    <string name="linux_session_title">会话</string>
+    <string name="linux_session_running">运行中 · Linux 应用、终端和智能体可用</string>
+    <string name="linux_session_starting">正在启动…</string>
+    <string name="linux_session_stopped">已停止 · 不运行也不删除任何内容 · 重启后仍保持停止</string>
+    <string name="linux_stop">停止</string>
+    <string name="linux_start">启动</string>
+    <string name="linux_stop_ask">停止 linux？</string>
+    <string name="linux_stop_body">会关闭 Linux 应用、终端和编程智能体，并结束它们正在做的事。不会删除任何内容。需要 Linux 的小组件和应用会一直等待，直到你在这里重新启动它。</string>
+    <string name="linux_stop_confirm">停止</string>
 
     <string name="linux_notification_channel">Linux 会话</string>
     <string name="linux_notify_channel">智能体和脚本</string>
@@ -135,6 +145,12 @@
     <string name="linux_notification_failed">Linux 安装已中止 · 打开 设置 › linux 重试</string>
     <string name="linux_notification_removing">正在移除 Linux</string>
     <string name="linux_notification_running">Linux 会话运行中</string>
+
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">正在保存到 linux…</string>
+    <string name="share_in_saved">已保存到 ~/Downloads</string>
+    <string name="share_in_failed">无法保存到 linux</string>
+    <string name="share_in_no_linux">linux 尚未设置</string>
 
     <string name="packages_title">软件包</string>
     <string name="packages_search">搜索软件包</string>

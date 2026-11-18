@@ -88,6 +88,7 @@ internal class WidgetImages(
         // The launcher already holds every app's icon, as snapshot state: reading it redraws once it loads.
         if (src.startsWith("app:")) return services.appIcon(src.removePrefix("app:"))?.let { WidgetImage.Raster(it) }
         if (src.startsWith("icon:")) return services.launcherIcon(src.removePrefix("icon:"))?.let { WidgetImage.Raster(it) }
+        if (src.startsWith("mask:")) return services.launcherMask(src.removePrefix("mask:"))?.let { WidgetImage.Raster(it) }
         // Album art changes with every track: Android holds the current one. Only its wrapper is
         // kept, so asking again for the same art gives the same image and redraws nothing.
         if (src.startsWith("media:")) {

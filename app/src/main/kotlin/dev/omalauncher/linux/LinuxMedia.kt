@@ -18,7 +18,7 @@ import android.os.SystemClock
 import android.util.Log
 import dev.omalauncher.MainActivity
 import dev.omalauncher.R
-import dev.omalauncher.registerNotExported
+import dev.omalauncher.system.registerNotExported
 import dev.omalauncher.widgets.lang.Bool
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null

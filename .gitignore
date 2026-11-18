@@ -8,6 +8,8 @@ local.properties
 .kotlin/
 # fetched by scripts/fetch-proot.sh
 app/src/main/jniLibs/
+# fetched by app/build.gradle.kts (sherpa-onnx)
+app/libs/
 # fastlane
 fastlane/play-store-key.json
 fastlane/report.xml
