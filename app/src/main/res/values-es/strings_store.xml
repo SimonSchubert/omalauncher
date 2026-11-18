@@ -157,6 +157,8 @@
     <string name="store_theme_search">buscar en %1$d temas</string>
     <string name="store_theme_header">hechos por la comunidad, listados en omarchy.org/themes · instalados desde GitHub</string>
     <string name="store_theme_in_use">✓ en uso</string>
+    <string name="store_theme_use">usar</string>
+    <string name="store_theme_github">GitHub</string>
     <string name="store_theme_install_confirm">¿instalar %1$s?</string>
     <string name="store_theme_install_message">De %1$s. Linux recibe sus colores y fondos, no sus scripts ni sus configs de terminal.</string>
     <string name="store_theme_install_message_replaces">De %1$s. Linux recibe sus colores y fondos, no sus scripts ni sus configs de terminal.\n\nReemplaza tu %2$s.</string>

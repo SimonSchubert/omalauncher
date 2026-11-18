@@ -153,6 +153,8 @@
     <string name="store_theme_search">cari %1$d tema</string>
     <string name="store_theme_header">dibuat oleh komunitas, terdaftar di omarchy.org/themes · diinstal dari GitHub</string>
     <string name="store_theme_in_use">✓ dipakai</string>
+    <string name="store_theme_use">pakai</string>
+    <string name="store_theme_github">GitHub</string>
     <string name="store_theme_install_confirm">instal %1$s?</string>
     <string name="store_theme_install_message">Dari %1$s. Linux mendapat warna dan wallpaper-nya, bukan skrip atau konfigurasi terminalnya.</string>
     <string name="store_theme_install_message_replaces">Dari %1$s. Linux mendapat warna dan wallpaper-nya, bukan skrip atau konfigurasi terminalnya.\n\nTema ini menggantikan %2$s milikmu.</string>
