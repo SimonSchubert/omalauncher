@@ -1,8 +1,9 @@
 widget "owl" {
-  meta { owl: 19; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.3"; license: "MIT"; category: "fun" }
+  meta { owl: 19; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.4"; license: "MIT"; category: "fun" }
   // Breathing, blinking and dancing step a few times a second: 10 is plenty. The rocking egg and the hop
   // and flap after a tap are smooth motion, so 30 for those.
-  fps: !hatched || time >= tapAt && time - tapAt < 3 ? 30 : 10
+  fps: time >= tapAt && time - tapAt < 3 ? 30 : !hatched ? (modes.saver ? 15 : 30) : modes.saver ? 5 : 10
+  source modes = android.modes
   page: 2
   order: 1
   size: 3x3
@@ -46,6 +47,21 @@ widget "owl" {
       eggShort: "点按孵化"; egg: "一颗蛋 · 点按孵化"; hungryShort: "点按喂食"; hungry: "饿了 · 点按喂食"
       music: "音乐"; minutes: n => "${n}分钟"; hours: n => "${n}小时"
       day: d => "第 ${d} 天"; tiredShort: b => "累了 · ${b}%"; tired: b => "累了 · 电量 ${b}%"; fed: t => "${t}前喂过"
+    }
+    ru {
+      eggShort: "яйцо · нажмите"; egg: "яйцо · нажмите, и сова вылупится"; hungryShort: "покормить"; hungry: "голодная · нажмите, чтобы покормить"
+      music: "музыка"; minutes: n => "${n} мин"; hours: n => "${n} ч"
+      day: d => "день ${d}"; tiredShort: b => "устала · ${b}%"; tired: b => "устала · заряд ${b}%"; fed: t => "покормлена ${t} назад"
+    }
+    ja {
+      eggShort: "タップでふ化"; egg: "たまご · タップでふ化"; hungryShort: "タップでごはん"; hungry: "はらぺこ · タップでごはん"
+      music: "音楽"; minutes: n => "${n} 分"; hours: n => "${n} 時間"
+      day: d => "${d} 日目"; tiredShort: b => "へとへと · ${b}%"; tired: b => "へとへと · バッテリー ${b}%"; fed: t => "ごはんは ${t}前"
+    }
+    uk {
+      eggShort: "яйце · торкніться"; egg: "яйце · торкніться, і сова вилупиться"; hungryShort: "нагодувати"; hungry: "голодна · торкніться, щоб нагодувати"
+      music: "музика"; minutes: n => "${n} хв"; hours: n => "${n} год"
+      day: d => "день ${d}"; tiredShort: b => "втомилася · ${b}%"; tired: b => "втомилася · заряд ${b}%"; fed: t => "нагодована ${t} тому"
     }
   }
 

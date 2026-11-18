@@ -54,6 +54,8 @@
     <!-- A widget tile that runs Linux commands, before Linux is installed. -->
     <string name="home_widget_needs_linux">needs Linux</string>
     <string name="home_widget_needs_linux_text">runs commands in the optional Arch Linux</string>
+    <string name="home_widget_linux_stopped">Linux is stopped</string>
+    <string name="home_start_linux">start</string>
 
     <!-- A terminal tile whose terminal isn't showing. -->
     <string name="home_terminal_starting">starting…</string>
@@ -87,7 +89,12 @@
     <string name="home_linux_window">Linux</string>
 
     <!-- The drawer's long-press menu of an app. -->
-    <string name="drawer_action_pin">add to home</string>
-    <string name="drawer_action_info">app info</string>
-    <string name="drawer_action_uninstall">uninstall</string>
+    <!-- A message from the developer, shown once over home. -->
+    <string name="home_news_close">close</string>
+    <string name="home_news_off">don\'t show news again</string>
+    <!-- Under the numbers of a message's countdown. -->
+    <string name="home_news_days">days</string>
+    <string name="home_news_hours">hours</string>
+    <string name="home_news_minutes">min</string>
+    <string name="home_news_seconds">sec</string>
 </resources>

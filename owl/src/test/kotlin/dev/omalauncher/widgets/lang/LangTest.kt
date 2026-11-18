@@ -1058,6 +1058,14 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 6 }\n Text { text: 1; onTap: share(\"x\") } }").contains("share needs owl 7"))
     }
 
+    @Test fun hapticStrength() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n state feel = \"light\"\n Text { text: 1; onTap: { haptic(\"light\"); haptic(\"strong\"); haptic(feel); haptic() } } }")
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: haptic(\"hard\") } }").contains("haptic takes light, medium, strong"))
+        assertTrue(compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: haptic(\"light\") } }").contains("needs owl 23"))
+        assertTrue(compileError("widget {\n meta { owl: 22 }\n state feel = \"light\"\n Text { text: 1; onTap: haptic(feel) } }").contains("needs owl 23"))
+        Compiler.compile("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: haptic() } }")
+    }
+
     @Test fun androidApps() {
         val p = Compiler.compile("widget {\n meta { owl: 8 }\n source a = android.apps every 1m\n Image { src: a[0].icon; onTap: androidApp(a[0].key) } }")
         assertEquals(listOf("android.apps"), p.globals.map { (it as Global.Source).kind })
@@ -1187,6 +1195,35 @@ class LangTest {
         assertTrue(compileError("widget {\n meta { owl: 15 }\n keyboard: false\n Text { text: 1 } }").isNotEmpty())
     }
 
+    @Test fun theStripIsAFileOfItsOwn() {
+        val p =
+            Compiler.compile(
+                "strip \"mine\" {\n meta { owl: 24 }\n source s = android.strip\n state menu = \"\"\n" +
+                    " Row { scroll: true\n for a in s.apps key a.key { Box { onTap: open(a.key); onLongPress: menu = a.key\n" +
+                    " Image { src: a.icon; size: 40 } } } } }",
+            )
+        assertEquals(OwlKind.Strip, p.kind)
+        assertEquals("mine", p.name)
+        assertTrue(p.root.isEmpty())
+        assertEquals(1, p.screen!!.size)
+        assertFalse(p.needsLinux)
+        assertEquals(listOf("read the recently opened apps"), p.commands)
+        assertEquals(OwlKind.Strip, OwlKind.of("// apps\nstrip \"x\" { }"))
+
+        assertTrue(compileError("strip {\n meta { owl: 23 }\n Text { text: 1 } }").contains("needs owl 24"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n size: 2x2\n Text { text: 1 } }").contains("puts it above the prompt bar"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n onTap: open(\"a:x\")\n Text { text: 1 } }").contains("handlers go on the nodes inside"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n screen { Text { text: 1 } } }").contains("a strip has no screen { }"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n Text { text: 1; onTap: close() } }").contains("the strip stays on home"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n}").contains("a strip needs at least one node"))
+        assertTrue(compileError("strip {\n meta { owl: 24 }\n Browser { url: \"https://example.com\" } }").contains("or the strip"))
+        // android.strip and a Row that scrolls are owl 24 wherever they're used.
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n source s = android.strip\n Text { text: 1 } }").contains("needs owl 24"))
+        assertTrue(compileError("widget {\n meta { owl: 23 }\n Row { scroll: true; Text { text: 1 } } }").contains("needs owl 24"))
+        Compiler.compile("widget {\n meta { owl: 24 }\n Row { scroll: true; Text { text: 1 } } }")
+        assertTrue(compileError("widget {\n meta { owl: 24 }\n Row { scroll: true; wrap: true; Text { text: 1 } } }").contains("drop scroll or wrap"))
+    }
+
     @Test fun extraKeysAreAFileOfTheirOwn() {
         val p =
             Compiler.compile(
@@ -1309,7 +1346,7 @@ class LangTest {
     }
 
     @Test fun androidWindows() {
-        val src = "widget {\n meta { owl: 23 }\n source w = android.windows\n for x in w key x.key { Text { text: x.name; onTap: open(x.key) } } }"
+        val src = "widget {\n meta { owl: 25 }\n source w = android.windows\n for x in w key x.key { Text { text: x.name; onTap: open(x.key) } } }"
         val p = Compiler.compile(src)
         assertEquals("android.windows", (p.globals.single() as Global.Source).kind)
         assertTrue(!p.needsLinux)
@@ -1318,7 +1355,7 @@ class LangTest {
             listOf("sees the titles of open Linux windows (folders, files, commands); check nothing sends them elsewhere"),
             Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") },
         )
-        assertTrue(compileError(src.replace("owl: 23", "owl: 22")).contains("android.windows needs owl 23"))
+        assertTrue(compileError(src.replace("owl: 25", "owl: 24")).contains("android.windows needs owl 25"))
     }
 
     @Test fun everyFrame() {
@@ -1674,6 +1711,24 @@ class LangTest {
         // A forgotten length is caught, not a snooze that silently does nothing.
         compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"snooze\", \"k\") } }").let { assertTrue(it, it.contains("notification(\"snooze\", key, seconds)")) }
         compileError("widget {\n meta { owl: 13 }\n Text { text: 1; onTap: notification(\"snoozeAll\") } }").let { assertTrue(it, it.contains("notification(\"snoozeAll\", seconds)")) }
+    }
+
+    /** What's playing moved to a point in it (owl 23); the other media words still take nothing more. */
+    @Test fun mediaSeek() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n source m = android.media\n Text { text: 1; onTap: { media(\"seek\", 90); media(\"seek\", m.position + 10); media(\"toggle\") } } }")
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"seek\", 90) } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"seek\") } }").let { assertTrue(it, it.contains("media(\"seek\", seconds)")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"next\", 3) } }").let { assertTrue(it, it.contains("media(\"next\")")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"rewind\") } }").let { assertTrue(it, it.contains("media takes")) }
+    }
+
+    /** The player's speed and its own buttons (owl 23), next to seek. */
+    @Test fun mediaSpeedAndActions() {
+        Compiler.compile("widget {\n meta { owl: 23 }\n source m = android.media\n Column { Text { text: m.speed; onTap: media(\"speed\", 1.5) }\n for a in m.actions { Text { text: a.title; onTap: media(\"action\", a.id) } } } }")
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"speed\", 2) } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 22 }\n Text { text: 1; onTap: media(\"action\", \"like\") } }").let { assertTrue(it, it.contains("needs owl 23")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"action\") } }").let { assertTrue(it, it.contains("media(\"action\", a.id)")) }
+        compileError("widget {\n meta { owl: 23 }\n Text { text: 1; onTap: media(\"speed\") } }").let { assertTrue(it, it.contains("media(\"speed\", 1.5)")) }
     }
 
     @Test fun sliderAndInput() {

@@ -25,8 +25,8 @@ file.
 
 ```sh
 ./scripts/fetch-proot.sh      # once per checkout, and again when the build asks; needs bsdtar
-./gradlew :owl:test :app:testDebugUnitTest :owl:owlJar
-./gradlew :app:assembleDebug :app:lintDebug
+./gradlew :owl:test :app:testFossDebugUnitTest :owl:owlJar
+./gradlew :app:assembleFossDebug :app:lintFossDebug :app:lintPlayDebug
 ```
 
 These are what CI runs (`.github/workflows/ci.yml`). Run both before you call a
@@ -39,7 +39,7 @@ change done.
 - Tests: `owl/src/test` (the language) and `app/src/test` (plain JVM tests of
   the app). New behavior gets a test where the code allows one.
 - With more than one device connected, set `ANDROID_SERIAL` before
-  `installDebug`. Don't uninstall the app from a device you didn't set up: it
+  `installFossDebug`. Don't uninstall the app from a device you didn't set up: it
   holds the user's Linux install and widgets.
 - Debug builds run guest commands from adb:
   `adb shell am start -n dev.omalauncher/.MainActivity --es exec '<cmd>'`.
@@ -66,7 +66,7 @@ change done.
   the app for JVM 11, so an inline owl function fails the app build
   (`INLINE_FROM_HIGHER_PLATFORM`). Write a plain method instead.
 - **UI text goes in `res/values/strings_<area>.xml`**, with a translation in
-  every `values-*` folder (de, es, in, pt, zh). `HardcodedTextTest` fails on
+  every `values-*` folder (de, es, in, ja, pt, ru, zh). `HardcodedTextTest` fails on
   literal text in UI calls. German is lower case wherever the English is, and
   casual (du). Agent prompts, owl errors, logs and the stock `.owl` files stay
   English.

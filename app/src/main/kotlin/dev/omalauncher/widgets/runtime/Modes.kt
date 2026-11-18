@@ -1,7 +1,7 @@
 package dev.omalauncher.widgets.runtime
 
-import dev.omalauncher.changeObserver
-import dev.omalauncher.registerNotExported
+import dev.omalauncher.system.changeObserver
+import dev.omalauncher.system.registerNotExported
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent

@@ -89,6 +89,36 @@ class AgentsTest {
         )
     }
 
+    /** A system update updates Hermes with its own updater, and only where its install finished. */
+    @Test fun updatesRunHermesOnlyWhereItIsInstalled() {
+        val home = createTempDirectory("own").toFile()
+        val stub = File(home, "bin/hermes").apply { parentFile.mkdirs() }
+        stub.writeText("#!/bin/sh\necho \"${'$'}*\" >>\"${'$'}HOME/ran\"\n")
+        stub.setExecutable(true)
+        fun update(): Int {
+            val process = ProcessBuilder("sh", "-c", OWN_UPDATES).redirectErrorStream(true)
+            process.environment()["HOME"] = home.path
+            process.environment()["PATH"] = "${stub.parent}:${System.getenv("PATH")}"
+            return process.start().waitFor()
+        }
+        assertEquals(0, update())
+        assertTrue("updated without an install", !File(home, "ran").exists())
+        File(home, ".hermes/hermes-agent/.hermes-bootstrap-complete").apply { parentFile.mkdirs() }.writeText("")
+        val downloads = listOf("pnpm", "uv").map { File(home, ".hermes/cache/$it/x").apply { parentFile.mkdirs() } }
+        downloads.forEach { it.writeText("") }
+        val kept = File(home, ".hermes/cache/web/x").apply { parentFile.mkdirs() }.also { it.writeText("") }
+        assertEquals(0, update())
+        assertEquals("update --yes\n", File(home, "ran").readText())
+        assertTrue("the updater's downloads stay", downloads.none { it.parentFile.exists() })
+        assertTrue("another cache went too", kept.exists())
+        // A failed update still fails the system update, and its downloads go all the same.
+        stub.writeText("#!/bin/sh\nexit 3\n")
+        downloads.forEach { it.parentFile.mkdirs() }
+        assertTrue("a failed update passed", update() != 0)
+        assertTrue(downloads.none { it.parentFile.exists() })
+        home.deleteRecursively()
+    }
+
     /** Omarchy 4.5's agents get the prompt whole, however it's quoted, in the form each one takes. */
     @Test fun newAgentsReceiveThePromptLiterally() {
         val prompt = "Explain \"it's quoted\"; \$(exit 17)\nand keep \$HOME literal."
@@ -100,6 +130,7 @@ class AgentsTest {
                 "mcode" to listOf("mcode", "--", prompt),
                 "devin" to listOf("devin", "--", prompt),
                 "commandcode" to listOf("commandcode", "--", prompt),
+                "hermes" to listOf("hermes", "chat", "--yolo", "--query=$prompt"),
             )
         val dir = createTempDirectory("agents").toFile()
         fun stub(
@@ -121,6 +152,8 @@ class AgentsTest {
             stub(bin, "printf '%s\\0' \"${'$'}(basename \"${'$'}0\")\" \"${'$'}@\"")
             assertEquals(bin, args, run(agentInvocation(bin, prompt)).split('\u0000').dropLast(1))
         }
+        // Reading something untrusted, Hermes has only its file tools: no terminal, web or browser.
+        assertEquals(listOf("hermes", "chat", "-t", "file", "--query=$prompt"), run(agentInvocation("hermes", prompt, readOnly = true)).split('\u0000').dropLast(1))
         // Amp reads its first message from stdin, then stays interactive.
         stub("amp", "cat")
         assertEquals(prompt + "\n", run(agentInvocation("amp", prompt)))

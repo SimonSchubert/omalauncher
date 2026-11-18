@@ -15,9 +15,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import dev.omalauncher.LauncherData
+import dev.omalauncher.storage.LauncherData
 import dev.omalauncher.R
 import dev.omalauncher.linux.Proot
+import dev.omalauncher.system.assetText
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.decodeForScreen
 import dev.omalauncher.upgrade.appStamp
@@ -117,7 +118,7 @@ class ThemeStore(
     /** Every Omarchy theme's colors, from the app's assets (see scripts/fetch-theme-colors.sh). Read off the main thread. */
     val bundled: List<BundledTheme> by lazy {
         context.assets.list("themes").orEmpty().sorted().map { file ->
-            val text = context.assets.open("themes/$file").bufferedReader().use { it.readText() }
+            val text = context.assetText("themes/$file")
             BundledTheme(file.removeSuffix(".toml"), ThemeColors.resolve(ThemeColors.parse(text)))
         }
     }
@@ -173,7 +174,7 @@ class ThemeStore(
      */
     fun loadPalette() {
         // A user's own theme has no bundled colors.
-        runCatching { ThemeColors.resolve(ThemeColors.parse(context.assets.open("themes/$picked.toml").bufferedReader().use { it.readText() })) }
+        runCatching { ThemeColors.resolve(ThemeColors.parse(context.assetText("themes/$picked.toml"))) }
             .recoverCatching { checkNotNull(dirs.load(picked)).colors }
             .onSuccess { Palette.apply(it) }
     }
@@ -254,7 +255,7 @@ class ThemeStore(
 
     /** Each theme's first background at [OMARCHY_REF], bundled by scripts/fetch-theme-colors.sh. */
     private val firstBackgrounds: Map<String, String> by lazy {
-        runCatching { context.assets.open("theme-backgrounds.txt").bufferedReader().use { it.readLines() } }
+        runCatching { context.assetText("theme-backgrounds.txt").lines() }
             .getOrDefault(emptyList())
             .mapNotNull { line -> line.split(' ', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }
             .toMap()
@@ -319,7 +320,9 @@ class ThemeStore(
         withContext(Dispatchers.IO) {
             download = ThemeDownload.Running(0)
             try {
-                release.download(picked, dirs.user) { download = ThemeDownload.Running(it) }
+                val files = ReleaseFiles.parse(context.assetText(RELEASE_FILES))
+                check(files.ref == OMARCHY_REF) { "$RELEASE_FILES is for ${files.ref}, rerun scripts/fetch-theme-colors.sh" }
+                release.download(files, picked, dirs.user) { download = ThemeDownload.Running(it) }
                 themes = scan()
                 complete = true
                 download = ThemeDownload.Idle
@@ -548,7 +551,13 @@ class ThemeStore(
     private fun savedTheme(): OmarchyTheme? = runCatching { dirs.load(picked) }.getOrNull()
 
     companion object {
-        /** The Omarchy commit themes and configs come from. Changing it updates them on every install. */
+        /** The files [OmarchyRelease.download] fetches, by scripts/fetch-theme-colors.sh. */
+        const val RELEASE_FILES = "omarchy-files.txt"
+
+        /**
+         * The Omarchy commit themes and configs come from. Changing it updates them on every install;
+         * rerun scripts/fetch-theme-colors.sh after, for [RELEASE_FILES] and the bundled colors.
+         */
         const val OMARCHY_REF = "ac2690cd7be4f47e4a255f5e2e78d904d436b068"
 
         private const val RENDERED_BY = "rendered_by"

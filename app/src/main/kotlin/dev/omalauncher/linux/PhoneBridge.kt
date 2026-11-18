@@ -4,10 +4,10 @@ import android.content.Context
 import android.os.FileObserver
 import android.util.Log
 import dev.omalauncher.BuildConfig
-import dev.omalauncher.PhoneFolders
+import dev.omalauncher.storage.PhoneFolders
 import dev.omalauncher.PickActivity
 import dev.omalauncher.R
-import dev.omalauncher.ui.mimeOf
+import dev.omalauncher.ui.files.mimeOf
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.runtime.battery
 import android.content.ActivityNotFoundException
@@ -16,7 +16,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import androidx.core.content.FileProvider
-import dev.omalauncher.postNotification
+import dev.omalauncher.system.postLinuxNotification
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import dev.omalauncher.upgrade.writeAtomically
@@ -116,7 +116,7 @@ class PhoneBridge(
                     "ls" -> withContext(Dispatchers.IO) { ls(args.getOrNull(1).orEmpty()) }
                     "get" -> withContext(Dispatchers.IO) { get(args.drop(1)) }
                     "put" -> withContext(Dispatchers.IO) { put(args.drop(1)) }
-                    "pick" -> pick(args.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: DOWNLOADS)
+                    "pick" -> pick(args.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: Proot.GUEST_DOWNLOADS)
                     else -> Answer.Usage("unknown command '${args[0]}'")
                 }
             } catch (e: Exception) {
@@ -153,7 +153,7 @@ class PhoneBridge(
         text: String?,
     ): Answer {
         if (title.isBlank()) return Answer.Usage("notify: a title")
-        val posted = context.postNotification(NOTIFY_CHANNEL, context.getString(R.string.linux_notify_channel), title, text)
+        val posted = context.postLinuxNotification(title, text)
         return if (posted) Answer.Ok(null) else Answer.Denied(NO_NOTIFICATIONS)
     }
 
@@ -258,7 +258,7 @@ class PhoneBridge(
 
     /** Android's file picker, for the user to choose files from anywhere on the phone; copied into [dir], as they're named. */
     private suspend fun pick(dir: String): Answer {
-        val into = withContext(Dispatchers.IO) { proot.guestFile(dir)?.takeIf { it.isDirectory || (dir == DOWNLOADS && it.mkdirs()) } } ?: return Answer.Usage("pick: $dir isn't a folder")
+        val into = withContext(Dispatchers.IO) { proot.guestFile(dir)?.takeIf { it.isDirectory || (dir == Proot.GUEST_DOWNLOADS && it.mkdirs()) } } ?: return Answer.Usage("pick: $dir isn't a folder")
         val picked = PickActivity.picked()
         try {
             context.startActivity(Intent(context, PickActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -335,7 +335,6 @@ class PhoneBridge(
         const val SCRIPT = "$COMMAND.sh"
         /** What this launcher's `omalauncher` answers, for `omalauncher version`. */
         val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "version")
-        const val NOTIFY_CHANNEL = "linux"
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
         const val LOCATION_MS = 10_000L
@@ -343,7 +342,6 @@ class PhoneBridge(
         const val CONTROL_MS = 2_000L
         /** Under the script's 2 minutes, so a picker left open says nothing was picked. */
         const val PICK_MS = 110_000L
-        const val DOWNLOADS = "/root/Downloads"
         const val DAYS = 14
         const val MAX_DAYS = 366
         const val MAX_EVENTS = 1000

@@ -4,7 +4,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Noto+Sans+SC:wght@800&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Noto+Sans+SC:wght@800&family=Noto+Sans+JP:wght@800&display=block" rel="stylesheet">
 <style>
   * { margin: 0; box-sizing: border-box; }
   html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
@@ -18,8 +18,9 @@
              text-align: center; color: var(--ink);
              font-size: 66px; font-weight: 800; line-height: 1.1; letter-spacing: -2px; }
   .caption em { font-style: normal; color: var(--accent); }
-  /* JetBrains Mono has no Chinese; its letter-spacing would squeeze the characters together. */
+  /* JetBrains Mono has no Chinese or Japanese; its letter-spacing would squeeze the characters together. */
   :lang(zh) .caption { font-family: 'JetBrains Mono', 'Noto Sans SC', sans-serif; letter-spacing: 0; }
+  :lang(ja) .caption { font-family: 'JetBrains Mono', 'Noto Sans JP', sans-serif; letter-spacing: 0; }
   /* 20:9, a phone's screen shape, with a phone's round corners. */
   .shot { position: absolute; top: 240px; left: 171px; display: block; width: 738px; height: 1640px;
           border-radius: 56px; box-shadow: 0 0 0 2px rgba(255,255,255,0.10), 0 24px 64px rgba(0,0,0,0.45); }
@@ -59,6 +60,15 @@ const TITLES = {
        'Buat jadi <em>milikmu</em>'],
   zh: ['手机上的 <em>Arch Linux</em>', '主屏幕，<em>百变风格</em>', '和 <em>编程智能体</em> 对话', '真正的 <em>终端</em>',
        '会 <em>动</em> 的小组件', '22 款主题，<em>一键切换</em>', '<em>小组件商店</em>', '打造 <em>你的</em> 风格'],
+  ru: ['Arch Linux на <em>телефоне</em>', 'Ваш экран, <em>любой стиль</em>', 'Говорите с <em>ИИ-агентом</em>',
+       'Настоящий <em>терминал</em>', 'Виджеты, которые <em>двигаются</em>', '22 темы, <em>одно касание</em>',
+       '<em>Магазин виджетов</em>', 'Настройте <em>под себя</em>'],
+  ja: ['スマホで <em>Arch Linux</em>', 'ホームを <em>好みのスタイルに</em>', '<em>コーディングエージェント</em><br>と話そう',
+       '本物の <em>ターミナル</em>', '<em>動く</em> ウィジェット', '22 のテーマを <em>ワンタップで</em>', '<em>ウィジェットストア</em>',
+       '<em>自分だけ</em> の画面に'],
+  uk: ['Arch Linux на <em>телефоні</em>', 'Екран у <em>будь-якому стилі</em>', 'Говоріть з <em>ШІ-агентом</em>',
+       'Справжній <em>термінал</em>', 'Віджети, що <em>рухаються</em>', '22 теми, <em>один дотик</em>',
+       '<em>Магазин віджетів</em>', 'Налаштуйте <em>під себе</em>'],
 };
 const params = new URLSearchParams(location.search);
 const n = +(params.get('s') || 1);

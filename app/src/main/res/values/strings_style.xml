@@ -19,6 +19,8 @@
     <string name="style_icons">icons</string>
     <string name="style_monochrome">monochrome</string>
     <string name="style_colored">colored</string>
+    <string name="style_icon_pack">icon pack</string>
+    <string name="style_icon_pack_none">none</string>
     <string name="style_home_apps">home apps</string>
     <string name="style_boxed">boxed</string>
     <string name="style_icon_only">icon only</string>
@@ -87,6 +89,14 @@
     <string name="style_keybar_gone">%1$s is gone, so the stock keys show</string>
     <string name="style_keybar_restore_title">back to the stock keys?</string>
     <string name="style_keybar_restore_message">Your keybar.owl is replaced with the one this launcher ships.</string>
+    <string name="style_strip">strip</string>
+    <string name="style_strip_removed">removed</string>
+    <string name="style_strip_stock">stock</string>
+    <string name="style_strip_edited">edited</string>
+    <string name="style_strip_back_to_stock">back to stock</string>
+    <string name="style_strip_gone">%1$s is gone, so the stock strip shows</string>
+    <string name="style_strip_restore_title">back to the stock strip?</string>
+    <string name="style_strip_restore_message">Your strip.owl is replaced with the one this launcher ships.</string>
     <string name="style_replace">replace</string>
 
     <!-- Themes. -->
@@ -171,10 +181,11 @@
     <string name="gestures_until_fixed">%1$s until it\'s fixed: %2$s</string>
     <!-- %1$s is the widget language's error, in English. -->
     <string name="gestures_keybar_until_fixed">the terminal key bar is the stock one until it\'s fixed: %1$s</string>
+    <string name="gestures_strip_until_fixed">the recent apps strip is the stock one until it\'s fixed: %1$s</string>
 
     <!-- Settings › coding agents (ui/AgentsScreen.kt). -->
     <string name="agents_title">coding agents</string>
-    <string name="agents_intro">Installed with mise, like Omarchy. Logins open in your browser; paste keys with the keyboard\'s clipboard.</string>
+    <string name="agents_intro">Installed the way Omarchy does, most with mise. Logins open in your browser; paste keys with the keyboard\'s clipboard.</string>
     <string name="agents_open">open</string>
     <string name="agents_remove">remove</string>
     <string name="agents_still_running">%1$s is still running: close it, then remove it again</string>

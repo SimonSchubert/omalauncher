@@ -22,6 +22,7 @@ agent in the launcher, which is not affiliated with or endorsed by any of them.
 | `agent-opencode` | opencode | opencode | @lobehub/icons (MIT) |
 | `agent-pi` | Pi | pi.dev | drawn for Omalauncher, a π in the colors of Pi's mark |
 | `agent-crush` | Crush | Charm | redrawn from Charm's logo |
+| `agent-hermes` | Hermes | Nous Research | the Hermes Agent app icon (MIT) |
 | `agent-omp` | Oh My Pi | can1357 | [oh-my-pi](https://github.com/can1357/oh-my-pi)'s icon (MIT) |
 | `agent-ori` | OpenRouter | OpenRouter | @lobehub/icons (MIT) |
 | `agent-muse` | Meta | Meta | @lobehub/icons (MIT) |
@@ -55,4 +56,13 @@ It is installed into the Linux guest when GPU acceleration is turned on for an A
 `scripts/fetch-proot.sh` downloads pinned versions of Termux's builds of PRoot (GPL-2.0),
 talloc (LGPL-3.0) and libandroid-shmem (BSD-3-Clause); they are not in this
 repository. The app lists every component it ships, with its license, under
-settings › licenses (`ui/LicensesScreen.kt`, texts in `app/src/main/assets/licenses/`).
+settings › licenses (`ui/settings/LicensesScreen.kt`, texts in `app/src/main/assets/licenses/`).
+
+## Google Play In-App Updates
+
+The `play` build, the one on Google Play, includes Google's
+[Play In-App Updates library](https://developer.android.com/guide/playcore/in-app-updates)
+(`com.google.android.play:app-update`) under the
+[Play Core SDK Terms](https://developer.android.com/guide/playcore/license). It is not open
+source, so it isn't listed under settings › licenses, and the `foss` build (GitHub releases,
+F-Droid) leaves it out.

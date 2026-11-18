@@ -1,0 +1,112 @@
+link2symlink: make PROOT_L2S_DIR hold every file, and link a followed link into its group
+
+Without PROOT_L2S_DIR the file behind a faked hard link and its intermediate
+sit next to the link, where the guest lists them. A program that hard links
+a directory entry by entry (uv installing wheels out of its cache, pnpm,
+cp -al) then links those too: the intermediate fails with EPERM, and the
+file behind gets a group of its own inside the first. Hermes's installer
+ended there ("failed to hardlink file ... .l2s.tags.py0001: Operation not
+permitted"). With PROOT_L2S_DIR they live in one directory outside the
+guest's and a listing shows the link alone, so the app sets it. Two things
+kept that from working:
+
+A name there was "<file name><NNNN>", counted up from 0001 to 0999: the
+thousandth __init__.py took 0999 again and the rename replaced the file
+that had it, and two PRoot of one rootfs could pick the same free number.
+The number is now the file's inode number, which is its own for as long as
+the file exists; when a thousand names in a row are taken, link() fails
+with EMLINK instead of replacing a file.
+
+linkat(AT_SYMLINK_FOLLOW), which Python's os.link() uses, reached the file
+behind a faked hard link and moved it as if it were linked for the first
+time. The first group's links then reported the old count, and removing
+every link left the file behind. Such a source is now one more link of the
+group it belongs to.
+
+diff --git a/src/extension/link2symlink/link2symlink.c b/src/extension/link2symlink/link2symlink.c
+index 84763c4..37d9ccf 100644
+--- a/src/extension/link2symlink/link2symlink.c
++++ b/src/extension/link2symlink/link2symlink.c
+@@ -594,11 +594,13 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
+ 	char new_final[PATH_MAX];
+ 	char * name;
+ 	struct stat statl;
++	struct stat statf;
+ 	ssize_t size;
+ 	int status;
+ 	int link_count;
+ 	int first_link = 1;
+-	int intermediate_suffix = 1;
++	unsigned long long intermediate_suffix = 1;
++	int attempts = 0;
+ 
+ 	/* Note: this path was already canonicalized.  */
+ 	size = read_string(tracee, original, peek_reg(tracee, CURRENT, sysarg), PATH_MAX);
+@@ -629,6 +631,21 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
+ 
+ 		if (strncmp(name, PREFIX, strlen(PREFIX)) == 0)
+ 			first_link = 0;
++	} else if (is_l2s_file(original)
++		   && strlen(original) < PATH_MAX
++		   && (strcpy(intermediate, original), intermediate[strlen(original) - 5] = '\0',
++		       stat(intermediate, &statf) == 0)
++		   && statf.st_dev == statl.st_dev && statf.st_ino == statl.st_ino
++		   && lstat(intermediate, &statf) == 0 && S_ISLNK(statf.st_mode)) {
++		/* The file behind a faked hard link, which is what the
++		 * canonicalization hands over when the link was followed:
++		 * linkat(AT_SYMLINK_FOLLOW), Python's os.link().  It already
++		 * has its intermediate, "<this name>" without the link count,
++		 * so this is one more link to it.  Moving it as if it were
++		 * linked for the first time would hide it behind a second
++		 * intermediate that its links don't know: they would report
++		 * the old count, and removing them all would leave the file.  */
++		first_link = 0;
+ 	} else {
+ 		/* compute new name */
+ 		name = strrchr(original,'/');
+@@ -638,14 +655,15 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
+ 			name++;
+ 
+ 		if (get_l2s_directory()) {
+-			/* "<l2s>/<PREFIX><name>" plus the four digits of the
+-			 * suffix and the ".0002" of the final file.  The
++			/* "<l2s>/<PREFIX><name>" plus the digits of the
++			 * suffix (an inode number, twenty at most) and the
++			 * ".0002" of the final file.  The
+ 			 * bound used to be computed from the *directory* of
+ 			 * @original, which says nothing about the length of
+ 			 * the name appended here: a short directory and a
+ 			 * long name passed it and then overran these
+ 			 * buffers.  */
+-			if (l2s_directory_length + strlen(PREFIX) + strlen(name) + 11 >= PATH_MAX)
++			if (l2s_directory_length + strlen(PREFIX) + strlen(name) + 27 >= PATH_MAX)
+ 				return -ENAMETOOLONG;
+ 
+ 			/* Ask for the descriptor here, so a directory that
+@@ -671,11 +689,24 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
+ 	}
+ 
+ 	if (first_link) {
++		/* The l2s directory holds the files of every directory, and
++		 * every PRoot of this rootfs uses it at once.  Counting up
++		 * from one there runs out at the thousandth "__init__.py",
++		 * and two PRoot can pick the same free number for two files.
++		 * The inode number is this file's alone for as long as it
++		 * exists, and it stays the same once moved.  */
++		if (get_l2s_directory())
++			intermediate_suffix = statl.st_ino;
++
+ 		/*Move the original content to the new path. */
+ 		do {
+-			sprintf(new_intermediate, "%s%04d", intermediate, intermediate_suffix);
++			sprintf(new_intermediate, "%s%04llu", intermediate, intermediate_suffix);
+ 			intermediate_suffix++;
+-		} while ((l2s_access(new_intermediate) != -1) && (intermediate_suffix < 1000));
++		} while ((l2s_access(new_intermediate) != -1) && (++attempts < 1000));
++		/* Every name is taken: the last one tried belongs to another
++		 * file, which the rename below would replace.  */
++		if (attempts == 1000)
++			return -EMLINK;
+ 		strcpy(intermediate, new_intermediate);
+ 
+ 		strcpy(final, intermediate);

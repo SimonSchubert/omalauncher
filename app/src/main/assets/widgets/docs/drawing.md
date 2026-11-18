@@ -38,7 +38,8 @@ the foreground. A widget that reads `time` animates while it's on screen, up to
 backdrop drawn only while music plays, costs nothing (older launchers
 animate whenever `time` appears at all). Each frame costs battery for as long as the page shows, so say how many
 the animation needs with `fps:` (owl 19, see docs/declarations.md): `fps: 10` for a pet that blinks and breathes,
-`fps: tapped ? 30 : 10` for one that hops after a tap. Move things by `time`, not by counting frames, so they keep
+`fps: tapped ? 30 : 10` for one that hops after a tap. Give fewer while battery saver is on, keeping what the user is
+driving smooth: `source modes = android.modes` and `fps: tapped ? 30 : modes.saver ? 5 : 10`. Move things by `time`, not by counting frames, so they keep
 their speed at any rate. A game whose things move by their speed, bounce and collide keeps them in states and
 moves them in `every frame` by `dt` (owl 21, see Triggers in docs/declarations.md, and `examples/space-bounce`).
 
@@ -116,9 +117,12 @@ scene, or what a tap hit (the model whose point shows nearest the finger).
 ground (roads, floors, water) in a scene of its own first, and what stands on it in a second scene with the same
 camera: then nothing on the ground is ever sorted under it, however big its triangles are.
 
-What it can't do: there's no depth buffer. Triangles are sorted by their distance from the camera and drawn
-far to near, so two that cut through each other, or a long one lying over a short one, can show in the wrong
-order; keep models apart, and split long thin ground into cells. Edges aren't smoothed. One scene draws at most
+What it can't do: there's no depth buffer. Within one model the order is right from any side, even where its
+parts overlap (a wheel poking into a car's body): the launcher cuts the mesh along its own faces once and draws
+them far to near from where the camera is (launchers before 1.5 sorted them by depth alone, and overlapping parts
+could flicker as the view turned). Between models, triangles are still sorted by their distance from the camera,
+so two models that cut through each other, or a long one lying over a short one, can show in the wrong order;
+keep models apart, build a thing that's one piece as one mesh, and split long thin ground into cells. Edges aren't smoothed. One scene draws at most
 60000 triangles a frame, after those out of view or facing away are dropped. See `examples/canyon-run`.
 
 ## Shader

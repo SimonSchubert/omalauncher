@@ -5,7 +5,7 @@ written in OWL, a small declarative language in the spirit of QML. Its first
 word says what it is: `widget "name" { }` is a home-screen tile, `face "name" { }` a face, a whole home page
 left of your first one (docs/faces.md), and `app "name" { }` an app in the app drawer that opens full screen
 (docs/apps.md). `panel "name" { }` is a view a swipe on home opens (docs/panels.md), and `keybar "name" { }` the terminal key bar
-over the keyboard while typing in a terminal (docs/keybar.md). Everything here and in docs/ is about widgets unless it says otherwise; the others are written
+over the keyboard while typing in a terminal (docs/keybar.md), and `strip "name" { }` the strip of recent apps above home's prompt bar (docs/strip.md). Everything here and in docs/ is about widgets unless it says otherwise; the others are written
 the same way. Save a file and it appears within a second. Then run `owl-check <file>`:
 
 ```
@@ -91,7 +91,7 @@ A file holds declarations, then the nodes it shows:
 ## The docs
 
 The rest is in `docs/`. Read the ones for what you're making before you write: a widget usually needs
-declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a panel or a key bar their own file too.
+declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a panel, a key bar or the strip their own file too.
 
 | read | for |
 |---|---|
@@ -107,6 +107,7 @@ declarations.md, nodes.md, expressions.md and handlers.md; a face, an app, a pan
 | docs/browser.md | a web page in a tile: `Browser`, and `web` to steer it |
 | docs/panels.md | panels a swipe opens, the app drawer among them |
 | docs/keybar.md | the terminal key bar over the keyboard |
+| docs/strip.md | the strip of recent apps above home's prompt bar |
 | docs/home.md | home's layout.toml, and reaching a running widget from scripts with `owl-send` |
 | docs/sharing.md | the widget store, and sharing a file as a link or QR code |
 | docs/versions.md | what each owl version added |
@@ -131,7 +132,7 @@ OWL looks like QML and JavaScript but isn't either; these are what code written 
 ## Examples
 
 Read the one closest to what you're making before you start. Files at the top of this folder are in use
-already (on home, or as the drawer and the terminal key bar); the rest are in `examples/`, off home until you move one up into this folder. Examples without `meta { owl: … }` are written for owl 1,
+already (on home, or as the drawer, the terminal key bar and the strip); the rest are in `examples/`, off home until you move one up into this folder. Examples without `meta { owl: … }` are written for owl 1,
 so they don't use what came later, like `if` in handlers or a Row's Texts as wide as their text; the
 docs say what's current.
 
@@ -147,6 +148,7 @@ docs say what's current.
 | a game | `examples/space-bounce` (an app: `every frame` moving things by their speed, steering by tilting with `android.motion`, aiming with a finger, a Shader grid behind a Canvas), `examples/sky-raid` (a pixel-art scrolling shooter: sprites in one palette, a pixel font drawn with `sprite`, scrolling ground from a Shader, stages and a boss, keeping under the 2000 drawing calls), `examples/sunset-heist` (a 3D city seen from above, made from a seed: two scenes on one camera, the ground first; traffic on a road grid, police that chase, getting in and out of seven kinds of vehicle, each a convex body made with `mesh` so it never sorts wrong, jobs, guns with auto-aim and a held fire button, health and armor, pickups placed from the seed that come back after a while, police that follow the road grid and get out to chase on foot, a minimap; a joystick wherever the thumb goes down, from `onTouch`), `examples/canyon-run` (3D: a Canvas `scene` of terrain tiles laid end to end, models spawned ahead and dropped behind, hits as distances, a camera following the ship, `project` for a sun behind the scene) |
 | faces, a whole page | `examples/00-start` (frost, Grid, spans), `examples/01-minimal`, `examples/02-pixel`, `examples/03-matrix` |
 | panels and the prompt bar | `drawer.owl` (lazy lists, search with rank, Popup), `examples/65-ai-bar` (android.agents, ask, open) |
+| the strip above the prompt bar | `strip.owl` (android.strip, a Row that scrolls, a long-press menu), `examples/strip-pinned` (apps kept in place, sized to fit) |
 | the terminal key bar | `keybar.owl`, `examples/keybar-layers` (latch, layers), `examples/keybar-vim`, `examples/keybar-gamepad`, `examples/keybar-commands` (typeText) |
 | a live terminal | `45-terminal` |
 | a web page in a tile | `examples/46-browser`, and a face with a terminal and a page in tabs in docs/browser.md |

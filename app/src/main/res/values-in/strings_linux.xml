@@ -57,6 +57,7 @@
     <string name="linux_agent_cursor">Agen terminal dari Cursor</string>
     <string name="linux_agent_antigravity">Agen coding Gemini dari Google</string>
     <string name="linux_agent_pi">Agen coding minimalis yang bisa diperluas</string>
+    <string name="linux_agent_hermes">Agen dari Nous Research, sekitar 2,5 GB</string>
     <string name="linux_agent_omp">Pi dengan alat dan plugin bawaan</string>
     <string name="linux_agent_ori">Agen coding dari OpenRouter</string>
     <string name="linux_agent_muse">Agen coding dari Meta</string>
@@ -126,6 +127,15 @@
     <string name="linux_cpu_pinning_title">panggilan sistem cepat</string>
     <string name="linux_cpu_pinning_on">aktif · menjaga Linux di satu inti CPU cepat · untuk program yang dijalankan mulai sekarang</string>
     <string name="linux_cpu_pinning_off">nonaktif · untuk program yang dijalankan mulai sekarang</string>
+    <string name="linux_session_title">sesi</string>
+    <string name="linux_session_running">berjalan · aplikasi Linux, terminal, dan agen berfungsi</string>
+    <string name="linux_session_starting">memulai…</string>
+    <string name="linux_session_stopped">berhenti · tidak ada yang berjalan dan tidak ada yang dihapus · tetap berhenti setelah dimulai ulang</string>
+    <string name="linux_stop">hentikan</string>
+    <string name="linux_start">mulai</string>
+    <string name="linux_stop_ask">hentikan linux?</string>
+    <string name="linux_stop_body">Menutup aplikasi Linux, terminal, dan agen coding, serta menghentikan apa pun yang sedang mereka kerjakan. Tidak ada yang dihapus. Widget dan aplikasi yang perlu Linux menunggu sampai kamu memulainya lagi di sini.</string>
+    <string name="linux_stop_confirm">hentikan</string>
 
     <string name="linux_notification_channel">Sesi Linux</string>
     <string name="linux_notify_channel">Agen dan skrip</string>
@@ -134,6 +144,12 @@
     <string name="linux_notification_failed">Penyiapan Linux berhenti · buka setelan › linux untuk mencoba lagi</string>
     <string name="linux_notification_removing">Menghapus Linux</string>
     <string name="linux_notification_running">Sesi Linux berjalan</string>
+
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">menyimpan ke linux…</string>
+    <string name="share_in_saved">tersimpan di ~/Downloads</string>
+    <string name="share_in_failed">tidak bisa menyimpannya ke linux</string>
+    <string name="share_in_no_linux">linux belum disiapkan</string>
 
     <string name="packages_title">paket</string>
     <string name="packages_search">cari paket</string>

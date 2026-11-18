@@ -1,8 +1,8 @@
 package dev.omalauncher.widgets
 
-import dev.omalauncher.copyText
-import dev.omalauncher.registerNotExported
-import dev.omalauncher.shareText
+import dev.omalauncher.system.copyText
+import dev.omalauncher.system.registerNotExported
+import dev.omalauncher.system.shareText
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -33,7 +33,7 @@ import android.os.UserManager
 import android.util.Log
 import android.widget.Toast
 import dev.omalauncher.R
-import dev.omalauncher.postNotification
+import dev.omalauncher.system.postNotification
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.Agent
 import dev.omalauncher.linux.LinuxState
@@ -42,7 +42,7 @@ import dev.omalauncher.linux.GuestShell
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.ShellPool
 import dev.omalauncher.linux.ShellResult
-import dev.omalauncher.SecretBox
+import dev.omalauncher.widgets.runtime.SecretBox
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.resume
 import kotlin.concurrent.thread
@@ -50,12 +50,12 @@ import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.suspendCancellableCoroutine
-import dev.omalauncher.WebSocket
-import dev.omalauncher.LocalNetwork
-import dev.omalauncher.openHttp
-import dev.omalauncher.pin
-import dev.omalauncher.openUrl
-import dev.omalauncher.readUpTo
+import dev.omalauncher.net.WebSocket
+import dev.omalauncher.net.LocalNetwork
+import dev.omalauncher.net.openHttp
+import dev.omalauncher.net.pin
+import dev.omalauncher.system.openUrl
+import dev.omalauncher.system.readUpTo
 import dev.omalauncher.widgets.lang.sha256Hex
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.Builtins
@@ -63,29 +63,31 @@ import dev.omalauncher.widgets.lang.KeyNames
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
+import dev.omalauncher.widgets.lang.Col
+import androidx.compose.ui.graphics.toArgb
 import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Pins
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.bool
-import dev.omalauncher.androidAppKey
-import dev.omalauncher.OfferedShortcut
-import dev.omalauncher.ui.AppHandlers
-import dev.omalauncher.ui.ShortcutMenu
-import dev.omalauncher.ui.initials
-import dev.omalauncher.ui.AppHit
+import dev.omalauncher.apps.androidAppKey
+import dev.omalauncher.apps.OfferedShortcut
+import dev.omalauncher.ui.home.AppHandlers
+import dev.omalauncher.ui.home.ShortcutMenu
+import dev.omalauncher.ui.home.initials
+import dev.omalauncher.ui.home.AppHit
 import dev.omalauncher.ui.EmbeddedBrowser
-import dev.omalauncher.ui.act
-import dev.omalauncher.ui.actionWords
-import dev.omalauncher.ui.kind
-import dev.omalauncher.ui.profileKind
+import dev.omalauncher.ui.home.act
+import dev.omalauncher.ui.home.actionWords
+import dev.omalauncher.ui.home.kind
+import dev.omalauncher.ui.home.profileKind
 import dev.omalauncher.ui.LauncherStyle
-import dev.omalauncher.ui.SettingsPage
-import dev.omalauncher.ui.allApps
-import dev.omalauncher.ui.appIconOf
-import dev.omalauncher.ui.open
-import dev.omalauncher.ui.recentApps
+import dev.omalauncher.ui.settings.SettingsPage
+import dev.omalauncher.ui.home.allApps
+import dev.omalauncher.ui.home.appIconOf
+import dev.omalauncher.ui.home.open
+import dev.omalauncher.ui.home.recentApps
 import dev.omalauncher.widgets.runtime.battery
 import dev.omalauncher.widgets.runtime.AirPods
 import dev.omalauncher.widgets.runtime.Alarm
@@ -146,6 +148,9 @@ private val REDIRECTS = setOf(301, 302, 303, 307, 308)
  */
 private const val DRAWER_EVERY_MS = 200L
 
+/** How many recent apps `android.strip` lists, as the strip always has. */
+private const val STRIP_APPS = 20
+
 /** What starts the key of a Linux window in `android.windows`; the rest is its handle, as Android's recents cards have it. */
 internal const val WINDOW_KEY = "w:"
 
@@ -191,7 +196,7 @@ class WidgetServices(
     val airpods = AirPods(context, scope)
     private val panels = SystemPanels(context)
 
-    /** Opens launcher screens ("style" or "themes", "agents", "drawer"); set by the UI. */
+    /** Opens launcher screens ("style" or "themes", "agents", "store" or "store:apps", "drawer"); set by the UI. */
     var launcherAction: ((String) -> Unit)? = null
 
     /** What the drawer's long-press menu does, for appAction(...); set by the UI. */
@@ -241,6 +246,7 @@ class WidgetServices(
             "recent" -> recent()
             "windows" -> windows()
             "drawer" -> drawer()
+            "strip" -> strip()
             "modifiers" -> modifiers()
             else -> throw WidgetError("unknown android source $name")
         }
@@ -277,6 +283,7 @@ class WidgetServices(
                         emit(it)
                         delay(WINDOWS_EVERY_MS)
                     }
+            "strip" -> snapshotFlow { strip() }
             "modifiers" -> snapshotFlow { modifiers() }
             // Linux's state is a flow of its own, not Compose state: a change of its word starts the drawer's anew.
             "drawer" -> runtime.bootstrap.state.map(::linuxWord).distinctUntilChanged().flatMapLatest { snapshotFlow { drawer() } }
@@ -312,7 +319,7 @@ class WidgetServices(
     private fun profileKind(user: UserHandle): String? =
         if (user == Process.myUserHandle()) null else profileKind(context.getSystemService(UserManager::class.java).getSerialNumberForUser(user))
 
-    /** As above, by [profile]'s serial number (see [dev.omalauncher.AndroidApp.profile]): no binder call. */
+    /** As above, by [profile]'s serial number (see [dev.omalauncher.apps.AndroidApp.profile]): no binder call. */
     private fun profileKind(profile: Long?): String? = profile?.let { if (runtime.androidApps.cloned(it)) "clone" else "work" }
 
     /** Apps by package, in the drawer's order: a widget listing every app asks for each one's icon, and a scan per icon was O(n²). */
@@ -338,6 +345,8 @@ class WidgetServices(
 
     override fun launcherIcon(key: String) =
         offered[key]?.let { (_, s) -> if (LauncherStyle.monochromeIcons) s.mask else s.icon } ?: appIconOf(runtime, key, LauncherStyle.monochromeIcons)
+
+    override fun launcherMask(key: String) = offered[key]?.let { (_, s) -> s.mask } ?: appIconOf(runtime, key, mono = true)
 
     /**
      * Shortcuts handed out by shortcuts(...), by the key they got ("x:3"): open(...), appAction("pin", ...) and
@@ -475,9 +484,9 @@ class WidgetServices(
 
     /**
      * Launchable Android apps for `source a = android.apps`, updated as apps come and go and are opened, each `{key, name, package, component, profile, system, icon, score, last}`.
-     * `key` is [dev.omalauncher.AndroidApp.key], unique across profiles, for `androidApp(a.key)`; `profile` is `work` or
+     * `key` is [dev.omalauncher.apps.AndroidApp.key], unique across profiles, for `androidApp(a.key)`; `profile` is `work` or
      * `clone` as on notifications, else null; `icon` is the `app:` src for that copy. `score` and `last` are what the
-     * search ranks by ([dev.omalauncher.AppUsage]), so a widget can rank apps the same way.
+     * search ranks by ([dev.omalauncher.apps.AppUsage]), so a widget can rank apps the same way.
      */
     private fun apps(): Value =
         Lst(
@@ -546,6 +555,53 @@ class WidgetServices(
             },
         )
 
+    /** One app as `android.drawer` and `android.strip` list them; see [drawer]. */
+    private fun appValue(hit: AppHit): Value {
+        val dot = hit.hasDot
+        return Obj(
+            mapOf(
+                "key" to Str(hit.key),
+                "kind" to Str(hit.kind),
+                "name" to Str(hit.label),
+                "label" to Str(if (dot) context.getString(R.string.home_app_has_notifications, hit.spoken) else hit.spoken),
+                "dot" to bool(dot),
+                "icon" to Str("icon:" + hit.key),
+                // Its silhouette whether or not icons are monochrome, to tint any color (owl 24).
+                "mask" to Str("mask:" + hit.key),
+                "profile" to (hit.profileKind?.let(::Str) ?: Null),
+                "alias" to (hit.alias?.let(::Str) ?: Null),
+                "paused" to bool(hit.paused(runtime)),
+                // Whether `icon` draws anything: its silhouette, with monochrome icons. Without one, the drawer shows the initials.
+                "hasIcon" to bool(appIconOf(runtime, hit.key, LauncherStyle.monochromeIcons) != null),
+                "initials" to Str(initials(hit.label)),
+                "actions" to Lst(hit.actionWords().map(::Str)),
+                "score" to Num(Math.round(runtime.usage.score(hit.key) * 10.0) / 10.0),
+                "last" to (runtime.usage.last(hit.key)?.let { Num((it / 1000).toDouble()) } ?: Null),
+            ),
+        )
+    }
+
+    /**
+     * The strip above home's prompt bar for `source s = android.strip` (owl 24): `{apps, vertical, monochrome, bare,
+     * border}`. `apps` are the recent apps, last opened first, each as `android.drawer` lists its apps; like
+     * `android.recent` they reorder only once home is out of sight. `vertical` while the strip stands beside the grid in
+     * landscape; `monochrome` while icons are silhouettes; `bare` while home's apps show as icons only, without a tile
+     * (settings › style › home apps); `border` the color of the tiles' outline.
+     */
+    private fun strip(): Value {
+        // Not before every kind of app is listed: the ones missing would push in as their kind arrived.
+        val apps = if (runtime.appsListed) recentApps(runtime, STRIP_APPS) else emptyList()
+        return Obj(
+            mapOf(
+                "apps" to Lst(apps.map(::appValue)),
+                "vertical" to bool(runtime.widgets.stripVertical),
+                "monochrome" to bool(LauncherStyle.monochromeIcons),
+                "bare" to bool(LauncherStyle.bareAppIcons),
+                "border" to Col(null, LauncherStyle.tileBorder.toArgb()),
+            ),
+        )
+    }
+
     /**
      * The Linux windows open now for `source w = android.windows`, oldest first, each `{key, appId, title, name, icon}`:
      * `appId` is its Wayland app_id, `title` the title it gives itself, `name` what the launcher calls it (the name it was
@@ -585,32 +641,11 @@ class WidgetServices(
     private fun drawer(): Value {
         val apps = runtime.androidApps
         val hits =
-            runtime.widgets.apps().map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } +
+            // By name, as Linux and Android apps come: the files' order put a sideloaded app's shared- name among the rest.
+            runtime.widgets.apps().sortedBy { it.name.lowercase() }.map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } +
                 apps.shortcuts.filter { !it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { !it.work }.map { AppHit.Android(it) } +
                 apps.shortcuts.filter { it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.work }.map { AppHit.Android(it) }
-        val list =
-            hits.take(Builtins.MAX_LIST).map { hit ->
-                val dot = hit.hasDot
-                Obj(
-                    mapOf(
-                        "key" to Str(hit.key),
-                        "kind" to Str(hit.kind),
-                        "name" to Str(hit.label),
-                        "label" to Str(if (dot) context.getString(R.string.home_app_has_notifications, hit.spoken) else hit.spoken),
-                        "dot" to bool(dot),
-                        "icon" to Str("icon:" + hit.key),
-                        "profile" to (hit.profileKind?.let(::Str) ?: Null),
-                        "alias" to (hit.alias?.let(::Str) ?: Null),
-                        "paused" to bool(hit.paused(runtime)),
-                        // Whether `icon` draws anything: its silhouette, with monochrome icons. Without one, the drawer shows the initials.
-                        "hasIcon" to bool(appIconOf(runtime, hit.key, LauncherStyle.monochromeIcons) != null),
-                        "initials" to Str(initials(hit.label)),
-                        "actions" to Lst(hit.actionWords().map(::Str)),
-                        "score" to Num(Math.round(runtime.usage.score(hit.key) * 10.0) / 10.0),
-                        "last" to (runtime.usage.last(hit.key)?.let { Num((it / 1000).toDouble()) } ?: Null),
-                    ),
-                )
-            }
+        val list = hits.take(Builtins.MAX_LIST).map(::appValue)
         val work = if (apps.workProfiles.isEmpty()) Null else Obj(mapOf("paused" to bool(apps.workProfiles.any { apps.paused(it) })))
         return Obj(mapOf("apps" to Lst(list), "linux" to Str(linuxWord(runtime.bootstrap.state.value)), "monochrome" to bool(LauncherStyle.monochromeIcons), "work" to work, "updates" to Num((runtime.updates.pending?.count ?: 0).toDouble())))
     }
@@ -688,7 +723,7 @@ class WidgetServices(
             // Any scheme an app handles: tel:, geo:, mailto:, ... One nothing handles mustn't crash the launcher.
             "url" -> if (!context.openUrl(arg)) Toast.makeText(context, context.getString(R.string.widgets_no_app_opens, arg), Toast.LENGTH_SHORT).show()
             "launcher" -> launcherAction?.invoke(arg)
-            "media" -> media.control(arg)
+            "media" -> media.control(arg, args.getOrNull(1))
             "volume" -> volume.control(args[0], args.getOrNull(1).textOrNull())
             "notification" -> notifications.control(arg, args.getOrNull(1).textOrNull(), args.getOrNull(2))
             "settings" -> panels.open(arg, media.playingPackage())
@@ -708,7 +743,16 @@ class WidgetServices(
                     }
                 }
             "share" -> share(arg)
-            "haptic" -> view?.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            // Android's own touch feedback effects, so the user's setting still decides; a word from a value it doesn't
+            // know is medium, as haptic() was before it took one.
+            "haptic" ->
+                view?.performHapticFeedback(
+                    when (args.firstOrNull().textOrNull()) {
+                        "light" -> HapticFeedbackConstants.CLOCK_TICK
+                        "strong" -> HapticFeedbackConstants.LONG_PRESS
+                        else -> HapticFeedbackConstants.VIRTUAL_KEY
+                    },
+                )
             "open" -> openApp(arg)
             "ask" -> ask(arg, args.getOrNull(1).textOrNull())
             "appAction" -> args.getOrNull(1).textOrNull()?.let { appAction(arg, it) }

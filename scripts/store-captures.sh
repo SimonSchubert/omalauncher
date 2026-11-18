@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Captures the Play listing's screens (store/screenshots/raw/<language>/, framed by store/screenshots/frame.html and
 # scripts/render-screenshots.sh): home screens and a face in several themes with widgets from the widget store,
-# and a few screens beyond home, in each of the launcher's languages (LANGS, default all six; the launcher's own
+# and a few screens beyond home, in each of the launcher's languages (LANGS, default all nine; the launcher's own
 # language pick is set for the run).
 #
 # The display is set to 1080x2400 for the run, a usual 20:9 phone screen, which frame.html shows scaled down
@@ -28,7 +28,7 @@ export ANDROID_SERIAL="${ANDROID_SERIAL:-emulator-5562}"
 RAW="$HERE/../store/screenshots/raw"
 L10N="$HERE/../store/screenshots/l10n"
 RES="$HERE/../app/src/main/res"
-LANGS=(${LANGS:-en id es pt de zh})
+LANGS=(${LANGS:-en id es pt de zh ru ja uk})
 SHIMS=files/arch/root/.local/share/mise/shims
 PKG=dev.omalauncher
 DATA=/data/data/$PKG

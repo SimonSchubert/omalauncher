@@ -44,6 +44,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -88,6 +90,7 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -124,7 +127,7 @@ import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.frame
 import dev.omalauncher.ui.holdsKeys
 import dev.omalauncher.ui.keyActivated
-import dev.omalauncher.ui.TerminalView
+import dev.omalauncher.ui.home.TerminalView
 import dev.omalauncher.ui.BrowserView
 import dev.omalauncher.widgets.lang.Action
 import dev.omalauncher.widgets.lang.Builtins
@@ -135,7 +138,7 @@ import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
-import dev.omalauncher.ui.TerminalTiles
+import dev.omalauncher.ui.home.TerminalTiles
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.Value
 import dev.omalauncher.widgets.lang.WNode
@@ -232,7 +235,7 @@ internal fun columnHugs(
 
 /**
  * Where a node's onLongPress says it took a long press, so the home screen around a face knows not to open its menu
- * for the same one; see [dev.omalauncher.ui.HomeGrid].
+ * for the same one; see [dev.omalauncher.ui.home.HomeGrid].
  */
 class LongPressClaim {
     /** When the last long press was taken, in uptime milliseconds. */
@@ -264,6 +267,17 @@ fun WidgetKeybar(
     inst: WidgetInstance,
     modifier: Modifier = Modifier,
 ) = ScreenNodes(inst, modifier, Modifier.fillMaxWidth(), ripple = false)
+
+/**
+ * The strip above home's prompt bar (`strip "…" { }`, owl 24): its nodes, as wide as home and as tall as they are, or
+ * [vertical], stood up beside the grid in landscape, as tall as home and as wide as they are.
+ */
+@Composable
+fun WidgetStrip(
+    inst: WidgetInstance,
+    vertical: Boolean,
+    modifier: Modifier = Modifier,
+) = ScreenNodes(inst, modifier, if (vertical) Modifier.fillMaxHeight() else Modifier.fillMaxWidth(), ripple = true)
 
 @Composable
 private fun ScreenNodes(
@@ -577,7 +591,7 @@ private fun Element(
                 val hug = columnHugs(inst.program.level, sized, parent is RowScope, parent is ColumnScope && LocalHug.current)
                 HoldingPopups(el, mod, env, inst) { m, children ->
                     Column(
-                        m.then(pull).then(if (p.observe("scroll")?.truthy == true) Modifier.verticalScroll(rememberScrollState()) else Modifier),
+                        m.then(pull).then(if (p.observe("scroll")?.truthy == true) Modifier.scrolls(rememberScrollState()) else Modifier),
                         verticalArrangement = arrangement,
                         horizontalAlignment = alignment,
                     ) { CompositionLocalProvider(LocalHug provides hug) { Nodes(children, env, inst, this) } }
@@ -599,7 +613,9 @@ private fun Element(
                         Nodes(children, env, inst, this)
                     }
                 } else {
-                    Row(m, horizontalArrangement = arr, verticalAlignment = vertical) { Nodes(children, env, inst, this) }
+                    // Sideways, as wide as its nodes, when it scrolls (owl 24): the strip's apps, more than fit.
+                    val scroll = if (p.observe("scroll")?.truthy == true) Modifier.scrolls(rememberScrollState(), sideways = true) else Modifier
+                    Row(m.then(scroll), horizontalArrangement = arr, verticalAlignment = vertical) { Nodes(children, env, inst, this) }
                 }
             }
         }
@@ -817,6 +833,31 @@ private fun boxAlign(a: String?) =
         "bottomEnd" -> Alignment.BottomEnd
         else -> Alignment.TopStart
     }
+
+/**
+ * A Column's `scroll: true`, or a Row's, [sideways]. Inside something that already scrolls the same way it has no limit
+ * to its height (a Row: its width), and Compose throws on a scroll measured so, which took home down (Play, 1.4.0).
+ * There it's as tall as its rows (as wide as its nodes) and what it's in scrolls, as a `lazy:` one does.
+ */
+private fun Modifier.scrolls(
+    state: ScrollState,
+    sideways: Boolean = false,
+): Modifier =
+    layout { measurable, constraints ->
+        val bounded =
+            when {
+                sideways && !constraints.hasBoundedWidth ->
+                    Constraints.fitPrioritizingHeight(constraints.minWidth, UNBOUNDED_PX, constraints.minHeight, constraints.maxHeight)
+                !sideways && !constraints.hasBoundedHeight ->
+                    Constraints.fitPrioritizingWidth(constraints.minWidth, constraints.maxWidth, constraints.minHeight, UNBOUNDED_PX)
+                else -> constraints
+            }
+        val placeable = measurable.measure(bounded)
+        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }.then(if (sideways) Modifier.horizontalScroll(state) else Modifier.verticalScroll(state))
+
+/** Taller than any Column and wider than any Row gets, and small enough to fit a Constraints next to any screen's other side. */
+private const val UNBOUNDED_PX = 1 shl 17
 
 private fun padding(v: Value?): PaddingValues? {
     val n = v?.num()

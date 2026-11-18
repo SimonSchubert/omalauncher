@@ -109,6 +109,16 @@ class AgentLinkTest {
         assertEquals("and again", written.last().getJSONObject("params").getJSONArray("prompt").getJSONObject(0).getString("text"))
     }
 
+    @Test fun acpAsksAboutAnEditNamedInItsDiff() {
+        val link = AcpLink(write, "hermes-acp")
+        // Hermes 0.23.1: no locations, the path in rawInput.arguments and in the diff, and a title of its own.
+        val ask =
+            link.read(
+                """{"jsonrpc":"2.0","id":0,"method":"session/request_permission","params":{"options":[{"kind":"allow_once","name":"Allow once","optionId":"allow_once"},{"kind":"reject_once","name":"Deny","optionId":"deny"}],"sessionId":"h1","toolCall":{"content":[{"newText":"hello\n","path":"/tmp/eval/AGENTS.md","type":"diff"}],"kind":"edit","rawInput":{"tool":"write_file","arguments":{"path":"/tmp/eval/AGENTS.md","content":"hello\n"}},"status":"pending","title":"Approve edit: /tmp/eval/AGENTS.md","toolCallId":"edit-approval-1"}}}""",
+            ).single() as LinkEvent.Ask
+        assertEquals(LinkEvent.Ask("p0", Act(Act.Verb.Edit, "AGENTS.md"), "/tmp/eval/AGENTS.md", "acp:edit"), ask)
+    }
+
     @Test fun acpDropsCopilotsFileNotice() {
         val link = AcpLink(write, "copilot --acp")
         fun chunk(text: String) = link.read(JSONObject().put("jsonrpc", "2.0").put("method", "session/update").put("params", JSONObject().put("update", JSONObject().put("sessionUpdate", "agent_message_chunk").put("content", JSONObject().put("type", "text").put("text", text)))).toString())

@@ -1,5 +1,5 @@
 app "space bounce" {
-  meta { owl: 21; description: "A neon arena shooter: tilt the phone to fly, hold a finger where to fire, and bounce off the walls as the swarm grows"; version: "1.0"; license: "MIT"; category: "games" }
+  meta { owl: 21; description: "A neon arena shooter: tilt the phone to fly, hold a finger where to fire, and bounce off the walls as the swarm grows"; version: "1.1"; license: "MIT"; category: "games" }
   // How it works: `every frame` moves everything by its speed times `dt`, the seconds since the
   // last frame, so the game runs at the same speed at any frame rate. android.motion's x and y
   // are how far the phone leans right and towards you; a new game takes the way it's held as
@@ -7,7 +7,8 @@ app "space bounce" {
   title: ""
   statusBar: false
   edge: true
-  fps: mode == "title" ? 30 : 60
+  fps: mode == "title" ? (modes.saver ? 15 : 30) : 60
+  source modes = android.modes
   icon: """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
     <rect width="256" height="256" rx="56" fill="#0b0d1a"/>
     <path d="M0 64H256M0 128H256M0 192H256M64 0V256M128 0V256M192 0V256" stroke="#2b3a7a" stroke-width="3"/>

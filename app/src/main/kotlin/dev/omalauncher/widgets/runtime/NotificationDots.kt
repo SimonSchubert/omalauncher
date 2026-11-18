@@ -20,7 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
-/** What a dot goes on: an app in a profile (as in [dev.omalauncher.AndroidApp.profile]), or with [shortcut], that one of its shortcuts. */
+/** What a dot goes on: an app in a profile (as in [dev.omalauncher.apps.AndroidApp.profile]), or with [shortcut], that one of its shortcuts. */
 data class DotKey(
     val packageName: String,
     val profile: Long?,

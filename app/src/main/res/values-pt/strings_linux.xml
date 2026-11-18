@@ -59,6 +59,7 @@
     <string name="linux_agent_cursor">Agente do Cursor para o terminal</string>
     <string name="linux_agent_antigravity">Agente de programação Gemini do Google</string>
     <string name="linux_agent_pi">Agente de programação mínimo e extensível</string>
+    <string name="linux_agent_hermes">Agente da Nous Research, cerca de 2,5 GB</string>
     <string name="linux_agent_omp">Pi com ferramentas e plugins incluídos</string>
     <string name="linux_agent_ori">Agente de programação da OpenRouter</string>
     <string name="linux_agent_muse">Agente de programação da Meta</string>
@@ -130,6 +131,15 @@
     <string name="linux_cpu_pinning_title">chamadas de sistema rápidas</string>
     <string name="linux_cpu_pinning_on">ativadas · mantém o Linux em um núcleo de CPU rápido · para programas iniciados a partir de agora</string>
     <string name="linux_cpu_pinning_off">desativadas · para programas iniciados a partir de agora</string>
+    <string name="linux_session_title">sessão</string>
+    <string name="linux_session_running">em execução · apps Linux, terminais e agentes funcionam</string>
+    <string name="linux_session_starting">iniciando…</string>
+    <string name="linux_session_stopped">parado · nada roda e nada é excluído · continua parado depois de reiniciar</string>
+    <string name="linux_stop">parar</string>
+    <string name="linux_start">iniciar</string>
+    <string name="linux_stop_ask">parar o linux?</string>
+    <string name="linux_stop_body">Fecha os apps Linux, terminais e agentes de programação, e encerra o que estavam fazendo. Nada é excluído. Widgets e apps que precisam do Linux esperam até você iniciá-lo aqui de novo.</string>
+    <string name="linux_stop_confirm">parar</string>
 
     <string name="linux_notification_channel">Sessão Linux</string>
     <string name="linux_notify_channel">Agentes e scripts</string>
@@ -138,6 +148,12 @@
     <string name="linux_notification_failed">A instalação do Linux parou · abra configurações › linux para tentar de novo</string>
     <string name="linux_notification_removing">Removendo o Linux</string>
     <string name="linux_notification_running">Sessão Linux em execução</string>
+
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">salvando no linux…</string>
+    <string name="share_in_saved">salvo em ~/Downloads</string>
+    <string name="share_in_failed">não foi possível salvar no linux</string>
+    <string name="share_in_no_linux">o linux ainda não está configurado</string>
 
     <string name="packages_title">pacotes</string>
     <string name="packages_search">pesquisar pacotes</string>

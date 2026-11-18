@@ -15,6 +15,8 @@
     <string name="style_icons">symbole</string>
     <string name="style_monochrome">monochrom</string>
     <string name="style_colored">farbig</string>
+    <string name="style_icon_pack">symbolpaket</string>
+    <string name="style_icon_pack_none">keins</string>
     <string name="style_home_apps">start-apps</string>
     <string name="style_boxed">gerahmt</string>
     <string name="style_icon_only">nur symbol</string>
@@ -71,6 +73,14 @@
     <string name="style_keybar_gone">%1$s fehlt, also gibt\'s die standardtasten</string>
     <string name="style_keybar_restore_title">zurück zu den standardtasten?</string>
     <string name="style_keybar_restore_message">Deine keybar.owl wird durch die vom Launcher ersetzt.</string>
+    <string name="style_strip">app-leiste</string>
+    <string name="style_strip_removed">entfernt</string>
+    <string name="style_strip_stock">standard</string>
+    <string name="style_strip_edited">bearbeitet</string>
+    <string name="style_strip_back_to_stock">zurück zum standard</string>
+    <string name="style_strip_gone">%1$s fehlt, also gibt\'s die standardleiste</string>
+    <string name="style_strip_restore_title">zurück zur standardleiste?</string>
+    <string name="style_strip_restore_message">Deine strip.owl wird durch die vom Launcher ersetzt.</string>
     <string name="style_replace">ersetzen</string>
 
     <string name="style_browse">durchsuchen</string>
@@ -135,9 +145,10 @@
     <string name="gestures_swipe_down_nothing">nach unten wischen öffnet nichts</string>
     <string name="gestures_until_fixed">%1$s, bis der fehler behoben ist: %2$s</string>
     <string name="gestures_keybar_until_fixed">die terminal-tastenleiste ist die standardleiste, bis der fehler behoben ist: %1$s</string>
+    <string name="gestures_strip_until_fixed">die app-leiste ist die standardleiste, bis der fehler behoben ist: %1$s</string>
 
     <string name="agents_title">coding-agenten</string>
-    <string name="agents_intro">Installiert mit mise, wie bei Omarchy. Anmeldungen öffnen sich im Browser; füge Schlüssel über die Zwischenablage der Tastatur ein.</string>
+    <string name="agents_intro">Installiert wie bei Omarchy, die meisten mit mise. Anmeldungen öffnen sich im Browser; füge Schlüssel über die Zwischenablage der Tastatur ein.</string>
     <string name="agents_open">öffnen</string>
     <string name="agents_remove">deinstallieren</string>
     <string name="agents_still_running">%1$s läuft noch: schließ es und deinstalliere es dann noch mal</string>

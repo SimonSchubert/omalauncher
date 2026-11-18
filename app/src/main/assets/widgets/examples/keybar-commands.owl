@@ -2,7 +2,7 @@ keybar "commands" {
   // A key bar for the shell: the control keys you need most on top, then commands as chips. A tap types the command
   // and runs it; a long press types it without Enter, to add to it first. Change the list to your own. To use it, copy
   // it over keybar.owl in the folder above.
-  meta { description: "A key bar for the shell: ctrl+c, history search and clear, then your commands as chips that type and run them"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  meta { description: "A key bar for the shell: ctrl+c, history search and clear, then your commands as chips that type and run them"; version: "1.1"; license: "MIT"; category: "system"; owl: 23 }
   state down = ""
 
   let controls = [
@@ -31,7 +31,7 @@ keybar "commands" {
         onPress: {
           if repeat == 0 {
             down = k.l
-            haptic()
+            haptic("light")
           }
           pressKey(k.k)
         }
@@ -49,7 +49,7 @@ keybar "commands" {
       background: down == cmd ? accent : transparent
       border: 1
       borderColor: down == cmd ? accent : border
-      onPress: { down = cmd; haptic() }
+      onPress: { down = cmd; haptic("light") }
       onRelease: down = ""
       onTap: typeText(cmd + "\n")
       onLongPress: typeText(cmd)

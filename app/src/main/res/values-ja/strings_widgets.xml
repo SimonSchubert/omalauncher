@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widgets_no_app_opens">%1$s を開けるアプリがありません</string>
+    <string name="widgets_copied">コピーしました</string>
+    <string name="widgets_notify_channel">ウィジェット</string>
+</resources>

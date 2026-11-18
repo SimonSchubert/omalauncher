@@ -1,5 +1,6 @@
 package dev.omalauncher.voice
 
+import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.widgets.WidgetEngine
 import org.json.JSONArray
@@ -109,10 +110,8 @@ const val VOICE_PROMPT =
         "and at the end say the outcome in a sentence or two, not everything you did. Names are what speech-to-text " +
         "gets wrong most: the launcher you run in, and its command `omalauncher` (`omalauncher --help`), often come " +
         "as \"all my launcher\", \"home alarm show\" or the like. Take what they most likely meant and go ahead; ask " +
-        "only when it could be quite different things, rather than searching for words that were misheard."
-
-/** Where agents work in Linux, unless one needs a folder of its own. */
-const val GUEST_HOME = "/root"
+        "only when it could be quite different things, rather than searching for words that were misheard. When " +
+        "the user turns down something you asked to do, don't do it another way: say what you'd do instead or ask."
 
 /** The agents that can talk, by bin, with the link that talks to each. */
 val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
@@ -122,7 +121,7 @@ val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
         "grok" to { w -> AcpLink(w, "grok agent stdio") },
         // OpenCode snapshots its folder with git before every turn, and all of home took minutes before its first
         // word; the widgets are what voice is mostly for.
-        "opencode" to { w -> AcpLink(w, "opencode acp", "$GUEST_HOME/${WidgetEngine.GUEST_DIR}") },
+        "opencode" to { w -> AcpLink(w, "opencode acp", "${Proot.GUEST_HOME}/${WidgetEngine.GUEST_DIR}") },
         "copilot" to { w -> AcpLink(w, "copilot --acp") },
         "kimi" to { w -> AcpLink(w, "kimi acp") },
         "cursor-agent" to { w -> AcpLink(w, "cursor-agent acp") },
@@ -132,10 +131,11 @@ val VOICE_LINKS: Map<String, (write: (String) -> Unit) -> AgentLink> =
         // Kiro can't load a session, so a conversation picked up later starts a new one.
         "kiro-cli" to { w -> AcpLink(w, "kiro-cli acp") },
         // Kilo is OpenCode underneath, with its snapshots: the widgets, as for OpenCode.
-        "kilo" to { w -> AcpLink(w, "kilo acp", "$GUEST_HOME/${WidgetEngine.GUEST_DIR}") },
+        "kilo" to { w -> AcpLink(w, "kilo acp", "${Proot.GUEST_HOME}/${WidgetEngine.GUEST_DIR}") },
         "devin" to { w -> AcpLink(w, "devin acp") },
         "commandcode" to { w -> AcpLink(w, "commandcode acp") },
         "agy" to { w -> AcpLink(w, "agy acp") },
+        "hermes" to { w -> AcpLink(w, "hermes-acp") },
         "pi" to ::PiLink,
     )
 
@@ -348,7 +348,7 @@ class AcpLink(
     /** The guest command that serves ACP on stdio, such as `grok agent stdio` or `kimi acp`. */
     private val serve: String,
     /** Where its sessions work. */
-    private val cwd: String = GUEST_HOME,
+    private val cwd: String = Proot.GUEST_HOME,
 ) : RpcLink(write, jsonrpc = true) {
     private var session: String? = null
     private var loading = false
@@ -452,7 +452,7 @@ class AcpLink(
         asked[id] = rpcId to (params.optJSONArray("options") ?: JSONArray())
         val raw = call.optJSONObject("rawInput") ?: JSONObject()
         val key = if (call.optString("kind") == "execute" && raw.has("command")) Steps.commandKey(raw.optString("command")) else "acp:" + call.optString("kind")
-        return LinkEvent.Ask(id, Steps.acpLabel(call), raw.firstString("command", "path", "file_path", "url"), key)
+        return LinkEvent.Ask(id, Steps.acpLabel(call), raw.firstString("command", "path", "file_path", "url").ifEmpty { Steps.acpPaths(call).firstOrNull().orEmpty() }, key)
     }
 
     companion object {
@@ -478,7 +478,7 @@ class AcpLink(
  */
 class CodexLink(
     write: (String) -> Unit,
-    private val cwd: String = GUEST_HOME,
+    private val cwd: String = Proot.GUEST_HOME,
 ) : RpcLink(write, jsonrpc = false) {
     override val instructed = true
 
@@ -767,7 +767,7 @@ class PiLink(
             }
             "tool_execution_start" -> {
                 val args = ev.optJSONObject("args") ?: JSONObject()
-                val path = args.optString("path").let { if (it.isEmpty() || it.startsWith('/')) it else "$GUEST_HOME/$it" }
+                val path = args.optString("path").let { if (it.isEmpty() || it.startsWith('/')) it else "${Proot.GUEST_HOME}/$it" }
                 val images = if (ev.optString("toolName") == "read" && isImage(path)) listOf(path) else emptyList()
                 listOf(LinkEvent.Working, LinkEvent.Step(act(ev.optString("toolName"), args), images))
             }
@@ -839,10 +839,12 @@ object Steps {
             else -> Act(Act.Verb.Tool, name.lowercase())
         }
 
+    /** The files a tool call names: its locations, its input's path, and the files its diffs change (Hermes names an edit only there). */
     fun acpPaths(u: JSONObject): List<String> {
         val raw = u.optJSONObject("rawInput") ?: JSONObject()
         val locations = u.optJSONArray("locations")?.objects()?.mapNotNull { it.optString("path").takeIf(String::isNotEmpty) } ?: emptyList()
-        return locations + listOf("path", "file_path").mapNotNull { k -> raw.optString(k).takeIf(String::isNotEmpty) }
+        val diffs = u.optJSONArray("content")?.objects()?.filter { it.optString("type") == "diff" }?.mapNotNull { it.optString("path").takeIf(String::isNotEmpty) } ?: emptyList()
+        return locations + listOf("path", "file_path").mapNotNull { k -> raw.optString(k).takeIf(String::isNotEmpty) } + diffs
     }
 
     fun acpLabel(u: JSONObject): Act {

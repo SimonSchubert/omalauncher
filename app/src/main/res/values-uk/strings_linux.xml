@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="linux_stage_download">завантаження arch linux</string>
+    <string name="linux_stage_extract">розпакування системи</string>
+    <string name="linux_stage_configure">налаштування pacman</string>
+    <string name="linux_stage_packages">встановлення додатків omarchy</string>
+    <string name="linux_stage_agents">встановлення ШІ-агентів</string>
+    <string name="linux_stage_agents_named">встановлення: %1$s</string>
+
+    <string name="linux_step_download">Завантаження Arch Linux ARM</string>
+    <string name="linux_step_configure">Налаштування системи</string>
+    <string name="linux_step_forks">Перевірка запуску програм</string>
+    <string name="linux_step_keyring">Ініціалізація сховища ключів pacman</string>
+    <string name="linux_step_no_kernel">Видалення пакетів ядра</string>
+    <string name="linux_step_packages">Встановлення пакетів</string>
+    <string name="linux_step_keymap">Компіляція розкладки клавіатури</string>
+    <string name="linux_step_cliamp">Встановлення cliamp</string>
+    <string name="linux_step_agent">Встановлення %1$s</string>
+    <string name="linux_step_downloaded">%1$d з %2$d МБ</string>
+    <string name="linux_step_downloaded_unknown">%1$d МБ</string>
+    <string name="linux_step_extract_start">Початок</string>
+    <plurals name="linux_step_extracted">
+        <item quantity="one">%d файл</item>
+        <item quantity="few">%d файли</item>
+        <item quantity="many">%d файлів</item>
+        <item quantity="other">%d файлу</item>
+    </plurals>
+
+    <string name="linux_log_retrying">%1$s; ще одна спроба (%2$d з %3$d)</string>
+    <string name="linux_log_step_failed">%1$s — помилка: %2$s; повторіть у налаштуваннях</string>
+    <string name="linux_log_agent_failed">%1$s не встановився; спробуйте ще раз у налаштуваннях › ШІ-агенти</string>
+
+    <string name="linux_error_no_space">замало місця: Linux потрібно %1$s вільного місця, а на телефоні %2$s; звільніть місце й спробуйте ще раз</string>
+    <string name="linux_error_out_of_space">на телефоні закінчилося місце; Linux потрібно близько %1$s вільного місця; звільніть місце й спробуйте ще раз</string>
+    <string name="linux_error_http">не вдалося завантажити: HTTP %1$d</string>
+    <string name="linux_error_cut_short">завантаження перервалося; повторіть, щоб продовжити</string>
+    <string name="linux_error_move_download">не вдається перемістити завантажений файл</string>
+    <string name="linux_error_cant_run">Linux не може виконувати команди тут (код %1$d)</string>
+    <string name="linux_error_kernel">ядро цього телефона не дозволяє програмам Linux запускати інші програми, тож налаштування не може продовжитися. кастомним прошивкам з ядром 4.14 потрібен коміт ядра 05b289263772 від їхнього розробника; див. github issue #105</string>
+    <string name="linux_error_command">`%1$s` завершилася з помилкою (код %2$d)</string>
+    <string name="linux_error_cliamp_mismatch">завантажений cliamp не відповідає %1$s</string>
+    <string name="linux_error_cant_replace">не вдається замінити %1$s</string>
+
+    <string name="linux_job_installing">встановлення</string>
+    <string name="linux_job_removing">видалення</string>
+    <string name="linux_job_building">збирання</string>
+    <string name="linux_job_updating">оновлення</string>
+    <string name="linux_job_waiting">очікування</string>
+    <string name="linux_job_checking">перевірка</string>
+    <string name="linux_job_working">%1$s…</string>
+
+    <string name="linux_updates_unreachable">не вдалося зв\'язатися з дзеркалами</string>
+
+    <string name="linux_agent_claude">Агент для програмування від Anthropic</string>
+    <string name="linux_agent_opencode">Відкритий агент, будь-який постачальник моделей</string>
+    <string name="linux_agent_codex">Агент для програмування від OpenAI</string>
+    <string name="linux_agent_grok">Агент для програмування від xAI</string>
+    <string name="linux_agent_copilot">Агент для програмування від GitHub</string>
+    <string name="linux_agent_crush">Агент для термінала від Charm</string>
+    <string name="linux_agent_cursor">Агент для термінала від Cursor</string>
+    <string name="linux_agent_antigravity">Агент для програмування Gemini від Google</string>
+    <string name="linux_agent_pi">Мінімальний агент для програмування, що розширюється</string>
+    <string name="linux_agent_hermes">Агент від Nous Research, близько 2.5 ГБ</string>
+    <string name="linux_agent_omp">Pi з вбудованими інструментами й плагінами</string>
+    <string name="linux_agent_ori">Агент для програмування від OpenRouter</string>
+    <string name="linux_agent_muse">Агент для програмування від Meta</string>
+    <string name="linux_agent_kimi">Агент для програмування від Moonshot AI</string>
+    <string name="linux_agent_qwen">Агент для програмування Qwen від Alibaba</string>
+    <string name="linux_agent_mcode">Агент для програмування від MiniMax</string>
+    <string name="linux_agent_kiro">Агент для програмування від Amazon</string>
+    <string name="linux_agent_kilo">Відкритий агент на основі OpenCode</string>
+    <string name="linux_agent_devin">Агент для програмування від Cognition</string>
+    <string name="linux_agent_amp">Агент для програмування від ampcode.com</string>
+    <string name="linux_agent_commandcode">Агент для програмування від commandcode.ai</string>
+
+    <string name="linux_welcome_title">omarchy на головному екрані</string>
+    <string name="linux_welcome_body">Теми й шпалери Omarchy, ваші Android-додатки та віджети на головному екрані. Arch Linux додасть термінальні додатки та ШІ-агентів — зараз або пізніше в налаштуваннях.</string>
+    <string name="linux_welcome_linux">linux</string>
+    <string name="linux_welcome_choice">також налаштувати Arch Linux</string>
+    <string name="linux_welcome_choice_detail">термінальні додатки, агенти, pacman · ~1 ГБ завантаження, 3 ГБ місця</string>
+    <string name="linux_welcome_start">почати</string>
+    <string name="linux_welcome_start_linux">почати й налаштувати linux</string>
+    <string name="linux_welcome_start_hint">Зараз завантажуються шпалери теми, а інші теми Omarchy (близько 70 МБ) — у фоні.</string>
+    <string name="linux_welcome_start_linux_hint">Linux завантажує близько 1 ГБ, тож краще через Wi-Fi, і займає 3 ГБ місця. Він встановлюється у фоні за 10–20 хвилин; головний екран готовий одразу.</string>
+    <string name="linux_welcome_getting">завантаження %1$s</string>
+    <string name="linux_welcome_theme_failed">тема не завантажилася</string>
+    <string name="linux_welcome_wallpaper">завантажити її шпалери</string>
+    <string name="linux_welcome_skip">продовжити без шпалер</string>
+    <string name="linux_welcome_skip_hint">Кольори теми однаково застосуються. Лаунчер спробує ще раз пізніше, або завантажте їх у налаштуваннях › стиль.</string>
+
+    <string name="linux_agents_label">ші-агенти</string>
+    <string name="linux_agents_hint">Виберіть будь-які, щоб встановити разом із Linux. Додати чи видалити їх можна пізніше в налаштуваннях.</string>
+    <string name="linux_theme_label">тема</string>
+    <string name="linux_more_themes">більше тем ›</string>
+
+    <string name="linux_progress_title">налаштування linux</string>
+    <string name="linux_progress_stopped">налаштування зупинилося</string>
+    <string name="linux_try_again">ще раз</string>
+    <string name="linux_cancel_install">скасувати встановлення</string>
+    <string name="linux_progress_background">Можете закрити це й користуватися лаунчером; налаштування триває у фоні.</string>
+    <string name="linux_output">вивід</string>
+    <string name="linux_output_less">менше</string>
+    <string name="linux_output_more">більше</string>
+
+    <string name="linux_title">linux</string>
+    <string name="linux_removing">видалення linux…</string>
+    <string name="linux_offer_title">arch linux, за бажанням</string>
+    <string name="linux_offer_body">Додатки Linux, термінальні віджети, ШІ-агенти, pacman і Файли. Близько 1 ГБ завантаження та 3 ГБ місця; встановлюється у фоні.</string>
+    <string name="linux_install">встановити linux</string>
+    <plurals name="linux_install_with_agents">
+        <item quantity="one">встановити linux і агентів: %d</item>
+        <item quantity="few">встановити linux і агентів: %d</item>
+        <item quantity="many">встановити linux і агентів: %d</item>
+        <item quantity="other">встановити linux і агентів: %d</item>
+    </plurals>
+    <string name="linux_arch">arch linux</string>
+    <string name="linux_installed_size">встановлено · %1$s</string>
+    <string name="linux_measuring">вимірювання…</string>
+    <string name="linux_remove">видалити linux</string>
+    <string name="linux_remove_ask">видалити linux?</string>
+    <string name="linux_remove_body">Видаляє додатки Linux, ШІ-агентів, пакети й усе в /root, як-от Downloads. Теми, шпалери, віджети й головний екран залишаться.</string>
+    <string name="linux_remove_confirm">видалити</string>
+    <string name="linux_cancel">скасувати</string>
+    <string name="linux_gpu_title">прискорення gpu</string>
+    <string name="linux_gpu_on">увімк · %1$s · для додатків, відкритих відтепер</string>
+    <string name="linux_gpu_off_failed">вимк: GPU не пройшов перевірку після оновлення системи</string>
+    <string name="linux_gpu_waiting">увімк · очікує перевірки</string>
+    <string name="linux_gpu_failed">GPU не пройшов перевірку; додатки працюють програмно</string>
+    <string name="linux_gpu_offer">експериментально · %1$s · швидші додатки й ігри на OpenGL і Vulkan; термінальні додатки не змінюються</string>
+    <string name="linux_retry">ще раз</string>
+    <string name="linux_gpu_turn_off">вимкнути</string>
+    <string name="linux_gpu_turn_on">увімкнути</string>
+    <string name="linux_cpu_pinning_title">швидкі системні виклики</string>
+    <string name="linux_cpu_pinning_on">увімк · тримає Linux на одному швидкому ядрі CPU · для програм, запущених відтепер</string>
+    <string name="linux_cpu_pinning_off">вимк · для програм, запущених відтепер</string>
+    <string name="linux_session_title">сеанс</string>
+    <string name="linux_session_running">працює · додатки Linux, термінали й агенти доступні</string>
+    <string name="linux_session_starting">запускається…</string>
+    <string name="linux_session_stopped">зупинено · нічого не працює й нічого не видаляється · лишається зупиненим після перезапуску</string>
+    <string name="linux_stop">зупинити</string>
+    <string name="linux_start">запустити</string>
+    <string name="linux_stop_ask">зупинити linux?</string>
+    <string name="linux_stop_body">Закриває додатки Linux, термінали й ШІ-агентів і перериває їхню роботу. Нічого не видаляється. Віджети й додатки, яким потрібен Linux, чекатимуть, доки ви знову не запустите його тут.</string>
+    <string name="linux_stop_confirm">зупинити</string>
+
+    <string name="linux_notification_channel">Сеанс Linux</string>
+    <string name="linux_notify_channel">Агенти й скрипти</string>
+    <string name="linux_notification_installing">Встановлення Linux · %1$s</string>
+    <string name="linux_notification_installing_percent">Встановлення Linux · %1$d%% · %2$s</string>
+    <string name="linux_notification_failed">Налаштування Linux зупинилося · відкрийте налаштування › linux, щоб повторити</string>
+    <string name="linux_notification_removing">Видалення Linux</string>
+    <string name="linux_notification_running">Сеанс Linux працює</string>
+
+    <string name="packages_title">пакети</string>
+    <string name="packages_search">пошук пакетів</string>
+    <string name="packages_intro">Пакети Arch Linux ARM через pacman і AUR через yay. Встановлення також оновлює систему, тож може тривати якийсь час. Пакети AUR додають користувачі, і вони збираються на пристрої: спершу перегляньте їхній PKGBUILD на aur.archlinux.org.</string>
+    <string name="packages_loading">завантаження…</string>
+    <string name="packages_searching">пошук…</string>
+    <string name="packages_installed">встановлені (%1$d)</string>
+    <string name="packages_none">немає відповідних пакетів</string>
+    <plurals name="packages_results">
+        <item quantity="one">%d результат</item>
+        <item quantity="few">%d результати</item>
+        <item quantity="many">%d результатів</item>
+        <item quantity="other">%d результату</item>
+    </plurals>
+    <string name="packages_required">потрібен</string>
+    <string name="packages_confirm">підтвердити</string>
+    <string name="packages_remove">видалити</string>
+    <string name="packages_install">встановити</string>
+
+    <string name="licenses_title">ліцензії</string>
+    <string name="licenses_header">Omalauncher %1$s · © 2026 Simon Schubert\n\nДо нього входить відкрите ПЗ, перелічене нижче.</string>
+    <string name="licenses_website">вебсайт</string>
+    <string name="licenses_source">вихідний код</string>
+    <string name="licenses_use_proot">запускає необов\'язкову систему Linux</string>
+    <string name="licenses_use_talloc">розподільник пам\'яті для PRoot</string>
+    <string name="licenses_use_shmem">спільна пам\'ять для PRoot</string>
+    <string name="licenses_use_mesa">OpenGL на GPU Adreno в необов\'язковій системі Linux</string>
+    <string name="licenses_use_wayland">файли протоколу, що постачаються з Mesa</string>
+    <string name="licenses_use_omarchy">кольори тем для першого запуску</string>
+    <string name="licenses_use_nerd_fonts">шрифт символів</string>
+    <string name="licenses_use_weather_icons">погодні значки в шрифті символів</string>
+    <string name="licenses_use_mdi">значки в шрифті символів</string>
+    <string name="licenses_use_compose">інтерфейс користувача</string>
+    <string name="licenses_use_jetpack">activity, Compose та інші бібліотеки AndroidX</string>
+    <string name="licenses_use_kotlin">середовище виконання мови</string>
+    <string name="licenses_use_commons_compress">розпаковує завантаження</string>
+    <string name="licenses_use_androidsvg">малює значки SVG</string>
+    <string name="licenses_use_zxing">малює QR-коди, якими діляться віджетами</string>
+    <string name="licenses_use_json">читає й записує JSON</string>
+
+    <string name="share_in_saving">зберігаємо в linux…</string>
+    <string name="share_in_saved">збережено в ~/Downloads</string>
+    <string name="share_in_failed">не вдалося зберегти в linux</string>
+    <string name="share_in_no_linux">linux ще не налаштовано</string>
+</resources>

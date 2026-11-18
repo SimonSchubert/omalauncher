@@ -19,23 +19,51 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
 
-/** A coding agent CLI, installed the way Omarchy's omarchy-default-agent does it: via mise. */
+/**
+ * A coding agent CLI, installed the way Omarchy's omarchy-default-agent does it: via mise, or with its
+ * [own] installer when mise has no package for it.
+ */
 data class Agent(
     val bin: String,
     val name: String,
     @StringRes val description: Int,
-    /** mise package spec. */
+    /** mise package spec; empty with its [own] installer. */
     val pkg: String,
     /** What starts it without a prompt, when that's more than [bin]. */
     val command: String = bin,
     /** Whether mise needs node to install it: npm packages run their postinstall scripts with it. */
     val node: Boolean = pkg.startsWith("npm:"),
+    /** Set for an agent that installs itself instead of through mise. */
+    val own: OwnInstaller? = null,
 ) {
     /** Its activity alias in the manifest (cursor-agent -> CursorAgentWindow), so Recents names its window after it. */
     val windowAlias get() = bin.split('-').joinToString("") { it.replaceFirstChar(Char::uppercase) } + "Window"
 }
 
-/** Omarchy's agent list (omarchy-default-agent), limited to ones mise can install on arm64. */
+/** How an agent that mise has no package for installs, updates and removes itself; all run in the guest. */
+data class OwnInstaller(
+    val install: String,
+    val update: String,
+    val remove: String,
+    /**
+     * A file, from the guest home, that is there once the install is complete. The installer puts the
+     * command in place before it builds what the command needs, so the command alone can be an install
+     * that stopped halfway.
+     */
+    val done: String,
+)
+
+/**
+ * Hermes keeps what its installer and updater downloaded (pnpm's store and uv's wheels): 140 MB after an install
+ * and 600 MB after an update, needed by neither once they are done. What it runs from is linked out of them,
+ * and stays.
+ */
+const val HERMES_CLEANUP = "rm -rf ~/.hermes/cache/pnpm ~/.hermes/cache/uv"
+
+/**
+ * Omarchy's agent list (omarchy-default-agent), limited to ones mise can install on arm64, plus Hermes,
+ * which Omarchy also installs with Hermes's own installer.
+ */
 val AGENTS =
     listOf(
         Agent("claude", "Claude Code", R.string.linux_agent_claude, "claude"),
@@ -48,6 +76,31 @@ val AGENTS =
         Agent("cursor-agent", "Cursor CLI", R.string.linux_agent_cursor, "cursor-agent"),
         Agent("agy", "Antigravity", R.string.linux_agent_antigravity, "antigravity-cli"),
         Agent("pi", "Pi", R.string.linux_agent_pi, "pi"),
+        Agent(
+            "hermes",
+            "Hermes",
+            R.string.linux_agent_hermes,
+            pkg = "",
+            // As Omarchy starts it: without asking before each command it runs.
+            command = "hermes --yolo",
+            own =
+                OwnInstaller(
+                    // Without the browser and computer-use extras: Playwright's Chromium has no place on a phone.
+                    install =
+                        "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | " +
+                            "bash -s -- --non-interactive --skip-browser --skip-computer-use && $HERMES_CLEANUP",
+                    // The downloads go even when the update fails, as with mise's.
+                    update = "{ hermes update --yes; ok=\$?; $HERMES_CLEANUP; [ \$ok -eq 0 ]; }",
+                    // Its own uninstall stops what it left running and takes the program, but keeps the 1.7 GB
+                    // of runtimes and caches it downloaded next to the user's settings, keys and memories,
+                    // which stay as with the other agents. Best effort: a broken install can't run it.
+                    remove =
+                        "{ hermes uninstall --yes </dev/null || true; } && " +
+                            "rm -rf ~/.hermes/hermes-agent ~/.hermes/tools ~/.hermes/cache ~/.hermes/installs " +
+                            "~/.local/bin/hermes ~/.local/bin/hermes-acp ~/.local/bin/hermes-agent",
+                    done = ".hermes/hermes-agent/.hermes-bootstrap-complete",
+                ),
+        ),
         Agent("omp", "Oh My Pi", R.string.linux_agent_omp, "github:can1357/oh-my-pi"),
         Agent("ori", "Ori", R.string.linux_agent_ori, "github:OpenRouterLabs/ori-releases", command = "ori code"),
         Agent(
@@ -112,6 +165,10 @@ const val MISE_PRUNE =
  */
 const val MISE_CLEANUP = "mise cache clear && rm -rf ~/.local/share/mise/downloads ~/.npm/_cacache"
 
+/** Updates the agents that installed themselves, each only if it's there. */
+val OWN_UPDATES =
+    AGENTS.mapNotNull { it.own }.joinToString(" && ") { "if [ -e ~/${it.done} ]; then ${it.update}; fi" }
+
 /** Adds node to the global config when an installed agent needs it but was installed before it did (OpenCode 1). */
 val MISE_NODE_FOR_AGENTS =
     AGENTS.filter { it.node }.joinToString(" ", prefix = "if [ -z \"\$(mise ls -g node)\" ] && [ -n \"\$(mise ls -g ", postfix = ")\" ]; then mise use -g node@lts; fi") {
@@ -120,14 +177,18 @@ val MISE_NODE_FOR_AGENTS =
 
 /**
  * Starts [agentBin] with a first prompt; OpenCode takes it as --prompt, Antigravity and Copilot as -i (they
- * refuse a bare argument), the others as an argument.
+ * refuse a bare argument), the others as an argument. Hermes takes it as its chat's --query, which in a
+ * terminal stays open after the answer, with --yolo as Omarchy starts it.
  * Ori's agent is `ori code`, which stays open only with --interactive. Kimi takes a prompt only in
  * print mode, so the session it ran in is continued after the answer. Qwen Code and Kilo bind it to
  * an option, MiniMax Code, Kiro, Devin and Command Code take it after --, and Amp reads its first
  * message from stdin (an argument would be one turn that exits), as Omarchy's omarchy-agent starts them.
  * [readOnly], for reading something untrusted: Claude Code and Antigravity start in plan mode, where they
- * can read but not run commands or change files whatever the user's settings say. The others have no flag
- * for that we can rely on inside proot, and only have the prompt.
+ * can read but not run commands or change files whatever the user's settings say. Hermes starts with its
+ * file tools alone (-t file): no terminal, web or browser, so it can read and write files but not run or
+ * send anything. Leaving out --yolo isn't enough: its approvals default to "smart", where its own model
+ * approves a dangerous command, and other commands never ask. The others have no flag for that we can
+ * rely on inside proot, and only have the prompt.
  */
 fun agentInvocation(
     agentBin: String,
@@ -139,6 +200,8 @@ fun agentInvocation(
     return when {
         agentBin == "opencode" -> "$agentBin --prompt $quoted"
         agentBin == "copilot" -> "$agentBin -i $quoted"
+        agentBin == "hermes" && readOnly -> "hermes chat -t file --query=$quoted"
+        agentBin == "hermes" -> "hermes chat --yolo --query=$quoted"
         agentBin == "claude" && readOnly -> "$agentBin --permission-mode plan $quoted"
         agentBin == "ori" -> "ori code --interactive --prompt $quoted"
         agentBin == "kimi" -> "kimi --prompt $quoted && kimi --continue"
@@ -165,8 +228,12 @@ class AgentStore(
 
     val states = mutableStateMapOf<String, JobState>()
 
-    /** Shims are symlinks to a guest path (/root/.local/bin/mise), so don't follow them from the host. */
-    fun isInstalled(agent: Agent) = Files.exists(File(shims, agent.bin).toPath(), LinkOption.NOFOLLOW_LINKS)
+    /**
+     * Shims are symlinks to a guest path (/root/.local/bin/mise), so don't follow them from the host. An agent
+     * with its own installer is there once that finished.
+     */
+    fun isInstalled(agent: Agent) =
+        if (agent.own != null) File(proot.home, agent.own.done).exists() else Files.exists(File(shims, agent.bin).toPath(), LinkOption.NOFOLLOW_LINKS)
 
     /** The agent picked in the prompt bar, kept in the guest home where scripts can read it too. */
     private val preferredFile get() = File(proot.launcherConfig, "agent")
@@ -208,13 +275,14 @@ class AgentStore(
             if (isInstalled(agent)) onInstalled(agent)
         }
 
-    /** Installs [agent] with mise, bootstrapping mise itself if needed. */
+    /** Installs [agent] with its own installer, or with mise, bootstrapping mise itself if needed. */
     fun installScript(agent: Agent) =
-        buildString {
-            append(if (mise.exists()) "$MISE_SELF_UPDATE && " else "curl -fsSL https://mise.run | sh && ")
-            if (agent.node) append("mise use -g node@lts && ")
-            append("mise use -g ${shellQuote(agent.pkg)} && $MISE_CLEANUP")
-        }
+        agent.own?.install
+            ?: buildString {
+                append(if (mise.exists()) "$MISE_SELF_UPDATE && " else "curl -fsSL https://mise.run | sh && ")
+                if (agent.node) append("mise use -g node@lts && ")
+                append("mise use -g ${shellQuote(agent.pkg)} && $MISE_CLEANUP")
+            }
 
     /** Call after [installScript] succeeded: makes the agent show up in the drawer. */
     fun onInstalled(agent: Agent) {
@@ -241,7 +309,7 @@ class AgentStore(
         if (release(agent)) delay(1500)
         val ok =
             try {
-                run(agent, R.string.linux_job_removing) { "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
+                run(agent, R.string.linux_job_removing) { agent.own?.remove ?: "mise unuse -g ${shellQuote(agent.pkg)} && $MISE_PRUNE" }
             } finally {
                 // Also when its screen closed while mise worked, as with install.
                 refresh()

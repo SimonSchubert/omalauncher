@@ -2,6 +2,8 @@
 # Bundles each Omarchy theme's colors.toml, so the first-run screen can offer themes
 # before anything is downloaded, and each theme's first background's name, so first run
 # can fetch just that one image and leave the full themes to the background.
+# Also lists the files the launcher downloads from that commit, with their sizes
+# (omarchy-files.txt), so it fetches those alone instead of the whole repo.
 # Uses the commit the app pins (ThemeStore.OMARCHY_REF): the names must match its files.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -9,11 +11,20 @@ ref=$(sed -n 's/.*const val OMARCHY_REF = "\([0-9a-f]*\)".*/\1/p' app/src/main/k
 [ -n "$ref" ] || { echo "OMARCHY_REF not found" >&2; exit 1; }
 out=app/src/main/assets/themes
 backgrounds=app/src/main/assets/theme-backgrounds.txt
+files=app/src/main/assets/omarchy-files.txt
 rm -rf "$out" && mkdir -p "$out"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-curl -fsSL "https://codeload.github.com/omacom/omarchy/tar.gz/$ref" |
-  tar xz -C "$tmp" --include='*/themes/*/colors.toml' --include='*/themes/*/backgrounds/*'
+curl -fsSL "https://codeload.github.com/omacom/omarchy/tar.gz/$ref" | tar xz -C "$tmp"
+# What the launcher keeps: themes, config templates and app configs, without the lock-screen
+# images and the boot intro videos (4.5), which it doesn't use (~20 MB and ~100 MB).
+{
+  echo "# The files the launcher downloads from Omarchy, by scripts/fetch-theme-colors.sh: size and path."
+  echo "ref $ref"
+  (cd "$tmp"/*/ && find themes default/themed default/bash config/btop config/starship.toml config/lazygit \
+    config/tmux etc/fastfetch icon.txt -type f ! -name '*unlock.png' ! -path '*/backgrounds/intros/*' | LC_ALL=C sort |
+    while IFS= read -r f; do echo "$(wc -c < "$f" | tr -d ' ') $f"; done)
+} > "$files"
 : > "$backgrounds"
 for f in "$tmp"/*/themes/*/colors.toml; do
   dir=$(dirname "$f")
@@ -25,3 +36,4 @@ for f in "$tmp"/*/themes/*/colors.toml; do
 done
 ls "$out"
 cat "$backgrounds"
+echo "$(($(wc -l < "$files") - 2)) files to download"

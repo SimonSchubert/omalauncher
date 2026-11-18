@@ -2,7 +2,7 @@ keybar "gamepad" {
   // A key bar shaped like a game controller, for games and full-screen programs in a terminal (nethack, 2048, tetris,
   // btop, a file manager): a d-pad that repeats while held, and four round buttons, enter, esc, space and q. To use it,
   // copy it over keybar.owl in the folder above.
-  meta { description: "A key bar shaped like a game controller: a d-pad that repeats, and enter, esc, space and q as round buttons"; version: "1.0"; license: "MIT"; category: "system"; owl: 12 }
+  meta { description: "A key bar shaped like a game controller: a d-pad that repeats, and enter, esc, space and q as round buttons"; version: "1.1"; license: "MIT"; category: "system"; owl: 23 }
   asset chevron = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNNy40MSwxNS40MUwxMiwxMC44M2w0LjU5LDQuNThMMTgsMTRsLTYsLTYgLTYsNnoiLz48L3N2Zz4="
   state down = ""
 
@@ -17,7 +17,7 @@ keybar "gamepad" {
       onPress: {
         if repeat == 0 {
           down = send
-          haptic()
+          haptic("light")
         }
         pressKey(send)
       }
@@ -37,7 +37,7 @@ keybar "gamepad" {
       borderColor: tone
       onPress: {
         down = send
-        haptic()
+        haptic("light")
         pressKey(send)
       }
       onRelease: down = ""
@@ -55,7 +55,7 @@ keybar "gamepad" {
       background: down == send ? accent : surface
       onPress: {
         down = send
-        haptic()
+        haptic("light")
         pressKey(send)
       }
       onRelease: down = ""

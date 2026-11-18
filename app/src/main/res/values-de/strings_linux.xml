@@ -58,6 +58,7 @@
     <string name="linux_agent_cursor">Agent von Cursor fürs Terminal</string>
     <string name="linux_agent_antigravity">Gemini-Coding-Agent von Google</string>
     <string name="linux_agent_pi">Minimaler, erweiterbarer Coding-Agent</string>
+    <string name="linux_agent_hermes">Agent von Nous Research, etwa 2,5 GB</string>
     <string name="linux_agent_omp">Pi mit eingebauten Tools und Plugins</string>
     <string name="linux_agent_ori">Coding-Agent von OpenRouter</string>
     <string name="linux_agent_muse">Coding-Agent von Meta</string>
@@ -128,6 +129,15 @@
     <string name="linux_cpu_pinning_title">schnelle systemaufrufe</string>
     <string name="linux_cpu_pinning_on">an · hält linux auf einem schnellen cpu-kern · für ab jetzt gestartete programme</string>
     <string name="linux_cpu_pinning_off">aus · für ab jetzt gestartete programme</string>
+    <string name="linux_session_title">sitzung</string>
+    <string name="linux_session_running">läuft · linux-apps, terminals und agenten funktionieren</string>
+    <string name="linux_session_starting">startet…</string>
+    <string name="linux_session_stopped">gestoppt · nichts läuft und nichts wird gelöscht · bleibt auch nach einem neustart gestoppt</string>
+    <string name="linux_stop">stoppen</string>
+    <string name="linux_start">starten</string>
+    <string name="linux_stop_ask">linux stoppen?</string>
+    <string name="linux_stop_body">Schließt Linux-Apps, Terminals und Coding-Agenten und beendet, was sie gerade tun. Nichts wird gelöscht. Widgets und Apps, die Linux brauchen, warten, bis du es hier wieder startest.</string>
+    <string name="linux_stop_confirm">stoppen</string>
 
     <string name="linux_notification_channel">Linux-Sitzung</string>
     <string name="linux_notify_channel">Agenten und Skripte</string>
@@ -136,6 +146,12 @@
     <string name="linux_notification_failed">Linux-Einrichtung gestoppt · nochmal versuchen unter einstellungen › linux</string>
     <string name="linux_notification_removing">Linux wird entfernt</string>
     <string name="linux_notification_running">Linux-Sitzung läuft</string>
+
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">wird in linux gespeichert…</string>
+    <string name="share_in_saved">in ~/Downloads gespeichert</string>
+    <string name="share_in_failed">konnte es nicht in linux speichern</string>
+    <string name="share_in_no_linux">linux ist noch nicht eingerichtet</string>
 
     <string name="packages_title">pakete</string>
     <string name="packages_search">pakete suchen</string>

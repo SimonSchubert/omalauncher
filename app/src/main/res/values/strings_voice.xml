@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="voice_listening">listening</string>
+    <string name="voice_listening">listening · tap to send</string>
     <string name="voice_listening_working">listening · still working</string>
+    <!-- Under the orb right after a tap, while on-device speech recognition loads: what's said is kept. -->
+    <string name="voice_listening_preparing">getting ready · you can already talk</string>
     <string name="voice_starting">starting</string>
     <!-- Under the orb while an agent waits for an OK; %1$s is the time it has been working, like 0:12. -->
     <string name="voice_needs_ok">needs your OK · %1$s</string>
@@ -104,4 +106,27 @@
     <string name="voice_tts_settings">text-to-speech settings</string>
     <string name="voice_no_voice">No voice for %1$s on this phone yet: get one in the text-to-speech settings.</string>
     <string name="voice_sample">This is how replies will sound.</string>
+    <!-- Speech recognition in the voice settings: the phone's recognizer, or Parakeet, downloaded on request. -->
+    <string name="voice_recognition">speech recognition</string>
+    <!-- Which recognizer listens: the phone's own (usually Google's), as opposed to Parakeet. -->
+    <string name="voice_recognition_phone">the phone\'s</string>
+    <string name="voice_recognition_parakeet">Parakeet, on this phone</string>
+    <string name="voice_parakeet_about">Parakeet recognizes speech on this phone itself: offline, without beeps, in 25 European languages. A %1$s download.</string>
+    <string name="voice_parakeet_download">download</string>
+    <string name="voice_parakeet_mobile_data">you\'re on mobile data</string>
+    <!-- Download progress: %1$s and %2$s are sizes, like 312 MB of 670 MB. -->
+    <string name="voice_parakeet_progress">%1$s of %2$s</string>
+    <string name="voice_parakeet_checking">checking the download…</string>
+    <string name="voice_parakeet_cancel">cancel</string>
+    <string name="voice_parakeet_delete">delete Parakeet · %1$s</string>
+    <string name="voice_parakeet_failed">the download stopped: %1$s</string>
+    <string name="voice_parakeet_space">not enough space: %1$s more is needed</string>
+    <string name="voice_parakeet_damaged">the download was damaged; try again</string>
+    <!-- %1$s is a language name, like Japanese. -->
+    <string name="voice_parakeet_language">Parakeet doesn\'t know %1$s: the phone\'s recognizer listens instead.</string>
+    <!-- In the voice settings: how long a pause in speech sends it to the agent; off means only a tap on the orb does. -->
+    <string name="voice_send_after">send after a pause</string>
+    <string name="voice_send_after_off">off</string>
+    <!-- A number of seconds, short: 2 s. -->
+    <string name="voice_seconds">%1$d s</string>
 </resources>

@@ -13,6 +13,22 @@ val uploadKey = rootProject.file("keystore.properties").takeIf { it.exists() }
 // The NDK proot is built with (scripts/fetch-proot.sh); wlbridge uses the same one.
 val prootNdk = rootProject.file("scripts/fetch-proot.sh").readLines().first { it.startsWith("NDK_VERSION=") }.substringAfter('=')
 
+// sherpa-onnx, for on-device speech (Parakeet), isn't on Maven: its release AAR, fetched once into the gitignored
+// app/libs and checked against its SHA-256. Its other ABIs drop out with abiFilters.
+val sherpaVersion = "2.0.1"
+val sherpaSha256 = "a8d09d1d32f3eb8520482c6d3d43fae674681c5b050385967c70a3c2c9bf0ee7"
+val sherpaAar = file("libs/sherpa-onnx-$sherpaVersion.aar").also { aar ->
+    if (aar.isFile) return@also
+    val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/sherpa-onnx-$sherpaVersion.aar"
+    logger.lifecycle("Fetching $url")
+    val part = File(aar.path + ".part")
+    aar.parentFile.mkdirs()
+    uri(url).toURL().openStream().use { input -> part.outputStream().use { input.copyTo(it) } }
+    val sha = MessageDigest.getInstance("SHA-256").digest(part.readBytes()).joinToString("") { "%02x".format(it) }
+    check(sha == sherpaSha256) { "$url has SHA-256 $sha, not $sherpaSha256" }
+    part.renameTo(aar)
+}
+
 android {
     namespace = "dev.omalauncher"
     compileSdk = 37
@@ -22,12 +38,23 @@ android {
         applicationId = "dev.omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 37
-        versionName = "1.4.0"
+        versionCode = 40
+        versionName = "1.7.0"
         ndk { abiFilters += "arm64-v8a" }
     }
 
     buildFeatures { buildConfig = true }
+
+    // play: the AAB for Google Play, with Play's in-app updates, whose library is closed source. foss: the APK on
+    // GitHub releases, which F-Droid builds too, without it; its LauncherUpdates asks GitHub releases instead.
+    flavorDimensions += "store"
+    productFlavors {
+        create("foss") {
+            dimension = "store"
+            isDefault = true
+        }
+        create("play") { dimension = "store" }
+    }
 
     externalNativeBuild {
         cmake { path = file("src/main/cpp/CMakeLists.txt") }
@@ -38,6 +65,8 @@ android {
             // Extract .so files to nativeLibraryDir: proot is exec'd from there.
             useLegacyPackaging = true
             keepDebugSymbols += listOf("**/libproot.so", "**/libproot-loader.so")
+            // sherpa-onnx's C and C++ APIs: the app only uses its JNI library.
+            excludes += listOf("**/libsherpa-onnx-c-api.so", "**/libsherpa-onnx-cxx-api.so")
         }
     }
 
@@ -65,7 +94,7 @@ android {
         release {
             // Shrinks the APK and drops what the app doesn't use, like the owl module's unused parts.
             isMinifyEnabled = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-sherpa.pro")
             signingConfig = signingConfigs.getByName(if (uploadKey != null) "release" else "debug")
         }
     }
@@ -75,7 +104,7 @@ android {
 tasks.withType<Test>().configureEach { inputs.dir("src/main/assets/widgets") }
 
 // Gitignored, built by scripts/fetch-proot.sh. Without it a release still builds, but every Linux command fails.
-tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+tasks.matching { it.name.matches(Regex("pre\\w*ReleaseBuild")) }.configureEach {
     val proot = file("src/main/jniLibs/arm64-v8a/libproot.so")
     doFirst { check(proot.exists()) { "$proot is missing; run scripts/fetch-proot.sh" } }
 }
@@ -83,7 +112,7 @@ tasks.matching { it.name == "preReleaseBuild" }.configureEach {
 // The libraries don't follow a pull: built before patches/proot or the script changed, they make an app with
 // an old proot (and no fast lane library) that builds and installs like any other. The script leaves a hash
 // of what it built from in .source; a debug build without any libraries stays possible (CI lints that way).
-tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
+tasks.matching { it.name.matches(Regex("pre\\w*(Debug|Release)Build")) }.configureEach {
     val libs = file("src/main/jniLibs/arm64-v8a")
     val root = rootProject.projectDir
     val sources = listOf(rootProject.file("scripts/fetch-proot.sh")) +
@@ -112,6 +141,10 @@ dependencies {
     implementation(libs.androidsvg)
     implementation(libs.zxing.core)
     implementation(project(":owl"))
+    implementation(files(sherpaAar))
+    "playImplementation"(libs.play.app.update)
+    // Play's library brings fragment 1.0.0, too old for registerForActivityResult.
+    "playImplementation"(libs.androidx.fragment)
     testImplementation(libs.junit)
     // android.jar only has stubs of org.json.
     testImplementation(libs.org.json)

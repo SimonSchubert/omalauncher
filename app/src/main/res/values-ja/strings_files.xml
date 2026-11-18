@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_failed">失敗しました</string>
+    <string name="files_cant_hand_over">%1$s はほかのアプリに渡せません</string>
+    <string name="files_no_app">%1$s を開けるアプリがありません</string>
+    <string name="files_leads_to_nothing">リンク先がありません</string>
+    <string name="files_cant_open">%1$s を開けません：%2$s</string>
+    <string name="files_selected">%1$d 件を選択中</string>
+    <string name="files_filter_hint">このフォルダ内を絞り込む</string>
+    <string name="files_home">ホーム</string>
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">ダウンロード</string>
+    <string name="files_place_phone_folders">スマートフォンのフォルダ</string>
+    <string name="files_add_phone_folder">スマートフォンのフォルダを追加</string>
+    <string name="files_no_phone_folders">スマートフォンのフォルダはまだありません。メニューから追加できます</string>
+    <string name="files_place_system">システム</string>
+    <string name="files_search">検索</string>
+    <string name="files_more">その他</string>
+    <string name="files_new_file">新しいファイル</string>
+    <string name="files_new_folder">新しいフォルダ</string>
+    <string name="files_hide_hidden">隠しファイルを表示しない</string>
+    <string name="files_show_hidden">隠しファイルを表示</string>
+    <string name="files_open_terminal">ここでターミナルを開く</string>
+    <string name="files_empty_folder">空のフォルダ</string>
+    <string name="files_no_matches">一致する項目がありません</string>
+    <string name="files_create">作成</string>
+    <string name="files_rename">名前を変更</string>
+    <string name="files_delete_one">%1$s を削除しますか？</string>
+    <plurals name="files_delete_items">
+        <item quantity="other">%1$d 件を削除しますか？</item>
+    </plurals>
+    <string name="files_delete_message">この操作は元に戻せません。</string>
+    <string name="files_delete">削除</string>
+    <plurals name="files_items">
+        <item quantity="other">%1$d 件</item>
+    </plurals>
+    <string name="files_folder">フォルダ</string>
+    <string name="files_copy">コピー</string>
+    <string name="files_cut">切り取り</string>
+    <string name="files_select_all">すべて選択</string>
+    <string name="files_edit">編集</string>
+    <string name="files_open_with">アプリで開く…</string>
+    <string name="files_share">共有</string>
+    <string name="files_cancel">キャンセル</string>
+    <string name="files_move_here">ここに移動</string>
+    <string name="files_paste_here">ここに貼り付け</string>
+
+    <string name="editor_title">エディタ</string>
+    <string name="editor_cant_read">%1$s を読み込めません：%2$s</string>
+    <string name="editor_cant_save">%1$s を保存できません：%2$s</string>
+    <string name="editor_not_found">見つかりません</string>
+    <string name="editor_find_hint">ファイル内を検索</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">前の一致</string>
+    <string name="editor_next_match">次の一致</string>
+    <string name="editor_save">保存</string>
+    <string name="editor_find">検索</string>
+    <string name="editor_no_wrap">行を折り返さない</string>
+    <string name="editor_wrap">行を折り返す</string>
+    <string name="editor_show_in_files">「ファイル」で表示</string>
+    <string name="editor_open_in_micro">micro で開く</string>
+    <string name="editor_save_confirm">%1$s を保存しますか？</string>
+    <string name="editor_save_confirm_message">保存されていない変更があります。</string>
+    <string name="editor_discard">破棄</string>
+    <string name="editor_key_left">左</string>
+    <string name="editor_key_up">上</string>
+    <string name="editor_key_down">下</string>
+    <string name="editor_key_right">右</string>
+    <string name="editor_key_undo">元に戻す</string>
+    <string name="editor_key_redo">やり直す</string>
+    <string name="editor_home_title">エディタ</string>
+    <string name="editor_new">新規</string>
+    <string name="editor_browse">参照</string>
+    <string name="editor_recent">最近のファイル</string>
+    <string name="editor_recent_empty">編集したファイルがここに表示されます。</string>
+    <string name="editor_new_file_hint">Linux 内のパス</string>
+
+    <string name="prompt_listening">聞き取り中…</string>
+    <string name="prompt_hint_apps">アプリを開く…</string>
+    <string name="prompt_hint_ask">アプリを開く、%1$s に聞く…</string>
+    <string name="prompt_enter_ask">⏎ 聞く</string>
+    <string name="prompt_agent">エージェント</string>
+    <string name="prompt_manage_agents">"  エージェントを管理…"</string>
+
+    <string name="prompt_speech_no_recognizer">このスマートフォンには音声認識がありません</string>
+    <string name="prompt_speech_refused">このスマートフォンの音声認識は、ほかのアプリからの利用を許可していません</string>
+    <string name="prompt_speech_failed">音声認識に失敗しました（%1$d）</string>
+    <string name="prompt_speech_language">この言語では音声入力を利用できません</string>
+    <string name="prompt_speech_not_downloaded">この言語の音声データが、このスマートフォンにダウンロードされていません</string>
+    <string name="prompt_speech_mic_permission">マイクの権限が必要です</string>
+    <string name="prompt_speech_network">音声認識にはネットワーク接続が必要です</string>
+</resources>

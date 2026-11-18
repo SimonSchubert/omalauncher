@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="voice_listening">正在听</string>
+    <string name="voice_listening">正在听 · 轻点发送</string>
     <string name="voice_listening_working">正在听 · 仍在工作</string>
+    <string name="voice_listening_preparing">准备中 · 可以开始说了</string>
     <string name="voice_starting">正在启动</string>
     <string name="voice_needs_ok">需要你确认 · %1$s</string>
     <string name="voice_working">工作中 · %1$s</string>
@@ -79,4 +80,21 @@
     <string name="voice_tts_settings">文字转语音设置</string>
     <string name="voice_no_voice">这部手机还没有 %1$s 的语音：请在文字转语音设置中下载一个。</string>
     <string name="voice_sample">回复听起来会是这样。</string>
+    <string name="voice_recognition">语音识别</string>
+    <string name="voice_recognition_phone">手机自带的</string>
+    <string name="voice_recognition_parakeet">Parakeet，在这部手机上</string>
+    <string name="voice_parakeet_about">Parakeet 直接在这部手机上识别语音：离线运行，没有提示音，支持 25 种欧洲语言。需要下载 %1$s。</string>
+    <string name="voice_parakeet_download">下载</string>
+    <string name="voice_parakeet_mobile_data">你正在使用移动数据</string>
+    <string name="voice_parakeet_progress">%1$s / %2$s</string>
+    <string name="voice_parakeet_checking">正在检查下载的文件…</string>
+    <string name="voice_parakeet_cancel">取消</string>
+    <string name="voice_parakeet_delete">删除 Parakeet · %1$s</string>
+    <string name="voice_parakeet_failed">下载已中断：%1$s</string>
+    <string name="voice_parakeet_space">空间不足：还需要 %1$s</string>
+    <string name="voice_parakeet_damaged">下载的文件已损坏，请重试</string>
+    <string name="voice_parakeet_language">Parakeet 不支持%1$s：改用手机自带的语音识别。</string>
+    <string name="voice_send_after">停顿后发送</string>
+    <string name="voice_send_after_off">关</string>
+    <string name="voice_seconds">%1$d 秒</string>
 </resources>
