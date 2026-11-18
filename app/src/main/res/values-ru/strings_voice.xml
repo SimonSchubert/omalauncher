@@ -27,6 +27,7 @@
     <string name="voice_message">сообщение для %1$s</string>
     <string name="voice_answer_hint">да, нет или что сделать вместо этого</string>
     <string name="voice_send">отправить</string>
+    <string name="voice_erase">стереть сказанное</string>
     <string name="voice_stop">остановить</string>
     <string name="voice_wants">%1$s хочет %2$s</string>
     <string name="voice_allow">разрешить</string>

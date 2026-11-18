@@ -33,6 +33,7 @@
     <string name="voice_message">message %1$s</string>
     <string name="voice_answer_hint">yes, no, or what to do instead</string>
     <string name="voice_send">send</string>
+    <string name="voice_erase">erase what you said</string>
     <string name="voice_stop">stop</string>
     <!-- The approval card; %1$s is the agent, %2$s what it wants to do (a voice_do_ phrase, like "run a command"). -->
     <string name="voice_wants">%1$s wants to %2$s</string>

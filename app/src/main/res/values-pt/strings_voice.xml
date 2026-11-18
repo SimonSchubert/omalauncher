@@ -26,6 +26,7 @@
     <string name="voice_message">mensagem para %1$s</string>
     <string name="voice_answer_hint">sim, não, ou o que fazer em vez disso</string>
     <string name="voice_send">enviar</string>
+    <string name="voice_erase">apagar o que você disse</string>
     <string name="voice_stop">parar</string>
     <string name="voice_wants">%1$s quer %2$s</string>
     <string name="voice_allow">permitir</string>

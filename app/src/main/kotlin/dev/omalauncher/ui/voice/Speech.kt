@@ -217,6 +217,23 @@ class Speech(
         r.stopListening()
     }
 
+    /**
+     * Forgets what's been heard and goes on listening, for a fresh start after a mistake. Android's recognizers start
+     * a new session: the one going on would bring the words back with its next partial result.
+     */
+    fun erase() {
+        if (!listening) return
+        finished = ""
+        partial = ""
+        text = ""
+        parakeet?.let { return it.erase() }
+        val r = recognizer?.takeIf { pending == null } ?: return
+        guarded {
+            r.cancel()
+            r.startListening(intent())
+        }
+    }
+
     /** Ends recognition without calling onDone, and forgets what it heard. */
     fun cancel() {
         held = false

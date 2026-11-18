@@ -24,6 +24,7 @@
     <string name="voice_message">发消息给 %1$s</string>
     <string name="voice_answer_hint">是、不，或者改做什么</string>
     <string name="voice_send">发送</string>
+    <string name="voice_erase">清除刚才说的话</string>
     <string name="voice_stop">停止</string>
     <string name="voice_wants">%1$s 想要%2$s</string>
     <string name="voice_allow">允许</string>

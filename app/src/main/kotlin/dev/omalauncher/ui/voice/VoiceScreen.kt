@@ -85,6 +85,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -100,6 +101,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -280,7 +283,8 @@ fun VoiceScreen(
     // don't run the whole screen again each frame; the screen only follows whether there's anything to show.
     val items = {
         buildList {
-            if (speech.listening && speech.text.isNotBlank()) add(VoiceSession.Entry("you", speech.text))
+            // What's being heard: not sent yet, so it can be erased.
+            if (speech.listening && speech.text.isNotBlank()) add(VoiceSession.Entry(HEARING, speech.text))
             if (session.reply.isNotBlank()) add(VoiceSession.Entry("agent", session.reply))
             addAll(session.transcript.asReversed())
         }
@@ -424,7 +428,7 @@ fun VoiceScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         ) {
                             val entries = items()
-                            items(entries.size) { i -> Message(entries[i], bitmaps) { viewing = it } }
+                            items(entries.size) { i -> Message(entries[i], bitmaps, onErase = speech::erase) { viewing = it } }
                         }
                     }
                     val touch = remember { MutableInteractionSource() }
@@ -831,14 +835,51 @@ private fun RowScope.Answer(
     contentAlignment = Alignment.Center,
 ) { BasicText(label, style = Mono.copy(color = if (filled) Palette.background else color)) }
 
+/** The entry for what's being heard, not yet sent. */
+private const val HEARING = "hearing"
+
+/**
+ * What's being heard, where your message will be: outlined with a dashed line instead of filled, a draft, with an ✕
+ * that erases it, so a slip can be said again. Listening goes on.
+ */
+@Composable
+private fun Hearing(
+    text: String,
+    onErase: () -> Unit,
+) = Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+    val shape = LauncherStyle.shape(14.dp)
+    val line = Palette.accent.copy(alpha = 0.7f)
+    Row(
+        Modifier
+            .widthIn(max = 300.dp)
+            .drawBehind {
+                val outline = shape.createOutline(size, layoutDirection, this)
+                val dash = 5.dp.toPx()
+                drawOutline(outline, line, style = Stroke(width = 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, dash * 0.8f))))
+            }.padding(start = 12.dp, end = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicText(
+            text,
+            Modifier.weight(1f, fill = false).padding(vertical = 8.dp),
+            style = Mono.copy(color = Palette.foreground.copy(alpha = 0.8f)),
+        )
+        Box(Modifier.size(40.dp).clip(LauncherStyle.shape(20.dp)).clickable(onClick = onErase), contentAlignment = Alignment.Center) {
+            Image(Icons.Close, stringResource(R.string.voice_erase), Modifier.size(18.dp), colorFilter = ColorFilter.tint(Palette.muted))
+        }
+    }
+}
+
 /** One line of the conversation. */
 @Composable
 private fun Message(
     e: VoiceSession.Entry,
     bitmaps: MutableMap<String, ImageBitmap>,
+    onErase: () -> Unit,
     onImage: (String) -> Unit,
 ) {
     when (e.who) {
+        HEARING -> Hearing(e.text, onErase)
         "you" ->
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
                 BasicText(

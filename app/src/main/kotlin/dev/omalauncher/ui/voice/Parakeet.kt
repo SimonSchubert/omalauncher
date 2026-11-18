@@ -80,7 +80,21 @@ internal class Parakeet(
         stopping = true
     }
 
+    /** Counts [erase]s: text decoded from before the last one is dropped. */
+    @Volatile private var erased = 0
+
+    /** Forgets what's been said and not yet handed over, and goes on listening: what's said next starts afresh. */
+    fun erase() {
+        erased++
+    }
+
     private fun post(call: Events.() -> Unit) = main.post { if (!cancelled) events.call() }
+
+    /** Text from what was heard before erase number [at]: not handed over if it's been erased since. */
+    private fun postText(
+        at: Int,
+        call: Events.() -> Unit,
+    ) = main.post { if (!cancelled && at == erased) events.call() }
 
     private fun run() {
         var error: String? = null
@@ -129,7 +143,17 @@ internal class Parakeet(
             // Phrases finished before the model was there.
             val waiting = ArrayList<FloatArray>()
             var recognizer: OfflineRecognizer? = null
+            var at = erased
             while (!stopping) {
+                if (at != erased) {
+                    at = erased
+                    vad.reset()
+                    waiting.clear()
+                    length = 0
+                    speaking = false
+                    lastText = ""
+                    partialEvery = PARTIAL_MS
+                }
                 val n = record.read(chunk, 0, WINDOW, AudioRecord.READ_BLOCKING)
                 if (n <= 0) error("the microphone stopped ($n)")
                 val level = loudness(chunk, n)
@@ -144,7 +168,7 @@ internal class Parakeet(
                     recognizer = loading.get()
                     post { ready() }
                     Log.i(TAG, "model ready ${SystemClock.elapsedRealtime() - began}ms after the tap, ${waiting.size} phrases waiting")
-                    for (w in waiting) decode(recognizer, w).first.let { post { phrase(it) } }
+                    for (w in waiting) decode(recognizer, w).first.let { postText(at) { phrase(it) } }
                     waiting.clear()
                 }
                 val now = SystemClock.elapsedRealtime()
@@ -165,13 +189,13 @@ internal class Parakeet(
                     lastPartial = SystemClock.elapsedRealtime()
                     if (text.isNotBlank()) {
                         lastText = text
-                        post { partial(text) }
+                        postText(at) { partial(text) }
                     }
                 }
                 if (!vad.empty()) {
                     while (!vad.empty()) vad.pop()
                     val whole = phrase.copyOf(length)
-                    if (recognizer != null) decode(recognizer, whole).first.ifBlank { lastText }.let { post { phrase(it) } } else waiting += whole
+                    if (recognizer != null) decode(recognizer, whole).first.ifBlank { lastText }.let { postText(at) { phrase(it) } } else waiting += whole
                     lastText = ""
                     length = 0
                     speaking = false
@@ -188,8 +212,8 @@ internal class Parakeet(
             val last = if (speaking || !vad.empty()) phrase.copyOf(length) else null
             if (waiting.isEmpty() && last == null) return
             val r = recognizer ?: loading.get()
-            for (w in waiting) decode(r, w).first.let { post { phrase(it) } }
-            if (last != null) decode(r, last).first.ifBlank { lastText }.let { post { phrase(it) } }
+            for (w in waiting) decode(r, w).first.let { postText(at) { phrase(it) } }
+            if (last != null) decode(r, last).first.ifBlank { lastText }.let { postText(at) { phrase(it) } }
         } finally {
             record.release()
             vad.release()

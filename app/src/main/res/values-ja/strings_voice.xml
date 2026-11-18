@@ -24,6 +24,7 @@
     <string name="voice_message">%1$s にメッセージ</string>
     <string name="voice_answer_hint">はい、いいえ、または代わりの指示</string>
     <string name="voice_send">送信</string>
+    <string name="voice_erase">話した内容を消す</string>
     <string name="voice_stop">停止</string>
     <string name="voice_wants">%1$s が次の許可を求めています\n%2$s</string>
     <string name="voice_allow">許可</string>

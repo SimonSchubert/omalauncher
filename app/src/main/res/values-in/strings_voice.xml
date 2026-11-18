@@ -24,6 +24,7 @@
     <string name="voice_message">pesan ke %1$s</string>
     <string name="voice_answer_hint">ya, tidak, atau apa yang harus dilakukan</string>
     <string name="voice_send">kirim</string>
+    <string name="voice_erase">hapus yang kamu ucapkan</string>
     <string name="voice_stop">berhenti</string>
     <string name="voice_wants">%1$s ingin %2$s</string>
     <string name="voice_allow">izinkan</string>
