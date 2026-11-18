@@ -10,6 +10,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import kotlinx.coroutines.flow.drop
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -206,7 +211,8 @@ fun VoiceScreen(
     LaunchedEffect(session.voiceAgents.map { it.bin }) { session.wake() }
 
     fun listen() {
-        speaker.stop()
+        // Not just the voice: the reply still coming would be read aloud again into the microphone.
+        session.hush()
         // Held: a pause as long as the settings say ends the turn, or with none picked only a tap on the orb; half a
         // minute with nothing heard ends it too. Not the recognizers' own end of speech, which cuts in at a breath.
         val after = session.sendAfter.takeIf { it > 0 } ?: QUIET_STOP_MS
@@ -430,7 +436,7 @@ fun VoiceScreen(
                             .clickable(interactionSource = touch, indication = null, enabled = !typing) { talk() },
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Orb(session = session, speech = speech, speaking = speaker.speaking, pressed = pressed, modifier = Modifier.size(orb))
+                        Orb(session = session, speech = speech, speaker = speaker, pressed = pressed, modifier = Modifier.size(orb))
                         // Up into the orb's box: it's drawn smaller than its box until it listens, and the ring
                         // stays clear of this even then.
                         Box(Modifier.height(CAPTION).offset(y = -orb * 0.1f), contentAlignment = Alignment.TopCenter) {
@@ -877,6 +883,15 @@ private fun orbLoops(): OrbLoops {
     )
 }
 
+/** Rings out at once while the agent talks: a fast talker's words don't pile up. */
+private const val MAX_PULSES = 6
+
+/** How long a ring takes to leave the orb. */
+private const val PULSE_MS = 1400
+
+/** With no word from the engine for this long, the orb keeps a beat of its own. */
+private const val STEADY_BEAT_MS = 650L
+
 /** [c] turned round the colour wheel by [degrees]; a grey stays grey. */
 private fun hue(c: Color, degrees: Float): Color {
     val hsv = FloatArray(3)
@@ -904,29 +919,21 @@ private fun Path.blob(c: Offset, r: Float, a: Float, k1: Int, p1: Float, k2: Int
     close()
 }
 
-/** What's happening, as a shape: it follows your voice while listening, breathes while speaking, and is ringed while working. */
+/** What's happening, as a shape: rings run into it as it listens, following your voice; it sends one out with each word it says; a comet circles it while it works, and it breathes slowly while it waits for an OK. */
 @Composable
 private fun Orb(
     session: VoiceSession,
     speech: Speech,
-    speaking: Boolean,
+    speaker: Speaker,
     pressed: Boolean,
     modifier: Modifier,
 ) {
-    val yellow = Palette.named("yellow") ?: Palette.accent
+    val speaking = speaker.speaking
     val waiting = session.approvals.isNotEmpty()
-    val color by animateColorAsState(
-        when {
-            speech.listening -> Palette.green
-            waiting -> Palette.red
-            // The theme's accent, unless it's the red of waiting for an OK or the green of listening.
-            speaking -> Palette.accent.takeIf { it != Palette.red && it != Palette.green } ?: Palette.named("blue") ?: Palette.accent
-            session.busy -> yellow
-            else -> Palette.muted
-        },
-        tween(300),
-        label = "color",
-    )
+    // The theme's accent whatever it's doing, grey when idle: how it moves tells the rest. Rings running in are you
+    // talking, a ring out with each word the agent says; a comet circling is work, a slow breath a question.
+    val accent = Palette.accent
+    val color by animateColorAsState(if (speech.listening || waiting || speaking || session.busy) accent else Palette.muted, tween(300), label = "color")
     // The mic's level changes many times a second: it's followed here and read only as the orb is drawn,
     // so listening doesn't compose the orb again for each one.
     val speakingNow by rememberUpdatedState(speaking)
@@ -945,6 +952,34 @@ private fun Orb(
         launch { snapshotFlow(sizeNow).collect { launch { size.animateTo(it, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow)) } } }
         snapshotFlow { if (speech.listening) speech.level else 0f }
             .collect { launch { level.animateTo(it, spring(stiffness = Spring.StiffnessMediumLow)) } }
+    }
+    // The agent talking: each word it says sends a ring out and gives the core a kick, as the engine reaches it.
+    // Engines that don't say where they are get a steady beat instead.
+    val pulses = remember { mutableStateListOf<Animatable<Float, AnimationVector1D>>() }
+    val kick = remember { Animatable(0f) }
+    val beats = rememberCoroutineScope()
+    LaunchedEffect(speaking) {
+        if (!speaking) return@LaunchedEffect
+        var last = 0L
+        fun beat() {
+            last = System.currentTimeMillis()
+            beats.launch { kick.snapTo(1f); kick.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessLow)) }
+            if (pulses.size >= MAX_PULSES) return
+            val ring = Animatable(0f)
+            pulses += ring
+            beats.launch {
+                try {
+                    ring.animateTo(1f, tween(PULSE_MS, easing = LinearOutSlowInEasing))
+                } finally {
+                    pulses.remove(ring)
+                }
+            }
+        }
+        launch { snapshotFlow { speaker.words }.drop(1).collect { beat() } }
+        while (true) {
+            delay(200)
+            if (System.currentTimeMillis() - last > STEADY_BEAT_MS) beat()
+        }
     }
     val working = session.busy && !waiting
     val active = speech.listening || speaking || session.busy || waiting
@@ -966,7 +1001,7 @@ private fun Orb(
     // Only while one is drawn: idle, they'd wake the screen every frame for nothing.
     val loops = if (working || speaking || waiting || speech.listening) orbLoops() else null
     val shape = remember { Path() }
-    Canvas(modifier.graphicsLayer { scaleX = size.value * (1f - 0.07f * press); scaleY = size.value * (1f - 0.07f * press) }) {
+    Canvas(modifier.graphicsLayer { (size.value * (1f - 0.07f * press) * (1f + 0.045f * kick.value)).let { scaleX = it; scaleY = it } }) {
         val loud = level.value
         val turn = loops?.turn?.value ?: 0f
         val breath = loops?.breath?.value ?: 0f
@@ -977,23 +1012,29 @@ private fun Orb(
         val r = min(this.size.width, this.size.height) / 2 - 10.dp.toPx()
         // Squeezed smaller than its margin (a short window, the keyboard up) there's nothing to draw, and a radial gradient of radius ≤ 0 throws.
         if (r <= 0f) return@Canvas
-        val swell = if (speaking || waiting) breath else 0f
+        val swell = if (waiting) breath else 0f
         val core = r * 0.72f * (1f + 0.035f * swell)
         val warm = hue(color, -32f)
         val cool = hue(color, 32f)
-        // A soft light around it in its colours, brighter as it speaks or listens louder.
-        val glow = 0.06f + fill * (0.14f + 0.10f * swell + 0.16f * loud) + 0.10f * press
+        // A soft light around it in its colours, brighter as you speak louder and with each word it says.
+        val glow = 0.06f + fill * (0.14f + 0.10f * swell + 0.16f * loud + 0.14f * kick.value) + 0.10f * press
         drawCircle(
             Brush.radialGradient(0f to color.copy(alpha = glow), 0.5f to lerp(color, cool, 0.5f).copy(alpha = glow), 1f to Color.Transparent, center = c, radius = r),
             r, c,
         )
-        // Listening: rings leave the core and fade, stronger the louder you are.
+        // Sound going in or out. Listening: rings come in from the edge and sink into the core, stronger the louder
+        // you are. Speaking: a ring leaves the core with each word, thinning as it goes.
         if (speech.listening) {
             for (k in 0..1) {
                 val p = (ripple + k * 0.5f) % 1f
-                val a = (1f - p) * (1f - p) * (0.25f + 0.55f * loud)
-                drawCircle(color.copy(alpha = a), core + (r - core) * p, c, style = Stroke(1.5.dp.toPx()))
+                // Faint as it starts at the edge, brightest just before the core takes it in.
+                val a = 6.75f * p * p * (1f - p) * (0.25f + 0.55f * loud)
+                drawCircle(color.copy(alpha = a), r - (r - core) * p, c, style = Stroke(1.5.dp.toPx()))
             }
+        }
+        for (ring in pulses) {
+            val p = ring.value
+            drawCircle(color.copy(alpha = 0.6f * (1f - p) * (1f - p)), core + (r - core) * p, c, style = Stroke((2.5f - 1.5f * p).dp.toPx()))
         }
         if (fill > 0f) {
             // Behind the core, two softer blobs a little round the colour wheel either way, rolling against each
@@ -1032,8 +1073,8 @@ private fun Orb(
             val ring = r * 0.9f
             rotate(turn, c) {
                 drawArc(
-                    // Starts past 0°, so the tail's round cap sits in the clear part, not where the sweep wraps to yellow.
-                    Brush.sweepGradient(0f to yellow.copy(alpha = 0f), 0.04f to yellow.copy(alpha = 0f), 0.72f to yellow, 0.75f to yellow, center = c),
+                    // Starts past 0°, so the tail's round cap sits in the clear part, not where the sweep wraps to full colour.
+                    Brush.sweepGradient(0f to accent.copy(alpha = 0f), 0.04f to accent.copy(alpha = 0f), 0.72f to accent, 0.75f to accent, center = c),
                     15f, 255f, false, Offset(c.x - ring, c.y - ring), Size(ring * 2, ring * 2),
                     style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round),
                 )

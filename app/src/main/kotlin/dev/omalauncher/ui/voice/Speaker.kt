@@ -10,6 +10,7 @@ import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.system.AppLanguage
@@ -37,6 +38,10 @@ class Speaker(
     /** A voice's name, used while it's one for [language]; null for the engine's choice. */
     private var voice: String? = null
     private var rate = 1f
+
+    /** Counts the words read aloud, going up as the engine reaches each one; engines that don't say leave it be. */
+    var words by mutableIntStateOf(0)
+        private set
 
     /** Whether it's saying something, or has something queued. */
     var speaking by mutableStateOf(false)
@@ -135,6 +140,13 @@ class Speaker(
                 tts?.setOnUtteranceProgressListener(
                     object : UtteranceProgressListener() {
                         override fun onStart(id: String?) {}
+
+                        override fun onRangeStart(
+                            id: String?,
+                            start: Int,
+                            end: Int,
+                            frame: Int,
+                        ) = main.post { if (speaking) words++ }.let {}
 
                         override fun onDone(id: String?) =
                             main.post {

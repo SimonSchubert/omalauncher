@@ -188,6 +188,9 @@ class VoiceSession(
     /** The turn in progress has its reply so far in the transcript already ([ask]), so it did say something. */
     private var keptEarly = false
     private var lastSaid = 0L
+
+    /** Talked over: the rest of this reply is shown, not read aloud, so the microphone doesn't hear it. Until [ask]. */
+    private var hushed = false
     private var lastEvent = 0L
     private var doneAt = 0L
 
@@ -335,6 +338,7 @@ class VoiceSession(
         if (said.isEmpty()) return
         if (agent == null) return
         notice = null
+        hushed = false
         // What it said so far comes first: the reply in progress is shown last, and would end up below this.
         val kept = reply.isNotBlank()
         keepReply()
@@ -388,6 +392,12 @@ class VoiceSession(
             }
         toldTyping = typing
         return if (note == null) said else "($note)\n\n$said"
+    }
+
+    /** The user talks: the voice stops, and what the agent says until the next [ask] isn't read aloud over them. */
+    fun hush() {
+        hushed = true
+        speaker.stop()
     }
 
     /** Types and reads instead of talking, or talks again; the agent hears of it with the next prompt. */
@@ -819,7 +829,7 @@ class VoiceSession(
     }
 
     private fun say(text: String) {
-        if (typing) return
+        if (typing || hushed) return
         val clean = spokenText(text)
         if (clean.isEmpty()) return
         lastSaid = System.currentTimeMillis()
