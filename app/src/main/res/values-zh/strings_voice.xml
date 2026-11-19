@@ -98,4 +98,12 @@
     <string name="voice_send_after">停顿后发送</string>
     <string name="voice_send_after_off">关</string>
     <string name="voice_seconds">%1$d 秒</string>
+    <string name="voice_needs_answer">等待你的回答 · %1$s</string>
+    <string name="voice_your_answer">你的回答</string>
+    <string name="voice_asks">%1$s 提问</string>
+    <string name="voice_skip">跳过</string>
+    <string name="voice_skipped">已跳过问题</string>
+    <string name="voice_or_type_answer">或输入你自己的回答</string>
+    <string name="voice_or_say_answer">或点按圆圈说出你的回答</string>
+    <string name="voice_say_choices">选项：%1$s。</string>
 </resources>

@@ -45,6 +45,13 @@ sealed interface LinkEvent {
         val key: String,
     ) : LinkEvent
 
+    /** It asks the user something: [choices] to pick from, though any answer goes; [id] goes back in [AgentLink.answerQuestion]. */
+    data class Question(
+        val id: String,
+        val question: String,
+        val choices: List<String>,
+    ) : LinkEvent
+
     /** A prompt is answered: [error] when it failed (empty when it didn't say why), [cancelled] when it was stopped. */
     data class Done(
         val error: String? = null,
@@ -91,6 +98,12 @@ abstract class AgentLink(
         always: Boolean,
         instead: String?,
     ): Boolean
+
+    /** Answers [LinkEvent.Question] [id] with what the user said, or skips it (null). */
+    open fun answerQuestion(
+        id: String,
+        answer: String?,
+    ) {}
 
     abstract fun read(line: String): List<LinkEvent>
 
@@ -346,8 +359,9 @@ abstract class RpcLink(
 /**
  * An agent over ACP, the Agent Client Protocol: JSON-RPC on stdio. One session; prompts go one at a time, a
  * later one waiting for the one in flight. session/update notifications carry the reply and tool calls,
- * session/request_permission asks before a tool, session/load continues a conversation (its replay of the old
- * one isn't shown). ACP has no system prompt, so the first prompt of a conversation says how to talk.
+ * session/request_permission asks before a tool, elicitation/create asks the user a question (Hermes's clarify
+ * tool), session/load continues a conversation (its replay of the old one isn't shown). ACP has no system prompt,
+ * so the first prompt of a conversation says how to talk.
  */
 class AcpLink(
     write: (String) -> Unit,
@@ -361,13 +375,18 @@ class AcpLink(
     private var primed = false
     private val asked = HashMap<String, Pair<Any, JSONArray>>()
 
+    /** Questions waiting for an answer: the request, the form's one field, and whether it takes a list. */
+    private val questions = HashMap<String, Triple<Any, String, Boolean>>()
+
     override fun command(resume: String?) = "exec $serve"
 
     override fun open(resume: String?): List<LinkEvent> {
         session = resume
         primed = resume != null
         val fs = json("readTextFile" to false, "writeTextFile" to false)
-        call("initialize", json("protocolVersion" to 1, "clientCapabilities" to json("fs" to fs, "terminal" to false))) { _, error ->
+        // Forms, for questions: without them Hermes asks as a permission request, its choices as "allow" options.
+        val capabilities = json("fs" to fs, "terminal" to false, "elicitation" to json("form" to JSONObject()))
+        call("initialize", json("protocolVersion" to 1, "clientCapabilities" to capabilities)) { _, error ->
             if (error != null) return@call listOf(LinkEvent.Failed(reason(error)))
             val id = session
             if (id != null) {
@@ -434,6 +453,7 @@ class AcpLink(
         when (method) {
             "session/update" -> if (loading) emptyList() else update(params.optJSONObject("update") ?: JSONObject())
             "session/request_permission" -> if (id == null) emptyList() else listOf(permission(id, params))
+            "elicitation/create" -> if (id == null) emptyList() else question(id, params)
             // fs/… or terminal/…, which we said we don't offer; notifications (_x.ai/…) need nothing.
             else -> null
         }
@@ -460,6 +480,44 @@ class AcpLink(
         val raw = call.optJSONObject("rawInput") ?: JSONObject()
         val key = if (call.optString("kind") == "execute" && raw.has("command")) Steps.commandKey(raw.optString("command")) else "acp:" + call.optString("kind")
         return LinkEvent.Ask(id, Steps.acpLabel(call), raw.firstString("command", "path", "file_path", "url").ifEmpty { Steps.acpPaths(call).firstOrNull().orEmpty() }, key)
+    }
+
+    /**
+     * A form as a question, when it's one answer in words (Hermes: `answer`, a string, its choices as an enum, or a
+     * list of them for several). Anything else, more fields or a link to open, isn't something to say: declined.
+     */
+    private fun question(
+        rpcId: Any,
+        params: JSONObject,
+    ): List<LinkEvent> {
+        val fields = params.optJSONObject("requestedSchema")?.optJSONObject("properties")
+        val name = fields?.keys()?.asSequence()?.singleOrNull()
+        val field = name?.let { fields.optJSONObject(it) }
+        val many = field?.optString("type") == "array"
+        val value = if (many) field?.optJSONObject("items") else field
+        if (params.optString("mode", "form") != "form" || name == null || value?.optString("type") != "string") {
+            reply(rpcId, json("action" to "decline"))
+            return emptyList()
+        }
+        val id = "q$rpcId"
+        questions[id] = Triple(rpcId, name, many)
+        val choices = (0 until (value.optJSONArray("enum")?.length() ?: 0)).map { value.getJSONArray("enum").optString(it) }
+        return listOf(LinkEvent.Question(id, params.optString("message"), choices))
+    }
+
+    /** The user's words go back as they are, even when they're none of the choices: Hermes takes any answer. */
+    override fun answerQuestion(
+        id: String,
+        answer: String?,
+    ) {
+        val (rpcId, field, many) = questions.remove(id) ?: return
+        val result =
+            if (answer == null) {
+                json("action" to "decline")
+            } else {
+                json("action" to "accept", "content" to json(field to if (many) JSONArray().put(answer) else answer))
+            }
+        reply(rpcId, result)
     }
 
     companion object {

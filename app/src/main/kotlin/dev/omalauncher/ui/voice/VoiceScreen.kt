@@ -272,7 +272,7 @@ fun VoiceScreen(
             speech.listening && speech.preparing -> stringResource(R.string.voice_listening_preparing)
             speech.listening -> stringResource(if (session.busy) R.string.voice_listening_working else R.string.voice_listening)
             session.phase == Phase.Starting -> stringResource(R.string.voice_starting)
-            session.approvals.isNotEmpty() -> stringResource(R.string.voice_needs_ok, elapsed)
+            session.approvals.isNotEmpty() -> stringResource(if (session.approvals.first().choices != null) R.string.voice_needs_answer else R.string.voice_needs_ok, elapsed)
             session.busy -> stringResource(R.string.voice_working, elapsed)
             typing -> ""
             speaker.speaking -> stringResource(R.string.voice_tap_over)
@@ -523,7 +523,7 @@ fun VoiceScreen(
                                         .padding(horizontal = 16.dp, vertical = 10.dp),
                                 decorationBox = { inner ->
                                     Box {
-                                        if (draft.isEmpty()) BasicText(if (session.approvals.isEmpty()) stringResource(R.string.voice_message, agentName) else stringResource(R.string.voice_answer_hint), style = style.copy(color = Palette.muted))
+                                        if (draft.isEmpty()) BasicText(session.approvals.firstOrNull().let { if (it == null) stringResource(R.string.voice_message, agentName) else if (it.choices != null) stringResource(R.string.voice_your_answer) else stringResource(R.string.voice_answer_hint) }, style = style.copy(color = Palette.muted))
                                         inner()
                                     }
                                 },
@@ -547,6 +547,20 @@ fun VoiceScreen(
         val above = if (ready) with(LocalDensity.current) { bottomHeight.toDp() } else 0.dp
         AnimatedVisibility(ask != null, Modifier.align(Alignment.BottomCenter).padding(bottom = above).widthIn(max = 560.dp), enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
             val a = ask ?: return@AnimatedVisibility
+            val choices = a.choices
+            // Something it asks the user: the question, a choice to tap or any answer in words, or skip.
+            if (choices != null) {
+                Column(Modifier.padding(12.dp).card(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    BasicText(stringResource(R.string.voice_asks, agentName), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                    Box(Modifier.heightIn(max = 160.dp).verticalScroll(rememberScrollState())) {
+                        BasicText(a.label, style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Item))
+                    }
+                    for (choice in choices) Row { Answer(choice, Palette.accent) { session.ask(choice) } }
+                    Row { Answer(stringResource(R.string.voice_skip), Palette.muted) { session.reply(a.id, null) } }
+                    BasicText(stringResource(if (typing) R.string.voice_or_type_answer else R.string.voice_or_say_answer), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                }
+                return@AnimatedVisibility
+            }
             Column(Modifier.padding(12.dp).card(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val showDetail = a.detail.isNotEmpty() && a.detail != a.label
                 // The command shows whole below, so the sentence doesn't start it again.

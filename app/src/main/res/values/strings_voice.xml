@@ -130,4 +130,16 @@
     <string name="voice_send_after_off">off</string>
     <!-- A number of seconds, short: 2 s. -->
     <string name="voice_seconds">%1$d s</string>
+    <!-- Under the orb while the agent waits for the answer to a question it asked; %1$s is the time it has been working. -->
+    <string name="voice_needs_answer">needs your answer · %1$s</string>
+    <string name="voice_your_answer">your answer</string>
+    <!-- Above a question the agent asks the user; %1$s is the agent, like Hermes. -->
+    <string name="voice_asks">%1$s asks</string>
+    <!-- Answers the agent's question with nothing. -->
+    <string name="voice_skip">skip</string>
+    <string name="voice_skipped">skipped the question</string>
+    <string name="voice_or_type_answer">or type your own answer</string>
+    <string name="voice_or_say_answer">or tap the orb and say your answer</string>
+    <!-- Said aloud after a question the agent asks; %1$s is its choices, separated by commas. -->
+    <string name="voice_say_choices">Choices: %1$s.</string>
 </resources>

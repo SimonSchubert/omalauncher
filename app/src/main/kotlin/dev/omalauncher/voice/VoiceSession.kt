@@ -51,7 +51,10 @@ class VoiceSession(
         val text: String,
     )
 
-    /** A question: [label] as a step is shown, [said] as what it wants to do ("read x.png"), [detail] whole. */
+    /**
+     * A question: [label] as a step is shown, [said] as what it wants to do ("read x.png"), [detail] whole. Or, with
+     * [choices], one the agent asks the user ([label]), answered in words: the choices to pick from, maybe none.
+     */
     data class Approval(
         val id: String,
         val act: Act,
@@ -59,6 +62,7 @@ class VoiceSession(
         val said: String,
         val detail: String,
         val key: String,
+        val choices: List<String>? = null,
     )
 
     /** The agents that can talk: installed, and with a link. */
@@ -341,12 +345,13 @@ class VoiceSession(
         // What it said so far comes first: the reply in progress is shown last, and would end up below this.
         val kept = reply.isNotBlank()
         keepReply()
-        // An answer to the question on screen: yes, no, or what to do instead.
+        // An answer to the question on screen: yes, no, or what to do instead; to one the agent asked, the words.
         approvals.firstOrNull()?.let { a ->
             if (kept) keptEarly = true
             transcript += Entry("you", said)
             saveTranscript()
             when {
+                a.choices != null -> reply(a.id, said)
                 ALWAYS.containsMatchIn(said) -> answer(a.id, true, always = true)
                 YES.containsMatchIn(said) -> answer(a.id, true)
                 NO.matches(said) -> answer(a.id, false)
@@ -410,7 +415,7 @@ class VoiceSession(
     /** Stops the task: the voice, the turn and anything waiting. */
     fun stop() {
         speaker.stop()
-        for (a in approvals.toList()) answer(a.id, false)
+        for (a in approvals.toList()) if (a.choices != null) reply(a.id, null) else answer(a.id, false)
         if (turns > 0) link?.cancel()
         turns = 0
         endReply()
@@ -439,7 +444,23 @@ class VoiceSession(
             link?.prompt(withNote(instead))
         }
         // Questions that came while this one was up and that "always" now covers.
-        for (other in approvals.toList()) if (approveAll || Steps.covered(other.key, this.always)) answer(other.id, true)
+        for (other in approvals.toList()) if (other.choices == null && (approveAll || Steps.covered(other.key, this.always))) answer(other.id, true)
+        settle()
+        approvals.firstOrNull()?.let(::announce)
+    }
+
+    /** Answers the agent's question [id] with [answer], or skips it (null). */
+    fun reply(
+        id: String,
+        answer: String?,
+    ) {
+        val a = approvals.firstOrNull { it.id == id } ?: return
+        approvals.remove(a)
+        if (answer == null) {
+            transcript += Entry("note", "✗ " + str(R.string.voice_skipped))
+            saveTranscript()
+        }
+        link?.answerQuestion(id, answer)
         settle()
         approvals.firstOrNull()?.let(::announce)
     }
@@ -449,7 +470,7 @@ class VoiceSession(
         saveSettings()
         transcript += Entry("note", if (on) str(R.string.voice_note_allow_all, name) else str(R.string.voice_note_ask_again))
         saveTranscript()
-        if (on) for (a in approvals.toList()) answer(a.id, true)
+        if (on) for (a in approvals.toList()) if (a.choices == null) answer(a.id, true)
     }
 
     /** [bin] is being removed: its process stops if it's the agent here, as mise won't delete a running one. */
@@ -744,6 +765,20 @@ class VoiceSession(
                         }
                     }
                 }
+                // Asked of the user, never answered for them: after what it said so far, so the conversation reads in order.
+                is LinkEvent.Question -> {
+                    heardBack = true
+                    endReply()
+                    // It did say something this turn, if nothing after the answer.
+                    keptEarly = true
+                    transcript += Entry("agent", e.question)
+                    saveTranscript()
+                    approvals += Approval(e.id, Act(Act.Verb.Tool), e.question, e.question, "", "", e.choices)
+                    if (approvals.size == 1) {
+                        phase = Phase.Approval
+                        announce(approvals.first())
+                    }
+                }
                 is LinkEvent.Done -> {
                     // Not an answer to a prompt (Claude ends a failed --resume with an error result): nothing to say.
                     val prompted = turns > 0
@@ -782,7 +817,11 @@ class VoiceSession(
         phase = if (approvals.isNotEmpty()) Phase.Approval else if (busy) Phase.Working else Phase.Idle
     }
 
-    private fun announce(a: Approval) = say(spoken(R.string.voice_say_wants, name, said(a.act, aloud = true)))
+    private fun announce(a: Approval) {
+        if (a.choices == null) return say(spoken(R.string.voice_say_wants, name, said(a.act, aloud = true)))
+        say(a.label)
+        if (a.choices.isNotEmpty()) say(spoken(R.string.voice_say_choices, a.choices.joinToString(", ")))
+    }
 
     /** The agent's name, for what's shown and said. */
     private val name get() = agent?.name ?: str(R.string.voice_the_agent)

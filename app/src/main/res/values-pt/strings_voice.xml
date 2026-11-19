@@ -100,4 +100,12 @@
     <string name="voice_send_after">enviar após uma pausa</string>
     <string name="voice_send_after_off">não</string>
     <string name="voice_seconds">%1$d s</string>
+    <string name="voice_needs_answer">precisa da sua resposta · %1$s</string>
+    <string name="voice_your_answer">sua resposta</string>
+    <string name="voice_asks">%1$s pergunta</string>
+    <string name="voice_skip">pular</string>
+    <string name="voice_skipped">pergunta pulada</string>
+    <string name="voice_or_type_answer">ou digite sua própria resposta</string>
+    <string name="voice_or_say_answer">ou toque no círculo e diga sua resposta</string>
+    <string name="voice_say_choices">Opções: %1$s.</string>
 </resources>

@@ -98,4 +98,12 @@
     <string name="voice_send_after">kirim setelah jeda</string>
     <string name="voice_send_after_off">mati</string>
     <string name="voice_seconds">%1$d dtk</string>
+    <string name="voice_needs_answer">perlu jawaban kamu · %1$s</string>
+    <string name="voice_your_answer">jawaban kamu</string>
+    <string name="voice_asks">%1$s bertanya</string>
+    <string name="voice_skip">lewati</string>
+    <string name="voice_skipped">pertanyaan dilewati</string>
+    <string name="voice_or_type_answer">atau ketik jawaban kamu sendiri</string>
+    <string name="voice_or_say_answer">atau ketuk lingkaran dan ucapkan jawaban kamu</string>
+    <string name="voice_say_choices">Pilihan: %1$s.</string>
 </resources>

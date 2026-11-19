@@ -100,4 +100,12 @@
     <string name="voice_send_after">envoyer après une pause</string>
     <string name="voice_send_after_off">désactivé</string>
     <string name="voice_seconds">%1$d s</string>
+    <string name="voice_needs_answer">attend ta réponse · %1$s</string>
+    <string name="voice_your_answer">ta réponse</string>
+    <string name="voice_asks">%1$s demande</string>
+    <string name="voice_skip">passer</string>
+    <string name="voice_skipped">question passée</string>
+    <string name="voice_or_type_answer">ou écris ta propre réponse</string>
+    <string name="voice_or_say_answer">ou touche l’orbe et dis ta réponse</string>
+    <string name="voice_say_choices">Choix : %1$s.</string>
 </resources>

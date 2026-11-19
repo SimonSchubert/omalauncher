@@ -134,6 +134,42 @@ class AgentLinkTest {
         assertEquals(LinkEvent.Ask("p0", Act(Act.Verb.Edit, "AGENTS.md"), "/tmp/eval/AGENTS.md", "acp:edit"), ask)
     }
 
+    @Test fun acpAsksTheUserAQuestion() {
+        val link = AcpLink(write, "hermes-acp")
+        link.open(null)
+        // Forms are offered: without them Hermes asks as a permission request with its choices as "allow" options.
+        assertTrue(written.last().getJSONObject("params").getJSONObject("clientCapabilities").getJSONObject("elicitation").has("form"))
+        // Hermes's clarify tool (acp_adapter/elicitation.py build_clarify_elicitation).
+        val question =
+            link.read(
+                """{"jsonrpc":"2.0","id":4,"method":"elicitation/create","params":{"sessionId":"h1","mode":"form","message":"Which theme?","requestedSchema":{"type":"object","properties":{"answer":{"type":"string","enum":["Nord (Recommended)","Gruvbox"]}},"required":["answer"]}}}""",
+            )
+        assertEquals(listOf(LinkEvent.Question("q4", "Which theme?", listOf("Nord (Recommended)", "Gruvbox"))), question)
+        // Any words go back, not just a choice.
+        link.answerQuestion("q4", "the dark one")
+        assertEquals(4, written.last().getInt("id"))
+        val result = written.last().getJSONObject("result")
+        assertEquals("accept", result.getString("action"))
+        assertEquals("the dark one", result.getJSONObject("content").getString("answer"))
+
+        // Several to pick: a list; skipped: declined.
+        link.read(
+            """{"jsonrpc":"2.0","id":5,"method":"elicitation/create","params":{"sessionId":"h1","mode":"form","message":"Which?","requestedSchema":{"type":"object","properties":{"answer":{"type":"array","items":{"type":"string","enum":["a","b"]}}}}}}""",
+        )
+        link.answerQuestion("q5", "a")
+        assertEquals("a", written.last().getJSONObject("result").getJSONObject("content").getJSONArray("answer").getString(0))
+        assertEquals(listOf(LinkEvent.Question("q6", "Name?", emptyList())), link.read("""{"jsonrpc":"2.0","id":6,"method":"elicitation/create","params":{"message":"Name?","requestedSchema":{"properties":{"name":{"type":"string"}}}}}"""))
+        link.answerQuestion("q6", null)
+        assertEquals("decline", written.last().getJSONObject("result").getString("action"))
+
+        // A form of several fields isn't something to say: declined, nothing asked.
+        assertTrue(
+            link.read("""{"jsonrpc":"2.0","id":7,"method":"elicitation/create","params":{"message":"Sign up","requestedSchema":{"properties":{"a":{"type":"string"},"b":{"type":"string"}}}}}""").isEmpty(),
+        )
+        assertEquals(7, written.last().getInt("id"))
+        assertEquals("decline", written.last().getJSONObject("result").getString("action"))
+    }
+
     @Test fun acpDropsCopilotsFileNotice() {
         val link = AcpLink(write, "copilot --acp")
         fun chunk(text: String) = link.read(JSONObject().put("jsonrpc", "2.0").put("method", "session/update").put("params", JSONObject().put("update", JSONObject().put("sessionUpdate", "agent_message_chunk").put("content", JSONObject().put("type", "text").put("text", text)))).toString())
