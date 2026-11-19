@@ -43,4 +43,4 @@ file only this phone runs, `owl: 12` is fine; for the store, a lower level reach
   `project`, `turn`, `dot`, `cross`, `norm` and `dist`; Shader image uniforms (`uniform shader`) and array uniforms
 - **23**: `media("seek", seconds)`, `media("speed", ...)` and `media("action", id)`; `android.media`'s `canSeek`, `speed` and `actions`; `haptic("light")`, `"medium"` and `"strong"`
 - **24**: `strip "…" { }` files and `android.strip`, Row's `scroll`, and `mask` on the apps of `android.drawer` and `android.strip` (`Image { src: "mask:…" }`, an app's silhouette)
-- **25**: `launcher("store:apps")`, the store on its apps alone, which older launchers ignore
+- **25**: `launcher("store:apps")`, the store on its apps alone, which older launchers ignore; a widget's or a face's `notification:` and `onNotification`

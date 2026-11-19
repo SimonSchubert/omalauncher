@@ -411,6 +411,13 @@ class Program(
     /** A panel's `keyboard`: whether the keyboard comes up as it opens above the prompt bar; false leaves it down until the bar is tapped. */
     val keyboard: Boolean = true,
     val onTap: Action? = null,
+    /**
+     * A widget's or a face's `notification:`, read as it changes: a map of title, text, until or since (a clock Android
+     * runs) and buttons while it shows, null while it doesn't.
+     */
+    val notification: Ev? = null,
+    /** A widget's or a face's `onNotification`: a button of its notification pressed, with the button's value as `value`. */
+    val onNotification: Action? = null,
     val triggers: List<Trigger>,
     /** Shell commands this widget can run, known without running it; for reviewing shared widgets. */
     val commands: List<String>,
