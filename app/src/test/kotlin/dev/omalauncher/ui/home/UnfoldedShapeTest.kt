@@ -1,4 +1,4 @@
-package dev.omalauncher.ui
+package dev.omalauncher.ui.home
 
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
