@@ -82,6 +82,14 @@ panel "app drawer" {
       open: "відкрити"; ask: "запитати"; askInstallLinux: "запитати агента · встановити linux"; askInstallAgent: "запитати агента · встановити агента"
       askAgent: (bin, text) => "запитати ${bin}: ${text}"
     }
+    fr {
+      personal: "perso"; work: "pro"; apps: "applis"; linux: "linux"; shortcuts: "raccourcis"; android: "android"
+      workApps: "applis pro"; workPaused: "applis pro en pause"; linuxApps: "applis linux"; appStore: "boutique d’applis"
+      pin: "ajouter à l’accueil"; info: "infos sur l’appli"; uninstall: "désinstaller"; remove: "retirer"; edit: "modifier"; share: "partager"
+      settings: "paramètres"; turnOn: "activer"; pause: "mettre en pause"; installing: "installation…"; installLinux: "installer linux"
+      open: "ouvrir"; ask: "demander"; askInstallLinux: "demander à un agent · installer linux"; askInstallAgent: "demander à un agent · en installer un"
+      askAgent: (bin, text) => "demander à ${bin} : ${text}"
+    }
   }
   source d = android.drawer
   source ag = android.agents

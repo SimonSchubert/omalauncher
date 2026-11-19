@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_failed">ça n’a pas marché</string>
+    <string name="files_cant_hand_over">impossible de passer %1$s à d’autres applis</string>
+    <string name="files_no_app">aucune appli ne peut ouvrir %1$s</string>
+    <string name="files_leads_to_nothing">la cible n’existe pas</string>
+    <string name="files_cant_open">impossible d’ouvrir %1$s : %2$s</string>
+    <string name="files_selected">sélection : %1$d</string>
+    <string name="files_filter_hint">filtrer ce dossier</string>
+    <string name="files_home">perso</string>
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">téléchargements</string>
+    <string name="files_place_phone_folders">dossiers du téléphone</string>
+    <string name="files_add_phone_folder">ajouter un dossier du téléphone</string>
+    <string name="files_no_phone_folders">pas encore de dossier du téléphone : ajoutes-en un depuis le menu</string>
+    <string name="files_place_system">système</string>
+    <string name="files_search">rechercher</string>
+    <string name="files_more">plus</string>
+    <string name="files_new_file">nouveau fichier</string>
+    <string name="files_new_folder">nouveau dossier</string>
+    <string name="files_hide_hidden">masquer les fichiers cachés</string>
+    <string name="files_show_hidden">afficher les fichiers cachés</string>
+    <string name="files_open_terminal">ouvrir un terminal ici</string>
+    <string name="files_empty_folder">dossier vide</string>
+    <string name="files_no_matches">aucun résultat</string>
+    <string name="files_create">créer</string>
+    <string name="files_rename">renommer</string>
+    <string name="files_delete_one">supprimer %1$s ?</string>
+    <plurals name="files_delete_items">
+        <item quantity="one">supprimer %1$d élément ?</item>
+        <item quantity="many">supprimer %1$d éléments ?</item>
+        <item quantity="other">supprimer %1$d éléments ?</item>
+    </plurals>
+    <string name="files_delete_message">Tu ne pourras pas revenir en arrière.</string>
+    <string name="files_delete">supprimer</string>
+    <plurals name="files_items">
+        <item quantity="one">%1$d élément</item>
+        <item quantity="many">%1$d éléments</item>
+        <item quantity="other">%1$d éléments</item>
+    </plurals>
+    <string name="files_folder">dossier</string>
+    <string name="files_copy">copier</string>
+    <string name="files_cut">couper</string>
+    <string name="files_select_all">tout sélectionner</string>
+    <string name="files_edit">modifier</string>
+    <string name="files_open_with">ouvrir avec…</string>
+    <string name="files_share">partager</string>
+    <string name="files_cancel">annuler</string>
+    <string name="files_move_here">déplacer ici</string>
+    <string name="files_paste_here">coller ici</string>
+
+    <string name="editor_title">Éditeur</string>
+    <string name="editor_cant_read">impossible de lire %1$s : %2$s</string>
+    <string name="editor_cant_save">impossible d’enregistrer %1$s : %2$s</string>
+    <string name="editor_not_found">introuvable</string>
+    <string name="editor_find_hint">chercher dans le fichier</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">résultat précédent</string>
+    <string name="editor_next_match">résultat suivant</string>
+    <string name="editor_save">enregistrer</string>
+    <string name="editor_find">chercher</string>
+    <string name="editor_no_wrap">sans retour à la ligne</string>
+    <string name="editor_wrap">retour à la ligne</string>
+    <string name="editor_show_in_files">afficher dans fichiers</string>
+    <string name="editor_open_in_micro">ouvrir dans micro</string>
+    <string name="editor_save_confirm">enregistrer %1$s ?</string>
+    <string name="editor_save_confirm_message">Tu as des modifications pas encore enregistrées.</string>
+    <string name="editor_discard">ignorer</string>
+    <string name="editor_key_left">gauche</string>
+    <string name="editor_key_up">haut</string>
+    <string name="editor_key_down">bas</string>
+    <string name="editor_key_right">droite</string>
+    <string name="editor_key_undo">annuler</string>
+    <string name="editor_key_redo">rétablir</string>
+    <string name="editor_home_title">éditeur</string>
+    <string name="editor_new">nouveau</string>
+    <string name="editor_browse">parcourir</string>
+    <string name="editor_recent">récents</string>
+    <string name="editor_recent_empty">Les fichiers que tu modifies apparaissent ici.</string>
+    <string name="editor_new_file_hint">un chemin dans Linux</string>
+
+    <string name="prompt_listening">j’écoute…</string>
+    <string name="prompt_hint_apps">ouvrir une appli…</string>
+    <string name="prompt_hint_ask">ouvrir ou demander à %1$s…</string>
+    <string name="prompt_enter_ask">⏎ demander</string>
+    <string name="prompt_agent">agent</string>
+    <string name="prompt_manage_agents">"  gérer les agents…"</string>
+
+    <string name="prompt_speech_no_recognizer">pas de reconnaissance vocale sur ce téléphone</string>
+    <string name="prompt_speech_refused">la reconnaissance vocale du téléphone ne laisse pas les autres applis l’utiliser</string>
+    <string name="prompt_speech_failed">échec de la reconnaissance vocale (%1$d)</string>
+    <string name="prompt_speech_language">la saisie vocale n’est pas dispo dans cette langue</string>
+    <string name="prompt_speech_not_downloaded">la saisie vocale pour cette langue n’est pas téléchargée sur ce téléphone</string>
+    <string name="prompt_speech_mic_permission">autorisation du micro nécessaire</string>
+    <string name="prompt_speech_network">la reconnaissance vocale a besoin d’une connexion réseau</string>
+</resources>

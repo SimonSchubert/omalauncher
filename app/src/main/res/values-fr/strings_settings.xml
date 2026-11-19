@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">paramètres</string>
+
+    <string name="settings_style">style</string>
+    <string name="settings_style_subtitle">thème, fond d’écran, écran d’accueil</string>
+    <string name="settings_pages">pages</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="one">%1$d page · organiser, modifier, retirer</item>
+        <item quantity="many">%1$d pages · organiser, modifier, retirer</item>
+        <item quantity="other">%1$d pages · organiser, modifier, retirer</item>
+    </plurals>
+    <string name="settings_gestures">gestes</string>
+    <string name="settings_gestures_subtitle">haut : %1$s · bas : %2$s</string>
+    <string name="settings_language">langue</string>
+    <string name="settings_language_phone">langue du téléphone</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">installé · supprimer</string>
+    <string name="settings_linux_stopped">installé · arrêté</string>
+    <string name="settings_linux_installing_percent">installation %1$d %% · %2$s</string>
+    <string name="settings_linux_installing">installation · %1$s</string>
+    <string name="settings_linux_failed">installation arrêtée · réessayer</string>
+    <string name="settings_linux_removing">suppression…</string>
+    <string name="settings_linux_not_installed">pas installé · installe Arch Linux pour les applis de terminal et les agents</string>
+    <string name="settings_agents">agents de code</string>
+    <string name="settings_agents_default">par défaut : %1$s</string>
+    <string name="settings_agents_install">installer Claude Code, OpenCode, …</string>
+    <string name="settings_needs_linux">nécessite linux</string>
+    <string name="settings_packages">paquets</string>
+    <string name="settings_packages_subtitle">installe des applis et outils Linux avec pacman et l’AUR</string>
+    <string name="settings_home_app">appli d’accueil par défaut</string>
+    <string name="settings_home_app_subtitle">fais d’Omalauncher ton écran d’accueil</string>
+    <string name="settings_local_network">réseau local</string>
+    <string name="settings_local_network_subtitle">permet aux widgets et à linux d’accéder à ton imprimante, home assistant, …</string>
+    <string name="settings_permissions">autorisations</string>
+    <string name="settings_permissions_subtitle">micro, position, fichiers, …</string>
+
+    <string name="permissions_title">autorisations</string>
+    <string name="permissions_folders_title">dossiers du téléphone</string>
+    <string name="permissions_folders_about">les dossiers de tes photos, téléchargements et documents pour linux : dans Fichiers, et pour les agents et scripts via omalauncher</string>
+    <string name="permissions_folders_sdcard">ce que linux enregistre dans %1$s/Download ou %1$s/Documents, les autres applis le voient aussi</string>
+    <string name="permissions_folders_add">ajouter un dossier</string>
+    <string name="permissions_folders_remove">retirer</string>
+    <string name="permissions_folders_cant_keep">android n’a pas laissé le launcher garder ce dossier</string>
+    <string name="permissions_folders_no_picker">ce téléphone n’a pas de sélecteur de dossier</string>
+    <string name="permissions_note">les widgets et les agents peuvent utiliser tout ce qui est activé ici. c’est android qui gère les interrupteurs : activer demande l’accès, désactiver ouvre les paramètres android correspondants</string>
+    <string name="permissions_on">activé · %1$s</string>
+    <string name="permissions_off">désactivé · %1$s</string>
+    <string name="permissions_mic">micro</string>
+    <string name="permissions_mic_uses">le micro de la barre de saisie, Voix, les widgets qui écoutent</string>
+    <string name="permissions_location">position</string>
+    <string name="permissions_location_uses">approximative · widgets comme la météo, quand ils sont à l’écran · agents avec omalauncher location</string>
+    <string name="permissions_calendar">agenda</string>
+    <string name="permissions_calendar_uses">tes événements, en lecture seule · widgets d’agenda · agents avec omalauncher calendar</string>
+    <string name="permissions_bluetooth">bluetooth</string>
+    <string name="permissions_bluetooth_uses">batterie et paramètres de tes AirPods · widgets AirPods · agents avec omalauncher airpods</string>
+    <string name="permissions_notifications">notifications</string>
+    <string name="permissions_notifications_uses">linux quand il tourne, les widgets qui t’envoient des notifications</string>
+    <string name="permissions_notification_access">accès aux notifications</string>
+    <string name="permissions_notification_access_uses">pastilles de notification, lecture en cours et ne pas déranger pour les widgets</string>
+
+    <string name="settings_android">paramètres android</string>
+    <string name="settings_android_subtitle">les paramètres système du téléphone</string>
+    <string name="settings_licenses">licences</string>
+    <string name="settings_licenses_subtitle">logiciels open source dans Omalauncher</string>
+
+    <string name="settings_system_updating">mise à jour du système : %1$s…</string>
+    <string name="settings_system_update_failed">une mise à jour du système n’a pas abouti</string>
+    <string name="settings_retry">réessayer</string>
+    <string name="settings_system_updates">mises à jour système</string>
+    <string name="settings_widget_updates">widgets</string>
+    <string name="settings_launcher_updates">launcher</string>
+    <string name="settings_launcher_update_available">un nouvel Omalauncher est sur Google Play</string>
+    <string name="settings_launcher_update_failed">Google Play n’a pas pu mettre à jour Omalauncher</string>
+    <string name="settings_launcher_update_github">Omalauncher %1$s → %2$s sur GitHub</string>
+    <string name="settings_update_all">tout mettre à jour</string>
+    <string name="settings_check">vérifier</string>
+    <string name="settings_update">mettre à jour</string>
+    <string name="settings_updating">mise à jour…</string>
+    <string name="settings_checking">vérification…</string>
+    <string name="settings_not_checked">pas encore vérifié</string>
+    <string name="settings_up_to_date">à jour · vérifié %1$s</string>
+    <string name="settings_store_unreachable">impossible de joindre la boutique</string>
+    <string name="settings_updates_held">modifiés, donc pas mis à jour ici : %1$s · en mettre un à jour dans la boutique remplace tes changements</string>
+    <string name="settings_more_lines">+%1$d de plus</string>
+    <string name="settings_just_now">à l’instant</string>
+    <string name="settings_minutes_ago">il y a %1$d min</string>
+    <string name="settings_hours_ago">il y a %1$d h</string>
+    <string name="settings_days_ago">il y a %1$d j</string>
+</resources>

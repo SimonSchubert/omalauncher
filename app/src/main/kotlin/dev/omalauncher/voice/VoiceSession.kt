@@ -1026,7 +1026,7 @@ class VoiceSession(
         internal val YES =
             Regex(
                 "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|allow|allowed|approve|go ahead|do it|go|fine|alright|please do|" +
-                    "ja|klar|si|sí|vale|claro|oui|sim|pode|ya|iya|boleh|oke|да|конечно|давай|хорошо|ладно|можно|" +
+                    "ja|klar|si|sí|vale|claro|oui|ouais|d'accord|d’accord|vas-y|vas y|bien sûr|sim|pode|ya|iya|boleh|oke|да|конечно|давай|хорошо|ладно|можно|" +
                     "звісно|гаразд|добре|можна)(?![\\p{L}\\p{N}])" +
                     // Ukrainian yes, but only alone: a Russian sentence often starts with it ("so, …").
                     "|так(?=$EDGE$)" +
@@ -1036,6 +1036,7 @@ class VoiceSession(
         internal val NO =
             Regex(
                 "^$EDGE(?:no|nope|deny|don't|do not|stop|cancel|never mind|nevermind|nein|non|não|nao|tidak|jangan|" +
+                    "non merci|annule|arrête|laisse tomber|pas question|" +
                     "nggak|gak|enggak|нет|не надо|не нужно|стоп|отмена|ні|не треба|скасуй|" +
                     "不要|不用|不行|不|别|算了|いいえ|いや|だめ|ダメ|やめて|キャンセル)$EDGE$",
                 RegexOption.IGNORE_CASE,
@@ -1049,7 +1050,7 @@ class VoiceSession(
             Regex(
                 "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|ja|si|sí|oui|sim|ya|iya|да|так)$EDGE|(?:是|好|はい)$EDGE)?" +
                     "(?:allow always|always|immer|siempre|toujours|sempre|selalu|всегда|завжди|总是|始终|一直|永远|いつも|常に|ずっと)" +
-                    "(?:$EDGE(?:allow it|allow|erlauben|允许|許可))?$EDGE$",
+                    "(?:$EDGE(?:allow it|allow|erlauben|autoriser|允许|許可))?$EDGE$",
                 RegexOption.IGNORE_CASE,
             )
 

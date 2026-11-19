@@ -173,6 +173,25 @@ widget "fetch" {
         "failing": "знос", "wireless": "бездротова", "dock": "док-станція"
       }, w, w)
     }
+    fr {
+      uptime: "uptime"; packages: "paquets"; display: "écran"; theme: "thème"; memory: "ram"; disk: "disque"
+      battery: "batterie"; apps: "applis"; byDefault: "par défaut"; phone: "téléphone"; device: "appareil"; hardware: "matériel"
+      network: "réseau"; launcher: "launcher"; security: "sécurité"; build: "build"; locale: "langue"; cores: "cœurs"
+      storage: "stockage"; speed: "débit"; received: "reçu"; sent: "envoyé"; mobile: "mobile"
+      level: "charge"; temperature: "température"; voltage: "tension"; health: "état"; cycles: "cycles"
+      technology: "techno"; version: "version"; explicit: "explicites"; upgraded: "mis à jour"; never: "jamais"
+      unknown: "inconnu"; installLinux: "installer linux"
+      notInstalled: "pas installé. arch linux arm ajoute un terminal, des agents et pacman au launcher."
+      upTo: ghz => " · jusqu’à ${ghz} GHz"
+      androidApps: n => "${n} " + (n < 2 ? "appli android" : "applis android")
+      appCount: n => "${n} " + (n < 2 ? "appli" : "applis")
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "en charge", "plugged in": "branché", "on battery": "sur batterie", "good": "bon",
+        "overheating": "surchauffe", "dead": "hors service", "over voltage": "surtension", "cold": "froid",
+        "failing": "défaillant", "wireless": "sans fil", "dock": "station d’accueil"
+      }, w, w)
+    }
   }
 
   // The phone, from Android: works without Linux.

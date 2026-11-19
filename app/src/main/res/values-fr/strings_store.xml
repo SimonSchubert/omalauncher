@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="store_widgets_title">boutique de widgets</string>
+    <string name="store_apps_title">boutique d’applis</string>
+    <string name="store_featured">à la une</string>
+
+    <string name="store_kind_widgets">widgets</string>
+    <string name="store_kind_faces">widgets plein écran</string>
+    <string name="store_kind_apps">applis</string>
+    <string name="store_kind_panels">panneaux</string>
+    <string name="store_kind_keybars">barres de touches</string>
+    <string name="store_kind_widget">widget</string>
+    <string name="store_kind_face">widget plein écran</string>
+    <string name="store_kind_app">appli</string>
+    <string name="store_kind_panel">panneau</string>
+    <string name="store_kind_keybar">barre de touches</string>
+
+    <string name="store_pick_widget">choisis un widget pour voir ce qu’il installe et exécute</string>
+    <string name="store_pick_face">choisis un widget plein écran pour voir ce qu’il installe et exécute</string>
+    <string name="store_pick_app">choisis une appli pour voir ce qu’elle installe et exécute</string>
+    <string name="store_pick_panel">choisis un panneau pour voir ce qu’il installe et exécute</string>
+    <string name="store_pick_keybar">choisis une barre de touches pour voir ce qu’elle installe et exécute</string>
+    <string name="store_kind_strips">barres d’applis</string>
+    <string name="store_kind_strip">barre d’applis</string>
+    <string name="store_pick_strip">choisis une barre d’applis pour voir ce qu’elle installe et exécute</string>
+
+    <string name="store_search">rechercher parmi %1$d %2$s</string>
+    <string name="store_tab_all">tous</string>
+    <string name="store_tab_new">nouveautés</string>
+    <string name="store_tab_installed">installés</string>
+    <string name="store_category_other">autres</string>
+    <string name="store_tab">%1$s %2$d</string>
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <string name="store_builtin">intégré</string>
+    <string name="store_terminal">terminal</string>
+    <string name="store_terminal_details">6x4 · un shell</string>
+    <string name="store_agent_details">6x6 · lance %1$s</string>
+    <string name="store_on_home">✓ sur l’accueil</string>
+    <string name="store_tap_to_add">ajouter à la page %1$d</string>
+
+    <string name="store_reviewed">%1$s de github.com/%2$s, après vérification</string>
+    <string name="store_loading">chargement…</string>
+    <string name="store_empty">%1$s : rien pour l’instant</string>
+    <string name="store_no_new">%1$s : rien de nouveau</string>
+    <string name="store_none_installed">%1$s : rien d’installé depuis la boutique</string>
+    <string name="store_no_match">aucun résultat pour « %1$s »</string>
+
+    <string name="store_update_available">mise à jour dispo</string>
+    <string name="store_installed">✓ installé</string>
+    <string name="store_needs_newer">launcher trop ancien</string>
+    <string name="store_needs_linux">nécessite linux</string>
+    <string name="store_full_screen">plein écran</string>
+    <plurals name="store_pages">
+        <item quantity="one">%1$d page</item>
+        <item quantity="many">%1$d pages</item>
+        <item quantity="other">%1$d pages</item>
+    </plurals>
+    <string name="store_badge_new">nouveau</string>
+
+    <string name="store_needs_newer_detail">nécessite un launcher plus récent (owl %1$d) ; mets à jour le launcher pour l’installer</string>
+    <string name="store_may_have_changes">peut contenir tes modifications ; la mise à jour les remplace</string>
+    <string name="store_you_changed">tu as fait des modifications ; la mise à jour les remplace</string>
+    <string name="store_update_anyway">mettre à jour quand même %1$s → %2$s</string>
+    <string name="store_update">mettre à jour %1$s → %2$s</string>
+    <string name="store_open">ouvrir</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="one">ajouter %1$d page manquante</item>
+        <item quantity="many">ajouter ses %1$d pages manquantes</item>
+        <item quantity="other">ajouter ses %1$d pages manquantes</item>
+    </plurals>
+    <string name="store_add_to_page">ajouter à la page %1$d</string>
+    <string name="store_add_as_face">ajouter en widget plein écran</string>
+    <string name="store_install">installer</string>
+    <string name="store_uninstall">désinstaller</string>
+    <string name="store_remove">retirer</string>
+    <string name="store_uninstall_confirm">désinstaller %1$s ?</string>
+    <string name="store_remove_confirm">retirer %1$s ?</string>
+    <string name="store_remove_file">Son fichier va dans .removed/ du dossier widgets.</string>
+    <string name="store_remove_files">Ses fichiers vont dans .removed/ du dossier widgets.</string>
+    <string name="store_changed_since_approval">ses commandes ou paquets ont changé depuis la version que tu as approuvée</string>
+
+    <string name="store_added_widget">✓ sur ton écran d’accueil</string>
+    <string name="store_added_face">✓ à gauche de ta première page</string>
+    <string name="store_added_app">✓ dans ton tiroir d’applis</string>
+    <string name="store_added_panel">✓ dans les paramètres des gestes</string>
+    <string name="store_added_keybar">✓ dans ton dossier widgets</string>
+
+    <string name="store_needs_linux_app">nécessite Linux : elle exécute des commandes dans Arch, donc elle apparaît dans le tiroir d’applis une fois Linux installé dans les paramètres</string>
+    <string name="store_needs_linux_widget">nécessite Linux : il exécute des commandes dans Arch, donc il reste en attente jusqu’à ce que tu installes Linux dans les paramètres</string>
+
+    <string name="store_installs_packages">installe des paquets : %1$s</string>
+    <string name="store_packages_none">aucun</string>
+    <string name="store_runs_no_commands">n’exécute aucune commande</string>
+    <string name="store_runs_commands">exécute ces commandes dans Arch :</string>
+
+    <string name="store_installing">installation…</string>
+    <string name="store_updating">mise à jour…</string>
+    <string name="store_adding_pages">ajout des pages…</string>
+    <string name="store_load_failed">impossible de charger la boutique : %1$s</string>
+    <string name="store_download_mismatch">le téléchargement ne correspond pas à la version vérifiée ; réessaie plus tard</string>
+    <string name="store_install_failed">l’installation n’a pas marché : %1$s</string>
+
+    <string name="store_shared_title">partagé : %1$s</string>
+    <string name="store_shared_fetching">récupération depuis %1$s…</string>
+    <string name="store_shared_unreadable">illisible</string>
+    <string name="store_shared_not_widget">Ce lien ne contient pas de widget : %1$s.</string>
+    <string name="store_shared_unnamed_app">une appli</string>
+    <string name="store_shared_unnamed_widget">un widget</string>
+    <string name="store_shared_info">partagé avec toi%1$s · %2$.1f Ko</string>
+    <string name="store_shared_warning">Ne l’ajoute que si tu fais confiance à qui te l’a envoyé. Les commandes ci-dessous tournent dans Arch en ton nom, avec accès à tes fichiers et au réseau.</string>
+    <string name="store_shared_needs_newer">nécessite un launcher plus récent (owl %1$d) ; mets à jour le launcher pour l’ajouter</string>
+    <string name="store_shared_replace">remplacer la version de %1$s partagée avant</string>
+    <string name="store_add_to_drawer">ajouter au tiroir d’applis</string>
+    <string name="store_add_to_panels">ajouter aux panneaux de gestes</string>
+    <string name="store_add_to_widgets_folder">ajouter à ton dossier widgets</string>
+    <string name="store_hide_file">masquer le fichier</string>
+    <string name="store_show_file">afficher tout le fichier</string>
+    <string name="store_review_with_agent">vérifier avec l’agent</string>
+
+    <string name="store_share_title">partager %1$s</string>
+    <string name="store_check_secrets">chercher des secrets avec l’agent</string>
+    <string name="store_share_unreadable">impossible de lire %1$s</string>
+    <string name="store_share_too_big">%1$s dépasse %2$d Ko, plus qu’un launcher n’accepte</string>
+    <string name="store_uploading">envoi…</string>
+    <string name="store_share_get_code">créer un QR code</string>
+    <string name="store_something_wrong">quelque chose n’a pas marché</string>
+    <string name="store_share_uploads">l’envoie, en public, sur %1$s pour %2$d jours</string>
+    <string name="store_share_send_link">Ou envoie le lien : permanent, tout le widget est dedans.</string>
+    <string name="store_share_too_big_link">Trop gros pour un lien : partage-le par QR code.</string>
+    <string name="store_share_pasted_permanent">Renvoie vers %1$s, supprimé dans %2$d jours. Le lien ci-dessous est permanent.</string>
+    <string name="store_share_pasted">Renvoie vers %1$s, supprimé dans %2$d jours.</string>
+    <string name="store_share_permanent">Permanent : tout le widget est dans l’image.</string>
+    <string name="store_share_code">partager le QR code</string>
+    <string name="store_share_link">partager le lien</string>
+    <string name="store_copied">copié</string>
+    <string name="store_copy_link">copier le lien</string>
+    <string name="store_share_subject">widget %1$s</string>
+    <string name="store_share_code_clip">QR code de %1$s</string>
+    <string name="store_share_chooser">Partager %1$s</string>
+    <string name="store_in_store">dans la boutique</string>
+    <string name="store_issue_info">Une issue sur github.com/%1$s ; après vérification, tout le monde peut l’installer.</string>
+    <string name="store_pr_info">Ou une pull request de ton agent, qui peut aussi ajouter un aperçu :</string>
+    <string name="store_create_pr">créer une pull request avec l’agent</string>
+    <string name="store_open_issue">ouvrir une issue GitHub</string>
+    <string name="store_no_browser">aucun navigateur pour ouvrir %1$s</string>
+    <string name="store_issue_uploads">l’envoie, en public, sur %1$s pour vérification</string>
+    <string name="store_upload_failed">✗ l’envoi n’a pas marché : %1$s</string>
+
+    <string name="store_pin_title">ajouter à l’écran d’accueil ?</string>
+    <string name="store_pin_from">de %1$s</string>
+    <string name="store_cancel">annuler</string>
+    <string name="store_add">ajouter</string>
+
+    <string name="store_theme_title">thèmes de la communauté</string>
+    <string name="store_theme_search">rechercher parmi %1$d thèmes</string>
+    <string name="store_theme_header">faits par la communauté, listés sur omarchy.org/themes · installés depuis GitHub</string>
+    <string name="store_theme_in_use">✓ utilisé</string>
+    <string name="store_theme_install_confirm">installer %1$s ?</string>
+    <string name="store_theme_install_message">Depuis %1$s. Linux reçoit ses couleurs et fonds d’écran, pas ses scripts ni ses configs de terminal.</string>
+    <string name="store_theme_install_message_replaces">Depuis %1$s. Linux reçoit ses couleurs et fonds d’écran, pas ses scripts ni ses configs de terminal.\n\nIl remplace ton thème %2$s.</string>
+    <string name="store_theme_install_message_over">Depuis %1$s. Linux reçoit ses couleurs et fonds d’écran, pas ses scripts ni ses configs de terminal.\n\nIl passe par-dessus le thème %2$s d’Omarchy ; le retirer le fait revenir.</string>
+    <string name="store_theme_installing">installation de %1$s… %2$d Mo</string>
+    <string name="store_theme_catalog_failed">impossible de charger omarchy.org/themes : %1$s</string>
+    <string name="store_theme_page_changed">la page a changé et n’est plus lisible</string>
+    <string name="store_theme_not_github">pas un dépôt GitHub : %1$s</string>
+    <string name="store_theme_not_on_github">%1$s n’est pas sur GitHub</string>
+    <string name="store_theme_no_colors">il n’a ni colors.toml ni alacritty.toml</string>
+    <string name="store_theme_cant_move">impossible de mettre le thème en place</string>
+</resources>

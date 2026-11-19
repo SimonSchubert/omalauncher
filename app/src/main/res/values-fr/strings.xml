@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omalauncher</string>
+    <string name="wallpaper_label">Omarchy</string>
+    <string name="wallpaper_description">Le fond d’écran du thème Omarchy actuel. Les couleurs du système suivent le thème.</string>
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">Terminal</string>
+    <string name="activity_app">Appli</string>
+    <string name="activity_files">Fichiers</string>
+    <string name="activity_voice">Voix</string>
+    <string name="activity_settings">Paramètres</string>
+    <string name="notification_listener">Widgets Omalauncher</string>
+</resources>

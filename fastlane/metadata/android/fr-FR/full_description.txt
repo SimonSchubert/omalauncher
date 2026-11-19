@@ -1,0 +1,37 @@
+Omalauncher est un écran d’accueil pensé pour le clavier, qui donne à Android le look d’Omarchy et peut faire tourner un vrai système Arch Linux ARM à côté de tes applis.
+
+THÈMES
+Choisis parmi 22 thèmes Omarchy : Tokyo Night, Catppuccin, Gruvbox, Nord, Rose Pine, Kanagawa, Everforest et d’autres. Chaque thème colore tout le launcher et arrive avec ses propres fonds d’écran, que tu peux aussi utiliser en fond d’écran animé.
+
+ÉCRAN D’ACCUEIL ET WIDGETS
+• Des pages de widgets et d’applis épinglées sur une grille
+• Des widgets intégrés pour la date, la météo et ton système
+• Les widgets plein écran : une page entière dessinée d’un seul tenant, comme une planche de manga, un terminal ou une affiche Bauhaus
+• Une boutique de widgets, de widgets plein écran, de petites applis et de jeux, écrits dans un petit langage ouvert que tu peux modifier toi-même
+• Un tiroir d’applis avec recherche pour toutes tes applis Android
+
+ARCH LINUX (FACULTATIF)
+Le launcher fonctionne sans. Si tu le veux, Omalauncher télécharge Arch Linux ARM et le fait tourner avec proot, sans root.
+• Les applis Linux s’ouvrent dans leurs propres fenêtres, chacune avec sa carte dans les applis récentes
+• Omalauncher est le compositeur Wayland, donc les applis graphiques comme foot fonctionnent
+• Recherche et installe des paquets depuis Arch Linux ARM et l’AUR
+• Des widgets de terminal qui lancent des commandes sur ton écran d’accueil
+• Fichiers, un gestionnaire de fichiers pour le dossier personnel de Linux et les dossiers du téléphone que tu choisis : copier, déplacer, renommer, supprimer, ouvrir et partager
+• Ton thème s’applique aussi aux applis Linux
+
+AGENTS DE CODE
+Une fois Linux installé, la barre de saisie en bas de l’écran d’accueil envoie ta demande à un agent de code comme Claude Code, Codex, Copilot, Grok ou opencode, qui s’ouvre dans un terminal. Un agent peut aussi te créer un widget.
+
+VOIX
+Touche le bouton voix et parle à ton agent de code. Il te répond à voix haute, montre ce qu’il fait et demande avant de lancer une commande ou de modifier un fichier. Tu préfères écrire ? Passe au clavier et lis ses réponses. La parole est reconnue par Android, seul le texte arrive dans Linux.
+
+RACCOURCIS CLAVIER
+Avec un clavier physique : Super+T ouvre un terminal, Super+D le tiroir d’applis, Super+1 à 9 changent de page et Super+W ferme une fenêtre.
+
+LANGUES
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська et Français.
+
+CONFIDENTIALITÉ
+Pas de compte, pas de pub, pas de pistage. Omalauncher ne se connecte à Internet que pour télécharger les thèmes, les widgets, la météo et, si tu le choisis, Linux et ses paquets.
+
+Omalauncher est un projet indépendant, sans lien avec Omarchy ni Arch Linux.
