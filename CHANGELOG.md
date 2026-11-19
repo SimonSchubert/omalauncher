@@ -6,6 +6,21 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.8.0 (versionCode 41) – 2026-11-19
+
+- The app drawer starts with an app store tile: the store is now a widget store and an app store,
+  with the top five apps you haven't installed as big screenshots (launcher("store:apps"), owl 25).
+- Voice can listen with Parakeet, speech recognition running on the phone itself (670 MB download
+  in the voice settings, 25 European languages). It sends on a tap on the orb by default, shows
+  what you say as a draft you can erase, takes "always" as an approval answer, shows Hermes'
+  questions with their choices, and stops saying "one moment" while the agent works. The orb is the
+  theme's accent in every state and tells them apart by how it moves.
+- The launcher comes in French, with a French store listing.
+- A tap on a community theme opens its preview: its terminal colors, light or dark, its wallpapers
+  large and zoomable (#319), and about how much it downloads.
+- Widgets can show the battery of the Bluetooth headphones or speaker media plays on (#318, owl 25).
+- Fix: a widget with a scrolling Row inside another scrolling Row no longer takes the launcher down.
+
 ## 1.7.0 (versionCode 40) – 2026-11-17
 
 - Linux can be stopped and started again in settings › linux (#73): stopping ends every Linux app,
