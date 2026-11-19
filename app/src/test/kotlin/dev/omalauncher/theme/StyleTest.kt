@@ -149,6 +149,35 @@ class StyleTest {
         assertEquals(6.0, StyleFile.decode(emptyMap(), previous).style[Style.GAPS_IN], 0.0)
     }
 
+    @Test fun wallpaperSettingsRoundTripWithoutChangingOldInstalls() {
+        val old = StyleFile.decode(Toml.parse("version = 1\nbackground = \"photo.jpg\"\n")).style
+        assertEquals(WallpaperFraming(), old.wallpaperFraming)
+        val text = """
+            version = 1
+            background = "photo.jpg"
+            [wallpaper]
+            scroll = false
+            x = 0.2
+            y = 0.8
+            zoom = 1.7
+            fit = true
+        """.trimIndent()
+        val table = Toml.parse(text)
+        val decoded = StyleFile.decode(table)
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertEquals(WallpaperFraming(false, 0.2f, 0.8f, 1.7f, true), decoded.style.wallpaperFraming)
+        assertEquals("photo.jpg", decoded.style[Style.BACKGROUND])
+        assertEquals(decoded.style, StyleFile.decode(Toml.parse(Toml.write(StyleFile.encode(table, decoded.style)))).style)
+    }
+
+    @Test fun invalidWallpaperSettingsKeepThePreviousValues() {
+        val previous = Style().with(Style.BACKGROUND_X, 0.3).with(Style.BACKGROUND_Y, 0.7).with(Style.BACKGROUND_ZOOM, 2.0).with(Style.BACKGROUND_SCROLL, false)
+        val decoded = StyleFile.decode(Toml.parse("wallpaper.x = -0.1\nwallpaper.y = 1.1\nwallpaper.zoom = 0.5\nwallpaper.scroll = \"no\"\n"), previous)
+        assertEquals(4, decoded.problems.size)
+        assertEquals(previous, decoded.style)
+        assertEquals(Style(), StyleFile.decode(emptyMap(), previous).style)
+    }
+
     @Test fun encodesOnlyWhatDiffersAndKeepsUnknownKeys() {
         val table = linkedMapOf<String, Any>("version" to 1.0, "future.thing" to "x", "widgets.gaps-in" to 8.0)
         val style = Style().with(Style.GAPS_IN, 6.0).with(Style.TILE_BORDER_WIDTH, 0.0).with(Style.THEME, "nord")

@@ -125,24 +125,3 @@ fun decodeForScreen(
         }
     }.getOrNull()
 }
-
-/**
- * The part of a [bmpW]×[bmpH] background that fills a [w]×[h] screen: center-cropped, then slid sideways by
- * [offset] (0 = first home page, 1 = last), like a stock launcher's wallpaper. The slide stays within half a
- * screen so the background trails the pages instead of racing them.
- */
-fun wallpaperCrop(
-    bmpW: Int,
-    bmpH: Int,
-    w: Int,
-    h: Int,
-    offset: Float,
-): Rect {
-    val scale = maxOf(w.toFloat() / bmpW, h.toFloat() / bmpH)
-    val srcW = (w / scale).toInt()
-    val srcH = (h / scale).toInt()
-    val travel = minOf(bmpW - srcW, srcW / 2)
-    val left = (bmpW - srcW - travel) / 2 + (travel * offset.coerceIn(0f, 1f)).roundToInt()
-    val top = (bmpH - srcH) / 2
-    return Rect(left, top, left + srcW, top + srcH)
-}

@@ -100,7 +100,7 @@
     <string name="style_retry">повторить</string>
     <string name="style_download_themes">скачать темы</string>
 
-    <string name="style_add_image">+ изображение</string>
+    <string name="style_add_image">выбрать изображение</string>
     <string name="style_wallpaper_active">✓ обои android и системные цвета подстраиваются под тему (системные цвета обновятся, когда экран выключится)</string>
     <string name="style_wallpaper_use">установить как обои android + системные цвета</string>
     <string name="style_remove_background_title">удалить фон?</string>
@@ -157,4 +157,24 @@
     <string name="agents_remove">удалить</string>
     <string name="agents_still_running">%1$s ещё работает: закройте его и попробуйте удалить снова</string>
     <string name="agents_install">установить</string>
+
+    <!-- Wallpaper framing. -->
+    <string name="style_wallpaper_motion">движение обоев</string>
+    <string name="style_wallpaper_scroll">прокрутка</string>
+    <string name="style_wallpaper_fixed">неподвижные</string>
+    <string name="style_wallpaper_x">положение по горизонтали</string>
+    <string name="style_wallpaper_y">положение по вертикали</string>
+    <string name="style_wallpaper_zoom">масштаб</string>
+    <string name="style_wallpaper_position_hint" formatted="false">0% = слева / сверху · 100% = справа / снизу</string>
+    <string name="style_wallpaper_scroll_hint">Выберите область изображения, которая следует за страницами.</string>
+    <string name="style_wallpaper_start">начало</string>
+    <string name="style_wallpaper_middle">середина</string>
+    <string name="style_wallpaper_end">конец</string>
+    <string name="style_wallpaper_sizing">размер изображения</string>
+    <string name="style_wallpaper_whole">целиком</string>
+    <string name="style_wallpaper_fill">заполнить</string>
+    <string name="style_wallpaper_disabled_hint">Увеличьте масштаб, чтобы настроить неактивные положения. Их сохранённые значения можно сбросить.</string>
+    <string name="style_wallpaper_loading">Загрузка изображения…</string>
+    <string name="style_wallpaper_choose">Выберите изображение, чтобы настроить его положение.</string>
+    <string name="style_wallpaper_unreadable">Не удалось открыть изображение. Выберите другое.</string>
 </resources>

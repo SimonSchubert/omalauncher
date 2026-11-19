@@ -8,6 +8,16 @@ import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import dev.omalauncher.upgrade.SyncedFile
+import dev.omalauncher.upgrade.Versioned
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 
 /**
@@ -21,6 +31,12 @@ class StyleStore(
     private val context: Context,
 ) {
     private val dir = LauncherData.styleDir(context)
+    private val profilesFile = File(dir, "wallpapers.json")
+    private val profiles = WallpaperProfiles.read(runCatching { profilesFile.takeIf { it.exists() }?.readText() }.getOrNull())
+    private val profileScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var savingProfiles: Job? = null
+    private val profileWriting = Mutex()
+    private var wallpaperKey: String? = null
 
     /** The file's keys, the ones this launcher doesn't know among them; see [StyleFile.encode]. */
     private var table = LinkedHashMap<String, Any>()
@@ -50,19 +66,54 @@ class StyleStore(
         } else {
             read(text)
         }
+        wallpaperKey = ThemeStore.wallpaperKey(context, style)
+        profiles.remember(wallpaperKey!!, style.wallpaperFraming)
+        saveProfiles()
         running = true
     }
 
     /** Changes the style and saves it; nothing happens if [change] leaves it as it is. */
     fun update(change: (Style) -> Style) {
-        val next = change(style)
-        if (next == style) return
+        val previous = style
+        val proposed = change(previous)
+        if (proposed == previous) return
+        val selectionChanged = proposed[Style.THEME] != previous[Style.THEME] || proposed[Style.BACKGROUND] != previous[Style.BACKGROUND]
+        val key = if (selectionChanged || wallpaperKey == null) ThemeStore.wallpaperKey(context, proposed) else wallpaperKey!!
+        val framing = profiles.choose(wallpaperKey, key, previous.wallpaperFraming, proposed.wallpaperFraming)
+        val next = if (selectionChanged) proposed.withWallpaperFraming(framing) else proposed
+        wallpaperKey = key
         // What errors.txt said about the settings changed here no longer holds.
         val changed = next.changed(style)
         synced.drop { problem -> changed.any { problem.startsWith("$it:") } }
         style = next
         table = StyleFile.encode(table, next)
         synced.save()
+        if (selectionChanged || previous.wallpaperFraming != next.wallpaperFraming) saveProfiles()
+    }
+
+    /** A first background may only become known after the themes finish downloading. */
+    fun bindWallpaper(file: File?) {
+        val key = file?.let { ThemeStore.wallpaperKey(context, it) } ?: return
+        if (key == wallpaperKey) return
+        wallpaperKey = key
+        profiles.remember(key, style.wallpaperFraming)
+        saveProfiles()
+    }
+
+    private fun saveProfiles() {
+        savingProfiles?.cancel()
+        savingProfiles = profileScope.launch {
+            delay(400)
+            val data = profiles.data()
+            withContext(Dispatchers.IO) {
+                profileWriting.withLock {
+                    runCatching {
+                        profilesFile.parentFile?.mkdirs()
+                        Versioned.writeFile(profilesFile, WallpaperProfiles.VERSION, data)
+                    }.onFailure { android.util.Log.w("wallpapers", "can't save wallpaper framing", it) }
+                }
+            }
+        }
     }
 
     /**
@@ -99,7 +150,12 @@ class StyleStore(
         StyleFile.migrate(parsed)
         val decoded = StyleFile.decode(parsed, style)
         table = parsed
+        // External edits are authoritative, including an explicit reset or a new background's framing.
+        wallpaperKey?.let { profiles.remember(it, style.wallpaperFraming) }
         style = decoded.style
+        wallpaperKey = ThemeStore.wallpaperKey(context, style)
+        profiles.remember(wallpaperKey!!, style.wallpaperFraming)
+        saveProfiles()
         synced.setProblems(decoded.problems)
         // An older format is written back in the current one, so the file reads like defaults.toml.
         if (old < StyleFile.VERSION) {
