@@ -10,4 +10,7 @@
     <string name="activity_voice">Sprechen</string>
     <string name="activity_settings">Einstellungen</string>
     <string name="notification_listener">Omalauncher-Widgets</string>
+    <string name="lock_admin_label">Omalauncher-Sperre</string>
+    <string name="lock_admin_description">Lässt Omalauncher den Bildschirm über eine Geste auf dem Startbildschirm sperren. Mehr wird nicht verlangt.</string>
+    <string name="lock_admin_why">Omalauncher sperrt den Bildschirm, wenn eine Geste auf dem Startbildschirm es verlangt. Es übernimmt keine weitere Kontrolle über das Telefon.</string>
 </resources>

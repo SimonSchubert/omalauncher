@@ -10,4 +10,7 @@
     <string name="activity_voice">语音</string>
     <string name="activity_settings">设置</string>
     <string name="notification_listener">Omalauncher 小组件</string>
+    <string name="lock_admin_label">Omalauncher 锁屏</string>
+    <string name="lock_admin_description">允许 Omalauncher 通过主屏幕手势锁定屏幕，不需要其他权限。</string>
+    <string name="lock_admin_why">主屏幕手势要求时，Omalauncher 会锁定屏幕，不会以其他方式控制手机。</string>
 </resources>

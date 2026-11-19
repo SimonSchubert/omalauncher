@@ -297,8 +297,8 @@ class WidgetEngine(
     /** Panels that ran close(): home slides them away. */
     val panelCloses = MutableSharedFlow<String>(extraBufferCapacity = 4)
 
-    /** The panels gestures open: kept live while home shows, so one is ready the moment a swipe starts. */
-    private fun gesturePanels() = setOfNotNull(drawerPanel(), LauncherStyle.style[Style.SWIPE_DOWN])
+    /** The panels gestures open: kept live while home shows, so one is ready the moment a gesture starts. */
+    private fun gesturePanels() = (runtime.gestures.pickedPanels + listOfNotNull(drawerPanel())).toSet()
 
     /**
      * The extra keys over the soft keyboard: keybar.owl, else the stock ones, so keys that are gone or broken never leave a

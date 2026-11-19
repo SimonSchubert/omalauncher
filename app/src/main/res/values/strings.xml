@@ -12,4 +12,8 @@
     <string name="activity_settings">Settings</string>
     <!-- In Android's notification access settings. -->
     <string name="notification_listener">Omalauncher widgets</string>
+    <!-- Android's device admin screen, which lets home gestures lock the screen (LockAdmin.kt). -->
+    <string name="lock_admin_label">Omalauncher screen lock</string>
+    <string name="lock_admin_description">Lets Omalauncher lock the screen from a home gesture. It asks for nothing else.</string>
+    <string name="lock_admin_why">Omalauncher locks the screen when a home gesture asks it to. It takes no other control of the phone.</string>
 </resources>

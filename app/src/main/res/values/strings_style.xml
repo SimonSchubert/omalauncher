@@ -164,19 +164,33 @@
     <string name="gestures_title">gestures</string>
     <string name="gestures_swipe_up">swipe up</string>
     <string name="gestures_swipe_down">swipe down</string>
-    <!-- What a swipe opens when it opens no panel. -->
+    <string name="gestures_double_tap">double tap</string>
+    <string name="gestures_hold">hold</string>
+    <string name="gestures_two_finger_up">two-finger swipe up</string>
+    <string name="gestures_two_finger_down">two-finger swipe down</string>
+    <!-- Under a gesture's name: where on home it applies. -->
+    <string name="gestures_on_home">on home</string>
+    <string name="gestures_on_empty">on empty home</string>
+    <!-- What a gesture does when it opens no panel. -->
     <string name="gestures_nothing">nothing</string>
+    <string name="gestures_lock">lock screen</string>
+    <string name="gestures_menu">home menu</string>
+    <!-- In the actions' dropdown, over the panels. -->
+    <string name="gestures_panels">panels</string>
     <!-- %1$s is a panel's name. -->
     <string name="gestures_has_errors">%1$s (has errors)</string>
     <!-- %1$s is the file name of a panel that is gone. -->
     <string name="gestures_missing">%1$s (missing)</string>
     <string name="gestures_edit">edit</string>
-    <string name="gestures_hint">panels are owl files, the drawer among them: edit them like widgets, or create one with your agent from home\'s menu. with nothing on swipe up, tapping the bar still opens the drawer</string>
+    <string name="gestures_allow">allow</string>
+    <string name="gestures_lock_needs_admin">lock screen needs omalauncher as the phone\'s device admin</string>
+    <string name="gestures_hint">panels are owl files, the drawer among them: edit them like widgets, or create one with your agent from home\'s menu. locking the screen and home\'s menu are actions too. with nothing on swipe up, tapping the bar still opens the drawer</string>
     <!-- Home's error banner, for a panel that doesn't compile. -->
     <string name="gestures_stock_drawer">the stock drawer</string>
     <!-- %1$s is a panel's name, "the stock drawer" or "nothing". -->
     <string name="gestures_drawer_shows">the drawer shows %1$s</string>
     <string name="gestures_swipe_down_nothing">swiping down opens nothing</string>
+    <string name="gestures_opens_nothing">this gesture opens nothing</string>
     <!-- %1$s is what happens meanwhile, like "the drawer shows the stock drawer"; %2$s the widget language's error, in English. -->
     <string name="gestures_until_fixed">%1$s until it\'s fixed: %2$s</string>
     <!-- %1$s is the widget language's error, in English. -->

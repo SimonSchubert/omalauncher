@@ -10,4 +10,7 @@
     <string name="activity_voice">Voz</string>
     <string name="activity_settings">Configuración</string>
     <string name="notification_listener">Widgets de Omalauncher</string>
+    <string name="lock_admin_label">Bloqueo de Omalauncher</string>
+    <string name="lock_admin_description">Permite que Omalauncher bloquee la pantalla con un gesto en el inicio. No pide nada más.</string>
+    <string name="lock_admin_why">Omalauncher bloquea la pantalla cuando un gesto en el inicio se lo pide. No toma ningún otro control del teléfono.</string>
 </resources>

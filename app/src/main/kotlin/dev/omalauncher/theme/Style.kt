@@ -226,13 +226,37 @@ class Style(
             Setting.Text(
                 "gestures.swipe-up",
                 "drawer.owl",
-                "The app drawer, which swiping up opens: a panel's file name in ~/.config/omalauncher/widgets, by default drawer.owl; \"none\" leaves only tapping the bar to open drawer.owl. One that's gone or doesn't compile falls back to drawer.owl, then to .stock-drawer.owl, the drawer as it ships.",
+                "What swiping up on home opens: the app drawer, which a panel's file name in ~/.config/omalauncher/widgets shows (drawer.owl by default), \"lock\" to lock the screen, \"menu\" for home's menu, or \"none\" for nothing (tapping the bar still opens the drawer). A panel that's gone or doesn't compile falls back to drawer.owl, then to .stock-drawer.owl, the drawer as it ships.",
             )
         val SWIPE_DOWN =
             Setting.Text(
                 "gestures.swipe-down",
                 "none",
-                "What swiping down on home opens: \"none\" nothing, or a panel's file name in ~/.config/omalauncher/widgets (\"my-panel.owl\"); one that's gone or doesn't compile opens nothing.",
+                "What swiping down on home does: \"none\" nothing, a panel's file name in ~/.config/omalauncher/widgets (\"my-panel.owl\", coming down from the top), \"lock\" or \"menu\". A panel that's gone or doesn't compile opens nothing.",
+            )
+        val DOUBLE_TAP =
+            Setting.Text(
+                "gestures.double-tap",
+                "lock",
+                "What double-tapping empty home does: \"lock\" to lock the screen (Android asks once to let the launcher be the phone's device admin), \"menu\" for home's menu, a panel's file name (\"my-panel.owl\", coming down from the top), or \"none\".",
+            )
+        val HOLD =
+            Setting.Text(
+                "gestures.hold",
+                "menu",
+                "What holding empty home does: \"menu\" for home's menu, where themes and new widgets, apps and panels start; a panel's file name (\"my-panel.owl\", coming down from the top), \"lock\" to lock the screen, or \"none\". Holding a tile still lifts it.",
+            )
+        val TWO_FINGER_UP =
+            Setting.Text(
+                "gestures.two-finger-up",
+                "none",
+                "What swiping up on home with two fingers does: \"none\", \"lock\", \"menu\", or a panel's file name in ~/.config/omalauncher/widgets, coming down from the top.",
+            )
+        val TWO_FINGER_DOWN =
+            Setting.Text(
+                "gestures.two-finger-down",
+                "none",
+                "What swiping down on home with two fingers does: \"none\", \"lock\", \"menu\", or a panel's file name in ~/.config/omalauncher/widgets, coming down from the top.",
             )
     }
 
@@ -274,7 +298,7 @@ object StyleFile {
         with(Style) {
             listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, EMPTY_PAGE_LEFT, EMPTY_PAGE_RIGHT, HOME_PAGE, COLUMNS, FORCE_SINGLE_PAGE, COVER_SCREEN, UNFOLDED_LAYOUT, UNFOLDED_COLUMNS, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, KEYBAR_GAPS_OUT, KEYBAR_BORDER_WIDTH, MONOCHROME_ICONS, ICON_PACK, CORNER_SCALE) +
-                listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, TERMINAL_SUGGESTIONS, SWIPE_UP, SWIPE_DOWN)
+                listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_FONT, TERMINAL_TEXT, TERMINAL_SUGGESTIONS, SWIPE_UP, SWIPE_DOWN, DOUBLE_TAP, HOLD, TWO_FINGER_UP, TWO_FINGER_DOWN)
         }
 
     private val byKey = ALL.associateBy { it.key }
