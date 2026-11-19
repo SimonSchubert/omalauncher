@@ -181,7 +181,8 @@ class WidgetServices(
     /** What's playing on the phone. */
     val media = Media(context)
     private val notifications = Notifications(context, media, ::profileKind)
-    private val volume = Volume(context)
+    /** android.volume and volume(...); volume("request") asks the activity in front for Bluetooth, for the battery. */
+    val volume = Volume(context)
     private val alarm = Alarm(context)
     private val modes = Modes(context)
     private val sim = Sim(context)

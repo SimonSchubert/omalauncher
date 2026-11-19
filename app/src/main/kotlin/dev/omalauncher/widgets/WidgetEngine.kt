@@ -140,6 +140,9 @@ class WidgetEngine(
     /** android.airpods and airpods(...), which ask the activity in front for Bluetooth. */
     val airpods get() = services.airpods
 
+    /** android.volume and volume(...), whose "request" asks the activity in front for Bluetooth. */
+    val volume get() = services.volume
+
     /** android.media, and android.modes' Do Not Disturb switch: both need notification access. */
     val media get() = services.media
 

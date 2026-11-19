@@ -1552,7 +1552,8 @@ class Compiler private constructor(
                 if (call.name in ASKS && (args.getOrNull(0)?.const as? Str)?.v == "request") {
                     val ask = "${call.name}(\"request\")"
                     // Asking for what nothing reads: what it allows is only in the source.
-                    if (androidSources(call.name).isEmpty()) fail("$ask asks for what source x = android.${call.name} reads: declare it, then x.granted says whether it's allowed", call.pos)
+                    val granted = if (call.name == "volume") "x.output.granted" else "x.granted"
+                    if (androidSources(call.name).isEmpty()) fail("$ask asks for what source x = android.${call.name} reads: declare it, then $granted says whether it's allowed", call.pos)
                     // The permission dialog covers the widget before the finger lifts, and comes only for a touch.
                     if (handlerName == "onPress" || handlerName == "onRelease") fail("$ask opens Android's permission dialog over the widget before the finger lifts: put it in onTap", call.pos)
                     if (TriggerKind.entries.any { it.word == handlerName }) fail("$ask works in onTap, not in a trigger: Android asks only when you tap", call.pos)

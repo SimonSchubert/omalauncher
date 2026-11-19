@@ -1379,6 +1379,21 @@ class LangTest {
         assertEquals(listOf("sees calendar event titles, times and locations; check nothing sends them elsewhere"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
     }
 
+    @Test fun bluetoothBatteryAskedForOnATap() {
+        val src = "widget {\n meta { owl: 25 }\n source v = android.volume\n Text { text: v.output.battery != null ? \"${'$'}{v.output.name} · ${'$'}{v.output.battery}%\" : v.output.name; onTap: volume(\"request\") } }"
+        val p = Compiler.compile(src)
+        val host = TestHost(p)
+        (p.root.single() as WNode.Element).handlers["onTap"]!!.run(Env.root(host), listOf(Num(0.0), Num(0.0)))
+        assertEquals(listOf("volume request"), host.actions)
+        assertTrue(compileError(src.replace("owl: 25", "owl: 24")).contains("owl 25"))
+        // The permission dialog only for a tap, and for a source that reads what it allows.
+        for (h in listOf("onPress", "onRelease")) assertTrue(compileError(src.replace("onTap", h)).contains("put it in onTap"))
+        assertTrue(compileError(src.replace(" Text {", " every 1m { volume(\"request\") }\n Text {")).contains("not in a trigger"))
+        assertTrue(compileError("widget {\n meta { owl: 25 }\n Text { text: \"allow\"; onTap: volume(\"request\") } }").contains("x.output.granted"))
+        // The rest of volume(...) works anywhere, as before.
+        Compiler.compile("widget {\n meta { owl: 12 }\n source v = android.volume\n every 1m { volume(\"up\") }\n Text { text: \"v\"; onPress: volume(50) } }")
+    }
+
     @Test fun airpodsAskedForOnATap() {
         val src = "widget {\n meta { owl: 18 }\n source a = android.airpods\n Text { text: a.granted ? a.mode : \"allow\"; onTap: airpods(\"request\") } }"
         val p = Compiler.compile(src)

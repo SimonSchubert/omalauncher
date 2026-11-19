@@ -65,6 +65,7 @@ fun PermissionsScreen(
         runtime.location.recheck()
         runtime.calendar.recheck()
         runtime.widgets.airpods.recheck()
+        runtime.widgets.volume.recheck()
     }
     LifecycleResumeEffect(Unit) {
         changed()

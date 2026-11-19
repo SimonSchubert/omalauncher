@@ -204,7 +204,9 @@ internal val SINCE =
         // owl 23: how strong a haptic() is.
         mapOf(HAPTIC_STRENGTH to 23) +
         // owl 24: the strip of apps above home's prompt bar as a file, and what it shows; Rows that scroll sideways.
-        listOf(STRIP_FILE, "android.strip", "Row.scroll").associateWith { 24 }
+        listOf(STRIP_FILE, "android.strip", "Row.scroll").associateWith { 24 } +
+        // owl 25: the battery of the Bluetooth device media plays on, once a tap has allowed Bluetooth.
+        mapOf("volume(\"request\")" to 25)
 
 /** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
 internal const val SHADER_IMAGE = "uniform shader"
@@ -356,7 +358,7 @@ val SPEECH_ANYWHERE = setOf("stop", "cancel")
  * The android sources a widget asks Android's permission for, each with x("request") from a tap: never a press, before
  * the finger lifts, or a trigger, so a widget can't ask on its own. The compiler and WidgetInstance both check.
  */
-val ASKS = setOf("location", "calendar", "airpods")
+val ASKS = setOf("location", "calendar", "airpods", "volume")
 
 /** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
 internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar", "motion", "strip")
@@ -400,7 +402,7 @@ internal val ACTION_WORDS =
                 )
             },
         // A number sets the level in percent.
-        "volume" to setOf("up", "down", "mute", "unmute", "toggle").let { Words(it, "volume takes a level in percent, or ${it.joinToString()}", numbers = true) },
+        "volume" to setOf("up", "down", "mute", "unmute", "toggle", "request").let { Words(it, "volume takes a level in percent, or ${it.joinToString()}", numbers = true) },
         // true and false also turn it on and off.
         // A number turns it on at that brightness, in percent.
         "torch" to setOf("on", "off", "toggle").let { Words(it, "torch takes a brightness in percent, true, false, ${it.joinToString()}", numbers = true) },

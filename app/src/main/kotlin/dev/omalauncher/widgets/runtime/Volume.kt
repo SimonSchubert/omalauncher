@@ -1,8 +1,15 @@
 package dev.omalauncher.widgets.runtime
 
 import dev.omalauncher.system.changeObserver
+import dev.omalauncher.system.hasPermission
 import dev.omalauncher.system.registerNotExported
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
@@ -12,6 +19,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Obj
@@ -21,21 +29,42 @@ import dev.omalauncher.widgets.lang.bool
 import dev.omalauncher.widgets.lang.num
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
  * The volume, for `source v = android.volume`: the media stream's at the top, the others under their names, and where
- * the sound goes; and `volume(...)` to change one.
+ * the sound goes, with a Bluetooth device's battery once the launcher may use Bluetooth; and `volume(...)` to change one.
  */
 class Volume(
     private val context: Context,
 ) {
     private val audio = context.getSystemService(AudioManager::class.java)
     private val router = context.getSystemService(MediaRouter::class.java)
+    private val adapter: BluetoothAdapter? = context.getSystemService(BluetoothManager::class.java)?.adapter
+
+    /** Bluetooth connect, a runtime permission since Android 12, which the battery needs; before it, an install-time one. */
+    private val granted: Boolean
+        get() = Build.VERSION.SDK_INT < 31 || context.hasPermission(Manifest.permission.BLUETOOTH_CONNECT)
+
+    /** The grant as last read, so a change in Android's settings or a dialog reads the value again. */
+    private val allowed = MutableStateFlow(granted)
+
+    /**
+     * Asks the activity in front for Bluetooth, then says whether it was granted; set as it resumes, like AirPods'.
+     * Null behind another app, so nothing asks over it.
+     */
+    var ask: ((granted: (Boolean) -> Unit) -> Unit)? = null
+
+    /** Granted or taken back in Android's settings while away: each activity that shows widgets checks as it resumes. */
+    fun recheck() {
+        allowed.value = granted
+    }
 
     private fun level(stream: Int): Map<String, Value> {
         val max = audio.getStreamMaxVolume(stream).coerceAtLeast(1)
@@ -52,16 +81,20 @@ class Volume(
         Obj(level(AudioManager.STREAM_MUSIC) + STREAMS.filterKeys { it != "media" }.mapValues { (_, s) -> Obj(level(s)) } + ("output" to output()))
 
     /**
-     * Where media plays: `{type, name}`. Android has no public way to ask which output a stream uses, so it's what's
-     * plugged in, in the order Android routes media to them, else the speaker. A Bluetooth device's name comes from the
-     * media router's selected route when that is Bluetooth, as Android shows it. [name] is null where there's none.
+     * Where media plays: `{type, name, battery, granted}`. Android has no public way to ask which output a stream uses,
+     * so it's what's plugged in, in the order Android routes media to them, else the speaker. A Bluetooth device's name
+     * comes from the media router's selected route when that is Bluetooth, as Android shows it. [name] is null where
+     * there's none, and the battery wherever the device doesn't report one, as Android's Bluetooth settings then show
+     * none either.
      */
     private fun output(): Value {
         val plugged = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).mapNotNull { d -> OUTPUTS[d.type]?.let { it to d } }
         val (type, device) = plugged.minByOrNull { (type, _) -> ORDER.indexOf(type) } ?: return output("speaker", null)
         if (type == "bluetooth") {
+            val battery = battery(device)
             val route = runCatching { router.getSelectedRoute(MediaRouter.ROUTE_TYPE_LIVE_AUDIO) }.getOrNull()
-            if (route?.deviceType == MediaRouter.RouteInfo.DEVICE_TYPE_BLUETOOTH) return output(type, route.name?.toString() ?: name(device))
+            if (route?.deviceType == MediaRouter.RouteInfo.DEVICE_TYPE_BLUETOOTH) return output(type, route.name?.toString() ?: name(device), battery)
+            return output(type, name(device), battery)
         }
         return output(type, name(device))
     }
@@ -69,7 +102,31 @@ class Volume(
     private fun output(
         type: String,
         name: String?,
-    ) = Obj(mapOf("type" to Str(type), "name" to (name?.takeIf { it.isNotBlank() }?.let(::Str) ?: Null)))
+        battery: Int? = null,
+    ) = Obj(
+        mapOf(
+            "type" to Str(type),
+            "name" to (name?.takeIf { it.isNotBlank() }?.let(::Str) ?: Null),
+            "battery" to (battery?.let { Num(it.toDouble()) } ?: Null),
+            "granted" to bool(granted),
+        ),
+    )
+
+    /**
+     * The battery a Bluetooth output last reported, in percent, as Android's Bluetooth settings show it: from the
+     * hands-free link's battery reports or the LE battery service. BluetoothDevice.getBatteryLevel is a system API,
+     * open to apps' reflection, that only needs Bluetooth connect. Null without it, for a device that doesn't say, and
+     * where the output's address isn't a Bluetooth one.
+     */
+    private fun battery(device: AudioDeviceInfo): Int? {
+        if (!granted) return null
+        val address = device.address?.takeIf { BluetoothAdapter.checkBluetoothAddress(it) } ?: return null
+        val method = batteryLevel ?: return null
+        return runCatching { method.invoke(adapter?.getRemoteDevice(address) ?: return null) as Int }
+            .onFailure { Log.w(TAG, "no battery: ${it.message}") }
+            .getOrNull()
+            ?.takeIf { it in 0..100 }
+    }
 
     // A wired headset's product name is the phone's own model on most phones, which says nothing.
     private fun name(d: AudioDeviceInfo) = d.productName?.toString()?.takeUnless { it == Build.MODEL }
@@ -85,6 +142,21 @@ class Volume(
                     addAction("android.media.STREAM_MUTE_CHANGED_ACTION")
                 }
             val receiver = context.registerNotExported(filter) { trySend(Unit) }
+            // Bluetooth's own process sends it, not the system's, so a receiver that isn't exported would miss it; it's a
+            // protected broadcast, which no app can send. It only reaches apps that may use Bluetooth: until then, nothing.
+            val batteries =
+                object : BroadcastReceiver() {
+                    override fun onReceive(
+                        c: Context,
+                        intent: Intent,
+                    ) {
+                        trySend(Unit)
+                    }
+                }
+            val batteryFilter = IntentFilter(ACTION_BATTERY_LEVEL_CHANGED)
+            if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(batteries, batteryFilter, Context.RECEIVER_EXPORTED) else context.registerReceiver(batteries, batteryFilter)
+            // Bluetooth allowed or taken back: the battery comes or goes.
+            val grants = launch { allowed.collect { trySend(Unit) } }
             val observer = changeObserver(main) { trySend(Unit) }
             context.contentResolver.registerContentObserver(Settings.System.CONTENT_URI, true, observer)
             // Headphones plugged in or out, and an output picked in Android's switcher.
@@ -121,6 +193,8 @@ class Volume(
             trySend(Unit)
             awaitClose {
                 context.unregisterReceiver(receiver)
+                context.unregisterReceiver(batteries)
+                grants.cancel()
                 context.contentResolver.unregisterContentObserver(observer)
                 audio.unregisterAudioDeviceCallback(devices)
                 main.post { router.removeCallback(routes) }
@@ -129,12 +203,16 @@ class Volume(
 
     /**
      * volume(50) sets the level in percent; "up", "down", "mute", "unmute" and "toggle" step or mute it. [name] picks
-     * the stream, media when it's null.
+     * the stream, media when it's null. volume("request") from a tap asks for Bluetooth, for the output's battery.
      */
     fun control(
         arg: Value,
         name: String? = null,
     ) {
+        if (arg.toString() == "request") {
+            if (!granted) ask?.invoke { recheck() }
+            return
+        }
         val stream = STREAMS[name ?: "media"] ?: return
         // Do Not Disturb refuses changes to the ringer while it's on; a widget tap mustn't crash the launcher over it.
         runCatching {
@@ -158,6 +236,17 @@ class Volume(
     }
 
     private companion object {
+        const val TAG = "volume"
+
+        /** BluetoothDevice's, a system API rather than a public one: the same in every Android since 8.1. */
+        const val ACTION_BATTERY_LEVEL_CHANGED = "android.bluetooth.device.action.BATTERY_LEVEL_CHANGED"
+
+        val batteryLevel by lazy {
+            runCatching { BluetoothDevice::class.java.getMethod("getBatteryLevel") }
+                .onFailure { Log.w(TAG, "no getBatteryLevel: ${it.message}") }
+                .getOrNull()
+        }
+
         /** The outputs `output.type` names, by Android's device types; earpieces and the like aren't for media. */
         val OUTPUTS =
             mapOf(
