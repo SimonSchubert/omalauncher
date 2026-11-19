@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import dev.omalauncher.R
 import dev.omalauncher.system.openUrl
 import dev.omalauncher.theme.CatalogTheme
+import dev.omalauncher.theme.OmarchyTheme
 import dev.omalauncher.theme.ThemeCatalog
 import dev.omalauncher.theme.ThemeDirs
 import dev.omalauncher.theme.ThemeError
@@ -51,6 +55,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dev.omalauncher.ui.ConfirmDialog
+import dev.omalauncher.ui.BracketAction
+import dev.omalauncher.ui.LocalPanelBack
+import dev.omalauncher.ui.ZoomableImage
+import dev.omalauncher.ui.decodeForScreen
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.OverlayPanel
@@ -73,7 +81,12 @@ fun ThemeCatalogScreen(
     val keyboard = LocalSoftwareKeyboardController.current
     var query by remember { mutableStateOf("") }
     var confirming by remember { mutableStateOf<CatalogTheme?>(null) }
+    // The theme whose screenshot is open in the panel, in place of the grid.
+    var viewing by remember { mutableStateOf<CatalogTheme?>(null) }
+    // Out here, so the grid is where it was after a screenshot.
+    val grid = rememberLazyGridState()
     BackHandler(onBack = onDismiss)
+    BackHandler(enabled = viewing != null) { viewing = null }
     LaunchedEffect(catalog) { catalog.refresh() }
     RescanThemes(store)
     // Which repos are installed, by github.com/owner/repo; read from the themes' source markers.
@@ -86,10 +99,22 @@ fun ThemeCatalogScreen(
     OverlayPanel(
         stringResource(R.string.store_theme_title),
         onDismiss,
+        onBack = if (viewing != null) ({ viewing = null }) else LocalPanelBack.current,
         actions = {
-            RefreshButton(catalog.loading) { scope.launch { catalog.refresh() } }
+            if (viewing == null) RefreshButton(catalog.loading) { scope.launch { catalog.refresh() } }
         },
     ) {
+        viewing?.let { theme ->
+            val installedAs = installedFrom[theme.repo.label.lowercase()]
+            ThemePreview(
+                store,
+                theme,
+                catalogStatus(store, theme, installedAs),
+                installed = installedAs?.let { n -> store.themes.firstOrNull { it.name == n } },
+                onInstall = { confirming = theme },
+            )
+            return@OverlayPanel
+        }
         val q = query.trim().lowercase()
         val shown = catalog.entries.filter { q.isEmpty() || q in it.title.lowercase() || q in it.repo.label.lowercase() }
         SearchField(query, { query = it }, onGo = { keyboard?.hide() }, placeholder = stringResource(R.string.store_theme_search, catalog.entries.size))
@@ -97,6 +122,7 @@ fun ThemeCatalogScreen(
         LazyVerticalGrid(
             columns = GridCells.Adaptive(150.dp),
             modifier = Modifier.fillMaxSize(),
+            state = grid,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -117,17 +143,11 @@ fun ThemeCatalogScreen(
             }
             items(shown, key = { it.repo.label.lowercase() }) { theme ->
                 val installedAs = installedFrom[theme.repo.label.lowercase()]
-                val running = (store.installing as? ThemeInstall.Running)?.name == theme.repo.themeName
                 CatalogCard(
                     store,
                     theme,
-                    status =
-                        when {
-                            running -> stringResource(R.string.store_installing) to Palette.accent
-                            installedAs != null && installedAs == store.current?.name -> stringResource(R.string.store_theme_in_use) to Palette.green
-                            installedAs != null -> stringResource(R.string.store_installed) to Palette.green
-                            else -> theme.repo.label.removePrefix("github.com/") to Palette.muted
-                        },
+                    status = catalogStatus(store, theme, installedAs),
+                    onView = { viewing = theme },
                 ) {
                     when {
                         // Installed: tapping applies it, like a theme in the theme menu.
@@ -161,11 +181,69 @@ fun ThemeCatalogScreen(
     }
 }
 
+/** What [theme] is here, in words and their color: installing, in use, installed, or the repo it would come from. */
+@Composable
+private fun catalogStatus(
+    store: ThemeStore,
+    theme: CatalogTheme,
+    installedAs: String?,
+): Pair<String, Color> =
+    when {
+        (store.installing as? ThemeInstall.Running)?.name == theme.repo.themeName -> stringResource(R.string.store_installing) to Palette.accent
+        installedAs != null && installedAs == store.current?.name -> stringResource(R.string.store_theme_in_use) to Palette.green
+        installedAs != null -> stringResource(R.string.store_installed) to Palette.green
+        else -> theme.repo.label.removePrefix("github.com/") to Palette.muted
+    }
+
+/**
+ * [theme]'s screenshot as large as the panel allows, to zoom into, with its repo and what it can do under it: install
+ * it ([onInstall] asks first), or use the [installed] one.
+ */
+@Composable
+private fun ColumnScope.ThemePreview(
+    store: ThemeStore,
+    theme: CatalogTheme,
+    status: Pair<String, Color>,
+    installed: OmarchyTheme?,
+    onInstall: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // At screen size, not the card's: zoomed in, it has the detail to show.
+    val image by produceState<ImageBitmap?>(null, theme.image) {
+        val file = store.catalog.image(theme) ?: return@produceState
+        value = withContext(Dispatchers.IO) { runCatching { decodeForScreen(file, context)?.asImageBitmap() }.getOrNull() }
+    }
+    BasicText(theme.title, style = Mono.copy(fontSize = TextSize.Title), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    BasicText(status.first, style = Mono.copy(color = status.second, fontSize = TextSize.Small), maxLines = 1, overflow = TextOverflow.Ellipsis)
+    InstallStatus(store)
+    Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .aspectRatio(image?.let { it.width.toFloat() / it.height } ?: (16f / 9f))
+                .clip(LauncherStyle.shape(12.dp))
+                .background(Palette.surface),
+        ) {
+            image?.let { ZoomableImage(it, theme.title, Modifier.fillMaxSize()) }
+        }
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+        BracketAction(stringResource(R.string.store_theme_github), Palette.muted) { context.openUrl("https://${theme.repo.label}") }
+        when {
+            // Installing shows above, and one in use says so.
+            store.installing is ThemeInstall.Running || (installed != null && installed.name == store.current?.name) -> {}
+            installed != null -> BracketAction(stringResource(R.string.store_theme_use), Palette.accent) { scope.launch { store.apply(installed) } }
+            else -> BracketAction(stringResource(R.string.store_install), Palette.accent, onClick = onInstall)
+        }
+    }
+}
+
 @Composable
 private fun CatalogCard(
     store: ThemeStore,
     theme: CatalogTheme,
     status: Pair<String, Color>,
+    onView: () -> Unit,
     onClick: () -> Unit,
 ) {
     // Decoded per card, not kept: 146 screenshots in memory would be a lot.
@@ -181,7 +259,16 @@ private fun CatalogCard(
             .padding(6.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(LauncherStyle.shape(8.dp)).background(Palette.surface), contentAlignment = Alignment.Center) {
+        // The screenshot opens large in the panel, to zoom into; the rest of the card installs or applies.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(LauncherStyle.shape(8.dp))
+                .background(Palette.surface)
+                .then(if (image != null) Modifier.clickable(onClick = onView) else Modifier),
+            contentAlignment = Alignment.Center,
+        ) {
             image?.let { Image(it, theme.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
         }
         BasicText(theme.title, style = Mono.copy(fontSize = TextSize.Body), maxLines = 1, overflow = TextOverflow.Ellipsis)

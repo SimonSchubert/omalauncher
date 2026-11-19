@@ -158,6 +158,8 @@
     <string name="store_theme_search">поиск: темы (%1$d)</string>
     <string name="store_theme_header">созданы сообществом, список на omarchy.org/themes · устанавливаются с GitHub</string>
     <string name="store_theme_in_use">✓ используется</string>
+    <string name="store_theme_use">использовать</string>
+    <string name="store_theme_github">GitHub</string>
     <string name="store_theme_install_confirm">установить %1$s?</string>
     <string name="store_theme_install_message">Из %1$s. Linux получит цвета и обои темы, но не скрипты и не настройки терминала.</string>
     <string name="store_theme_install_message_replaces">Из %1$s. Linux получит цвета и обои темы, но не скрипты и не настройки терминала.\n\nОна заменит вашу тему %2$s.</string>
