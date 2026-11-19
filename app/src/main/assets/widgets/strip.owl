@@ -15,6 +15,7 @@ strip "recent apps" {
     ru { pin: "добавить на главный экран"; info: "о приложении"; uninstall: "удалить"; remove: "убрать"; edit: "изменить"; share: "поделиться" }
     ja { pin: "ホームに追加"; info: "アプリ情報"; uninstall: "アンインストール"; remove: "削除"; edit: "編集"; share: "共有" }
     uk { pin: "додати на головний екран"; info: "про додаток"; uninstall: "видалити"; remove: "прибрати"; edit: "змінити"; share: "поділитися" }
+    fr { pin: "ajouter à l’accueil"; info: "infos sur l’appli"; uninstall: "désinstaller"; remove: "retirer"; edit: "modifier"; share: "partager" }
   }
   // The recent apps, last opened first, and how home draws its apps: vertical beside the grid in landscape, monochrome
   // silhouettes, bare icons without a tile, and the tiles' outline color.
