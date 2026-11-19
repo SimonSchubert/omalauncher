@@ -158,7 +158,13 @@
     <string name="store_theme_in_use">✓ utilisé</string>
     <string name="store_theme_use">utiliser</string>
     <string name="store_theme_github">GitHub</string>
-    <string name="store_theme_install_confirm">installer %1$s ?</string>
+    <string name="store_theme_light">clair</string>
+    <string name="store_theme_dark">sombre</string>
+    <plurals name="store_theme_wallpapers">
+        <item quantity="one">%d fond d’écran</item>
+        <item quantity="many">%d fonds d’écran</item>
+        <item quantity="other">%d fonds d’écran</item>
+    </plurals>
     <string name="store_theme_install_message">Depuis %1$s. Linux reçoit ses couleurs et fonds d’écran, pas ses scripts ni ses configs de terminal.</string>
     <string name="store_theme_install_message_replaces">Depuis %1$s. Linux reçoit ses couleurs et fonds d’écran, pas ses scripts ni ses configs de terminal.\n\nIl remplace ton thème %2$s.</string>
     <string name="store_theme_install_message_over">Depuis %1$s. Linux reçoit ses couleurs et fonds d’écran, pas ses scripts ni ses configs de terminal.\n\nIl passe par-dessus le thème %2$s d’Omarchy ; le retirer le fait revenir.</string>

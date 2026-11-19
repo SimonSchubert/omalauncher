@@ -4,7 +4,7 @@ import java.io.File
 import java.nio.file.Files
 
 /** In the order omarchy-theme-switcher looks for a preview. */
-private val IMAGE_EXTENSIONS = listOf("png", "jpg", "jpeg", "webp")
+internal val IMAGE_EXTENSIONS = listOf("png", "jpg", "jpeg", "webp")
 
 /** The number Omarchy puts in front of a background's name, to order them. */
 private val NUMBERED = Regex("^[0-9]+-")

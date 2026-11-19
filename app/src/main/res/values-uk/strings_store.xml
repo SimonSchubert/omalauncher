@@ -158,9 +158,16 @@
     <string name="store_theme_search">пошук серед %1$d тем</string>
     <string name="store_theme_header">створені спільнотою, перелічені на omarchy.org/themes · встановлюються з GitHub</string>
     <string name="store_theme_in_use">✓ вибрана</string>
+    <string name="store_theme_light">світла</string>
+    <string name="store_theme_dark">темна</string>
+    <plurals name="store_theme_wallpapers">
+        <item quantity="one">%d шпалера</item>
+        <item quantity="few">%d шпалери</item>
+        <item quantity="many">%d шпалер</item>
+        <item quantity="other">%d шпалери</item>
+    </plurals>
     <string name="store_theme_use">вибрати</string>
     <string name="store_theme_github">GitHub</string>
-    <string name="store_theme_install_confirm">встановити %1$s?</string>
     <string name="store_theme_install_message">З %1$s. Linux отримує її кольори й шпалери, але не скрипти чи налаштування терміналу.</string>
     <string name="store_theme_install_message_replaces">З %1$s. Linux отримує її кольори й шпалери, але не скрипти чи налаштування терміналу.\n\nВона замінить вашу %2$s.</string>
     <string name="store_theme_install_message_over">З %1$s. Linux отримує її кольори й шпалери, але не скрипти чи налаштування терміналу.\n\nВона ляже поверх %2$s з Omarchy; якщо її видалити, та повернеться.</string>

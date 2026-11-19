@@ -206,11 +206,16 @@
     <string name="store_theme_search">search %1$d themes</string>
     <string name="store_theme_header">made by the community, listed on omarchy.org/themes · installed from GitHub</string>
     <string name="store_theme_in_use">✓ in use</string>
+    <!-- Under a theme's screenshot, with its colors: whether it is a light or a dark theme, how many wallpapers it has, and its download size. -->
+    <string name="store_theme_light">light</string>
+    <string name="store_theme_dark">dark</string>
+    <plurals name="store_theme_wallpapers">
+        <item quantity="one">%d wallpaper</item>
+        <item quantity="other">%d wallpapers</item>
+    </plurals>
     <!-- Buttons under a theme's screenshot: use the installed theme, or open its repo. -->
     <string name="store_theme_use">use</string>
     <string name="store_theme_github">GitHub</string>
-    <!-- %1$s is the theme's name. -->
-    <string name="store_theme_install_confirm">install %1$s?</string>
     <!-- %1$s is where it comes from, like "github.com/owner/repo". -->
     <string name="store_theme_install_message">From %1$s. Linux gets its colors and wallpapers, not its scripts or terminal configs.</string>
     <!-- %2$s is the name of the user's own theme it replaces. -->

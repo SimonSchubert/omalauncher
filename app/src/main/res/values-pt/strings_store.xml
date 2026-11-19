@@ -157,9 +157,15 @@
     <string name="store_theme_search">pesquisar %1$d temas</string>
     <string name="store_theme_header">feitos pela comunidade, listados em omarchy.org/themes · instalados do GitHub</string>
     <string name="store_theme_in_use">✓ em uso</string>
+    <string name="store_theme_light">claro</string>
+    <string name="store_theme_dark">escuro</string>
+    <plurals name="store_theme_wallpapers">
+        <item quantity="one">%d papel de parede</item>
+        <item quantity="many">%d papéis de parede</item>
+        <item quantity="other">%d papéis de parede</item>
+    </plurals>
     <string name="store_theme_use">usar</string>
     <string name="store_theme_github">GitHub</string>
-    <string name="store_theme_install_confirm">instalar %1$s?</string>
     <string name="store_theme_install_message">De %1$s. O Linux recebe as cores e os papéis de parede, não os scripts nem as configurações de terminal.</string>
     <string name="store_theme_install_message_replaces">De %1$s. O Linux recebe as cores e os papéis de parede, não os scripts nem as configurações de terminal.\n\nEle substitui o seu %2$s.</string>
     <string name="store_theme_install_message_over">De %1$s. O Linux recebe as cores e os papéis de parede, não os scripts nem as configurações de terminal.\n\nEle fica por cima do %2$s do Omarchy; removê-lo traz aquele de volta.</string>
