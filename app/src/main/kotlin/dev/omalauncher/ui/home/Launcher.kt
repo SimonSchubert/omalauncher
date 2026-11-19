@@ -147,7 +147,6 @@ private fun DesktopScreen(
         // The whole window: a face fills it, and tiles keep clear of the system bars and the bar themselves.
         HomeScreen(runtime, state, Modifier.fillMaxSize())
     }
-    HomeMenu(runtime, state)
 
     // Only whether it shows is read here; the animation itself runs in the layer, without recomposing.
     val panelShown by remember(state) { derivedStateOf { state.drawer.value > 0.01f } }
@@ -313,6 +312,8 @@ private fun DesktopScreen(
         }
     }
 
+    // Over home, the strip and the bar, so its scrim dims them all and they take no taps while it's open.
+    HomeMenu(runtime, state)
     // Over home and the bar, as it comes down from the top.
     PulledPanel(runtime, state)
     // Full-screen panels draw over the bar.
