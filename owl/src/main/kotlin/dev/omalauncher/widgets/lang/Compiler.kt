@@ -968,6 +968,7 @@ class Compiler private constructor(
                 if (e.name == "calendar") commands += "read events in the phone's calendars, once you allow it"
                 if (e.name == "airpods") commands += AIRPODS_COMMAND
                 if (e.name == "motion") commands += "read how the phone is tilted while it shows"
+                if (e.name == "windows") commands += "read the open Linux windows (names and titles)"
                 Global.Source(d.name, "android.${e.name}", null, (every ?: 60.0).coerceAtLeast(1.0), false, 0)
             }
             else -> fail("a source is cmd(\"...\"), stream(\"...\"), http(\"...\"), file(\"...\"), clock, or android.${ANDROID.joinToString("/")}", e.pos)
