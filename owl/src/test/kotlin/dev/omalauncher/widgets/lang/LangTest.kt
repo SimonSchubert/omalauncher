@@ -847,8 +847,9 @@ class LangTest {
             host.budget.eval(ev, Env.root(host))
             return (System.nanoTime() - started) / 1_000_000
         }
-        // A text long enough that one match takes a while, on this machine, but gives up on its own.
-        while (timed() < 60) host.slots[0] = Num((host.slots[0] as Num).v + 4)
+        // A text long enough that one match takes a while, on this machine, but gives up on its own. The faster of two
+        // runs, so the first one's warm-up (class loading, the regex thread) on a slow runner doesn't pass for it.
+        while (minOf(timed(), timed()) < 60)host.slots[0] = Num((host.slots[0] as Num).v + 4)
         host.slots[1] = Num(40.0)
         val started = System.nanoTime()
         try {
