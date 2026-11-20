@@ -156,19 +156,22 @@ class SystemUpdates(
         return ok
     }
 
-    private companion object {
-        const val VERSION = 1
+    internal companion object {
+        private const val VERSION = 1
 
         /**
          * pacman against a private copy of the sync databases in /tmp (what checkupdates does,
          * without fakeroot): the real ones stay as they are, so this can't cause a partial
-         * upgrade and never waits on pacman's lock. Then mise, if it's installed.
+         * upgrade and never waits on pacman's lock. Then mise, if it's installed. A check Android killed
+         * leaves its own lock behind in /tmp, which outlives it until Linux restarts; [check] never runs
+         * two at once, so a lock no pacman holds is that leftover and goes (#322).
          */
         val CHECK_SCRIPT =
             """
             t=/tmp/omalauncher-updates
             mkdir -p "${'$'}t"
             ln -sfn /var/lib/pacman/local "${'$'}t/local"
+            pgrep -x pacman >/dev/null || rm -f "${'$'}t/db.lck"
             if pacman -Sy --dbpath "${'$'}t" --logfile /dev/null >/dev/null 2>&1; then
               echo '#pacman'
               pacman -Qu --dbpath "${'$'}t" 2>/dev/null
