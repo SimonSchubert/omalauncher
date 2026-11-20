@@ -99,6 +99,14 @@ panel "app drawer" {
       // Not "${bin}’a sor": the suffix follows the name's vowels.
       askAgent: (bin, text) => "${bin} ile sor: ${text}"
     }
+    it {
+      personal: "personali"; work: "lavoro"; apps: "app"; linux: "linux"; shortcuts: "scorciatoie"; android: "android"
+      workApps: "app di lavoro"; workPaused: "app di lavoro in pausa"; linuxApps: "app linux"; appStore: "store delle app"
+      pin: "aggiungi alla schermata home"; info: "informazioni app"; uninstall: "disinstalla"; remove: "rimuovi"; edit: "modifica"; share: "condividi"
+      settings: "impostazioni"; turnOn: "attiva"; pause: "metti in pausa"; installing: "installazione…"; installLinux: "installa linux"
+      open: "apri"; ask: "chiedi"; askInstallLinux: "chiedi a un agente · installa linux"; askInstallAgent: "chiedi a un agente · installane uno"
+      askAgent: (bin, text) => "chiedi a ${bin}: ${text}"
+    }
   }
   source d = android.drawer
   source ag = android.agents

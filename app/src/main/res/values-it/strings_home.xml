@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_edit">modifica</string>
+    <string name="home_share">condividi</string>
+    <string name="home_remove">rimuovi</string>
+
+    <string name="home_create_with">crea con %1$s</string>
+    <string name="home_create_with_an_agent">crea con un agente</string>
+    <string name="home_browse_store">sfoglia lo store</string>
+    <string name="home_create_widget">widget</string>
+    <string name="home_create_app">app</string>
+    <string name="home_create_panel">pannello</string>
+
+    <string name="home_face_invite_title">un widget a schermo intero tutto tuo</string>
+    <string name="home_face_invite_text">Puoi riempire questa pagina con un widget a schermo intero: un feed, una dashboard, una pagina iniziale, un gioco. Di’ cosa vuoi e %1$s lo crea qui.</string>
+    <string name="home_face_invite_text_no_agent">Puoi riempire questa pagina con un widget a schermo intero: un feed, una dashboard, una pagina iniziale, un gioco. Di’ cosa vuoi e un agente lo crea qui.</string>
+    <string name="home_widget_invite_title">spazio per i widget</string>
+    <string name="home_widget_invite_text">Ancora niente su questa pagina. Riempila di widget: un orologio, il meteo, una lista di cose da fare, i tuoi agenti al lavoro. Di’ cosa vuoi e %1$s lo crea.</string>
+    <string name="home_widget_invite_text_no_agent">Ancora niente su questa pagina. Riempila di widget: un orologio, il meteo, una lista di cose da fare, i tuoi agenti al lavoro. Di’ cosa vuoi e un agente lo crea.</string>
+
+    <string name="home_drop_here">rilascia qui</string>
+    <string name="home_drop_face_only">qui va solo un widget a schermo intero</string>
+    <string name="home_lock_locked">schermo bloccato</string>
+    <string name="home_lock_unlock">sblocca</string>
+
+    <plurals name="home_file_problems">
+        <item quantity="one">%1$s: %2$d problema</item>
+        <item quantity="many">%1$s: %2$d problemi</item>
+        <item quantity="other">%1$s: %2$d problemi</item>
+    </plurals>
+    <plurals name="home_file_problems_more">
+        <item quantity="one">%1$d altro in errors.txt · tocca per nascondere</item>
+        <item quantity="many">altri %1$d in errors.txt · tocca per nascondere</item>
+        <item quantity="other">altri %1$d in errors.txt · tocca per nascondere</item>
+    </plurals>
+    <string name="home_file_problems_hide">tocca per nascondere</string>
+
+    <string name="home_widget_needs">richiede %1$s</string>
+    <string name="home_installing">installazione…</string>
+    <string name="home_install">installa</string>
+    <string name="home_retry">riprova</string>
+    <string name="home_fix_with_agent">correggi con l’agente</string>
+    <string name="home_widget_needs_linux">richiede Linux</string>
+    <string name="home_widget_needs_linux_text">esegue comandi nell’Arch Linux opzionale</string>
+    <string name="home_widget_linux_stopped">Linux è fermo</string>
+    <string name="home_start_linux">avvia</string>
+
+    <string name="home_terminal_starting">avvio…</string>
+    <string name="home_terminal_exited">terminato · tocca per riavviare</string>
+
+    <string name="home_prompt_hint_agent">apri un’app o chiedi a %1$s</string>
+    <string name="home_prompt_hint">apri un’app</string>
+    <string name="home_prompt_hint_short">app</string>
+
+    <string name="home_folder_named">cartella %1$s</string>
+    <string name="home_app_has_notifications">%1$s, ha notifiche</string>
+    <string name="home_folder">cartella</string>
+    <string name="home_folder_tap_to_name">tocca per dare un nome</string>
+
+    <string name="home_refresh">aggiorna</string>
+    <string name="home_refreshing">aggiornamento in corso</string>
+    <string name="home_job_failed">errore:</string>
+    <string name="home_job_whole_log">log completo</string>
+    <string name="home_job_less">meno</string>
+    <string name="home_job_copy">copia</string>
+    <string name="home_settings">impostazioni</string>
+
+    <string name="home_linux_window">Linux</string>
+    <string name="home_news_close">chiudi</string>
+    <string name="home_news_off">non mostrare più le notizie</string>
+    <string name="home_news_days">giorni</string>
+    <string name="home_news_hours">ore</string>
+    <string name="home_news_minutes">min</string>
+    <string name="home_news_seconds">sec</string>
+</resources>

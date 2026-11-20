@@ -1,0 +1,37 @@
+Omalauncher è una schermata home comoda da usare con la tastiera che porta su Android lo stile di Omarchy e può far girare un sistema Arch Linux ARM completo accanto alle app del telefono.
+
+TEMI
+Scegli tra 22 temi Omarchy: Tokyo Night, Catppuccin, Gruvbox, Nord, Rose Pine, Kanagawa, Everforest e altri. Ogni tema colora tutto il launcher e ha i suoi sfondi, che puoi usare anche come sfondo animato.
+
+SCHERMATA HOME, WIDGET E WIDGET A SCHERMO INTERO
+• Pagine di widget e app fissate su una griglia
+• Widget integrati per la data, il meteo e il tuo sistema
+• Widget a schermo intero: una pagina intera disegnata come un unico pezzo, come una pagina manga, un terminale o un poster Bauhaus
+• Uno store con widget, widget a schermo intero, piccole app e giochi, scritti in un piccolo linguaggio aperto che puoi modificare tu stesso
+• Un elenco app con ricerca per tutte le tue app Android
+
+ARCH LINUX (FACOLTATIVO)
+Il launcher funziona anche senza. Se lo vuoi, Omalauncher scarica Arch Linux ARM e lo esegue con proot, senza root.
+• Le app Linux si aprono in finestre proprie, ognuna con la sua scheda tra le app recenti
+• Omalauncher è il compositor Wayland, quindi funzionano anche app grafiche come foot
+• Cerca e installa pacchetti da Arch Linux ARM e dall’AUR
+• Widget terminale che eseguono comandi sulla tua schermata home
+• File, un file manager per la cartella home di Linux e le cartelle del telefono che scegli: copia, sposta, rinomina, elimina, apri e condividi file
+• Il tuo tema si applica anche alle app Linux
+
+AGENTI DI PROGRAMMAZIONE
+Con Linux installato, la barra di input in fondo alla schermata home invia un prompt a un agente di programmazione come Claude Code, Codex, Copilot, Grok o opencode, che si apre in un terminale. Un agente può anche creare un widget per te.
+
+VOCE
+Tocca il pulsante della voce e parla con il tuo agente di programmazione. Risponde ad alta voce, mostra cosa sta facendo e chiede prima di eseguire un comando o modificare un file. Preferisci scrivere? Passa alla tastiera e leggi le risposte. Il riconoscimento vocale lo fa Android, quindi a Linux arriva solo il testo.
+
+SCORCIATOIE DA TASTIERA
+Con una tastiera fisica: Super+T apre un terminale, Super+D l’elenco app, Super+1–9 cambiano pagina e Super+W chiude una finestra.
+
+LINGUE
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe e Italiano.
+
+PRIVACY
+Nessun account, nessuna pubblicità, nessun tracciamento. Omalauncher si connette a internet solo per scaricare temi, widget, il meteo e, se vuoi, Linux e i suoi pacchetti.
+
+Omalauncher è un progetto indipendente e non è affiliato a Omarchy o ad Arch Linux.

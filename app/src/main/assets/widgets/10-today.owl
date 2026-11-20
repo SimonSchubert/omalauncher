@@ -353,6 +353,39 @@ widget "today" {
         "Last Quarter": "son dördün", "Waning Crescent": "küçülen hilal"
       }, phase, lower(phase)) + " · %${lit} aydınlık"
     }
+    it {
+      title: "meteo"; loading: "meteo…"; offline: "meteo offline"; city: "città · vuoto = auto"; here: "usa la mia posizione"
+      feels: "percepita"; humidity: "umidità"; rainToday: "pioggia oggi"; uv: "indice uv"; pressure: "pressione"
+      visibility: "visibilità"; next24: "prossime 24 ore"; now: "ora"; days: "3 giorni"; today: "oggi"
+      sunrise: "alba"; sunset: "tramonto"; moon: "luna"; kmh: "km/h"; yr: "apri yr.no ↗"
+      sky: (code, desc) => get({
+        "113": "sereno", "116": "parzialmente nuvoloso", "119": "nuvoloso", "122": "coperto", "143": "foschia",
+        "176": "pioggia sparsa", "179": "neve sparsa", "182": "nevischio sparso", "185": "pioviggine gelata sparsa",
+        "200": "temporali", "227": "neve e vento", "230": "bufera di neve", "248": "nebbia", "260": "nebbia gelata",
+        "263": "pioviggine debole sparsa", "266": "pioviggine debole", "281": "pioviggine gelata", "284": "forte pioviggine gelata",
+        "293": "pioggia debole sparsa", "296": "pioggia debole", "299": "a tratti pioggia moderata", "302": "pioggia moderata",
+        "305": "a tratti pioggia forte", "308": "pioggia forte", "311": "pioggia gelata debole", "314": "pioggia gelata forte",
+        "317": "nevischio debole", "320": "nevischio forte", "323": "neve debole sparsa", "326": "neve debole",
+        "329": "neve moderata sparsa", "332": "neve moderata", "335": "neve forte sparsa", "338": "neve forte",
+        "350": "granuli di ghiaccio", "353": "rovesci deboli", "356": "rovesci forti", "359": "rovesci torrenziali",
+        "362": "rovesci deboli di nevischio", "365": "rovesci forti di nevischio", "368": "rovesci deboli di neve",
+        "371": "rovesci forti di neve", "374": "rovesci deboli di granuli di ghiaccio", "377": "rovesci forti di granuli di ghiaccio",
+        "386": "pioggia debole e temporale", "389": "pioggia forte e temporale", "392": "neve debole e temporale",
+        "395": "neve forte e temporale"
+      }, code, lower(trim(desc)))
+      // The sixteen points as Italian forecasts abbreviate them: west is O (ovest).
+      wind: dir => get({
+        "N": "vento n", "NNE": "vento nne", "NE": "vento ne", "ENE": "vento ene", "E": "vento e", "ESE": "vento ese",
+        "SE": "vento se", "SSE": "vento sse", "S": "vento s", "SSW": "vento sso", "SW": "vento so", "WSW": "vento oso",
+        "W": "vento o", "WNW": "vento ono", "NW": "vento no", "NNW": "vento nno"
+      }, dir, "vento ${lower(dir)}")
+      uvLevel: uv => uv >= 8 ? "molto alto" : uv >= 6 ? "alto" : uv >= 3 ? "moderato" : "basso"
+      phase: (phase, lit) => get({
+        "New Moon": "luna nuova", "Waxing Crescent": "falce crescente", "First Quarter": "primo quarto",
+        "Waxing Gibbous": "gibbosa crescente", "Full Moon": "luna piena", "Waning Gibbous": "gibbosa calante",
+        "Last Quarter": "ultimo quarto", "Waning Crescent": "falce calante"
+      }, phase, lower(phase)) + " · illuminata al ${lit}%"
+    }
   }
 
   source now = clock every 1m

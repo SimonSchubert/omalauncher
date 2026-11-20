@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_failed">operazione non riuscita</string>
+    <string name="files_cant_hand_over">impossibile passare %1$s ad altre app</string>
+    <string name="files_no_app">nessuna app può aprire %1$s</string>
+    <string name="files_leads_to_nothing">non porta a niente</string>
+    <string name="files_cant_open">impossibile aprire %1$s: %2$s</string>
+    <string name="files_selected">selezionati: %1$d</string>
+    <string name="files_filter_hint">filtra questa cartella</string>
+    <string name="files_home">home</string>
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">download</string>
+    <string name="files_place_phone_folders">cartelle del telefono</string>
+    <string name="files_add_phone_folder">aggiungi cartella del telefono</string>
+    <string name="files_no_phone_folders">ancora nessuna cartella del telefono: aggiungine una dal menu</string>
+    <string name="files_place_system">sistema</string>
+    <string name="files_search">cerca</string>
+    <string name="files_more">altro</string>
+    <string name="files_new_file">nuovo file</string>
+    <string name="files_new_folder">nuova cartella</string>
+    <string name="files_hide_hidden">nascondi file nascosti</string>
+    <string name="files_show_hidden">mostra file nascosti</string>
+    <string name="files_open_terminal">apri terminale qui</string>
+    <string name="files_empty_folder">cartella vuota</string>
+    <string name="files_no_matches">nessun risultato</string>
+    <string name="files_create">crea</string>
+    <string name="files_rename">rinomina</string>
+    <string name="files_delete_one">eliminare %1$s?</string>
+    <plurals name="files_delete_items">
+        <item quantity="one">eliminare %1$d elemento?</item>
+        <item quantity="many">eliminare %1$d elementi?</item>
+        <item quantity="other">eliminare %1$d elementi?</item>
+    </plurals>
+    <string name="files_delete_message">Non si può annullare.</string>
+    <string name="files_delete">elimina</string>
+    <plurals name="files_items">
+        <item quantity="one">%1$d elemento</item>
+        <item quantity="many">%1$d elementi</item>
+        <item quantity="other">%1$d elementi</item>
+    </plurals>
+    <string name="files_folder">cartella</string>
+    <string name="files_copy">copia</string>
+    <string name="files_cut">taglia</string>
+    <string name="files_select_all">seleziona tutto</string>
+    <string name="files_edit">modifica</string>
+    <string name="files_open_with">apri con…</string>
+    <string name="files_share">condividi</string>
+    <string name="files_cancel">annulla</string>
+    <string name="files_move_here">sposta qui</string>
+    <string name="files_paste_here">incolla qui</string>
+
+    <string name="editor_title">Editor</string>
+    <string name="editor_cant_read">impossibile leggere %1$s: %2$s</string>
+    <string name="editor_cant_save">impossibile salvare %1$s: %2$s</string>
+    <string name="editor_not_found">non trovato</string>
+    <string name="editor_find_hint">cerca nel file</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">risultato precedente</string>
+    <string name="editor_next_match">risultato successivo</string>
+    <string name="editor_save">salva</string>
+    <string name="editor_find">cerca</string>
+    <string name="editor_no_wrap">non andare a capo</string>
+    <string name="editor_wrap">vai a capo</string>
+    <string name="editor_show_in_files">mostra in File</string>
+    <string name="editor_open_in_micro">apri in micro</string>
+    <string name="editor_save_confirm">salvare %1$s?</string>
+    <string name="editor_save_confirm_message">Hai modifiche non ancora salvate.</string>
+    <string name="editor_discard">scarta</string>
+    <string name="editor_key_left">sinistra</string>
+    <string name="editor_key_up">su</string>
+    <string name="editor_key_down">giù</string>
+    <string name="editor_key_right">destra</string>
+    <string name="editor_key_undo">annulla</string>
+    <string name="editor_key_redo">ripeti</string>
+    <string name="editor_home_title">editor</string>
+    <string name="editor_new">nuovo</string>
+    <string name="editor_browse">sfoglia</string>
+    <string name="editor_recent">recenti</string>
+    <string name="editor_recent_empty">I file che modifichi compaiono qui.</string>
+    <string name="editor_new_file_hint">un percorso in Linux</string>
+
+    <string name="prompt_listening">ascolto…</string>
+    <string name="prompt_hint_apps">apri un’app…</string>
+    <string name="prompt_hint_ask">apri un’app o chiedi a %1$s…</string>
+    <string name="prompt_enter_ask">⏎ chiedi</string>
+    <string name="prompt_agent">agente</string>
+    <string name="prompt_manage_agents">"  gestisci agenti…"</string>
+
+    <string name="prompt_speech_no_recognizer">nessun riconoscimento vocale su questo telefono</string>
+    <string name="prompt_speech_refused">il riconoscimento vocale del telefono non si lascia usare da altre app</string>
+    <string name="prompt_speech_failed">riconoscimento vocale non riuscito (%1$d)</string>
+    <string name="prompt_speech_language">il riconoscimento vocale non è disponibile in questa lingua</string>
+    <string name="prompt_speech_not_downloaded">il riconoscimento vocale per questa lingua non è scaricato su questo telefono</string>
+    <string name="prompt_speech_mic_permission">serve l’autorizzazione al microfono</string>
+    <string name="prompt_speech_network">il riconoscimento vocale ha bisogno di una connessione di rete</string>
+</resources>

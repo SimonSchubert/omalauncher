@@ -211,6 +211,25 @@ widget "fetch" {
         "failing": "zayıflıyor", "wireless": "kablosuz", "dock": "yuva"
       }, w, w)
     }
+    it {
+      uptime: "uptime"; packages: "pacchetti"; display: "schermo"; theme: "tema"; memory: "ram"; disk: "disco"
+      battery: "batteria"; apps: "app"; byDefault: "predefinito"; phone: "telefono"; device: "dispositivo"; hardware: "hardware"
+      network: "rete"; launcher: "launcher"; security: "sicurezza"; build: "build"; locale: "lingua"; cores: "core"
+      storage: "memoria"; speed: "velocità"; received: "ricevuti"; sent: "inviati"; mobile: "mobile"
+      level: "carica"; temperature: "temperatura"; voltage: "tensione"; health: "stato"; cycles: "cicli"
+      technology: "tecnologia"; version: "versione"; explicit: "espliciti"; upgraded: "aggiornato"; never: "mai"
+      unknown: "sconosciuto"; installLinux: "installa linux"
+      notInstalled: "non installato. arch linux arm aggiunge al launcher un terminale, gli agenti e pacman."
+      upTo: ghz => " · fino a ${ghz} GHz"
+      androidApps: n => "${n} app android"
+      appCount: n => "${n} app"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "in carica", "plugged in": "collegato", "on battery": "a batteria", "good": "buono",
+        "overheating": "surriscaldamento", "dead": "guasto", "over voltage": "sovratensione", "cold": "freddo",
+        "failing": "difettoso", "wireless": "wireless", "dock": "dock"
+      }, w, w)
+    }
   }
 
   // The phone, from Android: works without Linux.

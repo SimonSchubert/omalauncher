@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="store_widgets_title">store dei widget</string>
+    <string name="store_apps_title">store delle app</string>
+    <string name="store_featured">in evidenza</string>
+
+    <string name="store_kind_widgets">widget</string>
+    <string name="store_kind_faces">widget a schermo intero</string>
+    <string name="store_kind_apps">app</string>
+    <string name="store_kind_panels">pannelli</string>
+    <string name="store_kind_keybars">barre dei tasti</string>
+    <string name="store_kind_widget">widget</string>
+    <string name="store_kind_face">widget a schermo intero</string>
+    <string name="store_kind_app">app</string>
+    <string name="store_kind_panel">pannello</string>
+    <string name="store_kind_keybar">barra dei tasti</string>
+
+    <string name="store_pick_widget">scegli un widget per vedere cosa installa ed esegue</string>
+    <string name="store_pick_face">scegli un widget a schermo intero per vedere cosa installa ed esegue</string>
+    <string name="store_pick_app">scegli un’app per vedere cosa installa ed esegue</string>
+    <string name="store_pick_panel">scegli un pannello per vedere cosa installa ed esegue</string>
+    <string name="store_pick_keybar">scegli una barra dei tasti per vedere cosa installa ed esegue</string>
+    <string name="store_kind_strips">barre app recenti</string>
+    <string name="store_kind_strip">barra app recenti</string>
+    <string name="store_pick_strip">scegli una barra app recenti per vedere cosa installa ed esegue</string>
+
+    <string name="store_search">cerca tra %1$d %2$s</string>
+    <string name="store_tab_all">tutti</string>
+    <string name="store_tab_new">novità</string>
+    <string name="store_tab_installed">installati</string>
+    <string name="store_category_other">altro</string>
+    <string name="store_tab">%1$s %2$d</string>
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <string name="store_builtin">integrati</string>
+    <string name="store_terminal">terminale</string>
+    <string name="store_terminal_details">6x4 · una shell</string>
+    <string name="store_agent_details">6x6 · avvia %1$s</string>
+    <string name="store_on_home">✓ nella home</string>
+    <string name="store_tap_to_add">aggiungi a pagina %1$d</string>
+
+    <string name="store_reviewed">%1$s da github.com/%2$s, dopo una revisione</string>
+    <string name="store_loading">caricamento…</string>
+    <string name="store_empty">%1$s: ancora niente</string>
+    <string name="store_no_new">%1$s: niente di nuovo</string>
+    <string name="store_none_installed">%1$s: niente installato dallo store</string>
+    <string name="store_no_match">nessun risultato per \"%1$s\"</string>
+
+    <string name="store_update_available">nuova versione</string>
+    <string name="store_installed">✓ installato</string>
+    <string name="store_needs_newer">launcher troppo vecchio</string>
+    <string name="store_needs_linux">richiede linux</string>
+    <string name="store_full_screen">schermo intero</string>
+    <plurals name="store_pages">
+        <item quantity="one">%1$d pagina</item>
+        <item quantity="many">%1$d pagine</item>
+        <item quantity="other">%1$d pagine</item>
+    </plurals>
+    <string name="store_badge_new">nuovo</string>
+
+    <string name="store_needs_newer_detail">richiede un launcher più recente (owl %1$d); aggiorna il launcher per l’installazione</string>
+    <string name="store_may_have_changes">potrebbe contenere le tue modifiche, e l’aggiornamento le sostituisce</string>
+    <string name="store_you_changed">hai fatto delle modifiche, e l’aggiornamento le sostituisce</string>
+    <string name="store_update_anyway">aggiorna comunque %1$s → %2$s</string>
+    <string name="store_update">aggiorna %1$s → %2$s</string>
+    <string name="store_open">apri</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="one">aggiungi %1$d pagina mancante</item>
+        <item quantity="many">aggiungi le %1$d pagine mancanti</item>
+        <item quantity="other">aggiungi le %1$d pagine mancanti</item>
+    </plurals>
+    <string name="store_add_to_page">aggiungi a pagina %1$d</string>
+    <string name="store_add_as_face">aggiungi come widget a schermo intero</string>
+    <string name="store_install">installa</string>
+    <string name="store_uninstall">disinstalla</string>
+    <string name="store_remove">rimuovi</string>
+    <string name="store_uninstall_confirm">disinstallare %1$s?</string>
+    <string name="store_remove_confirm">rimuovere %1$s?</string>
+    <string name="store_remove_file">Il suo file va in .removed/ nella cartella dei widget.</string>
+    <string name="store_remove_files">I suoi file vanno in .removed/ nella cartella dei widget.</string>
+    <string name="store_changed_since_approval">i suoi comandi o pacchetti sono cambiati rispetto alla versione che hai approvato</string>
+
+    <string name="store_added_widget">✓ nella schermata home</string>
+    <string name="store_added_face">✓ a sinistra della prima pagina</string>
+    <string name="store_added_app">✓ nell’elenco app</string>
+    <string name="store_added_panel">✓ nelle impostazioni dei gesti</string>
+    <string name="store_added_keybar">✓ nella cartella dei widget</string>
+
+    <string name="store_needs_linux_app">richiede Linux: esegue comandi in Arch, quindi compare nell’elenco app quando installi Linux nelle impostazioni</string>
+    <string name="store_needs_linux_widget">richiede Linux: esegue comandi in Arch, quindi resta un segnaposto finché non installi Linux nelle impostazioni</string>
+
+    <string name="store_installs_packages">installa pacchetti: %1$s</string>
+    <string name="store_packages_none">nessuno</string>
+    <string name="store_runs_no_commands">non esegue comandi</string>
+    <string name="store_runs_commands">esegue questi comandi in Arch:</string>
+
+    <string name="store_installing">installazione…</string>
+    <string name="store_updating">aggiornamento…</string>
+    <string name="store_adding_pages">aggiunta pagine…</string>
+    <string name="store_load_failed">impossibile caricare lo store: %1$s</string>
+    <string name="store_download_mismatch">il download non corrisponde alla versione revisionata; riprova più tardi</string>
+    <string name="store_install_failed">installazione non riuscita: %1$s</string>
+
+    <string name="store_shared_title">condivisione: %1$s</string>
+    <string name="store_shared_fetching">download da %1$s…</string>
+    <string name="store_shared_unreadable">è illeggibile</string>
+    <string name="store_shared_not_widget">Questo link non contiene un widget: %1$s.</string>
+    <string name="store_shared_unnamed_app">un’app</string>
+    <string name="store_shared_unnamed_widget">un widget</string>
+    <string name="store_shared_info">in condivisione%1$s · %2$.1f KB</string>
+    <string name="store_shared_warning">Aggiungi solo se ti fidi di chi te l’ha mandato. Esegue i comandi qui sotto in Arch come te, con i tuoi file e la rete.</string>
+    <string name="store_shared_needs_newer">richiede un launcher più recente (owl %1$d); aggiorna il launcher prima di aggiungere</string>
+    <string name="store_shared_replace">sostituisci la versione di %1$s condivisa prima</string>
+    <string name="store_add_to_drawer">aggiungi all’elenco app</string>
+    <string name="store_add_to_panels">aggiungi ai pannelli dei gesti</string>
+    <string name="store_add_to_widgets_folder">aggiungi alla cartella dei widget</string>
+    <string name="store_hide_file">nascondi il file</string>
+    <string name="store_show_file">mostra tutto il file</string>
+    <string name="store_review_with_agent">controlla con l’agente</string>
+
+    <string name="store_share_title">condividi %1$s</string>
+    <string name="store_check_secrets">cerca dati segreti con l’agente</string>
+    <string name="store_share_unreadable">impossibile leggere %1$s</string>
+    <string name="store_share_too_big">%1$s supera %2$d KB, più di quanto accetta un launcher</string>
+    <string name="store_uploading">caricamento…</string>
+    <string name="store_share_get_code">crea codice QR</string>
+    <string name="store_something_wrong">qualcosa è andato storto</string>
+    <string name="store_share_uploads">caricamento pubblico su %1$s per %2$d giorni</string>
+    <string name="store_share_send_link">Oppure manda il link: è permanente, contiene tutto il widget.</string>
+    <string name="store_share_too_big_link">Troppo grande per un link: condividilo con il codice QR.</string>
+    <string name="store_share_pasted_permanent">Rimanda a %1$s, sparisce tra %2$d giorni. Il link qui sotto è permanente.</string>
+    <string name="store_share_pasted">Rimanda a %1$s, sparisce tra %2$d giorni.</string>
+    <string name="store_share_permanent">Permanente: tutto il widget è nell’immagine.</string>
+    <string name="store_share_code">condividi codice QR</string>
+    <string name="store_share_link">condividi link</string>
+    <string name="store_copied">copiato</string>
+    <string name="store_copy_link">copia link</string>
+    <string name="store_share_subject">widget %1$s</string>
+    <string name="store_share_code_clip">codice QR di %1$s</string>
+    <string name="store_share_chooser">Condividi %1$s</string>
+    <string name="store_in_store">nello store</string>
+    <string name="store_issue_info">Una issue su github.com/%1$s; dopo la revisione, è installabile da chiunque.</string>
+    <string name="store_pr_info">Oppure una pull request dal tuo agente, che può aggiungere anche un’anteprima:</string>
+    <string name="store_create_pr">crea pull request con l’agente</string>
+    <string name="store_open_issue">apri issue su GitHub</string>
+    <string name="store_no_browser">nessun browser per aprire %1$s</string>
+    <string name="store_issue_uploads">caricamento pubblico su %1$s per la revisione</string>
+    <string name="store_upload_failed">✗ caricamento non riuscito: %1$s</string>
+
+    <string name="store_pin_title">aggiungere alla schermata home?</string>
+    <string name="store_pin_from">da %1$s</string>
+    <string name="store_cancel">annulla</string>
+    <string name="store_add">aggiungi</string>
+
+    <string name="store_theme_title">temi della community</string>
+    <string name="store_theme_search">cerca tra %1$d temi</string>
+    <string name="store_theme_header">creati dalla community, elencati su omarchy.org/themes · installati da GitHub</string>
+    <string name="store_theme_in_use">✓ in uso</string>
+    <string name="store_theme_light">chiaro</string>
+    <string name="store_theme_dark">scuro</string>
+    <plurals name="store_theme_wallpapers">
+        <item quantity="one">%d sfondo</item>
+        <item quantity="many">%d sfondi</item>
+        <item quantity="other">%d sfondi</item>
+    </plurals>
+    <string name="store_theme_use">usa</string>
+    <string name="store_theme_github">GitHub</string>
+    <string name="store_theme_install_message">Da %1$s. Linux riceve i suoi colori e sfondi, non i suoi script né le configurazioni del terminale.</string>
+    <string name="store_theme_install_message_replaces">Da %1$s. Linux riceve i suoi colori e sfondi, non i suoi script né le configurazioni del terminale.\n\nSostituisce il tuo tema %2$s.</string>
+    <string name="store_theme_install_message_over">Da %1$s. Linux riceve i suoi colori e sfondi, non i suoi script né le configurazioni del terminale.\n\nPrende il posto del tema %2$s di Omarchy; se lo rimuovi, torna quello.</string>
+    <string name="store_theme_installing">installazione di %1$s… %2$d MB</string>
+    <string name="store_theme_catalog_failed">impossibile caricare omarchy.org/themes: %1$s</string>
+    <string name="store_theme_page_changed">la pagina è cambiata e non si riesce a leggere</string>
+    <string name="store_theme_not_github">non è un repo GitHub: %1$s</string>
+    <string name="store_theme_not_on_github">%1$s non è su GitHub</string>
+    <string name="store_theme_no_colors">non ha colors.toml né alacritty.toml</string>
+    <string name="store_theme_cant_move">impossibile spostare il tema al suo posto</string>
+</resources>
