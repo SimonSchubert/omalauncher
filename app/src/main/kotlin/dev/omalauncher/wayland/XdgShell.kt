@@ -153,13 +153,17 @@ class XdgSurface(
         pendingGeometry?.let { geometry = it }
         if (!initialCommitDone) {
             initialCommitDone = true
-            toplevel?.let { client.server.windowManager.toplevelCreated(it) }
+            toplevel?.let {
+                val out = client.server.output
+                it.configure(out.widthPx / out.scale, out.heightPx / out.scale, active = true)
+            }
             popup?.configure()
-            return
+            if (!surface.hasContent) return
         }
         val hasContent = surface.hasContent
         if (hasContent && !mapped) {
             mapped = true
+            toplevel?.let { client.server.windowManager.toplevelCreated(it) }
             popup?.let { client.server.popups += it }
         } else if (!hasContent && mapped) {
             // Unmapped by attaching a null buffer; the client must start over.
@@ -226,8 +230,8 @@ class XdgToplevel(
         val states =
             buildList {
                 if (active) add(4) // activated
+                add(1) // maximized: ensures clients obey configured dimensions and adapt dynamically
                 if (version >= 2) addAll(listOf(5, 6, 7, 8)) // tiled on all edges
-                else add(1) // maximized: best "don't draw shadows" hint for v1 clients
             }
         send(event(0).int(width).int(height).ints(states.toIntArray()))
         xdg.sendConfigure()
