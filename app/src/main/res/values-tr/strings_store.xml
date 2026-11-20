@@ -37,7 +37,7 @@
     <string name="store_terminal_details">6x4 · bir kabuk</string>
     <string name="store_agent_details">6x6 · %1$s çalıştırır</string>
     <string name="store_on_home">✓ ana ekranda</string>
-    <string name="store_tap_to_add">%1$d. sayfaya eklemek için dokun</string>
+    <string name="store_tap_to_add">%1$d. sayfaya ekle</string>
 
     <string name="store_reviewed">github.com/%2$s kaynağından incelenmiş %1$s</string>
     <string name="store_loading">yükleniyor…</string>
