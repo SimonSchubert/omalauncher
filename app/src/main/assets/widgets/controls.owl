@@ -2,7 +2,7 @@ panel "controls" {
   // A control center for swiping down on home: the phone's switches, the volume, what's playing, the next alarm and
   // the notifications. Pick it in settings › gestures, or set gestures.swipe-down = "controls.owl" in style.toml.
   // Like the drawer it's yours to change: ask your agent to edit it.
-  meta { description: "Swipe down for the phone's switches, volume, media, the next alarm and your notifications"; version: "1.2"; license: "MIT"; category: "system"; owl: 19 }
+  meta { description: "Swipe down for the phone's switches, volume, media, the next alarm and your notifications"; version: "1.2"; license: "MIT"; category: "system"; owl: 23 }
   fps: m.saver ? 15 : 30
   asset gear = base64"PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iY3VycmVudENvbG9yIiBkPSJNMTkuMTQsMTIuOTRjMC4wNCwtMC4zIDAuMDYsLTAuNjEgMC4wNiwtMC45NGMwLC0wLjMyIC0wLjAyLC0wLjY0IC0wLjA3LC0wLjk0bDIuMDMsLTEuNThjMC4xOCwtMC4xNCAwLjIzLC0wLjQxIDAuMTIsLTAuNjFsLTEuOTIsLTMuMzJjLTAuMTIsLTAuMjIgLTAuMzcsLTAuMjkgLTAuNTksLTAuMjJsLTIuMzksMC45NmMtMC41LC0wLjM4IC0xLjAzLC0wLjcgLTEuNjIsLTAuOTRMMTQuNCwyLjgxYy0wLjA0LC0wLjI0IC0wLjI0LC0wLjQxIC0wLjQ4LC0wLjQxaC0zLjg0Yy0wLjI0LDAgLTAuNDMsMC4xNyAtMC40NywwLjQxTDkuMjUsNS4zNUM4LjY2LDUuNTkgOC4xMiw1LjkyIDcuNjMsNi4yOUw1LjI0LDUuMzNjLTAuMjIsLTAuMDggLTAuNDcsMCAtMC41OSwwLjIyTDIuNzQsOC44N0MyLjYyLDkuMDggMi42Niw5LjM0IDIuODYsOS40OGwyLjAzLDEuNThDNC44NCwxMS4zNiA0LjgsMTEuNjkgNC44LDEyczAuMDIsMC42NCAwLjA3LDAuOTRsLTIuMDMsMS41OGMtMC4xOCwwLjE0IC0wLjIzLDAuNDEgLTAuMTIsMC42MWwxLjkyLDMuMzJjMC4xMiwwLjIyIDAuMzcsMC4yOSAwLjU5LDAuMjJsMi4zOSwtMC45NmMwLjUsMC4zOCAxLjAzLDAuNyAxLjYyLDAuOTRsMC4zNiwyLjU0YzAuMDUsMC4yNCAwLjI0LDAuNDEgMC40OCwwLjQxaDMuODRjMC4yNCwwIDAuNDQsLTAuMTcgMC40NywtMC40MWwwLjM2LC0yLjU0YzAuNTksLTAuMjQgMS4xMywtMC41NiAxLjYyLC0wLjk0bDIuMzksMC45NmMwLjIyLDAuMDggMC40NywwIDAuNTksLTAuMjJsMS45MiwtMy4zMmMwLjEyLC0wLjIyIDAuMDcsLTAuNDcgLTAuMTIsLTAuNjFMMTkuMTQsMTIuOTR6TTEyLDE1LjZjLTEuOTgsMCAtMy42LC0xLjYyIC0zLjYsLTMuNnMxLjYyLC0zLjYgMy42LC0zLjZzMy42LDEuNjIgMy42LDMuNlMxMy45OCwxNS42IDEyLDE1LjZ6Ii8+PC9zdmc+"
   source m = android.modes
@@ -12,6 +12,7 @@ panel "controls" {
   // For the dot on the settings button while system updates wait, as the drawer shows it.
   source d = android.drawer
   source n = android.notifications
+  source s = android.sim
   source now = clock every 30s
 
   // How much the panel covers home: 1 solid, 0 clear. Its sections have a background of their own, so they stay readable.
@@ -27,8 +28,10 @@ panel "controls" {
   state menu = ""
   // When what "snooze 1h" snoozed comes back, for the header to say; unsnooze brings them back sooner.
   state snoozedUntil = 0 persist
+  state draggingVol = null
 
   let wide = screenWidth ?? 400
+  let volVal = draggingVol != null ? draggingVol : (v.muted ? 0 : (v.level ?? 0))
   at snoozedUntil { snoozedUntil = 0 }
   // Whole minutes, rounded up: now ticks every 30 s, so seconds would lag.
   let snoozeLeft = ceil((snoozedUntil - now) / 60)
@@ -135,6 +138,36 @@ panel "controls" {
       padding: [14, 12]
       background: surface
       radius: 8 * corners
+      Text { text: "connectivity"; style: label }
+      Row {
+        fill: width
+        gap: 8
+        for c in [
+          {name: "Wi-Fi", on: m.wifi, action: "wifi"},
+          {name: "Bluetooth", on: m.bluetooth, action: "bluetooth"},
+          {name: "data", on: s.data, action: "data"}
+        ] {
+          Column {
+            weight: 1
+            gap: 2
+            padding: [8, 6]
+            background: background
+            radius: 6 * corners
+            onTap: { haptic(); settings(c.action) }
+            Text { text: c.name; maxLines: 1; color: c.on == true ? green : foreground }
+            Text { text: c.on == null ? "unavailable" : (c.on ? "on" : "off"); style: small; color: c.on == true ? green : muted; maxLines: 1 }
+          }
+        }
+      }
+      Text { text: "tap to open Android settings"; style: small; color: muted }
+    }
+
+    Column {
+      fill: width
+      gap: 8
+      padding: [14, 12]
+      background: surface
+      radius: 8 * corners
       Text { text: "toggles"; style: label }
       // Under the toggles, as wide as the card's content.
       Popup {
@@ -221,57 +254,181 @@ panel "controls" {
       }
     }
 
-    Column {
+    Row {
       fill: width
-      gap: 8
-      padding: [14, 12]
-      background: surface
-      radius: 8 * corners
-      Text { text: "levels"; style: label }
-      Row {
-        fill: width
-        align: center
-        gap: 4
-        Text { text: "volume"; width: 72 }
-        Text { text: "["; color: accent }
-        Slider { value: v.muted ? 0 : v.level; step: 100 / (v.steps ?? 15); live: true; color: accent; track: background; weight: 1; onChange: volume(value) }
-        Text { text: "]"; color: accent }
-        Text { text: v.muted ? "♪ off" : "♪ on"; color: orange; width: 56; align: end; onTap: volume("toggle") }
-      }
-    }
+      gap: 10
+      height: 148
 
-    // Only while something plays or is paused in an app; without notification access there's nothing to show either.
-    Column {
-      visible: md.available == true && (md.title ?? "") != ""
-      fill: width
-      gap: 8
-      padding: [14, 12]
-      background: surface
-      radius: 8 * corners
-      Text { text: "media"; style: label }
-      Row {
-        fill: width
-        align: center
-        gap: 8
-        Art { src: md.art; d: 56 }
+      // Music Card (Themed)
+      Box {
+        weight: 1
+        height: 148
+        radius: 8 * corners
+        background: alpha(foreground, 0.08)
+        border: 1
+        borderColor: alpha(foreground, 0.12)
+        padding: 12
         Column {
-          gap: 2
-          weight: 1
-          onTap: media("open")
+          fill: true
+          justify: spaceBetween
+          // Top row: album art / music note icon on left, AirPlay / output picker on right
           Row {
+            fill: width
             align: center
-            gap: 6
-            if md.playing == true {
-              Bars { }
+            justify: spaceBetween
+            Box {
+              size: 38
+              radius: 6 * corners
+              clip: true
+              background: alpha(foreground, 0.1)
+              align: center
+              onTap: media("open")
+              if md.art != null {
+                Image { src: md.art; fit: cover; fill: true }
+              } else {
+                Canvas {
+                  text("♪", width / 2, height / 2, size: 20, align: center, color: accent)
+                }
+              }
             }
-            Text { text: lower(md.app ?? ""); style: label; color: md.playing == true ? accent : muted; maxLines: 1; weight: 1 }
+            Box {
+              size: 32
+              align: center
+              onTap: { haptic(); settings("output") }
+              Canvas {
+                let cx = width / 2
+                let cy = height / 2
+                path([[cx - 4, cy + 5], [cx + 4, cy + 5], [cx, cy]], closed: true, fill: accent)
+                arc(cx, cy + 5, 7, 305, 110, stroke: accent, width: 1.8, cap: round)
+                arc(cx, cy + 5, 12, 315, 90, stroke: accent, width: 1.8, cap: round)
+              }
+            }
           }
-          Text { text: md.title; bold: true; maxLines: 1 }
-          Text { text: md.artist ?? ""; style: small; color: muted; maxLines: 1 }
+
+          // Center: track title or "Not playing"
+          Column {
+            gap: 2
+            onTap: media("open")
+            if (md.title ?? "") != "" {
+              Text { text: md.title; fontSize: 15; bold: true; maxLines: 1; color: foreground; font: sans }
+              Text { text: md.artist ?? (md.app ?? ""); style: small; color: muted; maxLines: 1; font: sans }
+            } else {
+              Text { text: "Not playing"; fontSize: 16; bold: true; color: muted; font: sans }
+            }
+          }
+
+          // Bottom media controls: Previous, Play/Pause, Next
+          Row {
+            fill: width
+            align: center
+            justify: spaceBetween
+            padding: [4, 0]
+            Box {
+              size: 30
+              align: center
+              onTap: { haptic(); media("previous") }
+              Canvas {
+                let cx = width / 2
+                let cy = height / 2
+                let active = (md.title ?? "") != ""
+                let col = active ? foreground : muted
+                path([[cx + 3, cy - 7], [cx - 4, cy], [cx + 3, cy + 7]], closed: true, fill: col)
+                rect(cx - 6, cy - 7, 2, 14, radius: 1, fill: col)
+              }
+            }
+            Box {
+              size: 34
+              align: center
+              onTap: { haptic(); media("toggle") }
+              Canvas {
+                let cx = width / 2
+                let cy = height / 2
+                if md.playing == true {
+                  rect(cx - 5, cy - 8, 3, 16, radius: 1, fill: accent)
+                  rect(cx + 2, cy - 8, 3, 16, radius: 1, fill: accent)
+                } else {
+                  path([[cx - 4, cy - 9], [cx + 7, cy], [cx - 4, cy + 9]], closed: true, fill: accent)
+                }
+              }
+            }
+            Box {
+              size: 30
+              align: center
+              onTap: { haptic(); media("next") }
+              Canvas {
+                let cx = width / 2
+                let cy = height / 2
+                let active = (md.title ?? "") != ""
+                let col = active ? foreground : muted
+                path([[cx - 3, cy - 7], [cx + 4, cy], [cx - 3, cy + 7]], closed: true, fill: col)
+                rect(cx + 4, cy - 7, 2, 14, radius: 1, fill: col)
+              }
+            }
+          }
         }
-        Control { kind: "previous" }
-        Control { kind: "toggle"; big: true }
-        Control { kind: "next" }
+      }
+
+      // Volume Vertical Slider (Themed, interactive)
+      Box {
+        width: 68
+        height: 148
+        radius: 8 * corners
+        clip: true
+        align: bottom
+        background: alpha(foreground, 0.08)
+        border: 1
+        borderColor: alpha(foreground, 0.12)
+        drag: vertical
+        onDrag: {
+          let newLvl = clamp(round((1 - y / 148) * 100), 0, 100)
+          draggingVol = newLvl
+          volume(newLvl)
+          haptic("light")
+        }
+        onDragEnd: { draggingVol = null }
+        onTap: {
+          if y > 105 {
+            volume("toggle")
+          } else {
+            let newLvl = clamp(round((1 - y / 148) * 100), 0, 100)
+            volume(newLvl)
+          }
+          haptic()
+        }
+        // Filled with theme accent color
+        Box {
+          fill: width
+          height: max(148 * (volVal / 100), 0)
+          background: accent
+        }
+        // Label and speaker icon on top of fill
+        Column {
+          fill: true
+          justify: spaceBetween
+          align: center
+          padding: [8, 8]
+          Text {
+            text: v.muted ? "off" : "${volVal}%"
+            fontSize: 12
+            bold: true
+            color: volVal > 80 ? background : foreground
+          }
+          Canvas {
+            size: [24, 24]
+            let cx = width / 2 - 2
+            let cy = height / 2
+            let col = v.muted ? muted : (volVal > 25 ? background : foreground)
+            path([[cx - 6, cy - 3], [cx - 2, cy - 3], [cx + 3, cy - 7], [cx + 3, cy + 7], [cx - 2, cy + 3], [cx - 6, cy + 3]], closed: true, fill: col)
+            if !v.muted && volVal > 0 {
+              arc(cx + 2, cy, 6, 45, 90, stroke: col, width: 2, cap: round)
+              if volVal > 35 {
+                arc(cx + 2, cy, 10, 50, 80, stroke: col, width: 2, cap: round)
+              }
+            } else {
+              line(cx - 6, cy - 6, cx + 6, cy + 6, stroke: col, width: 2, cap: round)
+            }
+          }
+        }
       }
     }
 
