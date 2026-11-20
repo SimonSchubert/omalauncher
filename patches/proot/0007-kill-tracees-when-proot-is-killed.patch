@@ -1,0 +1,48 @@
+tracee: let the kernel kill every tracee when proot ends
+
+proot kills its tracees when it exits or crashes (atexit and the handlers
+for SIGSEGV, SIGABRT and the like), but a SIGKILLed proot runs neither.
+Android SIGKILLs single processes of an app: its phantom process killer
+trims the oldest child processes once there are more than 32 on the phone,
+or one that uses much CPU in the background, and the kernel's OOM killer
+picks one process too. The tracees then run on untraced, and every syscall
+the seccomp filter sends to the tracer returns ENOSYS. An idle shell exits
+on its failed read, but a shell waiting for a command it ran loops on
+wait4() forever at full CPU, its child left a zombie.
+
+PTRACE_O_EXITKILL (Linux 3.8) makes the kernel SIGKILL each tracee when
+its tracer exits, however it ends. New tracees inherit it with the other
+options.
+
+diff --git a/src/compat.h b/src/compat.h
+--- a/src/compat.h
++++ b/src/compat.h
+@@ -135,6 +135,9 @@
+ #    ifndef PTRACE_O_TRACESECCOMP
+ #        define PTRACE_O_TRACESECCOMP	0x00000080
+ #    endif
++#    ifndef PTRACE_O_EXITKILL
++#        define PTRACE_O_EXITKILL	0x00100000
++#    endif
+ #    ifndef PTRACE_EVENT_FORK
+ #        define PTRACE_EVENT_FORK	1
+ #    endif
+diff --git a/src/tracee/event.c b/src/tracee/event.c
+--- a/src/tracee/event.c
++++ b/src/tracee/event.c
+@@ -527,7 +527,14 @@
+ 				PTRACE_O_TRACEVFORKDONE	|
+ 				PTRACE_O_TRACEEXEC	|
+ 				PTRACE_O_TRACECLONE	|
+-				PTRACE_O_TRACEEXIT);
++				PTRACE_O_TRACEEXIT	|
++				/* The kernel SIGKILLs every tracee when
++				 * proot ends, even by a SIGKILL, which
++				 * kill_all_tracees() can't catch: an
++				 * untraced tracee gets ENOSYS from each
++				 * syscall the seccomp filter sends to
++				 * the tracer and can spin forever.  */
++				PTRACE_O_EXITKILL);
+ 
+ 			/* Distinguish some events from others and
+ 			 * automatically trace each new process with
