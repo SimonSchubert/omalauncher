@@ -139,6 +139,7 @@
 
     <string name="linux_notification_channel">Linux セッション</string>
     <string name="linux_notify_channel">エージェントとスクリプト</string>
+    <string name="linux_media_channel">Linux で再生中</string>
     <string name="linux_notification_installing">Linux をインストール中 · %1$s</string>
     <string name="linux_notification_installing_percent">Linux をインストール中 · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">Linux のセットアップが停止しました · 設定 › linux から再試行できます</string>

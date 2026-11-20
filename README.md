@@ -62,6 +62,8 @@ omalauncher folders           # the phone folders you let Linux reach
 omalauncher get Camera/IMG_1.jpg .          # copy from one into Linux
 omalauncher put report.pdf Documents        # and back
 omalauncher pick              # Android's file picker; what you pick is copied to ~/Downloads
+omalauncher media set '{"title": "Live set", "artist": "DJ", "playing": true, "command": "myplayer-ctl"}'
+                              # a Linux player in Android's media controls; a press runs myplayer-ctl pause, next...
 omalauncher version           # the launcher's version and the commands it has
 ```
 

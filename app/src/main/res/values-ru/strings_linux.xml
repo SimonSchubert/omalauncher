@@ -145,6 +145,7 @@
 
     <string name="linux_notification_channel">Сеанс Linux</string>
     <string name="linux_notify_channel">Агенты и скрипты</string>
+    <string name="linux_media_channel">Воспроизведение из Linux</string>
     <string name="linux_notification_installing">Установка Linux · %1$s</string>
     <string name="linux_notification_installing_percent">Установка Linux · %1$d%% · %2$s</string>
     <string name="linux_notification_failed">Установка Linux остановлена · откройте настройки › linux, чтобы повторить</string>
