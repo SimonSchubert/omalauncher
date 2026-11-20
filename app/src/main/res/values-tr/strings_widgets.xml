@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widgets_no_app_opens">bunu açan uygulama yok: %1$s</string>
+    <string name="widgets_copied">kopyalandı</string>
+    <string name="widgets_notify_channel">Widget’lar</string>
+</resources>

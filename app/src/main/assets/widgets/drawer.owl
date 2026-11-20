@@ -90,6 +90,15 @@ panel "app drawer" {
       open: "ouvrir"; ask: "demander"; askInstallLinux: "demander à un agent · installer linux"; askInstallAgent: "demander à un agent · en installer un"
       askAgent: (bin, text) => "demander à ${bin} : ${text}"
     }
+    tr {
+      personal: "kişisel"; work: "iş"; apps: "uygulamalar"; linux: "linux"; shortcuts: "kısayollar"; android: "android"
+      workApps: "iş uygulamaları"; workPaused: "iş uygulamaları duraklatıldı"; linuxApps: "linux uygulamaları"; appStore: "uygulama mağazası"
+      pin: "ana ekrana ekle"; info: "uygulama bilgileri"; uninstall: "yüklemeyi kaldır"; remove: "kaldır"; edit: "düzenle"; share: "paylaş"
+      settings: "ayarlar"; turnOn: "etkinleştir"; pause: "duraklat"; installing: "yükleniyor…"; installLinux: "linux’u yükle"
+      open: "aç"; ask: "sor"; askInstallLinux: "bir ajana sor · linux’u yükle"; askInstallAgent: "bir ajana sor · önce ajan yükle"
+      // Not "${bin}’a sor": the suffix follows the name's vowels.
+      askAgent: (bin, text) => "${bin} ile sor: ${text}"
+    }
   }
   source d = android.drawer
   source ag = android.agents

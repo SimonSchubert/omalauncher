@@ -1,0 +1,37 @@
+Omalauncher, Omarchy’nin görünümünü Android’e getiren, klavyeyle rahat kullanılan bir ana ekran. Telefon uygulamalarının yanında tam bir Arch Linux ARM sistemi de çalıştırabilir.
+
+TEMALAR
+22 Omarchy teması arasından seç: Tokyo Night, Catppuccin, Gruvbox, Nord, Rose Pine, Kanagawa, Everforest ve daha fazlası. Her tema tüm başlatıcıyı renklendirir ve kendi duvar kâğıtlarıyla gelir; bunları canlı duvar kâğıdı olarak da kullanabilirsin.
+
+ANA EKRAN, WIDGET’LAR VE TAM EKRAN WIDGET’LAR
+• Izgarada widget’lar ve sabitlenmiş uygulamalarla dolu sayfalar
+• Tarih, hava durumu ve sistemin için hazır widget’lar
+• Tam ekran widget’lar: manga sayfası, terminal ya da Bauhaus afişi gibi tek parça çizilmiş koca bir sayfa
+• Widget’lar, tam ekran widget’lar, küçük uygulamalar ve oyunlarla dolu bir mağaza; hepsi kendin de düzenleyebileceğin küçük, açık bir dille yazılmış
+• Tüm Android uygulamaların için aramalı bir uygulama çekmecesi
+
+ARCH LINUX (İSTEĞE BAĞLI)
+Başlatıcı onsuz da çalışır. İstersen Omalauncher, Arch Linux ARM’ı indirir ve root gerektirmeden proot ile çalıştırır.
+• Linux uygulamaları kendi pencerelerinde açılır, her biri Son uygulamalar’da kendi kartıyla
+• Wayland bileşikleştiricisi Omalauncher’ın kendisi, bu yüzden foot gibi grafik uygulamalar çalışır
+• Arch Linux ARM ve AUR’dan paket ara ve yükle
+• Ana ekranında komut çalıştıran terminal widget’ları
+• Dosyalar: Linux ana klasörü ve seçtiğin telefon klasörleri için bir dosya yöneticisi; dosyaları kopyala, taşı, yeniden adlandır, sil, aç ve paylaş
+• Temanı Linux uygulamaları da kullanır
+
+KODLAMA AJANLARI
+Linux yüklüyken ana ekranın altındaki giriş çubuğu, yazdığını Claude Code, Codex, Copilot, Grok ya da opencode gibi bir kodlama ajanına gönderir; ajan bir terminalde açılır. Bir ajan senin için widget da yapabilir.
+
+SES
+Ses düğmesine dokun ve kodlama ajanınla konuş. Sesli yanıt verir, ne yaptığını gösterir ve bir komut çalıştırmadan ya da bir dosyayı değiştirmeden önce sorar. Yazmayı mı tercih edersin? Yazmaya geç ve yanıtları oku. Konuşmayı Android tanır, Linux’a yalnızca metin ulaşır.
+
+KLAVYE KISAYOLLARI
+Donanım klavyesiyle: Super+T bir terminal açar, Super+D çekmeceyi açar, Super+1–9 sayfalar arasında geçiş yapar, Super+W bir pencereyi kapatır.
+
+DİLLER
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français ve Türkçe.
+
+GİZLİLİK
+Hesap yok, reklam yok, takip yok. Omalauncher internete yalnızca tema, widget, hava durumu ve istersen Linux ile paketlerini indirmek için bağlanır.
+
+Omalauncher bağımsız bir projedir; Omarchy veya Arch Linux ile bağlantılı değildir.

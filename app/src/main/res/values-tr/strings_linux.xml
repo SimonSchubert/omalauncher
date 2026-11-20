@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="linux_stage_download">arch linux’u indir</string>
+    <string name="linux_stage_extract">sistemi ayıkla</string>
+    <string name="linux_stage_configure">pacman’i yapılandır</string>
+    <string name="linux_stage_packages">omarchy uygulamalarını yükle</string>
+    <string name="linux_stage_agents">kodlama ajanlarını yükle</string>
+    <string name="linux_stage_agents_named">yükle: %1$s</string>
+
+    <string name="linux_step_download">Arch Linux ARM indiriliyor</string>
+    <string name="linux_step_configure">Sistem yapılandırılıyor</string>
+    <string name="linux_step_forks">Programların başlatılabildiği kontrol ediliyor</string>
+    <string name="linux_step_keyring">pacman anahtarlığı hazırlanıyor</string>
+    <string name="linux_step_no_kernel">Kernel paketleri kaldırılıyor</string>
+    <string name="linux_step_packages">Paketler yükleniyor</string>
+    <string name="linux_step_keymap">Tuş haritası derleniyor</string>
+    <string name="linux_step_cliamp">cliamp yükleniyor</string>
+    <string name="linux_step_agent">%1$s yükleniyor</string>
+    <string name="linux_step_downloaded">%1$d / %2$d MB</string>
+    <string name="linux_step_downloaded_unknown">%1$d MB</string>
+    <string name="linux_step_extract_start">Başlıyor</string>
+    <plurals name="linux_step_extracted">
+        <item quantity="one">%d dosya</item>
+        <item quantity="other">%d dosya</item>
+    </plurals>
+
+    <string name="linux_log_retrying">%1$s; tekrar deneniyor (%2$d/%3$d)</string>
+    <string name="linux_log_step_failed">“%1$s” adımı başarısız oldu: %2$s; ayarlardan tekrar dene</string>
+    <string name="linux_log_agent_failed">%1$s yüklenemedi; ayarlar › kodlama ajanları bölümünden tekrar dene</string>
+
+    <string name="linux_error_no_space">yeterli alan yok: Linux’un %1$s boş alana ihtiyacı var, telefonda %2$s var; biraz yer aç, sonra tekrar dene</string>
+    <string name="linux_error_out_of_space">telefonda yer kalmadı; Linux’un yaklaşık %1$s boş alana ihtiyacı var; biraz yer aç, sonra tekrar dene</string>
+    <string name="linux_error_http">indirme başarısız: HTTP %1$d</string>
+    <string name="linux_error_cut_short">indirme yarıda kesildi; devam etmek için tekrar dene</string>
+    <string name="linux_error_move_download">indirilen dosya yerine taşınamıyor</string>
+    <string name="linux_error_cant_run">Linux burada komut çalıştıramıyor (çıkış kodu %1$d)</string>
+    <string name="linux_error_kernel">bu telefonun kernel’i, Linux programlarının başka programları başlatmasını engelliyor, bu yüzden kurulum devam edemiyor. 4.14 kernel’li özel ROM’ların, bakımcılarından 05b289263772 kernel commit’ini alması gerekir; github issue #105’e bak</string>
+    <string name="linux_error_command">`%1$s` başarısız oldu (çıkış kodu %2$d)</string>
+    <string name="linux_error_cliamp_mismatch">cliamp indirmesi şununla eşleşmiyor: %1$s</string>
+    <string name="linux_error_cant_replace">değiştirilemiyor: %1$s</string>
+
+    <string name="linux_job_installing">yükleniyor</string>
+    <string name="linux_job_removing">kaldırılıyor</string>
+    <string name="linux_job_building">derleniyor</string>
+    <string name="linux_job_updating">güncelleniyor</string>
+    <string name="linux_job_waiting">bekliyor</string>
+    <string name="linux_job_checking">kontrol ediliyor</string>
+    <string name="linux_job_working">%1$s…</string>
+
+    <string name="linux_updates_unreachable">yansılara ulaşılamadı</string>
+
+    <string name="linux_agent_claude">Anthropic’in kodlama ajanı</string>
+    <string name="linux_agent_opencode">Açık kaynak ajan, her model sağlayıcısıyla</string>
+    <string name="linux_agent_codex">OpenAI’ın kodlama ajanı</string>
+    <string name="linux_agent_grok">xAI’ın kodlama ajanı</string>
+    <string name="linux_agent_copilot">GitHub’ın kodlama ajanı</string>
+    <string name="linux_agent_crush">Charm’ın terminal ajanı</string>
+    <string name="linux_agent_cursor">Cursor’ın terminal ajanı</string>
+    <string name="linux_agent_antigravity">Google’ın Gemini kodlama ajanı</string>
+    <string name="linux_agent_pi">Minimal, genişletilebilir kodlama ajanı</string>
+    <string name="linux_agent_hermes">Nous Research’ün ajanı, yaklaşık 2,5 GB</string>
+    <string name="linux_agent_omp">Araç ve eklentileri hazır gelen Pi</string>
+    <string name="linux_agent_ori">OpenRouter’ın kodlama ajanı</string>
+    <string name="linux_agent_muse">Meta’nın kodlama ajanı</string>
+    <string name="linux_agent_kimi">Moonshot AI’ın kodlama ajanı</string>
+    <string name="linux_agent_qwen">Alibaba’nın Qwen kodlama ajanı</string>
+    <string name="linux_agent_mcode">MiniMax’ın kodlama ajanı</string>
+    <string name="linux_agent_kiro">Amazon’un kodlama ajanı</string>
+    <string name="linux_agent_kilo">OpenCode tabanlı açık kaynak ajan</string>
+    <string name="linux_agent_devin">Cognition’ın kodlama ajanı</string>
+    <string name="linux_agent_amp">ampcode.com’dan kodlama ajanı</string>
+    <string name="linux_agent_commandcode">commandcode.ai’dan kodlama ajanı</string>
+
+    <string name="linux_welcome_title">ana ekranında omarchy</string>
+    <string name="linux_welcome_body">Omarchy’nin temaları ve duvar kâğıtları, Android uygulamaların ve ana ekran widget’ları. Arch Linux terminal uygulamaları ve kodlama ajanları ekler; şimdi ya da daha sonra ayarlardan.</string>
+    <string name="linux_welcome_linux">linux</string>
+    <string name="linux_welcome_choice">Arch Linux’u da kur</string>
+    <string name="linux_welcome_choice_detail">terminal uygulamaları, ajanlar, pacman · ~1 GB indirme, 3 GB alan</string>
+    <string name="linux_welcome_start">başla</string>
+    <string name="linux_welcome_start_linux">başla ve linux’u kur</string>
+    <string name="linux_welcome_start_hint">Temanın duvar kâğıdını şimdi, Omarchy’nin diğer temalarını (yaklaşık 70 MB) arka planda indirir.</string>
+    <string name="linux_welcome_start_linux_hint">Linux yaklaşık 1 GB indirir (en iyisi Wi-Fi) ve 3 GB yer kaplar. Arka planda 10–20 dakikada yüklenir; ana ekran hemen hazır olur.</string>
+    <string name="linux_welcome_getting">%1$s indiriliyor</string>
+    <string name="linux_welcome_theme_failed">tema indirilemedi</string>
+    <string name="linux_welcome_wallpaper">duvar kâğıdını indir</string>
+    <string name="linux_welcome_skip">duvar kâğıtları olmadan devam et</string>
+    <string name="linux_welcome_skip_hint">Temanın renkleri yine de uygulanır. Başlatıcı daha sonra tekrar dener; istersen ayarlar › görünüm bölümünden indir.</string>
+
+    <string name="linux_agents_label">kodlama ajanları</string>
+    <string name="linux_agents_hint">Linux ile birlikte yüklemek istediklerini seç. Daha sonra ayarlardan ekleyip kaldırabilirsin.</string>
+    <string name="linux_theme_label">tema</string>
+    <string name="linux_more_themes">diğer temalar ›</string>
+
+    <string name="linux_progress_title">linux kuruluyor</string>
+    <string name="linux_progress_stopped">kurulum durdu</string>
+    <string name="linux_try_again">tekrar dene</string>
+    <string name="linux_cancel_install">yüklemeyi iptal et</string>
+    <string name="linux_progress_background">Bunu kapatıp başlatıcıyı kullanabilirsin; kurulum arka planda devam eder.</string>
+    <string name="linux_output">çıktı</string>
+    <string name="linux_output_less">daha az</string>
+    <string name="linux_output_more">daha fazla</string>
+
+    <string name="linux_title">linux</string>
+    <string name="linux_removing">linux kaldırılıyor…</string>
+    <string name="linux_offer_title">arch linux, isteğe bağlı</string>
+    <string name="linux_offer_body">Linux uygulamaları, terminal widget’ları, kodlama ajanları, pacman ve Dosyalar. Yaklaşık 1 GB indirme ve 3 GB alan; arka planda yüklenir.</string>
+    <string name="linux_install">linux’u yükle</string>
+    <plurals name="linux_install_with_agents">
+        <item quantity="one">linux’u ve %d ajanı yükle</item>
+        <item quantity="other">linux’u ve %d ajanı yükle</item>
+    </plurals>
+    <string name="linux_arch">arch linux</string>
+    <string name="linux_installed_size">yüklü · %1$s</string>
+    <string name="linux_measuring">ölçülüyor…</string>
+    <string name="linux_remove">linux’u kaldır</string>
+    <string name="linux_remove_ask">linux kaldırılsın mı?</string>
+    <string name="linux_remove_body">Linux uygulamalarını, kodlama ajanlarını, paketleri ve Downloads gibi /root içindeki her şeyi siler. Temalar, duvar kâğıtları, widget’lar ve ana ekranın kalır.</string>
+    <string name="linux_remove_confirm">kaldır</string>
+    <string name="linux_cancel">iptal</string>
+    <string name="linux_gpu_title">gpu hızlandırma</string>
+    <string name="linux_gpu_on">açık · %1$s · bundan sonra açılan uygulamalar için</string>
+    <string name="linux_gpu_off_failed">kapalı: GPU bir sistem güncellemesinden sonra kontrolden geçemedi</string>
+    <string name="linux_gpu_waiting">açık · kontrol bekleniyor</string>
+    <string name="linux_gpu_failed">GPU kontrolden geçemedi; uygulamalar yazılımla çizilmeye devam eder</string>
+    <string name="linux_gpu_offer">deneysel · %1$s · daha hızlı OpenGL ve Vulkan uygulamaları ve oyunları; terminal uygulamaları değişmez</string>
+    <string name="linux_retry">tekrar dene</string>
+    <string name="linux_gpu_turn_off">kapat</string>
+    <string name="linux_gpu_turn_on">aç</string>
+    <string name="linux_cpu_pinning_title">hızlı sistem çağrıları</string>
+    <string name="linux_cpu_pinning_on">açık · Linux’u tek bir hızlı CPU çekirdeğinde tutar · bundan sonra başlatılan programlar için</string>
+    <string name="linux_cpu_pinning_off">kapalı · bundan sonra başlatılan programlar için</string>
+    <string name="linux_session_title">oturum</string>
+    <string name="linux_session_running">çalışıyor · Linux uygulamaları, terminaller ve ajanlar çalışır</string>
+    <string name="linux_session_starting">başlatılıyor…</string>
+    <string name="linux_session_stopped">durduruldu · hiçbir şey çalışmaz, hiçbir şey silinmez · yeniden başlatmadan sonra da durdurulmuş kalır</string>
+    <string name="linux_stop">durdur</string>
+    <string name="linux_start">başlat</string>
+    <string name="linux_stop_ask">linux durdurulsun mu?</string>
+    <string name="linux_stop_body">Linux uygulamalarını, terminalleri ve kodlama ajanlarını kapatır, yaptıkları işi sonlandırır. Hiçbir şey silinmez. Linux gerektiren widget’lar ve uygulamalar, sen onu burada tekrar başlatana kadar bekler.</string>
+    <string name="linux_stop_confirm">durdur</string>
+
+    <string name="linux_notification_channel">Linux oturumu</string>
+    <string name="linux_notify_channel">Ajanlar ve betikler</string>
+    <string name="linux_notification_installing">Linux yükleniyor · %1$s</string>
+    <string name="linux_notification_installing_percent">Linux yükleniyor · %%%1$d · %2$s</string>
+    <string name="linux_notification_failed">Linux kurulumu durdu · tekrar denemek için ayarlar › linux’u aç</string>
+    <string name="linux_notification_removing">Linux kaldırılıyor</string>
+    <string name="linux_notification_running">Linux oturumu çalışıyor</string>
+
+    <string name="share_in_saving">linux’a kaydediliyor…</string>
+    <string name="share_in_saved">~/Downloads klasörüne kaydedildi</string>
+    <string name="share_in_failed">linux’a kaydedilemedi</string>
+    <string name="share_in_no_linux">linux henüz kurulmadı</string>
+
+    <string name="packages_title">paketler</string>
+    <string name="packages_search">paket ara</string>
+    <string name="packages_intro">Arch Linux ARM paketleri pacman ile, AUR yay ile. Yükleme sistemi de günceller, bu yüzden biraz sürebilir. AUR paketlerini kullanıcılar gönderir ve cihazda derlenir: önce aur.archlinux.org’daki PKGBUILD’lerine bak.</string>
+    <string name="packages_loading">liste alınıyor…</string>
+    <string name="packages_searching">aranıyor…</string>
+    <string name="packages_installed">yüklü (%1$d)</string>
+    <string name="packages_none">eşleşen paket yok</string>
+    <plurals name="packages_results">
+        <item quantity="one">%d sonuç</item>
+        <item quantity="other">%d sonuç</item>
+    </plurals>
+    <string name="packages_required">gerekli</string>
+    <string name="packages_confirm">onayla</string>
+    <string name="packages_remove">kaldır</string>
+    <string name="packages_install">yükle</string>
+
+    <string name="licenses_title">lisanslar</string>
+    <string name="licenses_header">Omalauncher %1$s · © 2026 Simon Schubert\n\nAşağıdaki açık kaynak yazılımları içerir.</string>
+    <string name="licenses_website">web sitesi</string>
+    <string name="licenses_source">kaynak kod</string>
+    <string name="licenses_use_proot">isteğe bağlı Linux sistemini çalıştırır</string>
+    <string name="licenses_use_talloc">PRoot’un kullandığı bellek ayırıcı</string>
+    <string name="licenses_use_shmem">PRoot için paylaşılan bellek</string>
+    <string name="licenses_use_mesa">isteğe bağlı Linux sisteminde Adreno GPU’larda OpenGL</string>
+    <string name="licenses_use_wayland">Mesa ile gelen protokol dosyaları</string>
+    <string name="licenses_use_omarchy">ilk açılış için gelen tema renkleri</string>
+    <string name="licenses_use_nerd_fonts">sembol yazı tipi</string>
+    <string name="licenses_use_weather_icons">sembol yazı tipindeki hava durumu simgeleri</string>
+    <string name="licenses_use_mdi">sembol yazı tipindeki simgeler</string>
+    <string name="licenses_use_compose">kullanıcı arayüzü</string>
+    <string name="licenses_use_jetpack">activity, Compose ve diğer AndroidX kütüphaneleri</string>
+    <string name="licenses_use_kotlin">dil çalışma zamanı</string>
+    <string name="licenses_use_commons_compress">indirilenleri açar</string>
+    <string name="licenses_use_androidsvg">SVG simgeleri çizer</string>
+    <string name="licenses_use_zxing">widget paylaşımında kullanılan QR kodlarını çizer</string>
+    <string name="licenses_use_json">JSON okur ve yazar</string>
+</resources>

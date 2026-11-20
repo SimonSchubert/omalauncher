@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="style_title">görünüm</string>
+
+    <string name="style_home_screen">ana ekran</string>
+    <string name="style_widgets">widget’lar</string>
+    <string name="style_screens">ekranlar</string>
+    <string name="style_keybar">terminal tuş çubuğu</string>
+    <string name="style_system_bars">sistem çubukları</string>
+    <string name="style_launcher_widgets">başlatıcı &amp; widget’lar</string>
+    <string name="style_theme">tema</string>
+    <string name="style_background">duvar kâğıdı</string>
+    <string name="style_terminal">terminal</string>
+
+    <string name="style_icons">simgeler</string>
+    <string name="style_monochrome">tek renkli</string>
+    <string name="style_colored">renkli</string>
+    <string name="style_icon_pack">simge paketi</string>
+    <string name="style_icon_pack_none">yok</string>
+    <string name="style_home_apps">uygulamalar</string>
+    <string name="style_boxed">kutulu</string>
+    <string name="style_icon_only">yalnızca simge</string>
+    <string name="style_recent_apps">son uygulamalar</string>
+    <string name="style_shown">görünür</string>
+    <string name="style_hidden">gizli</string>
+    <string name="style_empty_page_left">solda boş sayfa</string>
+    <string name="style_empty_page_right">sağda boş sayfa</string>
+    <string name="style_columns">sütunlar</string>
+    <string name="style_pages">sayfalar</string>
+    <string name="style_pages_one">tek</string>
+    <string name="style_pages_auto">otomatik</string>
+    <string name="style_cover_screen">dış ekran</string>
+    <string name="style_cover_upright">dik</string>
+    <string name="style_cover_turned">yatay</string>
+    <string name="style_unfolded">açıkken</string>
+    <string name="style_unfolded_own">ayrı ana ekran</string>
+    <string name="style_unfolded_pages">sayfalar</string>
+    <string name="style_unfolded_columns">açıkken sütunlar</string>
+    <string name="style_corners">köşeler</string>
+    <string name="style_corners_edge">keskin</string>
+    <string name="style_corners_soft">yumuşak</string>
+    <string name="style_corners_round">yuvarlak</string>
+    <string name="style_gaps_in">iç boşluk</string>
+    <string name="style_gaps_out">dış boşluk</string>
+    <string name="style_border_width">kenarlık</string>
+    <string name="style_opacity">opaklık</string>
+    <string name="style_frosted_glass">buzlu cam</string>
+    <string name="style_on">açık</string>
+    <string name="style_off">kapalı</string>
+    <string name="style_status_bar">durum çubuğu</string>
+    <string name="style_bars_background">arka plan</string>
+    <string name="style_font">yazı tipi</string>
+    <string name="style_system_font">sistem varsayılanı</string>
+    <string name="style_text">metin</string>
+    <string name="style_text_smaller">daha küçük</string>
+    <string name="style_text_default">varsayılan</string>
+    <string name="style_text_larger">daha büyük</string>
+    <string name="style_preview">önizleme</string>
+    <string name="style_preview_app">uygulama</string>
+    <string name="style_reset">sıfırla</string>
+    <string name="style_differ_step">style.toml’da farklılar; bir adım hepsini ayarlar</string>
+    <string name="style_differ">farklılar</string>
+    <string name="style_custom">özel: %1$s, style.toml’dan</string>
+    <string name="style_more_settings">kenarlık ve çubuk renkleri gibi daha fazla ayar: %1$s</string>
+
+    <string name="style_keys">tuşlar</string>
+    <string name="style_keybar_removed">kaldırıldı</string>
+    <string name="style_keybar_errors">hatalı</string>
+    <string name="style_keybar_stock">varsayılan</string>
+    <string name="style_keybar_edited">düzenlendi</string>
+    <string name="style_keybar_edit">ajanla düzenle</string>
+    <string name="style_keybar_back_to_stock">varsayılana dön</string>
+    <string name="style_keybar_gone">%1$s yok, bu yüzden varsayılan tuşlar gösteriliyor</string>
+    <string name="style_keybar_restore_title">varsayılan tuşlara dönülsün mü?</string>
+    <string name="style_keybar_restore_message">keybar.owl dosyan, bu başlatıcıyla gelen dosyayla değiştirilir.</string>
+    <string name="style_strip">şerit</string>
+    <string name="style_strip_removed">kaldırıldı</string>
+    <string name="style_strip_stock">varsayılan</string>
+    <string name="style_strip_edited">düzenlendi</string>
+    <string name="style_strip_back_to_stock">varsayılana dön</string>
+    <string name="style_strip_gone">%1$s yok, bu yüzden varsayılan şerit gösteriliyor</string>
+    <string name="style_strip_restore_title">varsayılan şeride dönülsün mü?</string>
+    <string name="style_strip_restore_message">strip.owl dosyan, bu başlatıcıyla gelen dosyayla değiştirilir.</string>
+    <string name="style_replace">değiştir</string>
+
+    <string name="style_browse">göz at</string>
+    <string name="style_install">yükle</string>
+    <string name="style_install_theme">tema yükle</string>
+    <string name="style_install_hint">Bir temanın GitHub deposu. Aynı adlı yüklü bir temanın yerini alır.</string>
+    <string name="style_own_theme">kendi teman</string>
+    <string name="style_update">güncelle</string>
+    <string name="style_remove">kaldır</string>
+    <string name="style_remove_theme_title">%1$s kaldırılsın mı?</string>
+    <string name="style_remove_theme_builtin">Yaptığın değişiklikler silinir; Omarchy’nin sürümü kalır.</string>
+    <string name="style_remove_deleted">Telefondan ve Linux’tan silinir.</string>
+    <string name="style_themes_downloading">Omarchy’nin diğer temaları github.com/omacom/omarchy adresinden indiriliyor (~70 MB).</string>
+    <string name="style_themes_not_installed">Omarchy’nin temaları henüz yüklü değil. github.com/omacom/omarchy adresinden indirilirler (~70 MB).</string>
+    <string name="style_downloading">indiriliyor… %1$d MB</string>
+    <string name="style_failed">başarısız: %1$s</string>
+    <string name="style_retry">tekrar dene</string>
+    <string name="style_download_themes">temaları indir</string>
+
+    <string name="style_add_image">+ resim</string>
+    <string name="style_wallpaper_active">✓ android duvar kâğıdı ve sistem renkleri temayı izliyor (sistem renkleri ekran kapandıktan sonra güncellenir)</string>
+    <string name="style_wallpaper_use">android duvar kâğıdı + sistem renkleri olarak kullan</string>
+    <string name="style_remove_background_title">duvar kâğıdı kaldırılsın mı?</string>
+
+    <string name="style_terminal_hint">bundan sonra açılan terminaller · pacman ile daha fazlası, örneğin ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">klavye önerileri</string>
+    <string name="style_keyboard_suggestions_hint">öneriler, kaydırarak yazma ve dikte; metin terminale kelime kelime ulaşır · klavyenin bir sonraki açılışından itibaren</string>
+    <plurals name="style_terminal_size">
+        <item quantity="one">%1$s pt · dikeyde %2$d sütun</item>
+        <item quantity="other">%1$s pt · dikeyde %2$d sütun</item>
+    </plurals>
+
+    <string name="pages_title">sayfalar</string>
+    <string name="pages_intro">Ana ekranın sayfaları, soldan sağa. Bir sayfayı taşımak için ≡ simgesinden sürükle ya da tuşlarla ≡ simgesini Enter ile tutup oklarla taşı. Ana ekran, kutucuk olan ilk sayfada açılır; ondan önceki tam ekran widget’lar onun solunda durur.</string>
+    <string name="pages_loading">yükleniyor…</string>
+    <string name="pages_remove_named">%1$s kaldırılsın mı?</string>
+    <string name="pages_remove_page">bu sayfa kaldırılsın mı?</string>
+    <string name="pages_remove_face_message">Dosyası widget klasöründeki .removed/ içine taşınır.</string>
+    <string name="pages_remove_tiles_message">%1$s. Widget’ları widget klasöründeki .removed/ içine taşınır; uygulamaları ana ekrandan kalkar ve yüklü kalır.</string>
+    <string name="pages_remove">kaldır</string>
+    <plurals name="pages_apps">
+        <item quantity="one">%1$d uygulama</item>
+        <item quantity="other">%1$d uygulama</item>
+    </plurals>
+    <string name="pages_empty">boş</string>
+    <string name="pages_doesnt_compile">derlenmiyor</string>
+    <string name="pages_face">tam ekran</string>
+    <string name="pages_home">ana ekran</string>
+    <string name="pages_edit">düzenle</string>
+    <string name="pages_share">paylaş</string>
+
+    <string name="gestures_title">hareketler</string>
+    <string name="gestures_swipe_up">yukarı kaydır</string>
+    <string name="gestures_swipe_down">aşağı kaydır</string>
+    <string name="gestures_nothing">hiçbiri</string>
+    <string name="gestures_has_errors">%1$s (hatalı)</string>
+    <string name="gestures_missing">%1$s (eksik)</string>
+    <string name="gestures_edit">düzenle</string>
+    <string name="gestures_hint">paneller owl dosyalarıdır, çekmece de bunlardan biri: onları widget’lar gibi düzenle ya da ana ekranın menüsünden ajanınla yeni bir tane oluştur. yukarı kaydırmaya hiçbir şey atanmadıysa çubuğa dokunmak yine de çekmeceyi açar</string>
+    <string name="gestures_stock_drawer">varsayılan çekmece</string>
+    <string name="gestures_drawer_shows">çekmece olarak %1$s açılır</string>
+    <string name="gestures_swipe_down_nothing">aşağı kaydırma hiçbir şey açmıyor</string>
+    <string name="gestures_until_fixed">düzeltilene kadar %1$s: %2$s</string>
+    <string name="gestures_keybar_until_fixed">düzeltilene kadar varsayılan terminal tuş çubuğu kullanılıyor: %1$s</string>
+    <string name="gestures_strip_until_fixed">düzeltilene kadar varsayılan son uygulamalar şeridi kullanılıyor: %1$s</string>
+
+    <string name="agents_title">kodlama ajanları</string>
+    <string name="agents_intro">Omarchy’nin yaptığı gibi yüklenir, çoğu mise ile. Girişler tarayıcında açılır; anahtarları klavyenin panosuyla yapıştır.</string>
+    <string name="agents_open">aç</string>
+    <string name="agents_remove">kaldır</string>
+    <string name="agents_still_running">%1$s hâlâ çalışıyor: kapat, sonra tekrar kaldır</string>
+    <string name="agents_install">yükle</string>
+</resources>

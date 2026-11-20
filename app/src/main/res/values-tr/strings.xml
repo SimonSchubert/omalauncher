@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omalauncher</string>
+    <string name="wallpaper_label">Omarchy</string>
+    <string name="wallpaper_description">Geçerli Omarchy temasının duvar kâğıdı. Sistem renkleri temayı izler.</string>
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">Terminal</string>
+    <string name="activity_app">Uygulama</string>
+    <string name="activity_files">Dosyalar</string>
+    <string name="activity_voice">Ses</string>
+    <string name="activity_settings">Ayarlar</string>
+    <string name="notification_listener">Omalauncher widget’ları</string>
+</resources>

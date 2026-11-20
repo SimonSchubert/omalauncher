@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="store_widgets_title">widget mağazası</string>
+    <string name="store_apps_title">uygulama mağazası</string>
+    <string name="store_featured">öne çıkanlar</string>
+
+    <string name="store_kind_widgets">widget’lar</string>
+    <string name="store_kind_faces">tam ekran widget’lar</string>
+    <string name="store_kind_apps">uygulamalar</string>
+    <string name="store_kind_panels">paneller</string>
+    <string name="store_kind_keybars">tuş çubukları</string>
+    <string name="store_kind_widget">widget</string>
+    <string name="store_kind_face">tam ekran widget</string>
+    <string name="store_kind_app">uygulama</string>
+    <string name="store_kind_panel">panel</string>
+    <string name="store_kind_keybar">tuş çubuğu</string>
+
+    <string name="store_pick_widget">ne yüklediğini ve çalıştırdığını görmek için bir widget seç</string>
+    <string name="store_pick_face">ne yüklediğini ve çalıştırdığını görmek için bir tam ekran widget seç</string>
+    <string name="store_pick_app">ne yüklediğini ve çalıştırdığını görmek için bir uygulama seç</string>
+    <string name="store_pick_panel">ne yüklediğini ve çalıştırdığını görmek için bir panel seç</string>
+    <string name="store_pick_keybar">ne yüklediğini ve çalıştırdığını görmek için bir tuş çubuğu seç</string>
+    <string name="store_kind_strips">şeritler</string>
+    <string name="store_kind_strip">şerit</string>
+    <string name="store_pick_strip">ne yüklediğini ve çalıştırdığını görmek için bir şerit seç</string>
+
+    <string name="store_search">%2$s içinde ara (%1$d)</string>
+    <string name="store_tab_all">tümü</string>
+    <string name="store_tab_new">yeni</string>
+    <string name="store_tab_installed">yüklü</string>
+    <string name="store_category_other">diğer</string>
+    <string name="store_tab">%1$s %2$d</string>
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <string name="store_builtin">yerleşik</string>
+    <string name="store_terminal">terminal</string>
+    <string name="store_terminal_details">6x4 · bir kabuk</string>
+    <string name="store_agent_details">6x6 · %1$s çalıştırır</string>
+    <string name="store_on_home">✓ ana ekranda</string>
+    <string name="store_tap_to_add">%1$d. sayfaya eklemek için dokun</string>
+
+    <string name="store_reviewed">github.com/%2$s kaynağından incelenmiş %1$s</string>
+    <string name="store_loading">yükleniyor…</string>
+    <string name="store_empty">%1$s: henüz yok</string>
+    <string name="store_no_new">%1$s: yeni bir şey yok</string>
+    <string name="store_none_installed">%1$s: mağazadan yüklenen yok</string>
+    <string name="store_no_match">“%1$s” ile eşleşen bir şey yok</string>
+
+    <string name="store_update_available">güncelleme var</string>
+    <string name="store_installed">✓ yüklü</string>
+    <string name="store_needs_newer">daha yeni bir başlatıcı gerekiyor</string>
+    <string name="store_needs_linux">linux gerekiyor</string>
+    <string name="store_full_screen">tam ekran</string>
+    <plurals name="store_pages">
+        <item quantity="one">%1$d sayfa</item>
+        <item quantity="other">%1$d sayfa</item>
+    </plurals>
+    <string name="store_badge_new">yeni</string>
+
+    <string name="store_needs_newer_detail">daha yeni bir başlatıcı gerekiyor (owl %1$d); yüklemek için başlatıcıyı güncelle</string>
+    <string name="store_may_have_changes">senin değişikliklerini içeriyor olabilir; güncellersen bunların üzerine yazılır</string>
+    <string name="store_you_changed">bunu değiştirdin; güncellersen değişikliklerinin üzerine yazılır</string>
+    <string name="store_update_anyway">yine de güncelle %1$s → %2$s</string>
+    <string name="store_update">güncelle %1$s → %2$s</string>
+    <string name="store_open">aç</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="one">eksik sayfasını ekle</item>
+        <item quantity="other">eksik %1$d sayfasını ekle</item>
+    </plurals>
+    <string name="store_add_to_page">%1$d. sayfaya ekle</string>
+    <string name="store_add_as_face">tam ekran widget olarak ekle</string>
+    <string name="store_install">yükle</string>
+    <string name="store_uninstall">yüklemeyi kaldır</string>
+    <string name="store_remove">kaldır</string>
+    <string name="store_uninstall_confirm">%1$s yüklemesi kaldırılsın mı?</string>
+    <string name="store_remove_confirm">%1$s kaldırılsın mı?</string>
+    <string name="store_remove_file">Dosyası, widget klasöründeki .removed/ klasörüne taşınır.</string>
+    <string name="store_remove_files">Dosyaları, widget klasöründeki .removed/ klasörüne taşınır.</string>
+    <string name="store_changed_since_approval">komutları veya paketleri, onayladığın sürümden bu yana değişti</string>
+
+    <string name="store_added_widget">✓ ana ekranında</string>
+    <string name="store_added_face">✓ ilk sayfanın solunda</string>
+    <string name="store_added_app">✓ uygulama çekmecende</string>
+    <string name="store_added_panel">✓ hareket ayarlarında</string>
+    <string name="store_added_keybar">✓ widget klasöründe</string>
+
+    <string name="store_needs_linux_app">Linux gerekiyor: Arch’ta komut çalıştırır, bu yüzden Linux’u ayarlardan yükleyince uygulama çekmecesinde görünür</string>
+    <string name="store_needs_linux_widget">Linux gerekiyor: Arch’ta komut çalıştırır, bu yüzden Linux’u ayarlardan yükleyene kadar yer tutucu olarak bekler</string>
+
+    <string name="store_installs_packages">yüklediği paketler: %1$s</string>
+    <string name="store_packages_none">yok</string>
+    <string name="store_runs_no_commands">komut çalıştırmaz</string>
+    <string name="store_runs_commands">Arch’ta şu komutları çalıştırır:</string>
+
+    <string name="store_installing">yükleniyor…</string>
+    <string name="store_updating">güncelleniyor…</string>
+    <string name="store_adding_pages">sayfalar ekleniyor…</string>
+    <string name="store_load_failed">mağaza yüklenemedi: %1$s</string>
+    <string name="store_download_mismatch">indirilen dosya incelenen sürümle eşleşmiyor; daha sonra tekrar dene</string>
+    <string name="store_install_failed">yükleme başarısız: %1$s</string>
+
+    <string name="store_shared_title">paylaşılan %1$s</string>
+    <string name="store_shared_fetching">%1$s üzerinden alınıyor…</string>
+    <string name="store_shared_unreadable">okunamıyor</string>
+    <string name="store_shared_not_widget">Bu bağlantıda widget yok: %1$s.</string>
+    <string name="store_shared_unnamed_app">bir uygulama</string>
+    <string name="store_shared_unnamed_widget">bir widget</string>
+    <string name="store_shared_info">seninle paylaşıldı%1$s · %2$.1f KB</string>
+    <string name="store_shared_warning">Yalnızca gönderene güveniyorsan ekle. Aşağıdaki komutları Arch’ta senin adına, dosyalarına ve ağa erişerek çalıştırır.</string>
+    <string name="store_shared_needs_newer">daha yeni bir başlatıcı gerekiyor (owl %1$d); eklemek için başlatıcıyı güncelle</string>
+    <string name="store_shared_replace">önceden paylaşılan %1$s yerine koy</string>
+    <string name="store_add_to_drawer">uygulama çekmecesine ekle</string>
+    <string name="store_add_to_panels">hareket panellerine ekle</string>
+    <string name="store_add_to_widgets_folder">widget klasörüne ekle</string>
+    <string name="store_hide_file">dosyayı gizle</string>
+    <string name="store_show_file">dosyanın tamamını göster</string>
+    <string name="store_review_with_agent">ajanla incele</string>
+
+    <string name="store_share_title">paylaş: %1$s</string>
+    <string name="store_check_secrets">ajanla gizli bilgi kontrolü yap</string>
+    <string name="store_share_unreadable">okunamıyor: %1$s</string>
+    <string name="store_share_too_big">%1$s, %2$d KB sınırını aşıyor; bir başlatıcı daha büyüğünü almaz</string>
+    <string name="store_uploading">gönderiliyor…</string>
+    <string name="store_share_get_code">QR kodu al</string>
+    <string name="store_something_wrong">bir sorun oluştu</string>
+    <string name="store_share_uploads">herkese açık olarak %2$d günlüğüne %1$s sitesine gönderir</string>
+    <string name="store_share_send_link">Ya da bağlantıyı gönder: kalıcıdır, widget’ın tamamı içindedir.</string>
+    <string name="store_share_too_big_link">Bağlantı olarak göndermek için çok büyük: paylaşmanın yolu QR kodu.</string>
+    <string name="store_share_pasted_permanent">Bağlantı %1$s sitesine gider, %2$d gün sonra silinir. Aşağıdaki bağlantı kalıcıdır.</string>
+    <string name="store_share_pasted">Bağlantı %1$s sitesine gider, %2$d gün sonra silinir.</string>
+    <string name="store_share_permanent">Kalıcı: widget’ın tamamı görüntünün içinde.</string>
+    <string name="store_share_code">QR kodunu paylaş</string>
+    <string name="store_share_link">bağlantıyı paylaş</string>
+    <string name="store_copied">kopyalandı</string>
+    <string name="store_copy_link">bağlantıyı kopyala</string>
+    <string name="store_share_subject">%1$s widget’ı</string>
+    <string name="store_share_code_clip">%1$s QR kodu</string>
+    <string name="store_share_chooser">Paylaş: %1$s</string>
+    <string name="store_in_store">mağazada</string>
+    <string name="store_issue_info">github.com/%1$s üzerinde bir issue; incelendikten sonra herkes yükleyebilir.</string>
+    <string name="store_pr_info">Ya da ajanından bir pull request; o bir önizleme de ekleyebilir:</string>
+    <string name="store_create_pr">ajanla pull request oluştur</string>
+    <string name="store_open_issue">GitHub issue aç</string>
+    <string name="store_no_browser">açacak tarayıcı yok: %1$s</string>
+    <string name="store_issue_uploads">inceleme için herkese açık olarak %1$s sitesine gönderir</string>
+    <string name="store_upload_failed">✗ gönderilemedi: %1$s</string>
+
+    <string name="store_pin_title">ana ekrana eklensin mi?</string>
+    <string name="store_pin_from">kaynak: %1$s</string>
+    <string name="store_cancel">iptal</string>
+    <string name="store_add">ekle</string>
+
+    <string name="store_theme_title">topluluk temaları</string>
+    <string name="store_theme_search">%1$d tema içinde ara</string>
+    <string name="store_theme_header">topluluk yapımı, omarchy.org/themes üzerinde listeli · GitHub’dan yüklenir</string>
+    <string name="store_theme_in_use">✓ kullanımda</string>
+    <string name="store_theme_light">açık</string>
+    <string name="store_theme_dark">koyu</string>
+    <plurals name="store_theme_wallpapers">
+        <item quantity="one">%d duvar kâğıdı</item>
+        <item quantity="other">%d duvar kâğıdı</item>
+    </plurals>
+    <string name="store_theme_use">kullan</string>
+    <string name="store_theme_github">GitHub</string>
+    <string name="store_theme_install_message">Kaynak: %1$s. Linux’a renkleri ve duvar kâğıtları gelir; betikleri ve terminal yapılandırmaları gelmez.</string>
+    <string name="store_theme_install_message_replaces">Kaynak: %1$s. Linux’a renkleri ve duvar kâğıtları gelir; betikleri ve terminal yapılandırmaları gelmez.\n\nSenin %2$s temanın yerine geçer.</string>
+    <string name="store_theme_install_message_over">Kaynak: %1$s. Linux’a renkleri ve duvar kâğıtları gelir; betikleri ve terminal yapılandırmaları gelmez.\n\nOmarchy’nin %2$s temasının üzerine gelir; kaldırınca o geri gelir.</string>
+    <string name="store_theme_installing">yükleniyor: %1$s… %2$d MB</string>
+    <string name="store_theme_catalog_failed">omarchy.org/themes yüklenemedi: %1$s</string>
+    <string name="store_theme_page_changed">sayfa değişti ve okunamıyor</string>
+    <string name="store_theme_not_github">GitHub deposu değil: %1$s</string>
+    <string name="store_theme_not_on_github">GitHub’da değil: %1$s</string>
+    <string name="store_theme_no_colors">colors.toml ya da alacritty.toml dosyası yok</string>
+    <string name="store_theme_cant_move">tema yerine taşınamıyor</string>
+</resources>

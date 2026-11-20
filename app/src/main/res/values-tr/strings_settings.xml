@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">ayarlar</string>
+
+    <string name="settings_style">görünüm</string>
+    <string name="settings_style_subtitle">tema, duvar kâğıdı, ana ekran</string>
+    <string name="settings_pages">sayfalar</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="one">%1$d sayfa · sırala, düzenle, kaldır</item>
+        <item quantity="other">%1$d sayfa · sırala, düzenle, kaldır</item>
+    </plurals>
+    <string name="settings_gestures">hareketler</string>
+    <string name="settings_gestures_subtitle">yukarı: %1$s · aşağı: %2$s</string>
+    <string name="settings_language">dil</string>
+    <string name="settings_language_phone">telefonun dili</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">yüklü · kaldır</string>
+    <string name="settings_linux_stopped">yüklü · durduruldu</string>
+    <string name="settings_linux_installing_percent">yükleniyor %%%1$d · %2$s</string>
+    <string name="settings_linux_installing">yükleniyor · %1$s</string>
+    <string name="settings_linux_failed">kurulum durdu · tekrar dene</string>
+    <string name="settings_linux_removing">kaldırılıyor…</string>
+    <string name="settings_linux_not_installed">yüklü değil · terminal uygulamaları ve ajanlar için Arch Linux’u yükle</string>
+    <string name="settings_agents">kodlama ajanları</string>
+    <string name="settings_agents_default">varsayılan: %1$s</string>
+    <string name="settings_agents_install">Claude Code, OpenCode, … yükle</string>
+    <string name="settings_needs_linux">linux gerekir</string>
+    <string name="settings_packages">paketler</string>
+    <string name="settings_packages_subtitle">pacman ve AUR ile Linux uygulamaları ve araçları yükle</string>
+    <string name="settings_home_app">varsayılan ana ekran uygulaması</string>
+    <string name="settings_home_app_subtitle">Omalauncher’ı ana ekranın yap</string>
+    <string name="settings_local_network">yerel ağ</string>
+    <string name="settings_local_network_subtitle">widget’lar ve linux yazıcına, home assistant’a, … erişebilsin</string>
+    <string name="settings_permissions">izinler</string>
+    <string name="settings_permissions_subtitle">mikrofon, konum, dosyalar, …</string>
+
+    <string name="permissions_title">izinler</string>
+    <string name="permissions_folders_title">telefon klasörleri</string>
+    <string name="permissions_folders_about">fotoğraf, indirilenler ve belge klasörlerin linux için: Dosyalar’da, ajanlar ve betikler için de omalauncher üzerinden</string>
+    <string name="permissions_folders_sdcard">linux’un %1$s/Download ya da %1$s/Documents içine kaydettiklerini diğer uygulamalar da görür</string>
+    <string name="permissions_folders_add">klasör ekle</string>
+    <string name="permissions_folders_remove">kaldır</string>
+    <string name="permissions_folders_cant_keep">android, başlatıcının bu klasörü tutmasına izin vermedi</string>
+    <string name="permissions_folders_no_picker">bu telefonda klasör seçici yok</string>
+    <string name="permissions_note">widget’lar ve ajanlar burada açık olan her şeyi kullanabilir. anahtarlar android’de: açmak izin ister, kapatmak android’in ilgili ayarlarını açar</string>
+    <string name="permissions_on">açık · %1$s</string>
+    <string name="permissions_off">kapalı · %1$s</string>
+    <string name="permissions_mic">mikrofon</string>
+    <string name="permissions_mic_uses">giriş çubuğunun mikrofonu, Ses, dinleyen widget’lar</string>
+    <string name="permissions_location">konum</string>
+    <string name="permissions_location_uses">yaklaşık · hava durumu gibi widget’lar, ekrandayken · omalauncher location ile ajanlar</string>
+    <string name="permissions_calendar">takvim</string>
+    <string name="permissions_calendar_uses">etkinliklerin, salt okunur · takvim widget’ları · omalauncher calendar ile ajanlar</string>
+    <string name="permissions_bluetooth">bluetooth</string>
+    <string name="permissions_bluetooth_uses">AirPods pil durumu ve ayarları · AirPods widget’ları · omalauncher airpods ile ajanlar</string>
+    <string name="permissions_notifications">bildirimler</string>
+    <string name="permissions_notifications_uses">çalışırken linux, sana bildirim gönderen widget’lar</string>
+    <string name="permissions_notification_access">bildirim erişimi</string>
+    <string name="permissions_notification_access_uses">widget’lar için bildirim noktaları, çalan içerik ve rahatsız etmeyin</string>
+
+    <string name="settings_android">android ayarları</string>
+    <string name="settings_android_subtitle">telefonun sistem ayarları</string>
+    <string name="settings_licenses">lisanslar</string>
+    <string name="settings_licenses_subtitle">Omalauncher’daki açık kaynak yazılımlar</string>
+
+    <string name="settings_system_updating">sistem güncelleniyor: %1$s…</string>
+    <string name="settings_system_update_failed">bir sistem güncellemesi tamamlanmadı</string>
+    <string name="settings_retry">tekrar dene</string>
+    <string name="settings_system_updates">sistem güncellemeleri</string>
+    <string name="settings_widget_updates">widget’lar</string>
+    <string name="settings_launcher_updates">başlatıcı</string>
+    <string name="settings_launcher_update_available">Google Play’de yeni bir Omalauncher var</string>
+    <string name="settings_launcher_update_failed">Google Play, Omalauncher’ı güncelleyemedi</string>
+    <string name="settings_launcher_update_github">GitHub’da Omalauncher %1$s → %2$s</string>
+    <string name="settings_update_all">tümünü güncelle</string>
+    <string name="settings_check">kontrol et</string>
+    <string name="settings_update">güncelle</string>
+    <string name="settings_updating">güncelleniyor…</string>
+    <string name="settings_checking">kontrol ediliyor…</string>
+    <string name="settings_not_checked">henüz kontrol edilmedi</string>
+    <string name="settings_up_to_date">güncel · son kontrol: %1$s</string>
+    <string name="settings_store_unreachable">mağazaya ulaşılamadı</string>
+    <string name="settings_updates_held">düzenlendiği için burada güncellenmedi: %1$s · birini mağazadan güncellersen değişikliklerin silinir</string>
+    <string name="settings_more_lines">+%1$d daha</string>
+    <string name="settings_just_now">az önce</string>
+    <string name="settings_minutes_ago">%1$d dk önce</string>
+    <string name="settings_hours_ago">%1$d sa önce</string>
+    <string name="settings_days_ago">%1$d gün önce</string>
+</resources>

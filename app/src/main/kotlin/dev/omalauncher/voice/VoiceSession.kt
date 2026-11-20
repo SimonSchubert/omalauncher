@@ -1066,7 +1066,7 @@ class VoiceSession(
             Regex(
                 "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|allow|allowed|approve|go ahead|do it|go|fine|alright|please do|" +
                     "ja|klar|si|sí|vale|claro|oui|ouais|d'accord|d’accord|vas-y|vas y|bien sûr|sim|pode|ya|iya|boleh|oke|да|конечно|давай|хорошо|ладно|можно|" +
-                    "звісно|гаразд|добре|можна)(?![\\p{L}\\p{N}])" +
+                    "звісно|гаразд|добре|можна|evet|tamam|tamamdır|olur|tabii|tabi|elbette|onayla|onaylıyorum|izin ver|devam et)(?![\\p{L}\\p{N}])" +
                     // Ukrainian yes, but only alone: a Russian sentence often starts with it ("so, …").
                     "|так(?=$EDGE$)" +
                     "|是|好|可以|行|对|嗯|はい|ええ|うん|いいよ|どうぞ|お願い)",
@@ -1076,6 +1076,8 @@ class VoiceSession(
             Regex(
                 "^$EDGE(?:no|nope|deny|don't|do not|stop|cancel|never mind|nevermind|nein|non|não|nao|tidak|jangan|" +
                     "non merci|annule|arrête|laisse tomber|pas question|" +
+                    // Turkish İ has no lower case match without UNICODE_CASE, so both are listed.
+                    "hayır|hayır teşekkürler|yok|olmaz|istemiyorum|İstemiyorum|gerek yok|iptal|iptal et|İptal|İptal et|dur|vazgeç|boş ver|yapma|" +
                     "nggak|gak|enggak|нет|не надо|не нужно|стоп|отмена|ні|не треба|скасуй|" +
                     "不要|不用|不行|不|别|算了|いいえ|いや|だめ|ダメ|やめて|キャンセル)$EDGE$",
                 RegexOption.IGNORE_CASE,
@@ -1087,9 +1089,9 @@ class VoiceSession(
          */
         internal val ALWAYS =
             Regex(
-                "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|ja|si|sí|oui|sim|ya|iya|да|так)$EDGE|(?:是|好|はい)$EDGE)?" +
-                    "(?:allow always|always|immer|siempre|toujours|sempre|selalu|всегда|завжди|总是|始终|一直|永远|いつも|常に|ずっと)" +
-                    "(?:$EDGE(?:allow it|allow|erlauben|autoriser|允许|許可))?$EDGE$",
+                "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|ja|si|sí|oui|sim|ya|iya|да|так|evet|tamam)$EDGE|(?:是|好|はい)$EDGE)?" +
+                    "(?:allow always|always|immer|siempre|toujours|sempre|selalu|всегда|завжди|总是|始终|一直|永远|いつも|常に|ずっと|her zaman|hep|daima)" +
+                    "(?:$EDGE(?:allow it|allow|erlauben|autoriser|izin ver|允许|許可))?$EDGE$",
                 RegexOption.IGNORE_CASE,
             )
 

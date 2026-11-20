@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="files_failed">başarısız</string>
+    <string name="files_cant_hand_over">%1$s başka uygulamalara verilemiyor</string>
+    <string name="files_no_app">%1$s dosyasını açacak uygulama yok</string>
+    <string name="files_leads_to_nothing">hedefi yok</string>
+    <string name="files_cant_open">%1$s açılamıyor: %2$s</string>
+    <string name="files_selected">%1$d seçili</string>
+    <string name="files_filter_hint">bu klasörde filtrele</string>
+    <string name="files_home">ana dizin</string>
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">indirilenler</string>
+    <string name="files_place_phone_folders">telefon klasörleri</string>
+    <string name="files_add_phone_folder">telefon klasörü ekle</string>
+    <string name="files_no_phone_folders">henüz telefon klasörü yok: menüden ekle</string>
+    <string name="files_place_system">sistem</string>
+    <string name="files_search">ara</string>
+    <string name="files_more">diğer</string>
+    <string name="files_new_file">yeni dosya</string>
+    <string name="files_new_folder">yeni klasör</string>
+    <string name="files_hide_hidden">gizli dosyaları gizle</string>
+    <string name="files_show_hidden">gizli dosyaları göster</string>
+    <string name="files_open_terminal">burada terminal aç</string>
+    <string name="files_empty_folder">boş klasör</string>
+    <string name="files_no_matches">eşleşen yok</string>
+    <string name="files_create">oluştur</string>
+    <string name="files_rename">yeniden adlandır</string>
+    <string name="files_delete_one">%1$s silinsin mi?</string>
+    <plurals name="files_delete_items">
+        <item quantity="one">%1$d öğe silinsin mi?</item>
+        <item quantity="other">%1$d öğe silinsin mi?</item>
+    </plurals>
+    <string name="files_delete_message">Bu işlem geri alınamaz.</string>
+    <string name="files_delete">sil</string>
+    <plurals name="files_items">
+        <item quantity="one">%1$d öğe</item>
+        <item quantity="other">%1$d öğe</item>
+    </plurals>
+    <string name="files_folder">klasör</string>
+    <string name="files_copy">kopyala</string>
+    <string name="files_cut">kes</string>
+    <string name="files_select_all">tümünü seç</string>
+    <string name="files_edit">düzenle</string>
+    <string name="files_open_with">şununla aç…</string>
+    <string name="files_share">paylaş</string>
+    <string name="files_cancel">iptal</string>
+    <string name="files_move_here">buraya taşı</string>
+    <string name="files_paste_here">buraya yapıştır</string>
+
+    <string name="editor_title">Düzenleyici</string>
+    <string name="editor_cant_read">%1$s okunamıyor: %2$s</string>
+    <string name="editor_cant_save">%1$s kaydedilemiyor: %2$s</string>
+    <string name="editor_not_found">bulunamadı</string>
+    <string name="editor_find_hint">dosyada bul</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">önceki eşleşme</string>
+    <string name="editor_next_match">sonraki eşleşme</string>
+    <string name="editor_save">kaydet</string>
+    <string name="editor_find">bul</string>
+    <string name="editor_no_wrap">satır kaydırmayı kapat</string>
+    <string name="editor_wrap">satır kaydırmayı aç</string>
+    <string name="editor_show_in_files">dosyalarda göster</string>
+    <string name="editor_open_in_micro">micro ile aç</string>
+    <string name="editor_save_confirm">%1$s kaydedilsin mi?</string>
+    <string name="editor_save_confirm_message">Henüz kaydedilmemiş değişikliklerin var.</string>
+    <string name="editor_discard">kaydetme</string>
+    <string name="editor_key_left">sol</string>
+    <string name="editor_key_up">yukarı</string>
+    <string name="editor_key_down">aşağı</string>
+    <string name="editor_key_right">sağ</string>
+    <string name="editor_key_undo">geri al</string>
+    <string name="editor_key_redo">yinele</string>
+    <string name="editor_home_title">düzenleyici</string>
+    <string name="editor_new">yeni</string>
+    <string name="editor_browse">göz at</string>
+    <string name="editor_recent">son kullanılanlar</string>
+    <string name="editor_recent_empty">Düzenlediğin dosyalar burada görünür.</string>
+    <string name="editor_new_file_hint">Linux’ta bir yol</string>
+
+    <string name="prompt_listening">dinliyor…</string>
+    <string name="prompt_hint_apps">bir uygulama aç…</string>
+    <string name="prompt_hint_ask">aç ya da %1$s ile konuş…</string>
+    <string name="prompt_enter_ask">⏎ sor</string>
+    <string name="prompt_agent">ajan</string>
+    <string name="prompt_manage_agents">"  ajanları yönet…"</string>
+
+    <string name="prompt_speech_no_recognizer">bu telefonda konuşma tanıyıcı yok</string>
+    <string name="prompt_speech_refused">telefonun konuşma tanıyıcısı diğer uygulamaların onu kullanmasına izin vermiyor</string>
+    <string name="prompt_speech_failed">konuşma tanıma başarısız oldu (%1$d)</string>
+    <string name="prompt_speech_language">konuşma tanıma bu dilde kullanılamıyor</string>
+    <string name="prompt_speech_not_downloaded">bu dil için konuşma tanıma bu telefona indirilmemiş</string>
+    <string name="prompt_speech_mic_permission">mikrofon izni gerekli</string>
+    <string name="prompt_speech_network">konuşma tanıma için ağ bağlantısı gerekli</string>
+</resources>

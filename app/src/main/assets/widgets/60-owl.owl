@@ -68,6 +68,11 @@ widget "owl" {
       music: "musique"; minutes: n => "${n} min"; hours: n => "${n} h"
       day: d => "jour ${d}"; tiredShort: b => "fatiguée · ${b} %"; tired: b => "fatiguée · batterie ${b} %"; fed: t => "nourrie il y a ${t}"
     }
+    tr {
+      eggShort: "dokun, çıksın"; egg: "bir yumurta · dokun, yumurtadan çıksın"; hungryShort: "dokun, besle"; hungry: "acıktım · dokun, besle"
+      music: "müzik"; minutes: n => "${n} dk"; hours: n => "${n} sa"
+      day: d => "${d}. gün"; tiredShort: b => "yorgun · %${b}"; tired: b => "yorgun · pil %${b}"; fed: t => "${t} önce yedi"
+    }
   }
 
   source now = clock every 1s

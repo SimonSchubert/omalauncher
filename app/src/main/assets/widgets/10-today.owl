@@ -319,6 +319,40 @@ widget "today" {
         "Last Quarter": "dernier quartier", "Waning Crescent": "dernier croissant"
       }, phase, lower(phase)) + " · éclairée à ${lit} %"
     }
+    tr {
+      title: "hava durumu"; loading: "hava durumu…"; offline: "hava durumu çevrimdışı"; city: "şehir · boş = otomatik"; here: "konumumu kullan"
+      feels: "hissedilen"; humidity: "nem"; rainToday: "bugün yağış"; uv: "uv indeksi"; pressure: "basınç"
+      visibility: "görüş"; next24: "önümüzdeki 24 saat"; now: "şimdi"; days: "3 gün"; today: "bugün"
+      sunrise: "gün doğumu"; sunset: "gün batımı"; moon: "ay"; kmh: "km/sa"; yr: "yr.no’yu aç ↗"
+      sky: (code, desc) => get({
+        "113": "açık", "116": "parçalı bulutlu", "119": "bulutlu", "122": "kapalı", "143": "pus",
+        "176": "yer yer yağmur", "179": "yer yer kar", "182": "yer yer sulu kar", "185": "yer yer donan çisenti",
+        "200": "gök gürültülü", "227": "kar savruluyor", "230": "tipi", "248": "sis", "260": "donan sis",
+        "263": "yer yer hafif çisenti", "266": "hafif çisenti", "281": "donan çisenti", "284": "kuvvetli donan çisenti",
+        "293": "yer yer hafif yağmur", "296": "hafif yağmur", "299": "ara ara orta yağmur", "302": "orta yağmur",
+        "305": "ara ara kuvvetli yağmur", "308": "kuvvetli yağmur", "311": "hafif donan yağmur", "314": "kuvvetli donan yağmur",
+        "317": "hafif sulu kar", "320": "kuvvetli sulu kar", "323": "yer yer hafif kar", "326": "hafif kar",
+        "329": "yer yer orta kar", "332": "orta kar", "335": "yer yer yoğun kar", "338": "yoğun kar",
+        "350": "buz taneleri", "353": "hafif sağanak", "356": "kuvvetli sağanak", "359": "şiddetli sağanak",
+        "362": "hafif sulu kar sağanağı", "365": "kuvvetli sulu kar sağanağı", "368": "hafif kar sağanağı",
+        "371": "kuvvetli kar sağanağı", "374": "hafif buz tanesi sağanağı", "377": "kuvvetli buz tanesi sağanağı",
+        "386": "hafif yağmur ve gök gürültüsü", "389": "kuvvetli yağmur ve gök gürültüsü", "392": "hafif kar ve gök gürültüsü",
+        "395": "yoğun kar ve gök gürültüsü"
+      }, code, lower(trim(desc)))
+      // Where the wind comes from, in eight points: the sixteen's in-between ones go to the nearer of the four.
+      wind: dir => get({
+        "N": "kuzeyden", "NNE": "kuzeyden", "NE": "kuzeydoğudan", "ENE": "doğudan", "E": "doğudan", "ESE": "doğudan",
+        "SE": "güneydoğudan", "SSE": "güneyden", "S": "güneyden", "SSW": "güneyden", "SW": "güneybatıdan", "WSW": "batıdan",
+        "W": "batıdan", "WNW": "batıdan", "NW": "kuzeybatıdan", "NNW": "kuzeyden"
+      }, dir, "rüzgâr ${lower(dir)}")
+      uvLevel: uv => uv >= 8 ? "çok yüksek" : uv >= 6 ? "yüksek" : uv >= 3 ? "orta" : "düşük"
+      // Turkish puts the percent sign before the number.
+      phase: (phase, lit) => get({
+        "New Moon": "yeni ay", "Waxing Crescent": "büyüyen hilal", "First Quarter": "ilk dördün",
+        "Waxing Gibbous": "büyüyen şişkin ay", "Full Moon": "dolunay", "Waning Gibbous": "küçülen şişkin ay",
+        "Last Quarter": "son dördün", "Waning Crescent": "küçülen hilal"
+      }, phase, lower(phase)) + " · %${lit} aydınlık"
+    }
   }
 
   source now = clock every 1m

@@ -192,6 +192,25 @@ widget "fetch" {
         "failing": "défaillant", "wireless": "sans fil", "dock": "station d’accueil"
       }, w, w)
     }
+    tr {
+      uptime: "uptime"; packages: "paketler"; display: "ekran"; theme: "tema"; memory: "bellek"; disk: "disk"
+      battery: "pil"; apps: "uygulamalar"; byDefault: "varsayılan"; phone: "telefon"; device: "cihaz"; hardware: "donanım"
+      network: "ağ"; launcher: "başlatıcı"; security: "güvenlik"; build: "derleme"; locale: "dil"; cores: "çekirdek"
+      storage: "depolama"; speed: "hız"; received: "alınan"; sent: "gönderilen"; mobile: "mobil"
+      level: "şarj"; temperature: "sıcaklık"; voltage: "voltaj"; health: "sağlık"; cycles: "döngü"
+      technology: "teknoloji"; version: "sürüm"; explicit: "elle yüklenen"; upgraded: "son güncelleme"; never: "hiç yapılmadı"
+      unknown: "bilinmiyor"; installLinux: "linux’u yükle"
+      notInstalled: "yüklü değil. arch linux arm, başlatıcıya bir terminal, ajanlar ve pacman ekler."
+      upTo: ghz => " · en fazla ${ghz} GHz"
+      androidApps: n => "${n} android uygulaması"
+      appCount: n => "${n} uygulama"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "şarj oluyor", "plugged in": "takılı", "on battery": "pille çalışıyor", "good": "iyi",
+        "overheating": "aşırı ısınma", "dead": "arızalı", "over voltage": "aşırı voltaj", "cold": "soğuk",
+        "failing": "zayıflıyor", "wireless": "kablosuz", "dock": "yuva"
+      }, w, w)
+    }
   }
 
   // The phone, from Android: works without Linux.
