@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Captures the Play listing's screens (store/screenshots/raw/<language>/, framed by store/screenshots/frame.html and
 # scripts/render-screenshots.sh): home screens and a face in several themes with widgets from the widget store,
-# and a few screens beyond home, in each of the launcher's languages (LANGS, default all nine; the launcher's own
-# language pick is set for the run).
+# and a few screens beyond home, in each of the launcher's languages (LANGS, default all but French, which has no
+# conversation or notification here yet; the launcher's own language pick is set for the run).
 #
 # The display is set to 1080x2400 for the run, a usual 20:9 phone screen, which frame.html shows scaled down
 # under its caption. System UI demo mode keeps the clock and icons tidy.
@@ -28,7 +28,7 @@ export ANDROID_SERIAL="${ANDROID_SERIAL:-emulator-5562}"
 RAW="$HERE/../store/screenshots/raw"
 L10N="$HERE/../store/screenshots/l10n"
 RES="$HERE/../app/src/main/res"
-LANGS=(${LANGS:-en id es pt de zh ru ja uk})
+LANGS=(${LANGS:-en id es pt de zh ru ja uk tr it})
 SHIMS=files/arch/root/.local/share/mise/shims
 PKG=dev.omalauncher
 DATA=/data/data/$PKG
@@ -278,8 +278,9 @@ for scene in "${SCENES[@]}"; do
   read -r shot theme widgets <<<"$scene"
   if [ $# -gt 0 ] && [[ " $* " != *" $shot "* ]]; then continue; fi
   adb shell am force-stop $PKG
-  # A bare home: no widgets, no layout, no pinned apps, and RECENT for recent apps.
-  app "rm -f files/widgets/*.owl shared_prefs/widget_grid.xml shared_prefs/shortcuts.xml"
+  # A bare home: no widgets, no layout, no pinned apps, and RECENT for recent apps. The stock panels stay, or the
+  # style screen says the recent apps strip was removed.
+  app "for f in files/widgets/*.owl; do case \${f##*/} in drawer.owl|keybar.owl|strip.owl|controls.owl) ;; *) rm -f \$f ;; esac; done; rm -f shared_prefs/widget_grid.xml shared_prefs/shortcuts.xml"
   usage "${RECENT[@]}"
   adb shell am start -n $PKG/.MainActivity --es theme "$theme" >/dev/null
   sleep 3
