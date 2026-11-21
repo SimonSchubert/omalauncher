@@ -1,0 +1,1 @@
+1.8.1. The launcher comes in Turkish and Italian. Fixes: Linux commands no longer keep running at full CPU after Android stops Linux in the background, and the update check no longer keeps saying it couldn't reach the mirrors after an interrupted check.

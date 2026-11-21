@@ -6,6 +6,14 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.8.1 (versionCode 42) – 2026-11-21
+
+- The launcher comes in Turkish and Italian, with Turkish and Italian store listings.
+- Fix: Linux commands no longer keep running at full CPU after Android kills a Linux process under
+  them in the background (its phantom process killer); proot now takes every Linux process with it (#317).
+- Fix: the update check no longer says "couldn't reach the mirrors" until a restart after Android
+  killed a check in the middle of its sync (#322).
+
 ## 1.8.0 (versionCode 41) – 2026-11-19
 
 - The app drawer starts with an app store tile: the store is now a widget store and an app store,
