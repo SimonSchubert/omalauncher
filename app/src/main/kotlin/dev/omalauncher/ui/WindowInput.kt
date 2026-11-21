@@ -1,8 +1,13 @@
 package dev.omalauncher.ui
 
+import android.os.Build
+import android.view.MotionEvent
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isPrimaryPressed
@@ -61,6 +66,16 @@ private suspend fun PointerInputScope.handlePointer(
         val start = change.position
         val hit = window.hitTest(start.x, start.y)
         change.consume()
+        // A touchpad's two-finger scroll comes as one finger dragging under the cursor. It is a
+        // scroll, also for clients with wl_touch: VS Code and other Chromium apps don't scroll on a
+        // touch drag, and a touchpad isn't a touch on the window anyway.
+        if (Build.VERSION.SDK_INT >= 34 && event.classification == MotionEvent.CLASSIFICATION_TWO_FINGER_SWIPE) {
+            if (hit != null) {
+                wm.pointerMove(hit)
+                touchpadScroll(wm, change.id, start, hit.scale)
+            }
+            continue
+        }
         if (!wm.onPress(window, hit) || hit == null) continue
 
         // Clients with wl_touch (foot, GTK) get real touch: foot turns hold-and-drag into selection.
@@ -129,6 +144,26 @@ private suspend fun PointerInputScope.handlePointer(
             last = c.position
         }
     }
+}
+
+/** Scrolls the surface under the pointer as the touchpad's swipe moves, until the fingers lift. */
+private suspend fun AwaitPointerEventScope.touchpadScroll(
+    wm: WindowManager,
+    id: PointerId,
+    start: Offset,
+    scale: Float,
+) {
+    var last = start
+    while (true) {
+        val c = awaitPointerEvent().changes.firstOrNull { it.id == id } ?: break
+        if (c.isConsumed) break
+        c.consume()
+        if (!c.pressed) break
+        val d = c.position - last
+        wm.scroll(-d.x / scale, -d.y / scale, AXIS_SOURCE_FINGER)
+        last = c.position
+    }
+    wm.scrollStop()
 }
 
 private fun handleMouse(
