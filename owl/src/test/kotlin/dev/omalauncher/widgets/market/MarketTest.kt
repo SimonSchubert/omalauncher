@@ -33,6 +33,16 @@ class MarketTest {
         assertTrue(Review("widgets/simon/disk/widget.owl", shader(20)).errors.single().contains("2,000 turns"))
     }
 
+    @Test fun aHeavyShaderIsRefusedInAPanelAndAStripToo() {
+        val heavy =
+            "Shader { code: \"half4 main(float2 p) { float a = 0.0; for (int j = 0; j < 100; j++) for (int i = 0; i < 20; i++) a += p.x; return half4(a); }\" }"
+        for (kind in listOf("panel", "strip", "keybar")) {
+            val source = "$kind \"x\" {\n  meta { owl: ${Compiler.LEVEL}; description: \"d\"; version: \"1.0\"; license: \"MIT\" }\n  $heavy\n}"
+            val errors = Review("${kind}s/simon/x/$kind.owl", source).errors
+            assertTrue("$kind: $errors", errors.any { it.startsWith("a Shader: ") && it.contains("2,000 turns") })
+        }
+    }
+
     @Test fun aGoodWidgetPasses() {
         val r = Review("widgets/simon/disk/widget.owl", good)
         assertEquals(emptyList<String>(), r.errors)

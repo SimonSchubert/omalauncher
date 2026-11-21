@@ -613,6 +613,7 @@ class Compiler private constructor(
             programs = scripts.flatMap(ShellWords::programs).toSortedSet(),
             animated = animated,
             terminal = terminal,
+            shaders = shaders,
             nodeCount = nodes,
             kind = ast.kind,
         )
@@ -665,6 +666,7 @@ class Compiler private constructor(
             programs = scripts.flatMap(ShellWords::programs).toSortedSet(),
             animated = animated,
             terminal = terminal,
+            shaders = shaders,
             nodeCount = nodes,
             kind = ast.kind,
         )
