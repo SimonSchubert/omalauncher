@@ -35,6 +35,7 @@
     <string name="linux_error_move_download">indirilen dosya yerine taşınamıyor</string>
     <string name="linux_error_cant_run">Linux burada komut çalıştıramıyor (çıkış kodu %1$d)</string>
     <string name="linux_error_kernel">bu telefonun kernel’i, Linux programlarının başka programları başlatmasını engelliyor, bu yüzden kurulum devam edemiyor. 4.14 kernel’li özel ROM’ların, bakımcılarından 05b289263772 kernel commit’ini alması gerekir; github issue #105’e bak</string>
+    <string name="linux_error_ptrace">bu telefon, başlatıcının kendi programlarını izlemesine (ptrace) izin vermiyor ve Linux bu olmadan çalışamıyor. GrapheneOS’ta telefonun ayarları › uygulamalar › Omalauncher › exploit koruması bölümünden başlatıcı için yerel kod hata ayıklamasına izin ver, sonra tekrar dene</string>
     <string name="linux_error_command">`%1$s` başarısız oldu (çıkış kodu %2$d)</string>
     <string name="linux_error_cliamp_mismatch">cliamp indirmesi şununla eşleşmiyor: %1$s</string>
     <string name="linux_error_cant_replace">değiştirilemiyor: %1$s</string>

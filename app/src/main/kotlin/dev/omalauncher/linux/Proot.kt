@@ -12,6 +12,8 @@ import dev.omalauncher.upgrade.Policy
 import java.io.File
 import kotlin.concurrent.thread
 
+internal fun ptraceRefused(output: String) = output.lineSequence().any { it.startsWith("proot error: ptrace(TRACEME)") }
+
 /** Paths and process launching for the proot'd Arch rootfs. */
 class Proot(
     private val context: Context,

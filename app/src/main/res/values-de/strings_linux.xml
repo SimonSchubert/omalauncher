@@ -35,6 +35,7 @@
     <string name="linux_error_move_download">kann den download nicht an seinen platz schieben</string>
     <string name="linux_error_cant_run">Linux kann hier keine befehle ausführen (exit %1$d)</string>
     <string name="linux_error_kernel">der kernel dieses smartphones lässt Linux-programme keine anderen programme starten, deshalb geht\'s mit der einrichtung nicht weiter. custom ROMs mit 4.14-kernel brauchen von ihrem maintainer den kernel-commit 05b289263772; siehe github issue #105</string>
+    <string name="linux_error_ptrace">dieses smartphone lässt den launcher seine eigenen programme nicht überwachen (ptrace), und ohne das läuft Linux nicht. auf GrapheneOS: erlaube dem launcher das debuggen von nativem code in den einstellungen des smartphones › apps › Omalauncher › exploit-schutz und versuch\'s dann nochmal</string>
     <string name="linux_error_command">`%1$s` ist schiefgegangen (exit %2$d)</string>
     <string name="linux_error_cliamp_mismatch">cliamp-download passt nicht zu %1$s</string>
     <string name="linux_error_cant_replace">kann %1$s nicht ersetzen</string>
