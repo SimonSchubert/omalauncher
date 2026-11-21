@@ -1237,7 +1237,9 @@ class WidgetEngine(
                 "Home-screen widgets are `.owl` files in " +
                 "~/$GUEST_DIR, written in a small declarative language documented in README.md there (and docs/ next to it); so are apps for the " +
                 "app drawer (`app \"name\" { }`) and panels that swiping up or down on home opens (`panel \"name\" { }`, picked with " +
-                "gestures.swipe-up and gestures.swipe-down in ~/${StyleStore.GUEST_DIR}/style.toml). The app drawer is the panel " +
+                "gestures.swipe-up and gestures.swipe-down in ~/${StyleStore.GUEST_DIR}/style.toml). When the user asks for an " +
+                "app, a game or a tool for the phone, write it as an owl app unless they ask for something else, such as a web page " +
+                "or a Linux program; README.md lists games and other examples to start from. The app drawer is the panel " +
                 "drawer.owl there: to change the drawer, edit it; .stock-drawer.owl is the drawer as this launcher ships it. " +
                 "Likewise keybar.owl (`keybar \"name\" { }`) is the terminal key bar over the soft keyboard while typing in a terminal, " +
                 "and .stock-keybar.owl the bar as shipped; strip.owl (`strip \"name\" { }`) is the strip of recent apps above home's " +
