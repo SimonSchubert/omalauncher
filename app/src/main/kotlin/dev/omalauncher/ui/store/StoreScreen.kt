@@ -425,6 +425,11 @@ private fun listed(
 ): List<Listed> = market.entries.map { Listed(market, it) } + faces?.let { f -> f.entries.map { Listed(f, it) } }.orEmpty()
 
 /** The entries [filter]'s tab and search leave of [market]'s and [faces]', in the order the grid shows them. */
+/** Whether [text] contains [query], ignoring case and with - and _ read as spaces: "now playing" finds now-playing. */
+internal fun searchMatches(query: String, text: String): Boolean = words(query) in words(text)
+
+private fun words(s: String): String = s.lowercase().replace('-', ' ').replace('_', ' ')
+
 private fun shownEntries(
     market: Market,
     faces: Market?,
@@ -443,7 +448,7 @@ private fun shownEntries(
                 OTHER -> m === market && e.category == null
                 else -> m === market && e.category == filter.tab
             }
-        }.filter { (_, e) -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { q in it.lowercase() } }
+        }.filter { (_, e) -> q.isEmpty() || listOf(e.name, e.description, e.author, e.category.orEmpty()).any { searchMatches(q, it) } }
         // Newest first; a stable sort, so a day's widgets keep the catalog's order.
         .let { l -> if (filter.tab == NEW) l.sortedByDescending { it.e.added } else l }
 }
