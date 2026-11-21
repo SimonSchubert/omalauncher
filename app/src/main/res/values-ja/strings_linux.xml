@@ -127,6 +127,9 @@
     <string name="linux_cpu_pinning_title">高速システムコール</string>
     <string name="linux_cpu_pinning_on">オン · Linux を高速な CPU コアひとつに固定 · これから起動するプログラムに適用</string>
     <string name="linux_cpu_pinning_off">オフ · これから起動するプログラムに適用</string>
+    <string name="linux_zero_copy_title">GPU のフレームをコピーなしで表示</string>
+    <string name="linux_zero_copy_off">オフ · 試験運用版 · GPU アプリが画面に表示されるバッファへ直接描画します。より滑らかで CPU 負荷も減ります · これから開くアプリに適用</string>
+    <string name="linux_zero_copy_on">オン · 試験運用版 · GPU アプリのウィンドウが黒くなったり崩れたりしたらオフにしてください · これから開くアプリに適用</string>
     <string name="linux_session_title">セッション</string>
     <string name="linux_session_running">実行中 · Linux アプリ、ターミナル、エージェントが使えます</string>
     <string name="linux_session_starting">起動中…</string>

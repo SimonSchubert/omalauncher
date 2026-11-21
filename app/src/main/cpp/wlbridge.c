@@ -17,7 +17,9 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#define TAG "wlbridge"
+#include "wlbridge.h"
+
+#define TAG WL_TAG
 #define MAX_FDS 28
 #define FN(name) Java_dev_omalauncher_wayland_Native_##name
 
@@ -239,17 +241,7 @@ JNIEXPORT jint JNICALL FN(storeCopy)(JNIEnv *env, jclass cls, jlong shm, jint of
 
 // --- windows ---------------------------------------------------------------
 //
-// One Linux window's Android surface. A frame is begin (lock the dirty rect,
-// clear it), a blit per visible surface, bottom to top, then end (post).
-
-typedef struct {
-    ANativeWindow *window;
-    ANativeWindow_Buffer buf;
-    ARect dirty;
-    int locked;
-    // Keeps alpha, premultiplied, for what's behind the view to show through.
-    int translucent;
-} Window;
+// Window (wlbridge.h): one Linux window's Android surface.
 
 JNIEXPORT jlong JNICALL FN(windowCreate)(JNIEnv *env, jclass cls, jobject surface, jint width, jint height, jboolean translucent) {
     ANativeWindow *w = ANativeWindow_fromSurface(env, surface);
@@ -313,24 +305,34 @@ JNIEXPORT jboolean JNICALL FN(windowBegin)(JNIEnv *env, jclass cls, jlong ptr, j
 // locked rect. Premultiplied source-over unless the store is opaque.
 JNIEXPORT void JNICALL FN(windowBlit)(JNIEnv *env, jclass cls, jlong ptr, jlong store, jint dx, jint dy, jint dw, jint dh,
                                       jboolean opaque) {
-    Window *win = (Window *) (intptr_t) ptr;
     Store *st = (Store *) (intptr_t) store;
-    if (!win->locked || !st || dw <= 0 || dh <= 0) return;
+    if (!st) return;
+    // A store's alpha is already 255 wherever it's opaque: no need to force it.
+    wl_blit((Window *) (intptr_t) ptr, st->px, st->width, st->height, st->width, st->translucent && !opaque, dx, dy, dw, dh, 0);
+}
+
+void wl_blit(Window *win, const uint32_t *pixels, int sw, int sh, int stride, int translucent, int dx, int dy, int dw, int dh,
+             int force_opaque) {
+    if (!win->locked || dw <= 0 || dh <= 0 || sw <= 0 || sh <= 0) return;
     int x0 = max_i(dx, win->dirty.left), y0 = max_i(dy, win->dirty.top);
     int x1 = min_i(dx + dw, win->dirty.right), y1 = min_i(dy + dh, win->dirty.bottom);
     if (x0 >= x1 || y0 >= y1) return;
-    opaque = opaque || !st->translucent;
+    int opaque = force_opaque || !translucent;
+    // Only a window that keeps alpha cares what's in an X format's alpha byte.
+    int fix_alpha = force_opaque && win->translucent;
     uint32_t *px = win->buf.bits;
-    int scaled = dw != st->width || dh != st->height;
-    // 16.16 fixed-point steps from window to store pixels.
-    uint32_t sx = ((uint32_t) st->width << 16) / (uint32_t) dw;
-    uint32_t sy = ((uint32_t) st->height << 16) / (uint32_t) dh;
+    int scaled = dw != sw || dh != sh;
+    // 16.16 fixed-point steps from window to source pixels.
+    uint32_t sx = ((uint32_t) sw << 16) / (uint32_t) dw;
+    uint32_t sy = ((uint32_t) sh << 16) / (uint32_t) dh;
     for (int y = y0; y < y1; y++) {
         int srcY = scaled ? (int) (((uint32_t) (y - dy) * sy) >> 16) : y - dy;
-        const uint32_t *src = st->px + (size_t) srcY * st->width;
+        const uint32_t *src = pixels + (size_t) srcY * stride;
         uint32_t *dst = px + (size_t) y * win->buf.stride;
         if (!scaled && opaque) {
             memcpy(dst + x0, src + (x0 - dx), (size_t) (x1 - x0) * 4);
+            if (fix_alpha)
+                for (int x = x0; x < x1; x++) dst[x] |= 0xff000000u;
             continue;
         }
         for (int x = x0; x < x1;) {
@@ -347,7 +349,7 @@ JNIEXPORT void JNICALL FN(windowBlit)(JNIEnv *env, jclass cls, jlong ptr, jlong 
             uint32_t s = src[scaled ? (int) (((uint32_t) (x - dx) * sx) >> 16) : x - dx];
             uint32_t a = s >> 24;
             if (opaque || a == 255) {
-                dst[x] = s;
+                dst[x] = fix_alpha ? s | 0xff000000u : s;
             } else if (a != 0 && win->translucent) {
                 uint32_t d = dst[x], k = 255 - a;
                 uint32_t rb = ((d & 0x00ff00ffu) * k + 0x00800080u) >> 8 & 0x00ff00ffu;

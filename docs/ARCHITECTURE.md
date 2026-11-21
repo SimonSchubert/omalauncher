@@ -73,6 +73,18 @@ snapshots the surface tree, redraws only the dirty region of the SurfaceView
 callbacks. Hidden windows get no frame callbacks, so their clients stop
 drawing.
 
+GPU clients can render into buffers of ours instead (`oma_ahb_allocator_v1`,
+a private protocol in `scripts/zero-copy/oma-ahb-v1.xml`): the compositor
+allocates AHardwareBuffers, hands out their dma-bufs, and the client attaches
+them as wl_buffers. It offers RGBA everywhere and BGRA (which zink renders
+into) only with an Adreno GPU: on Mali, SurfaceFlinger aborts when it has to
+draw a BGRA buffer itself (a screenshot, an animation). The renderer shows
+such a surface as a child layer of the SurfaceView's surface
+(`ASurfaceControl`, `cpp/ahb.c`), which the display composes without a copy;
+a buffer goes back to the client once the display let go of it. Where that
+can't work, in a TextureView tile or with shm content over the buffer (it
+would end up beneath it), the buffer is copied in like shm content.
+
 ## Browser tiles
 
 A widget's `Browser` node draws an Android System WebView inside the tile
@@ -110,8 +122,15 @@ the compositor only offers `wl_shm`, stock Mesa clears zink after the Wayland
 DRM path fails, and the shm buffer stays black while frames still count.
 `MESA_LOADER_DRIVER_OVERRIDE=zink` keeps zink set so kopper presents through
 Vulkan WSI. The patched libraries live under `/usr/local/omalauncher-mesa`,
-off the default linker path. Frames still arrive as wl_shm buffers
-(`MESA_VK_WSI_DEBUG=sw`), so the compositor is the same either way.
+off the default linker path. Frames arrive as wl_shm buffers
+(`MESA_VK_WSI_DEBUG=sw`), unless the user turns on the experimental "gpu
+frames without copies" under it (`Gpu.zeroCopy`, off by default): then apps
+started afterwards get `OMA_ZERO_COPY=1`, which loads the Vulkan layer the
+launcher keeps in `/usr/local` (`scripts/zero-copy/oma_zero_copy_layer.c`,
+built into `assets/zero-copy` by `scripts/zero-copy/build.sh`, installed as
+managed files). It puts Wayland swapchains into the compositor's buffers
+(see Rendering) and leaves what it can't take to the driver's `sw` path. One
+app can opt out with `OMA_ZERO_COPY_DISABLE=1 app`.
 
 `linux/Gpu.kt` only switches guest apps to the GPU (`Proot.graphicsEnv`)
 after a check passes (vulkaninfo finds PanVK or Turnip, eglinfo gets zink),

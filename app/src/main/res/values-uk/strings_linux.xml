@@ -133,6 +133,9 @@
     <string name="linux_cpu_pinning_title">швидкі системні виклики</string>
     <string name="linux_cpu_pinning_on">увімк · тримає Linux на одному швидкому ядрі CPU · для програм, запущених відтепер</string>
     <string name="linux_cpu_pinning_off">вимк · для програм, запущених відтепер</string>
+    <string name="linux_zero_copy_title">кадри gpu без копіювання</string>
+    <string name="linux_zero_copy_off">вимк · експериментально · додатки на GPU малюють просто в те, що показує екран: плавніше й менше навантаження на CPU · для додатків, відкритих відтепер</string>
+    <string name="linux_zero_copy_on">увімк · експериментально · якщо вікно додатка на GPU стало чорним або спотвореним, вимкніть це · для додатків, відкритих відтепер</string>
     <string name="linux_session_title">сеанс</string>
     <string name="linux_session_running">працює · додатки Linux, термінали й агенти доступні</string>
     <string name="linux_session_starting">запускається…</string>

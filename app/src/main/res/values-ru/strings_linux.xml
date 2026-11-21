@@ -133,6 +133,9 @@
     <string name="linux_cpu_pinning_title">быстрые системные вызовы</string>
     <string name="linux_cpu_pinning_on">вкл · Linux работает на одном быстром ядре процессора · для программ, запущенных после включения</string>
     <string name="linux_cpu_pinning_off">выкл · для программ, запущенных после выключения</string>
+    <string name="linux_zero_copy_title">кадры gpu без копирования</string>
+    <string name="linux_zero_copy_off">выкл · экспериментально · приложения на GPU рисуют прямо в то, что показывает экран: плавнее и меньше нагрузка на процессор · для приложений, открытых после включения</string>
+    <string name="linux_zero_copy_on">вкл · экспериментально · если окно приложения на GPU стало чёрным или искажённым, выключите это · для приложений, открытых после включения</string>
     <string name="linux_session_title">сеанс</string>
     <string name="linux_session_running">работает · Linux-приложения, терминалы и агенты доступны</string>
     <string name="linux_session_starting">запускается…</string>

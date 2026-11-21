@@ -9,6 +9,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.storage.LauncherData
 import dev.omalauncher.R
+import dev.omalauncher.upgrade.Managed
+import dev.omalauncher.upgrade.Policy
 import kotlinx.coroutines.sync.Mutex
 import java.io.File
 import java.io.FileNotFoundException
@@ -18,8 +20,9 @@ import java.io.FileNotFoundException
  * PanVK-kbase on /dev/mali0 (Mali v10+: Pixel 7 and newer, recent MediaTek),
  * or Turnip on /dev/kgsl-3d0 when that node is an Adreno 6xx or newer.
  * OpenGL is zink on top of that Vulkan driver, through a patched libEGL that
- * keeps zink when the compositor only offers wl_shm. Frames still reach
- * us as wl_shm buffers (MESA_VK_WSI_DEBUG=sw), so the compositor doesn't change.
+ * keeps zink when the compositor only offers wl_shm. Frames reach us as
+ * wl_shm buffers (MESA_VK_WSI_DEBUG=sw), unless the user also turned on
+ * [zeroCopy]: then apps render into the compositor's buffers.
  *
  * Each driver is a prerelease and talks to a kernel interface that Android
  * updates can change, so it is only used after a check passes, and checked
@@ -59,6 +62,30 @@ class Gpu(
 
     var state by mutableStateOf<JobState>(JobState.Idle)
         private set
+
+    /**
+     * Experimental and off until the user turns it on: GPU apps started from now on render into buffers the
+     * compositor shows as they are (the zero-copy layer, [GpuDrivers.ZERO_COPY_LAYER]), instead of having every
+     * frame copied. Only while the GPU is [active]; the layer leaves whatever it can't take to the driver.
+     */
+    var zeroCopy by mutableStateOf(prefs.getBoolean(ZERO_COPY, false))
+        private set
+
+    fun changeZeroCopy(on: Boolean) {
+        prefs.edit().putBoolean(ZERO_COPY, on).apply()
+        zeroCopy = on
+        if (active) spec?.let { proot.graphicsEnv = it.appEnv(on) }
+    }
+
+    /** The zero-copy layer and its manifest, in the guest wherever there's a GPU: inert until [zeroCopy] sets its variable. */
+    fun managed(): List<Managed> {
+        // A build without the asset (scripts/zero-copy/build.sh) just has no zero-copy.
+        if (!supported || runCatching { context.assets.open(LAYER_ASSET).close() }.isFailure) return emptyList()
+        return listOf(
+            Managed.asset(context, LAYER_ASSET, proot.hostFile(GpuDrivers.ZERO_COPY_LAYER), Policy.Owned),
+            Managed.asset(context, LAYER_MANIFEST_ASSET, proot.hostFile(GpuDrivers.ZERO_COPY_MANIFEST), Policy.Owned),
+        )
+    }
 
     /** What changes under the driver: the kernel and Android's own GPU driver come with system updates. */
     private val build get() = Build.FINGERPRINT + " " + System.getProperty("os.version")
@@ -144,7 +171,7 @@ class Gpu(
 
     private fun activate(driver: GpuDriver) {
         active = true
-        proot.graphicsEnv = driver.env
+        proot.graphicsEnv = driver.appEnv(zeroCopy)
     }
 
     /** Drops the manifest so a later app cannot load the driver by the default search path. */
@@ -192,6 +219,9 @@ class Gpu(
         private const val WANTED = "gpu_wanted"
         private const val CHECKED_BUILD = "gpu_checked_build"
         private const val DEVICE = "gpu_device"
+        private const val ZERO_COPY = "gpu_zero_copy"
+        private const val LAYER_ASSET = "zero-copy/libVkLayer_oma_zero_copy.so"
+        private const val LAYER_MANIFEST_ASSET = "zero-copy/oma_zero_copy_layer.json"
 
         private val DEVICE_NAME = Regex("""deviceName\s*=\s*(.+)""")
     }

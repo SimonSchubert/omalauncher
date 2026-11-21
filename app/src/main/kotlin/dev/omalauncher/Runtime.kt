@@ -169,6 +169,7 @@ class Runtime(
                 openBridge::managed,
                 { phoneBridge.managed() },
                 proot::managed,
+                gpu::managed,
                 pacman::managed,
                 agents::managed,
                 themes::managed,

@@ -129,6 +129,9 @@
     <string name="linux_cpu_pinning_title">schnelle systemaufrufe</string>
     <string name="linux_cpu_pinning_on">an · hält linux auf einem schnellen cpu-kern · für ab jetzt gestartete programme</string>
     <string name="linux_cpu_pinning_off">aus · für ab jetzt gestartete programme</string>
+    <string name="linux_zero_copy_title">gpu-bilder ohne kopien</string>
+    <string name="linux_zero_copy_off">aus · experimentell · gpu-apps zeichnen direkt in das, was der bildschirm zeigt: flüssiger, weniger cpu · für ab jetzt geöffnete apps</string>
+    <string name="linux_zero_copy_on">an · experimentell · wenn das fenster einer gpu-app schwarz oder kaputt aussieht, schalte das aus · für ab jetzt geöffnete apps</string>
     <string name="linux_session_title">sitzung</string>
     <string name="linux_session_running">läuft · linux-apps, terminals und agenten funktionieren</string>
     <string name="linux_session_starting">startet…</string>

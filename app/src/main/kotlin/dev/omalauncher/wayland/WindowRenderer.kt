@@ -2,13 +2,14 @@ package dev.omalauncher.wayland
 
 import android.os.Handler
 import android.os.HandlerThread
+import android.util.Log
 import android.view.Choreographer
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.roundToInt
 
-/** A surface as placed in its window, in window pixels. [store] is null while it has no content. */
+/** A surface as placed in its window, in window pixels. [store] and [ahb] are null while it has no content. */
 data class Layer(
     val surface: Surface,
     val store: PixelStore?,
@@ -19,7 +20,36 @@ data class Layer(
     /** Window pixels per logical pixel: the output scale, less when the window is shrunk to fit (see [fitScale]). */
     val scale: Float,
     val inPopup: Boolean,
+    /** The surface's content when the client renders into our AHardwareBuffers, instead of [store]. */
+    val ahb: AhbBuffer? = null,
+) {
+    val hasContent get() = store != null || ahb != null
+}
+
+/** A layer's box, for [overlaysFit]; [ahb] when it shows an AHardwareBuffer, else the window's pixels show it. */
+internal data class Stacked(
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int,
+    val ahb: Boolean,
 )
+
+/**
+ * Whether the AHardwareBuffers in [stack] (bottom to top) can be layers of their own. Those sit above the window's
+ * pixels, so anything drawn there over one of them (a popup over a GPU app) would end up beneath it: then they're
+ * copied into the window like any other content instead.
+ */
+internal fun overlaysFit(stack: List<Stacked>): Boolean {
+    for ((i, top) in stack.withIndex()) {
+        if (top.ahb) continue
+        for (j in 0 until i) {
+            val b = stack[j]
+            if (b.ahb && b.left < top.right && top.left < b.right && b.top < top.bottom && top.top < b.bottom) return false
+        }
+    }
+    return true
+}
 
 /** Hit-test result: a surface and a point in its local logical coordinates. */
 data class SurfaceHit(
@@ -50,12 +80,20 @@ internal fun fitScale(
  * move under it), redraws only what changed, posts, and then tells the
  * clients the frame is done, so they draw at most once per display frame,
  * 60 times a second at most, and not at all while the window is hidden.
+ *
+ * Surfaces showing an AHardwareBuffer (oma_ahb_v1, GPU apps) aren't drawn
+ * but shown as child layers of the view's surface, see [showOverlays].
  */
 class WindowRenderer(
     private val server: WaylandServer,
     private val window: XdgToplevel,
     /** Keeps the window's alpha, for a view that isn't opaque to show what's behind it; else it's filled with [background]. */
     private val translucent: Boolean = false,
+    /**
+     * Shows AHardwareBuffers as layers of their own, without a copy. Only for a SurfaceView's surface: a TextureView's
+     * can't have child layers, and there they're copied in like shm content.
+     */
+    private val overlays: Boolean = false,
 ) {
     private var lastFrame = 0L
 
@@ -86,6 +124,25 @@ class WindowRenderer(
 
     private var drawn: List<Layer> = emptyList()
 
+    /** A child layer of the view's surface showing one surface's AHardwareBuffer. */
+    private class Overlay(
+        val ptr: Long,
+    ) {
+        var buffer: AhbBuffer? = null
+
+        /** What [Native.txPlace] last got, to send only changes. */
+        var placed: IntArray? = null
+    }
+
+    /** By surface; used with [lock] held. */
+    private val shown = HashMap<Surface, Overlay>()
+
+    /** Whether the last frame showed AHardwareBuffers as overlays; else it copied them in. */
+    private var direct = false
+
+    /** Set when a layer couldn't be made: buffers are copied in from then on. */
+    private var overlaysFailed = false
+
     @Volatile
     private var redrawAll = true
     private val dirty = IntArray(4)
@@ -103,6 +160,7 @@ class WindowRenderer(
         h: Int,
     ) {
         lock.withLock {
+            dropOverlays()
             if (native != 0L) Native.windowRelease(native)
             native = Native.windowCreate(surface, w, h, translucent)
             width = w
@@ -115,6 +173,7 @@ class WindowRenderer(
     /** Stops drawing; returns once no frame uses the view's surface any more, as SurfaceHolder requires. */
     fun detach() =
         lock.withLock {
+            dropOverlays()
             if (native != 0L) Native.windowRelease(native)
             native = 0L
         }
@@ -144,8 +203,13 @@ class WindowRenderer(
         lock.withLock {
             if (native == 0L) return
             val layers = synchronized(server) { buildScene() }
+            val direct = overlays && !overlaysFailed && overlaysFit(layers.filter { it.hasContent }.map(::stacked))
+            // The window's pixels beneath the buffers change between a copy of them and background.
+            if (direct != this.direct) redrawAll = true
+            this.direct = direct
             // A failed lock leaves the damage it took undrawn: draw everything next time.
             redrawAll = collectDirty(layers) && !draw(layers)
+            showOverlays(if (direct) layers else emptyList())
             drawn = layers
             scene = layers
         }
@@ -173,8 +237,19 @@ class WindowRenderer(
             r = maxOf(r, layer.x + kotlin.math.ceil(d[2] * sx).toInt())
             b = maxOf(b, layer.y + kotlin.math.ceil(d[3] * sy).toInt())
         }
+        // Copied in: a new buffer is new pixels everywhere.
+        if (!direct) {
+            for (layer in layers) {
+                val ahb = layer.ahb ?: continue
+                if (drawn.any { it.surface === layer.surface && it.ahb === ahb }) continue
+                l = minOf(l, layer.x)
+                t = minOf(t, layer.y)
+                r = maxOf(r, layer.x + layer.width)
+                b = maxOf(b, layer.y + layer.height)
+            }
+        }
         // Anything moved, appeared or went away: redraw it all rather than track old positions.
-        if (redrawAll || layers != drawn) {
+        if (redrawAll || !sameLayout(layers, drawn)) {
             l = 0
             t = 0
             r = width
@@ -187,16 +262,99 @@ class WindowRenderer(
         return dirty[0] < dirty[2] && dirty[1] < dirty[3]
     }
 
+    /** Whether [a] and [b] place the same content the same way; which AHardwareBuffer a surface shows doesn't count. */
+    private fun sameLayout(
+        a: List<Layer>,
+        b: List<Layer>,
+    ) = a.size == b.size && a.indices.all { (a[it].ahb == null) == (b[it].ahb == null) && a[it].copy(ahb = null) == b[it].copy(ahb = null) }
+
+    private fun stacked(l: Layer) = Stacked(l.x, l.y, l.x + l.width, l.y + l.height, l.ahb != null)
+
     private fun draw(layers: List<Layer>): Boolean {
         if (!Native.windowBegin(native, dirty, background)) return false
         for (layer in layers) {
-            val store = layer.store ?: continue
-            synchronized(store) {
-                if (store.ptr != 0L) Native.windowBlit(native, store.ptr, layer.x, layer.y, layer.width, layer.height, store.opaque)
+            layer.store?.let { store ->
+                synchronized(store) {
+                    if (store.ptr != 0L) Native.windowBlit(native, store.ptr, layer.x, layer.y, layer.width, layer.height, store.opaque)
+                }
+            }
+            val ahb = layer.ahb
+            // A buffer the client already got back may be half redrawn: skip it, its successor is on the way.
+            if (ahb != null && !direct && ahb.tryHold()) {
+                synchronized(ahb) {
+                    if (ahb.ptr != 0L) Native.windowBlitAhb(native, ahb.ptr, layer.x, layer.y, layer.width, layer.height, ahb.opaque)
+                }
+                ahb.unhold()
             }
         }
         Native.windowEnd(native)
         return true
+    }
+
+    /**
+     * Puts the AHardwareBuffers of [layers] on screen as child layers of the view's surface, in order, above its own
+     * pixels; removes the layers of surfaces no longer among them. The display composes them (a hardware overlay
+     * where it can), so their pixels are never copied. A buffer replaced on its layer goes back to the client once
+     * the display is done with it.
+     */
+    private fun showOverlays(layers: List<Layer>) {
+        var tx = 0L
+
+        fun tx(): Long {
+            if (tx == 0L) tx = Native.txBegin()
+            return tx
+        }
+        val used = HashSet<Surface>()
+        var z = 0
+        for (layer in layers) {
+            val ahb = layer.ahb ?: continue
+            z++
+            var overlay = shown[layer.surface]
+            if (overlay == null) {
+                val ptr = Native.overlayCreate(native)
+                if (ptr == 0L) {
+                    Log.w(TAG, "can't make a layer: copying buffers in instead")
+                    overlaysFailed = true
+                    requestFrame()
+                    break
+                }
+                overlay = Overlay(ptr)
+                shown[layer.surface] = overlay
+            }
+            used += layer.surface
+            if (overlay.buffer !== ahb) {
+                synchronized(ahb) {
+                    val done = if (ahb.ptr != 0L) ahb.displayHold() else null
+                    if (done != null) {
+                        Native.txSetBuffer(tx(), overlay.ptr, ahb.ptr, done, ahb.opaque)
+                        overlay.buffer = ahb
+                    }
+                }
+            }
+            val buffer = overlay.buffer ?: continue
+            val place = intArrayOf(buffer.width, buffer.height, layer.x, layer.y, layer.width, layer.height, z)
+            if (!place.contentEquals(overlay.placed)) {
+                Native.txPlace(tx(), overlay.ptr, place[0], place[1], place[2], place[3], place[4], place[5], place[6])
+                overlay.placed = place
+            }
+        }
+        val iterator = shown.entries.iterator()
+        while (iterator.hasNext()) {
+            val (surface, overlay) = iterator.next()
+            if (surface in used) continue
+            Native.txRemove(tx(), overlay.ptr)
+            iterator.remove()
+        }
+        if (tx != 0L) Native.txApply(tx)
+    }
+
+    /** Takes every layer off screen, before the view's surface goes or is replaced; call with [lock] held. */
+    private fun dropOverlays() {
+        if (shown.isEmpty()) return
+        val tx = Native.txBegin()
+        for (overlay in shown.values) Native.txRemove(tx, overlay.ptr)
+        shown.clear()
+        Native.txApply(tx)
     }
 
     /** The window's surfaces bottom to top, then its popups; call with the server locked. */
@@ -229,7 +387,7 @@ class WindowRenderer(
         val store = surface.store
         val w = ((store?.width ?: surface.bufferWidth) * scale / surface.bufferScale).roundToInt()
         val h = ((store?.height ?: surface.bufferHeight) * scale / surface.bufferScale).roundToInt()
-        layers += Layer(surface, store, x.roundToInt(), y.roundToInt(), w, h, scale, inPopup)
+        layers += Layer(surface, store, x.roundToInt(), y.roundToInt(), w, h, scale, inPopup, surface.ahb)
         for (sub in surface.children) if (!sub.below) addTree(layers, sub.surface, x + sub.x * scale, y + sub.y * scale, scale, inPopup)
     }
 
@@ -260,7 +418,7 @@ class WindowRenderer(
     ): SurfaceHit? {
         val layers = scene
         for (l in layers.asReversed()) {
-            if (l.store == null || l.surface.destroyed || x < l.x || y < l.y || x >= l.x + l.width || y >= l.y + l.height) continue
+            if (!l.hasContent || l.surface.destroyed || x < l.x || y < l.y || x >= l.x + l.width || y >= l.y + l.height) continue
             val lx = (x - l.x) / l.scale
             val ly = (y - l.y) / l.scale
             if (!l.surface.takesInput(lx, ly)) continue
@@ -274,6 +432,8 @@ class WindowRenderer(
     val hasPopups get() = scene.any { it.inPopup }
 
     private companion object {
+        const val TAG = "wl.render"
+
         /**
          * At most 60 frames a second, whatever the screen's rate: Linux apps draw in software under proot, and on a
          * 120 Hz screen following it took twice the CPU and battery. The least time between frames, less a quarter so

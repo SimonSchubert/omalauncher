@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="oma_ahb_v1">
+  <description summary="buffers the compositor allocates, shown without a copy">
+    Android only shows buffers from its own allocator (gralloc, AHardwareBuffer), and an app has no
+    public way to wrap a dma-buf a client allocated into one. So here the compositor allocates: the
+    client asks for a buffer of a size and format, gets a wl_buffer and the dma-buf with its pixels,
+    renders into it (Vulkan: VK_EXT_external_memory_dma_buf with VK_EXT_image_drm_format_modifier),
+    then attaches the wl_buffer and commits as with any other. The compositor puts the buffer on
+    screen as it is, without copying it.
+
+    There is no implicit synchronization: the client's rendering must be finished before the
+    commit. As with wl_shm, the client must not touch a buffer between commit and wl_buffer.release.
+
+    Private to OmaLauncher; it may change incompatibly while it's version 1.
+  </description>
+
+  <interface name="oma_ahb_allocator_v1" version="1">
+    <enum name="error">
+      <entry name="invalid_format" value="0" summary="format not offered"/>
+      <entry name="invalid_size" value="1" summary="width or height out of range (1 to 16384)"/>
+    </enum>
+
+    <request name="destroy" type="destructor"/>
+
+    <request name="allocate">
+      <description summary="allocate a buffer">
+        Answered by allocated or failed for this wl_buffer. A failed one can't be attached
+        (it attaches nothing) and only needs destroying.
+      </description>
+      <arg name="buffer" type="new_id" interface="wl_buffer"/>
+      <arg name="width" type="int"/>
+      <arg name="height" type="int"/>
+      <arg name="format" type="uint" summary="DRM fourcc, one of the format events"/>
+      <arg name="flags" type="uint" summary="none defined yet, 0"/>
+    </request>
+
+    <event name="allocated">
+      <description summary="the buffer's pixels">
+        A single plane. modifier_hi and modifier_lo make the DRM format modifier of its layout,
+        DRM_FORMAT_MOD_LINEAR (0) in version 1.
+      </description>
+      <arg name="buffer" type="object" interface="wl_buffer"/>
+      <arg name="fd" type="fd" summary="dma-buf"/>
+      <arg name="offset" type="uint"/>
+      <arg name="stride" type="uint" summary="bytes per row"/>
+      <arg name="modifier_hi" type="uint"/>
+      <arg name="modifier_lo" type="uint"/>
+    </event>
+
+    <event name="failed">
+      <arg name="buffer" type="object" interface="wl_buffer"/>
+    </event>
+
+    <event name="format">
+      <description summary="a format allocate takes">
+        Sent for each format right after the allocator is bound: ABGR8888 and XBGR8888 (bytes R, G,
+        B, A) always, ARGB8888 and XRGB8888 (bytes B, G, R, A) where the device's allocator has them and
+        the system composes them safely (Adreno so far).
+        The X formats are shown opaque, whatever is in their alpha.
+      </description>
+      <arg name="format" type="uint" summary="DRM fourcc"/>
+    </event>
+  </interface>
+</protocol>

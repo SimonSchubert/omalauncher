@@ -67,6 +67,9 @@ internal data class GpuDriver(
             "MESA_VK_WSI_DEBUG=sw",
         ) + openGlEnv
 
+    /** [env] for apps, with the zero-copy layer on when [zeroCopy]; what the layer can't take still goes through `sw`. */
+    fun appEnv(zeroCopy: Boolean): List<String> = if (zeroCopy) env + GpuDrivers.ZERO_COPY_ENV else env
+
     val librarySha256: String
         get() = when (val payload = payload) {
             is DriverPayload.RawLibrary -> payload.sha256
@@ -159,6 +162,15 @@ internal object GpuDrivers {
      * libgallium, so a rebuilt bundle can keep the same libEGL; this changes anyway.
      */
     const val MESA_ZINK_STAMP = "/usr/local/omalauncher-mesa/bundle.sha256"
+
+    /**
+     * The zero-copy Vulkan layer (scripts/zero-copy/oma_zero_copy_layer.c) and its manifest, from the APK's
+     * assets: Wayland swapchains in the compositor's AHardwareBuffers (oma_ahb_v1), shown without copies.
+     * The loader only loads it for apps started with [ZERO_COPY_ENV].
+     */
+    const val ZERO_COPY_LAYER = "/usr/local/lib/libVkLayer_oma_zero_copy.so"
+    const val ZERO_COPY_MANIFEST = "/usr/local/share/vulkan/implicit_layer.d/oma_zero_copy_layer.json"
+    const val ZERO_COPY_ENV = "OMA_ZERO_COPY=1"
 
     private val mali = GpuDriver(
         kind = GpuKind.MALI,
