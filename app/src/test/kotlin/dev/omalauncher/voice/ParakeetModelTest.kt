@@ -1,6 +1,5 @@
-package dev.omalauncher.ui.voice
+package dev.omalauncher.voice
 
-import dev.omalauncher.voice.VoiceSession
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

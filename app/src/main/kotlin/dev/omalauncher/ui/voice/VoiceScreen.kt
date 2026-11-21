@@ -136,6 +136,10 @@ import dev.omalauncher.R
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.JobState
 import dev.omalauncher.Runtime
+import dev.omalauncher.voice.Parakeet
+import dev.omalauncher.voice.ParakeetModel
+import dev.omalauncher.voice.Speaker
+import dev.omalauncher.voice.Speech
 import dev.omalauncher.voice.VoiceSession
 import dev.omalauncher.voice.VoiceSession.Phase
 import kotlinx.coroutines.Dispatchers

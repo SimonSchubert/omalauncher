@@ -7,7 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.R
-import dev.omalauncher.ui.voice.Speech
+import dev.omalauncher.voice.Speech
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str

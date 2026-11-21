@@ -1,4 +1,4 @@
-package dev.omalauncher.ui.voice
+package dev.omalauncher.voice
 
 import android.Manifest
 import android.content.Context

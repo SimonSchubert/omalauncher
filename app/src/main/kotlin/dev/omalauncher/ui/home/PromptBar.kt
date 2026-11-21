@@ -94,7 +94,7 @@ import dev.omalauncher.ui.TextSize
 import dev.omalauncher.ui.keyActivated
 import dev.omalauncher.ui.settings.SettingsPage
 import dev.omalauncher.ui.tile
-import dev.omalauncher.ui.voice.Speech
+import dev.omalauncher.voice.Speech
 
 /**
  * How the prompt bar was summoned from outside it; Send asks the agent with what's typed (the panel's ask row),

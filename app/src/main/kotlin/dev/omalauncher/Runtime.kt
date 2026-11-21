@@ -46,7 +46,7 @@ import dev.omalauncher.theme.ThemeStore
 import dev.omalauncher.ui.home.Gestures
 import dev.omalauncher.ui.KeyboardBridge
 import dev.omalauncher.ui.settings.SettingsPage
-import dev.omalauncher.ui.voice.Speaker
+import dev.omalauncher.voice.Speaker
 import dev.omalauncher.voice.VoiceSession
 import dev.omalauncher.ui.home.TerminalTiles
 import dev.omalauncher.ui.WindowManager

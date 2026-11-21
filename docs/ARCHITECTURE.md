@@ -44,7 +44,9 @@ a module folder; the OWL language is under
   palette, panels and dialogs, icons, key focus, the keyboard); `home/` is the
   home screen, the bar and its app list, folders and tiles; `settings/` the
   settings pages and first-run setup; `files/` Files and the editor;
-  `store/` the widget store and sharing; `voice/` the Voice screen and speech
+  `store/` the widget store and sharing; `voice/` the Voice screen
+- `voice/`: what Voice runs on: its session with an agent, the agents' links,
+  speech to text (the phone's recognizer or Parakeet) and text to speech
 - `apps/`: the phone's Android apps, their shortcuts, usage and icon packs
 - `net/`: HTTPS with pinning, WebSocket, the local network
 - `storage/`: the launcher's own data directories (`LauncherData`) and the
@@ -195,7 +197,7 @@ the bridges stay up, and whatever needs Linux opens its settings.
 
 ## Speech
 
-`ui/voice/Speech.kt` turns speech into text for Voice, the prompt bar and
+`voice/Speech.kt` turns speech into text for Voice, the prompt bar and
 widgets' dictation. It listens with Parakeet (`Parakeet.kt`) when the user has
 downloaded it in the voice settings and the language is one of its 25;
 otherwise with the phone's recognizer: Google's on-device one first, then the
