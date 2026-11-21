@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_edit">edit</string>
+    <string name="home_edit_by_voice">edit dengan suara</string>
     <string name="home_share">bagikan</string>
     <string name="home_remove">hapus</string>
 

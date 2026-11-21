@@ -1,6 +1,7 @@
 package dev.omalauncher.widgets
 
 import dev.omalauncher.linux.Agent
+import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.agentInvocation
 import dev.omalauncher.theme.StyleStore
 import dev.omalauncher.widgets.lang.OwlKind
@@ -57,15 +58,7 @@ fun editWidgetCommand(
     problem: String? = null,
 ): String {
     val file = spec.file.name
-    val what =
-        when (spec.kind) {
-            OwlKind.Widget -> "home-screen widget"
-            OwlKind.Face -> "face"
-            OwlKind.App -> "app"
-            OwlKind.Panel -> "panel"
-            OwlKind.Keybar -> "terminal key bar"
-            OwlKind.Strip -> "app strip"
-        }
+    val what = spec.kind.noun()
     val prompt =
         if (problem != null) {
             "The $what \"${spec.name}\" in $file has a problem: $problem Read README.md for the widget language " +
@@ -76,6 +69,29 @@ fun editWidgetCommand(
                 "phone within seconds. Ask me what to change."
         }
     return agentCommand(agentBin, prompt)
+}
+
+/** What an owl file of this kind is called, for the agent. */
+private fun OwlKind.noun() =
+    when (this) {
+        OwlKind.Widget -> "home-screen widget"
+        OwlKind.Face -> "face"
+        OwlKind.App -> "app"
+        OwlKind.Panel -> "panel"
+        OwlKind.Keybar -> "terminal key bar"
+        OwlKind.Strip -> "app strip"
+    }
+
+/**
+ * What the agent in Voice is told about the owl file the user wants to change, before the first thing they say: as
+ * [editWidgetCommand] tells one in a terminal, with whole paths, as a Voice agent may run in another folder.
+ */
+fun editByVoicePrompt(spec: WidgetSpec): String {
+    val dir = "${Proot.GUEST_HOME}/${WidgetEngine.GUEST_DIR}"
+    val file = "$dir/${spec.file.name}"
+    return "I want to change the ${spec.kind.noun()} \"${spec.name}\" in $file. Read $dir/README.md for the widget language " +
+        "and the file, and run owl-check $file to see it and its problems. $DEPENDENCIES $CHECK Saved changes show up on " +
+        "my phone within seconds. What I want changed:"
 }
 
 /** Submits a widget to the store: the agent opens a pull request on the store repo with the GitHub CLI, or an issue if it can't. */

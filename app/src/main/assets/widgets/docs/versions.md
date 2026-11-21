@@ -2,7 +2,7 @@
 
 Part of the widget docs: README.md, one folder up, comes first, and paths here are from the widgets folder.
 
-`meta { owl: N }` is the language version a file needs; this launcher has 25, and without `meta` it's 1. Declare
+`meta { owl: N }` is the language version a file needs; this launcher has 26, and without `meta` it's 1. Declare
 the highest level of what the file uses: using something from a later level than the file declares is an error,
 and a launcher older than the level says "update the launcher" instead of failing on what it doesn't know. For a
 file only this phone runs, `owl: 12` is fine; for the store, a lower level reaches older launchers too.
@@ -44,3 +44,4 @@ file only this phone runs, `owl: 12` is fine; for the store, a lower level reach
 - **23**: `media("seek", seconds)`, `media("speed", ...)` and `media("action", id)`; `android.media`'s `canSeek`, `speed` and `actions`; `haptic("light")`, `"medium"` and `"strong"`
 - **24**: `strip "…" { }` files and `android.strip`, Row's `scroll`, and `mask` on the apps of `android.drawer` and `android.strip` (`Image { src: "mask:…" }`, an app's silhouette)
 - **25**: `launcher("store:apps")`, the store on its apps alone, which older launchers ignore; `volume("request")` and `android.volume`'s `output.battery` and `output.granted`
+- **26**: `appAction("voice", key)`, an owl app changed by talking to the agent in Voice

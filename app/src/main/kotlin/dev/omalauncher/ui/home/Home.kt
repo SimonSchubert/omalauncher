@@ -337,6 +337,12 @@ fun HomeScreen(
         state.withAgent(runtime, "Edit ${spec.name}") { editWidgetCommand(it, spec) }
     }
 
+    /** Opens Voice on the file: the user says what to change. */
+    fun editByVoice(spec: WidgetSpec) {
+        state.editing = null
+        runtime.editByVoice(spec)
+    }
+
     // Overlays below are siblings of the pager inside this Box, so they never change the page's size.
     val density = LocalDensity.current
     val ime = WindowInsets.ime
@@ -495,6 +501,8 @@ fun HomeScreen(
                         // A widget's own file, or the owl app a pinned shortcut opens.
                         val spec = if (item is WidgetItem) item.spec else (item as? Shortcut)?.owl?.let(engine.specs::app)
                         if (spec != null) EditAction(stringResource(R.string.home_edit)) { edit(spec) }
+                        // Right after edit, as its spoken twin: only while there's an agent to talk to and a way to hear the user.
+                        if (spec != null && runtime.voice.canTalk) VoiceEditAction { editByVoice(spec) }
                         // As a QR code or link, or (your own) to the store. An agent's tile is a terminal, not a widget to pass on.
                         if (spec != null && !engine.isAgentWidget(spec)) {
                             EditAction(stringResource(R.string.home_share)) {

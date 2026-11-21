@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_edit">düzenle</string>
+    <string name="home_edit_by_voice">sesle düzenle</string>
     <string name="home_share">paylaş</string>
     <string name="home_remove">kaldır</string>
 

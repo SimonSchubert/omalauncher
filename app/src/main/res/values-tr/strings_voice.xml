@@ -107,4 +107,5 @@
     <string name="voice_or_type_answer">ya da kendi yanıtını yaz</string>
     <string name="voice_or_say_answer">ya da daireye dokunup yanıtını söyle</string>
     <string name="voice_say_choices">Seçenekler: %1$s.</string>
+    <string name="voice_note_edit">%1$s düzenleniyor · neyi değiştireceğini söyle</string>
 </resources>

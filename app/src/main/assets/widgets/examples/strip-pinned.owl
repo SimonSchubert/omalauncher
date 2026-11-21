@@ -10,7 +10,7 @@ strip "pinned apps" {
   state kept = [] persist
   state menu = ""
   // What the long-press menu calls appAction's words.
-  let labels = {pin: "add to home", info: "app info", uninstall: "uninstall", remove: "remove", edit: "edit", share: "share"}
+  let labels = {pin: "add to home", info: "app info", uninstall: "uninstall", remove: "remove", edit: "edit", voice: "edit by voice", share: "share"}
 
   let keptApps = filter(map(kept, k => find(d.apps ?? [], a => a.key == k)), a => a != null)
   let recent = filter(s.apps, a => indexOf(kept, a.key) < 0)

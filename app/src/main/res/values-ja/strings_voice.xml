@@ -106,4 +106,5 @@
     <string name="voice_or_type_answer">または自分の回答を入力</string>
     <string name="voice_or_say_answer">またはオーブをタップして回答を話す</string>
     <string name="voice_say_choices">選択肢は %1$s です。</string>
+    <string name="voice_note_edit">%1$s を編集 · 変えたいことを話してください</string>
 </resources>

@@ -107,4 +107,5 @@
     <string name="voice_or_type_answer">oder schreib deine eigene antwort</string>
     <string name="voice_or_say_answer">oder tipp auf den kreis und sag deine antwort</string>
     <string name="voice_say_choices">Zur Auswahl: %1$s.</string>
+    <string name="voice_note_edit">%1$s bearbeiten · sag, was sich ändern soll</string>
 </resources>

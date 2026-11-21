@@ -150,6 +150,8 @@ internal class AppHandlers(
     val shortcuts: (AndroidApp) -> ShortcutMenu,
     /** Opens the default agent on an owl app's file. */
     val edit: (WidgetSpec) -> Unit,
+    /** Opens Voice on an owl app's file, to say what to change. */
+    val voice: (WidgetSpec) -> Unit,
     /** Shares an owl app as a link or QR code, as a widget is shared. */
     val share: (WidgetSpec) -> Unit,
     /** Removes an owl app's file, and its icon from home. */
@@ -176,13 +178,13 @@ internal val AppHit.profileKind: String?
         }
 
 /**
- * The long-press menu's entries, as the words `appAction(word, key)` takes: pin to home, for owl apps editing,
- * sharing and removing, for Android apps their info and uninstall, and for shortcuts removing them.
+ * The long-press menu's entries, as the words `appAction(word, key)` takes: pin to home, for owl apps editing (with
+ * an agent in a terminal, or by [voice] while Voice can talk), sharing and removing, for Android apps their info and uninstall, and for shortcuts removing them.
  */
-internal fun AppHit.actionWords(): List<String> =
+internal fun AppHit.actionWords(voice: Boolean = true): List<String> =
     when (this) {
         is AppHit.Linux -> listOf("pin")
-        is AppHit.Owl -> listOf("pin", "edit", "share", "remove")
+        is AppHit.Owl -> listOfNotNull("pin", "edit", if (voice) "voice" else null, "share", "remove")
         is AppHit.Android -> listOfNotNull("pin", "info", if (app.system) null else "uninstall")
         is AppHit.Shortcut -> listOf("pin", "remove")
     }
@@ -204,6 +206,7 @@ internal fun AppHit.act(
                 else -> {}
             }
         "edit" -> (this as? AppHit.Owl)?.let { handlers.edit(it.spec) }
+        "voice" -> (this as? AppHit.Owl)?.let { handlers.voice(it.spec) }
         "share" -> (this as? AppHit.Owl)?.let { handlers.share(it.spec) }
     }
 }

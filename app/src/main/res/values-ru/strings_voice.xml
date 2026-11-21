@@ -109,4 +109,5 @@
     <string name="voice_or_type_answer">или напишите свой ответ</string>
     <string name="voice_or_say_answer">или нажмите на шар и скажите свой ответ</string>
     <string name="voice_say_choices">Варианты: %1$s.</string>
+    <string name="voice_note_edit">изменение %1$s · скажите, что поменять</string>
 </resources>

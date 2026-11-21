@@ -6,18 +6,18 @@ strip "recent apps" {
   meta { description: "The strip of recent apps above the prompt bar on home, with each app's long-press menu"; version: "1.0"; license: "MIT"; category: "system"; owl: 24 }
   // The long-press menu's entries, by appAction's words, in the phone's language where it has a set.
   strings {
-    en { pin: "add to home"; info: "app info"; uninstall: "uninstall"; remove: "remove"; edit: "edit"; share: "share" }
-    id { pin: "tambah ke layar utama"; info: "info aplikasi"; uninstall: "uninstal"; remove: "hapus"; edit: "edit"; share: "bagikan" }
-    es { pin: "agregar a inicio"; info: "info de la app"; uninstall: "desinstalar"; remove: "quitar"; edit: "editar"; share: "compartir" }
-    pt { pin: "adicionar à tela inicial"; info: "informações do app"; uninstall: "desinstalar"; remove: "remover"; edit: "editar"; share: "compartilhar" }
-    de { pin: "zum startbildschirm hinzufügen"; info: "app-info"; uninstall: "deinstallieren"; remove: "entfernen"; edit: "bearbeiten"; share: "teilen" }
-    zh { pin: "添加到主屏幕"; info: "应用信息"; uninstall: "卸载"; remove: "移除"; edit: "编辑"; share: "分享" }
-    ru { pin: "добавить на главный экран"; info: "о приложении"; uninstall: "удалить"; remove: "убрать"; edit: "изменить"; share: "поделиться" }
-    ja { pin: "ホームに追加"; info: "アプリ情報"; uninstall: "アンインストール"; remove: "削除"; edit: "編集"; share: "共有" }
-    uk { pin: "додати на головний екран"; info: "про додаток"; uninstall: "видалити"; remove: "прибрати"; edit: "змінити"; share: "поділитися" }
-    fr { pin: "ajouter à l’accueil"; info: "infos sur l’appli"; uninstall: "désinstaller"; remove: "retirer"; edit: "modifier"; share: "partager" }
-    tr { pin: "ana ekrana ekle"; info: "uygulama bilgileri"; uninstall: "yüklemeyi kaldır"; remove: "kaldır"; edit: "düzenle"; share: "paylaş" }
-    it { pin: "aggiungi alla schermata home"; info: "informazioni app"; uninstall: "disinstalla"; remove: "rimuovi"; edit: "modifica"; share: "condividi" }
+    en { pin: "add to home"; info: "app info"; uninstall: "uninstall"; remove: "remove"; edit: "edit"; voice: "edit by voice"; share: "share" }
+    id { pin: "tambah ke layar utama"; info: "info aplikasi"; uninstall: "uninstal"; remove: "hapus"; edit: "edit"; voice: "edit dengan suara"; share: "bagikan" }
+    es { pin: "agregar a inicio"; info: "info de la app"; uninstall: "desinstalar"; remove: "quitar"; edit: "editar"; voice: "editar por voz"; share: "compartir" }
+    pt { pin: "adicionar à tela inicial"; info: "informações do app"; uninstall: "desinstalar"; remove: "remover"; edit: "editar"; voice: "editar por voz"; share: "compartilhar" }
+    de { pin: "zum startbildschirm hinzufügen"; info: "app-info"; uninstall: "deinstallieren"; remove: "entfernen"; edit: "bearbeiten"; voice: "per sprache bearbeiten"; share: "teilen" }
+    zh { pin: "添加到主屏幕"; info: "应用信息"; uninstall: "卸载"; remove: "移除"; edit: "编辑"; voice: "语音编辑"; share: "分享" }
+    ru { pin: "добавить на главный экран"; info: "о приложении"; uninstall: "удалить"; remove: "убрать"; edit: "изменить"; voice: "изменить голосом"; share: "поделиться" }
+    ja { pin: "ホームに追加"; info: "アプリ情報"; uninstall: "アンインストール"; remove: "削除"; edit: "編集"; voice: "音声で編集"; share: "共有" }
+    uk { pin: "додати на головний екран"; info: "про додаток"; uninstall: "видалити"; remove: "прибрати"; edit: "змінити"; voice: "змінити голосом"; share: "поділитися" }
+    fr { pin: "ajouter à l’accueil"; info: "infos sur l’appli"; uninstall: "désinstaller"; remove: "retirer"; edit: "modifier"; voice: "modifier à la voix"; share: "partager" }
+    tr { pin: "ana ekrana ekle"; info: "uygulama bilgileri"; uninstall: "yüklemeyi kaldır"; remove: "kaldır"; edit: "düzenle"; voice: "sesle düzenle"; share: "paylaş" }
+    it { pin: "aggiungi alla schermata home"; info: "informazioni app"; uninstall: "disinstalla"; remove: "rimuovi"; edit: "modifica"; voice: "modifica con la voce"; share: "condividi" }
   }
   // The recent apps, last opened first, and how home draws its apps: vertical beside the grid in landscape, monochrome
   // silhouettes, bare icons without a tile, and the tiles' outline color.

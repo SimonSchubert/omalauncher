@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_edit">modifica</string>
+    <string name="home_edit_by_voice">modifica con la voce</string>
     <string name="home_share">condividi</string>
     <string name="home_remove">rimuovi</string>
 

@@ -1120,6 +1120,10 @@ class LangTest {
         for (old in listOf("source d = android.drawer\n Text { text: 1 }", "Text { text: 1; onTap: appAction(\"pin\", \"l:foot\") }", "Text { text: 1; onTap: workApps(\"pause\") }")) {
             assertTrue(compileError("widget {\n meta { owl: 10 }\n $old }").contains("needs owl 11"))
         }
+        // Changing an owl app by talking to the agent in Voice came later; from a.actions it needs nothing newer.
+        val voice = "widget {\n meta { owl: 26 }\n Text { text: 1; onTap: appAction(\"voice\", \"o:x.owl\") } }"
+        Compiler.compile(voice)
+        assertTrue(compileError(voice.replace("owl: 26", "owl: 25")).contains("owl 26"))
     }
 
     @Test fun chunkMakesRows() {

@@ -3,6 +3,8 @@
 <resources>
     <!-- A selected tile's edit bar, and the drawer's long-press menu. -->
     <string name="home_edit">edit</string>
+    <!-- Beside edit on a selected tile and in the drawer's long-press menu: Voice, to say what to change. -->
+    <string name="home_edit_by_voice">edit by voice</string>
     <string name="home_share">share</string>
     <string name="home_remove">remove</string>
 

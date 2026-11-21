@@ -106,4 +106,5 @@
     <string name="voice_or_type_answer">或输入你自己的回答</string>
     <string name="voice_or_say_answer">或点按圆圈说出你的回答</string>
     <string name="voice_say_choices">选项：%1$s。</string>
+    <string name="voice_note_edit">编辑 %1$s · 说出要改什么</string>
 </resources>

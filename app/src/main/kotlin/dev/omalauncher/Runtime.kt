@@ -760,6 +760,11 @@ class Runtime(
         InstantActivity.startInstantly(context, Intent(context, VoiceActivity::class.java))
     }
 
+    /** Opens the voice screen to change the owl file [spec]: the agent there hears about it with the first thing said. */
+    fun editByVoice(spec: WidgetSpec) {
+        InstantActivity.startInstantly(context, VoiceActivity.edit(context, spec.file.name))
+    }
+
     /** Opens the Files app, at [path] (a guest path) if given. */
     fun openFiles(path: String? = null) {
         InstantActivity.startInstantly(context, Intent(context, FilesActivity::class.java).putExtra(FilesActivity.EXTRA_PATH, path))

@@ -191,6 +191,10 @@ private fun DesktopScreen(
                     state.closeNow()
                     state.withAgent(runtime, "Edit ${spec.name}") { editWidgetCommand(it, spec) }
                 },
+                voice = { spec ->
+                    state.closeNow()
+                    runtime.editByVoice(spec)
+                },
                 // The same screen a widget is shared from: a link or QR code, or the store.
                 share = { spec ->
                     state.closeNow()

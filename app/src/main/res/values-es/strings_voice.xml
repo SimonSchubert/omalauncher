@@ -108,4 +108,5 @@
     <string name="voice_or_type_answer">o escribe tu propia respuesta</string>
     <string name="voice_or_say_answer">o toca el círculo y di tu respuesta</string>
     <string name="voice_say_choices">Opciones: %1$s.</string>
+    <string name="voice_note_edit">editando %1$s · di qué cambiar</string>
 </resources>

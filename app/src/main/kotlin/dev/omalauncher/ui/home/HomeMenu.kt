@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import dev.omalauncher.R
@@ -54,6 +56,18 @@ internal fun EditAction(
     Box(Modifier.clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 10.dp)) {
         BasicText(label, style = Mono.copy(color = color, fontSize = TextSize.Body))
     }
+}
+
+/** Edit by voice: the voice screen's sound bars, named for screen readers, beside a selected tile's edit. */
+@Composable
+internal fun VoiceEditAction(onClick: () -> Unit) {
+    val label = stringResource(R.string.home_edit_by_voice)
+    Box(
+        Modifier
+            .clickable(onClickLabel = label, onClick = onClick)
+            .semantics { contentDescription = label }
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+    ) { VoiceIcon(Palette.foreground) }
 }
 
 /**

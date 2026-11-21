@@ -206,7 +206,9 @@ internal val SINCE =
         // owl 24: the strip of apps above home's prompt bar as a file, and what it shows; Rows that scroll sideways.
         listOf(STRIP_FILE, "android.strip", "Row.scroll").associateWith { 24 } +
         // owl 25: the battery of the Bluetooth device media plays on, once a tap has allowed Bluetooth.
-        mapOf("volume(\"request\")" to 25)
+        mapOf("volume(\"request\")" to 25) +
+        // owl 26: talking to the agent in Voice about an owl app, to change it.
+        mapOf("appAction(\"voice\")" to 26)
 
 /** A Shader's `uniform shader name;`, an image it samples, named like this in [SINCE]. */
 internal const val SHADER_IMAGE = "uniform shader"
@@ -429,7 +431,7 @@ internal val ACTION_WORDS =
         "haptic" to setOf("light", "medium", "strong").let { Words(it, "haptic takes ${it.joinToString()}, or nothing for medium") },
         // Android's panel (a sheet over home) where it has one, else its settings screen.
         "settings" to SETTINGS_PAGES.let { Words(it, "settings takes ${it.joinToString()}") },
-        "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },
+        "appAction" to setOf("pin", "info", "uninstall", "remove", "edit", "voice", "share").let { Words(it, "appAction takes ${it.joinToString()} and an app's key") },
         "workApps" to setOf("pause", "resume", "toggle").let { Words(it, "workApps takes ${it.joinToString()}") },
         "speech" to setOf("start", "stop", "toggle", "cancel").let { Words(it, "speech takes ${it.joinToString()}; what's heard is in source x = android.speech") },
         "latch" to KeyNames.latches.toSet().let { Words(it, "latch takes ${it.joinToString()}, and optionally once, locked or off") },

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="home_edit">изменить</string>
+    <string name="home_edit_by_voice">изменить голосом</string>
     <string name="home_share">поделиться</string>
     <string name="home_remove">убрать</string>
 

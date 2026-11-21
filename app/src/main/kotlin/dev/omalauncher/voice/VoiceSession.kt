@@ -65,6 +65,15 @@ class VoiceSession(
         val choices: List<String>? = null,
     )
 
+    /**
+     * What the next prompt is about, as an edit button asks: [prompt] goes to the agent before what the user says
+     * first, and [note] shows in the conversation until then.
+     */
+    data class About(
+        val note: String,
+        val prompt: String,
+    )
+
     /** The agents that can talk: installed, and with a link. */
     val voiceAgents: List<Agent> get() = agents.installed.filter { it.bin in VOICE_LINKS }
 
@@ -105,6 +114,9 @@ class VoiceSession(
      * Without a speech recognizer there'd be no way to say anything, and the mic stays the microphone.
      */
     fun opensFor(agent: Agent?) = talksTo(agent) && Speech.available(context)
+
+    /** Whether there's someone to talk to and a way to be heard: an installed agent with a link, and speech recognition. */
+    val canTalk get() = voiceAgents.isNotEmpty() && Speech.available(context)
 
     /** The agent the screen opens with next, from the AI bar; null for the last one used. */
     private var wanted: Agent? = null
@@ -149,6 +161,8 @@ class VoiceSession(
     fun loggingIn() {
         stopAgent()
         notice = null
+        // The prompt that found it signed out told it nothing: the next one tells it again.
+        aboutSent?.let { about = it }
     }
 
     /** When the task in progress started (ms), for the time shown. */
@@ -177,6 +191,15 @@ class VoiceSession(
 
     /** Opened anew: the next [wake] puts the conversation aside and starts a new one. */
     private var anew = false
+
+    /** What the next prompt is about, from [openedAnew]; null once it's been sent, or when opened about nothing. */
+    private var about: About? = null
+
+    /** Whether [about]'s note is in [transcript] already. */
+    private var aboutNoted = false
+
+    /** [about] once sent, for [loggingIn]: an agent that wasn't signed in never read it. */
+    private var aboutSent: About? = null
 
     /** Prompts sent since the agent started, for [VOICE_REMINDER]. */
     private var sent = 0
@@ -324,6 +347,7 @@ class VoiceSession(
             anew = false
             if (!busy && approvals.isEmpty()) putAside()
         }
+        noteAbout()
         // No agent that talks: the screen says which to install, and nothing starts.
         if (agent != null && process?.isAlive != true) start()
     }
@@ -379,7 +403,20 @@ class VoiceSession(
             asked = lastEvent
             heardBack = false
         }
-        link?.prompt(withNote(said))
+        // What the button it was opened from is about comes first, with the first thing said.
+        val text = about?.let { "${it.prompt}\n\n$said" } ?: said
+        about?.let { aboutSent = it }
+        about = null
+        link?.prompt(withNote(text))
+    }
+
+    /** [about]'s note at the end of the conversation, once, so the user sees what the agent will be told. */
+    private fun noteAbout() {
+        val a = about ?: return
+        if (agent == null || aboutNoted) return
+        aboutNoted = true
+        transcript += Entry("note", a.note)
+        saveTranscript()
     }
 
     /**
@@ -487,15 +524,26 @@ class VoiceSession(
         stopAgent()
         load(to)
         saveSettings()
+        noteAbout()
         start()
     }
 
     /**
      * Opened from the drawer, the AI bar or a terminal, not back from Recents: a new conversation, the last one put
      * aside for [resume]. Not while a task runs, nor when nothing has been said yet (the agent keeps running then).
-     * Called before the screen's [opened], so the agent doesn't start with the old conversation first.
+     * Called before the screen's [opened], so the agent doesn't start with the old conversation first. [about] is
+     * what it was opened for, like changing a widget; opened plainly, an earlier one that wasn't sent is dropped.
      */
-    fun openedAnew() {
+    fun openedAnew(about: About? = null) {
+        // The note of one that was never sent goes: a conversation with nothing said isn't put aside, and it'd stay.
+        val old = this.about
+        if (old != null && aboutNoted && transcript.lastOrNull() == Entry("note", old.note)) {
+            transcript.removeAt(transcript.lastIndex)
+            saveTranscript()
+        }
+        this.about = about
+        aboutSent = null
+        aboutNoted = false
         anew = true
         if (screens > 0) wake()
     }
@@ -504,6 +552,7 @@ class VoiceSession(
     fun startOver() {
         if (agent == null || busy) return
         putAside()
+        noteAbout()
         if (process?.isAlive != true) start()
     }
 
@@ -523,6 +572,8 @@ class VoiceSession(
             return
         }
         val keep = session?.takeIf { said() }
+        about = null
+        aboutSent = null
         stopAgent()
         if (keep != null) {
             keepPrevious(a, keep, transcript.toList())
@@ -553,6 +604,7 @@ class VoiceSession(
         stopAgent()
         if (id != null) keepPrevious(a, id, transcript.toList())
         transcript.clear()
+        aboutNoted = false
         saveTranscript()
         files.execute { sessionFile(a.bin).delete() }
         session = null
@@ -577,6 +629,7 @@ class VoiceSession(
         anyAge: Boolean = false,
     ) {
         agent = to
+        aboutNoted = false
         always.clear()
         // The last agent's trouble isn't this one's.
         notice = null
