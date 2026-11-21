@@ -112,7 +112,10 @@ private class Grid(
     private val across = width - pad.left - pad.right + gap
     private val down = height - pad.top - pad.bottom + gap
 
-    val rows = maxOf(if (turned) portraitRows ?: squareRows(down, across, cols) else squareRows(across, down, cols), used)
+    fun rowsForColumns(columns: Int) =
+        if (turned) squareRows(down, across, columns) else squareRows(across, down, columns)
+
+    val rows = maxOf((if (turned) portraitRows else null) ?: rowsForColumns(cols), used)
 
     /** A screen cell's width and height, the gap after it included. */
     val cellW = across / (if (turned) rows else cols).toFloat()
@@ -422,6 +425,7 @@ internal fun HomeGrid(
             layout.geometry = Triple(grid.cellW, grid.cellH, gap)
             layout.pageSize = wide.width to wide.height
             layout.turned = turned
+            layout.columnResizeRows = layout.screen to grid::rowsForColumns
         }
         val grab = with(density) { 20.dp.roundToPx() }
         val sideGrab = with(density) { 36.dp.roundToPx() }
