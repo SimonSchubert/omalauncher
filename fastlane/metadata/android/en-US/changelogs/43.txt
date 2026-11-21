@@ -1,0 +1,1 @@
+1.9.0. Widgets and apps can be changed by voice: "edit by voice" on a selected tile or in the drawer's long-press menu opens Voice with your agent ready to change it. Agents now build a real app when you ask for an app, a game or a tool. Store search finds names with dashes, like now-playing.

@@ -6,6 +6,13 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.9.0 (versionCode 43) – 2026-11-21
+
+- Widgets and owl apps can be changed by voice: a selected tile has Voice's icon next to edit, and
+  the drawer's and recent apps strip's long-press menus have "edit by voice", which opens Voice
+  with the agent told which file to change (appAction("voice"), owl 26).
+- Agents on the phone build an owl app when you ask for an app, a game or a tool, instead of a web page.
+- Fix: searching the store for "now playing" finds now-playing (- and _ count as spaces).
 ## 1.8.1 (versionCode 42) – 2026-11-21
 
 - The launcher comes in Turkish and Italian, with Turkish and Italian store listings.
