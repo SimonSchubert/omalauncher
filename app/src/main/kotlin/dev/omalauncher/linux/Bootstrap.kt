@@ -664,6 +664,7 @@ class Bootstrap(
         if (process.waitFor(FORK_CHECK_SECONDS, TimeUnit.SECONDS)) {
             reader.join(1_000)
             output.lines().forEach(log::add)
+            check(!ptraceRefused(output.toString())) { text(R.string.linux_error_ptrace) }
             check(process.exitValue() == 0 && "forks" in output) { text(R.string.linux_error_cant_run, process.exitValue()) }
             return
         }

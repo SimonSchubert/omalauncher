@@ -54,6 +54,7 @@
     <!-- %1$d: the exit code. -->
     <string name="linux_error_cant_run">Linux can\'t run commands here (exit %1$d)</string>
     <string name="linux_error_kernel">this phone\'s kernel stops Linux programs from starting other programs, so setup can\'t go on. custom ROMs with a 4.14 kernel need kernel commit 05b289263772 from their maintainer; see github issue #105</string>
+    <string name="linux_error_ptrace">this phone doesn\'t let the launcher trace its own programs (ptrace), and Linux can\'t run without that. on GrapheneOS, allow native code debugging for the launcher in the phone\'s settings › apps › Omalauncher › exploit protection, then try again</string>
     <!-- %1$s: the start of a shell command, %2$d: its exit code. -->
     <string name="linux_error_command">`%1$s` failed (exit %2$d)</string>
     <!-- %1$s: the version expected, like v2.3.0. -->
