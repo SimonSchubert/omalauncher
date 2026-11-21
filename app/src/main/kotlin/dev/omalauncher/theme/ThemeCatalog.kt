@@ -7,12 +7,12 @@ import androidx.compose.runtime.setValue
 import dev.omalauncher.R
 import dev.omalauncher.net.httpGet
 import dev.omalauncher.upgrade.writeAtomically
+import dev.omalauncher.widgets.lang.sha256Hex
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.net.URLEncoder
-import java.security.MessageDigest
 
 private const val TAG = "theme-catalog"
 
@@ -122,8 +122,7 @@ class ThemeCatalog(
                 val repo = theme.repo
                 val ext = path.substringAfterLast('.').lowercase()
                 check(ext in IMAGE_EXTENSIONS) { "not an image: $path" }
-                val digest = MessageDigest.getInstance("SHA-256").digest("${repo.label.lowercase()}/$path".toByteArray())
-                val file = File(wallpapers, digest.joinToString("") { "%02x".format(it) }.take(32) + ".$ext")
+                val file = File(wallpapers, sha256Hex("${repo.label.lowercase()}/$path".toByteArray()).take(32) + ".$ext")
                 if (!file.isFile) {
                     val url = "https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/HEAD/" + path.split('/').joinToString("/") { URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
                     writeAtomically(file, httpGet(url, readTimeout = 60_000))

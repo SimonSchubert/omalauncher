@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.R
 import dev.omalauncher.net.openHttp
+import dev.omalauncher.widgets.lang.hex
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -251,7 +252,7 @@ internal object ParakeetModel {
                 digest.update(buffer, 0, n)
             }
         }
-        return digest.digest().joinToString("") { "%02x".format(it) }
+        return digest.digest().hex()
     }
 
     private const val TAG = "parakeet"
