@@ -53,6 +53,8 @@ class WaylandServer(
             Global("xdg_wm_base", 3, ::XdgWmBase),
             Global("zxdg_decoration_manager_v1", 1, ::DecorationManager),
             Global("zwp_text_input_manager_v3", 1, ::TextInputManager),
+            Global("zwp_relative_pointer_manager_v1", 1, ::RelativePointerManager),
+            Global("zwp_pointer_constraints_v1", 1, ::PointerConstraints),
             Global("org_kde_kwin_server_decoration_manager", 1, ::ServerDecorationManager),
         )
 

@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.text.InputType
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.View
 import android.view.inputmethod.BaseInputConnection
@@ -77,6 +78,22 @@ class KeyboardBridge(
         return true
     }
 
+    /**
+     * A physical keyboard's key, before the keyboard app sees it. With an editor focused (the soft keyboard wanted),
+     * keyboard apps take a physical keyboard's letters and hand them back as instant presses and releases: a held W
+     * in a game becomes taps. Keys the guest's US layout types the same go straight to the window; AltGr,
+     * characters the US layout lacks and Super shortcuts still take the usual way.
+     */
+    fun preIme(event: KeyEvent): Boolean {
+        val device = event.device ?: return false
+        if (device.isVirtual || device.keyboardType != InputDevice.KEYBOARD_TYPE_ALPHABETIC) return false
+        if (event.isMetaPressed || event.metaState and KeyEvent.META_ALT_RIGHT_ON != 0) return false
+        val code = Keys.evdev(event) ?: return false
+        val char = event.unicodeChar
+        if (char != 0 && KeyNames.forChar(char.toChar())?.first != code) return false
+        return handle(event)
+    }
+
     private fun forward(
         event: KeyEvent,
         code: Int,
@@ -92,9 +109,10 @@ class KeyboardBridge(
             swallowUp = code
             return
         }
-        // Key repeat is ours (clients get rate 0): replay Android's repeats as release + press.
+        // Key repeat is ours (clients get rate 0): replay Android's repeats as release + press. Not to a game that
+        // locked the pointer: there a held key is one press, and a stream of them reads as tapping it.
         if (event.repeatCount > 0) {
-            if (event.action == KeyEvent.ACTION_DOWN) {
+            if (event.action == KeyEvent.ACTION_DOWN && !wm.inGame) {
                 key(code, false)
                 key(code, true)
             }
@@ -318,6 +336,8 @@ class KeyboardSink(
     }
 
     override fun onCheckIsTextEditor() = softKeyboard
+
+    override fun dispatchKeyEventPreIme(event: KeyEvent): Boolean = bridge.preIme(event) || super.dispatchKeyEventPreIme(event)
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
         cjk = cjkKeyboard()

@@ -35,7 +35,10 @@ class Proot(
      * A listable stand-in for /sys: apps may only read /sys/devices/system/cpu,
      * and tools like btop abort when they can't walk the directories above it.
      */
-    private val sysDir = File(filesDir, "sys")
+    val sysDir = File(filesDir, "sys")
+
+    /** /run/udev in the guest: udev's database, with records of the game controllers ([UdevRecords]). */
+    val udevDir = File(filesDir, "udev")
 
     /** Stand-ins for /proc files Android hides from apps. */
     val procShim = ProcShim(File(filesDir, "proc"))
@@ -71,6 +74,14 @@ class Proot(
     private val fastLane = File(rootfs, FAST_LANE.removePrefix("/"))
 
     /**
+     * /dev/input in the guest, where [Gamepads] puts a socket for each game controller; the library that makes them
+     * controllers for programs (patches/proot/gamepads) comes like the fast lane, and is preloaded ahead of it.
+     */
+    val inputDir = File(filesDir, "input")
+    private val gamepadsSource = File(nativeDir, "libgamepads.so")
+    private val gamepads = File(rootfs, GAMEPADS.removePrefix("/"))
+
+    /**
      * Where proot keeps the files behind hard links, which Android denies apps: each link is a symlink into here
      * (--link2symlink, PROOT_L2S_DIR). Without it they sit next to the link, and a program that links a directory
      * entry by entry (uv out of its cache) trips over them; links made before stay where they are and keep working
@@ -95,7 +106,14 @@ class Proot(
      */
     private val cjkFont = File("/system/fonts/NotoSansCJK-Regular.ttc")
 
-    private val fixedBinds = listOf("/tmp" to tmpDir, "/dev/shm" to tmpDir, GUEST_RUNTIME_DIR to runtimeDir) + dataBinds
+    private val fixedBinds =
+        listOf(
+            "/tmp" to tmpDir,
+            "/dev/shm" to tmpDir,
+            "/dev/input" to inputDir,
+            GUEST_RUNTIME_DIR to runtimeDir,
+            "/run/udev" to udevDir,
+        ) + dataBinds
 
     /** The phone's shared storage, as far as Android lets the launcher see it ([PhoneStorage]). */
     private val storageBinds = if (PhoneStorage.supported()) listOf(PhoneStorage.GUEST to PhoneStorage.root) else emptyList()
@@ -153,6 +171,9 @@ class Proot(
         runtimeDir.mkdirs()
         // proot skips a bind whose host directory is missing, and the guest would then write into the rootfs.
         // The empty mount points make the bound directories show up in listings of their parents.
+        inputDir.mkdirs()
+        File(udevDir, "data").mkdirs()
+        if (rootfs.isDirectory) File(rootfs, "run/udev").mkdirs()
         for ((guest, host) in dataBinds) {
             host.mkdirs()
             if (rootfs.isDirectory) File(rootfs, guest.removePrefix("/")).mkdirs()
@@ -217,7 +238,8 @@ class Proot(
      */
     fun managed(): List<Managed> =
         listOf(Managed.asset(context, "bwrap-shim.sh", File(rootfs, "usr/local/bin/bwrap"), Policy.Owned, executable = true)) +
-            if (fastLaneSource.isFile) listOf(Managed(fastLane, Policy.Owned) { fastLaneSource.readBytes() }) else emptyList()
+            (if (fastLaneSource.isFile) listOf(Managed(fastLane, Policy.Owned) { fastLaneSource.readBytes() }) else emptyList()) +
+            if (gamepadsSource.isFile) listOf(Managed(gamepads, Policy.Owned) { gamepadsSource.readBytes() }) else emptyList()
 
     private fun command(script: String): List<String> {
         return listOf(
@@ -273,9 +295,19 @@ class Proot(
                 "QT_QPA_PLATFORM=wayland",
                 "MOZ_ENABLE_WAYLAND=1",
                 "SDL_VIDEODRIVER=wayland",
+                // Game controllers are found by watching /dev/input, where Gamepads puts them; there's no udev.
+                "SDL_JOYSTICK_DISABLE_UDEV=1",
+                "GILRS_DISABLE_UDEV=1",
+                // Programs that ask udev anyway find them in UdevRecords' entries, which libudev otherwise refuses
+                // for not being on sysfs ("outside of sysfs"): /sys is the launcher's stand-in.
+                "SYSTEMD_DEVICE_VERIFY_SYSFS=0",
             ) + graphicsEnv +
-            // Only once the library is there: the dynamic linker complains on every start about one it can't find.
-            (if (cpuPinning && fastLane.isFile) listOf("LD_PRELOAD=$FAST_LANE") else emptyList()) +
+            // Only once the libraries are there: the dynamic linker complains on every start about one it can't find.
+            // The controllers' first, so that their opens reach it before the fast lane's.
+            listOfNotNull(GAMEPADS.takeIf { gamepads.isFile }, FAST_LANE.takeIf { cpuPinning && fastLane.isFile })
+                .takeIf { it.isNotEmpty() }
+                ?.let { listOf("LD_PRELOAD=${it.joinToString(":")}") }
+                .orEmpty() +
             listOf("/bin/sh", "-c", script)
     }
 
@@ -329,6 +361,7 @@ class Proot(
         const val GUEST_RUNTIME_DIR = "/run/user/0"
 
         private const val FAST_LANE = "/usr/local/lib/libfastpath.so"
+        private const val GAMEPADS = "/usr/local/lib/libgamepads.so"
 
         private const val GUEST_CJK_FONT = "/usr/share/fonts/android/NotoSansCJK-Regular.ttc"
     }
