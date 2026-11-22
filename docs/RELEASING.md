@@ -26,6 +26,12 @@ bundle exec fastlane android deploy       # build + upload straight to productio
 git tag v<versionName> && git push origin v<versionName>
 ```
 
+Before `deploy` or `promote`, run `scripts/release-smoke.sh <adb serial>` with the release APK
+(`./gradlew :app:assembleFossRelease`) on a phone or emulator whose install has Linux, a coding
+agent and settings changed from their defaults. It cold-starts the build many times in several
+languages and fails on a crash. A debug build is not enough: 1.9.0's startup crash only showed
+in a release build with Linux and an agent, in a language Parakeet knows.
+
 The tag starts `.github/workflows/release.yml`: it runs the tests, builds the
 signed APK and attaches it to a GitHub release with `SHA256SUMS` and the R8
 `mapping.txt`, using `changelogs/<versionCode>.txt` as the notes (it fails
