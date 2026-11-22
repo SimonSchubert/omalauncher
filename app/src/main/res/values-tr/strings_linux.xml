@@ -188,4 +188,47 @@
     <string name="licenses_use_androidsvg">SVG simgeleri çizer</string>
     <string name="licenses_use_zxing">widget paylaşımında kullanılan QR kodlarını çizer</string>
     <string name="licenses_use_json">JSON okur ve yazar</string>
+
+    <string name="link_title">cihaz bağla</string>
+    <string name="link_ask">%1$s bu cihaza bağlanmak istiyor</string>
+    <string name="link_what">bağlandıktan sonra linux çalışırken ağ üzerinden widget\'larını listeleyebilir, ekleyebilir, değiştirebilir, kaldırabilir ve onları, değerlerini, temayı ve arka planı eşitleyebilir. bu cihazda başka hiçbir şey.</string>
+    <string name="link_compare">yalnızca %1$s bu kodu gösteriyorsa bağla:</string>
+    <string name="link_confirm">bağla</string>
+    <string name="link_done">bağlandı. ikisi aynı ağdaysa %1$s bu cihazı birkaç saniyede bulur.</string>
+    <string name="link_close">kapat</string>
+    <string name="link_unreadable">bu kod okunamıyor. yenisini göster: omarchy\'de çubuktaki omalauncher, devices, connect a device.</string>
+    <string name="link_needs_linux">cihaz bağlamak için linux gerekir: ayarlardan kur, sonra kodu yeniden tara.</string>
+    <string name="link_computers_title">bağlı cihazlar</string>
+    <string name="link_computers_none">yok · omarchy\'den bağla</string>
+    <string name="link_computers_listening">ağda erişilebilir · port %1$d</string>
+    <string name="link_computers_waiting">henüz erişilemiyor · linux başlatır</string>
+    <string name="link_unlink">bağlantıyı kes</string>
+    <string name="link_computers_about">widget\'ları, değerlerini, temayı ve arka planı cihazlarında aynı tut. bağlı bir cihaz linux çalışırken bu cihazın widget\'larını, temasını ve arka planını değiştirebilir. başka bir şey değil.</string>
+    <string name="link_computers_how">cihaz bağla</string>
+    <string name="link_computers_how_body">başka bir telefon: burada bir kod göster ve o telefonun kamerasıyla tara. omarchy: çubuktaki omalauncher\'a, sonra devices\'a, sonra connect a device\'a tıkla ve o kodu bu cihazın kamerasıyla tara. ikisi aynı ağda olmalı.</string>
+    <plurals name="link_computers_count">
+        <item quantity="one">%1$d bağlı</item>
+        <item quantity="other">%1$d bağlı</item>
+    </plurals>
+    <string name="link_sync_theme">tema</string>
+    <string name="link_sync_background">arka plan</string>
+    <string name="link_sync_on">eşitle</string>
+    <string name="link_sync_off">kapalı</string>
+    <string name="link_sync_widgets">widget\'lar</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="one">%1$d eşitleniyor</item>
+        <item quantity="other">%1$d eşitleniyor</item>
+    </plurals>
+    <string name="link_show_code">kod göster</string>
+    <string name="link_code_making">kod oluşturuluyor…</string>
+    <string name="link_code_scan">diğer cihazın kamerasıyla tara; orada sorulur. yalnızca şunu gösteriyorsa bağla:</string>
+    <string name="link_code_waiting">cihaz bekleniyor…</string>
+    <string name="link_code_done">%1$s bağlandı.</string>
+    <string name="link_code_failed">hiçbir cihaz bağlanmadı. tekrar dene: ikisi de linux\'a ve aynı ağa ihtiyaç duyar.</string>
+    <string name="link_device_asking">neyin eşitlendiği soruluyor…</string>
+    <string name="link_pause">duraklat</string>
+    <string name="link_resume">sürdür</string>
+    <string name="link_paused">duraklatıldı. sen sürdürene kadar hiçbir cihaz buna ulaşamaz ve bu cihaz hiçbirini izlemez.</string>
+    <string name="link_activity">etkinlik</string>
+    <string name="link_activity_none">henüz yok</string>
 </resources>

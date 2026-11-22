@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import dev.omalauncher.linux.ComputerLink
+import dev.omalauncher.ui.settings.LinkComputerScreen
 import dev.omalauncher.Runtime
 import dev.omalauncher.theme.Style
 import dev.omalauncher.theme.StyleStore
@@ -371,6 +373,11 @@ private fun ThemesOverlay(
         }
     }
     state.shared?.let { link ->
+        // A computer's link code comes the same way as a widget link.
+        if (ComputerLink.Invite.isInvite(link)) {
+            LinkComputerScreen(runtime, link, onDismiss = { state.shared = null })
+            return@let
+        }
         SharedWidgetScreen(
             runtime.widgets,
             link,

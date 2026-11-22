@@ -194,4 +194,51 @@
     <string name="share_in_saved">збережено в ~/Downloads</string>
     <string name="share_in_failed">не вдалося зберегти в linux</string>
     <string name="share_in_no_linux">linux ще не налаштовано</string>
+
+    <string name="link_title">під\'єднати пристрій</string>
+    <string name="link_ask">%1$s хоче під\'єднатися до цього пристрою</string>
+    <string name="link_what">після під\'єднання він зможе переглядати, додавати, змінювати й видаляти твої віджети та синхронізувати їх, їхні значення, тему й фон — через мережу, поки працює linux. більше нічого на цьому пристрої.</string>
+    <string name="link_compare">під\'єднуй, лише якщо %1$s показує цей код:</string>
+    <string name="link_confirm">під\'єднати</string>
+    <string name="link_done">під\'єднано. %1$s знайде цей пристрій за кілька секунд, якщо обидва в одній мережі.</string>
+    <string name="link_close">закрити</string>
+    <string name="link_unreadable">цей код не читається. покажи новий: в omarchy omalauncher на панелі, devices, connect a device.</string>
+    <string name="link_needs_linux">для під\'єднання пристрою потрібен linux: встанови його в налаштуваннях і знову відскануй код.</string>
+    <string name="link_computers_title">під\'єднані пристрої</string>
+    <string name="link_computers_none">немає · під\'єднай з omarchy</string>
+    <string name="link_computers_listening">доступний у мережі · порт %1$d</string>
+    <string name="link_computers_waiting">поки недоступний · його запускає linux</string>
+    <string name="link_unlink">від\'єднати</string>
+    <string name="link_computers_about">однакові віджети, їхні значення, тема й фон на всіх твоїх пристроях. під\'єднаний пристрій може змінювати віджети, тему й фон цього, поки працює linux. більше нічого.</string>
+    <string name="link_computers_how">під\'єднати пристрій</string>
+    <string name="link_computers_how_body">інший телефон: покажи тут код і відскануй його камерою того телефона. omarchy: натисни omalauncher на панелі, потім devices, потім connect a device, і відскануй той код камерою цього пристрою. обидва в одній мережі.</string>
+    <plurals name="link_computers_count">
+        <item quantity="one">%1$d під\'єднано</item>
+        <item quantity="few">%1$d під\'єднано</item>
+        <item quantity="many">%1$d під\'єднано</item>
+        <item quantity="other">%1$d під\'єднано</item>
+    </plurals>
+    <string name="link_sync_theme">тема</string>
+    <string name="link_sync_background">фон</string>
+    <string name="link_sync_on">синхр.</string>
+    <string name="link_sync_off">вимк</string>
+    <string name="link_sync_widgets">віджети</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="one">%1$d синхронізується</item>
+        <item quantity="few">%1$d синхронізуються</item>
+        <item quantity="many">%1$d синхронізуються</item>
+        <item quantity="other">%1$d синхронізуються</item>
+    </plurals>
+    <string name="link_show_code">показати код</string>
+    <string name="link_code_making">створюю код…</string>
+    <string name="link_code_scan">відскануй його камерою іншого пристрою; там спитають. під\'єднуй, лише якщо він показує:</string>
+    <string name="link_code_waiting">чекаю на пристрій…</string>
+    <string name="link_code_done">%1$s під\'єднано.</string>
+    <string name="link_code_failed">жоден пристрій не під\'єднався. спробуй знову: обом потрібен linux і одна мережа.</string>
+    <string name="link_device_asking">питаю, що синхронізується…</string>
+    <string name="link_pause">пауза</string>
+    <string name="link_resume">відновити</string>
+    <string name="link_paused">на паузі. жоден пристрій не дістанеться до цього, і він ні за ким не стежить, доки не відновиш.</string>
+    <string name="link_activity">активність</string>
+    <string name="link_activity_none">поки нічого</string>
 </resources>

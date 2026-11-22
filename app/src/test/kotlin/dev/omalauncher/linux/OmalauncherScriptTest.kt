@@ -203,8 +203,9 @@ class OmalauncherScriptTest {
         val cases = text.substring(text.lastIndexOf("\ncase \$1 in\n")).substringBefore("\nesac")
         val cased = Regex("""^  ([\w |]+)\)""", RegexOption.MULTILINE).findAll(cases).flatMap { it.groupValues[1].split('|').map(String::trim) }.toSet()
         val usage = Regex("""omalauncher (\w+)""").findAll(text.substringAfter("<<USAGE").substringBefore("\nUSAGE")).map { it.groupValues[1] }.toSet()
-        assertEquals("answered by PhoneBridge", listed, answered)
-        assertEquals("taken by the script", listed, cased - "*")
+        // link is for omalauncher-link (ComputerLink), not agents: neither listed nor in the usage.
+        assertEquals("answered by PhoneBridge", listed, answered - "link")
+        assertEquals("taken by the script", listed, cased - "*" - "link")
         assertEquals("in the usage", listed, usage)
     }
 

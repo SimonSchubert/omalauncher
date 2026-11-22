@@ -30,6 +30,8 @@ import dev.omalauncher.linux.LinuxDns
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.OpenBridge
 import dev.omalauncher.linux.PhoneBridge
+import dev.omalauncher.linux.ComputerLink
+import dev.omalauncher.linux.DeviceSync
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.SystemUpdates
@@ -130,7 +132,13 @@ class Runtime(
     val phoneFolders = PhoneFolders(context)
 
     /** `omalauncher` in the guest (and `phone`, its old name): location, calendar and AirPods for agents, as far as widgets were allowed them; the phone folders. */
-    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, phoneFolders, scope) }
+    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, phoneFolders, { computerLink }, { deviceSync }, scope) }
+
+    /** Computers linked to the phone (the Omarchy plugin): they change its widgets and theme over SSH to the guest. */
+    val computerLink: ComputerLink by lazy { ComputerLink(context, proot, widgets, themes, scope).also { it.onPauseChanged = { deviceSync.pauseChanged() } } }
+
+    /** The devices this phone follows (another phone): the other half of [computerLink]. */
+    val deviceSync: DeviceSync by lazy { DeviceSync(context, proot, { computerLink.phoneId }, { computerLink.paused }, scope) }
 
     /** The voice screen's replies, in the phone's voice. */
     val speaker = Speaker(context)
@@ -168,6 +176,8 @@ class Runtime(
                 { bundledIcons(context, proot.home) },
                 openBridge::managed,
                 { phoneBridge.managed() },
+                { computerLink.managed() },
+                { deviceSync.managed() },
                 proot::managed,
                 pacman::managed,
                 agents::managed,
@@ -375,6 +385,8 @@ class Runtime(
                 linux = false
                 widgets.linuxChanged(false)
                 audio.stop()
+                computerLink.linuxChanged(false)
+                deviceSync.linuxChanged(false)
                 withContext(Dispatchers.IO) { proot.stop() }
                 setService(false)
             }
@@ -405,6 +417,8 @@ class Runtime(
                 launcherFont.forget()
                 widgets.linuxChanged(false)
                 audio.stop()
+                computerLink.linuxChanged(false)
+                deviceSync.linuxChanged(false)
                 withContext(Dispatchers.IO) { proot.killAll() }
                 bootstrap.remove()
                 withContext(Dispatchers.IO) {
@@ -474,6 +488,8 @@ class Runtime(
             agents.load()
         }
         widgets.linuxChanged(true)
+        computerLink.linuxChanged(true)
+        deviceSync.linuxChanged(true)
         refreshApps()
         withContext(Dispatchers.IO) { updates.load() }
         scope.launch {

@@ -252,6 +252,14 @@ class WidgetEngine(
     var openScreen by mutableStateOf<String?>(null)
 
     /** [name] is a running app, which opens in its own task (OwlAppActivity). */
+    /** Where [name]'s `persist` values are kept: `{"v":1,"savedAt":…,"values":{…}}` (PersistedValues). */
+    fun persistedFile(name: String) = File(stateDir, "$name.json")
+
+    /** [name]'s running instance takes in its persisted values again, written by a linked computer. Main thread. */
+    fun reloadPersisted(name: String) {
+        instances[name]?.reloadPersisted()
+    }
+
     fun isApp(name: String) = instances[name]?.program?.kind == OwlKind.App
 
     /** A running app with its spec, for its activity; null once it's removed or stops compiling. */
@@ -1261,6 +1269,14 @@ class WidgetEngine(
                 "`omalauncher calendar [days]`, `omalauncher airpods` and `omalauncher battery` (JSON; `omalauncher --help` says more), where the " +
                 "launcher was allowed them. `omalauncher notify <title> [text]` puts a notification on the phone, to tell the user something " +
                 "they should know while away, such as a long task being done; `omalauncher share <file>...` opens Android's share sheet for " +
-                "files, to send them on with an app the user picks.\n"
+                "files, to send them on with an app the user picks.\n\n" +
+                "Connected devices (the user's other phones and Omarchy computers with the Omalauncher plugin) keep widgets, their " +
+                "`persist` values, the theme and the background the same as this phone, over SSH on the local network. " +
+                "`omalauncher devices` lists them both ways, with what syncs with each; `omalauncher devices sync <device> theme|background " +
+                "on|off` and `… widget <name> on|off` change that, `omalauncher devices disconnect <device>` forgets one, and " +
+                "`omalauncher devices connect` puts a code on the screen for the user to scan with the other device. Only the user can " +
+                "accept a device, by confirming on the one that scans. `omalauncher-sync call <request>…` sends one request to a " +
+                "device this phone follows and prints its JSON answer (`omalauncher-sync --help` lists them: its widgets, a widget's " +
+                "file or values, its theme…); `--device=<name>` picks one when there are several.\n"
     }
 }

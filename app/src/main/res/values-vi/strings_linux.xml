@@ -200,4 +200,45 @@
     <string name="licenses_use_androidsvg">vẽ biểu tượng SVG</string>
     <string name="licenses_use_zxing">vẽ mã QR dùng để chia sẻ tiện ích</string>
     <string name="licenses_use_json">đọc và ghi JSON</string>
+
+    <string name="link_title">kết nối thiết bị</string>
+    <string name="link_ask">%1$s muốn kết nối với thiết bị này</string>
+    <string name="link_what">khi đã kết nối, thiết bị đó có thể liệt kê, thêm, sửa, xóa tiện ích và đồng bộ tiện ích, giá trị của chúng, chủ đề và hình nền, qua mạng khi linux đang chạy. không gì khác trên thiết bị này.</string>
+    <string name="link_compare">chỉ kết nối nếu %1$s hiện mã này:</string>
+    <string name="link_confirm">kết nối</string>
+    <string name="link_done">đã kết nối. %1$s tìm thấy thiết bị này trong vài giây khi cả hai cùng mạng.</string>
+    <string name="link_close">đóng</string>
+    <string name="link_unreadable">không đọc được mã này. hiện mã mới: trong omarchy, omalauncher trên thanh, devices, connect a device.</string>
+    <string name="link_needs_linux">kết nối thiết bị cần linux: cài trong cài đặt, rồi quét lại mã.</string>
+    <string name="link_computers_title">thiết bị đã kết nối</string>
+    <string name="link_computers_none">chưa có · kết nối từ omarchy</string>
+    <string name="link_computers_listening">truy cập được qua mạng · cổng %1$d</string>
+    <string name="link_computers_waiting">chưa truy cập được · linux sẽ khởi động</string>
+    <string name="link_unlink">ngắt kết nối</string>
+    <string name="link_computers_about">giữ tiện ích, giá trị của chúng, chủ đề và hình nền giống nhau trên các thiết bị của bạn. thiết bị đã kết nối có thể đổi tiện ích, chủ đề và hình nền của thiết bị này khi linux đang chạy. không gì khác.</string>
+    <string name="link_computers_how">kết nối thiết bị</string>
+    <string name="link_computers_how_body">điện thoại khác: hiện mã ở đây và quét bằng camera của điện thoại đó. omarchy: bấm omalauncher trên thanh, rồi devices, rồi connect a device, và quét mã đó bằng camera của thiết bị này. cả hai cùng một mạng.</string>
+    <plurals name="link_computers_count">
+        <item quantity="other">%1$d đã kết nối</item>
+    </plurals>
+    <string name="link_sync_theme">chủ đề</string>
+    <string name="link_sync_background">hình nền</string>
+    <string name="link_sync_on">đồng bộ</string>
+    <string name="link_sync_off">tắt</string>
+    <string name="link_sync_widgets">tiện ích</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="other">%1$d đang đồng bộ</item>
+    </plurals>
+    <string name="link_show_code">hiện mã</string>
+    <string name="link_code_making">đang tạo mã…</string>
+    <string name="link_code_scan">quét bằng camera của thiết bị kia; bên đó sẽ hỏi. chỉ kết nối nếu nó hiện:</string>
+    <string name="link_code_waiting">đang chờ thiết bị…</string>
+    <string name="link_code_done">đã kết nối %1$s.</string>
+    <string name="link_code_failed">chưa có thiết bị nào kết nối. thử lại: cả hai cần linux và cùng một mạng.</string>
+    <string name="link_device_asking">đang hỏi những gì được đồng bộ…</string>
+    <string name="link_pause">tạm dừng</string>
+    <string name="link_resume">tiếp tục</string>
+    <string name="link_paused">đang tạm dừng. không thiết bị nào truy cập được thiết bị này và nó không theo thiết bị nào cho đến khi bạn tiếp tục.</string>
+    <string name="link_activity">hoạt động</string>
+    <string name="link_activity_none">chưa có gì</string>
 </resources>

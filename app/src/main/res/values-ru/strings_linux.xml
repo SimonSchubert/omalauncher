@@ -195,4 +195,51 @@
     <string name="licenses_use_androidsvg">рисует значки SVG</string>
     <string name="licenses_use_zxing">рисует QR-коды, через которые делятся виджетами</string>
     <string name="licenses_use_json">читает и записывает JSON</string>
+
+    <string name="link_title">подключить устройство</string>
+    <string name="link_ask">%1$s хочет подключиться к этому устройству</string>
+    <string name="link_what">после подключения оно сможет просматривать, добавлять, менять и удалять твои виджеты и синхронизировать их, их значения, тему и фон — по сети, пока работает linux. больше ничего на этом устройстве.</string>
+    <string name="link_compare">подключай, только если %1$s показывает этот код:</string>
+    <string name="link_confirm">подключить</string>
+    <string name="link_done">подключено. %1$s найдёт это устройство за несколько секунд, если оба в одной сети.</string>
+    <string name="link_close">закрыть</string>
+    <string name="link_unreadable">этот код не читается. покажи новый: в omarchy omalauncher на панели, devices, connect a device.</string>
+    <string name="link_needs_linux">для подключения устройства нужен linux: установи его в настройках и снова отсканируй код.</string>
+    <string name="link_computers_title">подключённые устройства</string>
+    <string name="link_computers_none">нет · подключи из omarchy</string>
+    <string name="link_computers_listening">доступен в сети · порт %1$d</string>
+    <string name="link_computers_waiting">пока недоступен · его запускает linux</string>
+    <string name="link_unlink">отключить</string>
+    <string name="link_computers_about">одинаковые виджеты, их значения, тема и фон на всех твоих устройствах. подключённое устройство может менять виджеты, тему и фон этого, пока работает linux. больше ничего.</string>
+    <string name="link_computers_how">подключить устройство</string>
+    <string name="link_computers_how_body">другой телефон: покажи здесь код и отсканируй его камерой того телефона. omarchy: нажми omalauncher на панели, затем devices, затем connect a device, и отсканируй тот код камерой этого устройства. оба в одной сети.</string>
+    <plurals name="link_computers_count">
+        <item quantity="one">%1$d подключено</item>
+        <item quantity="few">%1$d подключено</item>
+        <item quantity="many">%1$d подключено</item>
+        <item quantity="other">%1$d подключено</item>
+    </plurals>
+    <string name="link_sync_theme">тема</string>
+    <string name="link_sync_background">фон</string>
+    <string name="link_sync_on">синхр.</string>
+    <string name="link_sync_off">выкл</string>
+    <string name="link_sync_widgets">виджеты</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="one">%1$d синхронизируется</item>
+        <item quantity="few">%1$d синхронизируются</item>
+        <item quantity="many">%1$d синхронизируются</item>
+        <item quantity="other">%1$d синхронизируются</item>
+    </plurals>
+    <string name="link_show_code">показать код</string>
+    <string name="link_code_making">создаю код…</string>
+    <string name="link_code_scan">отсканируй его камерой другого устройства; там спросят. подключай, только если оно показывает:</string>
+    <string name="link_code_waiting">жду устройство…</string>
+    <string name="link_code_done">%1$s подключено.</string>
+    <string name="link_code_failed">ни одно устройство не подключилось. попробуй снова: обоим нужен linux и одна сеть.</string>
+    <string name="link_device_asking">спрашиваю, что синхронизируется…</string>
+    <string name="link_pause">пауза</string>
+    <string name="link_resume">возобновить</string>
+    <string name="link_paused">на паузе. ни одно устройство не достанет до этого, и оно ни за кем не следует, пока не возобновишь.</string>
+    <string name="link_activity">активность</string>
+    <string name="link_activity_none">пока ничего</string>
 </resources>

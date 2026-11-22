@@ -61,6 +61,10 @@ class PhoneBridge(
     private val calendar: PhoneCalendar,
     private val airpods: () -> AirPods,
     private val folders: PhoneFolders,
+    /** Linked computers' requests (`omalauncher link`, from omalauncher-link). */
+    private val link: () -> ComputerLink,
+    /** The devices this phone follows, for `omalauncher devices`. */
+    private val deviceSync: () -> DeviceSync,
     /** Main: the sources are read on the main thread, as widgets read them. */
     private val scope: CoroutineScope,
 ) {
@@ -117,6 +121,8 @@ class PhoneBridge(
                     "get" -> withContext(Dispatchers.IO) { get(args.drop(1)) }
                     "put" -> withContext(Dispatchers.IO) { put(args.drop(1)) }
                     "pick" -> pick(args.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: Proot.GUEST_DOWNLOADS)
+                    "link" -> link().handle(args.drop(1), deviceSync())
+                    "devices" -> link().devices(args.drop(1), deviceSync())
                     else -> Answer.Usage("unknown command '${args[0]}'")
                 }
             } catch (e: Exception) {
@@ -305,7 +311,7 @@ class PhoneBridge(
     }
 
     /** What the script reads: its first line tells it the exit code. */
-    private sealed class Answer(
+    internal sealed class Answer(
         val text: String,
     ) {
         /** [value] as JSON, or nothing. */
@@ -334,7 +340,7 @@ class PhoneBridge(
         const val OLD_COMMAND = "phone"
         const val SCRIPT = "$COMMAND.sh"
         /** What this launcher's `omalauncher` answers, for `omalauncher version`. */
-        val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "version")
+        val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "devices", "version")
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
         const val LOCATION_MS = 10_000L

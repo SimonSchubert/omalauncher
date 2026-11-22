@@ -54,6 +54,9 @@ enum class SettingsPage {
 
     /** Every permission, to turn on or off. */
     Permissions,
+
+    /** The computers linked to the phone (the Omarchy plugin); see [dev.omalauncher.linux.ComputerLink]. */
+    Computers,
 }
 
 /** Opens [page] over the ones in [stack]; one that's already open comes back to the top, closing what's over it. */
@@ -128,6 +131,7 @@ private fun SettingsPage(
                 onLicenses = { stack.push(SettingsPage.Licenses) },
                 onGestures = { stack.push(SettingsPage.Gestures) },
                 onPermissions = { stack.push(SettingsPage.Permissions) },
+                onComputers = { stack.push(SettingsPage.Computers) },
             )
         SettingsPage.Style -> StyleScreen(runtime, onDismiss = close, onBrowse = { stack.push(SettingsPage.Themes) }, onAgent = ::agent)
         SettingsPage.Pages -> {
@@ -177,5 +181,6 @@ private fun SettingsPage(
         SettingsPage.Licenses -> LicensesScreen(onDismiss = close)
         SettingsPage.Gestures -> GesturesScreen(runtime, onDismiss = close, onAgent = ::agent)
         SettingsPage.Permissions -> PermissionsScreen(runtime, onDismiss = close)
+        SettingsPage.Computers -> LinkedComputersScreen(runtime, onDismiss = close, onLinux = { stack.push(SettingsPage.Linux) })
     }
 }

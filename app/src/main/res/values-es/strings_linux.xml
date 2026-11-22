@@ -192,4 +192,49 @@
     <string name="licenses_use_androidsvg">dibuja los iconos SVG</string>
     <string name="licenses_use_zxing">dibuja los códigos QR con los que se comparten los widgets</string>
     <string name="licenses_use_json">lee y escribe JSON</string>
+
+    <string name="link_title">conectar un dispositivo</string>
+    <string name="link_ask">%1$s quiere conectarse a este dispositivo</string>
+    <string name="link_what">una vez conectado, puede listar, añadir, cambiar y quitar tus widgets y mantenerlos sincronizados, con sus valores, el tema y el fondo, por la red mientras linux funciona. nada más de este dispositivo.</string>
+    <string name="link_compare">conéctalo solo si %1$s muestra este código:</string>
+    <string name="link_confirm">conectar</string>
+    <string name="link_done">conectado. %1$s encuentra este dispositivo en segundos si ambos están en la misma red.</string>
+    <string name="link_close">cerrar</string>
+    <string name="link_unreadable">no se puede leer este código. muestra uno nuevo: en omarchy, omalauncher en la barra, devices, connect a device.</string>
+    <string name="link_needs_linux">conectar un dispositivo necesita linux: instálalo en ajustes y vuelve a escanear el código.</string>
+    <string name="link_computers_title">dispositivos conectados</string>
+    <string name="link_computers_none">ninguno · conecta uno desde omarchy</string>
+    <string name="link_computers_listening">accesible en la red · puerto %1$d</string>
+    <string name="link_computers_waiting">aún no accesible · linux lo inicia</string>
+    <string name="link_unlink">desconectar</string>
+    <string name="link_computers_about">mantén iguales en tus dispositivos los widgets, sus valores, el tema y el fondo. un dispositivo conectado puede cambiar los widgets, el tema y el fondo de este mientras linux funciona. nada más.</string>
+    <string name="link_computers_how">conectar un dispositivo</string>
+    <string name="link_computers_how_body">otro teléfono: muestra aquí un código y escanéalo con la cámara de ese teléfono. omarchy: haz clic en omalauncher en la barra, luego devices y connect a device, y escanea ese código con la cámara de este dispositivo. ambos en la misma red.</string>
+    <plurals name="link_computers_count">
+        <item quantity="one">%1$d conectado</item>
+        <item quantity="many">%1$d conectados</item>
+        <item quantity="other">%1$d conectados</item>
+    </plurals>
+    <string name="link_sync_theme">tema</string>
+    <string name="link_sync_background">fondo</string>
+    <string name="link_sync_on">sincronizar</string>
+    <string name="link_sync_off">no</string>
+    <string name="link_sync_widgets">widgets</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="one">%1$d sincronizado</item>
+        <item quantity="many">%1$d sincronizados</item>
+        <item quantity="other">%1$d sincronizados</item>
+    </plurals>
+    <string name="link_show_code">mostrar un código</string>
+    <string name="link_code_making">creando el código…</string>
+    <string name="link_code_scan">escanéalo con la cámara del otro dispositivo; allí se pregunta. conéctalo solo si muestra:</string>
+    <string name="link_code_waiting">esperando al dispositivo…</string>
+    <string name="link_code_done">%1$s conectado.</string>
+    <string name="link_code_failed">ningún dispositivo conectado. inténtalo de nuevo: ambos necesitan linux y la misma red.</string>
+    <string name="link_device_asking">preguntando qué se sincroniza…</string>
+    <string name="link_pause">pausar</string>
+    <string name="link_resume">reanudar</string>
+    <string name="link_paused">en pausa. ningún dispositivo llega a este y este no sigue a ninguno hasta que reanudes.</string>
+    <string name="link_activity">actividad</string>
+    <string name="link_activity_none">nada todavía</string>
 </resources>

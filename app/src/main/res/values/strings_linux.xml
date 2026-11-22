@@ -242,4 +242,48 @@
     <string name="licenses_use_androidsvg">draws SVG icons</string>
     <string name="licenses_use_zxing">draws the QR codes widgets are shared with</string>
     <string name="licenses_use_json">reads and writes JSON</string>
+
+    <!-- Linking a computer (ui/settings/LinkComputer.kt, linux/ComputerLink.kt). -->
+    <string name="link_title">connect a device</string>
+    <string name="link_ask">%1$s wants to connect to this device</string>
+    <string name="link_what">once connected, it can list, add, change and remove your widgets and keep them, their values, the theme and the background in sync, over the network while linux runs. nothing else on this device.</string>
+    <string name="link_compare">only connect it if %1$s shows this code:</string>
+    <string name="link_confirm">connect</string>
+    <string name="link_done">connected. %1$s finds this device within seconds while both are on the same network.</string>
+    <string name="link_close">close</string>
+    <string name="link_unreadable">this code can\'t be read. show a new one: in omarchy, omalauncher in the bar, devices, connect a device.</string>
+    <string name="link_needs_linux">connecting a device needs linux: install it in settings, then scan the code again.</string>
+    <string name="link_computers_title">connected devices</string>
+    <string name="link_computers_none">none · connect one from omarchy</string>
+    <string name="link_computers_listening">reachable on the network · port %1$d</string>
+    <string name="link_computers_waiting">not reachable yet · linux starts it</string>
+    <string name="link_unlink">disconnect</string>
+    <string name="link_computers_about">keep widgets, their values, the theme and the background the same on your devices. a connected device can change this one\'s widgets, theme and background, while linux runs. nothing else.</string>
+    <string name="link_computers_how">connect a device</string>
+    <string name="link_computers_how_body">another phone: show a code here and scan it with that phone\'s camera. omarchy: click omalauncher in the bar, then devices, then connect a device, and scan that code with this device\'s camera. both on the same network.</string>
+    <plurals name="link_computers_count">
+        <item quantity="one">%1$d connected</item>
+        <item quantity="other">%1$d connected</item>
+    </plurals>
+    <string name="link_sync_theme">theme</string>
+    <string name="link_sync_background">background</string>
+    <string name="link_sync_on">sync</string>
+    <string name="link_sync_off">off</string>
+    <string name="link_sync_widgets">widgets</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="one">%1$d synced</item>
+        <item quantity="other">%1$d synced</item>
+    </plurals>
+    <string name="link_show_code">show a code</string>
+    <string name="link_code_making">making the code…</string>
+    <string name="link_code_scan">scan it with the other device\'s camera; it asks there. connect only if it shows:</string>
+    <string name="link_code_waiting">waiting for the device…</string>
+    <string name="link_code_done">connected %1$s.</string>
+    <string name="link_code_failed">no device connected. try again: both need linux and the same network.</string>
+    <string name="link_device_asking">asking it what syncs…</string>
+    <string name="link_pause">pause</string>
+    <string name="link_resume">resume</string>
+    <string name="link_paused">paused. no device reaches this one and it follows none until you resume.</string>
+    <string name="link_activity">activity</string>
+    <string name="link_activity_none">nothing yet</string>
 </resources>

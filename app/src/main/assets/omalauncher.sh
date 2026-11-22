@@ -47,6 +47,22 @@ usage: omalauncher location       {lat, lon, accuracy (metres), time}, approxima
                                   files from anywhere on the phone (Download
                                   too); copies them into dir (~/Downloads) and
                                   prints their paths
+       omalauncher devices        the connected devices (other phones, Omarchy
+                                  computers), both ways: [{id, name, follows,
+                                  theme, background, widgets}]; follows is "this
+                                  phone" or "it". widgets: the synced ones
+       omalauncher devices sync <device> theme|background on|off
+       omalauncher devices sync <device> widget <name> on|off
+                                  what syncs with one (by name or id); prints
+                                  the list again
+       omalauncher devices disconnect <device>
+       omalauncher devices connect
+                                  shows a code on the phone's screen for the
+                                  user to scan with the other device, which asks
+                                  them; the user confirms there, not you
+       omalauncher-sync call <request>...
+                                  a request to a device this phone follows, as
+                                  JSON (omalauncher-sync --help lists them)
        omalauncher version        {version, versionCode, commands}
 
 Words that start with - are kept for options; put -- before one meant as
@@ -136,6 +152,9 @@ case $1 in
     [ $# -le 2 ] || usage
     [ $# -eq 1 ] || set -- pick "$(absolute "$2")"
     ;;
+  devices) [ $# -le 5 ] || usage ;;
+  # A linked computer's request, from omalauncher-link (ComputerLink.kt); not for agents, so not in the usage.
+  link) [ $# -ge 3 ] || usage ;;
   *) usage ;;
 esac
 if [ ! -d "$inbox" ]; then

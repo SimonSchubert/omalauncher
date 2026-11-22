@@ -185,4 +185,45 @@
     <string name="licenses_use_androidsvg">SVG アイコンの描画</string>
     <string name="licenses_use_zxing">ウィジェット共有用 QR コードの描画</string>
     <string name="licenses_use_json">JSON の読み書き</string>
+
+    <string name="link_title">デバイスを接続</string>
+    <string name="link_ask">%1$s がこのデバイスへの接続を求めています</string>
+    <string name="link_what">接続すると、linux の実行中にネットワーク経由でウィジェットの一覧・追加・変更・削除と、ウィジェットとその値、テーマ、背景の同期ができます。このデバイスのそれ以外のものには触れません。</string>
+    <string name="link_compare">%1$s にこのコードが表示されている場合だけ接続してください:</string>
+    <string name="link_confirm">接続</string>
+    <string name="link_done">接続しました。同じネットワークにいれば %1$s が数秒でこのデバイスを見つけます。</string>
+    <string name="link_close">閉じる</string>
+    <string name="link_unreadable">このコードは読み取れません。新しいコードを表示してください: omarchy のバーの omalauncher、devices、connect a device。</string>
+    <string name="link_needs_linux">デバイスの接続には linux が必要です。設定でインストールしてから、もう一度コードをスキャンしてください。</string>
+    <string name="link_computers_title">接続済みのデバイス</string>
+    <string name="link_computers_none">なし · omarchy から接続</string>
+    <string name="link_computers_listening">ネットワークから接続可能 · ポート %1$d</string>
+    <string name="link_computers_waiting">まだ接続できません · linux が起動します</string>
+    <string name="link_unlink">切断</string>
+    <string name="link_computers_about">ウィジェットとその値、テーマ、背景をデバイス間でそろえます。接続済みのデバイスは linux の実行中、このデバイスのウィジェット、テーマ、背景を変更できます。それ以外はできません。</string>
+    <string name="link_computers_how">デバイスを接続</string>
+    <string name="link_computers_how_body">別のスマホ: ここでコードを表示し、そのスマホのカメラでスキャン。omarchy: バーの omalauncher、devices、connect a device の順に開き、そのコードをこのデバイスのカメラでスキャン。両方が同じネットワークにある必要があります。</string>
+    <plurals name="link_computers_count">
+        <item quantity="other">%1$d 台接続済み</item>
+    </plurals>
+    <string name="link_sync_theme">テーマ</string>
+    <string name="link_sync_background">背景</string>
+    <string name="link_sync_on">同期</string>
+    <string name="link_sync_off">オフ</string>
+    <string name="link_sync_widgets">ウィジェット</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="other">%1$d 個を同期</item>
+    </plurals>
+    <string name="link_show_code">コードを表示</string>
+    <string name="link_code_making">コードを作成中…</string>
+    <string name="link_code_scan">相手のデバイスのカメラでスキャンしてください。相手側で確認されます。このコードが表示されている場合だけ接続:</string>
+    <string name="link_code_waiting">デバイスを待っています…</string>
+    <string name="link_code_done">%1$s に接続しました。</string>
+    <string name="link_code_failed">接続されたデバイスはありません。もう一度試してください: 両方に linux と同じネットワークが必要です。</string>
+    <string name="link_device_asking">同期内容を確認中…</string>
+    <string name="link_pause">一時停止</string>
+    <string name="link_resume">再開</string>
+    <string name="link_paused">一時停止中。再開するまで、どのデバイスもこのデバイスに接続できず、このデバイスも他のデバイスに従いません。</string>
+    <string name="link_activity">アクティビティ</string>
+    <string name="link_activity_none">まだありません</string>
 </resources>

@@ -75,6 +75,7 @@ fun SettingsScreen(
     onLicenses: () -> Unit,
     onGestures: () -> Unit,
     onPermissions: () -> Unit,
+    onComputers: () -> Unit,
 ) {
     val context = LocalContext.current
     val linux by runtime.bootstrap.state.collectAsState()
@@ -136,6 +137,7 @@ fun SettingsScreen(
                     SettingsRow(R.string.settings_agents, needsLinux, onLinux)
                 },
                 SettingsRow(R.string.settings_packages, if (installed) stringResource(R.string.settings_packages_subtitle) else needsLinux, if (installed) onPackages else onLinux),
+                SettingsRow(R.string.link_computers_title, linkedComputersStatus(runtime), onComputers),
                 if (notHome) {
                     SettingsRow(R.string.settings_home_app, stringResource(R.string.settings_home_app_subtitle)) {
                         askHome.launch(roles.createRequestRoleIntent(RoleManager.ROLE_HOME))

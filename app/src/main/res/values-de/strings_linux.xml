@@ -189,4 +189,47 @@
     <string name="licenses_use_androidsvg">zeichnet SVG-icons</string>
     <string name="licenses_use_zxing">zeichnet die QR-codes, mit denen widgets geteilt werden</string>
     <string name="licenses_use_json">liest und schreibt JSON</string>
+
+    <string name="link_title">gerät verbinden</string>
+    <string name="link_ask">%1$s möchte sich mit diesem gerät verbinden</string>
+    <string name="link_what">verbunden kann es deine widgets auflisten, hinzufügen, ändern und entfernen und sie, ihre werte, das theme und den hintergrund abgleichen, über das netzwerk, solange linux läuft. sonst nichts auf diesem gerät.</string>
+    <string name="link_compare">verbinde nur, wenn %1$s diesen code zeigt:</string>
+    <string name="link_confirm">verbinden</string>
+    <string name="link_done">verbunden. %1$s findet dieses gerät in wenigen sekunden, solange beide im selben netzwerk sind.</string>
+    <string name="link_close">schließen</string>
+    <string name="link_unreadable">dieser code ist nicht lesbar. zeig einen neuen: in omarchy omalauncher in der leiste, devices, connect a device.</string>
+    <string name="link_needs_linux">ein gerät zu verbinden braucht linux: installier es in den einstellungen und scann den code dann noch mal.</string>
+    <string name="link_computers_title">verbundene geräte</string>
+    <string name="link_computers_none">keine · verbinde eins von omarchy aus</string>
+    <string name="link_computers_listening">im netzwerk erreichbar · port %1$d</string>
+    <string name="link_computers_waiting">noch nicht erreichbar · linux startet es</string>
+    <string name="link_unlink">trennen</string>
+    <string name="link_computers_about">halte widgets, ihre werte, das theme und den hintergrund auf deinen geräten gleich. ein verbundenes gerät kann widgets, theme und hintergrund von diesem ändern, solange linux läuft. sonst nichts.</string>
+    <string name="link_computers_how">gerät verbinden</string>
+    <string name="link_computers_how_body">ein anderes handy: zeig hier einen code und scann ihn mit der kamera des anderen handys. omarchy: klick in der leiste auf omalauncher, dann devices, dann connect a device, und scann diesen code mit der kamera dieses geräts. beide im selben netzwerk.</string>
+    <plurals name="link_computers_count">
+        <item quantity="one">%1$d verbunden</item>
+        <item quantity="other">%1$d verbunden</item>
+    </plurals>
+    <string name="link_sync_theme">theme</string>
+    <string name="link_sync_background">hintergrund</string>
+    <string name="link_sync_on">abgleichen</string>
+    <string name="link_sync_off">aus</string>
+    <string name="link_sync_widgets">widgets</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="one">%1$d abgeglichen</item>
+        <item quantity="other">%1$d abgeglichen</item>
+    </plurals>
+    <string name="link_show_code">code zeigen</string>
+    <string name="link_code_making">code wird erstellt…</string>
+    <string name="link_code_scan">scann ihn mit der kamera des anderen geräts; dort wird gefragt. verbinde nur, wenn es zeigt:</string>
+    <string name="link_code_waiting">warte auf das gerät…</string>
+    <string name="link_code_done">%1$s verbunden.</string>
+    <string name="link_code_failed">kein gerät verbunden. versuch es noch mal: beide brauchen linux und dasselbe netzwerk.</string>
+    <string name="link_device_asking">frage, was abgeglichen wird…</string>
+    <string name="link_pause">pausieren</string>
+    <string name="link_resume">fortsetzen</string>
+    <string name="link_paused">pausiert. kein gerät erreicht dieses und es folgt keinem, bis du fortsetzt.</string>
+    <string name="link_activity">aktivität</string>
+    <string name="link_activity_none">noch nichts</string>
 </resources>

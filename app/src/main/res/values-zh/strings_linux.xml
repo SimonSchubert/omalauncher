@@ -186,4 +186,45 @@
     <string name="licenses_use_androidsvg">绘制 SVG 图标</string>
     <string name="licenses_use_zxing">绘制分享小组件用的二维码</string>
     <string name="licenses_use_json">读写 JSON</string>
+
+    <string name="link_title">连接设备</string>
+    <string name="link_ask">%1$s 想连接到此设备</string>
+    <string name="link_what">连接后，在 linux 运行期间，它可以通过网络列出、添加、修改和删除你的小组件，并同步小组件及其数值、主题和背景。不会碰此设备上的其他东西。</string>
+    <string name="link_compare">只有 %1$s 显示这个代码时才连接：</string>
+    <string name="link_confirm">连接</string>
+    <string name="link_done">已连接。两者在同一网络时，%1$s 几秒内就能找到此设备。</string>
+    <string name="link_close">关闭</string>
+    <string name="link_unreadable">无法读取这个代码。显示一个新的：在 omarchy 中，栏里的 omalauncher、devices、connect a device。</string>
+    <string name="link_needs_linux">连接设备需要 linux：先在设置中安装，再重新扫描代码。</string>
+    <string name="link_computers_title">已连接的设备</string>
+    <string name="link_computers_none">无 · 从 omarchy 连接</string>
+    <string name="link_computers_listening">可通过网络访问 · 端口 %1$d</string>
+    <string name="link_computers_waiting">暂不可访问 · 由 linux 启动</string>
+    <string name="link_unlink">断开</string>
+    <string name="link_computers_about">让你的设备上的小组件及其数值、主题和背景保持一致。已连接的设备可以在 linux 运行时更改此设备的小组件、主题和背景。仅此而已。</string>
+    <string name="link_computers_how">连接设备</string>
+    <string name="link_computers_how_body">另一部手机：在这里显示代码，并用那部手机的相机扫描。omarchy：点击栏中的 omalauncher，再点 devices，然后 connect a device，用此设备的相机扫描那个代码。两者需在同一网络。</string>
+    <plurals name="link_computers_count">
+        <item quantity="other">已连接 %1$d 台</item>
+    </plurals>
+    <string name="link_sync_theme">主题</string>
+    <string name="link_sync_background">背景</string>
+    <string name="link_sync_on">同步</string>
+    <string name="link_sync_off">关</string>
+    <string name="link_sync_widgets">小组件</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="other">同步 %1$d 个</item>
+    </plurals>
+    <string name="link_show_code">显示代码</string>
+    <string name="link_code_making">正在生成代码…</string>
+    <string name="link_code_scan">用另一台设备的相机扫描；对方会询问。只有显示以下代码时才连接：</string>
+    <string name="link_code_waiting">正在等待设备…</string>
+    <string name="link_code_done">已连接 %1$s。</string>
+    <string name="link_code_failed">没有设备连接。请重试：两者都需要 linux 并在同一网络。</string>
+    <string name="link_device_asking">正在询问同步内容…</string>
+    <string name="link_pause">暂停</string>
+    <string name="link_resume">恢复</string>
+    <string name="link_paused">已暂停。恢复之前，任何设备都无法访问此设备，它也不跟随任何设备。</string>
+    <string name="link_activity">活动</string>
+    <string name="link_activity_none">暂无</string>
 </resources>

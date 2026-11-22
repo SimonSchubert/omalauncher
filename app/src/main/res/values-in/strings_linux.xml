@@ -186,4 +186,45 @@
     <string name="licenses_use_androidsvg">menggambar ikon SVG</string>
     <string name="licenses_use_zxing">menggambar kode QR untuk berbagi widget</string>
     <string name="licenses_use_json">membaca dan menulis JSON</string>
+
+    <string name="link_title">sambungkan perangkat</string>
+    <string name="link_ask">%1$s ingin tersambung ke perangkat ini</string>
+    <string name="link_what">setelah tersambung, perangkat itu bisa melihat, menambah, mengubah, dan menghapus widget kamu serta menyinkronkan widget, nilainya, tema, dan latar, lewat jaringan selama linux berjalan. tidak ada yang lain di perangkat ini.</string>
+    <string name="link_compare">sambungkan hanya jika %1$s menampilkan kode ini:</string>
+    <string name="link_confirm">sambungkan</string>
+    <string name="link_done">tersambung. %1$s menemukan perangkat ini dalam beberapa detik selama keduanya di jaringan yang sama.</string>
+    <string name="link_close">tutup</string>
+    <string name="link_unreadable">kode ini tidak bisa dibaca. tampilkan yang baru: di omarchy, omalauncher di bilah, devices, connect a device.</string>
+    <string name="link_needs_linux">menyambungkan perangkat butuh linux: pasang di pengaturan, lalu pindai kodenya lagi.</string>
+    <string name="link_computers_title">perangkat tersambung</string>
+    <string name="link_computers_none">belum ada · sambungkan dari omarchy</string>
+    <string name="link_computers_listening">terjangkau di jaringan · port %1$d</string>
+    <string name="link_computers_waiting">belum terjangkau · linux menjalankannya</string>
+    <string name="link_unlink">putuskan</string>
+    <string name="link_computers_about">jaga widget, nilainya, tema, dan latar tetap sama di perangkatmu. perangkat yang tersambung bisa mengubah widget, tema, dan latar perangkat ini selama linux berjalan. tidak lebih.</string>
+    <string name="link_computers_how">sambungkan perangkat</string>
+    <string name="link_computers_how_body">ponsel lain: tampilkan kode di sini dan pindai dengan kamera ponsel itu. omarchy: klik omalauncher di bilah, lalu devices, lalu connect a device, dan pindai kode itu dengan kamera perangkat ini. keduanya di jaringan yang sama.</string>
+    <plurals name="link_computers_count">
+        <item quantity="other">%1$d tersambung</item>
+    </plurals>
+    <string name="link_sync_theme">tema</string>
+    <string name="link_sync_background">latar</string>
+    <string name="link_sync_on">sinkron</string>
+    <string name="link_sync_off">mati</string>
+    <string name="link_sync_widgets">widget</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="other">%1$d tersinkron</item>
+    </plurals>
+    <string name="link_show_code">tampilkan kode</string>
+    <string name="link_code_making">membuat kode…</string>
+    <string name="link_code_scan">pindai dengan kamera perangkat lain; di sana akan ditanya. sambungkan hanya jika menampilkan:</string>
+    <string name="link_code_waiting">menunggu perangkat…</string>
+    <string name="link_code_done">%1$s tersambung.</string>
+    <string name="link_code_failed">tidak ada perangkat tersambung. coba lagi: keduanya butuh linux dan jaringan yang sama.</string>
+    <string name="link_device_asking">menanyakan apa yang disinkronkan…</string>
+    <string name="link_pause">jeda</string>
+    <string name="link_resume">lanjutkan</string>
+    <string name="link_paused">dijeda. tidak ada perangkat yang bisa menjangkau perangkat ini dan perangkat ini tidak mengikuti yang lain sampai kamu melanjutkan.</string>
+    <string name="link_activity">aktivitas</string>
+    <string name="link_activity_none">belum ada</string>
 </resources>

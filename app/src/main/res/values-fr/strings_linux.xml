@@ -191,4 +191,49 @@
     <string name="licenses_use_androidsvg">dessine les icônes SVG</string>
     <string name="licenses_use_zxing">dessine les QR codes avec lesquels on partage les widgets</string>
     <string name="licenses_use_json">lit et écrit du JSON</string>
+
+    <string name="link_title">connecter un appareil</string>
+    <string name="link_ask">%1$s veut se connecter à cet appareil</string>
+    <string name="link_what">une fois connecté, il peut lister, ajouter, modifier et supprimer tes widgets et les garder synchronisés, avec leurs valeurs, le thème et le fond d\'écran, via le réseau tant que linux tourne. rien d\'autre sur cet appareil.</string>
+    <string name="link_compare">connecte-le seulement si %1$s affiche ce code :</string>
+    <string name="link_confirm">connecter</string>
+    <string name="link_done">connecté. %1$s trouve cet appareil en quelques secondes s\'ils sont sur le même réseau.</string>
+    <string name="link_close">fermer</string>
+    <string name="link_unreadable">ce code est illisible. affiches-en un nouveau : dans omarchy, omalauncher dans la barre, devices, connect a device.</string>
+    <string name="link_needs_linux">connecter un appareil nécessite linux : installe-le dans les réglages, puis scanne à nouveau le code.</string>
+    <string name="link_computers_title">appareils connectés</string>
+    <string name="link_computers_none">aucun · connectes-en un depuis omarchy</string>
+    <string name="link_computers_listening">joignable sur le réseau · port %1$d</string>
+    <string name="link_computers_waiting">pas encore joignable · linux le démarre</string>
+    <string name="link_unlink">déconnecter</string>
+    <string name="link_computers_about">garde les widgets, leurs valeurs, le thème et le fond d\'écran identiques sur tes appareils. un appareil connecté peut modifier les widgets, le thème et le fond d\'écran de celui-ci tant que linux tourne. rien d\'autre.</string>
+    <string name="link_computers_how">connecter un appareil</string>
+    <string name="link_computers_how_body">un autre téléphone : affiche un code ici et scanne-le avec l\'appareil photo de ce téléphone. omarchy : clique sur omalauncher dans la barre, puis devices, puis connect a device, et scanne ce code avec l\'appareil photo de cet appareil. tous deux sur le même réseau.</string>
+    <plurals name="link_computers_count">
+        <item quantity="one">%1$d connecté</item>
+        <item quantity="many">%1$d connectés</item>
+        <item quantity="other">%1$d connectés</item>
+    </plurals>
+    <string name="link_sync_theme">thème</string>
+    <string name="link_sync_background">fond d\'écran</string>
+    <string name="link_sync_on">synchro</string>
+    <string name="link_sync_off">non</string>
+    <string name="link_sync_widgets">widgets</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="one">%1$d synchronisé</item>
+        <item quantity="many">%1$d synchronisés</item>
+        <item quantity="other">%1$d synchronisés</item>
+    </plurals>
+    <string name="link_show_code">afficher un code</string>
+    <string name="link_code_making">création du code…</string>
+    <string name="link_code_scan">scanne-le avec l\'appareil photo de l\'autre appareil ; il demande là-bas. connecte seulement s\'il affiche :</string>
+    <string name="link_code_waiting">en attente de l\'appareil…</string>
+    <string name="link_code_done">%1$s connecté.</string>
+    <string name="link_code_failed">aucun appareil connecté. réessaie : les deux ont besoin de linux et du même réseau.</string>
+    <string name="link_device_asking">je demande ce qui est synchronisé…</string>
+    <string name="link_pause">pause</string>
+    <string name="link_resume">reprendre</string>
+    <string name="link_paused">en pause. aucun appareil n\'atteint celui-ci et il n\'en suit aucun tant que tu ne reprends pas.</string>
+    <string name="link_activity">activité</string>
+    <string name="link_activity_none">rien pour l\'instant</string>
 </resources>
