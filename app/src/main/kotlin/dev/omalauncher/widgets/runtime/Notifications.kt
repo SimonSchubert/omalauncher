@@ -50,9 +50,15 @@ class Notifications(
         return all.filter { it.notification.flags and hidden == 0 && (title(it) != null || text(it) != null) }.sortedByDescending { it.postTime }
     }
 
-    private fun title(sbn: StatusBarNotification) = sbn.notification.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.takeIf { it.isNotBlank() }
+    private fun title(sbn: StatusBarNotification) = extra(sbn, Notification.EXTRA_TITLE)
 
-    private fun text(sbn: StatusBarNotification) = sbn.notification.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.takeIf { it.isNotBlank() }
+    private fun text(sbn: StatusBarNotification) = extra(sbn, Notification.EXTRA_TEXT)
+
+    // Another app's extras can fail to unparcel; such a notification has no title or text, so it isn't listed.
+    private fun extra(
+        sbn: StatusBarNotification,
+        name: String,
+    ) = runCatching { sbn.notification.extras.getCharSequence(name) }.getOrNull()?.toString()?.takeIf { it.isNotBlank() }
 
     fun value(): Value {
         val available = media.granted && MediaListener.connected != null
