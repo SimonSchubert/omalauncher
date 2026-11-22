@@ -257,30 +257,31 @@ class VoiceSession(
     }
     private val settingsFile get() = File(dir, "settings.json")
 
+    /**
+     * The settings as saved. The states below start with them instead of being written in init: the first to ask for
+     * the session can be the drawer's snapshotFlow, whose snapshot is read-only, and a write there throws (1.9.0 and
+     * 1.9.1 crashed at each start that way, once a setting was changed).
+     */
+    private val saved = readJson(settingsFile)
+
     /** The language it listens and reads aloud in, a tag ("de"); null for the launcher's. */
-    var language by mutableStateOf<String?>(null)
+    // Saved in three letters ("deu") before Speaker named the engine's languages in two.
+    var language by mutableStateOf(saved?.optString("language")?.ifEmpty { null }?.let(AppLanguage::short))
         private set
 
     /** The voice replies are read in, by name; null for the engine's choice for [language]. */
-    var voice by mutableStateOf<String?>(null)
+    var voice by mutableStateOf(saved?.optString("voice")?.ifEmpty { null })
         private set
 
     /** How fast replies are read: 1 is the engine's normal speed; a little faster by default, as replies can be long. */
-    var rate by mutableFloatStateOf(DEFAULT_RATE)
+    var rate by mutableFloatStateOf(saved?.optDouble("rate", DEFAULT_RATE.toDouble())?.toFloat()?.takeIf { it in 0.5f..2f } ?: DEFAULT_RATE)
         private set
 
     /** How long a pause after what's been said sends it, in milliseconds; 0 for only a tap on the orb. */
-    var sendAfter by mutableLongStateOf(DEFAULT_SEND_AFTER)
+    var sendAfter by mutableLongStateOf(saved?.optLong("sendAfter", DEFAULT_SEND_AFTER)?.takeIf { it in SEND_AFTER } ?: DEFAULT_SEND_AFTER)
         private set
 
     init {
-        readJson(settingsFile)?.let { s ->
-            // Saved in three letters ("deu") before Speaker named the engine's languages in two.
-            language = s.optString("language").ifEmpty { null }?.let(AppLanguage::short)
-            voice = s.optString("voice").ifEmpty { null }
-            rate = s.optDouble("rate", DEFAULT_RATE.toDouble()).toFloat().takeIf { it in 0.5f..2f } ?: DEFAULT_RATE
-            sendAfter = s.optLong("sendAfter", DEFAULT_SEND_AFTER).takeIf { it in SEND_AFTER } ?: DEFAULT_SEND_AFTER
-        }
         speaker.use(language, voice, rate)
     }
 
