@@ -623,7 +623,8 @@ private fun Element(
         "Popup" -> PopupNode(el, p, mod, env, inst)
         "Grid" -> {
             val columns = (p.observe("columns")?.num() ?: 2.0).toInt().coerceIn(1, 12)
-            val gap = (p.observe("gap")?.num() ?: 6.0).dp
+            // A negative gap widened each cell instead, past what Compose can measure, which took home down.
+            val gap = inset(p.observe("gap")?.num() ?: 6.0)
             if (p.observe("lazy")?.truthy == true) {
                 LazyNodes(el.children, env, inst, mod.then(pull), columns, null, Alignment.Start, gap, p.observe("reverse")?.truthy == true)
             } else {
