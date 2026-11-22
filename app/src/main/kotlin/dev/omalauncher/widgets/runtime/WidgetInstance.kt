@@ -350,9 +350,11 @@ class WidgetInstance(
     @Synchronized
     private fun save(values: List<Value>) {
         val file = savedFile ?: return
-        if (values == lastSaved) return
-        val text = PersistedValues.encode(program, values, System.currentTimeMillis() / 1000)
+        // All inside: a list of lists thousands deep overflows the stack when compared or written as JSON, and the
+        // first save runs as each widget starts.
         runCatching {
+            if (values == lastSaved) return
+            val text = PersistedValues.encode(program, values, System.currentTimeMillis() / 1000)
             writeAtomically(file, text.toByteArray())
             lastSaved = values
         }.onFailure { report("couldn't save persisted values: ${it.message}") }

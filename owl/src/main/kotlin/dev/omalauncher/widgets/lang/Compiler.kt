@@ -1410,6 +1410,12 @@ class Compiler private constructor(
                 env.host.budget.run { run(e) }
             } catch (x: RuntimeException) {
                 env.host.report("${h.name}: ${x.message ?: x}")
+            } catch (x: StackOverflowError) {
+                // Comparing, writing or showing a list of lists thousands deep recurses per level.
+                env.host.report("${h.name}: too deeply nested")
+            } catch (x: OutOfMemoryError) {
+                // What failed is the widget's one huge value, gone again once this unwinds.
+                env.host.report("${h.name}: out of memory")
             }
         }
     }

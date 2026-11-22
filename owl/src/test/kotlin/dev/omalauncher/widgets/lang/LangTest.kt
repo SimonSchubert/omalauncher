@@ -2158,6 +2158,27 @@ class LangTest {
         return "a=${host.slots[0]} b=${host.slots[1]} c=${host.slots[2]}" + host.actions.joinToString("") { "; $it" }
     }
 
+    @Test fun aHandlerThatRunsOutOfStackOrMemoryIsReported() {
+        // Writing a list of lists thousands deep compares it level by level; an Error from a tap ended the launcher.
+        val p = Compiler.compile("widget {\n $owl9\n state a = 0\n onTap: { a = 1 }\n Text { text: a } }")
+        for (error in listOf(StackOverflowError(), OutOfMemoryError())) {
+            val reports = ArrayList<String>()
+            val host =
+                object : Host by TestHost(p) {
+                    override fun write(
+                        slot: Int,
+                        value: Value,
+                    ) = throw error
+
+                    override fun report(message: String) {
+                        reports += message
+                    }
+                }
+            p.onTap!!.run(Env.root(host), listOf(Num(5.0), Num(7.0)))
+            assertEquals(1, reports.size)
+        }
+    }
+
     @Test fun ifInHandlersChooses() {
         assertEquals("a=1 b=0 c=0", tap("{ if x < 6 { a = 1 } else { b = 1 } }"))
         assertEquals("a=0 b=1 c=0", tap("{ if x > 6 { a = 1 } else { b = 1 } }"))
