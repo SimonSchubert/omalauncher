@@ -6,6 +6,17 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.10.0 (versionCode 46) – 2026-11-22
+
+- Connected devices: other phones with Omalauncher and Omarchy computers (the Omalauncher plugin)
+  keep widgets, their values, the theme and the background in sync with this phone, over SSH to its
+  Linux on the same network. A device is connected by scanning a code that is good for two minutes;
+  settings › connected devices lists them with what syncs, their latest activity and a pause.
+- The launcher comes in Vietnamese, with a Vietnamese store listing.
+- Fix: crashes from another app's notification with unreadable extras, copying a lot of text in a
+  Linux app, a screen started while a backup or device transfer runs, and widgets with a negative
+  Grid gap, a Shader missing a bracket, a post() header Android won't send or a list nested
+  thousands deep.
 ## 1.9.2 (versionCode 45) – 2026-11-22
 
 - Fix: 1.9.0 and 1.9.1 still crashed at each start once a Voice setting (language, voice, speed,

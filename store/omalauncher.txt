@@ -1,6 +1,6 @@
 Privacy Policy
 
-Effective Date: 19.11.2026
+Effective Date: 22.11.2026
 
 Omalauncher ("the App") is an Android home screen launcher developed by Simon Schubert ("we," "us," or "our"). This Privacy Policy explains how the App handles information.
 
@@ -27,7 +27,8 @@ Your home screen layout, widgets, theme settings and, if you install it, the Lin
 - Uninstalling apps: used only when you choose to uninstall an app from the app drawer. Android asks you to confirm every uninstall.
 - Internet: used to download the content listed in section 4.
 - Nearby devices / Bluetooth (optional): lets widgets you add show your AirPods' battery levels, listening mode and settings, and change them, and show the battery level of the Bluetooth headphones or speaker sound plays on, as Android reports it. The App asks for it only when you tap a widget's button that asks for it, and then talks only to AirPods connected to your phone, over Bluetooth. Nothing it reads leaves your device or is stored. A widget you add could send what it shows to a service it contacts; each widget's page in the widget store shows what it runs and which addresses it contacts.
-- Local network (optional, Android 17 and newer): lets widgets you add and the Linux environment reach devices on your own network, such as a printer, a home server or Home Assistant. The App asks for it only when you turn it on in its settings. The App itself does not scan your network or contact devices on it.
+- Local network (optional, Android 17 and newer): lets widgets you add and the Linux environment reach devices on your own network, such as a printer, a home server or Home Assistant. The App asks for it only when you turn it on in its settings. The App itself does not scan your network or contact devices on it, except for the devices you connect (next point).
+- Connected devices (optional): if you install Linux, you can connect your other devices with Omalauncher, another phone or an Omarchy computer with the Omalauncher plugin, by scanning a code one of them shows and confirming it on the other. Connected devices keep your widgets, the values widgets save, your theme and your background the same. To do that, a connected device can list, read, add, change and remove this device's widgets and their saved values and change its theme and background, and nothing else. This goes directly between your devices over your own network, encrypted (SSH); none of it passes through or is sent to us or anyone else. While a device is connected and Linux runs, the App announces itself on your local network with your phone's model name and an id made for this purpose, looks for your connected devices there, and accepts connections only from them and only from addresses on a local network. The App keeps a list of what connected devices last did, on your device only. You can pause all of it or disconnect a device at any time in the App's settings, under connected devices; with no device connected, the App announces nothing and accepts no connections.
 - Programs in the Linux environment (optional): if you install Linux, a program you run there, such as a coding agent, can ask the App for your approximate location, your calendar events for the coming days, your AirPods' state and your battery's state, with the `omalauncher` command (formerly `phone`), and only for what you have already allowed above; it never asks for a permission itself. The App reads it on your device only when such a program asks, and does not store it or send it to us. Such a program can also post a notification, and open Android's share sheet for files of its own, where you pick the app they go to, if any. A coding agent may send what it reads to its provider (section 4), as it does with your prompts.
 
 4. Third-Party Services
@@ -77,6 +78,7 @@ As the developer is based in Berlin, Germany, we comply with the General Data Pr
 You can:
 - Revoke microphone, notification, location, calendar, Bluetooth and local network access at any time in your device settings, and remove phone folders in the App's permissions settings.
 - Remove Linux and its files in the App's settings.
+- Pause or disconnect connected devices in the App's settings.
 - Remove widgets from your home screen.
 - Choose not to share widgets through dpaste.com; pastes expire on their own after 7 days or one year.
 - Delete all App data by uninstalling the App.
