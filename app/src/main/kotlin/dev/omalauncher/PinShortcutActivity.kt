@@ -27,6 +27,11 @@ class PinShortcutActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A plain Application while a backup or device transfer runs: no runtime to add the shortcut to.
+        if (application !is App) {
+            finish()
+            return
+        }
         val request =
             getSystemService(LauncherApps::class.java)
                 .getPinItemRequest(intent)

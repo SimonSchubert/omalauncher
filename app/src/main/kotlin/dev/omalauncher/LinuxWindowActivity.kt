@@ -62,8 +62,7 @@ class LinuxWindowActivity : InstantActivity() {
     private val imagePicker = ImagePicker(this) { runtime }
     private val asks = WidgetAsks(this)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun create(savedInstanceState: Bundle?) {
         val window = runtime.wm.windowByHandle(intent.data?.lastPathSegment)
         if (window == null) {
             // The window is gone, e.g. the process restarted since Recents was built.

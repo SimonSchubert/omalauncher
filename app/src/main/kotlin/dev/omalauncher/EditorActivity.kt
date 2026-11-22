@@ -25,8 +25,7 @@ class EditorActivity : InstantActivity() {
     /** Host paths of the `omarchy-edit` FIFOs waiting for this file to close. */
     private val waiting = mutableListOf<String>()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun create(savedInstanceState: Bundle?) {
         val path = intent.data?.path?.takeIf { it.startsWith('/') }
         intent.getStringExtra(EXTRA_DONE)?.let(waiting::add)
         if (!runtime.bootstrap.wanted) return close()

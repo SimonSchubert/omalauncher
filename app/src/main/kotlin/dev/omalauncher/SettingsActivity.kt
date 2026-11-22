@@ -23,8 +23,7 @@ class SettingsActivity : InstantActivity() {
     /** The home page that was showing; the store puts widgets there. */
     private var homePage by mutableIntStateOf(1)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun create(savedInstanceState: Bundle?) {
         // Brought back on its own after Android killed the process (turning phone storage off on its page does), the
         // Linux screen would otherwise wait on Linux's check forever; home starts it too, once.
         runtime.start()

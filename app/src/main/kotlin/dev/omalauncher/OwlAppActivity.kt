@@ -26,8 +26,7 @@ class OwlAppActivity : InstantActivity() {
     private var name: String? = null
     private val asks = WidgetAsks(this)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun create(savedInstanceState: Bundle?) {
         val name = intent.data?.schemeSpecificPart
         // Gone since Recents was built, or the process restarted before the files loaded.
         if (name == null || runtime.widgets.appInstance(name) == null) {

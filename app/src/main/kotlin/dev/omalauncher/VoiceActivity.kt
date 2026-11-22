@@ -20,8 +20,7 @@ class VoiceActivity : InstantActivity() {
     /** In sight. Leaving only sends the task to the back, so this, not the screen's composition, says it's closed. */
     private var shown by mutableStateOf(false)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun create(savedInstanceState: Bundle?) {
         // The agents run in Linux; without it there's no one to talk to.
         if (!runtime.bootstrap.wanted) {
             finishAndRemoveTask()

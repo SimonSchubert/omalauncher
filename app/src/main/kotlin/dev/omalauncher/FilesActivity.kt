@@ -11,8 +11,7 @@ import dev.omalauncher.ui.files.FilesScreen
 class FilesActivity : InstantActivity() {
     private var startPath by mutableStateOf(DEFAULT_PATH)
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun create(savedInstanceState: Bundle?) {
         // Files shows the Linux file system; without Linux (e.g. a Recents card from before it was removed) there's nothing to show.
         if (!runtime.bootstrap.wanted) {
             finishAndRemoveTask()

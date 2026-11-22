@@ -11,6 +11,7 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.Icon
 import android.os.Build
+import android.os.Bundle
 import android.view.KeyEvent
 import android.window.SplashScreen
 import androidx.activity.ComponentActivity
@@ -53,6 +54,22 @@ abstract class InstantActivity : ComponentActivity() {
         super.attachBaseContext(newBase)
         AppLanguage.applyTo(this)
     }
+
+    /**
+     * While a backup or device transfer runs, the process has a plain Application and no runtime, and a Recents card
+     * can still start the screen in it: it closes, as Home does, rather than [create] reading [runtime].
+     */
+    final override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (application !is App) {
+            finish()
+            return
+        }
+        create(savedInstanceState)
+    }
+
+    /** onCreate, once there's a [runtime]. */
+    protected abstract fun create(savedInstanceState: Bundle?)
 
     /** Like setContent, with the system bars in the theme's colors, but drawing nothing while the window leaves. */
     protected fun setInstantContent(content: @Composable () -> Unit) {
