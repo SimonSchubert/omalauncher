@@ -1,0 +1,1 @@
+1.9.2. Fix: the launcher still crashed at every start for those who had changed a Voice setting. Sorry again.

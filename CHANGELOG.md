@@ -6,6 +6,10 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.9.2 (versionCode 45) – 2026-11-22
+
+- Fix: 1.9.0 and 1.9.1 still crashed at each start once a Voice setting (language, voice, speed,
+  send after a pause) had been changed.
 ## 1.9.1 (versionCode 44) – 2026-11-22
 
 - Fix: 1.9.0 crashed at each start on phones with Linux and an agent Voice can talk to, in the
