@@ -19,8 +19,11 @@ private const val TAG = "wl.clipboard"
 /** Text mime types, most preferred first: what we ask a source for, and offer Android's clipboard as. */
 private val TEXT_MIMES = listOf("text/plain;charset=utf-8", "UTF8_STRING", "text/plain", "TEXT", "STRING")
 
-/** Android's clipboard limit is a binder transaction; larger copies stay inside Linux. */
-private const val MAX_MIRROR_BYTES = 512 * 1024
+/**
+ * Android's clipboard limit is a binder transaction (1 MB, shared with the process's other calls); larger copies stay
+ * inside Linux. The text travels as UTF-16, two bytes for each byte of ASCII read here, so this is a quarter of it.
+ */
+private const val MAX_MIRROR_BYTES = 256 * 1024
 
 /** The system clipboard the Wayland selection is mirrored to. */
 interface SystemClipboard {
@@ -151,7 +154,13 @@ class Selection(
             if (bytes.isEmpty() || bytes.size > MAX_MIRROR_BYTES) return@thread
             synchronized(server) {
                 if (this.source !== source) return@thread
-                system.setText(String(bytes, Charsets.UTF_8))
+                // A transaction too large for a busy binder buffer throws here, on a thread nothing else catches on.
+                try {
+                    system.setText(String(bytes, Charsets.UTF_8))
+                } catch (e: RuntimeException) {
+                    Log.w(TAG, "the selection didn't fit Android's clipboard", e)
+                    return@thread
+                }
                 stamp = system.stamp()
             }
         }
