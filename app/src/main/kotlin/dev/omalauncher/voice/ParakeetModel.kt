@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.text.format.Formatter
 import android.util.Log
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -76,16 +77,25 @@ internal object ParakeetModel {
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private val onState = mutableStateOf<Boolean?>(null)
+    @Volatile
+    private var onState: MutableState<Boolean>? = null
+
+    /**
+     * The pick as Compose state, made from [saved] by its first reader. Made, not written: the first reader can be the
+     * drawer's snapshotFlow, whose snapshot is read-only, and a write there throws.
+     */
+    internal fun onState(saved: () -> Boolean): MutableState<Boolean> = onState ?: synchronized(this) { onState ?: mutableStateOf(saved()).also { onState = it } }
+
+    private fun onState(context: Context) = onState { prefs(context).getBoolean(ON, true) }
 
     /** Whether Parakeet is picked over the phone's recognizer, once it's downloaded. */
-    fun on(context: Context): Boolean = onState.value ?: prefs(context).getBoolean(ON, true).also { onState.value = it }
+    fun on(context: Context): Boolean = onState(context).value
 
     fun setOn(
         context: Context,
         on: Boolean,
     ) {
-        onState.value = on
+        onState(context).value = on
         prefs(context).edit().putBoolean(ON, on).apply()
     }
 
