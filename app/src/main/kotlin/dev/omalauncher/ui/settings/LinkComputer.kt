@@ -137,11 +137,16 @@ fun LinkedComputersScreen(
             if (computers.isNotEmpty() || following.isNotEmpty()) {
                 Column(Modifier.card(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // Whether devices can reach this one: only says something while some may (it follows the others itself).
-                    if (computers.isNotEmpty() && !link.paused) {
-                        BasicText(
-                            stringResource(if (link.listening) R.string.link_computers_listening else R.string.link_computers_waiting, ComputerLink.PORT),
-                            style = Mono.copy(color = if (link.listening) Palette.green else Palette.muted, fontSize = TextSize.Small),
-                        )
+                    // Beside it, the pause for all of them at once: they stay connected, and nothing reaches or leaves this device.
+                    if (!link.paused) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            BasicText(
+                                if (computers.isEmpty()) "" else stringResource(if (link.listening) R.string.link_computers_listening else R.string.link_computers_waiting, ComputerLink.PORT),
+                                Modifier.weight(1f),
+                                style = Mono.copy(color = if (link.listening) Palette.green else Palette.muted, fontSize = TextSize.Small),
+                            )
+                            BracketAction(stringResource(R.string.link_pause), Palette.muted) { link.pause(true) }
+                        }
                     }
                     for (c in computers) {
                         Column {
@@ -175,8 +180,6 @@ fun LinkedComputersScreen(
                             }
                         }
                     }
-                    // All of them at once, for a while: they stay connected, and nothing reaches or leaves this device.
-                    if (!link.paused) BracketAction(stringResource(R.string.link_pause), Palette.muted) { link.pause(true) }
                 }
             }
             if (computers.isNotEmpty() || following.isNotEmpty() || link.activity.isNotEmpty()) ActivityList(link.activity)
