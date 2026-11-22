@@ -1,0 +1,1 @@
+1.9.1. Fix: 1.9.0 crashed at every start on phones with Linux and an agent installed. Sorry about that.

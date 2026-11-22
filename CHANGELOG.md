@@ -6,6 +6,10 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.9.1 (versionCode 44) – 2026-11-22
+
+- Fix: 1.9.0 crashed at each start on phones with Linux and an agent Voice can talk to, in the
+  languages Parakeet knows (English, Portuguese, German and more).
 ## 1.9.0 (versionCode 43) – 2026-11-21
 
 - Widgets and owl apps can be changed by voice: a selected tile has Voice's icon next to edit, and
