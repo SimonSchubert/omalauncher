@@ -21,6 +21,9 @@ object ShaderCost {
                 turns(code)
             } catch (e: Unclear) {
                 return "its loops can't be counted (${e.message}): count with fixed numbers, for (int i = 0; i < 8; i++), or a const"
+            } catch (e: StackOverflowError) {
+                // Brackets nested thousands deep: it runs while the screen is built, where an Error would end the launcher.
+                return "its loops can't be counted (brackets nested too deep): count with fixed numbers, for (int i = 0; i < 8; i++), or a const"
             }
         if (turns <= MAX_TURNS) return null
         return "its loops take ${if (turns >= LIMIT) "billions of" else String.format(java.util.Locale.ROOT, "%,d", turns)} turns for every pixel, " +
@@ -231,7 +234,8 @@ object ShaderCost {
         t: List<String>,
         open: Int,
     ): Int {
-        val o = t[open]
+        // A `for` at the end of the code, or one without its brackets, has none to match.
+        val o = t.getOrNull(open)?.takeIf { it == "(" || it == "{" } ?: throw Unclear("a bracket missing")
         val c = if (o == "(") ")" else "}"
         var depth = 0
         for (k in open until t.size) {

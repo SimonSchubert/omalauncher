@@ -68,4 +68,12 @@ class ShaderCostTest {
         // Nothing to count when there's no main().
         assertEquals(0L, ShaderCost.turns("float f() { return 1.0; }"))
     }
+
+    @Test fun brokenCodeIsRefusedWithoutThrowing() {
+        // Checked while the screen is built: a throw there took the launcher down.
+        val unbraced = "half4 main(float2 p) { for (int i = 0; i < 2; i++) } for"
+        assertTrue(ShaderCost.problem(unbraced)!!.contains("can't be counted"))
+        val deep = "half4 main(float2 p) { for (int i = 0; i < ${"(".repeat(100_000)}1${")".repeat(100_000)}; i++) {} return half4(1.0); }"
+        assertTrue(ShaderCost.problem(deep)!!.contains("can't be counted"))
+    }
 }
