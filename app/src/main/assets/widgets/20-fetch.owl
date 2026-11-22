@@ -230,6 +230,25 @@ widget "fetch" {
         "failing": "difettoso", "wireless": "wireless", "dock": "dock"
       }, w, w)
     }
+    vi {
+      uptime: "uptime"; packages: "gói"; display: "màn hình"; theme: "chủ đề"; memory: "ram"; disk: "ổ đĩa"
+      battery: "pin"; apps: "ứng dụng"; byDefault: "mặc định"; phone: "điện thoại"; device: "thiết bị"; hardware: "phần cứng"
+      network: "mạng"; launcher: "launcher"; security: "bảo mật"; build: "bản dựng"; locale: "ngôn ngữ"; cores: "lõi"
+      storage: "bộ nhớ"; speed: "tốc độ"; received: "đã nhận"; sent: "đã gửi"; mobile: "di động"
+      level: "mức pin"; temperature: "nhiệt độ"; voltage: "điện áp"; health: "tình trạng"; cycles: "chu kỳ"
+      technology: "công nghệ"; version: "phiên bản"; explicit: "tự cài"; upgraded: "cập nhật"; never: "chưa bao giờ"
+      unknown: "không rõ"; installLinux: "cài đặt linux"
+      notInstalled: "chưa cài đặt. arch linux arm thêm terminal, tác nhân và pacman vào launcher."
+      upTo: ghz => " · tối đa ${ghz} GHz"
+      androidApps: n => "${n} ứng dụng android"
+      appCount: n => "${n} ứng dụng"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "đang sạc", "plugged in": "đã cắm sạc", "on battery": "dùng pin", "good": "tốt",
+        "overheating": "quá nóng", "dead": "hỏng", "over voltage": "quá áp", "cold": "quá lạnh",
+        "failing": "sắp hỏng", "wireless": "không dây", "dock": "đế sạc"
+      }, w, w)
+    }
   }
 
   // The phone, from Android: works without Linux.

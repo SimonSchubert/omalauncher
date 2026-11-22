@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Linux setup, updates and the session (linux/, ui/Setup.kt, ui/LinuxScreen.kt, LinuxService.kt), the packages
+     screen (packages_), the licenses screen (licenses_), and the share activity (ShareInActivity). -->
+<resources>
+    <!-- The phases of a fresh install, as the setup screen lists them. -->
+    <string name="linux_stage_download">tải xuống arch linux</string>
+    <string name="linux_stage_extract">giải nén hệ thống</string>
+    <string name="linux_stage_configure">cấu hình pacman</string>
+    <string name="linux_stage_packages">cài ứng dụng của omarchy</string>
+    <string name="linux_stage_agents">cài tác nhân lập trình</string>
+    <string name="linux_stage_agents_named">cài %1$s</string>
+
+    <!-- What setup is doing right now; settings shows these lowercased during a system update. -->
+    <string name="linux_step_download">Đang tải xuống Arch Linux ARM</string>
+    <string name="linux_step_configure">Đang cấu hình hệ thống</string>
+    <string name="linux_step_forks">Đang kiểm tra chương trình có khởi chạy được không</string>
+    <string name="linux_step_keyring">Đang khởi tạo keyring của pacman</string>
+    <string name="linux_step_no_kernel">Đang xóa gói kernel</string>
+    <string name="linux_step_packages">Đang cài đặt gói</string>
+    <string name="linux_step_keymap">Đang biên dịch keymap</string>
+    <string name="linux_step_cliamp">Đang cài đặt cliamp</string>
+    <string name="linux_step_agent">Đang cài đặt %1$s</string>
+    <string name="linux_step_downloaded">%1$d trên %2$d MB</string>
+    <string name="linux_step_downloaded_unknown">%1$d MB</string>
+    <string name="linux_step_extract_start">Đang bắt đầu</string>
+    <plurals name="linux_step_extracted">
+        <item quantity="other">%d tệp</item>
+    </plurals>
+
+    <!-- Lines setup adds to the output it shows. -->
+    <string name="linux_log_retrying">%1$s; đang thử lại (lần %2$d/%3$d)</string>
+    <string name="linux_log_step_failed">lỗi ở bước \"%1$s\": %2$s; thử lại trong cài đặt</string>
+    <string name="linux_log_agent_failed">chưa cài được %1$s; thử lại trong cài đặt › tác nhân lập trình</string>
+
+    <!-- Why setup stopped, in red under the phase. -->
+    <string name="linux_error_no_space">không đủ dung lượng: Linux cần trống %1$s, điện thoại còn %2$s; hãy giải phóng bớt rồi thử lại</string>
+    <string name="linux_error_out_of_space">điện thoại đã hết dung lượng; Linux cần trống khoảng %1$s; hãy giải phóng bớt rồi thử lại</string>
+    <string name="linux_error_http">lỗi tải xuống: HTTP %1$d</string>
+    <string name="linux_error_cut_short">quá trình tải xuống bị ngắt giữa chừng; thử lại để tải tiếp</string>
+    <string name="linux_error_move_download">không chuyển được tệp đã tải xuống vào đúng chỗ</string>
+    <string name="linux_error_cant_run">Linux không chạy được lệnh ở đây (mã thoát %1$d)</string>
+    <string name="linux_error_kernel">kernel của điện thoại này không cho chương trình Linux khởi chạy chương trình khác, nên không thể tiếp tục cài đặt. ROM tùy chỉnh dùng kernel 4.14 cần commit kernel 05b289263772 từ người bảo trì ROM; xem github issue #105</string>
+    <string name="linux_error_command">`%1$s` bị lỗi (mã thoát %2$d)</string>
+    <string name="linux_error_cliamp_mismatch">bản tải xuống cliamp không khớp với %1$s</string>
+    <string name="linux_error_cant_replace">không thay thế được %1$s</string>
+
+    <!-- What a job in the guest is doing, shown as "installing…" on its row. -->
+    <string name="linux_job_installing">đang cài đặt</string>
+    <string name="linux_job_removing">đang xóa</string>
+    <string name="linux_job_building">đang biên dịch</string>
+    <string name="linux_job_updating">đang cập nhật</string>
+    <string name="linux_job_waiting">đang chờ</string>
+    <string name="linux_job_checking">đang kiểm tra</string>
+    <string name="linux_job_working">%1$s…</string>
+
+    <string name="linux_updates_unreachable">không kết nối được tới mirrors</string>
+
+    <!-- One line under each coding agent's name in the agent lists. -->
+    <string name="linux_agent_claude">Tác nhân lập trình của Anthropic</string>
+    <string name="linux_agent_opencode">Tác nhân mã nguồn mở, mọi nhà cung cấp mô hình</string>
+    <string name="linux_agent_codex">Tác nhân lập trình của OpenAI</string>
+    <string name="linux_agent_grok">Tác nhân lập trình của xAI</string>
+    <string name="linux_agent_copilot">Tác nhân lập trình của GitHub</string>
+    <string name="linux_agent_crush">Tác nhân của Charm cho terminal</string>
+    <string name="linux_agent_cursor">Tác nhân của Cursor cho terminal</string>
+    <string name="linux_agent_antigravity">Tác nhân lập trình Gemini của Google</string>
+    <string name="linux_agent_pi">Tác nhân lập trình tối giản, dễ mở rộng</string>
+    <string name="linux_agent_hermes">Tác nhân của Nous Research, khoảng 2,5 GB</string>
+    <string name="linux_agent_omp">Pi tích hợp sẵn công cụ và plugin</string>
+    <string name="linux_agent_ori">Tác nhân lập trình của OpenRouter</string>
+    <string name="linux_agent_muse">Tác nhân lập trình của Meta</string>
+    <string name="linux_agent_kimi">Tác nhân lập trình của Moonshot AI</string>
+    <string name="linux_agent_qwen">Tác nhân lập trình Qwen của Alibaba</string>
+    <string name="linux_agent_mcode">Tác nhân lập trình của MiniMax</string>
+    <string name="linux_agent_kiro">Tác nhân lập trình của Amazon</string>
+    <string name="linux_agent_kilo">Tác nhân mã nguồn mở dựa trên OpenCode</string>
+    <string name="linux_agent_devin">Tác nhân lập trình của Cognition</string>
+    <string name="linux_agent_amp">Tác nhân lập trình từ ampcode.com</string>
+    <string name="linux_agent_commandcode">Tác nhân lập trình từ commandcode.ai</string>
+
+    <!-- The first-run screen. -->
+    <string name="linux_welcome_title">omarchy trên màn hình chính</string>
+    <string name="linux_welcome_body">Chủ đề và hình nền của Omarchy, ứng dụng Android của bạn và tiện ích trên màn hình chính. Arch Linux bổ sung ứng dụng terminal và tác nhân lập trình, ngay bây giờ hoặc sau này trong cài đặt.</string>
+    <string name="linux_welcome_linux">linux</string>
+    <string name="linux_welcome_choice">cài đặt cả Arch Linux</string>
+    <string name="linux_welcome_choice_detail">ứng dụng terminal, tác nhân, pacman · tải ~1 GB, chiếm 3 GB</string>
+    <string name="linux_welcome_start">bắt đầu</string>
+    <string name="linux_welcome_start_linux">bắt đầu và cài đặt linux</string>
+    <string name="linux_welcome_start_hint">Tải xuống hình nền của chủ đề ngay bây giờ và các chủ đề khác của Omarchy (khoảng 70 MB) trong nền.</string>
+    <string name="linux_welcome_start_linux_hint">Linux tải xuống khoảng 1 GB, nên dùng Wi-Fi, và chiếm 3 GB dung lượng. Quá trình cài đặt chạy trong nền khoảng 10 đến 20 phút; màn hình chính dùng được ngay.</string>
+    <string name="linux_welcome_getting">đang tải %1$s</string>
+    <string name="linux_welcome_theme_failed">chưa tải xuống được chủ đề</string>
+    <string name="linux_welcome_wallpaper">tải xuống hình nền của chủ đề</string>
+    <string name="linux_welcome_skip">tiếp tục mà không có hình nền</string>
+    <string name="linux_welcome_skip_hint">Màu của chủ đề vẫn được áp dụng. Launcher sẽ thử lại sau, hoặc tải xuống hình nền trong cài đặt › giao diện.</string>
+
+    <string name="linux_agents_label">tác nhân lập trình</string>
+    <string name="linux_agents_hint">Chọn tác nhân để cài cùng Linux. Có thể thêm hoặc gỡ sau trong cài đặt.</string>
+    <string name="linux_theme_label">chủ đề</string>
+    <string name="linux_more_themes">thêm chủ đề ›</string>
+
+    <!-- The install's checklist (setup and settings › linux). -->
+    <string name="linux_progress_title">đang cài đặt linux</string>
+    <string name="linux_progress_stopped">đã dừng cài đặt</string>
+    <string name="linux_try_again">thử lại</string>
+    <string name="linux_cancel_install">hủy cài đặt</string>
+    <string name="linux_progress_background">Có thể đóng màn hình này và dùng launcher; quá trình cài đặt vẫn tiếp tục trong nền.</string>
+    <string name="linux_output">đầu ra</string>
+    <string name="linux_output_less">ẩn bớt</string>
+    <string name="linux_output_more">xem thêm</string>
+
+    <!-- Settings › linux. -->
+    <string name="linux_title">linux</string>
+    <string name="linux_removing">đang xóa linux…</string>
+    <string name="linux_offer_title">arch linux, không bắt buộc</string>
+    <string name="linux_offer_body">Ứng dụng Linux, tiện ích terminal, tác nhân lập trình, pacman và Tệp. Tải xuống khoảng 1 GB và chiếm 3 GB dung lượng; cài đặt trong nền.</string>
+    <string name="linux_install">cài đặt linux</string>
+    <plurals name="linux_install_with_agents">
+        <item quantity="other">cài đặt linux và %d tác nhân</item>
+    </plurals>
+    <string name="linux_arch">arch linux</string>
+    <string name="linux_installed_size">đã cài đặt · %1$s</string>
+    <string name="linux_measuring">đang đo…</string>
+    <string name="linux_remove">xóa linux</string>
+    <string name="linux_remove_ask">xóa linux?</string>
+    <string name="linux_remove_body">Xóa ứng dụng Linux, tác nhân lập trình, gói và mọi thứ trong /root, như Downloads. Chủ đề, hình nền, tiện ích và màn hình chính vẫn giữ nguyên.</string>
+    <string name="linux_remove_confirm">xóa</string>
+    <string name="linux_cancel">hủy</string>
+    <string name="linux_gpu_title">tăng tốc gpu</string>
+    <string name="linux_gpu_on">bật · %1$s · cho ứng dụng mở từ giờ trở đi</string>
+    <string name="linux_gpu_off_failed">tắt: GPU không qua được bước kiểm tra sau một bản cập nhật hệ thống</string>
+    <string name="linux_gpu_waiting">bật · đang chờ kiểm tra</string>
+    <string name="linux_gpu_failed">GPU không qua được bước kiểm tra; ứng dụng vẫn kết xuất bằng phần mềm</string>
+    <string name="linux_gpu_offer">thử nghiệm · %1$s · ứng dụng và trò chơi OpenGL, Vulkan chạy nhanh hơn; ứng dụng terminal không thay đổi</string>
+    <string name="linux_retry">thử lại</string>
+    <string name="linux_gpu_turn_off">tắt</string>
+    <string name="linux_gpu_turn_on">bật</string>
+    <string name="linux_cpu_pinning_title">lệnh gọi hệ thống nhanh</string>
+    <string name="linux_cpu_pinning_on">bật · giữ Linux trên một lõi CPU nhanh · cho chương trình khởi chạy từ giờ trở đi</string>
+    <string name="linux_cpu_pinning_off">tắt · cho chương trình khởi chạy từ giờ trở đi</string>
+    <string name="linux_session_title">phiên</string>
+    <string name="linux_session_running">đang chạy · ứng dụng Linux, terminal và tác nhân hoạt động</string>
+    <string name="linux_session_starting">đang khởi động…</string>
+    <string name="linux_session_stopped">đã dừng · không có gì chạy và không có gì bị xóa · vẫn dừng sau khi khởi động lại</string>
+    <string name="linux_stop">dừng</string>
+    <string name="linux_start">khởi động</string>
+    <string name="linux_stop_ask">dừng linux?</string>
+    <string name="linux_stop_body">Đóng ứng dụng Linux, terminal và tác nhân lập trình, và dừng mọi việc chúng đang làm. Không có gì bị xóa. Tiện ích và ứng dụng cần Linux sẽ chờ đến khi bạn khởi động lại Linux ở đây.</string>
+    <string name="linux_stop_confirm">dừng</string>
+
+    <!-- The ongoing notification while Linux runs. -->
+    <string name="linux_notification_channel">Phiên Linux</string>
+    <string name="linux_notify_channel">Tác nhân và script</string>
+    <string name="linux_notification_installing">Đang cài đặt Linux · %1$s</string>
+    <string name="linux_notification_installing_percent">Đang cài đặt Linux · %1$d%% · %2$s</string>
+    <string name="linux_notification_failed">Đã dừng cài đặt Linux · mở cài đặt › linux để thử lại</string>
+    <string name="linux_notification_removing">Đang xóa Linux</string>
+    <string name="linux_notification_running">Phiên Linux đang chạy</string>
+
+    <!-- Another Android app shares a file, or text, to Linux. -->
+    <string name="share_in_saving">đang lưu vào linux…</string>
+    <string name="share_in_saved">đã lưu vào ~/Downloads</string>
+    <string name="share_in_failed">không lưu được vào linux</string>
+    <string name="share_in_no_linux">chưa cài đặt linux</string>
+
+    <!-- Settings › packages. -->
+    <string name="packages_title">gói</string>
+    <string name="packages_search">tìm gói</string>
+    <string name="packages_intro">Gói Arch Linux ARM qua pacman, và AUR qua yay. Khi cài đặt, hệ thống cũng được cập nhật nên có thể mất một lúc. Gói AUR do người dùng gửi lên và được biên dịch trên thiết bị: hãy kiểm tra PKGBUILD của gói trên aur.archlinux.org trước.</string>
+    <string name="packages_loading">đang tải…</string>
+    <string name="packages_searching">đang tìm…</string>
+    <string name="packages_installed">đã cài đặt (%1$d)</string>
+    <string name="packages_none">không có gói nào khớp</string>
+    <plurals name="packages_results">
+        <item quantity="other">%d kết quả</item>
+    </plurals>
+    <string name="packages_required">bắt buộc</string>
+    <string name="packages_confirm">xác nhận</string>
+    <string name="packages_remove">xóa</string>
+    <string name="packages_install">cài đặt</string>
+
+    <!-- Settings › licenses. -->
+    <string name="licenses_title">giấy phép</string>
+    <string name="licenses_header">Omalauncher %1$s · © 2026 Simon Schubert\n\nỨng dụng có sử dụng phần mềm mã nguồn mở dưới đây.</string>
+    <string name="licenses_website">trang web</string>
+    <string name="licenses_source">mã nguồn</string>
+    <string name="licenses_use_proot">chạy hệ thống Linux không bắt buộc</string>
+    <string name="licenses_use_talloc">bộ cấp phát bộ nhớ của PRoot</string>
+    <string name="licenses_use_shmem">bộ nhớ dùng chung cho PRoot</string>
+    <string name="licenses_use_mesa">OpenGL trên GPU Adreno trong hệ thống Linux không bắt buộc</string>
+    <string name="licenses_use_wayland">tệp giao thức đi kèm Mesa</string>
+    <string name="licenses_use_omarchy">màu chủ đề đi kèm cho lần chạy đầu</string>
+    <string name="licenses_use_nerd_fonts">phông ký hiệu</string>
+    <string name="licenses_use_weather_icons">ký hiệu thời tiết trong phông ký hiệu</string>
+    <string name="licenses_use_mdi">ký hiệu trong phông ký hiệu</string>
+    <string name="licenses_use_compose">giao diện người dùng</string>
+    <string name="licenses_use_jetpack">activity, Compose và các thư viện AndroidX khác</string>
+    <string name="licenses_use_kotlin">runtime của ngôn ngữ</string>
+    <string name="licenses_use_commons_compress">giải nén tệp tải xuống</string>
+    <string name="licenses_use_androidsvg">vẽ biểu tượng SVG</string>
+    <string name="licenses_use_zxing">vẽ mã QR dùng để chia sẻ tiện ích</string>
+    <string name="licenses_use_json">đọc và ghi JSON</string>
+</resources>

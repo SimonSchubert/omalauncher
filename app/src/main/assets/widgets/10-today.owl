@@ -386,6 +386,39 @@ widget "today" {
         "Last Quarter": "ultimo quarto", "Waning Crescent": "falce calante"
       }, phase, lower(phase)) + " · illuminata al ${lit}%"
     }
+    vi {
+      title: "thời tiết"; loading: "thời tiết…"; offline: "thời tiết ngoại tuyến"; city: "thành phố · trống = tự động"; here: "dùng vị trí của tôi"
+      feels: "cảm giác"; humidity: "độ ẩm"; rainToday: "mưa hôm nay"; uv: "chỉ số uv"; pressure: "áp suất"
+      visibility: "tầm nhìn"; next24: "24 giờ tới"; now: "bây giờ"; days: "3 ngày"; today: "hôm nay"
+      sunrise: "bình minh"; sunset: "hoàng hôn"; moon: "mặt trăng"; kmh: "km/h"; yr: "mở yr.no ↗"
+      sky: (code, desc) => get({
+        "113": "quang đãng", "116": "ít mây", "119": "nhiều mây", "122": "u ám", "143": "sương mù nhẹ",
+        "176": "mưa rải rác", "179": "tuyết rải rác", "182": "mưa tuyết rải rác", "185": "mưa phùn băng giá rải rác",
+        "200": "có dông", "227": "tuyết thổi", "230": "bão tuyết", "248": "sương mù", "260": "sương mù băng giá",
+        "263": "mưa phùn nhẹ rải rác", "266": "mưa phùn nhẹ", "281": "mưa phùn băng giá", "284": "mưa phùn băng giá dày",
+        "293": "mưa nhỏ rải rác", "296": "mưa nhỏ", "299": "có lúc mưa vừa", "302": "mưa vừa",
+        "305": "có lúc mưa to", "308": "mưa to", "311": "mưa băng giá nhẹ", "314": "mưa băng giá to",
+        "317": "mưa tuyết nhẹ", "320": "mưa tuyết to", "323": "tuyết nhẹ rải rác", "326": "tuyết nhẹ",
+        "329": "tuyết vừa rải rác", "332": "tuyết vừa", "335": "tuyết dày rải rác", "338": "tuyết dày",
+        "350": "mưa hạt băng", "353": "mưa rào nhẹ", "356": "mưa rào to", "359": "mưa rào rất to",
+        "362": "mưa tuyết rào nhẹ", "365": "mưa tuyết rào to", "368": "tuyết rào nhẹ",
+        "371": "tuyết rào dày", "374": "mưa hạt băng nhẹ", "377": "mưa hạt băng to",
+        "386": "mưa nhỏ kèm dông", "389": "mưa to kèm dông", "392": "tuyết nhẹ kèm dông",
+        "395": "tuyết dày kèm dông"
+      }, code, lower(trim(desc)))
+      // The sixteen points as Vietnamese forecasts abbreviate them: B (bắc), N (nam), Đ (đông), T (tây).
+      wind: dir => get({
+        "N": "gió B", "NNE": "gió BĐB", "NE": "gió ĐB", "ENE": "gió ĐĐB", "E": "gió Đ", "ESE": "gió ĐĐN",
+        "SE": "gió ĐN", "SSE": "gió NĐN", "S": "gió N", "SSW": "gió NTN", "SW": "gió TN", "WSW": "gió TTN",
+        "W": "gió T", "WNW": "gió TTB", "NW": "gió TB", "NNW": "gió BTB"
+      }, dir, "gió ${dir}")
+      uvLevel: uv => uv >= 8 ? "rất cao" : uv >= 6 ? "cao" : uv >= 3 ? "trung bình" : "thấp"
+      phase: (phase, lit) => get({
+        "New Moon": "trăng non", "Waxing Crescent": "lưỡi liềm đầu tháng", "First Quarter": "thượng huyền",
+        "Waxing Gibbous": "trăng khuyết đầu tháng", "Full Moon": "trăng tròn", "Waning Gibbous": "trăng khuyết cuối tháng",
+        "Last Quarter": "hạ huyền", "Waning Crescent": "lưỡi liềm cuối tháng"
+      }, phase, lower(phase)) + " · sáng ${lit}%"
+    }
   }
 
   source now = clock every 1m

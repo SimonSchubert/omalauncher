@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files (ui/FilesScreen.kt, FilesChrome.kt, FileDialogs.kt), the editor (ui/EditorScreen.kt) and the prompt bar
+     with its speech input (ui/PromptBar.kt, ui/Speech.kt). -->
+<resources>
+    <string name="files_failed">đã xảy ra lỗi</string>
+    <string name="files_cant_hand_over">không chuyển được %1$s cho ứng dụng khác</string>
+    <string name="files_no_app">không có ứng dụng nào mở được %1$s</string>
+    <!-- Shown as %2$s of files_cant_open. -->
+    <string name="files_leads_to_nothing">liên kết không trỏ tới đâu</string>
+    <string name="files_cant_open">không mở được %1$s: %2$s</string>
+    <string name="files_selected">đã chọn %1$d</string>
+    <string name="files_filter_hint">lọc thư mục này</string>
+    <string name="files_home">thư mục chính</string>
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">tải xuống</string>
+    <string name="files_place_phone_folders">thư mục điện thoại</string>
+    <string name="files_add_phone_folder">thêm thư mục điện thoại</string>
+    <string name="files_no_phone_folders">chưa có thư mục điện thoại: thêm từ menu</string>
+    <string name="files_place_system">hệ thống</string>
+    <string name="files_search">tìm kiếm</string>
+    <string name="files_more">thêm</string>
+    <string name="files_new_file">tệp mới</string>
+    <string name="files_new_folder">thư mục mới</string>
+    <string name="files_hide_hidden">ẩn tệp ẩn</string>
+    <string name="files_show_hidden">hiện tệp ẩn</string>
+    <string name="files_open_terminal">mở terminal tại đây</string>
+    <string name="files_empty_folder">thư mục trống</string>
+    <string name="files_no_matches">không có gì khớp</string>
+    <string name="files_create">tạo</string>
+    <string name="files_rename">đổi tên</string>
+    <string name="files_delete_one">xóa %1$s?</string>
+    <plurals name="files_delete_items">
+        <item quantity="other">xóa %1$d mục?</item>
+    </plurals>
+    <string name="files_delete_message">Không thể hoàn tác thao tác này.</string>
+    <string name="files_delete">xóa</string>
+    <plurals name="files_items">
+        <item quantity="other">%1$d mục</item>
+    </plurals>
+    <string name="files_folder">thư mục</string>
+    <string name="files_copy">sao chép</string>
+    <string name="files_cut">cắt</string>
+    <string name="files_select_all">chọn tất cả</string>
+    <string name="files_edit">chỉnh sửa</string>
+    <string name="files_open_with">mở bằng…</string>
+    <string name="files_share">chia sẻ</string>
+    <string name="files_cancel">hủy</string>
+    <string name="files_move_here">di chuyển tới đây</string>
+    <string name="files_paste_here">dán vào đây</string>
+
+    <string name="editor_title">Trình chỉnh sửa</string>
+    <string name="editor_cant_read">không đọc được %1$s: %2$s</string>
+    <string name="editor_cant_save">không lưu được %1$s: %2$s</string>
+    <string name="editor_not_found">không tìm thấy</string>
+    <string name="editor_find_hint">tìm trong tệp</string>
+    <string name="editor_title_unsaved">%1$s *</string>
+    <string name="editor_previous_match">kết quả trước</string>
+    <string name="editor_next_match">kết quả tiếp theo</string>
+    <string name="editor_save">lưu</string>
+    <string name="editor_find">tìm</string>
+    <string name="editor_no_wrap">không ngắt dòng</string>
+    <string name="editor_wrap">ngắt dòng</string>
+    <string name="editor_show_in_files">hiện trong Tệp</string>
+    <string name="editor_open_in_micro">mở bằng micro</string>
+    <string name="editor_save_confirm">lưu %1$s?</string>
+    <string name="editor_save_confirm_message">Có thay đổi chưa được lưu.</string>
+    <string name="editor_discard">bỏ</string>
+    <!-- Screen reader names of the editor's arrow, undo and redo keys. -->
+    <string name="editor_key_left">trái</string>
+    <string name="editor_key_up">lên</string>
+    <string name="editor_key_down">xuống</string>
+    <string name="editor_key_right">phải</string>
+    <string name="editor_key_undo">hoàn tác</string>
+    <string name="editor_key_redo">làm lại</string>
+    <string name="editor_home_title">trình chỉnh sửa</string>
+    <string name="editor_new">mới</string>
+    <string name="editor_browse">duyệt tệp</string>
+    <string name="editor_recent">gần đây</string>
+    <string name="editor_recent_empty">Tệp bạn chỉnh sửa sẽ hiện ở đây.</string>
+    <string name="editor_new_file_hint">đường dẫn trong Linux</string>
+
+    <string name="prompt_listening">đang nghe…</string>
+    <string name="prompt_hint_apps">mở ứng dụng…</string>
+    <string name="prompt_hint_ask">mở ứng dụng hoặc hỏi %1$s…</string>
+    <string name="prompt_enter_ask">⏎ hỏi</string>
+    <string name="prompt_agent">tác nhân</string>
+    <!-- The leading spaces line it up with the agents above it. -->
+    <string name="prompt_manage_agents">"  quản lý tác nhân…"</string>
+
+    <!-- Speech input errors, in the prompt bar and to widgets. -->
+    <string name="prompt_speech_no_recognizer">điện thoại không có trình nhận dạng giọng nói</string>
+    <string name="prompt_speech_refused">trình nhận dạng giọng nói của điện thoại không cho ứng dụng khác sử dụng</string>
+    <string name="prompt_speech_failed">lỗi nhận dạng giọng nói (%1$d)</string>
+    <string name="prompt_speech_language">không hỗ trợ giọng nói cho ngôn ngữ này</string>
+    <string name="prompt_speech_not_downloaded">chưa tải xuống gói giọng nói cho ngôn ngữ này trên điện thoại</string>
+    <string name="prompt_speech_mic_permission">cần quyền dùng micrô</string>
+    <string name="prompt_speech_network">nhận dạng giọng nói cần kết nối mạng</string>
+</resources>

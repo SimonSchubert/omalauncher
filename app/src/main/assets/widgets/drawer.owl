@@ -107,6 +107,14 @@ panel "app drawer" {
       open: "apri"; ask: "chiedi"; askInstallLinux: "chiedi a un agente · installa linux"; askInstallAgent: "chiedi a un agente · installane uno"
       askAgent: (bin, text) => "chiedi a ${bin}: ${text}"
     }
+    vi {
+      personal: "cá nhân"; work: "công việc"; apps: "ứng dụng"; linux: "linux"; shortcuts: "lối tắt"; android: "android"
+      workApps: "ứng dụng công việc"; workPaused: "ứng dụng công việc đã tạm dừng"; linuxApps: "ứng dụng linux"; appStore: "cửa hàng ứng dụng"
+      pin: "thêm vào màn hình chính"; info: "thông tin ứng dụng"; uninstall: "gỡ cài đặt"; remove: "gỡ"; edit: "chỉnh sửa"; voice: "chỉnh sửa bằng giọng nói"; share: "chia sẻ"
+      settings: "cài đặt"; turnOn: "bật"; pause: "tạm dừng"; installing: "đang cài đặt…"; installLinux: "cài đặt linux"
+      open: "mở"; ask: "hỏi"; askInstallLinux: "hỏi tác nhân · cài đặt linux"; askInstallAgent: "hỏi tác nhân · cài một tác nhân"
+      askAgent: (bin, text) => "hỏi ${bin}: ${text}"
+    }
   }
   source d = android.drawer
   source ag = android.agents

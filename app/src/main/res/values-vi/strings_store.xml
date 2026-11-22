@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The store of widgets (full-screen ones too) and apps (ui/StoreScreen.kt), sharing a widget (ui/ShareWidgetScreen.kt), a widget shared
+     with you (ui/SharedWidgetScreen.kt), adding an app's shortcut (ui/PinShortcutDialog.kt) and the community themes
+     (ui/ThemeCatalogScreen.kt). -->
+<resources>
+    <!-- The store's two titles, the widgets' and the apps'; a button in the header switches between them. -->
+    <string name="store_widgets_title">cửa hàng tiện ích</string>
+    <string name="store_apps_title">cửa hàng ứng dụng</string>
+    <!-- Over the apps store's row of picked apps, above the list of every app. -->
+    <string name="store_featured">nổi bật</string>
+
+    <!-- What the store holds, one of; the button to the other store in the header, and the %s in the store's sentences below. -->
+    <string name="store_kind_widgets">tiện ích</string>
+    <string name="store_kind_faces">tiện ích toàn màn hình</string>
+    <string name="store_kind_apps">ứng dụng</string>
+    <string name="store_kind_panels">bảng</string>
+    <string name="store_kind_keybars">thanh phím</string>
+    <!-- One of them, in the title of a widget shared with you: "shared widget". -->
+    <string name="store_kind_widget">tiện ích</string>
+    <string name="store_kind_face">tiện ích toàn màn hình</string>
+    <string name="store_kind_app">ứng dụng</string>
+    <string name="store_kind_panel">bảng</string>
+    <string name="store_kind_keybar">thanh phím</string>
+
+    <!-- Beside the grid on a wide screen, before one is picked. -->
+    <string name="store_pick_widget">chọn một tiện ích để xem nó cài gì và chạy gì</string>
+    <string name="store_pick_face">chọn một tiện ích toàn màn hình để xem nó cài gì và chạy gì</string>
+    <string name="store_pick_app">chọn một ứng dụng để xem nó cài gì và chạy gì</string>
+    <string name="store_pick_panel">chọn một bảng để xem nó cài gì và chạy gì</string>
+    <string name="store_pick_keybar">chọn một thanh phím để xem nó cài gì và chạy gì</string>
+    <string name="store_kind_strips">dải ứng dụng</string>
+    <string name="store_kind_strip">dải ứng dụng</string>
+    <string name="store_pick_strip">chọn một dải ứng dụng để xem nó cài gì và chạy gì</string>
+
+    <!-- %1$d is how many there are, %2$s what they are, like "widgets". -->
+    <string name="store_search">tìm trong %1$d %2$s</string>
+    <!-- The store's tabs; the others are categories the store names. -->
+    <string name="store_tab_all">tất cả</string>
+    <string name="store_tab_new">mới</string>
+    <string name="store_tab_installed">đã cài đặt</string>
+    <!-- The category of one the store gives none: a tab, and on its card. -->
+    <string name="store_category_other">khác</string>
+    <!-- A tab: its name and how many are in it. -->
+    <string name="store_tab">%1$s %2$d</string>
+    <!-- The installed tab with updates: its name, how many are installed, how many have an update. -->
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <!-- The terminal tiles the launcher has itself, above the store's. -->
+    <string name="store_builtin">có sẵn</string>
+    <string name="store_terminal">terminal</string>
+    <string name="store_terminal_details">6x4 · một shell</string>
+    <!-- %1$s is the coding agent's command, like "claude". -->
+    <string name="store_agent_details">6x6 · chạy %1$s</string>
+    <string name="store_on_home">✓ trên màn hình chính</string>
+    <string name="store_tap_to_add">thêm vào trang %1$d</string>
+
+    <!-- %1$s is what they are, like "widgets"; %2$s the store's repo, like "SimonSchubert/omarchy-widgets". -->
+    <string name="store_reviewed">%1$s đã được kiểm duyệt, lấy từ github.com/%2$s</string>
+    <string name="store_loading">đang tải…</string>
+    <!-- %1$s is what they are, like "widgets". -->
+    <string name="store_empty">chưa có %1$s nào</string>
+    <string name="store_no_new">không có %1$s mới</string>
+    <string name="store_none_installed">chưa cài %1$s nào từ cửa hàng</string>
+    <!-- %1$s is what was searched for. -->
+    <string name="store_no_match">không có kết quả cho \"%1$s\"</string>
+
+    <!-- A card's status line. -->
+    <string name="store_update_available">có bản cập nhật</string>
+    <string name="store_installed">✓ đã cài đặt</string>
+    <string name="store_needs_newer">cần launcher mới hơn</string>
+    <string name="store_needs_linux">cần linux</string>
+    <!-- Full-screen widgets (faces), a whole home page each: their tab and their shape on a card where a widget's size goes ("clock · full screen"). -->
+    <string name="store_full_screen">toàn màn hình</string>
+    <!-- A face's page count, after its category: "clock · 3 pages". -->
+    <plurals name="store_pages">
+        <item quantity="other">%1$d trang</item>
+    </plurals>
+    <!-- Beside the name of one added to the store in the last few days. -->
+    <string name="store_badge_new">mới</string>
+
+    <!-- An entry's page. %1$d is the version of the widget language it needs. -->
+    <string name="store_needs_newer_detail">cần launcher mới hơn (owl %1$d); cập nhật launcher để cài đặt</string>
+    <string name="store_may_have_changes">có thể có thay đổi của bạn, và cập nhật sẽ thay thế chúng</string>
+    <string name="store_you_changed">bạn đã chỉnh sửa nó, và cập nhật sẽ thay thế thay đổi của bạn</string>
+    <!-- %1$s is the installed version, %2$s the new one. -->
+    <string name="store_update_anyway">vẫn cập nhật %1$s → %2$s</string>
+    <string name="store_update">cập nhật %1$s → %2$s</string>
+    <string name="store_open">mở</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="other">thêm %1$d trang còn thiếu</item>
+    </plurals>
+    <string name="store_add_to_page">thêm vào trang %1$d</string>
+    <string name="store_add_as_face">thêm làm tiện ích toàn màn hình</string>
+    <string name="store_install">cài đặt</string>
+    <string name="store_uninstall">gỡ cài đặt</string>
+    <string name="store_remove">gỡ</string>
+    <!-- %1$s is its name. -->
+    <string name="store_uninstall_confirm">gỡ cài đặt %1$s?</string>
+    <string name="store_remove_confirm">gỡ %1$s?</string>
+    <string name="store_remove_file">Tệp của nó được chuyển vào .removed/ trong thư mục tiện ích.</string>
+    <string name="store_remove_files">Các tệp của nó được chuyển vào .removed/ trong thư mục tiện ích.</string>
+    <string name="store_changed_since_approval">lệnh hoặc gói của nó đã thay đổi so với phiên bản bạn đã phê duyệt</string>
+
+    <!-- Where one added went. -->
+    <string name="store_added_widget">✓ trên màn hình chính</string>
+    <string name="store_added_face">✓ bên trái trang đầu tiên</string>
+    <string name="store_added_app">✓ trong danh sách ứng dụng</string>
+    <string name="store_added_panel">✓ trong cài đặt cử chỉ</string>
+    <string name="store_added_keybar">✓ trong thư mục tiện ích</string>
+
+    <string name="store_needs_linux_app">cần Linux: nó chạy lệnh trong Arch, nên sẽ hiện trong danh sách ứng dụng khi bạn cài Linux trong cài đặt</string>
+    <string name="store_needs_linux_widget">cần Linux: nó chạy lệnh trong Arch, nên sẽ chờ dưới dạng ô giữ chỗ cho đến khi bạn cài Linux trong cài đặt</string>
+
+    <!-- %1$s lists them by package manager, like "pacman: jq, curl; aur: yay". -->
+    <string name="store_installs_packages">cài gói: %1$s</string>
+    <string name="store_packages_none">không có</string>
+    <string name="store_runs_no_commands">không chạy lệnh nào</string>
+    <string name="store_runs_commands">chạy các lệnh này trong Arch:</string>
+
+    <!-- What's happening to an entry, while it is. -->
+    <string name="store_installing">đang cài đặt…</string>
+    <string name="store_updating">đang cập nhật…</string>
+    <string name="store_adding_pages">đang thêm trang…</string>
+    <!-- %1$s is why, an error message from the system. -->
+    <string name="store_load_failed">không tải được cửa hàng: %1$s</string>
+    <string name="store_download_mismatch">bản tải xuống không khớp với phiên bản đã kiểm duyệt; thử lại sau</string>
+    <!-- %1$s is why, an error message. -->
+    <string name="store_install_failed">không cài đặt được: %1$s</string>
+
+    <!-- A widget someone shared with you. %1$s is what it is, like "widget". -->
+    <string name="store_shared_title">%1$s được chia sẻ</string>
+    <!-- %1$s is the site it's on, like "dpaste.com". -->
+    <string name="store_shared_fetching">đang lấy từ %1$s…</string>
+    <string name="store_shared_unreadable">không đọc được</string>
+    <!-- %1$s is why. -->
+    <string name="store_shared_not_widget">Liên kết này không chứa tiện ích: %1$s.</string>
+    <!-- In place of the name of one shared without one. -->
+    <string name="store_shared_unnamed_app">một ứng dụng</string>
+    <string name="store_shared_unnamed_widget">một tiện ích</string>
+    <!-- %1$s is its version and size when it says them, like " · v1.2 · 4x2", or nothing; %2$.1f its size in kilobytes. -->
+    <string name="store_shared_info">được chia sẻ với bạn%1$s · %2$.1f KB</string>
+    <string name="store_shared_warning">Chỉ thêm nếu bạn tin người đã gửi. Nó chạy các lệnh bên dưới trong Arch dưới quyền của bạn, với tệp của bạn và mạng.</string>
+    <!-- %1$d is the version of the widget language it needs. -->
+    <string name="store_shared_needs_newer">cần launcher mới hơn (owl %1$d); cập nhật launcher để thêm</string>
+    <!-- %1$s is its name. -->
+    <string name="store_shared_replace">thay thế %1$s đã chia sẻ trước đó</string>
+    <string name="store_add_to_drawer">thêm vào danh sách ứng dụng</string>
+    <string name="store_add_to_panels">thêm vào bảng cử chỉ</string>
+    <string name="store_add_to_widgets_folder">thêm vào thư mục tiện ích</string>
+    <string name="store_hide_file">ẩn tệp</string>
+    <string name="store_show_file">hiện toàn bộ tệp</string>
+    <string name="store_review_with_agent">xem xét bằng tác nhân</string>
+
+    <!-- Sharing a widget. %1$s is its name. -->
+    <string name="store_share_title">chia sẻ %1$s</string>
+    <string name="store_check_secrets">kiểm tra thông tin bí mật bằng tác nhân</string>
+    <!-- %1$s is a file name. -->
+    <string name="store_share_unreadable">không đọc được %1$s</string>
+    <!-- %1$s is a file name, %2$d the most a launcher takes. -->
+    <string name="store_share_too_big">%1$s vượt quá %2$d KB, nhiều hơn mức launcher nhận</string>
+    <string name="store_uploading">đang tải lên…</string>
+    <string name="store_share_get_code">lấy mã QR</string>
+    <string name="store_something_wrong">đã xảy ra lỗi</string>
+    <!-- %1$s is the site, like "dpaste.com"; %2$d how many days it keeps it. -->
+    <string name="store_share_uploads">tải lên công khai tới %1$s trong %2$d ngày</string>
+    <string name="store_share_send_link">Hoặc gửi liên kết: vĩnh viễn, toàn bộ tiện ích nằm trong đó.</string>
+    <string name="store_share_too_big_link">Quá lớn để gửi dạng liên kết: chỉ chia sẻ được bằng mã QR.</string>
+    <!-- %1$s is the site, like "dpaste.com"; %2$d how many days it keeps it. -->
+    <string name="store_share_pasted_permanent">Liên kết tới %1$s, hết hạn sau %2$d ngày. Liên kết bên dưới là vĩnh viễn.</string>
+    <string name="store_share_pasted">Liên kết tới %1$s, hết hạn sau %2$d ngày.</string>
+    <string name="store_share_permanent">Vĩnh viễn: toàn bộ tiện ích nằm trong hình ảnh.</string>
+    <string name="store_share_code">chia sẻ mã QR</string>
+    <string name="store_share_link">chia sẻ liên kết</string>
+    <string name="store_copied">đã sao chép</string>
+    <string name="store_copy_link">sao chép liên kết</string>
+    <!-- The subject of a shared message and the clipboard's label; %1$s is the widget's name. -->
+    <string name="store_share_subject">tiện ích %1$s</string>
+    <!-- The clipboard's label for the code's image; %1$s is the widget's name. -->
+    <string name="store_share_code_clip">mã QR %1$s</string>
+    <!-- The title of Android's share sheet; %1$s is the widget's name. -->
+    <string name="store_share_chooser">Chia sẻ %1$s</string>
+    <string name="store_in_store">trong cửa hàng</string>
+    <!-- %1$s is the store's repo, like "SimonSchubert/omarchy-widgets". -->
+    <string name="store_issue_info">Một issue trên github.com/%1$s; sau khi được kiểm duyệt, ai cũng có thể cài đặt.</string>
+    <string name="store_pr_info">Hoặc một pull request từ tác nhân của bạn, có thể kèm cả bản xem trước:</string>
+    <string name="store_create_pr">tạo pull request bằng tác nhân</string>
+    <string name="store_open_issue">mở issue trên GitHub</string>
+    <!-- %1$s is a web address. -->
+    <string name="store_no_browser">không có trình duyệt để mở %1$s</string>
+    <!-- %1$s is the site, like "dpaste.com". -->
+    <string name="store_issue_uploads">tải lên công khai tới %1$s để kiểm duyệt</string>
+    <!-- %1$s is why. -->
+    <string name="store_upload_failed">✗ không tải lên được: %1$s</string>
+
+    <!-- An app asks to put one of its shortcuts on the home screen. -->
+    <string name="store_pin_title">thêm vào màn hình chính?</string>
+    <!-- %1$s is the app that asks. -->
+    <string name="store_pin_from">từ %1$s</string>
+    <string name="store_cancel">hủy</string>
+    <string name="store_add">thêm</string>
+
+    <!-- The community themes listed on omarchy.org/themes. -->
+    <string name="store_theme_title">chủ đề cộng đồng</string>
+    <string name="store_theme_search">tìm trong %1$d chủ đề</string>
+    <string name="store_theme_header">do cộng đồng tạo, có trên omarchy.org/themes · cài đặt từ GitHub</string>
+    <string name="store_theme_in_use">✓ đang dùng</string>
+    <!-- Under a theme's screenshot, with its colors: whether it is a light or a dark theme, how many wallpapers it has, and its download size. -->
+    <string name="store_theme_light">sáng</string>
+    <string name="store_theme_dark">tối</string>
+    <plurals name="store_theme_wallpapers">
+        <item quantity="other">%d hình nền</item>
+    </plurals>
+    <!-- Buttons under a theme's screenshot: use the installed theme, or open its repo. -->
+    <string name="store_theme_use">dùng</string>
+    <string name="store_theme_github">GitHub</string>
+    <!-- %1$s is where it comes from, like "github.com/owner/repo". -->
+    <string name="store_theme_install_message">Từ %1$s. Linux nhận màu và hình nền, không nhận script hay cấu hình terminal.</string>
+    <!-- %2$s is the name of the user's own theme it replaces. -->
+    <string name="store_theme_install_message_replaces">Từ %1$s. Linux nhận màu và hình nền, không nhận script hay cấu hình terminal.\n\nNó thay thế %2$s của bạn.</string>
+    <!-- %2$s is the name of Omarchy's theme of the same name. -->
+    <string name="store_theme_install_message_over">Từ %1$s. Linux nhận màu và hình nền, không nhận script hay cấu hình terminal.\n\nNó đè lên %2$s của Omarchy; gỡ nó sẽ khôi phục bản kia.</string>
+    <!-- %1$s is the theme's name, %2$d how many megabytes have downloaded. -->
+    <string name="store_theme_installing">đang cài đặt %1$s… %2$d MB</string>
+    <!-- %1$s is why, an error message from the system. -->
+    <string name="store_theme_catalog_failed">không tải được omarchy.org/themes: %1$s</string>
+    <string name="store_theme_page_changed">trang đã thay đổi và không đọc được</string>
+    <!-- %1$s is what the user gave as the theme's repo. -->
+    <string name="store_theme_not_github">không phải repo GitHub: %1$s</string>
+    <!-- %1$s is the repo, like "github.com/owner/repo". -->
+    <string name="store_theme_not_on_github">%1$s không có trên GitHub</string>
+    <string name="store_theme_no_colors">không có colors.toml hay alacritty.toml</string>
+    <string name="store_theme_cant_move">không chuyển được chủ đề vào đúng chỗ</string>
+</resources>

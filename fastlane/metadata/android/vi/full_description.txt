@@ -1,0 +1,37 @@
+Omalauncher là màn hình chính dễ dùng với bàn phím, mang phong cách của Omarchy lên Android và có thể chạy cả một hệ thống Arch Linux ARM đầy đủ bên cạnh các ứng dụng trên điện thoại.
+
+CHỦ ĐỀ
+Chọn trong 22 chủ đề Omarchy: Tokyo Night, Catppuccin, Gruvbox, Nord, Rose Pine, Kanagawa, Everforest và nhiều chủ đề khác. Mỗi chủ đề tô màu toàn bộ launcher và đi kèm hình nền riêng, có thể dùng làm cả hình nền động.
+
+MÀN HÌNH CHÍNH, TIỆN ÍCH VÀ TIỆN ÍCH TOÀN MÀN HÌNH
+• Các trang tiện ích và ứng dụng ghim trên lưới
+• Tiện ích có sẵn cho ngày tháng, thời tiết và hệ thống của bạn
+• Tiện ích toàn màn hình: cả một trang được vẽ thành một khối, như một trang manga, một terminal hay một áp phích Bauhaus
+• Cửa hàng với tiện ích, tiện ích toàn màn hình, ứng dụng nhỏ và trò chơi, viết bằng một ngôn ngữ nhỏ, mở mà bạn có thể tự chỉnh sửa
+• Danh sách ứng dụng có tìm kiếm cho mọi ứng dụng Android của bạn
+
+ARCH LINUX (KHÔNG BẮT BUỘC)
+Launcher vẫn hoạt động khi không có Linux. Nếu bạn muốn, Omalauncher sẽ tải xuống Arch Linux ARM và chạy bằng proot, không cần root.
+• Ứng dụng Linux mở trong cửa sổ riêng, mỗi cửa sổ có thẻ riêng trong Gần đây
+• Omalauncher là compositor Wayland, nên các ứng dụng đồ họa như foot cũng chạy được
+• Tìm và cài đặt gói từ Arch Linux ARM và AUR
+• Tiện ích terminal chạy lệnh ngay trên màn hình chính
+• Tệp, trình quản lý tệp cho thư mục home của Linux và các thư mục điện thoại bạn chọn: sao chép, di chuyển, đổi tên, xóa, mở và chia sẻ tệp
+• Chủ đề của bạn cũng được áp dụng cho ứng dụng Linux
+
+TÁC NHÂN LẬP TRÌNH
+Khi đã cài Linux, thanh nhập ở cuối màn hình chính gửi yêu cầu đến một tác nhân lập trình như Claude Code, Codex, Copilot, Grok hoặc opencode, mở trong một terminal. Tác nhân cũng có thể tạo tiện ích cho bạn.
+
+GIỌNG NÓI
+Chạm vào nút giọng nói và trò chuyện với tác nhân lập trình của bạn. Tác nhân trả lời thành tiếng, cho thấy đang làm gì và hỏi trước khi chạy lệnh hay thay đổi tệp. Thích gõ hơn? Chuyển sang gõ phím và đọc câu trả lời. Giọng nói do Android nhận dạng, nên chỉ có văn bản được gửi đến Linux.
+
+PHÍM TẮT
+Với bàn phím vật lý: Super+T mở terminal, Super+D mở danh sách ứng dụng, Super+1 đến 9 chuyển trang và Super+W đóng cửa sổ.
+
+NGÔN NGỮ
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe, Italiano và Tiếng Việt.
+
+QUYỀN RIÊNG TƯ
+Không tài khoản, không quảng cáo, không theo dõi. Omalauncher chỉ kết nối internet để tải xuống chủ đề, tiện ích, thời tiết và, nếu bạn chọn, Linux cùng các gói của nó.
+
+Omalauncher là dự án độc lập, không liên kết với Omarchy hay Arch Linux.

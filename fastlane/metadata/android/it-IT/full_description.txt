@@ -29,7 +29,7 @@ SCORCIATOIE DA TASTIERA
 Con una tastiera fisica: Super+T apre un terminale, Super+D l’elenco app, Super+1–9 cambiano pagina e Super+W chiude una finestra.
 
 LINGUE
-English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe e Italiano.
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe, Italiano e Tiếng Việt.
 
 PRIVACY
 Nessun account, nessuna pubblicità, nessun tracciamento. Omalauncher si connette a internet solo per scaricare temi, widget, il meteo e, se vuoi, Linux e i suoi pacchetti.

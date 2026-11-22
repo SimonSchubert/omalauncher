@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Toast when a widget opens a link no installed app handles. -->
+    <string name="widgets_no_app_opens">không có ứng dụng nào mở được %1$s</string>
+    <!-- Toast after a widget copies text, before Android 13. -->
+    <string name="widgets_copied">đã sao chép</string>
+    <string name="widgets_notify_channel">Tiện ích</string>
+</resources>

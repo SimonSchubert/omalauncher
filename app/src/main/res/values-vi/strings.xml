@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omalauncher</string>
+    <string name="wallpaper_label">Omarchy</string>
+    <string name="wallpaper_description">Hình nền của chủ đề Omarchy hiện tại. Màu hệ thống theo chủ đề.</string>
+    <!-- Names of the app's windows in Recents. -->
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">Terminal</string>
+    <string name="activity_app">Ứng dụng</string>
+    <string name="activity_files">Tệp</string>
+    <string name="activity_voice">Giọng nói</string>
+    <string name="activity_settings">Cài đặt</string>
+    <!-- In Android's notification access settings. -->
+    <string name="notification_listener">Tiện ích Omalauncher</string>
+</resources>

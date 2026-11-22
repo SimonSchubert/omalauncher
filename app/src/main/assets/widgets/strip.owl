@@ -18,6 +18,7 @@ strip "recent apps" {
     fr { pin: "ajouter à l’accueil"; info: "infos sur l’appli"; uninstall: "désinstaller"; remove: "retirer"; edit: "modifier"; voice: "modifier à la voix"; share: "partager" }
     tr { pin: "ana ekrana ekle"; info: "uygulama bilgileri"; uninstall: "yüklemeyi kaldır"; remove: "kaldır"; edit: "düzenle"; voice: "sesle düzenle"; share: "paylaş" }
     it { pin: "aggiungi alla schermata home"; info: "informazioni app"; uninstall: "disinstalla"; remove: "rimuovi"; edit: "modifica"; voice: "modifica con la voce"; share: "condividi" }
+    vi { pin: "thêm vào màn hình chính"; info: "thông tin ứng dụng"; uninstall: "gỡ cài đặt"; remove: "gỡ"; edit: "chỉnh sửa"; voice: "chỉnh sửa bằng giọng nói"; share: "chia sẻ" }
   }
   // The recent apps, last opened first, and how home draws its apps: vertical beside the grid in landscape, monochrome
   // silhouettes, bare icons without a tile, and the tiles' outline color.

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="voice_listening">đang nghe · chạm để gửi</string>
+    <string name="voice_listening_working">đang nghe · vẫn đang làm</string>
+    <!-- Under the orb right after a tap, while on-device speech recognition loads: what's said is kept. -->
+    <string name="voice_listening_preparing">đang chuẩn bị · có thể nói ngay</string>
+    <string name="voice_starting">đang khởi động</string>
+    <!-- Under the orb while an agent waits for an OK; %1$s is the time it has been working, like 0:12. -->
+    <string name="voice_needs_ok">cần bạn cho phép · %1$s</string>
+    <string name="voice_working">đang làm · %1$s</string>
+    <!-- Under the orb while a reply is read aloud: a tap talks over it. -->
+    <string name="voice_tap_over">chạm để nói chen vào</string>
+    <string name="voice_tap">chạm để nói</string>
+    <!-- A toggle: every question the agent asks is answered yes. -->
+    <string name="voice_allow_all">cho phép tất cả</string>
+    <!-- Starts a new conversation; the last one can be resumed. -->
+    <string name="voice_new">mới</string>
+    <!-- Brings back the last conversation. -->
+    <string name="voice_resume">tiếp tục</string>
+    <string name="voice_no_speech">Giọng nói cần tính năng nhận dạng giọng nói, nhưng điện thoại này không có. Hãy cài một ứng dụng, như Dịch vụ nhận dạng và tổng hợp giọng nói của Google, rồi chọn nó trong cài đặt nhập liệu bằng giọng nói của Android. Hoặc nhập bằng bàn phím.</string>
+    <string name="voice_input_settings">nhập bằng giọng nói</string>
+    <!-- Switches from talking to typing. -->
+    <string name="voice_type">nhập</string>
+    <string name="voice_no_agent">Giọng nói trò chuyện với một tác nhân lập trình trong Linux. Cài một tác nhân để bắt đầu nói.</string>
+    <string name="voice_agents">tác nhân</string>
+    <string name="voice_log_in">đăng nhập</string>
+    <string name="voice_thinking">đang nghĩ</string>
+    <plurals name="voice_steps">
+        <item quantity="other">%1$d bước</item>
+    </plurals>
+    <!-- The text field's hint; %1$s is the agent, like Claude Code. -->
+    <string name="voice_message">nhắn cho %1$s</string>
+    <string name="voice_answer_hint">có, không, hoặc nên làm gì thay vào đó</string>
+    <string name="voice_send">gửi</string>
+    <string name="voice_erase">xóa những gì đã nói</string>
+    <string name="voice_stop">dừng</string>
+    <!-- The approval card; %1$s is the agent, %2$s what it wants to do (a voice_do_ phrase, like "run a command"). -->
+    <string name="voice_wants">%1$s muốn %2$s</string>
+    <string name="voice_allow">cho phép</string>
+    <string name="voice_always">luôn cho phép</string>
+    <string name="voice_deny">từ chối</string>
+    <string name="voice_or_type">hoặc nhập có, không, hoặc nên làm gì thay vào đó</string>
+    <string name="voice_or_say">hoặc chạm vào vòng tròn và nói có, không, hoặc nên làm gì thay vào đó</string>
+    <!-- Under a picture shown whole. -->
+    <string name="voice_tap_close">chạm để đóng</string>
+    <!-- Steps of a task, shown as they happen. %1$s is a command's description or the command. -->
+    <string name="voice_step_run">đang chạy: %1$s</string>
+    <!-- %1$s is a file name or a web site. -->
+    <string name="voice_step_read">đang đọc %1$s</string>
+    <string name="voice_step_write">đang ghi %1$s</string>
+    <string name="voice_step_edit">đang chỉnh sửa %1$s</string>
+    <string name="voice_step_delete">đang xóa %1$s</string>
+    <string name="voice_step_search">đang tìm %1$s</string>
+    <string name="voice_step_web">đang tìm trên web: %1$s</string>
+    <string name="voice_step_subtask">tác vụ con: %1$s</string>
+    <string name="voice_step_plan">đang lập kế hoạch</string>
+    <!-- A step whose tool has no name. -->
+    <string name="voice_step_tool">một công cụ</string>
+    <!-- What the agent wants to do, in "%1$s wants to %2$s" (voice_wants, voice_say_wants): an infinitive phrase. -->
+    <string name="voice_do_run">chạy một lệnh: %1$s</string>
+    <!-- Like voice_do_run when the command itself is shown below. -->
+    <string name="voice_do_command">chạy một lệnh</string>
+    <string name="voice_do_read">đọc %1$s</string>
+    <string name="voice_do_write">ghi %1$s</string>
+    <string name="voice_do_edit">chỉnh sửa %1$s</string>
+    <string name="voice_do_delete">xóa %1$s</string>
+    <string name="voice_do_search">tìm %1$s</string>
+    <string name="voice_do_web">tìm %1$s trên web</string>
+    <string name="voice_do_subtask">bắt đầu một tác vụ con: %1$s</string>
+    <string name="voice_do_plan">lập kế hoạch</string>
+    <string name="voice_do_tool">dùng %1$s</string>
+    <string name="voice_do_tool_unknown">dùng một công cụ</string>
+    <!-- Said aloud when the agent asks to do something; %2$s is one of the voice_do_ phrases. -->
+    <string name="voice_say_wants">%1$s muốn %2$s. Cho phép không?</string>
+    <!-- Said aloud while the agent works quietly. -->
+    <string name="voice_say_failed">Xin lỗi, không thực hiện được.</string>
+    <!-- In place of the agent's name when there is none. -->
+    <string name="voice_the_agent">tác nhân</string>
+    <!-- Notes in the conversation, lower case. -->
+    <string name="voice_note_allow_all">cho phép mọi thứ %1$s yêu cầu</string>
+    <string name="voice_note_ask_again">lại hỏi trước mỗi hành động</string>
+    <string name="voice_note_task_stopped">tác vụ trước đã bị dừng; nói tiếp tục để làm tiếp</string>
+    <string name="voice_note_cant_continue">không tiếp tục được cuộc trò chuyện trước; đây là cuộc trò chuyện mới</string>
+    <string name="voice_cant_start">không khởi động được %1$s: %2$s</string>
+    <string name="voice_restarted">%1$s đã dừng và được khởi động lại; hãy hỏi lại</string>
+    <!-- %2$s is what the agent printed last, in its own words. -->
+    <string name="voice_stopped">%1$s đã dừng: %2$s</string>
+    <string name="voice_nothing_to_say">%1$s trả lời nhưng không có gì để nói</string>
+    <string name="voice_no_answer">%1$s chưa trả lời; có thể đã hết hạn mức hoặc chưa đăng nhập</string>
+    <string name="voice_quiet">%1$s đã im lặng hai phút; dừng nó nếu bị kẹt</string>
+    <string name="voice_offline">không có internet: %1$s không trả lời được cho đến khi điện thoại có mạng</string>
+    <!-- When the agent gave no reason for a failure. -->
+    <string name="voice_failed">lỗi</string>
+    <!-- %1$s is the agent's error, like a network error. -->
+    <string name="voice_retrying">đang thử lại: %1$s</string>
+    <!-- The voice settings: the chip in the top row and the dialog it opens. -->
+    <string name="voice_voice">giọng đọc</string>
+    <string name="voice_language">ngôn ngữ</string>
+    <!-- The language picked in the launcher, which Voice uses unless another is picked; %1$s is its name. -->
+    <string name="voice_language_launcher">mặc định (%1$s)</string>
+    <string name="voice_default">mặc định</string>
+    <string name="voice_default_named">mặc định (%1$s)</string>
+    <!-- After a voice that needs the internet. -->
+    <string name="voice_online">trực tuyến</string>
+    <string name="voice_speed">tốc độ</string>
+    <string name="voice_tts_settings">cài đặt chuyển văn bản thành giọng nói</string>
+    <string name="voice_no_voice">Điện thoại này chưa có giọng đọc cho %1$s: tải một giọng trong cài đặt chuyển văn bản thành giọng nói.</string>
+    <string name="voice_sample">Câu trả lời sẽ được đọc như thế này.</string>
+    <!-- Speech recognition in the voice settings: the phone's recognizer, or Parakeet, downloaded on request. -->
+    <string name="voice_recognition">nhận dạng giọng nói</string>
+    <!-- Which recognizer listens: the phone's own (usually Google's), as opposed to Parakeet. -->
+    <string name="voice_recognition_phone">của điện thoại</string>
+    <string name="voice_recognition_parakeet">Parakeet, trên điện thoại này</string>
+    <string name="voice_parakeet_about">Parakeet nhận dạng giọng nói ngay trên điện thoại này: không cần mạng, không có tiếng bíp, với 25 ngôn ngữ châu Âu. Dung lượng tải xuống %1$s.</string>
+    <string name="voice_parakeet_download">tải xuống</string>
+    <string name="voice_parakeet_mobile_data">bạn đang dùng dữ liệu di động</string>
+    <!-- Download progress: %1$s and %2$s are sizes, like 312 MB of 670 MB. -->
+    <string name="voice_parakeet_progress">%1$s / %2$s</string>
+    <string name="voice_parakeet_checking">đang kiểm tra bản tải xuống…</string>
+    <string name="voice_parakeet_cancel">hủy</string>
+    <string name="voice_parakeet_delete">xóa Parakeet · %1$s</string>
+    <string name="voice_parakeet_failed">tải xuống đã dừng: %1$s</string>
+    <string name="voice_parakeet_space">không đủ dung lượng: cần thêm %1$s</string>
+    <string name="voice_parakeet_damaged">bản tải xuống bị hỏng; thử lại</string>
+    <!-- %1$s is a language name, like Japanese. -->
+    <string name="voice_parakeet_language">Parakeet không hỗ trợ %1$s: trình nhận dạng của điện thoại sẽ nghe thay.</string>
+    <!-- In the voice settings: how long a pause in speech sends it to the agent; off means only a tap on the orb does. -->
+    <string name="voice_send_after">gửi sau khi ngừng nói</string>
+    <string name="voice_send_after_off">tắt</string>
+    <!-- A number of seconds, short: 2 s. -->
+    <string name="voice_seconds">%1$d giây</string>
+    <!-- Under the orb while the agent waits for the answer to a question it asked; %1$s is the time it has been working. -->
+    <string name="voice_needs_answer">cần bạn trả lời · %1$s</string>
+    <string name="voice_your_answer">câu trả lời của bạn</string>
+    <!-- Above a question the agent asks the user; %1$s is the agent, like Hermes. -->
+    <string name="voice_asks">%1$s hỏi</string>
+    <!-- Answers the agent's question with nothing. -->
+    <string name="voice_skip">bỏ qua</string>
+    <string name="voice_skipped">đã bỏ qua câu hỏi</string>
+    <string name="voice_or_type_answer">hoặc tự nhập câu trả lời</string>
+    <string name="voice_or_say_answer">hoặc chạm vào vòng tròn và nói câu trả lời</string>
+    <!-- Said aloud after a question the agent asks; %1$s is its choices, separated by commas. -->
+    <string name="voice_say_choices">Các lựa chọn: %1$s.</string>
+    <!-- In the conversation when Voice was opened to change a widget or app; %1$s is its name. -->
+    <string name="voice_note_edit">đang chỉnh sửa %1$s · nói cần thay đổi gì</string>
+</resources>

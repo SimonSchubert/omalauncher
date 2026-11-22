@@ -29,7 +29,7 @@ KLAVYE KISAYOLLARI
 Donanım klavyesiyle: Super+T bir terminal açar, Super+D çekmeceyi açar, Super+1–9 sayfalar arasında geçiş yapar, Super+W bir pencereyi kapatır.
 
 DİLLER
-English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe ve Italiano.
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe, Italiano ve Tiếng Việt.
 
 GİZLİLİK
 Hesap yok, reklam yok, takip yok. Omalauncher internete yalnızca tema, widget, hava durumu ve istersen Linux ile paketlerini indirmek için bağlanır.

@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The style menu (ui/StyleScreen.kt), settings' pages, gestures and coding agents screens. -->
+<resources>
+    <string name="style_title">giao diện</string>
+
+    <!-- Section headings. -->
+    <string name="style_home_screen">màn hình chính</string>
+    <string name="style_widgets">tiện ích</string>
+    <string name="style_screens">màn hình</string>
+    <string name="style_keybar">thanh phím</string>
+    <string name="style_system_bars">thanh hệ thống</string>
+    <!-- The font of the launcher and its widgets. -->
+    <string name="style_launcher_widgets">launcher và tiện ích</string>
+    <string name="style_theme">chủ đề</string>
+    <string name="style_background">hình nền</string>
+    <string name="style_terminal">terminal</string>
+
+    <!-- Option names and their choices, in a narrow column beside the choices. -->
+    <string name="style_icons">biểu tượng</string>
+    <string name="style_monochrome">đơn sắc</string>
+    <string name="style_colored">có màu</string>
+    <string name="style_icon_pack">gói biểu tượng</string>
+    <string name="style_icon_pack_none">không</string>
+    <string name="style_home_apps">ứng dụng chính</string>
+    <string name="style_boxed">có khung</string>
+    <string name="style_icon_only">chỉ biểu tượng</string>
+    <string name="style_recent_apps">ứng dụng gần đây</string>
+    <string name="style_shown">hiện</string>
+    <string name="style_hidden">ẩn</string>
+    <string name="style_empty_page_left">trang trống bên trái</string>
+    <string name="style_empty_page_right">trang trống bên phải</string>
+    <string name="style_columns">cột</string>
+    <!-- Whether home is one page, or as many as its apps take. -->
+    <string name="style_pages">trang</string>
+    <string name="style_pages_one">một</string>
+    <string name="style_pages_auto">tự động</string>
+    <!-- A foldable's cover screen: home upright with the bar below (true), or turned on its side as in landscape. -->
+    <string name="style_cover_screen">màn hình ngoài</string>
+    <string name="style_cover_upright">đứng</string>
+    <string name="style_cover_turned">xoay ngang</string>
+    <!-- A foldable's inner screen unfolded: a home of its own there, or the pages as on the phone. -->
+    <string name="style_unfolded">khi mở ra</string>
+    <string name="style_unfolded_own">màn hình riêng</string>
+    <string name="style_unfolded_pages">trang</string>
+    <string name="style_unfolded_columns">cột khi mở ra</string>
+    <string name="style_corners">góc</string>
+    <string name="style_corners_edge">vuông</string>
+    <string name="style_corners_soft">bo nhẹ</string>
+    <string name="style_corners_round">bo tròn</string>
+    <!-- Like Hyprland's gaps_in and gaps_out: space between tiles, and from them to the screen's edges. -->
+    <string name="style_gaps_in">khe trong</string>
+    <string name="style_gaps_out">khe ngoài</string>
+    <string name="style_border_width">độ dày viền</string>
+    <string name="style_opacity">độ đục</string>
+    <string name="style_frosted_glass">kính mờ</string>
+    <string name="style_on">bật</string>
+    <string name="style_off">tắt</string>
+    <string name="style_status_bar">thanh trạng thái</string>
+    <!-- The band behind the system bars' icons. -->
+    <string name="style_bars_background">nền</string>
+    <string name="style_font">phông chữ</string>
+    <string name="style_system_font">mặc định hệ thống</string>
+    <!-- The terminal's text size. -->
+    <string name="style_text">chữ</string>
+    <string name="style_text_smaller">nhỏ</string>
+    <string name="style_text_default">thường</string>
+    <string name="style_text_larger">lớn</string>
+    <string name="style_preview">xem trước</string>
+    <!-- Stands in for an app's name in the home screen preview. -->
+    <string name="style_preview_app">ứng dụng</string>
+    <string name="style_reset">đặt lại</string>
+    <!-- Under an option that sets several settings at once, which style.toml set to different values. -->
+    <string name="style_differ_step">khác nhau trong style.toml; chọn một mức sẽ đặt tất cả</string>
+    <string name="style_differ">khác nhau</string>
+    <!-- %1$s is the value from style.toml, like "0.7" or "they differ". -->
+    <string name="style_custom">tùy chỉnh: %1$s, từ style.toml</string>
+    <!-- %1$s is a file path. -->
+    <string name="style_more_settings">thêm cài đặt, như màu viền và màu thanh: %1$s</string>
+
+    <!-- The terminal key bar's file, keybar.owl. -->
+    <string name="style_keys">phím</string>
+    <string name="style_keybar_removed">đã gỡ</string>
+    <string name="style_keybar_errors">có lỗi</string>
+    <string name="style_keybar_stock">mặc định</string>
+    <string name="style_keybar_edited">đã chỉnh sửa</string>
+    <string name="style_keybar_edit">chỉnh sửa bằng tác nhân</string>
+    <string name="style_keybar_back_to_stock">về mặc định</string>
+    <!-- %1$s is the file name, keybar.owl. -->
+    <string name="style_keybar_gone">không còn %1$s, nên phím mặc định được hiện</string>
+    <string name="style_keybar_restore_title">về phím mặc định?</string>
+    <string name="style_keybar_restore_message">keybar.owl của bạn sẽ được thay bằng tệp đi kèm launcher này.</string>
+    <string name="style_strip">dải ứng dụng</string>
+    <string name="style_strip_removed">đã gỡ</string>
+    <string name="style_strip_stock">mặc định</string>
+    <string name="style_strip_edited">đã chỉnh sửa</string>
+    <string name="style_strip_back_to_stock">về mặc định</string>
+    <string name="style_strip_gone">không còn %1$s, nên dải ứng dụng mặc định được hiện</string>
+    <string name="style_strip_restore_title">về dải ứng dụng mặc định?</string>
+    <string name="style_strip_restore_message">strip.owl của bạn sẽ được thay bằng tệp đi kèm launcher này.</string>
+    <string name="style_replace">thay thế</string>
+
+    <!-- Themes. -->
+    <string name="style_browse">khám phá</string>
+    <string name="style_install">cài đặt</string>
+    <string name="style_install_theme">cài đặt chủ đề</string>
+    <string name="style_install_hint">Repo GitHub của một chủ đề. Chủ đề đã cài có cùng tên sẽ bị thay thế.</string>
+    <!-- A theme the user installed from no known repo. -->
+    <string name="style_own_theme">chủ đề của bạn</string>
+    <string name="style_update">cập nhật</string>
+    <string name="style_remove">gỡ</string>
+    <!-- %1$s is the theme's name. -->
+    <string name="style_remove_theme_title">gỡ %1$s?</string>
+    <string name="style_remove_theme_builtin">Những thay đổi của bạn sẽ mất; bản của Omarchy vẫn giữ nguyên.</string>
+    <string name="style_remove_deleted">Chủ đề sẽ bị xóa khỏi điện thoại và khỏi Linux.</string>
+    <string name="style_themes_downloading">Các chủ đề khác của Omarchy đang tải xuống từ github.com/omacom/omarchy (~70 MB).</string>
+    <string name="style_themes_not_installed">Chủ đề của Omarchy chưa được cài đặt. Chúng được tải xuống từ github.com/omacom/omarchy (~70 MB).</string>
+    <string name="style_downloading">đang tải xuống… %1$d MB</string>
+    <!-- %1$s is the error. -->
+    <string name="style_failed">lỗi: %1$s</string>
+    <string name="style_retry">thử lại</string>
+    <string name="style_download_themes">tải chủ đề xuống</string>
+
+    <!-- Backgrounds. -->
+    <string name="style_add_image">+ hình ảnh</string>
+    <string name="style_wallpaper_active">✓ hình nền android và màu hệ thống theo chủ đề (màu hệ thống cập nhật sau khi màn hình tắt)</string>
+    <string name="style_wallpaper_use">dùng làm hình nền android + màu hệ thống</string>
+    <string name="style_remove_background_title">gỡ hình nền?</string>
+
+    <string name="style_terminal_hint">áp dụng cho terminal mở từ giờ · thêm phông bằng pacman, như ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">gợi ý bàn phím</string>
+    <string name="style_keyboard_suggestions_hint">gợi ý, nhập bằng cách vuốt và đọc chính tả; chữ đến terminal từng từ một · từ lần mở bàn phím tiếp theo</string>
+    <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->
+    <plurals name="style_terminal_size">
+        <item quantity="other">%1$s pt · %2$d cột khi dọc</item>
+    </plurals>
+
+    <!-- Settings › pages (ui/PagesScreen.kt). -->
+    <string name="pages_title">trang</string>
+    <string name="pages_intro">Các trang của màn hình chính, từ trái sang phải. Kéo ≡ để di chuyển một trang, hoặc dùng phím: nhấn Enter để nhấc ≡ lên và di chuyển bằng phím mũi tên. Màn hình chính mở ở trang đầu tiên có ô; tiện ích toàn màn hình đứng trước nó nằm bên trái.</string>
+    <string name="pages_loading">đang tải…</string>
+    <!-- %1$s is a full-screen widget's name. -->
+    <string name="pages_remove_named">gỡ %1$s?</string>
+    <string name="pages_remove_page">gỡ trang này?</string>
+    <string name="pages_remove_face_message">Tệp của nó được chuyển vào .removed/ trong thư mục tiện ích.</string>
+    <!-- %1$s is what's on the page, like "Weather, Clock, 3 apps". -->
+    <string name="pages_remove_tiles_message">%1$s. Tiện ích trên trang được chuyển vào .removed/ trong thư mục tiện ích; ứng dụng được gỡ khỏi màn hình chính nhưng vẫn được cài đặt.</string>
+    <string name="pages_remove">gỡ</string>
+    <!-- How many apps are on a page, after the names of its widgets. -->
+    <plurals name="pages_apps">
+        <item quantity="other">%1$d ứng dụng</item>
+    </plurals>
+    <!-- A page with nothing on it. -->
+    <string name="pages_empty">trống</string>
+    <!-- Beside a page's name: what it is. -->
+    <string name="pages_doesnt_compile">không biên dịch được</string>
+    <string name="pages_face">toàn màn hình</string>
+    <string name="pages_home">màn hình chính</string>
+    <string name="pages_edit">chỉnh sửa</string>
+    <string name="pages_share">chia sẻ</string>
+
+    <!-- Settings › gestures (ui/Gestures.kt). -->
+    <string name="gestures_title">cử chỉ</string>
+    <string name="gestures_swipe_up">vuốt lên</string>
+    <string name="gestures_swipe_down">vuốt xuống</string>
+    <!-- What a swipe opens when it opens no panel. -->
+    <string name="gestures_nothing">không có gì</string>
+    <!-- %1$s is a panel's name. -->
+    <string name="gestures_has_errors">%1$s (có lỗi)</string>
+    <!-- %1$s is the file name of a panel that is gone. -->
+    <string name="gestures_missing">%1$s (không tìm thấy)</string>
+    <string name="gestures_edit">chỉnh sửa</string>
+    <string name="gestures_hint">bảng là các tệp owl, kể cả danh sách ứng dụng: chỉnh sửa chúng như tiện ích, hoặc tạo bảng mới cùng tác nhân từ menu của màn hình chính. khi vuốt lên không mở gì, chạm vào thanh vẫn mở danh sách ứng dụng</string>
+    <!-- Home's error banner, for a panel that doesn't compile. -->
+    <string name="gestures_stock_drawer">danh sách ứng dụng mặc định</string>
+    <!-- %1$s is a panel's name, "the stock drawer" or "nothing". -->
+    <string name="gestures_drawer_shows">danh sách ứng dụng hiện %1$s</string>
+    <string name="gestures_swipe_down_nothing">vuốt xuống không mở gì</string>
+    <!-- %1$s is what happens meanwhile, like "the drawer shows the stock drawer"; %2$s the widget language's error, in English. -->
+    <string name="gestures_until_fixed">%1$s cho đến khi sửa xong: %2$s</string>
+    <!-- %1$s is the widget language's error, in English. -->
+    <string name="gestures_keybar_until_fixed">thanh phím dùng bản mặc định cho đến khi sửa xong: %1$s</string>
+    <string name="gestures_strip_until_fixed">dải ứng dụng gần đây dùng bản mặc định cho đến khi sửa xong: %1$s</string>
+
+    <!-- Settings › coding agents (ui/AgentsScreen.kt). -->
+    <string name="agents_title">tác nhân lập trình</string>
+    <string name="agents_intro">Được cài đặt theo cách của Omarchy, phần lớn bằng mise. Đăng nhập mở trong trình duyệt; dán khóa bằng bảng nhớ tạm của bàn phím.</string>
+    <string name="agents_open">mở</string>
+    <string name="agents_remove">gỡ</string>
+    <string name="agents_still_running">%1$s vẫn đang chạy: đóng nó rồi gỡ lại</string>
+    <string name="agents_install">cài đặt</string>
+</resources>
