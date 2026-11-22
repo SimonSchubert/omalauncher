@@ -795,6 +795,9 @@ class WidgetServices(
                 ShellResult("", "too many redirects", -1)
             } catch (e: IOException) {
                 ShellResult("", listOfNotNull(e.message ?: e.toString(), LocalNetwork.hint(context, url)).joinToString("; "), -1)
+            } catch (e: IllegalArgumentException) {
+                // A header Android won't send: an empty name, a line break or a control character in one.
+                ShellResult("", "a header can't be sent: ${e.message ?: e}", -1)
             }
         }
 

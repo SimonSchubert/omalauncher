@@ -38,6 +38,7 @@ import dev.omalauncher.widgets.lang.Source
 import dev.omalauncher.widgets.lang.phoneLanguage
 import dev.omalauncher.widgets.market.Shared
 import dev.omalauncher.widgets.runtime.WidgetInstance
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -125,7 +126,9 @@ class WidgetEngine(
             layout.onSave = home::changed
             shortcuts.onSave = home::changed
         }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    /** Widgets' sources, triggers and posts run here: one that fails on something a widget did mustn't take home down. */
+    private val scope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e -> Log.e("widgets", "a widget's job failed", e) })
     private val services = WidgetServices(context, proot, runtime, scope)
 
     /** Opens launcher screens ("style" or "themes", "agents", "store" or "store:apps", "drawer"); set by the UI. */
