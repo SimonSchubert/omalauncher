@@ -65,6 +65,18 @@ class ComputerLinkTest {
         assertNull(ComputerLink.followedId(null))
     }
 
+    @Test fun theSameActivityAgainTakesOneLine() {
+        fun a(at: Long, what: String, device: String = "omarchy") = ComputerLink.Activity(at, device, what)
+        var list = ComputerLink.noted(emptyList(), a(1, "changed the values of farm.owl"))
+        list = ComputerLink.noted(list, a(2, "changed the values of farm.owl"))
+        assertEquals(listOf(a(2, "changed the values of farm.owl")), list)
+        list = ComputerLink.noted(list, a(3, "changed the values of farm.owl", "pixel"))
+        list = ComputerLink.noted(list, a(4, "switched the theme to nord"))
+        assertEquals(listOf(4L, 3L, 2L), list.map { it.at })
+        repeat(100) { list = ComputerLink.noted(list, a(10L + it, "read w$it.owl")) }
+        assertEquals(ComputerLink.MAX_ACTIVITY, list.size)
+    }
+
     @Test fun letsKeysInOnlyForTheLinkCommand() {
         val c = ComputerLink.Computer("2bfb5db2e1d6", "framework", key, 0, null)
         assertEquals("restrict,command=\"/usr/local/bin/omalauncher-link 2bfb5db2e1d6\" $key\n", ComputerLink.authorizedKeys(listOf(c)))

@@ -139,7 +139,7 @@ class ComputerLink(
         val entry = Activity(System.currentTimeMillis(), device, what)
         Log.i(TAG, "$device: $what")
         scope.launch {
-            val list = (listOf(entry) + activity).take(MAX_ACTIVITY)
+            val list = noted(activity, entry)
             activity = list
             runCatching {
                 dir.mkdirs()
@@ -879,6 +879,19 @@ class ComputerLink(
         private const val PHONE_ID = "phone_id"
         private const val PAUSED = "paused"
         const val MAX_ACTIVITY = 50
+
+        /**
+         * [list] with [entry] on top. The same thing from the same device again takes the place of the last time: a
+         * game that saves every few seconds would otherwise fill the list with one line.
+         */
+        fun noted(
+            list: List<Activity>,
+            entry: Activity,
+        ): List<Activity> {
+            val last = list.firstOrNull()
+            val rest = if (last != null && last.device == entry.device && last.what == entry.what) list.drop(1) else list
+            return (listOf(entry) + rest).take(MAX_ACTIVITY)
+        }
 
         /** The followed device a `self` or `self:<id>` request is for ("" when it doesn't say); null for a connected device's id. */
         fun followedId(id: String?): String? =
