@@ -75,7 +75,14 @@ class PointerResource(
         opcode: Int,
         args: Args,
     ) {
-        if (opcode == 1) destroy() // set_cursor is ignored: Android draws its own
+        when (opcode) {
+            0 -> { // set_cursor: serial, surface (none hides it), hotspot
+                args.uint()
+                val surface = args.obj().takeIf { it != 0 }?.let { client.get<Surface>(it) }
+                client.server.input.setCursor(client, surface, args.int(), args.int())
+            }
+            1 -> destroy()
+        }
     }
 
     fun frame() {

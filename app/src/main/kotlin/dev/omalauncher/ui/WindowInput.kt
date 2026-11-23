@@ -26,13 +26,15 @@ private const val WHEEL_STEP = 15f
  * press = right click, drag = scroll; clients with wl_touch get real touch.
  * A tap on the row of the window's text cursor (a terminal's prompt) also
  * calls [onCursorTap], after the program gets it.
+ * With [touchpad] on, touch drives a cursor instead (see [TouchpadState]).
  */
 fun Modifier.linuxWindowInput(
     wm: WindowManager,
     window: XdgToplevel,
+    touchpad: TouchpadState? = null,
     onCursorTap: () -> Unit = {},
-) = pointerInput(wm, window) {
-    handlePointer(wm, window, viewConfiguration.touchSlop, viewConfiguration.longPressTimeoutMillis, onCursorTap)
+) = pointerInput(wm, window, touchpad) {
+    handlePointer(wm, window, touchpad, viewConfiguration.touchSlop, viewConfiguration.longPressTimeoutMillis, onCursorTap)
 }
 
 private fun XdgToplevel.hitTest(
@@ -43,6 +45,7 @@ private fun XdgToplevel.hitTest(
 private suspend fun PointerInputScope.handlePointer(
     wm: WindowManager,
     window: XdgToplevel,
+    touchpad: TouchpadState?,
     touchSlop: Float,
     longPressMs: Long,
     onCursorTap: () -> Unit,
@@ -57,6 +60,11 @@ private suspend fun PointerInputScope.handlePointer(
             continue
         }
         if (event.type != PointerEventType.Press || change.isConsumed) continue
+        if (touchpad?.on == true) {
+            touchpad.bounds = size
+            touchpadGesture(wm, window, touchpad, event, touchSlop)
+            continue
+        }
 
         val start = change.position
         val hit = window.hitTest(start.x, start.y)
