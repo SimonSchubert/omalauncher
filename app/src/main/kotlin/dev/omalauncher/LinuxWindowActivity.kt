@@ -1,12 +1,16 @@
 package dev.omalauncher
 
 import android.annotation.SuppressLint
+import android.app.PictureInPictureParams
 import android.content.Context
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Bundle
+import android.util.Rational
 import android.view.KeyEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -39,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -62,6 +67,9 @@ class LinuxWindowActivity : InstantActivity() {
     private val imagePicker = ImagePicker(this) { runtime }
     private val asks = WidgetAsks(this)
 
+    /** True while this window is the floating picture-in-picture thumbnail. */
+    private var inPip by mutableStateOf(false)
+
     override fun create(savedInstanceState: Bundle?) {
         val window = runtime.wm.windowByHandle(intent.data?.lastPathSegment)
         if (window == null) {
@@ -71,7 +79,7 @@ class LinuxWindowActivity : InstantActivity() {
         }
         this.window = window
         setInstantContent {
-            AppWindow(runtime, window)
+            AppWindow(runtime, window, inPip) { enterPip() }
             BackHandler { backInstantly() }
             LaunchedEffect(window) {
                 snapshotFlow { window in runtime.wm.appWindows }.first { !it }
@@ -94,6 +102,20 @@ class LinuxWindowActivity : InstantActivity() {
         window?.let(runtime.wm::focus)
         runtime.keyboard.imagePicker = imagePicker
         asks.resumed(runtime)
+    }
+
+    /** PiP is only a smaller view of the same window: the compositor keeps drawing, and the task keeps its Recents card. */
+    private fun enterPip() {
+        if (packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) {
+            enterPictureInPictureMode(PictureInPictureParams.Builder().setAspectRatio(Rational(9, 16)).build())
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        inPip = isInPictureInPictureMode
+        // Leaving PiP returns the window to the front, so it takes the keys back (takeKeys ignores gone windows).
+        if (!isInPictureInPictureMode) takeKeys()
     }
 
     override fun onStop() {
@@ -166,6 +188,8 @@ internal fun taskIcon(
 private fun AppWindow(
     runtime: Runtime,
     window: XdgToplevel,
+    inPip: Boolean,
+    onPip: () -> Unit,
 ) {
     var sink by remember { mutableStateOf<KeyboardSink?>(null) }
     var surfaceView by remember { mutableStateOf<WindowSurfaceView?>(null) }
@@ -205,16 +229,35 @@ private fun AppWindow(
                 // Over the SurfaceView, which Compose's pointer input doesn't reach.
                 // A tap on the prompt line brings the keyboard back, as the ⌨ button does.
                 Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window) { sink?.takeUnless { it.showing }?.show() })
-                Box(
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(12.dp)
-                        .size(40.dp)
-                        .background(Palette.overlay, CircleShape)
-                        .clickable { sink?.toggle() },
-                    contentAlignment = Alignment.Center,
+                // PiP's thumbnail takes no taps, so the overlay buttons only run outside it.
+                if (!inPip) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(12.dp)
+                            .size(40.dp)
+                            .background(Palette.overlay, CircleShape)
+                            .clickable { sink?.toggle() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        BasicText("⌨", style = Mono.copy(color = Palette.foreground))
+                    }
+                }
+                // Floating over other apps; Android's thumbnail expands back to the window on tap.
+                if (!inPip &&
+                    LocalContext.current.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
                 ) {
-                    BasicText("⌨", style = Mono.copy(color = Palette.foreground))
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 12.dp, bottom = 64.dp)
+                            .size(40.dp)
+                            .background(Palette.overlay, CircleShape)
+                            .clickable { onPip() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        BasicText("⧉", style = Mono.copy(color = Palette.foreground))
+                    }
                 }
             }
             // Below the window rather than over it, so the window shrinks and nothing hides behind the keys; only over a

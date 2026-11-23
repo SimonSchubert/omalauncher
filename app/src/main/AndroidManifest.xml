@@ -163,6 +163,7 @@
             android:documentLaunchMode="always"
             android:exported="false"
             android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
             android:windowSoftInputMode="adjustResize|stateAlwaysHidden" />
 
         <!-- Recents names a task after its activity's manifest label, so the common windows get their own. -->
