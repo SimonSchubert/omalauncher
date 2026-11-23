@@ -137,7 +137,9 @@ import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.JobState
 import dev.omalauncher.Runtime
 import dev.omalauncher.voice.Parakeet
+import dev.omalauncher.voice.ModelFiles
 import dev.omalauncher.voice.ParakeetModel
+import dev.omalauncher.voice.SupertonicModel
 import dev.omalauncher.voice.Speaker
 import dev.omalauncher.voice.Speech
 import dev.omalauncher.voice.VoiceSession
@@ -622,8 +624,11 @@ private fun VoiceSettings(
     val language = session.language
     val launcher = configuration.locales[0]
     val shown = language ?: launcher.language
+    // Read here, so picking, downloading or deleting Supertonic shows its languages and voices at once.
+    val supertonicOn = SupertonicModel.files.changes.let { SupertonicModel.on(context) && SupertonicModel.files.downloaded(context) }
+    val bySupertonic = supertonicOn && speaker.supertonic(shown)
     val languages =
-        remember(ready, returns) {
+        remember(ready, returns, supertonicOn) {
             (speaker.languages() + AppLanguage.supported.map { Locale.forLanguageTag(it).language })
                 .distinct()
                 .sortedBy { AppLanguage.name(it).lowercase(launcher) }
@@ -679,7 +684,11 @@ private fun VoiceSettings(
             }
         }
 
-        if (voices.isNotEmpty()) {
+        Reading(shown)
+
+        if (bySupertonic) {
+            SupertonicVoice(session.voice) { use(voice = it) }
+        } else if (voices.isNotEmpty()) {
             var pickVoice by remember { mutableStateOf(false) }
             // Numbered in each region: the engine's names (de-de-x-deb-local) say nothing to most. A voice and its
             // online twin (de-de-x-deb-network) share the number.
@@ -749,48 +758,128 @@ private fun VoiceSettings(
 private fun Recognition(locale: Locale) {
     val context = LocalContext.current
     val model = ParakeetModel
-    val downloaded = remember(model.changes) { model.downloaded(context) }
-    val on = model.on(context)
-    Setting(stringResource(R.string.voice_recognition)) {
+    OnDevice(
+        name = stringResource(R.string.voice_recognition),
+        files = model.files,
+        on = model.on(context),
+        setOn = { model.setOn(context, it) },
+        phone = stringResource(R.string.voice_recognition_phone),
+        own = stringResource(R.string.voice_recognition_parakeet),
+        about = stringResource(R.string.voice_parakeet_about, model.size(context, model.SIZE)),
+        delete = stringResource(R.string.voice_parakeet_delete, model.size(context, model.SIZE)),
+        unknown = if (!model.speaks(locale)) stringResource(R.string.voice_parakeet_language, AppLanguage.name(locale.language)) else null,
+    )
+}
+
+/** What reads replies aloud: the phone's text-to-speech, or Supertonic once its 145 MB are downloaded here. */
+@Composable
+private fun Reading(language: String) {
+    val context = LocalContext.current
+    val model = SupertonicModel
+    val size = model.files.size(context, model.files.size)
+    OnDevice(
+        name = stringResource(R.string.voice_reading),
+        files = model.files,
+        on = model.on(context),
+        setOn = { model.setOn(context, it) },
+        phone = stringResource(R.string.voice_reading_phone),
+        own = stringResource(R.string.voice_reading_supertonic),
+        about = stringResource(R.string.voice_supertonic_about, size),
+        delete = stringResource(R.string.voice_supertonic_delete, size),
+        unknown = if (!model.speaks(AppLanguage.short(language))) stringResource(R.string.voice_supertonic_language, AppLanguage.name(language)) else null,
+    )
+}
+
+/**
+ * A setting that's the phone's own service ([phone]) or a model run on the phone ([own]), picked once [files] are
+ * downloaded, with the download, its progress and its deletion. [unknown] says the language picked is one the model
+ * doesn't know.
+ */
+@Composable
+private fun OnDevice(
+    name: String,
+    files: ModelFiles,
+    on: Boolean,
+    setOn: (Boolean) -> Unit,
+    phone: String,
+    own: String,
+    about: String,
+    delete: String,
+    unknown: String?,
+) {
+    val context = LocalContext.current
+    val downloaded = remember(files.changes) { files.downloaded(context) }
+    Setting(name) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val phone = stringResource(R.string.voice_recognition_phone)
-            val parakeet = stringResource(R.string.voice_recognition_parakeet)
             if (downloaded) {
                 var picking by remember { mutableStateOf(false) }
                 Box {
-                    Pick(if (on) parakeet else phone) { picking = true }
+                    Pick(if (on) own else phone) { picking = true }
                     if (picking) {
                         ChoicePopup(
                             options = listOf(true, false),
                             selected = on,
                             position = BelowAnchorStart,
                             onDismiss = { picking = false },
-                            onPick = { model.setOn(context, it) },
-                            label = { if (it) parakeet else phone },
+                            onPick = setOn,
+                            label = { if (it) own else phone },
                         )
                     }
                 }
-                if (on && !model.speaks(locale)) Note(stringResource(R.string.voice_parakeet_language, AppLanguage.name(locale.language)), Palette.muted)
-                BracketAction(stringResource(R.string.voice_parakeet_delete, model.size(context, model.SIZE)), Palette.muted) { model.delete(context) }
+                if (on && unknown != null) Note(unknown, Palette.muted)
+                BracketAction(delete, Palette.muted) { files.delete(context) }
             } else {
                 BasicText(phone, Modifier.padding(vertical = 6.dp), style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Item))
-                Note(stringResource(R.string.voice_parakeet_about, model.size(context, model.SIZE)), Palette.muted)
-                if (model.downloading) {
-                    val fraction = (model.done.toFloat() / model.SIZE).coerceIn(0f, 1f)
+                Note(about, Palette.muted)
+                if (files.downloading) {
+                    val fraction = (files.done.toFloat() / files.size).coerceIn(0f, 1f)
                     Box(Modifier.fillMaxWidth().height(4.dp).clip(LauncherStyle.shape(2.dp)).background(Palette.muted.copy(alpha = 0.25f))) {
                         Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(Palette.accent))
                     }
                     Note(
-                        if (model.checking) stringResource(R.string.voice_parakeet_checking) else stringResource(R.string.voice_parakeet_progress, model.size(context, model.done), model.size(context, model.SIZE)),
+                        if (files.checking) stringResource(R.string.voice_parakeet_checking) else stringResource(R.string.voice_parakeet_progress, files.size(context, files.done), files.size(context, files.size)),
                         Palette.muted,
                     )
-                    BracketAction(stringResource(R.string.voice_parakeet_cancel), Palette.muted) { model.cancel() }
+                    BracketAction(stringResource(R.string.voice_parakeet_cancel), Palette.muted) { files.cancel() }
                 } else {
-                    model.error?.let { Note(stringResource(R.string.voice_parakeet_failed, it), Palette.red) }
+                    files.error?.let { Note(stringResource(R.string.voice_parakeet_failed, it), Palette.red) }
                     val metered = remember { context.getSystemService(ConnectivityManager::class.java)?.isActiveNetworkMetered == true }
                     if (metered) Note(stringResource(R.string.voice_parakeet_mobile_data), Palette.named("yellow") ?: Palette.accent)
-                    BracketAction(stringResource(R.string.voice_parakeet_download), Palette.accent) { model.download(context) }
+                    BracketAction(stringResource(R.string.voice_parakeet_download), Palette.accent) { files.download(context) }
                 }
+            }
+        }
+    }
+}
+
+/** Supertonic's voices, female 1-5 and male 1-5, for [VoiceSettings]; [picked] is the saved voice name. */
+@Composable
+private fun SupertonicVoice(
+    picked: String?,
+    onPick: (String?) -> Unit,
+) {
+    val resources = LocalResources.current
+    fun label(sid: Int) =
+        if (sid < SupertonicModel.FEMALE) {
+            resources.getString(R.string.voice_female, sid + 1)
+        } else {
+            resources.getString(R.string.voice_male, sid - SupertonicModel.FEMALE + 1)
+        }
+    val current = SupertonicModel.sid(picked)
+    val default = stringResource(R.string.voice_default_named, label(0))
+    var picking by remember { mutableStateOf(false) }
+    Setting(stringResource(R.string.voice_voice)) {
+        Box {
+            Pick(current?.let(::label) ?: default) { picking = true }
+            if (picking) {
+                ChoicePopup(
+                    options = listOf<Int?>(null) + (0 until SupertonicModel.VOICES),
+                    selected = current,
+                    position = BelowAnchorStart,
+                    onDismiss = { picking = false },
+                    onPick = { onPick(it?.let(SupertonicModel::voiceName)) },
+                    label = { it?.let(::label) ?: default },
+                )
             }
         }
     }

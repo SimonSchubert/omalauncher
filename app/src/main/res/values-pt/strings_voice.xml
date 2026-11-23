@@ -97,6 +97,14 @@
     <string name="voice_parakeet_space">espaço insuficiente: faltam %1$s</string>
     <string name="voice_parakeet_damaged">o download veio corrompido; tente de novo</string>
     <string name="voice_parakeet_language">O Parakeet não conhece %1$s: o reconhecimento de voz do telefone escuta no lugar dele.</string>
+    <string name="voice_reading">leitura em voz alta</string>
+    <string name="voice_reading_phone">o texto para fala do telefone</string>
+    <string name="voice_reading_supertonic">Supertonic, neste telefone</string>
+    <string name="voice_supertonic_about">O Supertonic lê as respostas em voz alta no próprio telefone: offline, com vozes naturais, em 31 idiomas. Um download de %1$s.</string>
+    <string name="voice_supertonic_delete">excluir Supertonic · %1$s</string>
+    <string name="voice_supertonic_language">O Supertonic não conhece %1$s: o texto para fala do telefone lê no lugar dele.</string>
+    <string name="voice_female">feminina %1$d</string>
+    <string name="voice_male">masculina %1$d</string>
     <string name="voice_send_after">enviar após uma pausa</string>
     <string name="voice_send_after_off">não</string>
     <string name="voice_seconds">%1$d s</string>

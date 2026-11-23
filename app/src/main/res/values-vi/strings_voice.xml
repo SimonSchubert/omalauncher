@@ -124,6 +124,14 @@
     <string name="voice_parakeet_damaged">bản tải xuống bị hỏng; thử lại</string>
     <!-- %1$s is a language name, like Japanese. -->
     <string name="voice_parakeet_language">Parakeet không hỗ trợ %1$s: trình nhận dạng của điện thoại sẽ nghe thay.</string>
+    <string name="voice_reading">đọc to</string>
+    <string name="voice_reading_phone">chuyển văn bản thành giọng nói của điện thoại</string>
+    <string name="voice_reading_supertonic">Supertonic, trên điện thoại này</string>
+    <string name="voice_supertonic_about">Supertonic đọc to câu trả lời ngay trên điện thoại này: không cần mạng, giọng đọc tự nhiên, với 31 ngôn ngữ. Dung lượng tải xuống %1$s.</string>
+    <string name="voice_supertonic_delete">xóa Supertonic · %1$s</string>
+    <string name="voice_supertonic_language">Supertonic không hỗ trợ %1$s: trình chuyển văn bản thành giọng nói của điện thoại sẽ đọc thay.</string>
+    <string name="voice_female">nữ %1$d</string>
+    <string name="voice_male">nam %1$d</string>
     <!-- In the voice settings: how long a pause in speech sends it to the agent; off means only a tap on the orb does. -->
     <string name="voice_send_after">gửi sau khi ngừng nói</string>
     <string name="voice_send_after_off">tắt</string>

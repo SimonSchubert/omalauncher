@@ -54,8 +54,24 @@ class Speaker(
     var problem by mutableStateOf<String?>(null)
         private set
 
+    /** Supertonic, when it's downloaded and picked in the voice settings: it reads the languages it knows. */
+    private val supertonic =
+        SherpaVoice(
+            context,
+            chunk = { main.post { if (speaking) words++ } },
+            done = { main.post(::finished) },
+            failed = { main.post { problem = CANT_READ } },
+        )
+
+    /** The language [locale] is read in by Supertonic ("de"), null when the engine reads it. */
+    private fun supertonicLanguage(locale: Locale = this.locale) = AppLanguage.short(locale.language).takeIf { SupertonicModel.used(context, it) }
+
+    /** Whether replies in [language] are read by Supertonic, not the engine. */
+    fun supertonic(language: String) = SupertonicModel.used(context, AppLanguage.short(language))
+
     /** Starts the engine ahead of the first reply: sooner speech, and [problem] known before anything's said. */
     fun warmUp() {
+        if (supertonicLanguage() != null) supertonic.warmUp()
         followPick()
         start()
     }
@@ -96,6 +112,12 @@ class Speaker(
         if (text.isBlank()) return
         followPick()
         speaking = true
+        supertonicLanguage()?.let {
+            problem = null
+            queued++
+            supertonic.say(text, SupertonicModel.code(it), rate, SupertonicModel.sid(voice) ?: 0)
+            return
+        }
         if (!ready) {
             waiting += text
             start()
@@ -109,6 +131,7 @@ class Speaker(
         queued = 0
         speaking = false
         tts?.stop()
+        supertonic.stop()
     }
 
     private fun start() {
@@ -125,9 +148,12 @@ class Speaker(
                     Log.w(TAG, "text-to-speech failed to start: $status")
                     failed = true
                     tts = null
-                    problem = NO_ENGINE
                     waiting.clear()
-                    speaking = false
+                    // Not when Supertonic reads it: then nothing's missing, and what it's reading goes on.
+                    if (supertonicLanguage() == null) {
+                        problem = NO_ENGINE
+                        speaking = false
+                    }
                     return@TextToSpeech
                 }
                 tts?.setAudioAttributes(
@@ -194,8 +220,13 @@ class Speaker(
     /** The language replies are read in. */
     val locale: Locale get() = language?.let(Locale::forLanguageTag)?.let { Locale(AppLanguage.short(it.language), it.country) } ?: Locale.getDefault()
 
-    /** The languages it can read, one each (not each region), as tags; none before it's [ready]. */
-    fun languages(): List<String> = runCatching { tts?.availableLanguages?.map { AppLanguage.short(it.language) }?.distinct() }.getOrNull().orEmpty()
+    /** The languages it can read, one each (not each region), as tags: the engine's (none before it's [ready]) and Supertonic's. */
+    fun languages(): List<String> {
+        val engine = runCatching { tts?.availableLanguages?.map { AppLanguage.short(it.language) } }.getOrNull().orEmpty()
+        // As Android names them ("in" for Indonesian, not Supertonic's "id"), or the list shows one twice.
+        val own = if (SupertonicModel.on(context) && SupertonicModel.files.downloaded(context)) SupertonicModel.LANGUAGES.map { Locale(it).language } else emptyList()
+        return (engine + own).distinct()
+    }
 
     /**
      * [language]'s voices: installed first, then by region; none before it's [ready]. Not Google's "en-US-language"
@@ -220,7 +251,7 @@ class Speaker(
         }
 
     /** Whether it has a voice for [locale]; true until it's [ready], as it can't say. */
-    fun reads(locale: Locale) = tts?.takeIf { ready }?.let { runCatching { it.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE }.getOrDefault(true) } ?: true
+    fun reads(locale: Locale) = supertonicLanguage(locale) != null || tts?.takeIf { ready }?.let { runCatching { it.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE }.getOrDefault(true) } ?: true
 
     /** What the engine was last set to, set again when the settings or the launcher's language change. */
     private var applied: Triple<Locale, String?, Float>? = null
