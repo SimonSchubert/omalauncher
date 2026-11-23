@@ -1,13 +1,18 @@
 package dev.omalauncher.linux
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
+import android.os.PowerManager
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.omalauncher.system.registerNotExported
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
 import dev.omalauncher.upgrade.writeAtomically
@@ -168,9 +173,19 @@ class DeviceSync(
     @Volatile
     private var wanted = false
 
+    /**
+     * Devices are looked for on the network only while the screen is on: Android hardly hears them with it off anyway, and
+     * the follower tries each where it was last.
+     */
+    @Volatile
+    private var screenOn = true
+    private var screenReceiver: BroadcastReceiver? = null
+
     private fun update() {
         wanted = linux && !paused() && devices.isNotEmpty()
-        discovering("follow", wanted)
+        screenOn = context.getSystemService(PowerManager::class.java)?.isInteractive ?: true
+        watchScreen(wanted)
+        discovering("follow", wanted && screenOn)
         if (wanted && supervisor == null) {
             supervisor = thread(name = "device-sync", isDaemon = true) { supervise() }
         } else if (!wanted) {
@@ -197,6 +212,25 @@ class DeviceSync(
             Log.w(TAG, "follower exited $code; again in ${backoff / 1000} s")
             Thread.sleep(backoff)
             backoff = (backoff * 2).coerceAtMost(60_000L)
+        }
+    }
+
+    private fun watchScreen(on: Boolean) {
+        scope.launch {
+            if (on && screenReceiver == null) {
+                val filter = IntentFilter().apply {
+                    addAction(Intent.ACTION_SCREEN_ON)
+                    addAction(Intent.ACTION_SCREEN_OFF)
+                }
+                screenReceiver =
+                    context.registerNotExported(filter) { intent ->
+                        screenOn = intent.action == Intent.ACTION_SCREEN_ON
+                        discovering("follow", wanted && screenOn)
+                    }
+            } else if (!on) {
+                screenReceiver?.let { runCatching { context.unregisterReceiver(it) } }
+                screenReceiver = null
+            }
         }
     }
 

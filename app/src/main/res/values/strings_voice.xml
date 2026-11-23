@@ -125,6 +125,17 @@
     <string name="voice_parakeet_damaged">the download was damaged; try again</string>
     <!-- %1$s is a language name, like Japanese. -->
     <string name="voice_parakeet_language">Parakeet doesn\'t know %1$s: the phone\'s recognizer listens instead.</string>
+    <!-- Reading aloud in the voice settings: the phone's text-to-speech, or Supertonic, downloaded on request. -->
+    <string name="voice_reading">reading aloud</string>
+    <string name="voice_reading_phone">the phone\'s text-to-speech</string>
+    <string name="voice_reading_supertonic">Supertonic, on this phone</string>
+    <string name="voice_supertonic_about">Supertonic reads replies aloud on this phone itself: offline, with natural voices, in 31 languages. A %1$s download.</string>
+    <string name="voice_supertonic_delete">delete Supertonic · %1$s</string>
+    <!-- %1$s is a language name, like Chinese. -->
+    <string name="voice_supertonic_language">Supertonic doesn\'t know %1$s: the phone\'s text-to-speech reads instead.</string>
+    <!-- Supertonic's voices, numbered: female 1 to 5, male 1 to 5. -->
+    <string name="voice_female">female %1$d</string>
+    <string name="voice_male">male %1$d</string>
     <!-- In the voice settings: how long a pause in speech sends it to the agent; off means only a tap on the orb does. -->
     <string name="voice_send_after">send after a pause</string>
     <string name="voice_send_after_off">off</string>
@@ -144,4 +155,12 @@
     <string name="voice_say_choices">Choices: %1$s.</string>
     <!-- In the conversation when Voice was opened to change a widget or app; %1$s is its name. -->
     <string name="voice_note_edit">editing %1$s · say what to change</string>
+    <!-- The button by the controls that adds a picture or what's copied to the next message, said or typed. -->
+    <string name="voice_attach">attach a picture or the clipboard</string>
+    <!-- Its two choices: one from the phone's photos, or what's on the clipboard. -->
+    <string name="voice_attach_picture">a picture</string>
+    <string name="voice_attach_paste">paste</string>
+    <string name="voice_attach_failed">couldn\'t attach that picture</string>
+    <!-- Takes a picture or pasted text off the message before it's sent. -->
+    <string name="voice_detach">remove</string>
 </resources>

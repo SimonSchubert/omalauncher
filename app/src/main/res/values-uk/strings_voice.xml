@@ -98,6 +98,14 @@
     <string name="voice_parakeet_space">недостатньо місця: потрібно ще %1$s</string>
     <string name="voice_parakeet_damaged">завантажені файли пошкоджені; спробуйте ще раз</string>
     <string name="voice_parakeet_language">Parakeet не знає мову «%1$s»: замість нього слухає розпізнавання мовлення телефона.</string>
+    <string name="voice_reading">читання вголос</string>
+    <string name="voice_reading_phone">вбудований синтез мовлення</string>
+    <string name="voice_reading_supertonic">Supertonic, на цьому телефоні</string>
+    <string name="voice_supertonic_about">Supertonic читає відповіді вголос просто на телефоні: без інтернету, природними голосами, 31 мовою. Завантаження — %1$s.</string>
+    <string name="voice_supertonic_delete">видалити Supertonic · %1$s</string>
+    <string name="voice_supertonic_language">Supertonic не знає мову «%1$s»: замість нього читає синтез мовлення телефона.</string>
+    <string name="voice_female">жіночий %1$d</string>
+    <string name="voice_male">чоловічий %1$d</string>
     <string name="voice_send_after">надсилати після паузи</string>
     <string name="voice_send_after_off">ні</string>
     <string name="voice_seconds">%1$d с</string>
@@ -110,4 +118,9 @@
     <string name="voice_or_say_answer">або торкніться кулі й скажіть свою відповідь</string>
     <string name="voice_say_choices">Варіанти: %1$s.</string>
     <string name="voice_note_edit">зміна %1$s · скажіть, що змінити</string>
+    <string name="voice_attach">прикріпити зображення або буфер обміну</string>
+    <string name="voice_attach_picture">зображення</string>
+    <string name="voice_attach_paste">вставити</string>
+    <string name="voice_attach_failed">не вдалося прикріпити зображення</string>
+    <string name="voice_detach">прибрати</string>
 </resources>

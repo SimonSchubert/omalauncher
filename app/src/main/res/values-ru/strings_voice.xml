@@ -98,6 +98,14 @@
     <string name="voice_parakeet_space">недостаточно места: нужно ещё %1$s</string>
     <string name="voice_parakeet_damaged">загруженные файлы повреждены; попробуйте ещё раз</string>
     <string name="voice_parakeet_language">Parakeet не знает язык «%1$s»: вместо него слушает распознавание речи телефона.</string>
+    <string name="voice_reading">чтение вслух</string>
+    <string name="voice_reading_phone">встроенный синтез речи</string>
+    <string name="voice_reading_supertonic">Supertonic, на этом телефоне</string>
+    <string name="voice_supertonic_about">Supertonic читает ответы вслух прямо на телефоне: без интернета, естественными голосами, на 31 языке. Загрузка — %1$s.</string>
+    <string name="voice_supertonic_delete">удалить Supertonic · %1$s</string>
+    <string name="voice_supertonic_language">Supertonic не знает язык «%1$s»: вместо него читает синтез речи телефона.</string>
+    <string name="voice_female">женский %1$d</string>
+    <string name="voice_male">мужской %1$d</string>
     <string name="voice_send_after">отправлять после паузы</string>
     <string name="voice_send_after_off">нет</string>
     <string name="voice_seconds">%1$d с</string>
@@ -110,4 +118,9 @@
     <string name="voice_or_say_answer">или нажмите на шар и скажите свой ответ</string>
     <string name="voice_say_choices">Варианты: %1$s.</string>
     <string name="voice_note_edit">изменение %1$s · скажите, что поменять</string>
+    <string name="voice_attach">прикрепить картинку или буфер обмена</string>
+    <string name="voice_attach_picture">картинка</string>
+    <string name="voice_attach_paste">вставить</string>
+    <string name="voice_attach_failed">не удалось прикрепить картинку</string>
+    <string name="voice_detach">убрать</string>
 </resources>

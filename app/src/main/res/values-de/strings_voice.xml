@@ -96,6 +96,14 @@
     <string name="voice_parakeet_space">nicht genug speicher: es fehlen %1$s</string>
     <string name="voice_parakeet_damaged">der download war beschädigt; versuch es noch mal</string>
     <string name="voice_parakeet_language">Parakeet kann kein %1$s: stattdessen hört die Spracherkennung des Smartphones zu.</string>
+    <string name="voice_reading">vorlesen</string>
+    <string name="voice_reading_phone">sprachausgabe des smartphones</string>
+    <string name="voice_reading_supertonic">Supertonic, auf diesem smartphone</string>
+    <string name="voice_supertonic_about">Supertonic liest Antworten direkt auf diesem Smartphone vor: offline, mit natürlichen Stimmen, in 31 Sprachen. Ein Download von %1$s.</string>
+    <string name="voice_supertonic_delete">Supertonic löschen · %1$s</string>
+    <string name="voice_supertonic_language">Supertonic kann kein %1$s: stattdessen liest die Sprachausgabe des Smartphones vor.</string>
+    <string name="voice_female">weiblich %1$d</string>
+    <string name="voice_male">männlich %1$d</string>
     <string name="voice_send_after">nach einer pause senden</string>
     <string name="voice_send_after_off">aus</string>
     <string name="voice_seconds">%1$d s</string>
@@ -108,4 +116,9 @@
     <string name="voice_or_say_answer">oder tipp auf den kreis und sag deine antwort</string>
     <string name="voice_say_choices">Zur Auswahl: %1$s.</string>
     <string name="voice_note_edit">%1$s bearbeiten · sag, was sich ändern soll</string>
+    <string name="voice_attach">bild oder zwischenablage anhängen</string>
+    <string name="voice_attach_picture">ein bild</string>
+    <string name="voice_attach_paste">einfügen</string>
+    <string name="voice_attach_failed">das bild ließ sich nicht anhängen</string>
+    <string name="voice_detach">entfernen</string>
 </resources>

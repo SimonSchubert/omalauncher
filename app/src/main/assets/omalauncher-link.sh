@@ -27,7 +27,7 @@ omalauncher-link: one of
                      switches to one; one it hasn't got, from that GitHub repo,
                      is installed first
   watch [key]        waits until the phone's theme/background/widgets is no longer
-                     key, up to a minute: {theme, source, background, key,
+                     key, up to five minutes: {theme, source, background, key,
                      syncTheme}; source is the GitHub repo of a theme someone
                      made, background "" unless it syncs
   background <theme> <file>
@@ -105,7 +105,8 @@ case $verb in
   watch)
     # A computer that follows the phone's theme keeps asking this. Allowed once,
     # it reads the file every 2 s rather than asking the launcher, and answers
-    # within a minute, so a computer unlinked meanwhile is asked again soon.
+    # within five minutes, or as soon as what devices may follow changed (the
+    # file's fifth line), so it's asked again then: each request wakes the phone.
     [ ${#words[@]} -le 2 ] || usage
     seen=${words[1]-}
     allowed=$("$omalauncher" link watch "$id") || exit $?
@@ -113,10 +114,11 @@ case $verb in
     case $allowed in *'"theme":true'*) synctheme=true ;; esac
     case $allowed in *'"background":true'*) syncbg=1 ;; esac
     enable -f /usr/lib/bash/sleep sleep 2>/dev/null
-    theme= source= bg= widgets= key=
-    for ((i = 0; i < 30; i++)); do
-      theme= source= bg= widgets=
-      { read -r theme; read -r source; read -r bg; read -r widgets; } <"$themefile" 2>/dev/null
+    theme= source= bg= widgets= key= links= allowedlinks=
+    for ((i = 0; i < 150; i++)); do
+      theme= source= bg= widgets= links=
+      { read -r theme; read -r source; read -r bg; read -r widgets; read -r links; } 2>/dev/null <"$themefile"
+      [ "$i" -gt 0 ] || allowedlinks=$links
       case $widgets in *[!A-Za-z0-9]*) widgets= ;; esac
       case $theme in *[!A-Za-z0-9._-]*) theme= ;; esac
       # The launcher writes only GitHub URLs; anything else in the file isn't passed on.
@@ -125,6 +127,7 @@ case $verb in
       [ -n "$syncbg" ] || bg=
       key=$theme/$bg/$widgets
       [ -n "$theme" ] && [ "$key" != "$seen" ] && break
+      [ "$links" = "$allowedlinks" ] || break
       sleep 2
     done
     printf '{"theme":"%s","source":"%s","background":"%s","key":"%s","syncTheme":%s}\n' "$theme" "$source" "$bg" "$key" "$synctheme"

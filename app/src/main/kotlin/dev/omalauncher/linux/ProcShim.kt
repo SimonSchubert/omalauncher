@@ -1,5 +1,6 @@
 package dev.omalauncher.linux
 
+import android.os.FileObserver
 import android.os.SystemClock
 import java.io.File
 import java.util.Locale
@@ -11,6 +12,10 @@ import kotlin.concurrent.thread
  * bind a stand-in over it, like proot-distro, and keep it current: /proc/stat
  * reports the CPU time of our own process tree (launcher + everything in the
  * guest), the only CPU usage an app is allowed to see.
+ *
+ * Scanning every process for that costs a little each time, so the stand-ins
+ * are kept current every second only while the guest reads them (btop, top,
+ * fetch); nobody reading, they are refreshed once a minute.
  */
 class ProcShim(
     private val dir: File,
@@ -41,14 +46,35 @@ class ProcShim(
     /** Only kept current while something can show it: a Linux window or the home screen's widgets. */
     private var active = true
 
+    /** When the guest last opened stat or uptime, in [SystemClock.uptimeMillis]. */
+    @Volatile
+    private var lastRead = 0L
+
+    /** Held here: a FileObserver that is collected stops watching. */
+    private var reads: FileObserver? = null
+
     fun start() {
         if (started || binds.isEmpty()) return
         started = true
+        reads =
+            object : FileObserver(dir, OPEN) {
+                override fun onEvent(
+                    event: Int,
+                    path: String?,
+                ) {
+                    if (path != "stat" && path != "uptime") return
+                    val now = SystemClock.uptimeMillis()
+                    val idle = !reading(now, lastRead)
+                    lastRead = now
+                    // This read got the last minute's numbers; the next one, a second from now, gets current ones.
+                    if (idle) synchronized(lock) { lock.notify() }
+                }
+            }.apply { startWatching() }
         thread(name = "proc-shim", isDaemon = true) {
             while (true) {
                 synchronized(lock) { while (!active) lock.wait() }
                 runCatching { update() }
-                Thread.sleep(1000)
+                synchronized(lock) { lock.wait(nextUpdateMs(SystemClock.uptimeMillis(), lastRead)) }
             }
         }
     }
@@ -58,6 +84,25 @@ class ProcShim(
             active = on
             lock.notify()
         }
+
+    companion object {
+        /** How long after a read the guest counts as still reading: btop and top read every 1 to 3 s. */
+        const val READING_MS = 10_000L
+        const val READING_UPDATE_MS = 1_000L
+
+        /** Nobody reading: often enough that uptime stays close for a one-off read. */
+        const val IDLE_UPDATE_MS = 60_000L
+
+        fun reading(
+            now: Long,
+            lastRead: Long,
+        ) = lastRead > 0 && now - lastRead < READING_MS
+
+        fun nextUpdateMs(
+            now: Long,
+            lastRead: Long,
+        ) = if (reading(now, lastRead)) READING_UPDATE_MS else IDLE_UPDATE_MS
+    }
 
     private fun readable(path: String) = runCatching { File(path).inputStream().use { it.read() } }.isSuccess
 

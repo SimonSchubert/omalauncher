@@ -144,6 +144,19 @@ class LinkScriptTest {
         assertEquals("{\"theme\":\"x\",\"source\":\"\",\"background\":\"\",\"key\":\"x//abc123\",\"syncTheme\":true}\n", run("watch x//000", theme = theme).out)
     }
 
+    @Test fun watchAnswersWhenWhatDevicesMayFollowChanged() {
+        // Nothing to tell, but a device was unlinked or its sync switched: answered, so it's asked (and allowed) again.
+        fake.writeText("#!/bin/sh\necho '{\"theme\":true,\"background\":false}'\n")
+        val theme = File(dir, "theme").apply { writeText("x\n\n\n\nlinks1\n") }
+        Thread {
+            Thread.sleep(1_000)
+            theme.writeText("x\n\n\n\nlinks2\n")
+        }.start()
+        val started = System.nanoTime()
+        assertEquals("{\"theme\":\"x\",\"source\":\"\",\"background\":\"\",\"key\":\"x//\",\"syncTheme\":true}\n", run("watch x//", theme = theme).out)
+        assertTrue(System.nanoTime() - started < 10_000_000_000)
+    }
+
     @Test fun statePutHandsOverStdin() {
         fake.writeText("#!/bin/sh\nprintf '%s|' \"\$@\"\ncat \"\$6\"\n")
         val r = run("state put notes.owl", "{\"savedAt\":1,\"values\":{}}".toByteArray())

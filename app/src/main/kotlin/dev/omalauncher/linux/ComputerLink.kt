@@ -34,6 +34,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -70,6 +71,8 @@ class ComputerLink(
     private val themes: ThemeStore,
     /** Main. */
     private val scope: CoroutineScope,
+    /** Whether this phone follows another device (DeviceSync), whose widgets' changes this also looks for. */
+    private val following: () -> Boolean = { false },
 ) {
     /**
      * A linked computer. [secret] is its invite's, until it said hello. With [syncTheme], it may switch the phone's theme
@@ -219,13 +222,14 @@ class ComputerLink(
                     combine(
                         snapshotFlow { Triple(themes.picked, themes.themes.firstOrNull { it.name == themes.picked }, themes.background?.name) },
                         widgetChanges(),
-                    ) { t, digest -> t to digest }.collect { (t, digest) ->
+                        snapshotFlow { links(computers) },
+                    ) { t, digest, links -> Triple(t, digest, links) }.collect { (t, digest, links) ->
                         val (name, theme, background) = t
                         withContext(Dispatchers.IO) {
                             runCatching {
                                 val source = theme?.let(ThemeDirs::sourceOf)?.url?.trim()?.takeIf { SOURCE.matches(it) }.orEmpty()
                                 guestDir.mkdirs()
-                                writeAtomically(File(guestDir, "theme"), themeFile(name, source, background.orEmpty(), digest).toByteArray())
+                                writeAtomically(File(guestDir, "theme"), themeFile(name, source, background.orEmpty(), digest, links).toByteArray())
                             }
                         }
                     }
@@ -235,11 +239,16 @@ class ComputerLink(
 
     /**
      * A short digest of the synced widgets' files and persisted values (of every linked computer's), looked at every
-     * 2 s while any are synced: watch passes it on, so a computer hears that one changed and asks which.
+     * 2 s while any are synced: watch passes it on, so a computer hears that one changed and asks which. With no device
+     * connected either way, nothing is looked at until one is.
      */
     private fun widgetChanges(): Flow<String> =
         flow {
             while (true) {
+                if (computers.isEmpty() && !following()) {
+                    emit("")
+                    snapshotFlow { computers.isNotEmpty() || following() }.first { it }
+                }
                 // And the widgets synced with the devices this phone follows (DeviceSync), whose engine reads this too.
                 val following = withContext(Dispatchers.IO) { File(proot.rootfs, "root/.local/state/omalauncher/sync").listFiles { f -> f.name.startsWith("synced-") }.orEmpty().flatMap { runCatching { it.readLines() }.getOrDefault(emptyList()) } }
                 val names = (computers.flatMap { it.widgets } + following.filter(::validName)).toSortedSet()
@@ -924,14 +933,22 @@ class ComputerLink(
         /** A theme's repo as watch passes it on: GitHub over https, nothing a shell or JSON would read differently. */
         private val SOURCE = Regex("^https://github\\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/?$")
 
-        /** The file watch reads: the theme's name, its repo or an empty line, and its background's file name or one. */
+        /**
+         * The file watch reads: the theme's name, its repo or an empty line, its background's file name or one, the synced
+         * widgets' digest, and [links]: a watch waiting when that changes answers, so it's allowed again.
+         */
         fun themeFile(
             name: String,
             source: String,
             background: String = "",
             widgets: String = "",
+            links: String = "",
         ) = name.filter { THEME_CHAR.matches(it.toString()) } + "\n" + source.takeIf { SOURCE.matches(it) }.orEmpty() + "\n" +
-            background.takeIf(::validImage).orEmpty() + "\n" + widgets.filter { it.isLetterOrDigit() } + "\n"
+            background.takeIf(::validImage).orEmpty() + "\n" + widgets.filter { it.isLetterOrDigit() } + "\n" + links.filter { it.isLetterOrDigit() } + "\n"
+
+        /** What the linked computers may follow, short: changes when one is linked, unlinked or its theme or background sync is switched. */
+        fun links(computers: List<Computer>): String =
+            sha256Hex(computers.sortedBy { it.id }.joinToString("\n") { "${it.id} ${it.syncTheme} ${it.syncBackground}" }.toByteArray()).take(12)
 
         private val THEME_NAME = Regex("^[a-z0-9_][a-z0-9._+-]*$")
         private val IMAGE = Regex("^[A-Za-z0-9_][A-Za-z0-9._+-]*\\.(jpg|jpeg|png|webp)$", RegexOption.IGNORE_CASE)
@@ -1026,7 +1043,8 @@ class ComputerLink(
             # A computer reads the host key with ssh-keyscan, which leaves without logging in: penalized, a computer waiting
             # for the phone to be linked, or several behind one address (adb), were shut out for minutes. Keys only, anyway.
             PerSourcePenalties no
-            ClientAliveInterval 30
+            # A dead connection is found within minutes; each check wakes the phone.
+            ClientAliveInterval 120
             """.trimIndent() + "\n"
 
         /** Makes the user and the host key the first time, then runs sshd as that user, in the foreground. */

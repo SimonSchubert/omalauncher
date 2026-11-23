@@ -92,17 +92,29 @@ class ComputerLinkTest {
         assertTrue(ComputerLink.SSHD_CONFIG.contains("\nAuthenticationMethods publickey\n"))
     }
 
+    @Test fun linksChangeWithWhatAComputerMayFollow() {
+        val a = ComputerLink.Computer("a1", "laptop", "ssh-ed25519 AAAA", 0, null)
+        val b = ComputerLink.Computer("b2", "desk", "ssh-ed25519 BBBB", 0, null)
+        assertEquals(ComputerLink.links(listOf(a, b)), ComputerLink.links(listOf(b, a)))
+        assertTrue(ComputerLink.links(listOf(a, b)) != ComputerLink.links(listOf(a)))
+        assertTrue(ComputerLink.links(listOf(a)) != ComputerLink.links(listOf(a.copy(syncTheme = false))))
+        assertTrue(ComputerLink.links(listOf(a)) != ComputerLink.links(listOf(a.copy(syncBackground = true))))
+        // A widget switched on or off is no reason to ask again: watch's key has the widgets.
+        assertEquals(ComputerLink.links(listOf(a)), ComputerLink.links(listOf(a.copy(widgets = listOf("notes.owl")))))
+        assertEquals("x\n\n\n\nabc\n", ComputerLink.themeFile("x", "", "", "", "abc"))
+    }
+
     @Test fun writesTheThemeAndOnlyAGithubSourceAndAPlainBackground() {
         assertEquals(
-            "redshift\nhttps://github.com/TheFifeDawg/omarchy-redshift-theme\n2-orbit.jpg\n\n",
+            "redshift\nhttps://github.com/TheFifeDawg/omarchy-redshift-theme\n2-orbit.jpg\n\n\n",
             ComputerLink.themeFile("redshift", "https://github.com/TheFifeDawg/omarchy-redshift-theme", "2-orbit.jpg"),
         )
-        assertEquals("tokyo-night\n\n\n\n", ComputerLink.themeFile("tokyo-night", ""))
-        assertEquals("x\n\n\n\n", ComputerLink.themeFile("x", "https://github.com/a/b\"; rm -rf ~"))
-        assertEquals("x\n\n\n\n", ComputerLink.themeFile("x", "http://github.com/a/b"))
-        assertEquals("ab\n\n\n\n", ComputerLink.themeFile("a\"b", ""))
+        assertEquals("tokyo-night\n\n\n\n\n", ComputerLink.themeFile("tokyo-night", ""))
+        assertEquals("x\n\n\n\n\n", ComputerLink.themeFile("x", "https://github.com/a/b\"; rm -rf ~"))
+        assertEquals("x\n\n\n\n\n", ComputerLink.themeFile("x", "http://github.com/a/b"))
+        assertEquals("ab\n\n\n\n\n", ComputerLink.themeFile("a\"b", ""))
         // A video, a path or a name JSON would read differently isn't passed on.
-        for (bad in listOf("intro.mp4", "../x.jpg", "a\"b.jpg", "a b.jpg")) assertEquals(bad, "x\n\n\n\n", ComputerLink.themeFile("x", "", bad))
+        for (bad in listOf("intro.mp4", "../x.jpg", "a\"b.jpg", "a b.jpg")) assertEquals(bad, "x\n\n\n\n\n", ComputerLink.themeFile("x", "", bad))
         assertTrue(ComputerLink.validImage("image-1795363479032.webp"))
     }
 

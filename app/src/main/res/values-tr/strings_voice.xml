@@ -96,6 +96,14 @@
     <string name="voice_parakeet_space">yeterli alan yok: %1$s daha gerekiyor</string>
     <string name="voice_parakeet_damaged">indirilen dosya bozuk; tekrar dene</string>
     <string name="voice_parakeet_language">Parakeet %1$s bilmiyor: onun yerine telefonun tanıyıcısı dinler.</string>
+    <string name="voice_reading">sesli okuma</string>
+    <string name="voice_reading_phone">telefonun metin okuması</string>
+    <string name="voice_reading_supertonic">Supertonic, bu telefonda</string>
+    <string name="voice_supertonic_about">Supertonic yanıtları doğrudan bu telefonda sesli okur: çevrimdışı, doğal seslerle, 31 dilde. İndirme boyutu: %1$s.</string>
+    <string name="voice_supertonic_delete">Supertonic’i sil · %1$s</string>
+    <string name="voice_supertonic_language">Supertonic %1$s bilmiyor: onun yerine telefonun metin okuması okur.</string>
+    <string name="voice_female">kadın %1$d</string>
+    <string name="voice_male">erkek %1$d</string>
     <string name="voice_send_after">duraklamadan sonra gönder</string>
     <string name="voice_send_after_off">kapalı</string>
     <string name="voice_seconds">%1$d sn</string>
@@ -108,4 +116,9 @@
     <string name="voice_or_say_answer">ya da daireye dokunup yanıtını söyle</string>
     <string name="voice_say_choices">Seçenekler: %1$s.</string>
     <string name="voice_note_edit">%1$s düzenleniyor · neyi değiştireceğini söyle</string>
+    <string name="voice_attach">resim veya pano ekle</string>
+    <string name="voice_attach_picture">bir resim</string>
+    <string name="voice_attach_paste">yapıştır</string>
+    <string name="voice_attach_failed">resim eklenemedi</string>
+    <string name="voice_detach">kaldır</string>
 </resources>

@@ -3,12 +3,22 @@ package dev.omalauncher.ui.voice
 import dev.omalauncher.ui.typedIn
 import androidx.compose.ui.platform.LocalLayoutDirection
 import android.Manifest
+import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.ConnectivityManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.content.MediaType
+import androidx.compose.foundation.content.consume
+import androidx.compose.foundation.content.contentReceiver
+import androidx.compose.foundation.content.hasMediaType
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.clearText
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -33,6 +43,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -66,7 +77,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -139,7 +149,9 @@ import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.JobState
 import dev.omalauncher.Runtime
 import dev.omalauncher.voice.Parakeet
+import dev.omalauncher.voice.ModelFiles
 import dev.omalauncher.voice.ParakeetModel
+import dev.omalauncher.voice.SupertonicModel
 import dev.omalauncher.voice.Speaker
 import dev.omalauncher.voice.Speech
 import dev.omalauncher.voice.VoiceSession
@@ -178,6 +190,7 @@ import dev.omalauncher.ui.settings.SettingsPage
  * conversation runs up from the bottom, where the step in progress, any trouble, stop and the switch to typing
  * are; and an agent's question slides up above them.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun VoiceScreen(
     runtime: Runtime,
@@ -201,7 +214,8 @@ fun VoiceScreen(
     var picking by remember { mutableStateOf(false) }
     var tuning by remember { mutableStateOf(false) }
     var showSteps by remember { mutableStateOf(false) }
-    var draft by remember { mutableStateOf("") }
+    val draft = rememberTextFieldState()
+    var attaching by remember { mutableStateOf(false) }
     var bottomHeight by remember { mutableIntStateOf(0) }
     val field = remember { FocusRequester() }
     val focus = LocalFocusManager.current
@@ -245,9 +259,20 @@ fun VoiceScreen(
     LaunchedEffect(typing, session.agent != null) { if (typing && session.agent != null) runCatching { field.requestFocus() } }
 
     fun send() {
-        if (draft.isBlank()) return
-        session.ask(draft)
-        draft = ""
+        if (draft.text.isBlank() && session.attached.isEmpty()) return
+        session.ask(draft.text.toString())
+        draft.clearText()
+    }
+
+    // A picture from the phone's photo picker, which needs no permission.
+    val pickPicture = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> if (uri != null) session.attachPicture(uri) }
+
+    /** What's on the clipboard, to go with the next message: a picture, or text. */
+    fun paste() {
+        val item = context.getSystemService(ClipboardManager::class.java)?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0) ?: return
+        val uri = item.uri
+        val mime = uri?.let { runCatching { context.contentResolver.getType(it) }.getOrNull() }
+        if (uri != null && mime?.startsWith("image/") == true) session.attachPicture(uri, mime) else item.coerceToText(context)?.let { session.attachText(it.toString()) }
     }
 
     fun switchTyping() {
@@ -488,11 +513,51 @@ fun VoiceScreen(
                         }
                     }
 
+                    // What goes with the next message, said or typed.
+                    if (session.attached.isNotEmpty() || session.attaching > 0) {
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            for (a in session.attached) Attached(a, bitmaps, onOpen = { viewing = it }) { session.detach(a) }
+                            repeat(session.attaching) { Box(Modifier.size(ATTACHED).clip(LauncherStyle.shape(10.dp)).background(Palette.surface)) }
+                        }
+                    }
+
                     val stoppable = session.busy || (!typing && speaker.speaking)
                     fun stop() {
                         speech.cancel()
                         session.stop()
                     }
+
+                    // A picture or the clipboard for the next message.
+                    @Composable
+                    fun AttachButton(modifier: Modifier = Modifier) =
+                        Box(modifier) {
+                            Box(Modifier.size(44.dp).clip(LauncherStyle.shape(22.dp)).clickable { attaching = true }, contentAlignment = Alignment.Center) {
+                                Image(Icons.Attach, stringResource(R.string.voice_attach), Modifier.size(22.dp), colorFilter = ColorFilter.tint(Palette.accent))
+                            }
+                            if (attaching) {
+                                val hasClip = remember { context.getSystemService(ClipboardManager::class.java)?.hasPrimaryClip() == true }
+                                val picture = stringResource(R.string.voice_attach_picture)
+                                val pasteLabel = stringResource(R.string.voice_attach_paste)
+                                ChoicePopup(
+                                    options = listOfNotNull(picture, pasteLabel.takeIf { hasClip }),
+                                    selected = null,
+                                    position = BelowAnchorStart,
+                                    onDismiss = { attaching = false },
+                                    onPick = {
+                                        if (it == picture) {
+                                            pickPicture.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                        } else {
+                                            paste()
+                                        }
+                                    },
+                                    label = { it },
+                                    minWidth = 140.dp,
+                                )
+                            }
+                        }
                     if (typing) {
                         Row(
                             Modifier.fillMaxWidth().padding(start = 4.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
@@ -502,22 +567,32 @@ fun VoiceScreen(
                             // Back to talking.
                             if (canHear) {
                                 Box(Modifier.size(44.dp).clip(LauncherStyle.shape(22.dp)).clickable { switchTyping() }, contentAlignment = Alignment.Center) { MicIcon(Palette.accent) }
-                            } else {
-                                Spacer(Modifier.width(8.dp))
                             }
+                            AttachButton()
                             val style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Item)
                             BasicTextField(
-                                value = draft,
-                                onValueChange = { draft = it },
-                                maxLines = 5,
+                                state = draft,
+                                lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 5),
                                 textStyle = style.typedIn(LocalLayoutDirection.current),
                                 cursorBrush = SolidColor(Palette.accent),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                                keyboardActions = KeyboardActions(onSend = { send() }),
+                                onKeyboardAction = { send() },
                                 modifier =
                                     Modifier
                                         .weight(1f)
                                         .focusRequester(field)
+                                        // Pictures from the keyboard (a screenshot or GIF it offers) or pasted
+                                        // go with the message; text goes into the field as usual.
+                                        .contentReceiver { content ->
+                                            if (!content.hasMediaType(MediaType.Image)) return@contentReceiver content
+                                            val description = content.clipEntry.clipData.description
+                                            val mime = (0 until description.mimeTypeCount).map(description::getMimeType).firstOrNull { it.startsWith("image/") }
+                                            content.consume { item ->
+                                                val uri = item.uri ?: return@consume false
+                                                session.attachPicture(uri, mime, keep = content)
+                                                true
+                                            }
+                                        }
                                         // A hardware Enter sends too; Shift+Enter is a new line.
                                         .onPreviewKeyEvent {
                                             if (it.key != Key.Enter || it.isShiftPressed) return@onPreviewKeyEvent false
@@ -527,18 +602,20 @@ fun VoiceScreen(
                                         .clip(LauncherStyle.shape(20.dp))
                                         .background(Palette.surface)
                                         .padding(horizontal = 16.dp, vertical = 10.dp),
-                                decorationBox = { inner ->
+                                decorator = { inner ->
                                     Box {
-                                        if (draft.isEmpty()) BasicText(session.approvals.firstOrNull().let { if (it == null) stringResource(R.string.voice_message, agentName) else if (it.choices != null) stringResource(R.string.voice_your_answer) else stringResource(R.string.voice_answer_hint) }, style = style.copy(color = Palette.muted))
+                                        if (draft.text.isEmpty()) BasicText(session.approvals.firstOrNull().let { if (it == null) stringResource(R.string.voice_message, agentName) else if (it.choices != null) stringResource(R.string.voice_your_answer) else stringResource(R.string.voice_answer_hint) }, style = style.copy(color = Palette.muted))
                                         inner()
                                     }
                                 },
                             )
                             // Nothing typed while it works: the button stops it instead.
-                            if (draft.isBlank() && stoppable) BracketAction(stringResource(R.string.voice_stop), Palette.red) { stop() } else BracketAction(stringResource(R.string.voice_send), if (draft.isBlank()) Palette.muted else Palette.accent) { send() }
+                            val empty = draft.text.isBlank() && session.attached.isEmpty()
+                            if (empty && stoppable) BracketAction(stringResource(R.string.voice_stop), Palette.red) { stop() } else BracketAction(stringResource(R.string.voice_send), if (empty) Palette.muted else Palette.accent) { send() }
                         }
                     } else {
                         Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 8.dp, vertical = 4.dp)) {
+                            AttachButton(Modifier.align(Alignment.CenterStart))
                             // The orb's tap stops listening; stop is for the agent and its voice.
                             if (!speech.listening && stoppable) BracketAction(stringResource(R.string.voice_stop), Palette.red, Modifier.align(Alignment.Center)) { stop() }
                             Chip(stringResource(R.string.voice_type), Palette.accent, Modifier.align(Alignment.CenterEnd)) { switchTyping() }
@@ -624,8 +701,11 @@ private fun VoiceSettings(
     val language = session.language
     val launcher = configuration.locales[0]
     val shown = language ?: launcher.language
+    // Read here, so picking, downloading or deleting Supertonic shows its languages and voices at once.
+    val supertonicOn = SupertonicModel.files.changes.let { SupertonicModel.on(context) && SupertonicModel.files.downloaded(context) }
+    val bySupertonic = supertonicOn && speaker.supertonic(shown)
     val languages =
-        remember(ready, returns) {
+        remember(ready, returns, supertonicOn) {
             (speaker.languages() + AppLanguage.supported.map { Locale.forLanguageTag(it).language })
                 .distinct()
                 .sortedBy { AppLanguage.name(it).lowercase(launcher) }
@@ -681,7 +761,11 @@ private fun VoiceSettings(
             }
         }
 
-        if (voices.isNotEmpty()) {
+        Reading(shown)
+
+        if (bySupertonic) {
+            SupertonicVoice(session.voice) { use(voice = it) }
+        } else if (voices.isNotEmpty()) {
             var pickVoice by remember { mutableStateOf(false) }
             // Numbered in each region: the engine's names (de-de-x-deb-local) say nothing to most. A voice and its
             // online twin (de-de-x-deb-network) share the number.
@@ -751,48 +835,128 @@ private fun VoiceSettings(
 private fun Recognition(locale: Locale) {
     val context = LocalContext.current
     val model = ParakeetModel
-    val downloaded = remember(model.changes) { model.downloaded(context) }
-    val on = model.on(context)
-    Setting(stringResource(R.string.voice_recognition)) {
+    OnDevice(
+        name = stringResource(R.string.voice_recognition),
+        files = model.files,
+        on = model.on(context),
+        setOn = { model.setOn(context, it) },
+        phone = stringResource(R.string.voice_recognition_phone),
+        own = stringResource(R.string.voice_recognition_parakeet),
+        about = stringResource(R.string.voice_parakeet_about, model.size(context, model.SIZE)),
+        delete = stringResource(R.string.voice_parakeet_delete, model.size(context, model.SIZE)),
+        unknown = if (!model.speaks(locale)) stringResource(R.string.voice_parakeet_language, AppLanguage.name(locale.language)) else null,
+    )
+}
+
+/** What reads replies aloud: the phone's text-to-speech, or Supertonic once its 145 MB are downloaded here. */
+@Composable
+private fun Reading(language: String) {
+    val context = LocalContext.current
+    val model = SupertonicModel
+    val size = model.files.size(context, model.files.size)
+    OnDevice(
+        name = stringResource(R.string.voice_reading),
+        files = model.files,
+        on = model.on(context),
+        setOn = { model.setOn(context, it) },
+        phone = stringResource(R.string.voice_reading_phone),
+        own = stringResource(R.string.voice_reading_supertonic),
+        about = stringResource(R.string.voice_supertonic_about, size),
+        delete = stringResource(R.string.voice_supertonic_delete, size),
+        unknown = if (!model.speaks(AppLanguage.short(language))) stringResource(R.string.voice_supertonic_language, AppLanguage.name(language)) else null,
+    )
+}
+
+/**
+ * A setting that's the phone's own service ([phone]) or a model run on the phone ([own]), picked once [files] are
+ * downloaded, with the download, its progress and its deletion. [unknown] says the language picked is one the model
+ * doesn't know.
+ */
+@Composable
+private fun OnDevice(
+    name: String,
+    files: ModelFiles,
+    on: Boolean,
+    setOn: (Boolean) -> Unit,
+    phone: String,
+    own: String,
+    about: String,
+    delete: String,
+    unknown: String?,
+) {
+    val context = LocalContext.current
+    val downloaded = remember(files.changes) { files.downloaded(context) }
+    Setting(name) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val phone = stringResource(R.string.voice_recognition_phone)
-            val parakeet = stringResource(R.string.voice_recognition_parakeet)
             if (downloaded) {
                 var picking by remember { mutableStateOf(false) }
                 Box {
-                    Pick(if (on) parakeet else phone) { picking = true }
+                    Pick(if (on) own else phone) { picking = true }
                     if (picking) {
                         ChoicePopup(
                             options = listOf(true, false),
                             selected = on,
                             position = BelowAnchorStart,
                             onDismiss = { picking = false },
-                            onPick = { model.setOn(context, it) },
-                            label = { if (it) parakeet else phone },
+                            onPick = setOn,
+                            label = { if (it) own else phone },
                         )
                     }
                 }
-                if (on && !model.speaks(locale)) Note(stringResource(R.string.voice_parakeet_language, AppLanguage.name(locale.language)), Palette.muted)
-                BracketAction(stringResource(R.string.voice_parakeet_delete, model.size(context, model.SIZE)), Palette.muted) { model.delete(context) }
+                if (on && unknown != null) Note(unknown, Palette.muted)
+                BracketAction(delete, Palette.muted) { files.delete(context) }
             } else {
                 BasicText(phone, Modifier.padding(vertical = 6.dp), style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Item))
-                Note(stringResource(R.string.voice_parakeet_about, model.size(context, model.SIZE)), Palette.muted)
-                if (model.downloading) {
-                    val fraction = (model.done.toFloat() / model.SIZE).coerceIn(0f, 1f)
+                Note(about, Palette.muted)
+                if (files.downloading) {
+                    val fraction = (files.done.toFloat() / files.size).coerceIn(0f, 1f)
                     Box(Modifier.fillMaxWidth().height(4.dp).clip(LauncherStyle.shape(2.dp)).background(Palette.muted.copy(alpha = 0.25f))) {
                         Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(Palette.accent))
                     }
                     Note(
-                        if (model.checking) stringResource(R.string.voice_parakeet_checking) else stringResource(R.string.voice_parakeet_progress, model.size(context, model.done), model.size(context, model.SIZE)),
+                        if (files.checking) stringResource(R.string.voice_parakeet_checking) else stringResource(R.string.voice_parakeet_progress, files.size(context, files.done), files.size(context, files.size)),
                         Palette.muted,
                     )
-                    BracketAction(stringResource(R.string.voice_parakeet_cancel), Palette.muted) { model.cancel() }
+                    BracketAction(stringResource(R.string.voice_parakeet_cancel), Palette.muted) { files.cancel() }
                 } else {
-                    model.error?.let { Note(stringResource(R.string.voice_parakeet_failed, it), Palette.red) }
+                    files.error?.let { Note(stringResource(R.string.voice_parakeet_failed, it), Palette.red) }
                     val metered = remember { context.getSystemService(ConnectivityManager::class.java)?.isActiveNetworkMetered == true }
                     if (metered) Note(stringResource(R.string.voice_parakeet_mobile_data), Palette.named("yellow") ?: Palette.accent)
-                    BracketAction(stringResource(R.string.voice_parakeet_download), Palette.accent) { model.download(context) }
+                    BracketAction(stringResource(R.string.voice_parakeet_download), Palette.accent) { files.download(context) }
                 }
+            }
+        }
+    }
+}
+
+/** Supertonic's voices, female 1-5 and male 1-5, for [VoiceSettings]; [picked] is the saved voice name. */
+@Composable
+private fun SupertonicVoice(
+    picked: String?,
+    onPick: (String?) -> Unit,
+) {
+    val resources = LocalResources.current
+    fun label(sid: Int) =
+        if (sid < SupertonicModel.FEMALE) {
+            resources.getString(R.string.voice_female, sid + 1)
+        } else {
+            resources.getString(R.string.voice_male, sid - SupertonicModel.FEMALE + 1)
+        }
+    val current = SupertonicModel.sid(picked)
+    val default = stringResource(R.string.voice_default_named, label(0))
+    var picking by remember { mutableStateOf(false) }
+    Setting(stringResource(R.string.voice_voice)) {
+        Box {
+            Pick(current?.let(::label) ?: default) { picking = true }
+            if (picking) {
+                ChoicePopup(
+                    options = listOf<Int?>(null) + (0 until SupertonicModel.VOICES),
+                    selected = current,
+                    position = BelowAnchorStart,
+                    onDismiss = { picking = false },
+                    onPick = { onPick(it?.let(SupertonicModel::voiceName)) },
+                    label = { it?.let(::label) ?: default },
+                )
             }
         }
     }
@@ -909,6 +1073,16 @@ private fun Message(
                 )
             }
         "note" -> BasicText("· " + e.text, Modifier.fillMaxWidth(), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        // A picture the user attached, on their side.
+        "you-image" -> {
+            val file = e.text.substringBefore('|')
+            val bitmap = rememberBitmap(file, 600, bitmaps)
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
+                Box(Modifier.widthIn(max = 220.dp).heightIn(max = 220.dp).clip(LauncherStyle.shape(14.dp)).background(Palette.surface).clickable { onImage(file) }) {
+                    bitmap?.let { Image(it, null, Modifier.heightIn(max = 220.dp), contentScale = ContentScale.Fit) } ?: Spacer(Modifier.size(120.dp))
+                }
+            }
+        }
         "image" -> {
             val file = e.text.substringBefore('|')
             val name = e.text.substringAfterLast('|').substringAfterLast('/')
@@ -924,6 +1098,39 @@ private fun Message(
         else -> BasicText(e.text.ifBlank { "…" }, Modifier.fillMaxWidth(), style = Mono.copy(color = Palette.foreground, fontSize = TextSize.Item))
     }
 }
+
+/** A picture or pasted text waiting to go with the next message: a tap shows a picture whole, the ✕ takes it off. */
+@Composable
+private fun Attached(
+    a: VoiceSession.Attachment,
+    bitmaps: MutableMap<String, ImageBitmap>,
+    onOpen: (String) -> Unit,
+    onRemove: () -> Unit,
+) = Box(Modifier.height(ATTACHED)) {
+    val shape = LauncherStyle.shape(10.dp)
+    when (a) {
+        is VoiceSession.Attachment.Picture -> {
+            val bitmap = rememberBitmap(a.file.path, 200, bitmaps)
+            Box(Modifier.size(ATTACHED).clip(shape).background(Palette.surface).clickable { onOpen(a.file.path) }) {
+                bitmap?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+            }
+        }
+        is VoiceSession.Attachment.Pasted ->
+            BasicText(
+                a.text,
+                Modifier.width(160.dp).fillMaxHeight().clip(shape).background(Palette.surface).padding(start = 8.dp, end = 22.dp, top = 6.dp, bottom = 6.dp),
+                style = Mono.copy(color = Palette.foreground.copy(alpha = 0.8f), fontSize = TextSize.Small),
+                overflow = TextOverflow.Ellipsis,
+            )
+    }
+    Box(
+        Modifier.align(Alignment.TopEnd).size(24.dp).clip(LauncherStyle.shape(12.dp)).clickable(onClick = onRemove).padding(3.dp).clip(LauncherStyle.shape(9.dp)).background(Palette.background.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center,
+    ) { Image(Icons.Close, stringResource(R.string.voice_detach), Modifier.size(14.dp), colorFilter = ColorFilter.tint(Palette.foreground)) }
+}
+
+/** How high an attachment waiting to be sent shows. */
+private val ATTACHED = 56.dp
 
 private class OrbLoops(
     val turn: State<Float>,
