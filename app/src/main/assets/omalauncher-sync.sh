@@ -40,6 +40,9 @@
 # --png=FILE writes the code there.
 
 set -euo pipefail
+# sleep without starting a program, where bash has it: on a phone every program
+# started is traced by proot, and the loops below sleep all day.
+enable -f /usr/lib/bash/sleep sleep 2>/dev/null || true
 
 me=${OMALAUNCHER_SYNC_ME:-omalauncher-sync}
 SHARE_LINK=https://simonschubert.github.io/omarchy-widgets/w#
@@ -84,6 +87,14 @@ die() { echo "$me: $*" >&2; exit 1; }
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is not installed${2:+ ($2)}"; }
 tilde() { [[ $1 == "$HOME"* ]] && echo "~${1#"$HOME"}" || echo "$1"; }
 slug() { tr 'A-Z' 'a-z' | sed 's/[^a-z0-9]\{1,\}/-/g; s/^-//; s/-$//'; }
+# slug of $1 into $REPLY, in bash alone: local_watch asks every few seconds.
+slug_of() {
+  local s=${1,,}
+  s=${s//[^a-z0-9]/-}
+  while [[ $s == *--* ]]; do s=${s//--/-}; done
+  s=${s#-}
+  REPLY=${s%-}
+}
 sha256() { if command -v sha256sum >/dev/null 2>&1; then sha256sum; else shasum -a 256; fi | cut -d' ' -f1; }
 file_mtime() { stat -c %Y -- "$1" 2>/dev/null || echo 0; }
 file_sha() { [[ -f $1 ]] && sha256 <"$1" || true; }
@@ -114,7 +125,8 @@ local_theme() {
     t=$(omarchy-theme-current 2>/dev/null) || t=
   fi
   [[ -n $t ]] || return 1
-  printf %s "$t" | slug
+  slug_of "$t"
+  printf %s "$REPLY"
 }
 
 local_theme_has() {
@@ -245,6 +257,8 @@ local_state_set() {
   else
     mkdir -p "$STATE"
     printf '%s\n' "$2" >"$STATE/$1.json.tmp" && mv "$STATE/$1.json.tmp" "$STATE/$1.json"
+    # Saved when it was there, so the next sync sees both the same and doesn't ask for them again.
+    touch -m -d "@$3" "$STATE/$1.json" 2>/dev/null || true
   fi
 }
 
@@ -253,7 +267,9 @@ local_state_set() {
 local_widgets_digest() {
   local n
   if [[ $KIND == omalauncher ]]; then
-    sed -n 4p /var/lib/omalauncher-link/theme 2>/dev/null || true
+    local _
+    { read -r _ && read -r _ && read -r _ && read -r n; } 2>/dev/null </var/lib/omalauncher-link/theme || true
+    printf '%s\n' "${n-}"
     return
   fi
   cat "$PHONE"/synced-* 2>/dev/null | sort -u | while read -r n; do
@@ -345,15 +361,26 @@ phone_candidates() {
 # Only this key, only a host key already in $PHONE_HOSTS, and nothing of the
 # user's own ssh config that hands the other side more than the request: no
 # agent, X11 or port forwarding, whatever `Host *` says there.
+# Requests to a device share one connection (by its alias, so never another
+# device's that got its address), kept two minutes after the last: a login
+# costs a phone far more than a request, its sshd being traced by proot, and
+# wakes it. Not while connecting: that one checks who answers, nor where the
+# socket's path would be too long for one.
 phone_ssh() {
-  local host=$1 port=$2 alias=$3
+  local host=$1 port=$2 alias=$3 mux=auto dir=$PHONE path
   shift 3
+  if [[ -n ${XDG_RUNTIME_DIR-} && -d $XDG_RUNTIME_DIR && -w $XDG_RUNTIME_DIR ]]; then
+    dir=$XDG_RUNTIME_DIR/omalauncher-sync
+    [[ -d $dir ]] || mkdir -m 700 "$dir" 2>/dev/null || dir=$PHONE
+  fi
+  path=$dir/cm-%k
+  if [[ $alias == pending ]] || ((${#dir} + 4 + ${#alias} >= 100)); then mux=no path=none; fi
   ssh -q -i "$PHONE_KEY" -p "$port" -l "$PHONE_USER" \
-    -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=30 \
+    -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=5 -o ServerAliveInterval=60 -o ServerAliveCountMax=2 \
     -o UserKnownHostsFile="$PHONE_HOSTS" -o StrictHostKeyChecking=yes -o HostKeyAlias="$alias" \
     -o PreferredAuthentications=publickey -o HostKeyAlgorithms=ssh-ed25519 \
     -o ForwardAgent=no -o ForwardX11=no -o ClearAllForwardings=yes -o PermitLocalCommand=no \
-    -o ControlMaster=no -o RequestTTY=no \
+    -o ControlMaster=$mux -o ControlPath="$path" -o ControlPersist=120 -o RequestTTY=no \
     -- "$host" "$@"
 }
 
@@ -579,7 +606,8 @@ phone_widget_sync() {
       phone_run put "$n" <"$f" >/dev/null
     fi
     lsaved=$(local_state_saved "$n")
-    ((psaved == 0 && lsaved == 0)) && continue
+    # Saved at the same time on both: the same save, taken one way or the other before.
+    ((psaved == lsaved)) && continue
     pv=$(phone_run state get "$n" </dev/null | jq -cS '.values // {}') || continue
     lv=$(local_state_get "$n")
     [[ $pv == "$lv" ]] && continue
@@ -621,6 +649,7 @@ local_watch() {
         (phone_use "$id"; phone_run theme "$tcur" ${src:+"$src"} </dev/null >/dev/null 2>&1) || true
       done
     fi
+    [[ -L $BG_LINK || -e $BG_LINK ]] || continue
     bcur=$(readlink -f "$BG_LINK" 2>/dev/null) || continue
     [[ $bcur != "$bprev" ]] || continue
     bprev=$bcur
@@ -662,7 +691,7 @@ cmd_follow() {
 
 # Follows the device $1 while it's connected and the follower ($2) runs.
 follow_one() {
-  local seen= out code t src bg synctheme key
+  local seen= out code t src bg synctheme key wait=30
   phone_use "$1"
   # What changed while apart: the newest wins.
   (phone_widget_sync) || true
@@ -684,10 +713,17 @@ follow_one() {
         [[ ${key##*/} == "${seen##*/}" ]] || (phone_widget_sync) || true
       fi
       [[ -z $key ]] || seen=$key
+      wait=30
       continue
     fi
-    # 3: sync turned off there, or disconnected; else not reachable.
-    sleep $((code == 3 ? 300 : 30))
+    # 3: sync turned off there, or disconnected; else not reachable, asked again
+    # less and less often (up to every 5 minutes): it may be away for the day.
+    if ((code == 3)); then
+      sleep 300
+    else
+      sleep $wait
+      wait=$((wait * 2 > 300 ? 300 : wait * 2))
+    fi
   done
 }
 

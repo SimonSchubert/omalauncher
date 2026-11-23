@@ -135,7 +135,7 @@ class Runtime(
     private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, phoneFolders, { computerLink }, { deviceSync }, scope) }
 
     /** Computers linked to the phone (the Omarchy plugin): they change its widgets and theme over SSH to the guest. */
-    val computerLink: ComputerLink by lazy { ComputerLink(context, proot, widgets, themes, scope).also { it.onPauseChanged = { deviceSync.pauseChanged() } } }
+    val computerLink: ComputerLink by lazy { ComputerLink(context, proot, widgets, themes, scope, { deviceSync.devices.isNotEmpty() }).also { it.onPauseChanged = { deviceSync.pauseChanged() } } }
 
     /** The devices this phone follows (another phone): the other half of [computerLink]. */
     val deviceSync: DeviceSync by lazy { DeviceSync(context, proot, { computerLink.phoneId }, { computerLink.paused }, scope) }
