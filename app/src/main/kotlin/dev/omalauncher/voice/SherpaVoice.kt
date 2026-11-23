@@ -59,6 +59,9 @@ internal class SherpaVoice(
 
     @Volatile private var track: AudioTrack? = null
 
+    /** The [generation] whose audio [track] is playing, -1 with no stream open. */
+    @Volatile private var playing = -1
+
     /** Loads the model ahead of the first text. */
     fun warmUp() {
         queue += Job("", "", 1f, 0, generation, last = false)
@@ -71,12 +74,13 @@ internal class SherpaVoice(
         rate: Float,
         voice: Int,
     ) {
-        // A reply starts: nothing's queued or playing.
-        val starts = queue.none { it.text.isNotEmpty() } && pieces.isEmpty() && track == null
+        // A reply starts: nothing's queued or playing. What [stop] cut off doesn't count: its stream stays open, paused,
+        // until the next reply plays on it.
+        val now = generation
+        val starts = queue.none { it.text.isNotEmpty() } && pieces.none { it.generation == now } && playing != now
         val parts = parts(text, starts)
         // Nothing to say: done at once, or Voice waits for it.
         if (parts.isEmpty()) return done()
-        val now = generation
         parts.forEachIndexed { i, part -> queue += Job(part, language, rate, voice, now, last = i == parts.lastIndex) }
         ensure()
     }
@@ -245,6 +249,7 @@ internal class SherpaVoice(
         piece: Piece,
     ) {
         val out = track(piece.rate)
+        playing = piece.generation
         if (out.playState != AudioTrack.PLAYSTATE_PLAYING) {
             out.play()
             written = 0
@@ -278,6 +283,7 @@ internal class SherpaVoice(
     private fun close() {
         val out = track ?: return
         track = null
+        playing = -1
         runCatching { out.stop() }
         runCatching { out.release() }
     }

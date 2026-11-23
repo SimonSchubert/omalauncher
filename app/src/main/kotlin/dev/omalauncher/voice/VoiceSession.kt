@@ -676,7 +676,7 @@ class VoiceSession(
     }
 
     /** Whether the user said anything in this conversation: one with only notes isn't worth keeping. */
-    private fun said() = transcript.any { it.who == "you" }
+    private fun said() = said(transcript)
 
     /** The conversation aside for [resume] and a new one begun; the agent is stopped when it was in the old one. */
     private fun putAside() {
@@ -1197,6 +1197,9 @@ class VoiceSession(
             if (said.isNotEmpty()) lines += said
             return lines.joinToString("\n\n")
         }
+
+        /** Whether the user said anything in [lines], a picture alone too. */
+        internal fun said(lines: List<Entry>) = lines.any { it.who == "you" || it.who == "you-image" }
 
         /** Attached pictures kept in Linux. */
         private const val MAX_PICTURES = 30

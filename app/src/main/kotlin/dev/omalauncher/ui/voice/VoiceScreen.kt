@@ -1384,7 +1384,9 @@ private fun rememberBitmap(
     maxSide: Int,
     cache: MutableMap<String, ImageBitmap>? = null,
 ): ImageBitmap? {
-    cache?.get(path)?.let { return it }
+    // By size too: an attachment's small picture mustn't stand in for the larger one in the conversation.
+    val key = "$maxSide:$path"
+    cache?.get(key)?.let { return it }
     // With the path it's for: a row given another picture doesn't show the one before while this one decodes.
     val decoded by produceState<Pair<String, ImageBitmap?>?>(null, path) {
         value = path to
@@ -1396,7 +1398,7 @@ private fun rememberBitmap(
                     while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxSide) sample *= 2
                     BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample })?.asImageBitmap()
                 }.getOrNull()
-            }.also { if (it != null) cache?.put(path, it) }
+            }.also { if (it != null) cache?.put(key, it) }
     }
     return decoded?.takeIf { it.first == path }?.second
 }

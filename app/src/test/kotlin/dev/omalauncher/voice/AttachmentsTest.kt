@@ -2,10 +2,19 @@ package dev.omalauncher.voice
 
 import dev.omalauncher.voice.VoiceSession.Attachment
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 class AttachmentsTest {
+    @Test
+    fun aPictureAloneIsSomethingSaid() {
+        assertTrue(VoiceSession.said(listOf(VoiceSession.Entry("you-image", "/x/a.png|/root/a.png"), VoiceSession.Entry("agent", "a cat"))))
+        assertTrue(VoiceSession.said(listOf(VoiceSession.Entry("you", "hi"))))
+        assertFalse(VoiceSession.said(listOf(VoiceSession.Entry("note", "about a widget"), VoiceSession.Entry("agent", "hello"))))
+    }
+
     @Test
     fun nothingAttachedIsJustWhatWasSaid() {
         assertEquals("fix it", VoiceSession.withAttachments("fix it", emptyList()))
