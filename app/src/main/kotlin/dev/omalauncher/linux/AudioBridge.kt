@@ -63,14 +63,17 @@ class AudioBridge(
             .build()
     }
 
-    /** Whether PulseAudio should run; off while Linux is being removed. */
-    @Volatile
+    /** Whether PulseAudio should run; off while Linux is being removed. Guarded by [runLock]. */
     private var running = false
+    private val runLock = Object()
     private var started = false
 
     /** Starts the bridge, or resumes it after [stop]. */
     fun start() {
-        running = true
+        synchronized(runLock) {
+            running = true
+            runLock.notify()
+        }
         if (started) return
         started = true
         proot.hostFile("/tmp/pulse.pa").writeText(config)
@@ -81,15 +84,13 @@ class AudioBridge(
     }
 
     /** Stops restarting PulseAudio; the caller ends the running one along with the other guest processes. */
-    fun stop() {
-        running = false
-    }
+    fun stop() = synchronized(runLock) { running = false }
 
     /** Keeps PulseAudio running; it runs as the (fake) root under proot, which it warns about harmlessly. */
     private fun superviseDaemon() {
         var backoff = 1000L
         while (true) {
-            while (!running) Thread.sleep(1000)
+            synchronized(runLock) { while (!running) runLock.wait() }
             val started = SystemClock.elapsedRealtime()
             val code =
                 runCatching {
