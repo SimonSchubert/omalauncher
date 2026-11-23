@@ -155,4 +155,12 @@
     <string name="voice_say_choices">Choices: %1$s.</string>
     <!-- In the conversation when Voice was opened to change a widget or app; %1$s is its name. -->
     <string name="voice_note_edit">editing %1$s · say what to change</string>
+    <!-- The button by the controls that adds a picture or what's copied to the next message, said or typed. -->
+    <string name="voice_attach">attach a picture or the clipboard</string>
+    <!-- Its two choices: one from the phone's photos, or what's on the clipboard. -->
+    <string name="voice_attach_picture">a picture</string>
+    <string name="voice_attach_paste">paste</string>
+    <string name="voice_attach_failed">couldn\'t attach that picture</string>
+    <!-- Takes a picture or pasted text off the message before it's sent. -->
+    <string name="voice_detach">remove</string>
 </resources>

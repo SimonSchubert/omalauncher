@@ -118,4 +118,9 @@
     <string name="voice_or_say_answer">або торкніться кулі й скажіть свою відповідь</string>
     <string name="voice_say_choices">Варіанти: %1$s.</string>
     <string name="voice_note_edit">зміна %1$s · скажіть, що змінити</string>
+    <string name="voice_attach">прикріпити зображення або буфер обміну</string>
+    <string name="voice_attach_picture">зображення</string>
+    <string name="voice_attach_paste">вставити</string>
+    <string name="voice_attach_failed">не вдалося прикріпити зображення</string>
+    <string name="voice_detach">прибрати</string>
 </resources>

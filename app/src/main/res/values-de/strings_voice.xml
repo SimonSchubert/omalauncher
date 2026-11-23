@@ -116,4 +116,9 @@
     <string name="voice_or_say_answer">oder tipp auf den kreis und sag deine antwort</string>
     <string name="voice_say_choices">Zur Auswahl: %1$s.</string>
     <string name="voice_note_edit">%1$s bearbeiten · sag, was sich ändern soll</string>
+    <string name="voice_attach">bild oder zwischenablage anhängen</string>
+    <string name="voice_attach_picture">ein bild</string>
+    <string name="voice_attach_paste">einfügen</string>
+    <string name="voice_attach_failed">das bild ließ sich nicht anhängen</string>
+    <string name="voice_detach">entfernen</string>
 </resources>

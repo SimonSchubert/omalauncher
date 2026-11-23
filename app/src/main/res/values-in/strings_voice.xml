@@ -115,4 +115,9 @@
     <string name="voice_or_say_answer">atau ketuk lingkaran dan ucapkan jawaban kamu</string>
     <string name="voice_say_choices">Pilihan: %1$s.</string>
     <string name="voice_note_edit">mengedit %1$s · katakan apa yang mau diubah</string>
+    <string name="voice_attach">lampirkan gambar atau papan klip</string>
+    <string name="voice_attach_picture">gambar</string>
+    <string name="voice_attach_paste">tempel</string>
+    <string name="voice_attach_failed">gambar itu tidak bisa dilampirkan</string>
+    <string name="voice_detach">hapus</string>
 </resources>

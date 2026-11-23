@@ -305,7 +305,7 @@ class DataOffer(
  */
 class GuestImages(
     private val context: Context,
-    private val dir: File,
+    val dir: File,
     private val guestPath: (File) -> String?,
 ) {
     /** Copies the image at [uri] into Linux, of type [mime] or else the one its app says; null if it can't be read. */

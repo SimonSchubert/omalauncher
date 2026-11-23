@@ -2,6 +2,7 @@ package dev.omalauncher.voice
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.net.Uri
 import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
@@ -21,11 +22,15 @@ import dev.omalauncher.linux.AgentStore
 import dev.omalauncher.linux.JobState
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.killTree
+import dev.omalauncher.wayland.GuestImages
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import java.lang.ref.Reference
 import java.util.concurrent.Executors
 
 /**
@@ -43,7 +48,10 @@ class VoiceSession(
 ) {
     enum class Phase { Off, Starting, Idle, Thinking, Working, Approval }
 
-    /** A line of the conversation: [who] is "you", "agent", "note" or "image" ([text] then a file in [dir]). */
+    /**
+     * A line of the conversation: [who] is "you", "agent", "note", "image" (one the agent read: [text] is a file in
+     * [dir], a bar, then its guest path) or "you-image" (one the user attached: [text] is its file, a bar, its guest path).
+     */
     data class Entry(
         val who: String,
         val text: String,
@@ -71,6 +79,18 @@ class VoiceSession(
         val note: String,
         val prompt: String,
     )
+
+    /** Something that goes with the next message: a picture saved in Linux ([file], seen there as [guestPath]), or text pasted. */
+    sealed interface Attachment {
+        data class Picture(
+            val file: File,
+            val guestPath: String,
+        ) : Attachment
+
+        data class Pasted(
+            val text: String,
+        ) : Attachment
+    }
 
     /** The agents that can talk: installed, and with a link. */
     val voiceAgents: List<Agent> get() = agents.installed.filter { it.bin in VOICE_LINKS }
@@ -138,6 +158,58 @@ class VoiceSession(
     var phase by mutableStateOf(Phase.Off)
         private set
     val transcript = mutableStateListOf<Entry>()
+
+    /** Pictures and text added since the last message: they go with the next one, said or typed. */
+    val attached = mutableStateListOf<Attachment>()
+
+    /** Pictures being copied in, so the screen can say so. */
+    var attaching by mutableIntStateOf(0)
+        private set
+
+    /**
+     * Where attached pictures are kept for the agent: in Linux, so it reads them with its own tools, and in its home
+     * rather than /tmp, so a conversation continued after the launcher restarts still finds them.
+     */
+    private val pictures = GuestImages(context, File(proot.home, ".cache/omalauncher/voice-images"), proot::guestPath)
+
+    /**
+     * Copies the picture at [uri] into Linux to go with the next message. [keep] is held until it's copied: content a
+     * keyboard sends can only be read while the object it came with lives.
+     */
+    fun attachPicture(
+        uri: Uri,
+        mime: String? = null,
+        keep: Any? = null,
+    ) {
+        attaching++
+        scope.launch {
+            val file =
+                withContext(Dispatchers.IO) {
+                    // The last ones only: older conversations show a blank where theirs were.
+                    pictures.dir.listFiles()?.sortedBy { it.lastModified() }?.dropLast(MAX_PICTURES - 1)?.forEach { it.delete() }
+                    pictures.save(uri, mime).also { Reference.reachabilityFence(keep) }
+                }
+            attaching--
+            val guest = file?.let(pictures::guestPath)
+            if (file == null || guest == null) {
+                file?.delete()
+                notice = str(R.string.voice_attach_failed)
+                return@launch
+            }
+            attached += Attachment.Picture(file, guest)
+        }
+    }
+
+    /** Adds pasted [text] to go with the next message. */
+    fun attachText(text: String) {
+        if (text.isNotBlank()) attached += Attachment.Pasted(text.trim())
+    }
+
+    /** Takes [a] off the next message; a picture's file goes with it. */
+    fun detach(a: Attachment) {
+        attached.remove(a)
+        if (a is Attachment.Picture) files.execute { a.file.delete() }
+    }
 
     /** The reply being written now, before it joins [transcript]. */
     var reply by mutableStateOf("")
@@ -361,7 +433,8 @@ class VoiceSession(
 
     fun ask(text: String) {
         val said = text.trim()
-        if (said.isEmpty()) return
+        // Pictures or text alone go too, but not as the answer to a question on screen: they wait for a message.
+        if (said.isEmpty() && (attached.isEmpty() || approvals.isNotEmpty())) return
         if (agent == null) return
         notice = null
         hushed = false
@@ -393,7 +466,16 @@ class VoiceSession(
             since = System.currentTimeMillis()
         }
         turns++
-        transcript += Entry("you", said)
+        val parts = attached.toList()
+        attached.clear()
+        for (a in parts) {
+            transcript +=
+                when (a) {
+                    is Attachment.Picture -> Entry("you-image", a.file.path + "|" + a.guestPath)
+                    is Attachment.Pasted -> Entry("you", a.text)
+                }
+        }
+        if (said.isNotEmpty()) transcript += Entry("you", said)
         saveTranscript()
         saveSession()
         phase = Phase.Thinking
@@ -402,8 +484,9 @@ class VoiceSession(
             asked = lastEvent
             heardBack = false
         }
+        val message = withAttachments(said, parts)
         // What the button it was opened from is about comes first, with the first thing said.
-        val text = about?.let { "${it.prompt}\n\n$said" } ?: said
+        val text = about?.let { "${it.prompt}\n\n$message" } ?: message
         about?.let { aboutSent = it }
         about = null
         link?.prompt(withNote(text))
@@ -1090,6 +1173,33 @@ class VoiceSession(
                 Act.Verb.Plan to R.string.voice_do_plan,
                 Act.Verb.Tool to R.string.voice_do_tool,
             )
+
+        /**
+         * What the agent is sent for [said] with [parts]: each picture's path, which every agent can open with its own
+         * tools, and pasted text whole, fenced. Just [said] with nothing attached.
+         */
+        internal fun withAttachments(
+            said: String,
+            parts: List<Attachment>,
+        ): String {
+            if (parts.isEmpty()) return said
+            val lines = mutableListOf<String>()
+            for (a in parts) {
+                when (a) {
+                    is Attachment.Picture -> lines += "[The user attached a picture: ${a.guestPath} — look at it.]"
+                    is Attachment.Pasted -> {
+                        // Longer than any run of backticks in it, so a code block inside doesn't end the fence.
+                        val fence = "`".repeat(maxOf(3, (Regex("`+").findAll(a.text).maxOfOrNull { it.value.length } ?: 0) + 1))
+                        lines += "[The user pasted this:]\n$fence\n${a.text}\n$fence"
+                    }
+                }
+            }
+            if (said.isNotEmpty()) lines += said
+            return lines.joinToString("\n\n")
+        }
+
+        /** Attached pictures kept in Linux. */
+        private const val MAX_PICTURES = 30
 
         const val DEFAULT_RATE = 1.25f
 

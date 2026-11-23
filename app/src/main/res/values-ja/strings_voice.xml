@@ -115,4 +115,9 @@
     <string name="voice_or_say_answer">またはオーブをタップして回答を話す</string>
     <string name="voice_say_choices">選択肢は %1$s です。</string>
     <string name="voice_note_edit">%1$s を編集 · 変えたいことを話してください</string>
+    <string name="voice_attach">画像またはクリップボードを添付</string>
+    <string name="voice_attach_picture">画像</string>
+    <string name="voice_attach_paste">貼り付け</string>
+    <string name="voice_attach_failed">画像を添付できませんでした</string>
+    <string name="voice_detach">削除</string>
 </resources>

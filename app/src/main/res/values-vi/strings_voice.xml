@@ -151,4 +151,9 @@
     <string name="voice_say_choices">Các lựa chọn: %1$s.</string>
     <!-- In the conversation when Voice was opened to change a widget or app; %1$s is its name. -->
     <string name="voice_note_edit">đang chỉnh sửa %1$s · nói cần thay đổi gì</string>
+    <string name="voice_attach">đính kèm ảnh hoặc bộ nhớ tạm</string>
+    <string name="voice_attach_picture">một ảnh</string>
+    <string name="voice_attach_paste">dán</string>
+    <string name="voice_attach_failed">không đính kèm được ảnh đó</string>
+    <string name="voice_detach">bỏ</string>
 </resources>

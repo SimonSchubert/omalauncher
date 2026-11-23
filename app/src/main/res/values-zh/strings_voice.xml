@@ -115,4 +115,9 @@
     <string name="voice_or_say_answer">或点按圆圈说出你的回答</string>
     <string name="voice_say_choices">选项：%1$s。</string>
     <string name="voice_note_edit">编辑 %1$s · 说出要改什么</string>
+    <string name="voice_attach">附加图片或剪贴板内容</string>
+    <string name="voice_attach_picture">图片</string>
+    <string name="voice_attach_paste">粘贴</string>
+    <string name="voice_attach_failed">无法附加这张图片</string>
+    <string name="voice_detach">移除</string>
 </resources>

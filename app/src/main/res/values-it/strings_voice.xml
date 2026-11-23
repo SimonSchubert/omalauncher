@@ -117,4 +117,9 @@
     <string name="voice_or_say_answer">o tocca il cerchio e di’ la tua risposta</string>
     <string name="voice_say_choices">Opzioni: %1$s.</string>
     <string name="voice_note_edit">modifica di %1$s · di\' cosa cambiare</string>
+    <string name="voice_attach">allega un\'immagine o gli appunti</string>
+    <string name="voice_attach_picture">un\'immagine</string>
+    <string name="voice_attach_paste">incolla</string>
+    <string name="voice_attach_failed">non è stato possibile allegare l\'immagine</string>
+    <string name="voice_detach">rimuovi</string>
 </resources>

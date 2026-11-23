@@ -117,4 +117,9 @@
     <string name="voice_or_say_answer">ou touche l’orbe et dis ta réponse</string>
     <string name="voice_say_choices">Choix : %1$s.</string>
     <string name="voice_note_edit">modification de %1$s · dis ce qu\'il faut changer</string>
+    <string name="voice_attach">joindre une image ou le presse-papiers</string>
+    <string name="voice_attach_picture">une image</string>
+    <string name="voice_attach_paste">coller</string>
+    <string name="voice_attach_failed">impossible de joindre cette image</string>
+    <string name="voice_detach">retirer</string>
 </resources>

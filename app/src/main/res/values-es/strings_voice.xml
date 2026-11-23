@@ -117,4 +117,9 @@
     <string name="voice_or_say_answer">o toca el círculo y di tu respuesta</string>
     <string name="voice_say_choices">Opciones: %1$s.</string>
     <string name="voice_note_edit">editando %1$s · di qué cambiar</string>
+    <string name="voice_attach">adjuntar una imagen o el portapapeles</string>
+    <string name="voice_attach_picture">una imagen</string>
+    <string name="voice_attach_paste">pegar</string>
+    <string name="voice_attach_failed">no se pudo adjuntar la imagen</string>
+    <string name="voice_detach">quitar</string>
 </resources>

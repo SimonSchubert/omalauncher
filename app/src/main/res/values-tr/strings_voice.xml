@@ -116,4 +116,9 @@
     <string name="voice_or_say_answer">ya da daireye dokunup yanıtını söyle</string>
     <string name="voice_say_choices">Seçenekler: %1$s.</string>
     <string name="voice_note_edit">%1$s düzenleniyor · neyi değiştireceğini söyle</string>
+    <string name="voice_attach">resim veya pano ekle</string>
+    <string name="voice_attach_picture">bir resim</string>
+    <string name="voice_attach_paste">yapıştır</string>
+    <string name="voice_attach_failed">resim eklenemedi</string>
+    <string name="voice_detach">kaldır</string>
 </resources>
