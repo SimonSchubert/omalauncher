@@ -458,7 +458,7 @@ class WidgetServices(
                 "build" to Str(Build.DISPLAY),
                 "codename" to Str(Build.DEVICE),
                 "patch" to Str(Build.VERSION.SECURITY_PATCH),
-                "locale" to Str(java.util.Locale.getDefault().toLanguageTag()),
+                "locale" to Str(java.util.Locale.getDefault().stripExtensions().toLanguageTag()),
                 "timezone" to Str(java.util.TimeZone.getDefault().id),
                 "launcher" to Str(BuildConfig.VERSION_NAME),
                 "theme" to (runtime.themes.current?.title?.let(::Str) ?: Null),

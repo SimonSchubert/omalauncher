@@ -37,6 +37,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -358,6 +361,14 @@ internal fun HomeGrid(
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val claims = remember { LongPressClaim() }
+    // In a right-to-left language the grid and its pages still run left to right: tiles stay where they were put (and
+    // where a connected computer has them), and dragging, resizing and the edges that turn pages work in screen
+    // coordinates. What's in a tile, its edit bar and the empty pages' text follow the language.
+    val direction = LocalLayoutDirection.current
+    val latestDirection by rememberUpdatedState(direction)
+    val actionsIn: @Composable (HomeItem) -> Unit = { CompositionLocalProvider(LocalLayoutDirection provides direction) { actions(it) } }
+    val feedIn: @Composable (Int) -> Unit = { CompositionLocalProvider(LocalLayoutDirection provides direction) { feed(it) } }
+    val inviteIn: @Composable () -> Unit = { CompositionLocalProvider(LocalLayoutDirection provides direction) { invite() } }
     // Each tile's composition, by its key, moves to wherever the tile is drawn: lifted, it goes above the pager and back
     // keeping its state, rather than being made anew each way (a terminal tile its view).
     val latestRender by rememberUpdatedState(render)
@@ -369,7 +380,8 @@ internal fun HomeGrid(
                 // crashed measuring or updating them (Play, 0.12.1).
                 val held = tiles[item.key]?.takeUnless { it.setAside }
                 val t = held ?: MovableTile { t, i, m, s -> latestRender(i, m.then(TileAttached(t)), s) }.also { tiles[item.key] = it }
-                t.content(item, modifier, selected)
+                // Placed with absoluteOffset, so the tile's own direction doesn't mirror where it goes.
+                CompositionLocalProvider(LocalLayoutDirection provides latestDirection) { t.content(item, modifier, selected) }
             }
         }
     // Gone from home, their compositions go too.
@@ -380,454 +392,457 @@ internal fun HomeGrid(
             .collect { tiles.keys.retainAll(it) }
     }
 
-    BoxWithConstraints(modifier) {
-        val density = LocalDensity.current
-        val gap = with(density) { HomeGap.roundToPx() }
-        val outer = with(density) { EdgeGap.roundToPx() }
-        // The screen's edge on every side but the one the strip and the bar follow, which gets the gap between tiles.
-        // The grid stops [room] short of the bottom; the pages and their gestures go on below it, and a face
-        // over all of it.
-        val pad =
-            GridPad(
-                left = keepClear.left + if (side == HomeSide.Left) gap else outer,
-                top = keepClear.top + outer,
-                right = keepClear.right + if (side == HomeSide.Right) gap else outer,
-                bottom = keepClear.bottom + with(density) { room.roundToPx() } + if (side == null) gap else outer,
-            )
-        val height = constraints.maxHeight
-        val width = constraints.maxWidth / per
-        // Landscape turns portrait's grid on its side; the window's size (short side first, so both orientations
-        // share it) remembers how many rows portrait had.
-        val window = LocalWindowInfo.current.containerSize
-        val windowSize = "${minOf(window.width, window.height)}x${maxOf(window.width, window.height)}"
-        // Rows the tiles on every page reach down to (apps show as 1x1); the pages share one grid.
-        // Derived, so moving or resizing a tile recomposes only its page, unless it changes how far down they reach.
-        val used by remember(slots, itemsOn, layout) {
-            derivedStateOf { slots.flatten().flatMap(itemsOn).maxOfOrNull { item -> layout.cell(item.key)?.let { if (item.resizable) it.bottom else it.y + 1 } ?: 0 } ?: 0 }
-        }
-        val cols = layout.columns
-        val grid =
-            remember(width, height, gap, pad, cols, turned, windowSize, used, per) {
-                // Not seen in portrait yet: square cells across.
-                Grid(width, height, gap, pad, cols, turned, if (turned) layout.portraitRows(windowSize) else null, used, per)
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        BoxWithConstraints(modifier) {
+            val density = LocalDensity.current
+            val gap = with(density) { HomeGap.roundToPx() }
+            val outer = with(density) { EdgeGap.roundToPx() }
+            // The screen's edge on every side but the one the strip and the bar follow, which gets the gap between tiles.
+            // The grid stops [room] short of the bottom; the pages and their gestures go on below it, and a face
+            // over all of it.
+            val pad =
+                GridPad(
+                    left = keepClear.left + if (side == HomeSide.Left) gap else outer,
+                    top = keepClear.top + outer,
+                    right = keepClear.right + if (side == HomeSide.Right) gap else outer,
+                    bottom = keepClear.bottom + with(density) { room.roundToPx() } + if (side == null) gap else outer,
+                )
+            val height = constraints.maxHeight
+            val width = constraints.maxWidth / per
+            // Landscape turns portrait's grid on its side; the window's size (short side first, so both orientations
+            // share it) remembers how many rows portrait had.
+            val window = LocalWindowInfo.current.containerSize
+            val windowSize = "${minOf(window.width, window.height)}x${maxOf(window.width, window.height)}"
+            // Rows the tiles on every page reach down to (apps show as 1x1); the pages share one grid.
+            // Derived, so moving or resizing a tile recomposes only its page, unless it changes how far down they reach.
+            val used by remember(slots, itemsOn, layout) {
+                derivedStateOf { slots.flatten().flatMap(itemsOn).maxOfOrNull { item -> layout.cell(item.key)?.let { if (item.resizable) it.bottom else it.y + 1 } ?: 0 } ?: 0 }
             }
-        // A face's slot, unfolded: one page the whole width, on the same rows, since placing a page sets the grid faces get.
-        val wide =
-            remember(grid, constraints.maxWidth) {
-                if (per == 1) grid else Grid(constraints.maxWidth, height, gap, pad, cols, turned, if (turned) layout.portraitRows(windowSize) else null, grid.rows)
+            val cols = layout.columns
+            val grid =
+                remember(width, height, gap, pad, cols, turned, windowSize, used, per) {
+                    // Not seen in portrait yet: square cells across.
+                    Grid(width, height, gap, pad, cols, turned, if (turned) layout.portraitRows(windowSize) else null, used, per)
+                }
+            // A face's slot, unfolded: one page the whole width, on the same rows, since placing a page sets the grid faces get.
+            val wide =
+                remember(grid, constraints.maxWidth) {
+                    if (per == 1) grid else Grid(constraints.maxWidth, height, gap, pad, cols, turned, if (turned) layout.portraitRows(windowSize) else null, grid.rows)
+                }
+            if (!turned) SideEffect { layout.setPortraitRows(windowSize, grid.rows) }
+            // Previews draw tiles at the size they have here.
+            SideEffect {
+                layout.geometry = Triple(grid.cellW, grid.cellH, gap)
+                layout.pageSize = wide.width to wide.height
+                layout.turned = turned
             }
-        if (!turned) SideEffect { layout.setPortraitRows(windowSize, grid.rows) }
-        // Previews draw tiles at the size they have here.
-        SideEffect {
-            layout.geometry = Triple(grid.cellW, grid.cellH, gap)
-            layout.pageSize = wide.width to wide.height
-            layout.turned = turned
-        }
-        val grab = with(density) { 20.dp.roundToPx() }
-        val sideGrab = with(density) { 36.dp.roundToPx() }
-        val edge = with(density) { 28.dp.roundToPx() }
-        val current by rememberUpdatedState(Triple(slots, grid to wide, selected))
-        // Read inside the gesture below, which outlives recomposition: a lock that comes and goes is seen there too.
-        val lockedNow by rememberUpdatedState(locked)
+            val grab = with(density) { 20.dp.roundToPx() }
+            val sideGrab = with(density) { 36.dp.roundToPx() }
+            val edge = with(density) { 28.dp.roundToPx() }
+            val current by rememberUpdatedState(Triple(slots, grid to wide, selected))
+            // Read inside the gesture below, which outlives recomposition: a lock that comes and goes is seen there too.
+            val lockedNow by rememberUpdatedState(locked)
 
-        fun placedOn(
-            page: Int,
-            g: Grid,
-        ) = layout.placed(itemsOn(page), g)
+            fun placedOn(
+                page: Int,
+                g: Grid,
+            ) = layout.placed(itemsOn(page), g)
 
-        /** The pages a pager slot shows, left to right. */
-        fun pagesAt(
-            slot: Int,
-            slots: List<List<Int>>,
-        ) = slots.getOrElse(slot) { listOf(1) }
+            /** The pages a pager slot shows, left to right. */
+            fun pagesAt(
+                slot: Int,
+                slots: List<List<Int>>,
+            ) = slots.getOrElse(slot) { listOf(1) }
 
-        /** The grid [shown]'s pages are laid out on: the whole width for a face's slot, unfolded. */
-        fun gridFor(
-            shown: List<Int>,
-            grids: Pair<Grid, Grid>,
-        ) = if (shown.size == 1 && full(shown[0])) grids.second else grids.first
+            /** The grid [shown]'s pages are laid out on: the whole width for a face's slot, unfolded. */
+            fun gridFor(
+                shown: List<Int>,
+                grids: Pair<Grid, Grid>,
+            ) = if (shown.size == 1 && full(shown[0])) grids.second else grids.first
 
-        /** Which of [shown] holds [key], or -1. */
-        fun sideOf(
-            key: String?,
-            shown: List<Int>,
-        ) = if (key == null) -1 else shown.indexOfFirst { page -> itemsOn(page).any { it.key == key } }
+            /** Which of [shown] holds [key], or -1. */
+            fun sideOf(
+                key: String?,
+                shown: List<Int>,
+            ) = if (key == null) -1 else shown.indexOfFirst { page -> itemsOn(page).any { it.key == key } }
 
-        Box(
-            Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    /**
-                     * Follows the finger, carrying [item] from [cell] on page [from]; returns whether it moved.
-                     * [origin] is where the tile is on screen: its cell, or for an app lifted out of a folder,
-                     * its place in the open folder. Such an app sorts the folder (laid out by [folder]) while the
-                     * finger stays over its panel; resting outside it closes the folder and carries the app on.
-                     */
-                    suspend fun AwaitPointerEventScope.moveDrag(
-                        downId: PointerId,
-                        start: Offset,
-                        item: HomeItem,
-                        cell: Cell,
-                        from: Int,
-                        origin: IntRect,
-                        folder: FolderGeometry? = null,
-                    ): Boolean {
-                        val inFolder = (item as? Shortcut)?.folder != null
-                        val hold = start - Offset(origin.left.toFloat(), origin.top.toFloat())
-                        var moved = false
-                        var position = start
-                        // When the finger reached a side edge; the page turns after it rests there a moment.
-                        var atEdgeSince = 0L
-                        // Sorting the open folder: the place the finger is over and since when, and since when it's off the panel.
-                        var sorting = folder
-                        var aim = -1
-                        var aimSince = 0L
-                        var outSince = 0L
-                        while (true) {
-                            val waiting = atEdgeSince > 0 || aimSince > 0 || outSince > 0
-                            val event = withTimeoutOrNull(if (waiting) 50L else Long.MAX_VALUE) { awaitPointerEvent(PointerEventPass.Initial) }
-                            if (event != null) {
-                                val c = event.changes.firstOrNull { it.id == downId } ?: break
-                                c.consume()
-                                if (!c.pressed) break
-                                position = c.position
-                            }
-                            if (!moved && (position - start).getDistance() > viewConfiguration.touchSlop) {
-                                moved = true
-                                arrange.carry = Carry(item, from, cell, hold)
-                            }
-                            if (!moved) continue
-                            arrange.finger = position
-                            val now = SystemClock.uptimeMillis()
-                            val fg = sorting
-                            if (fg != null) {
-                                if (fg.panel.has(position)) {
-                                    outSince = 0L
-                                    val apps = (itemsOn(from).firstOrNull { it.key == (item as Shortcut).folder } as? Folder)?.apps.orEmpty()
-                                    val to = apps.indices.minByOrNull { (fg.app(it).center.toOffset() - position).getDistanceSquared() } ?: continue
-                                    when {
-                                        to == apps.indexOfFirst { it.key == item.key } -> aimSince = 0L
-                                        to != aim || aimSince == 0L -> aimSince = now
-                                        // Like Android, the other apps make way once the finger rests over a place a moment.
-                                        now - aimSince > REORDER_MS -> {
-                                            onReorder(item as Shortcut, apps.filter { it.key != item.key }.getOrNull(to)?.key)
-                                            aimSince = 0L
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        /**
+                         * Follows the finger, carrying [item] from [cell] on page [from]; returns whether it moved.
+                         * [origin] is where the tile is on screen: its cell, or for an app lifted out of a folder,
+                         * its place in the open folder. Such an app sorts the folder (laid out by [folder]) while the
+                         * finger stays over its panel; resting outside it closes the folder and carries the app on.
+                         */
+                        suspend fun AwaitPointerEventScope.moveDrag(
+                            downId: PointerId,
+                            start: Offset,
+                            item: HomeItem,
+                            cell: Cell,
+                            from: Int,
+                            origin: IntRect,
+                            folder: FolderGeometry? = null,
+                        ): Boolean {
+                            val inFolder = (item as? Shortcut)?.folder != null
+                            val hold = start - Offset(origin.left.toFloat(), origin.top.toFloat())
+                            var moved = false
+                            var position = start
+                            // When the finger reached a side edge; the page turns after it rests there a moment.
+                            var atEdgeSince = 0L
+                            // Sorting the open folder: the place the finger is over and since when, and since when it's off the panel.
+                            var sorting = folder
+                            var aim = -1
+                            var aimSince = 0L
+                            var outSince = 0L
+                            while (true) {
+                                val waiting = atEdgeSince > 0 || aimSince > 0 || outSince > 0
+                                val event = withTimeoutOrNull(if (waiting) 50L else Long.MAX_VALUE) { awaitPointerEvent(PointerEventPass.Initial) }
+                                if (event != null) {
+                                    val c = event.changes.firstOrNull { it.id == downId } ?: break
+                                    c.consume()
+                                    if (!c.pressed) break
+                                    position = c.position
+                                }
+                                if (!moved && (position - start).getDistance() > viewConfiguration.touchSlop) {
+                                    moved = true
+                                    arrange.carry = Carry(item, from, cell, hold)
+                                }
+                                if (!moved) continue
+                                arrange.finger = position
+                                val now = SystemClock.uptimeMillis()
+                                val fg = sorting
+                                if (fg != null) {
+                                    if (fg.panel.has(position)) {
+                                        outSince = 0L
+                                        val apps = (itemsOn(from).firstOrNull { it.key == (item as Shortcut).folder } as? Folder)?.apps.orEmpty()
+                                        val to = apps.indices.minByOrNull { (fg.app(it).center.toOffset() - position).getDistanceSquared() } ?: continue
+                                        when {
+                                            to == apps.indexOfFirst { it.key == item.key } -> aimSince = 0L
+                                            to != aim || aimSince == 0L -> aimSince = now
+                                            // Like Android, the other apps make way once the finger rests over a place a moment.
+                                            now - aimSince > REORDER_MS -> {
+                                                onReorder(item as Shortcut, apps.filter { it.key != item.key }.getOrNull(to)?.key)
+                                                aimSince = 0L
+                                            }
                                         }
+                                        aim = to
+                                        continue
                                     }
-                                    aim = to
+                                    aimSince = 0L
+                                    if (outSince == 0L) outSince = now
+                                    if (now - outSince <= FOLDER_EXIT_MS) continue
+                                    // Like Android, the folder closes once the app rests outside it, and the app goes on to the grid.
+                                    arrange.folder = null
+                                    sorting = null
+                                    outSince = 0L
+                                }
+                                val edgeSide = if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
+                                when {
+                                    edgeSide == 0 -> atEdgeSince = 0L
+                                    atEdgeSince == 0L -> atEdgeSince = now
+                                    now - atEdgeSince > PAGE_TURN_MS && !pager.isScrollInProgress -> {
+                                        val next = pager.currentPage + edgeSide
+                                        if (next in 0 until pager.pageCount) {
+                                            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            scope.launch { pager.animateScrollToPage(next) }
+                                        }
+                                        // Turning again takes a longer rest, so the page just reached can be looked at.
+                                        atEdgeSince = now + PAGE_TURN_MS
+                                    }
+                                }
+                                val (slots, grids) = current
+                                // Side by side, the finger picks the page; the drop preview works in its coordinates. Over the
+                                // empty half beside a lone tile page nothing lands.
+                                val over = pagesAt(pager.targetPage, slots)
+                                val g = gridFor(over, grids)
+                                val side = g.side(position)
+                                val at = g.local(position, side)
+                                val page = over.getOrNull(side)
+                                if (page == null) {
+                                    arrange.page = from
+                                    arrange.preview = null
+                                    arrange.swapWith = null
+                                    arrange.grouping = false
                                     continue
                                 }
-                                aimSince = 0L
-                                if (outSince == 0L) outSince = now
-                                if (now - outSince <= FOLDER_EXIT_MS) continue
-                                // Like Android, the folder closes once the app rests outside it, and the app goes on to the grid.
-                                arrange.folder = null
-                                sorting = null
-                                outSince = 0L
+                                arrange.page = page
+                                val others = placedOn(page, g).filter { it.first.key != item.key }
+                                val under = others.lastOrNull { (o, r) -> g.rect(o, r).has(at) }
+                                // Apps group with apps and folders; anything else swaps, except an app from a folder, which has no cell to
+                                // trade, and a face, whose page isn't a cell either: one lands only on an empty page, and nothing on its.
+                                val groups = item is Shortcut && (under?.first is Shortcut || under?.first is Folder)
+                                val target = under?.takeIf { groups || (!inFolder && !item.isFace && !it.first.isFace) }
+                                // Left of page 1 only faces go.
+                                val onlyFaces = isFacePage(page) && !item.isFace
+                                arrange.grouping = groups
+                                arrange.swapWith = target?.first?.key
+                                arrange.preview =
+                                    if (onlyFaces) {
+                                        null
+                                    } else if (under != null) {
+                                        target?.second
+                                    } else {
+                                        val x = g.colLine(at - hold).coerceIn(0, (g.cols - cell.w).coerceAtLeast(0))
+                                        val y = g.rowLine(at - hold).coerceIn(0, (g.rows - cell.h).coerceAtLeast(0))
+                                        Cell(x, y, cell.w, cell.h).takeIf { n -> others.none { it.second.overlaps(n) } }
+                                    }
                             }
-                            val edgeSide = if (position.x < edge) -1 else if (position.x > size.width - edge) 1 else 0
+                            val page = arrange.page
+                            val target = arrange.swapWith?.let { key -> itemsOn(page).firstOrNull { it.key == key } }
+                            val drop = arrange.preview
+                            val grouping = arrange.grouping
+                            arrange.drop()
                             when {
-                                edgeSide == 0 -> atEdgeSince = 0L
-                                atEdgeSince == 0L -> atEdgeSince = now
-                                now - atEdgeSince > PAGE_TURN_MS && !pager.isScrollInProgress -> {
-                                    val next = pager.currentPage + edgeSide
-                                    if (next in 0 until pager.pageCount) {
-                                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        scope.launch { pager.animateScrollToPage(next) }
-                                    }
-                                    // Turning again takes a longer rest, so the page just reached can be looked at.
-                                    atEdgeSince = now + PAGE_TURN_MS
-                                }
-                            }
-                            val (slots, grids) = current
-                            // Side by side, the finger picks the page; the drop preview works in its coordinates. Over the
-                            // empty half beside a lone tile page nothing lands.
-                            val over = pagesAt(pager.targetPage, slots)
-                            val g = gridFor(over, grids)
-                            val side = g.side(position)
-                            val at = g.local(position, side)
-                            val page = over.getOrNull(side)
-                            if (page == null) {
-                                arrange.page = from
-                                arrange.preview = null
-                                arrange.swapWith = null
-                                arrange.grouping = false
-                                continue
-                            }
-                            arrange.page = page
-                            val others = placedOn(page, g).filter { it.first.key != item.key }
-                            val under = others.lastOrNull { (o, r) -> g.rect(o, r).has(at) }
-                            // Apps group with apps and folders; anything else swaps, except an app from a folder, which has no cell to
-                            // trade, and a face, whose page isn't a cell either: one lands only on an empty page, and nothing on its.
-                            val groups = item is Shortcut && (under?.first is Shortcut || under?.first is Folder)
-                            val target = under?.takeIf { groups || (!inFolder && !item.isFace && !it.first.isFace) }
-                            // Left of page 1 only faces go.
-                            val onlyFaces = isFacePage(page) && !item.isFace
-                            arrange.grouping = groups
-                            arrange.swapWith = target?.first?.key
-                            arrange.preview =
-                                if (onlyFaces) {
-                                    null
-                                } else if (under != null) {
-                                    target?.second
-                                } else {
-                                    val x = g.colLine(at - hold).coerceIn(0, (g.cols - cell.w).coerceAtLeast(0))
-                                    val y = g.rowLine(at - hold).coerceIn(0, (g.rows - cell.h).coerceAtLeast(0))
-                                    Cell(x, y, cell.w, cell.h).takeIf { n -> others.none { it.second.overlaps(n) } }
-                                }
-                        }
-                        val page = arrange.page
-                        val target = arrange.swapWith?.let { key -> itemsOn(page).firstOrNull { it.key == key } }
-                        val drop = arrange.preview
-                        val grouping = arrange.grouping
-                        arrange.drop()
-                        when {
-                            target != null && grouping && moved -> onGroup(item as Shortcut, target)
-                            // Swapping trades places and sizes, like swapping windows in Hyprland; across pages it trades pages too.
-                            target != null ->
-                                layout.cell(target.key)?.let { other ->
-                                    layout.set(target.key, cell)
-                                    layout.set(item.key, other)
-                                    if (page != from) {
-                                        onMove(target, from)
-                                        onMove(item, page)
-                                    }
-                                }
-                            drop != null && moved -> {
-                                if (!item.isFace) layout.set(item.key, drop)
-                                if (page != from || inFolder) onMove(item, page)
-                            }
-                        }
-                        layout.save()
-                        return moved
-                    }
-
-                    /** Waits out a long press without taking the touch, so a tap still reaches the tile; false if it ended or moved first. */
-                    suspend fun AwaitPointerEventScope.awaitLongPress(
-                        downId: PointerId,
-                        start: Offset,
-                    ) = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-                        while (true) {
-                            val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == downId } ?: return@withTimeoutOrNull
-                            if (!c.pressed || (c.position - start).getDistance() > viewConfiguration.touchSlop) return@withTimeoutOrNull
-                        }
-                    } == null
-
-                    /** Takes [downId]'s moves until it lifts, giving [onMove] each position while pressed; where it lifted, or null if it went away. */
-                    suspend fun AwaitPointerEventScope.trackUntilUp(
-                        downId: PointerId,
-                        onMove: (Offset) -> Unit = {},
-                    ): Offset? {
-                        while (true) {
-                            val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == downId } ?: return null
-                            c.consume()
-                            if (!c.pressed) return c.position
-                            onMove(c.position)
-                        }
-                    }
-
-                    awaitEachGesture {
-                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                        val start = down.position
-                        // A widget holds the home screen still: no page turn, no long press, no menu, and nothing of home's
-                        // taken, so the press goes on to the tile that wants it.
-                        if (lockedNow) return@awaitEachGesture
-                        val (slots, grids, sel) = current
-                        val shown = pagesAt(pager.currentPage, slots)
-                        val g = gridFor(shown, grids)
-                        val side = g.side(start)
-                        // The empty half beside a lone tile page is empty space.
-                        val page = shown.getOrElse(side) { shown[0] }
-                        val at = g.local(start, side)
-                        val placed = if (side < shown.size) placedOn(page, g) else emptyList()
-
-                        // An open folder takes every touch: a tap on an app opens it (the tile gets the tap),
-                        // a long-press lifts it to sort it in or drag it out, or let go where it was shows its bar, a tap on its name types a new one,
-                        // a tap outside closes the folder. Its panel is centered on the whole screen, even with two pages showing.
-                        val folderPage = shown.getOrNull(sideOf(arrange.folder, shown))
-                        val open = folderPage?.let { p -> itemsOn(p).firstOrNull { it.key == arrange.folder } as? Folder }
-                        if (open == null) arrange.folder = null
-                        if (open != null && folderPage != null) {
-                            val fg = FolderGeometry(size.width, g.height, g.cellW, g.cellH, g.gap, open.apps.size, this)
-                            val hit = open.apps.indices.firstOrNull { fg.app(it).has(start) }
-                            // With one of its apps selected, as on home: the bar's taps are its buttons', the app drags at once, and any other touch puts it down.
-                            if (open.apps.any { it.key == sel }) {
-                                if (arrange.bar?.has(start) == true) return@awaitEachGesture
-                                down.consume()
-                                if (hit != null && open.apps[hit].key == sel) {
-                                    arrange.holding = true
-                                    val moved =
-                                        try {
-                                            moveDrag(down.id, start, open.apps[hit], Cell(0, 0, 1, 1), folderPage, fg.app(hit), fg)
-                                        } finally {
-                                            arrange.holding = false
+                                target != null && grouping && moved -> onGroup(item as Shortcut, target)
+                                // Swapping trades places and sizes, like swapping windows in Hyprland; across pages it trades pages too.
+                                target != null ->
+                                    layout.cell(target.key)?.let { other ->
+                                        layout.set(target.key, cell)
+                                        layout.set(item.key, other)
+                                        if (page != from) {
+                                            onMove(target, from)
+                                            onMove(item, page)
                                         }
-                                    if (moved) onSelect(null)
-                                } else {
-                                    onSelect(null)
-                                    trackUntilUp(down.id)
+                                    }
+                                drop != null && moved -> {
+                                    if (!item.isFace) layout.set(item.key, drop)
+                                    if (page != from || inFolder) onMove(item, page)
+                                }
+                            }
+                            layout.save()
+                            return moved
+                        }
+
+                        /** Waits out a long press without taking the touch, so a tap still reaches the tile; false if it ended or moved first. */
+                        suspend fun AwaitPointerEventScope.awaitLongPress(
+                            downId: PointerId,
+                            start: Offset,
+                        ) = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                            while (true) {
+                                val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == downId } ?: return@withTimeoutOrNull
+                                if (!c.pressed || (c.position - start).getDistance() > viewConfiguration.touchSlop) return@withTimeoutOrNull
+                            }
+                        } == null
+
+                        /** Takes [downId]'s moves until it lifts, giving [onMove] each position while pressed; where it lifted, or null if it went away. */
+                        suspend fun AwaitPointerEventScope.trackUntilUp(
+                            downId: PointerId,
+                            onMove: (Offset) -> Unit = {},
+                        ): Offset? {
+                            while (true) {
+                                val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == downId } ?: return null
+                                c.consume()
+                                if (!c.pressed) return c.position
+                                onMove(c.position)
+                            }
+                        }
+
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            val start = down.position
+                            // A widget holds the home screen still: no page turn, no long press, no menu, and nothing of home's
+                            // taken, so the press goes on to the tile that wants it.
+                            if (lockedNow) return@awaitEachGesture
+                            val (slots, grids, sel) = current
+                            val shown = pagesAt(pager.currentPage, slots)
+                            val g = gridFor(shown, grids)
+                            val side = g.side(start)
+                            // The empty half beside a lone tile page is empty space.
+                            val page = shown.getOrElse(side) { shown[0] }
+                            val at = g.local(start, side)
+                            val placed = if (side < shown.size) placedOn(page, g) else emptyList()
+
+                            // An open folder takes every touch: a tap on an app opens it (the tile gets the tap),
+                            // a long-press lifts it to sort it in or drag it out, or let go where it was shows its bar, a tap on its name types a new one,
+                            // a tap outside closes the folder. Its panel is centered on the whole screen, even with two pages showing.
+                            val folderPage = shown.getOrNull(sideOf(arrange.folder, shown))
+                            val open = folderPage?.let { p -> itemsOn(p).firstOrNull { it.key == arrange.folder } as? Folder }
+                            if (open == null) arrange.folder = null
+                            if (open != null && folderPage != null) {
+                                val fg = FolderGeometry(size.width, g.height, g.cellW, g.cellH, g.gap, open.apps.size, this)
+                                val hit = open.apps.indices.firstOrNull { fg.app(it).has(start) }
+                                // With one of its apps selected, as on home: the bar's taps are its buttons', the app drags at once, and any other touch puts it down.
+                                if (open.apps.any { it.key == sel }) {
+                                    if (arrange.bar?.has(start) == true) return@awaitEachGesture
+                                    down.consume()
+                                    if (hit != null && open.apps[hit].key == sel) {
+                                        arrange.holding = true
+                                        val moved =
+                                            try {
+                                                moveDrag(down.id, start, open.apps[hit], Cell(0, 0, 1, 1), folderPage, fg.app(hit), fg)
+                                            } finally {
+                                                arrange.holding = false
+                                            }
+                                        if (moved) onSelect(null)
+                                    } else {
+                                        onSelect(null)
+                                        trackUntilUp(down.id)
+                                    }
+                                    return@awaitEachGesture
+                                }
+                                if (hit == null) {
+                                    down.consume()
+                                    if (!fg.panel.has(start)) arrange.folder = null
+                                    trackUntilUp(down.id)?.let { up -> arrange.naming = fg.header.has(start) && fg.header.has(up) }
+                                    return@awaitEachGesture
+                                }
+                                if (!awaitLongPress(down.id, start)) return@awaitEachGesture
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                arrange.holding = true
+                                val moved =
+                                    try {
+                                        moveDrag(down.id, start, open.apps[hit], Cell(0, 0, 1, 1), folderPage, fg.app(hit), fg)
+                                    } finally {
+                                        arrange.holding = false
+                                    }
+                                if (!moved) onSelect(open.apps[hit].key)
+                                return@awaitEachGesture
+                            }
+
+                            // Edit mode: every touch belongs to the editor, nothing reaches the tiles. The selected
+                            // tile may be on the other page of a pair; the editor works in its page's coordinates.
+                            val selSide = sideOf(sel, shown)
+                            val selectedItem = shown.getOrNull(selSide)?.let { p -> placedOn(p, g).firstOrNull { it.first.key == sel } }
+                            val selAt = g.local(start, selSide.coerceAtLeast(0))
+                            // Except the action bar: leave its taps unconsumed so its buttons get them.
+                            if (selectedItem != null && arrange.bar?.has(selAt) == true) return@awaitEachGesture
+                            if (selectedItem != null) {
+                                down.consume()
+                                val (item, cell) = selectedItem
+                                arrange.holding = true
+                                try {
+                                    val rect = g.rect(item, cell)
+                                    val edges = if (item.resizable) g.edges(edgesAt(rect, selAt, grab, sideGrab)) else Edges(false, false, false, false)
+                                    when {
+                                        edges.any -> {
+                                            val others = placed.filter { it.first.key != item.key }.map { it.second }
+                                            trackUntilUp(down.id) { position ->
+                                                val minW = item.minSize.first.coerceAtMost(g.cols)
+                                                val minH = item.minSize.second
+                                                val p = g.local(position, selSide)
+                                                val x0 = if (edges.left) g.colLine(p).coerceAtMost(cell.right - minW) else cell.x
+                                                val x1 = if (edges.right) g.colLine(p).coerceAtLeast(cell.x + minW) else cell.right
+                                                val y0 = if (edges.top) g.rowLine(p).coerceAtMost(cell.bottom - minH) else cell.y
+                                                val y1 = if (edges.bottom) g.rowLine(p).coerceAtLeast(cell.y + minH) else cell.bottom
+                                                val next = Cell(x0, y0, x1 - x0, y1 - y0)
+                                                // Growing into another tile is refused; the frame just stops there.
+                                                if (others.none { it.overlaps(next) }) layout.set(item.key, next)
+                                            }
+                                            layout.save()
+                                        }
+                                        rect.has(selAt) -> moveDrag(down.id, start, item, cell, shown[selSide], g.screen(rect, selSide))
+                                        else -> {
+                                            // Tap outside finishes editing; a drag outside does nothing.
+                                            onSelect(null)
+                                            trackUntilUp(down.id)
+                                        }
+                                    }
+                                } finally {
+                                    arrange.holding = false
                                 }
                                 return@awaitEachGesture
                             }
-                            if (hit == null) {
-                                down.consume()
-                                if (!fg.panel.has(start)) arrange.folder = null
-                                trackUntilUp(down.id)?.let { up -> arrange.naming = fg.header.has(start) && fg.header.has(up) }
+
+                            val hit = placed.lastOrNull { (i, c) -> g.rect(i, c).has(at) }
+                            // A face's long presses are its own nodes' (onLongPress), which it's not lifted by (it's
+                            // arranged in settings › pages). One that none of them takes opens the menu, as empty space does:
+                            // they take it as the press times out, so give them a moment to say so.
+                            if (hit?.first?.isFace == true) {
+                                if (!awaitLongPress(down.id, start)) return@awaitEachGesture
+                                val held = SystemClock.uptimeMillis()
+                                withTimeoutOrNull(CLAIM_MS) { while (true) awaitPointerEvent(PointerEventPass.Initial) }
+                                if (claims.at < held - viewConfiguration.longPressTimeoutMillis) {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onLongPressEmpty()
+                                }
                                 return@awaitEachGesture
                             }
                             if (!awaitLongPress(down.id, start)) return@awaitEachGesture
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            if (hit == null) {
+                                onLongPressEmpty()
+                                return@awaitEachGesture
+                            }
+                            // Lifted: select it, and let the same finger drag it without letting go.
+                            onSelect(hit.first.key)
                             arrange.holding = true
                             val moved =
                                 try {
-                                    moveDrag(down.id, start, open.apps[hit], Cell(0, 0, 1, 1), folderPage, fg.app(hit), fg)
+                                    moveDrag(down.id, start, hit.first, hit.second, page, g.screen(g.rect(hit.first, hit.second), side))
                                 } finally {
                                     arrange.holding = false
                                 }
-                            if (!moved) onSelect(open.apps[hit].key)
-                            return@awaitEachGesture
+                            // Like Android, a drag drops and finishes; a plain long-press stays in edit mode.
+                            if (moved) onSelect(null)
                         }
-
-                        // Edit mode: every touch belongs to the editor, nothing reaches the tiles. The selected
-                        // tile may be on the other page of a pair; the editor works in its page's coordinates.
-                        val selSide = sideOf(sel, shown)
-                        val selectedItem = shown.getOrNull(selSide)?.let { p -> placedOn(p, g).firstOrNull { it.first.key == sel } }
-                        val selAt = g.local(start, selSide.coerceAtLeast(0))
-                        // Except the action bar: leave its taps unconsumed so its buttons get them.
-                        if (selectedItem != null && arrange.bar?.has(selAt) == true) return@awaitEachGesture
-                        if (selectedItem != null) {
-                            down.consume()
-                            val (item, cell) = selectedItem
-                            arrange.holding = true
-                            try {
-                                val rect = g.rect(item, cell)
-                                val edges = if (item.resizable) g.edges(edgesAt(rect, selAt, grab, sideGrab)) else Edges(false, false, false, false)
-                                when {
-                                    edges.any -> {
-                                        val others = placed.filter { it.first.key != item.key }.map { it.second }
-                                        trackUntilUp(down.id) { position ->
-                                            val minW = item.minSize.first.coerceAtMost(g.cols)
-                                            val minH = item.minSize.second
-                                            val p = g.local(position, selSide)
-                                            val x0 = if (edges.left) g.colLine(p).coerceAtMost(cell.right - minW) else cell.x
-                                            val x1 = if (edges.right) g.colLine(p).coerceAtLeast(cell.x + minW) else cell.right
-                                            val y0 = if (edges.top) g.rowLine(p).coerceAtMost(cell.bottom - minH) else cell.y
-                                            val y1 = if (edges.bottom) g.rowLine(p).coerceAtLeast(cell.y + minH) else cell.bottom
-                                            val next = Cell(x0, y0, x1 - x0, y1 - y0)
-                                            // Growing into another tile is refused; the frame just stops there.
-                                            if (others.none { it.overlaps(next) }) layout.set(item.key, next)
-                                        }
-                                        layout.save()
+                    },
+            ) {
+                // A face's nodes say here when they take a long press, so the menu doesn't open for it too.
+                CompositionLocalProvider(LocalLongPressClaim provides claims) {
+                    // Two pages either side are made ahead: a swipe that starts bringing one in makes the page beyond it a neighbor,
+                    // and composing that one, a face's shaders drawn with it, held up the swipe's first frames. Their animated
+                    // widgets wait until some of the page shows.
+                    val homeCovered = LocalHomeCovered.current
+                    HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 2, key = { slots.getOrNull(it)?.first() ?: -it }, userScrollEnabled = !locked) { slot ->
+                        val shown = pagesAt(slot, slots)
+                        val g = gridFor(shown, grid to wide)
+                        val covered = remember(homeCovered, pager, slot) { { homeCovered() || pager.layoutInfo.visiblePagesInfo.none { it.index == slot } } }
+                        CompositionLocalProvider(LocalHomeCovered provides covered) {
+                            // Keys stay on the page showing: the first arrow on home went to the first page made, one of these.
+                            Row(Modifier.fillMaxSize().focusProperties { onEnter = { if (slot != pager.currentPage) cancelFocusChange() } }.focusGroup()) {
+                                for (page in shown) {
+                                    Box(Modifier.width(with(density) { g.width.toDp() }).fillMaxHeight()) {
+                                        TiledPage(page, itemsOn(page), layout, g, arrange, selected, tile, actionsIn, onNoRoom, feedIn, inviteIn, direction)
                                     }
-                                    rect.has(selAt) -> moveDrag(down.id, start, item, cell, shown[selSide], g.screen(rect, selSide))
-                                    else -> {
-                                        // Tap outside finishes editing; a drag outside does nothing.
-                                        onSelect(null)
-                                        trackUntilUp(down.id)
-                                    }
-                                }
-                            } finally {
-                                arrange.holding = false
-                            }
-                            return@awaitEachGesture
-                        }
-
-                        val hit = placed.lastOrNull { (i, c) -> g.rect(i, c).has(at) }
-                        // A face's long presses are its own nodes' (onLongPress), which it's not lifted by (it's
-                        // arranged in settings › pages). One that none of them takes opens the menu, as empty space does:
-                        // they take it as the press times out, so give them a moment to say so.
-                        if (hit?.first?.isFace == true) {
-                            if (!awaitLongPress(down.id, start)) return@awaitEachGesture
-                            val held = SystemClock.uptimeMillis()
-                            withTimeoutOrNull(CLAIM_MS) { while (true) awaitPointerEvent(PointerEventPass.Initial) }
-                            if (claims.at < held - viewConfiguration.longPressTimeoutMillis) {
-                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                onLongPressEmpty()
-                            }
-                            return@awaitEachGesture
-                        }
-                        if (!awaitLongPress(down.id, start)) return@awaitEachGesture
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (hit == null) {
-                            onLongPressEmpty()
-                            return@awaitEachGesture
-                        }
-                        // Lifted: select it, and let the same finger drag it without letting go.
-                        onSelect(hit.first.key)
-                        arrange.holding = true
-                        val moved =
-                            try {
-                                moveDrag(down.id, start, hit.first, hit.second, page, g.screen(g.rect(hit.first, hit.second), side))
-                            } finally {
-                                arrange.holding = false
-                            }
-                        // Like Android, a drag drops and finishes; a plain long-press stays in edit mode.
-                        if (moved) onSelect(null)
-                    }
-                },
-        ) {
-            // A face's nodes say here when they take a long press, so the menu doesn't open for it too.
-            CompositionLocalProvider(LocalLongPressClaim provides claims) {
-                // Two pages either side are made ahead: a swipe that starts bringing one in makes the page beyond it a neighbor,
-                // and composing that one, a face's shaders drawn with it, held up the swipe's first frames. Their animated
-                // widgets wait until some of the page shows.
-                val homeCovered = LocalHomeCovered.current
-                HorizontalPager(pager, Modifier.fillMaxSize(), beyondViewportPageCount = 2, key = { slots.getOrNull(it)?.first() ?: -it }, userScrollEnabled = !locked) { slot ->
-                    val shown = pagesAt(slot, slots)
-                    val g = gridFor(shown, grid to wide)
-                    val covered = remember(homeCovered, pager, slot) { { homeCovered() || pager.layoutInfo.visiblePagesInfo.none { it.index == slot } } }
-                    CompositionLocalProvider(LocalHomeCovered provides covered) {
-                        // Keys stay on the page showing: the first arrow on home went to the first page made, one of these.
-                        Row(Modifier.fillMaxSize().focusProperties { onEnter = { if (slot != pager.currentPage) cancelFocusChange() } }.focusGroup()) {
-                            for (page in shown) {
-                                Box(Modifier.width(with(density) { g.width.toDp() }).fillMaxHeight()) {
-                                    TiledPage(page, itemsOn(page), layout, g, arrange, selected, tile, actions, onNoRoom, feed, invite)
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // The open folder, over the page it's on.
-            val openFolder = arrange.folder?.let { key -> pagesAt(pager.currentPage, slots).firstNotNullOfOrNull { p -> itemsOn(p).firstOrNull { it.key == key } as? Folder } }
-            if (openFolder != null) {
-                val fg = FolderGeometry(width * per, grid.height, grid.cellW, grid.cellH, gap, openFolder.apps.size, density)
-                FolderPanel(
-                    openFolder,
-                    fg,
-                    tile,
-                    arrange.carry?.item?.key,
-                    selected = selected.takeIf { !arrange.holding },
-                    actions = actions,
-                    onBar = { arrange.bar = it },
-                    naming = arrange.naming,
-                    onName = { onRenameFolder(openFolder, it) },
-                    onNamed = { arrange.naming = false },
-                )
-            }
-
-            // The carried tile floats above the pager, so it stays put while pages turn, and above an open folder it's sorting.
-            arrange.carry?.let { carry ->
-                val r = grid.rect(carry.item, carry.cell)
-                androidx.compose.runtime.key(carry.item.key) {
-                    tile(
-                        carry.item,
-                        Modifier
-                            // The finger is read while placing, so following it doesn't recompose the pages.
-                            .offset {
-                                val at = arrange.finger - carry.grab
-                                IntOffset(at.x.roundToInt(), at.y.roundToInt())
-                            }
-                            .size(with(density) { r.width.toDp() }, with(density) { r.height.toDp() })
-                            .zIndex(5f)
-                            .graphicsLayer {
-                                scaleX = 0.96f
-                                scaleY = 0.96f
-                                alpha = 0.85f
-                            },
-                        true,
+                // The open folder, over the page it's on.
+                val openFolder = arrange.folder?.let { key -> pagesAt(pager.currentPage, slots).firstNotNullOfOrNull { p -> itemsOn(p).firstOrNull { it.key == key } as? Folder } }
+                if (openFolder != null) {
+                    val fg = FolderGeometry(width * per, grid.height, grid.cellW, grid.cellH, gap, openFolder.apps.size, density)
+                    FolderPanel(
+                        openFolder,
+                        fg,
+                        tile,
+                        arrange.carry?.item?.key,
+                        selected = selected.takeIf { !arrange.holding },
+                        actions = actionsIn,
+                        onBar = { arrange.bar = it },
+                        naming = arrange.naming,
+                        onName = { onRenameFolder(openFolder, it) },
+                        onNamed = { arrange.naming = false },
+                        direction = direction,
                     )
+                }
+
+                // The carried tile floats above the pager, so it stays put while pages turn, and above an open folder it's sorting.
+                arrange.carry?.let { carry ->
+                    val r = grid.rect(carry.item, carry.cell)
+                    androidx.compose.runtime.key(carry.item.key) {
+                        tile(
+                            carry.item,
+                            Modifier
+                                // The finger is read while placing, so following it doesn't recompose the pages.
+                                .absoluteOffset {
+                                    val at = arrange.finger - carry.grab
+                                    IntOffset(at.x.roundToInt(), at.y.roundToInt())
+                                }
+                                .size(with(density) { r.width.toDp() }, with(density) { r.height.toDp() })
+                                .zIndex(5f)
+                                .graphicsLayer {
+                                    scaleX = 0.96f
+                                    scaleY = 0.96f
+                                    alpha = 0.85f
+                                },
+                            true,
+                        )
+                    }
                 }
             }
         }
@@ -883,6 +898,8 @@ private fun TiledPage(
     onNoRoom: (HomeItem) -> Unit,
     feed: @Composable (Int) -> Unit,
     invite: @Composable () -> Unit,
+    /** The language's direction: the grid itself is laid out left to right. */
+    direction: LayoutDirection,
 ) {
     val density = LocalDensity.current
     val carried = arrange.carry?.item?.key
@@ -936,7 +953,7 @@ private fun TiledPage(
                 render(
                     item,
                     Modifier
-                        .offset { IntOffset(rect.left, rect.top) }
+                        .absoluteOffset { IntOffset(rect.left, rect.top) }
                         .size(with(density) { rect.width.toDp() }, with(density) { rect.height.toDp() }),
                     selected == item.key || arrange.swapWith == item.key,
                 )
@@ -980,7 +997,7 @@ private fun TiledPage(
             }
             if (!arrange.holding) {
                 // Above the tile, below the status bar, or below the tile when there's no room for it there: as tall as it turned out, since an
-                // app's shortcuts stack above its bar. Lined up with the tile's left edge, pulled in by however wide
+                // app's shortcuts stack above its bar. Lined up with the tile's left edge (its right in a right-to-left language), pulled in by however wide
                 // the bar turned out when that would run past the grid's edge, which keeps the gap tiles keep from the
                 // screen: a lone "remove" for an app at the edge stays next to it. A tile with room on neither side (one
                 // filling the page) gets it inside, centred below the top handle, where it covers no handle's grab zone;
@@ -990,9 +1007,12 @@ private fun TiledPage(
                 fun at(size: IntSize): IntOffset {
                     val above = r.top - size.height - barGap
                     val below = r.bottom + barGap
+                    // The right edge in a right-to-left language, where its first action is.
+                    val start = if (direction == LayoutDirection.Rtl) r.right - size.width else r.left
+                    val x = start.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left)
                     return when {
-                        above >= grid.pad.top -> IntOffset(r.left.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left), above)
-                        below + size.height <= grid.height - grid.pad.bottom + grid.gap -> IntOffset(r.left.coerceAtMost(pageWidth - grid.pad.right - size.width).coerceAtLeast(grid.pad.left), below)
+                        above >= grid.pad.top -> IntOffset(x, above)
+                        below + size.height <= grid.height - grid.pad.bottom + grid.gap -> IntOffset(x, below)
                         else -> IntOffset(r.center.x - size.width / 2, r.top + inset)
                     }
                 }

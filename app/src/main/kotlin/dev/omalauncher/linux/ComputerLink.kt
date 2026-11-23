@@ -952,7 +952,8 @@ class ComputerLink(
         /** Six digits from the key, as the plugin shows them: `printf %s "$key" | sha256sum`, its first 8 hex digits mod 10⁶. */
         fun code(key: String): String {
             val n = sha256Hex(key.toByteArray()).take(8).toLong(16) % 1_000_000
-            return "%03d %03d".format(n / 1000, n % 1000)
+            // The plugin's digits, in an Arabic launcher too, so the two codes can be compared at a glance.
+            return String.format(java.util.Locale.ROOT, "%03d %03d", n / 1000, n % 1000)
         }
 
         /** HMAC-SHA256 of [hostKey] keyed with [secret], in hex: `openssl dgst -sha256 -hmac <secret>` on the computer. */

@@ -12,7 +12,7 @@ when lists reorder), and `let x = ...` inside any node.
 | `Row` | `gap` (8), `align: top/center/bottom`, `justify`, `wrap: true`, `scroll: true` (as wide as its nodes, scrolling sideways when that's wider than its room, like the strip's apps; not with `wrap`, owl 24) |
 | `Flow` | a Row that wraps to new lines |
 | `Box` | stacks children on top of each other; `align: center/top/bottom/start/end/topStart/topEnd/bottomStart/bottomEnd` |
-| `Grid` | `columns` (2), `gap`, `lazy: true` (as Column's: scrolls, and builds the cells of a `for` right inside as they come into view, owl 11), `reverse` as Column's; children fill cells left to right |
+| `Grid` | `columns` (2), `gap`, `lazy: true` (as Column's: scrolls, and builds the cells of a `for` right inside as they come into view, owl 11), `reverse` as Column's; children fill cells left to right (right to left in Arabic) |
 | `Text` | `text`, `style: huge/title/body/small/muted/label`, `color`, `fontSize`, `bold`, `italic`, `font: mono/sans/serif/icon` (`icon` draws the Nerd Font weather glyphs U+E300–E3E3, plus 󰄬 U+F012C and 󰅖 U+F0156) or since owl 10 a font of the widget's own (see Fonts), `align: start/center/end`, `maxLines`, `minLines` (at least that many lines tall at any font size, so a row of labels keeps one height; a `height` in dp cuts text off when the phone's text is larger, owl 11); since owl 10 `fontWeight` (100 thin to 900 black; the font shows the nearest weight it has), `letterSpacing` (sp, negative to tighten) and `spans` (see Text in pieces) |
 | `Button` | `text`, `color`, `onTap` |
 | `Progress` | `value`, `max` (100), `color`, `track` |
@@ -31,7 +31,7 @@ when lists reorder), and `let x = ...` inside any node.
 Every node also takes:
 
 - `width height size` (dp), `fill: true/width/height`, `weight` (share of the
-  space left in a Row or Column), `padding` (`8`, `[h, v]` or `[l, t, r, b]`)
+  space left in a Row or Column), `padding` (`8`, `[h, v]` or `[l, t, r, b]`, with l and r swapped in Arabic, see Right to left)
 - `background` (a color, or since owl 10 a gradient, see Gradient backgrounds), `border` (dp), `borderColor`, `radius`, `clip: true`
 - `frost` (owl 10): frosted glass, the wallpaper behind the node blurred by that many dp; see Frosted glass
   (without `radius`, bordered elements follow the launcher's corner style: 0 for edge, 4 for soft, 8 for round;
@@ -106,6 +106,17 @@ sized, and widgets that declare an older owl keep that. In a Column a Text still
 Since owl 11 that goes for a Column in a Row or Flow too: without `width`, `weight` or `fill` it's as wide as its
 content, and its Texts as wide as their text, so a row of icon-over-label cells sits side by side. Give the cells
 `weight: 1` to share the row evenly; something in one with `fill: width` still stretches it to what the row has left.
+
+## Right to left
+
+With the launcher in a right-to-left language, Arabic for one, widgets lay out right to left, as Android's own apps
+do: a Row's first node is at the right, a Grid fills from the right, `align: start` and `end` are the right and the
+left, a padding's first number is the right side's, a Popup opens at the right edge of its node, and Slider and
+Progress run from the right. Each Text runs its own way: one with an Arabic or Hebrew letter right to left, anything
+else (numbers, paths, English) left to right, and a "-7°" in Arabic text keeps its sign. A Text with no letter or
+digit, a lone `[` beside a Slider, follows the layout, so brackets turn with the Row and still face what they hold. What's physical stays so: `x`,
+`y`, `dx` and `dy`, `offset` and everything on a Canvas, which isn't mirrored. Home's grid and pages stay as they were
+placed, and the terminal key bar keeps its keys left to right. Nothing needs a change for it; a layout that only works one way round can ask `lang() == "ar"`.
 
 ## Text in pieces
 

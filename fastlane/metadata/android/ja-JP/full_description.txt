@@ -29,7 +29,7 @@ VOICE
 物理キーボードを接続すると、Super+T でターミナル、Super+D でドロワーを開き、Super+1〜9 でページを切り替え、Super+W でウィンドウを閉じられます。
 
 言語
-English、Bahasa Indonesia、Español、Português、Deutsch、简体中文、Русский、日本語、Українська、Français、Türkçe、Italiano、Tiếng Việt。
+English、Bahasa Indonesia、Español、Português、Deutsch、简体中文、Русский、日本語、Українська、Français、Türkçe、Italiano、Tiếng Việt、العربية。
 
 プライバシー
 アカウント不要、広告なし、トラッキングなし。Omalauncher がインターネットに接続するのは、テーマ、ウィジェット、天気、そして（選んだ場合に）Linux とそのパッケージをダウンロードするときだけです。

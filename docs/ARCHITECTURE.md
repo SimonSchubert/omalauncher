@@ -249,6 +249,14 @@ they cover, in `owl/src/test` or `app/src/test`.
   ask for permissions.
 - **UI text**: `res/values/strings_<area>.xml` and the same key in each
   `values-*` folder.
+- **Right to left** (Arabic): the layout follows the language, as Android
+  mirrors it, but home's grid and pages stay left to right (`HomeGrid`) so
+  tiles stay where they were placed and dragging works in screen coordinates;
+  what's in a tile follows the language again. Landscape's rail stands on a
+  side of the screen (`SideRail`), not the language's start or end. Widget text takes its direction
+  from what it says (`ui/Bidi.kt`), and a widget's `offset`, its touches and its
+  Canvas are physical. A chevron that points forward goes through `Symbol`,
+  which turns it around.
 - **A message to users** (a contest, news): no app change. Edit
   `announcements.json` in the omarchy-widgets repo, published next to the
   store's catalog; settings shows it once in a dialog (`net/Announcements.kt`,

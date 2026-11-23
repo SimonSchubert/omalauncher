@@ -54,6 +54,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -76,6 +77,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
 import dev.omalauncher.apps.IconPack
 import dev.omalauncher.R
@@ -95,6 +97,7 @@ import dev.omalauncher.theme.Toml
 import dev.omalauncher.widgets.WidgetEngine
 import dev.omalauncher.widgets.editWidgetCommand
 import java.io.File
+import java.text.NumberFormat
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlinx.coroutines.Dispatchers
@@ -496,7 +499,9 @@ private fun TerminalSection(
     // In portrait, where columns run short; landscape has plenty.
     val metrics = LocalContext.current.resources.displayMetrics
     val columns = font.columns(minOf(metrics.widthPixels, metrics.heightPixels))
-    OptionHint(pluralStringResource(R.plurals.style_terminal_size, columns, TerminalFont.format(font.size).removeSuffix(".0"), columns), Modifier.padding(top = 2.dp))
+    // The size in the language's digits, as the columns are, so Arabic doesn't mix 17.5 with ٥٠.
+    val size = NumberFormat.getInstance().apply { maximumFractionDigits = 1 }.format(font.size)
+    OptionHint(pluralStringResource(R.plurals.style_terminal_size, columns, size, columns), Modifier.padding(top = 2.dp))
     Flag(R.string.style_keyboard_suggestions, R.string.style_on, R.string.style_off, style, Style.TERMINAL_SUGGESTIONS)
     OptionHint(stringResource(R.string.style_keyboard_suggestions_hint), Modifier.padding(bottom = 4.dp))
     TerminalPreview(font, launcherFont)
@@ -521,6 +526,9 @@ private fun TerminalPreview(
             fontSize = with(density) { font.emPx.toSp() },
             color = Palette.foreground,
             fontFeatureSettings = "liga 0, calt 0",
+            // A terminal's lines run left to right in any language, as foot draws them.
+            textDirection = TextDirection.Ltr,
+            textAlign = TextAlign.Left,
         )
     val measurer = rememberTextMeasurer()
     PreviewLabel()
@@ -529,6 +537,7 @@ private fun TerminalPreview(
             .fillMaxWidth()
             .frame(2.dp, Palette.border, Palette.background, radius = 12.dp)
             .padding(with(density) { font.padPx.toDp() }),
+        contentAlignment = AbsoluteAlignment.TopLeft,
     ) {
         val cell = remember(style) { measurer.measure("0".repeat(100), style).size.width / 100f }
         val columns = (constraints.maxWidth / cell).toInt().coerceAtLeast(1)

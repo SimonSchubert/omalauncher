@@ -29,7 +29,7 @@ PHÍM TẮT
 Với bàn phím vật lý: Super+T mở terminal, Super+D mở danh sách ứng dụng, Super+1 đến 9 chuyển trang và Super+W đóng cửa sổ.
 
 NGÔN NGỮ
-English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe, Italiano và Tiếng Việt.
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe, Italiano, Tiếng Việt và العربية.
 
 QUYỀN RIÊNG TƯ
 Không tài khoản, không quảng cáo, không theo dõi. Omalauncher chỉ kết nối internet để tải xuống chủ đề, tiện ích, thời tiết và, nếu bạn chọn, Linux cùng các gói của nó.

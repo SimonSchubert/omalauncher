@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets.render
 
+import dev.omalauncher.ui.typedIn
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -57,6 +58,8 @@ import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.num
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import kotlinx.coroutines.delay
 import kotlin.math.roundToLong
 import dev.omalauncher.widgets.lang.textOrNull
@@ -83,6 +86,8 @@ internal fun SliderNode(
     val color = p.color("color") { Palette.accent }
     val track = p.color("track") { Palette.surface }
     val onChange = p.el.handlers["onChange"]
+    // Right to left in Arabic, as Android's own sliders: the minimum at the right, and Left raises it.
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
     var held by remember { mutableStateOf<Double?>(null) }
     var touching by remember { mutableStateOf(false) }
@@ -99,7 +104,7 @@ internal fun SliderNode(
         x: Float,
         width: Int,
     ): Double {
-        val f = (x / width.coerceAtLeast(1)).coerceIn(0f, 1f)
+        val f = (x / width.coerceAtLeast(1)).coerceIn(0f, 1f).let { if (rtl) 1f - it else it }
         val v = min + f * (max - min)
         return if (step == null) v else (min + ((v - min) / step).roundToLong() * step).coerceIn(min, max)
     }
@@ -123,19 +128,19 @@ internal fun SliderNode(
                 } else {
                     Modifier.keyStepped(vertical = false) { by, fine ->
                         val from = held ?: value ?: min
-                        val to = (from + by * (step ?: ((max - min) / if (fine) 100 else 20))).coerceIn(min, max)
+                        val to = (from + (if (rtl) -by else by) * (step ?: ((max - min) / if (fine) 100 else 20))).coerceIn(min, max)
                         if (to == from) return@keyStepped false
                         held = to
                         send(to)
                         true
                     }
                 },
-            ).pointerInput(p.el, p.env, min, max, step) {
+            ).pointerInput(p.el, p.env, min, max, step, rtl) {
                 detectTapGestures { o ->
                     sent[0] = null
                     held = at(o.x, size.width).also(::send)
                 }
-            }.pointerInput(p.el, p.env, min, max, step, live) {
+            }.pointerInput(p.el, p.env, min, max, step, live, rtl) {
                 // Consumed, so dragging the thumb doesn't also turn the home screen's page.
                 detectHorizontalDragGestures(
                     onDragStart = { o ->
@@ -160,9 +165,9 @@ internal fun SliderNode(
                 val thumbH = minOf(size.height, 20.dp.toPx())
                 val cy = size.height / 2
                 drawRect(track(), Offset(0f, cy - line / 2), Size(size.width, line))
-                drawRect(color(), Offset(0f, cy - line / 2), Size(size.width * f, line))
+                drawRect(color(), Offset(if (rtl) size.width * (1 - f) else 0f, cy - line / 2), Size(size.width * f, line))
                 val r = CornerRadius(3.dp.toPx() * LauncherStyle.cornerScale)
-                drawRoundRect(color(), Offset((size.width - thumbW) * f, cy - thumbH / 2), Size(thumbW, thumbH), r)
+                drawRoundRect(color(), Offset((size.width - thumbW) * (if (rtl) 1 - f else f), cy - thumbH / 2), Size(thumbW, thumbH), r)
             },
     )
 }
@@ -274,7 +279,7 @@ internal fun InputNode(
         singleLine = !multiLine,
         maxLines = lines,
         onTextLayout = { layout = it },
-        textStyle = style.copy(color = color()),
+        textStyle = style.copy(color = color()).typedIn(LocalLayoutDirection.current),
         cursorBrush = SolidColor(Palette.accent),
         keyboardOptions =
             KeyboardOptions(

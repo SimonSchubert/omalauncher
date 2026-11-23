@@ -3,13 +3,13 @@ widget "today" {
   order: 1
   size: 3x3
   minSize: 2x2
-  meta { description: "The date and the weather where you are: a city you type, or the phone's location once you allow it, or else by IP. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.8"; license: "MIT"; category: "world"; owl: 18 }
+  meta { description: "The date and the weather where you are: a city you type, or the phone's location once you allow it, or else by IP. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.9"; license: "MIT"; category: "world"; owl: 18 }
 
   // What it says, in the phone's language where it has a set. wttr names the sky and the moon in English, and
   // its own Indonesian misses newer conditions, so other languages name them from wttr's codes.
   strings {
     en {
-      title: "weather"; loading: "weather…"; offline: "weather offline"; city: "city · empty = auto"; here: "use my location"
+      comma: ","; title: "weather"; loading: "weather…"; offline: "weather offline"; city: "city · empty = auto"; here: "use my location"
       feels: "feels"; humidity: "humidity"; rainToday: "rain today"; uv: "uv index"; pressure: "pressure"
       visibility: "visibility"; next24: "next 24 hours"; now: "now"; days: "3 days"; today: "today"
       sunrise: "sunrise"; sunset: "sunset"; moon: "moon"; kmh: "km/h"; yr: "open yr.no ↗"
@@ -419,6 +419,39 @@ widget "today" {
         "Last Quarter": "hạ huyền", "Waning Crescent": "lưỡi liềm cuối tháng"
       }, phase, lower(phase)) + " · sáng ${lit}%"
     }
+    ar {
+      comma: "،"; title: "الطقس"; loading: "الطقس…"; offline: "الطقس غير متصل"; city: "المدينة · فارغ = تلقائي"; here: "استخدم موقعي"
+      feels: "يبدو كأنه"; humidity: "الرطوبة"; rainToday: "أمطار اليوم"; uv: "مؤشر uv"; pressure: "الضغط"
+      visibility: "مدى الرؤية"; next24: "الساعات الـ 24 القادمة"; now: "الآن"; days: "3 أيام"; today: "اليوم"
+      sunrise: "الشروق"; sunset: "الغروب"; moon: "القمر"; kmh: "كم/س"; yr: "افتح yr.no ↖"
+      sky: (code, desc) => get({
+        "113": "صافٍ", "116": "غائم جزئيًا", "119": "غائم", "122": "ملبّد بالغيوم", "143": "ضباب خفيف",
+        "176": "أمطار متفرقة", "179": "ثلوج متفرقة", "182": "مطر ثلجي متفرق", "185": "رذاذ متجمد متفرق",
+        "200": "عواصف رعدية", "227": "ثلوج تذروها الرياح", "230": "عاصفة ثلجية", "248": "ضباب", "260": "ضباب متجمد",
+        "263": "رذاذ خفيف متفرق", "266": "رذاذ خفيف", "281": "رذاذ متجمد", "284": "رذاذ متجمد كثيف",
+        "293": "مطر خفيف متفرق", "296": "مطر خفيف", "299": "مطر معتدل أحيانًا", "302": "مطر معتدل",
+        "305": "مطر غزير أحيانًا", "308": "مطر غزير", "311": "مطر متجمد خفيف", "314": "مطر متجمد غزير",
+        "317": "مطر ثلجي خفيف", "320": "مطر ثلجي غزير", "323": "ثلوج خفيفة متفرقة", "326": "ثلوج خفيفة",
+        "329": "ثلوج معتدلة متفرقة", "332": "ثلوج معتدلة", "335": "ثلوج كثيفة متفرقة", "338": "ثلوج كثيفة",
+        "350": "حبيبات جليد", "353": "زخات مطر خفيفة", "356": "زخات مطر غزيرة", "359": "زخات مطر غزيرة جدًا",
+        "362": "زخات مطر ثلجي خفيفة", "365": "زخات مطر ثلجي غزيرة", "368": "زخات ثلج خفيفة",
+        "371": "زخات ثلج كثيفة", "374": "زخات حبيبات جليد خفيفة", "377": "زخات حبيبات جليد غزيرة",
+        "386": "مطر خفيف مع رعد", "389": "مطر غزير مع رعد", "392": "ثلوج خفيفة مع رعد",
+        "395": "ثلوج كثيفة مع رعد"
+      }, code, lower(trim(desc)))
+      // Eight points: the sixteen's in-between ones go to the nearer of north, east, south and west.
+      wind: dir => "رياح " + get({
+        "N": "شمالية", "NNE": "شمالية", "NE": "شمالية شرقية", "ENE": "شرقية", "E": "شرقية", "ESE": "شرقية",
+        "SE": "جنوبية شرقية", "SSE": "جنوبية", "S": "جنوبية", "SSW": "جنوبية", "SW": "جنوبية غربية", "WSW": "غربية",
+        "W": "غربية", "WNW": "غربية", "NW": "شمالية غربية", "NNW": "شمالية"
+      }, dir, lower(dir))
+      uvLevel: uv => uv >= 8 ? "مرتفع جدًا" : uv >= 6 ? "مرتفع" : uv >= 3 ? "متوسط" : "منخفض"
+      phase: (phase, lit) => get({
+        "New Moon": "محاق", "Waxing Crescent": "هلال متزايد", "First Quarter": "تربيع أول",
+        "Waxing Gibbous": "أحدب متزايد", "Full Moon": "بدر", "Waning Gibbous": "أحدب متناقص",
+        "Last Quarter": "تربيع أخير", "Waning Crescent": "هلال متناقص"
+      }, phase, lower(phase)) + " · مضاء ${lit}%"
+    }
   }
 
   source now = clock every 1m
@@ -443,6 +476,13 @@ widget "today" {
   let cur = wx.current_condition[0]
   let day = wx.weather[0]
   let area = wx.nearest_area[0]
+  // wttr names places in English only. The phone's own place gets its name in the phone's language from BigDataCloud,
+  // whose free lookup is for a device's own location: a typed city and the IP's guess keep wttr's names. A paused source
+  // keeps its last answer, so the place from the location is only used while the location is what's shown.
+  let ownPlace = city == "" && here.available == true
+  source named = http(ownPlace ? "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${fixed(here.lat, 2)}&longitude=${fixed(here.lon, 2)}&localityLanguage=${lang()}" : null) every 24h timeout 10s json
+  let placeName = (ownPlace && named.city != "" ? named.city : null) ?? area.areaName[0].value
+  let countryName = (ownPlace && named.countryName != "" ? named.countryName : null) ?? area.country[0].value
   let autoImperial = contains(["united states", "united states of america", "liberia", "myanmar", "burma"], lower(trim(area.country[0].value)))
   let imperial = unitChoice == "F" ? true : unitChoice == "C" ? false : autoImperial
   let unit = imperial ? "F" : "C"
@@ -465,6 +505,8 @@ widget "today" {
   // The three days' range, so their bars share one scale.
   let lowest = min((wx.weather ?? []).map(d => num(get(d, "mintemp" + unit))))
   let highest = max((wx.weather ?? []).map(d => num(get(d, "maxtemp" + unit))))
+  // In Arabic the rows above the drawings run right to left, and a Canvas doesn't: the drawings turn to match.
+  let rtl = lang() == "ar"
   let moonIcons = {
     "New Moon": "", "Waxing Crescent": "", "First Quarter": "", "Waxing Gibbous": "",
     "Full Moon": "", "Waning Gibbous": "", "Last Quarter": "", "Waning Crescent": ""
@@ -539,7 +581,7 @@ widget "today" {
           }
         }
       }
-      Text { text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1 }
+      Text { text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ${lower(placeName)}"; style: small; color: muted; maxLines: 1 }
       if !low {
         Spacer { weight: 1 }
         Spacer { height: 1; fill: width; background: alpha(muted, 0.25) }
@@ -621,7 +663,7 @@ widget "today" {
           }
         }
         Text {
-          text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}° · ${lower(area.areaName[0].value)}, ${lower(area.country[0].value)}"
+          text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}° · ${lower(placeName)}${str.comma} ${lower(countryName)}"
           style: small
           color: muted
         }
@@ -661,7 +703,7 @@ widget "today" {
             let lo = min(temps)
             let hi = max(temps)
             let ys = temps.map(t => 22 + (hi - t) / max(hi - lo, 1) * 26)
-            let xs = range(n).map(i => (i + 0.5) * width / n)
+            let xs = range(n).map(i => (rtl ? n - i - 0.5 : i + 0.5) * width / n)
             path(range(n).map(i => [xs[i], ys[i]]), stroke: accent, width: 2)
             for s, i in steps {
               circle(xs[i], ys[i], 3, fill: accent)
@@ -689,10 +731,10 @@ widget "today" {
               height: 6
               weight: 1
               let span = max(highest - lowest, 1)
-              let x0 = (lo - lowest) / span * width
-              let x1 = (hi - lowest) / span * width
+              let x0 = (rtl ? highest - hi : lo - lowest) / span * width
+              let x1 = (rtl ? highest - lo : hi - lowest) / span * width
               rect(0, 0, width, height, radius: 3, fill: alpha(muted, 0.2))
-              rect(x0, 0, max(x1 - x0, 6), height, radius: 3, fill: linear(0, 0, width, 0, [cyan, orange]))
+              rect(x0, 0, max(x1 - x0, 6), height, radius: 3, fill: linear(0, 0, width, 0, rtl ? [orange, cyan] : [cyan, orange]))
             }
             Text { text: "${hi}°"; style: small; width: 36; maxLines: 1 }
           }

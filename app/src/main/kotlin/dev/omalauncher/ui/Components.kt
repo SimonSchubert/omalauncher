@@ -67,6 +67,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
@@ -183,7 +185,7 @@ fun PanelSearchField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        textStyle = Mono.copy(fontSize = TextSize.Title),
+        textStyle = Mono.copy(fontSize = TextSize.Title).typedIn(LocalLayoutDirection.current),
         cursorBrush = SolidColor(Palette.accent),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, autoCorrectEnabled = autoCorrect),
         keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -298,7 +300,8 @@ private class BelowAnchor(
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ) = IntOffset(
-        (if (end) anchorBounds.right - popupContentSize.width else anchorBounds.left)
+        // Start and end are the layout's: the right edge is the start in a right-to-left one.
+        (if (end == (layoutDirection == LayoutDirection.Ltr)) anchorBounds.right - popupContentSize.width else anchorBounds.left)
             .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
         (anchorBounds.bottom + 8).coerceAtMost((windowSize.height - popupContentSize.height).coerceAtLeast(0)),
     )
@@ -370,7 +373,11 @@ fun Symbol(
     color: Color,
     modifier: Modifier = Modifier,
     fontSize: TextUnit = TextSize.Body,
-) = BasicText(glyph, modifier, style = Mono.copy(color = color, fontSize = fontSize, fontFamily = NerdSymbols))
+) {
+    // Forward points left in a right-to-left layout; turned around for back, it points right there.
+    val mirrored = glyph == Glyph.ChevronRight && LocalLayoutDirection.current == LayoutDirection.Rtl
+    BasicText(glyph, if (mirrored) modifier.scale(-1f, 1f) else modifier, style = Mono.copy(color = color, fontSize = fontSize, fontFamily = NerdSymbols))
+}
 
 /** A terminal-style `[ label ]` button. */
 @Composable

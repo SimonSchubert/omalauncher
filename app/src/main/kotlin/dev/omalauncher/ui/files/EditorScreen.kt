@@ -1,5 +1,10 @@
 package dev.omalauncher.ui.files
 
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.CompositionLocalProvider
 import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -295,50 +300,56 @@ private fun EditorBody(
                 }
             },
         ) {
-            Row(Modifier.weight(1f).fillMaxWidth()) {
-                Gutter(state, layout, scroll, Modifier.fillMaxHeight())
-                BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
-                    val viewport = maxWidth
-                    val hScroll = rememberScrollState()
-                    Box(
-                        Modifier
-                            .fillMaxHeight()
-                            .then(if (wrap) Modifier.fillMaxWidth() else Modifier.horizontalScroll(hScroll))
-                            .drawBehind {
-                                // The find match, marked even while the find field has the focus.
-                                val m = match ?: return@drawBehind
-                                val l = layout ?: return@drawBehind
-                                if (m.max > l.layoutInput.text.length) return@drawBehind
-                                translate(top = -scroll.value.toFloat()) {
-                                    drawPath(l.getPathForRange(m.min, m.max), Palette.accent.copy(alpha = 0.35f))
-                                }
-                            },
-                    ) {
-                        val prose = isProse(name)
-                        BasicTextField(
-                            state = state,
-                            modifier =
-                                Modifier
-                                    .fillMaxHeight()
-                                    .then(if (wrap) Modifier.fillMaxWidth() else Modifier.widthIn(min = viewport))
-                                    .focusRequester(editorFocus),
-                            textStyle = Mono.copy(fontSize = TextSize.Large),
-                            keyboardOptions =
-                                KeyboardOptions(
-                                    capitalization = if (prose) KeyboardCapitalization.Sentences else KeyboardCapitalization.None,
-                                    autoCorrectEnabled = prose,
-                                ),
-                            lineLimits = TextFieldLineLimits.MultiLine(),
-                            onTextLayout = { result -> layout = result() },
-                            cursorBrush = SolidColor(Palette.accent),
-                            scrollState = scroll,
-                        )
+            // A file reads left to right, the gutter at its left, in an Arabic launcher too; each line runs its own way.
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                    Gutter(state, layout, scroll, Modifier.fillMaxHeight())
+                    BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
+                        val viewport = maxWidth
+                        val hScroll = rememberScrollState()
+                        Box(
+                            Modifier
+                                .fillMaxHeight()
+                                .then(if (wrap) Modifier.fillMaxWidth() else Modifier.horizontalScroll(hScroll))
+                                .drawBehind {
+                                    // The find match, marked even while the find field has the focus.
+                                    val m = match ?: return@drawBehind
+                                    val l = layout ?: return@drawBehind
+                                    if (m.max > l.layoutInput.text.length) return@drawBehind
+                                    translate(top = -scroll.value.toFloat()) {
+                                        drawPath(l.getPathForRange(m.min, m.max), Palette.accent.copy(alpha = 0.35f))
+                                    }
+                                },
+                        ) {
+                            val prose = isProse(name)
+                            BasicTextField(
+                                state = state,
+                                modifier =
+                                    Modifier
+                                        .fillMaxHeight()
+                                        .then(if (wrap) Modifier.fillMaxWidth() else Modifier.widthIn(min = viewport))
+                                        .focusRequester(editorFocus),
+                                textStyle = Mono.copy(fontSize = TextSize.Large, textDirection = TextDirection.Content, textAlign = TextAlign.Start),
+                                keyboardOptions =
+                                    KeyboardOptions(
+                                        capitalization = if (prose) KeyboardCapitalization.Sentences else KeyboardCapitalization.None,
+                                        autoCorrectEnabled = prose,
+                                    ),
+                                lineLimits = TextFieldLineLimits.MultiLine(),
+                                onTextLayout = { result -> layout = result() },
+                                cursorBrush = SolidColor(Palette.accent),
+                                scrollState = scroll,
+                            )
+                        }
                     }
                 }
             }
         }
         if (extraKeysWanted()) {
-            EditorKeys(state, { layout }, indent, Modifier.padding(top = PanelGap)) { reveal(state.selection.end) }
+            // Left is left: the arrows keep their places in an Arabic launcher.
+            CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                EditorKeys(state, { layout }, indent, Modifier.padding(top = PanelGap)) { reveal(state.selection.end) }
+            }
         }
     }
 

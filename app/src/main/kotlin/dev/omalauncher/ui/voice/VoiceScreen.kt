@@ -1,5 +1,7 @@
 package dev.omalauncher.ui.voice
 
+import dev.omalauncher.ui.typedIn
+import androidx.compose.ui.platform.LocalLayoutDirection
 import android.Manifest
 import android.content.Intent
 import android.graphics.BitmapFactory
@@ -508,7 +510,7 @@ fun VoiceScreen(
                                 value = draft,
                                 onValueChange = { draft = it },
                                 maxLines = 5,
-                                textStyle = style,
+                                textStyle = style.typedIn(LocalLayoutDirection.current),
                                 cursorBrush = SolidColor(Palette.accent),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                 keyboardActions = KeyboardActions(onSend = { send() }),

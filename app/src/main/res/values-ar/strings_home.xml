@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_edit">تعديل</string>
+    <string name="home_edit_by_voice">تعديل بالصوت</string>
+    <string name="home_share">مشاركة</string>
+    <string name="home_remove">إزالة</string>
+
+    <string name="home_create_with">إنشاء باستخدام \u2068%1$s\u2069</string>
+    <string name="home_create_with_an_agent">إنشاء باستخدام وكيل</string>
+    <string name="home_browse_store">تصفّح المتجر</string>
+    <string name="home_create_widget">أداة</string>
+    <string name="home_create_app">تطبيق</string>
+    <string name="home_create_panel">لوحة</string>
+
+    <string name="home_face_invite_title">أداة بملء الشاشة خاصة بك</string>
+    <string name="home_face_invite_text">هذه الصفحة لك لتملأها بأداة بملء الشاشة: موجز أخبار، أو لوحة معلومات، أو صفحة بداية، أو لعبة. قل ما تريد وسيبنيه \u2068%1$s\u2069 هنا.</string>
+    <string name="home_face_invite_text_no_agent">هذه الصفحة لك لتملأها بأداة بملء الشاشة: موجز أخبار، أو لوحة معلومات، أو صفحة بداية، أو لعبة. قل ما تريد وسيبنيه وكيل هنا.</string>
+    <string name="home_widget_invite_title">مساحة للأدوات</string>
+    <string name="home_widget_invite_text">لا شيء في هذه الصفحة بعد. املأها بالأدوات: ساعة، الطقس، قائمة مهام، وكلاؤك أثناء العمل. قل ما تريد وسيبنيه \u2068%1$s\u2069.</string>
+    <string name="home_widget_invite_text_no_agent">لا شيء في هذه الصفحة بعد. املأها بالأدوات: ساعة، الطقس، قائمة مهام، وكلاؤك أثناء العمل. قل ما تريد وسيبنيه وكيل.</string>
+
+    <string name="home_drop_here">أفلِت هنا</string>
+    <string name="home_drop_face_only">لا يوضع هنا إلا أداة بملء الشاشة</string>
+    <string name="home_lock_locked">الشاشة مقفلة</string>
+    <string name="home_lock_unlock">فتح القفل</string>
+
+    <plurals name="home_file_problems">
+        <item quantity="zero">\u200F\u2068%1$s\u2069: لا مشكلات (%2$d)</item>
+        <item quantity="one">\u200F\u2068%1$s\u2069: مشكلة واحدة (%2$d)</item>
+        <item quantity="two">\u200F\u2068%1$s\u2069: مشكلتان (%2$d)</item>
+        <item quantity="few">\u200F\u2068%1$s\u2069: %2$d مشكلات</item>
+        <item quantity="many">\u200F\u2068%1$s\u2069: %2$d مشكلة</item>
+        <item quantity="other">\u200F\u2068%1$s\u2069: %2$d مشكلة</item>
+    </plurals>
+    <plurals name="home_file_problems_more">
+        <item quantity="zero">\u200F%1$d أخرى في errors.txt · اضغط للإخفاء</item>
+        <item quantity="one">\u200F%1$d أخرى في errors.txt · اضغط للإخفاء</item>
+        <item quantity="two">\u200F%1$d أخريان في errors.txt · اضغط للإخفاء</item>
+        <item quantity="few">\u200F%1$d أخرى في errors.txt · اضغط للإخفاء</item>
+        <item quantity="many">\u200F%1$d أخرى في errors.txt · اضغط للإخفاء</item>
+        <item quantity="other">\u200F%1$d أخرى في errors.txt · اضغط للإخفاء</item>
+    </plurals>
+    <string name="home_file_problems_hide">اضغط للإخفاء</string>
+
+    <string name="home_widget_needs">تحتاج إلى \u2068%1$s\u2069</string>
+    <string name="home_installing">جارٍ التثبيت…</string>
+    <string name="home_install">تثبيت</string>
+    <string name="home_retry">إعادة المحاولة</string>
+    <string name="home_fix_with_agent">إصلاح بوكيل</string>
+    <string name="home_widget_needs_linux">تحتاج إلى Linux</string>
+    <string name="home_widget_needs_linux_text">تشغّل أوامر في Arch Linux الاختياري</string>
+    <string name="home_widget_linux_stopped">\u200FLinux متوقف</string>
+    <string name="home_start_linux">تشغيل</string>
+
+    <string name="home_terminal_starting">جارٍ البدء…</string>
+    <string name="home_terminal_exited">انتهى · اضغط لإعادة التشغيل</string>
+
+    <string name="home_prompt_hint_agent">افتح تطبيقًا أو اسأل \u2068%1$s\u2069</string>
+    <string name="home_prompt_hint">افتح تطبيقًا</string>
+    <string name="home_prompt_hint_short">التطبيقات</string>
+
+    <string name="home_folder_named">مجلد \u2068%1$s\u2069</string>
+    <string name="home_app_has_notifications">\u200F\u2068%1$s\u2069، لديه إشعارات</string>
+    <string name="home_folder">مجلد</string>
+    <string name="home_folder_tap_to_name">اضغط للتسمية</string>
+
+    <string name="home_refresh">تحديث</string>
+    <string name="home_refreshing">جارٍ التحديث</string>
+    <string name="home_job_failed">فشل:</string>
+    <string name="home_job_whole_log">السجل كاملًا</string>
+    <string name="home_job_less">أقل</string>
+    <string name="home_job_copy">نسخ</string>
+    <string name="home_settings">الإعدادات</string>
+
+    <string name="home_linux_window">Linux</string>
+
+    <string name="home_news_close">إغلاق</string>
+    <string name="home_news_off">لا تعرض الأخبار مجددًا</string>
+    <string name="home_news_days">أيام</string>
+    <string name="home_news_hours">ساعات</string>
+    <string name="home_news_minutes">دقيقة</string>
+    <string name="home_news_seconds">ثانية</string>
+</resources>

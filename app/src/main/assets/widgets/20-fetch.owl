@@ -3,13 +3,14 @@ widget "fetch" {
   order: 2
   size: 3x3
   minSize: 2x2
-  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.11"; license: "MIT"; category: "system"; owl: 16 }
+  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.12"; license: "MIT"; category: "system"; owl: 16 }
 
   // What it says, in the phone's language where it has a set. Words fastfetch and Linux use as names (os, host,
-  // kernel, cpu, shell) stay as they are. Android's battery words come in English, so a set names them itself.
+  // kernel, cpu, shell) stay as they are, but for host in Arabic, whose sets would otherwise mix in an English word
+  // more than the rest. Android's battery words come in English, so a set names them itself.
   strings {
     en {
-      uptime: "uptime"; packages: "packages"; display: "display"; theme: "theme"; memory: "memory"; disk: "disk"
+      host: "host"; uptime: "uptime"; packages: "packages"; display: "display"; theme: "theme"; memory: "memory"; disk: "disk"
       battery: "battery"; apps: "apps"; byDefault: "default"; phone: "phone"; device: "device"; hardware: "hardware"; network: "network"
       launcher: "launcher"; security: "security"; build: "build"; locale: "locale"; cores: "cores"; storage: "storage"
       speed: "speed"; received: "received"; sent: "sent"; mobile: "mobile"; level: "level"; temperature: "temperature"
@@ -249,6 +250,25 @@ widget "fetch" {
         "failing": "sắp hỏng", "wireless": "không dây", "dock": "đế sạc"
       }, w, w)
     }
+    ar {
+      host: "الطراز"; uptime: "مدة التشغيل"; packages: "الحزم"; display: "الشاشة"; theme: "السمة"; memory: "الذاكرة"; disk: "القرص"
+      battery: "البطارية"; apps: "تطبيقات"; byDefault: "افتراضي"; phone: "الهاتف"; device: "الجهاز"; hardware: "العتاد"
+      network: "الشبكة"; launcher: "المشغّل"; security: "الأمان"; build: "الإصدار"; locale: "اللغة"; cores: "أنوية"
+      storage: "التخزين"; speed: "السرعة"; received: "المستلَم"; sent: "المرسَل"; mobile: "عبر الجوال"
+      level: "المستوى"; temperature: "الحرارة"; voltage: "الجهد"; health: "الحالة"; cycles: "الدورات"
+      technology: "التقنية"; version: "الإصدار"; explicit: "مثبّتة يدويًا"; upgraded: "آخر ترقية"; never: "أبدًا"
+      unknown: "غير معروف"; installLinux: "تثبيت linux"
+      notInstalled: "غير مثبّت. يضيف arch linux arm طرفية ووكلاء وpacman إلى المشغّل."
+      upTo: ghz => " · حتى ${ghz} GHz"
+      androidApps: n => "${n} تطبيق android"
+      appCount: n => "${n} تطبيق"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "يشحن", "plugged in": "موصول", "on battery": "على البطارية", "good": "جيدة",
+        "overheating": "ساخنة جدًا", "dead": "معطلة", "over voltage": "جهد زائد", "cold": "باردة",
+        "failing": "تتعطل", "wireless": "لاسلكي", "dock": "قاعدة"
+      }, w, w)
+    }
   }
 
   // The phone, from Android: works without Linux.
@@ -288,9 +308,11 @@ widget "fetch" {
   // A narrow tile (two columns on a phone) has room for a label and a number: no os, host or kernel,
   // uptime in its largest unit, and memory, disk and battery as percentages.
   let narrow = tileWidth != null && tileWidth < 170
-  // Japanese and Chinese labels come from a taller font than the mono one, and eleven lines of them run past
+  // Japanese, Chinese and Arabic labels come from a taller font than the mono one, and eleven lines of them run past
   // the bottom of a phone's 3x3 tile: shell or display gives way there.
-  let tall = (lang() == "ja" || lang() == "zh") && tileHeight != null && tileHeight < 215
+  let tall = (lang() == "ja" || lang() == "zh" || lang() == "ar") && tileHeight != null && tileHeight < 215
+  // Arabic lines are taller still: kernel gives way too.
+  let taller = tall && lang() == "ar"
 
   // Bytes a second over the last two reads; null until there are two, and after a reboot restarts the counters.
   state down = null
@@ -392,8 +414,10 @@ widget "fetch" {
         Line { key: "os"; value: linux ? lx.os : dev == null ? null : "Android ${dev.android}" }
       }
       if !low {
-        Line { key: "host"; value: dev == null ? null : "${dev.maker} ${dev.model}" }
-        Line { key: "kernel"; value: kernel }
+        Line { key: str.host; value: dev == null ? null : "${dev.maker} ${dev.model}" }
+        if !taller {
+          Line { key: "kernel"; value: kernel }
+        }
       }
       if !tiny {
         Line { key: str.uptime; value: sys.uptime == null ? null : fmtDuration(sys.uptime) }
@@ -437,7 +461,7 @@ widget "fetch" {
       }
 
       Heading { label: onAndroid ? str.phone : str.device }
-      Line { key: "host"; value: dev == null ? null : "${dev.maker} ${dev.model}${sys.codename == null ? "" : " (${sys.codename})"}"; size: 13; keyWidth: 110 }
+      Line { key: str.host; value: dev == null ? null : "${dev.maker} ${dev.model}${sys.codename == null ? "" : " (${sys.codename})"}"; size: 13; keyWidth: 110 }
       // Android's own facts: absent where the launcher is Linux.
       if dev.android != null {
         Line { key: "android"; value: "${dev.android} (sdk ${dev.sdk})"; size: 13; keyWidth: 110 }

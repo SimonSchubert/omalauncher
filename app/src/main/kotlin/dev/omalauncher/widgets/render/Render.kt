@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -107,7 +107,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
@@ -121,6 +120,10 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import dev.omalauncher.ui.Mono
+import dev.omalauncher.ui.layoutAlign
+import dev.omalauncher.ui.keepSigns
+import dev.omalauncher.ui.textDirectionOf
+import androidx.compose.ui.platform.LocalLayoutDirection
 import dev.omalauncher.ui.NerdSymbols
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
@@ -261,12 +264,15 @@ fun WidgetScreen(
     hidden: () -> Boolean = { false },
 ) = CompositionLocalProvider(LocalScreenHidden provides hidden) { ScreenNodes(inst, modifier, Modifier.fillMaxSize(), ripple = true) }
 
-/** Extra keys (`keybar "…" { }`): their nodes over the soft keyboard, as wide as there's room for and as tall as they are. */
+/**
+ * Extra keys (`keybar "…" { }`): their nodes over the soft keyboard, as wide as there's room for and as tall as they are.
+ * Left to right in an Arabic launcher too, like the keyboard under them: mirrored, ← sat right of →.
+ */
 @Composable
 fun WidgetKeybar(
     inst: WidgetInstance,
     modifier: Modifier = Modifier,
-) = ScreenNodes(inst, modifier, Modifier.fillMaxWidth(), ripple = false)
+) = CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) { ScreenNodes(inst, modifier, Modifier.fillMaxWidth(), ripple = false) }
 
 /**
  * The strip above home's prompt bar (`strip "…" { }`, owl 24): its nodes, as wide as home and as tall as they are, or
@@ -645,7 +651,8 @@ private fun Element(
                     }.padding(horizontal = 10.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                BasicText(p.observe("text")?.text().orEmpty(), style = WidgetMono, maxLines = 1, overflow = TextOverflow.Ellipsis, color = ColorProducer { color() })
+                val label = keepSigns(AnnotatedString(p.observe("text")?.text().orEmpty()))
+                BasicText(label, style = WidgetMono.copy(textDirection = textDirectionOf(label)), maxLines = 1, overflow = TextOverflow.Ellipsis, color = ColorProducer { color() })
             }
         }
         "Progress" -> {
@@ -657,7 +664,8 @@ private fun Element(
                 mod.then(if (sized) Modifier else Modifier.fillMaxWidth().height(8.dp)).drawBehind {
                     drawRect(track())
                     val f = (value() / max().coerceAtLeast(1e-6f)).coerceIn(0f, 1f)
-                    drawRect(color(), size = Size(size.width * f, size.height))
+                    // From the right in a right-to-left language, as Android's own bars fill.
+                    drawRect(color(), Offset(if (layoutDirection == LayoutDirection.Rtl) size.width * (1 - f) else 0f, 0f), Size(size.width * f, size.height))
                 },
             )
         }
@@ -902,8 +910,10 @@ private fun common(
     p.observe("height")?.num()?.let { m = m.height(it.coerceAtMost(MAX_DP).dp) }
     if (p.has("offset")) {
         val offset = p.offset(held)
+        // In dp on screen, as the finger's x and dx are: not mirrored in a right-to-left language, or a row that
+        // follows the finger with offset: [dragX, 0] went the other way.
         m =
-            m.offset {
+            m.absoluteOffset {
                 val o = offset()
                 IntOffset((o.x * density).toInt(), (o.y * density).toInt())
             }
@@ -1300,6 +1310,8 @@ private fun TextNode(
         }
     val defaultColor: () -> Color = if (style == "muted" || style == "label") ({ Palette.muted }) else ({ Palette.foreground })
     val color = p.color("color", defaultColor)
+    val pieces = p.observe("spans")
+    val text = keepSigns(if (pieces != null) spans(pieces, p.inst) else AnnotatedString(p.observe("text")?.text().orEmpty()))
     val textStyle =
         TextStyle(
             fontFamily = fontFamily(p.observe("font"), p.inst),
@@ -1307,18 +1319,14 @@ private fun TextNode(
             fontWeight = weight(p.observe("fontWeight")) ?: if (p.observe("bold")?.truthy == true) FontWeight.Bold else null,
             letterSpacing = textUnit(p.observe("letterSpacing")) ?: androidx.compose.ui.unit.TextUnit.Unspecified,
             fontStyle = if (p.observe("italic")?.truthy == true) FontStyle.Italic else null,
-            textAlign =
-                when (p.observe("align")?.toString()) {
-                    "center" -> TextAlign.Center
-                    "end" -> TextAlign.End
-                    else -> TextAlign.Start
-                },
+            // Start and end are the layout's, right in an Arabic one; the text runs its own way within that.
+            textAlign = layoutAlign(p.observe("align")?.toString(), LocalLayoutDirection.current),
+            textDirection = textDirectionOf(text),
         )
-    val pieces = p.observe("spans")
     // Big text stays on one line in narrow tiles instead of breaking mid-word.
     val maxLines = p.observe("maxLines")?.num()?.toInt()?.coerceAtLeast(1) ?: if (style == "huge" || style == "title") 1 else Int.MAX_VALUE
     BasicText(
-        if (pieces != null) spans(pieces, p.inst) else AnnotatedString(p.observe("text")?.text().orEmpty()),
+        text,
         if (p.has("width") || p.has("weight") || p.has("fill") || hug) mod else mod.fillMaxWidth(),
         style = textStyle,
         maxLines = maxLines,
@@ -1403,8 +1411,10 @@ private class NextToAnchor(
         val up = anchorBounds.top - h
         val down = anchorBounds.bottom
         val y = if (above) (if (up >= 0 || down + h > windowSize.height) up else down) else (if (down + h <= windowSize.height || up < 0) down else up)
+        // At the node's start: its right edge in a right-to-left layout.
+        val x = if (layoutDirection == LayoutDirection.Rtl) anchorBounds.right - popupContentSize.width else anchorBounds.left
         return IntOffset(
-            anchorBounds.left.coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
+            x.coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
             y.coerceAtMost(windowSize.height - h).coerceAtLeast(0),
         )
     }

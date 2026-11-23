@@ -7,7 +7,8 @@ tab, ctrl, alt, the arrows and the rest a phone keyboard lacks. It's the file `k
 it's yours to change: different keys, more rows, a key that types a command. `.stock-keybar.owl` is the bar as this
 launcher ships it, which it keeps that way; it shows while `keybar.owl` is gone or doesn't compile (home's banner says
 so), and comparing the two shows what changed in a newer launcher. The keys only show over a docked keyboard: a
-hardware keyboard has these keys already.
+hardware keyboard has these keys already. With the launcher in Arabic the bar still lays out left to right, like the
+keyboard under it.
 
 ```owl
 keybar "my keys" {

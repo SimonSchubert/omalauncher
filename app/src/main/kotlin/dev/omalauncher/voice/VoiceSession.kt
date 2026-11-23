@@ -1120,9 +1120,13 @@ class VoiceSession(
                     "ja|klar|si|sí|vale|claro|oui|ouais|d'accord|d’accord|vas-y|vas y|bien sûr|sim|pode|ya|iya|boleh|oke|да|конечно|давай|хорошо|ладно|можно|" +
                     "звісно|гаразд|добре|можна|evet|tamam|tamamdır|olur|tabii|tabi|elbette|onayla|onaylıyorum|izin ver|devam et|sì|certo|certamente|va bene|d'accordo|d’accordo|vai pure|procedi|fallo|consenti|autorizza|" +
                     // Vietnamese; capitals listed where speech-to-text may start with one (no UNICODE_CASE).
-                    "vâng|ừ|Ừ|ừm|Ừm|dạ được|đồng ý|Đồng ý|cho phép|làm đi|tiếp tục|được rồi|Được rồi|chắc chắn rồi)(?![\\p{L}\\p{N}])" +
+                    "vâng|ừ|Ừ|ừm|Ừm|dạ được|đồng ý|Đồng ý|cho phép|làm đi|tiếp tục|được rồi|Được rồi|chắc chắn rồi|" +
+                    // Arabic, with and without the tanween speech-to-text may write (حسنًا, حسنا).
+                    "نعم|أجل|اجل|موافق|حسنًا|حسناً|حسنا|تمام|أكيد|اكيد|بالتأكيد|بالتاكيد|ماشي|أوكي|اوكي|اسمح|اسمح له|افعلها|افعل ذلك|نفذ|نفّذ|تابع|استمر|يلا)(?![\\p{L}\\p{N}])" +
                     // Vietnamese yes, but only alone: "có thể…" (can …) and "được…" start other sentences.
                     "|(?:có|Có|được|Được|dạ|Dạ)(?=$EDGE$)" +
+                    // Arabic "well", but only alone: "طيب، …" starts other sentences.
+                    "|طيب(?=$EDGE$)" +
                     // Ukrainian yes, but only alone: a Russian sentence often starts with it ("so, …").
                     "|так(?=$EDGE$)" +
                     "|是|好|可以|行|对|嗯|はい|ええ|うん|いいよ|どうぞ|お願い)",
@@ -1136,6 +1140,7 @@ class VoiceSession(
                     "no grazie|annulla|lascia perdere|lascia stare|non farlo|fermati|assolutamente no|" +
                     "hayır|hayır teşekkürler|yok|olmaz|istemiyorum|İstemiyorum|gerek yok|iptal|iptal et|İptal|İptal et|dur|vazgeç|boş ver|yapma|" +
                     "không|không cần|không được|không, cảm ơn|thôi|thôi khỏi|khỏi|hủy|hủy bỏ|đừng|Đừng|đừng làm|Đừng làm|dừng lại|bỏ qua|" +
+                    "لا|لا شكرًا|لا شكرا|لا شكراً|كلا|لا تفعل|لا تفعلها|لا داعي|ألغ|الغ|إلغاء|الغاء|ألغِ|توقف|قف|ارفض|انس الأمر|انسى الأمر|" +
                     "nggak|gak|enggak|нет|не надо|не нужно|стоп|отмена|ні|не треба|скасуй|" +
                     "不要|不用|不行|不|别|算了|いいえ|いや|だめ|ダメ|やめて|キャンセル)$EDGE$",
                 RegexOption.IGNORE_CASE,
@@ -1147,9 +1152,9 @@ class VoiceSession(
          */
         internal val ALWAYS =
             Regex(
-                "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|ja|si|sí|sì|certo|oui|sim|ya|iya|да|так|evet|tamam|có|Có|vâng|ừ|Ừ|được|Được)$EDGE|(?:是|好|はい)$EDGE)?" +
-                    "(?:allow always|always|immer|siempre|toujours|sempre|selalu|всегда|завжди|总是|始终|一直|永远|いつも|常に|ずっと|her zaman|hep|daima|consenti sempre|luôn luôn|luôn cho phép|cho phép luôn|luôn)" +
-                    "(?:$EDGE(?:allow it|allow|erlauben|autoriser|izin ver|consenti|autorizza|cho phép|允许|許可))?$EDGE$",
+                "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|ja|si|sí|sì|certo|oui|sim|ya|iya|да|так|evet|tamam|có|Có|vâng|ừ|Ừ|được|Được|نعم|أجل|حسنًا|حسنا)$EDGE|(?:是|好|はい)$EDGE)?" +
+                    "(?:allow always|always|immer|siempre|toujours|sempre|selalu|всегда|завжди|总是|始终|一直|永远|いつも|常に|ずっと|her zaman|hep|daima|consenti sempre|luôn luôn|luôn cho phép|cho phép luôn|luôn|اسمح دائمًا|اسمح دائماً|اسمح دائما|دائمًا|دائماً|دائما|على طول)" +
+                    "(?:$EDGE(?:allow it|allow|erlauben|autoriser|izin ver|consenti|autorizza|cho phép|اسمح|允许|許可))?$EDGE$",
                 RegexOption.IGNORE_CASE,
             )
 

@@ -68,7 +68,11 @@ change done.
 - **UI text goes in `res/values/strings_<area>.xml`**, with a translation in
   every `values-*` folder (de, es, in, ja, pt, ru, zh). `HardcodedTextTest` fails on
   literal text in UI calls. German is lower case wherever the English is, and
-  casual (du). Agent prompts, owl errors, logs and the stock `.owl` files stay
+  casual (du). An Arabic string that starts with a Latin word or a placeholder
+  starts with `‏`, or Android lays it out left to right ("linux" first
+  read last), and its `%s` placeholders sit in `⁨…⁩`, so a name
+  like `.bashrc` keeps its dot where it was; a path or URL built around one sits
+  whole in `⁦…⁩` (`⁦%1$s/Download⁩`), or its slashes trade places. Agent prompts, owl errors, logs and the stock `.owl` files stay
   English.
 - **Don't enable `generateLocaleConfig`.** With a locale config, changing the
   app language in Android Settings crashes Settings for a launcher.

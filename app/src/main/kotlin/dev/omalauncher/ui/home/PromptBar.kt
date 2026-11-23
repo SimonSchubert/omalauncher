@@ -74,6 +74,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
+import dev.omalauncher.ui.typedIn
 import androidx.compose.ui.window.PopupPositionProvider
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
@@ -306,7 +308,7 @@ internal fun PromptBar(
                     },
                     readOnly = listening,
                     maxLines = 5,
-                    textStyle = Mono.copy(fontSize = TextSize.Item, color = if (listening) Palette.accent else Palette.foreground),
+                    textStyle = Mono.copy(fontSize = TextSize.Item, color = if (listening) Palette.accent else Palette.foreground).typedIn(LocalLayoutDirection.current),
                     cursorBrush = SolidColor(Palette.accent),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     keyboardActions = KeyboardActions(onSend = { submit() }),
@@ -582,7 +584,9 @@ private class AboveAnchor(
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ) = IntOffset(
-        anchorBounds.left.coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
+        (if (layoutDirection == LayoutDirection.Rtl) anchorBounds.right - popupContentSize.width else anchorBounds.left)
+            .coerceAtMost(windowSize.width - popupContentSize.width)
+            .coerceAtLeast(0),
         (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0),
     )
 }

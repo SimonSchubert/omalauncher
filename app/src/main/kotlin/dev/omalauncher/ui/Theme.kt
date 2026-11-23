@@ -1,5 +1,10 @@
 package dev.omalauncher.ui
 
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.style.TextAlign
+import java.util.Locale
+import android.view.View
+import android.text.TextUtils
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
@@ -259,17 +264,31 @@ fun Modifier.tile(focused: Boolean = false): Modifier =
         Palette.glass,
     )
 
-/** The launcher's text style in the theme's foreground color and the user's font. */
+/**
+ * The launcher's text style in the theme's foreground color and the user's font. In a right-to-left language each text
+ * runs the way its first letter does, at the right as Android's own text views: Compose gave all of it the layout's
+ * direction, so a package's English description ended "fast!" with the "!" first, and ".bashrc" read "bashrc.".
+ */
 val Mono: TextStyle
     get() {
         val palette = Palette.current
         val font = LauncherStyle.font
-        monoCache?.let { if (it.first === palette && it.second === font) return it.third }
-        return palette.mono.copy(fontFamily = font).also { monoCache = Triple(palette, font, it) }
+        val locale = Locale.getDefault()
+        monoCache?.let { if (it.palette === palette && it.font === font && it.locale === locale) return it.style }
+        val rtl = TextUtils.getLayoutDirectionFromLocale(locale) == View.LAYOUT_DIRECTION_RTL
+        val style = palette.mono.copy(fontFamily = font).let { if (rtl) it.copy(textDirection = TextDirection.Content, textAlign = TextAlign.Right) else it }
+        return style.also { monoCache = MonoCache(palette, font, locale, it) }
     }
 
-/** [Mono] for the last palette and font, as it's read for every piece of text. */
-private var monoCache: Triple<ThemePalette, FontFamily, TextStyle>? = null
+/** [Mono] for the last palette, font and language, as it's read for every piece of text. */
+private class MonoCache(
+    val palette: ThemePalette,
+    val font: FontFamily,
+    val locale: Locale,
+    val style: TextStyle,
+)
+
+private var monoCache: MonoCache? = null
 
 /**
  * The launcher's text sizes. Nothing is smaller than [Small], which is still

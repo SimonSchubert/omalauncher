@@ -1,6 +1,7 @@
 package dev.omalauncher.linux
 
 import java.io.File
+import java.util.Locale
 
 data class LinuxApp(
     val name: String,
@@ -12,6 +13,8 @@ data class LinuxApp(
     val wmClass: String?,
     /** Icon= value: a theme icon name or an absolute guest path. */
     val icon: String? = null,
+    /** The entry's untranslated Name= where [name] is translated, so search still finds "Files" as الملفات. */
+    val alias: String? = null,
 )
 
 /** Whether a window with Wayland [appId] belongs to this app: by desktop id, StartupWMClass, or reverse-DNS tail. */
@@ -38,7 +41,10 @@ fun loadLinuxApps(proot: Proot): List<LinuxApp> {
         .sortedBy { it.name.lowercase() }
 }
 
-private fun parseDesktopEntry(file: File): LinuxApp? {
+internal fun parseDesktopEntry(
+    file: File,
+    locale: Locale = Locale.getDefault(),
+): LinuxApp? {
     var inEntry = false
     val fields = mutableMapOf<String, String>()
     file.forEachLine { raw ->
@@ -52,9 +58,20 @@ private fun parseDesktopEntry(file: File): LinuxApp? {
     }
     if (fields["Type"] != "Application") return null
     if (fields["NoDisplay"] == "true" || fields["Hidden"] == "true") return null
-    val name = fields["Name"] ?: return null
+    val plain = fields["Name"] ?: return null
+    val name = fields.localized("Name", locale) ?: plain
     val exec = fields["Exec"]?.replace(FIELD_CODE, "")?.trim() ?: return null
-    return LinuxApp(name, exec, fields["Terminal"] == "true", file.nameWithoutExtension, fields["StartupWMClass"], fields["Icon"])
+    return LinuxApp(name, exec, fields["Terminal"] == "true", file.nameWithoutExtension, fields["StartupWMClass"], fields["Icon"], plain.takeIf { it != name })
+}
+
+/** [key] in [locale]'s language, as XDG picks it: Name[ar_JO], then Name[ar]; null where the entry has neither. */
+private fun Map<String, String>.localized(
+    key: String,
+    locale: Locale,
+): String? {
+    // The tag's language, not Locale.language: Android still says "in" for Indonesian, and desktop entries "id".
+    val language = locale.toLanguageTag().substringBefore('-')
+    return listOf("$key[${language}_${locale.country}]", "$key[$language]").firstNotNullOfOrNull { this[it]?.takeIf(String::isNotBlank) }
 }
 
 private val ICON_SIZES = listOf("256x256", "192x192", "128x128", "96x96", "72x72", "64x64", "48x48")

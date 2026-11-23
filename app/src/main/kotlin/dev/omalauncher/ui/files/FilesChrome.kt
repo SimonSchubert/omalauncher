@@ -1,5 +1,6 @@
 package dev.omalauncher.ui.files
 
+import dev.omalauncher.ui.textDirectionOf
 import android.text.format.Formatter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -83,7 +84,7 @@ internal fun Breadcrumbs(
             BasicText(
                 label,
                 Modifier.clip(LauncherStyle.shape(8.dp)).clickable(enabled = !last) { onNavigate(target) }.padding(horizontal = 6.dp, vertical = 6.dp),
-                style = Mono.copy(color = if (last) Palette.accent else Palette.muted),
+                style = Mono.copy(color = if (last) Palette.accent else Palette.muted, textDirection = textDirectionOf(label)),
             )
         }
     }
@@ -157,9 +158,11 @@ internal fun FileRow(
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
+            val name = entry.name + if (entry.isLink) " ↗" else ""
             BasicText(
-                entry.name + if (entry.isLink) " ↗" else "",
-                style = Mono.copy(fontSize = TextSize.Item),
+                name,
+                // A name runs its own way: in Arabic, .config read config. without it.
+                style = Mono.copy(fontSize = TextSize.Item, textDirection = textDirectionOf(name)),
                 maxLines = 1,
                 overflow = TextOverflow.MiddleEllipsis,
             )

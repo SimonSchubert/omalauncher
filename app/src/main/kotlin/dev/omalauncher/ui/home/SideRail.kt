@@ -30,6 +30,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.focus.FocusProperties
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -50,6 +54,7 @@ import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.TextSize
+import dev.omalauncher.ui.hasRtl
 import dev.omalauncher.ui.tile
 
 /** Where landscape home keeps the recent apps strip and the bar: the side portrait's bottom turned to. */
@@ -227,7 +232,8 @@ internal fun SideRail(
 ) {
     Row(
         modifier.fillMaxHeight().padding(vertical = EdgeGap),
-        horizontalArrangement = if (side == HomeSide.Left) Arrangement.Start else Arrangement.End,
+        // Absolute: the side is the screen's, so a right-to-left language doesn't move the rail onto the grid.
+        horizontalArrangement = if (side == HomeSide.Left) Arrangement.Absolute.Left else Arrangement.Absolute.Right,
     ) {
         // Outward from the grid, like portrait from the grid down: the strip, then the bar. Keys come out of the grid
         // to the first of them there is.
@@ -295,15 +301,23 @@ private fun PromptRail(
             val line = with(LocalDensity.current) { style.fontSize.toDp() } * 1.3f
             // Less the prompt sign and the cursor.
             val room = (maxHeight / line).toInt() - 2
-            val hint = hints.firstOrNull { it.length <= room }.orEmpty()
+            val measurer = rememberTextMeasurer()
+            val roomPx = with(LocalDensity.current) { (maxHeight - line * 2).roundToPx() }
+            val hint = hints.firstOrNull { if (hasRtl(it)) measurer.measure(it, style).size.width <= roomPx else it.length <= room }.orEmpty()
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.height(line), contentAlignment = Alignment.Center) {
-                    BasicText("❯", Modifier.rotate(90f), style = style.copy(color = Palette.accent))
+                    // Left to right, so right-to-left text doesn't mirror it into pointing up, away from the prompt.
+                    BasicText("❯", Modifier.rotate(90f), style = style.copy(color = Palette.accent, textDirection = TextDirection.Ltr))
                 }
-                for (c in hint) {
-                    // A space is half a line: enough to part the words.
-                    Box(Modifier.height(if (c == ' ') line / 2 else line), contentAlignment = Alignment.Center) {
-                        if (c != ' ') BasicText(c.toString(), style = style)
+                if (hasRtl(hint)) {
+                    // Arabic letters join, so the hint lies along the rail as words rather than one letter a line.
+                    BasicText(hint, Modifier.alongRail(), style = style, maxLines = 1)
+                } else {
+                    for (c in hint) {
+                        // A space is half a line: enough to part the words.
+                        Box(Modifier.height(if (c == ' ') line / 2 else line), contentAlignment = Alignment.Center) {
+                            if (c != ' ') BasicText(c.toString(), style = style)
+                        }
                     }
                 }
                 Box(Modifier.padding(top = 2.dp).size(10.dp, line * 0.8f).background(Palette.accent))
@@ -320,3 +334,12 @@ private fun PromptRail(
         ) { if (opensVoice) VoiceIcon(Palette.foreground) else MicIcon(Palette.foreground) }
     }
 }
+
+/** Lays text on its side with its right end at the top, so right-to-left text reads down the rail. */
+private fun Modifier.alongRail() =
+    layout { measurable, constraints ->
+        val text = measurable.measure(Constraints(maxWidth = constraints.maxHeight))
+        layout(text.height, text.width) {
+            text.placeWithLayer((text.height - text.width) / 2, (text.width - text.height) / 2) { rotationZ = -90f }
+        }
+    }

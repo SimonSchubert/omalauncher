@@ -1,5 +1,7 @@
 package dev.omalauncher.ui.home
 
+import dev.omalauncher.ui.typedIn
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.key
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.heightIn
@@ -82,7 +84,7 @@ internal sealed interface AppHit {
 
     /**
      * Another name search matches: a work app's own name with "work" added, so "work" or "whatsapp work"
-     * finds it; a clone's with "clone".
+     * finds it; a clone's with "clone"; a Linux app's untranslated name.
      */
     val alias: String? get() = null
 
@@ -97,6 +99,7 @@ internal sealed interface AppHit {
     ) : AppHit {
         override val key get() = "l:" + app.id
         override val label get() = app.name
+        override val alias get() = app.alias
     }
 
     data class Android(
@@ -428,7 +431,7 @@ internal fun SearchField(
         value = query,
         onValueChange = onChange,
         singleLine = true,
-        textStyle = style,
+        textStyle = style.typedIn(LocalLayoutDirection.current),
         cursorBrush = SolidColor(Palette.accent),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
         keyboardActions = KeyboardActions(onGo = { onGo() }),

@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +53,8 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.ui.keepSigns
+import dev.omalauncher.ui.textDirectionOf
 import dev.omalauncher.widgets.lang.Builtins
 import dev.omalauncher.widgets.lang.Camera
 import dev.omalauncher.widgets.lang.Mesh
@@ -590,10 +593,14 @@ private class Painter(
                 val color = Builtins.argb(named["color"] ?: named["fill"] ?: Num(0.0), inst)?.let { androidx.compose.ui.graphics.Color(it) } ?: Palette.foreground
                 // Since owl 10 styled like a Text: its font, weight, slant and spacing, and a list is spans.
                 val styled = inst.program.level >= 10
+                val text = keepSigns(if (styled && first is Lst) spans(first, inst) else AnnotatedString(first.text()))
                 val layout =
                     measurer.measure(
-                        if (styled && first is Lst) spans(first, inst) else AnnotatedString(first.text()),
+                        text,
                         TextStyle(
+                            // A canvas isn't mirrored in an Arabic layout, and its text runs its own way: "-3" stays "-3",
+                            // and a bracket isn't turned around.
+                            textDirection = textDirectionOf(text, neutral = TextDirection.Ltr),
                             color = color,
                             fontFamily = if (styled) fontFamily(named["font"], inst) else LauncherStyle.font,
                             fontSize = (named["size"]?.num() ?: 13.0).sp,

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="store_widgets_title">متجر الأدوات</string>
+    <string name="store_apps_title">متجر التطبيقات</string>
+    <string name="store_featured">مختارات</string>
+
+    <string name="store_kind_widgets">الأدوات</string>
+    <string name="store_kind_faces">الأدوات بملء الشاشة</string>
+    <string name="store_kind_apps">التطبيقات</string>
+    <string name="store_kind_panels">اللوحات</string>
+    <string name="store_kind_keybars">أشرطة المفاتيح</string>
+    <string name="store_kind_widget">أداة</string>
+    <string name="store_kind_face">أداة بملء الشاشة</string>
+    <string name="store_kind_app">تطبيق</string>
+    <string name="store_kind_panel">لوحة</string>
+    <string name="store_kind_keybar">شريط مفاتيح</string>
+
+    <string name="store_pick_widget">اختر أداة لترى ما تثبّته وما تشغّله</string>
+    <string name="store_pick_face">اختر أداة بملء الشاشة لترى ما تثبّته وما تشغّله</string>
+    <string name="store_pick_app">اختر تطبيقًا لترى ما يثبّته وما يشغّله</string>
+    <string name="store_pick_panel">اختر لوحة لترى ما تثبّته وما تشغّله</string>
+    <string name="store_pick_keybar">اختر شريط مفاتيح لترى ما يثبّته وما يشغّله</string>
+    <string name="store_kind_strips">الأشرطة</string>
+    <string name="store_kind_strip">شريط</string>
+    <string name="store_pick_strip">اختر شريطًا لترى ما يثبّته وما يشغّله</string>
+
+    <string name="store_search">ابحث في %1$d من \u2068%2$s\u2069</string>
+    <string name="store_tab_all">الكل</string>
+    <string name="store_tab_new">جديد</string>
+    <string name="store_tab_installed">مثبّت</string>
+    <string name="store_category_other">أخرى</string>
+    <string name="store_tab">\u2068%1$s\u2069 %2$d</string>
+    <string name="store_tab_updates">\u2068%1$s\u2069 %2$d · %3$d↑</string>
+
+    <string name="store_builtin">مدمجة</string>
+    <string name="store_terminal">الطرفية</string>
+    <string name="store_terminal_details">\u200F6x4 · صدفة أوامر</string>
+    <string name="store_agent_details">\u200F6x6 · يشغّل \u2068%1$s\u2069</string>
+    <string name="store_on_home">✓ على الرئيسية</string>
+    <string name="store_tap_to_add">اضغط للإضافة إلى الصفحة %1$d</string>
+
+    <string name="store_reviewed">\u200F\u2068%1$s\u2069 مراجَعة من \u2066github.com/%2$s\u2069</string>
+    <string name="store_loading">جارٍ التحميل…</string>
+    <string name="store_empty">لا توجد \u2068%1$s\u2069 بعد</string>
+    <string name="store_no_new">لا توجد \u2068%1$s\u2069 جديدة</string>
+    <string name="store_none_installed">لا توجد \u2068%1$s\u2069 مثبتة من المتجر</string>
+    <string name="store_no_match">لا شيء يطابق \"\u2068%1$s\u2069\"</string>
+
+    <string name="store_update_available">يتوفر تحديث</string>
+    <string name="store_installed">✓ مثبّت</string>
+    <string name="store_needs_newer">يحتاج إلى مشغّل أحدث</string>
+    <string name="store_needs_linux">يحتاج إلى linux</string>
+    <string name="store_full_screen">ملء الشاشة</string>
+    <plurals name="store_pages">
+        <item quantity="zero">\u200F%1$d صفحة</item>
+        <item quantity="one">صفحة واحدة</item>
+        <item quantity="two">صفحتان</item>
+        <item quantity="few">\u200F%1$d صفحات</item>
+        <item quantity="many">\u200F%1$d صفحة</item>
+        <item quantity="other">\u200F%1$d صفحة</item>
+    </plurals>
+    <string name="store_badge_new">جديد</string>
+
+    <string name="store_needs_newer_detail">يحتاج إلى مشغّل أحدث (owl %1$d)؛ حدّث المشغّل لتثبيته</string>
+    <string name="store_may_have_changes">قد يحتوي على تغييراتك، والتحديث يستبدلها</string>
+    <string name="store_you_changed">لقد غيّرته، والتحديث يستبدل تغييراتك</string>
+    <string name="store_update_anyway">التحديث على أي حال \u2068%1$s\u2069 ← \u2068%2$s\u2069</string>
+    <string name="store_update">تحديث \u2068%1$s\u2069 ← \u2068%2$s\u2069</string>
+    <string name="store_open">فتح</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="zero">إضافة صفحاته الناقصة (%1$d)</item>
+        <item quantity="one">إضافة صفحته الناقصة</item>
+        <item quantity="two">إضافة صفحتيه الناقصتين</item>
+        <item quantity="few">إضافة صفحاته الـ %1$d الناقصة</item>
+        <item quantity="many">إضافة صفحاته الـ %1$d الناقصة</item>
+        <item quantity="other">إضافة صفحاته الـ %1$d الناقصة</item>
+    </plurals>
+    <string name="store_add_to_page">إضافة إلى الصفحة %1$d</string>
+    <string name="store_add_as_face">إضافة كأداة بملء الشاشة</string>
+    <string name="store_install">تثبيت</string>
+    <string name="store_uninstall">إلغاء التثبيت</string>
+    <string name="store_remove">إزالة</string>
+    <string name="store_uninstall_confirm">إلغاء تثبيت \u2068%1$s\u2069؟</string>
+    <string name="store_remove_confirm">إزالة \u2068%1$s\u2069؟</string>
+    <string name="store_remove_file">يُنقل ملفه إلى \u200E.removed/\u200E في مجلد الأدوات.</string>
+    <string name="store_remove_files">تُنقل ملفاته إلى \u200E.removed/\u200E في مجلد الأدوات.</string>
+    <string name="store_changed_since_approval">تغيّرت أوامره أو حزمه منذ النسخة التي وافقت عليها</string>
+
+    <string name="store_added_widget">✓ على شاشتك الرئيسية</string>
+    <string name="store_added_face">✓ على يسار صفحتك الأولى</string>
+    <string name="store_added_app">✓ في قائمة تطبيقاتك</string>
+    <string name="store_added_panel">✓ في إعدادات الإيماءات</string>
+    <string name="store_added_keybar">✓ في مجلد أدواتك</string>
+
+    <string name="store_needs_linux_app">يحتاج إلى Linux: يشغّل أوامر في Arch، لذا يظهر في قائمة التطبيقات بعد تثبيت Linux من الإعدادات</string>
+    <string name="store_needs_linux_widget">يحتاج إلى Linux: يشغّل أوامر في Arch، لذا ينتظر كعنصر نائب حتى تثبّت Linux من الإعدادات</string>
+
+    <string name="store_installs_packages">يثبّت حزمًا: \u2068%1$s\u2069</string>
+    <string name="store_packages_none">لا شيء</string>
+    <string name="store_runs_no_commands">لا يشغّل أي أوامر</string>
+    <string name="store_runs_commands">يشغّل هذه الأوامر في Arch:</string>
+
+    <string name="store_installing">جارٍ التثبيت…</string>
+    <string name="store_updating">جارٍ التحديث…</string>
+    <string name="store_adding_pages">جارٍ إضافة الصفحات…</string>
+    <string name="store_load_failed">تعذّر تحميل المتجر: \u2068%1$s\u2069</string>
+    <string name="store_download_mismatch">التنزيل لا يطابق النسخة المراجَعة؛ حاول مجددًا لاحقًا</string>
+    <string name="store_install_failed">فشل التثبيت: \u2068%1$s\u2069</string>
+
+    <string name="store_shared_title">\u200F\u2068%1$s\u2069 مُشارَكة</string>
+    <string name="store_shared_fetching">جارٍ جلبها من \u2068%1$s\u2069…</string>
+    <string name="store_shared_unreadable">لا يمكن قراءتها</string>
+    <string name="store_shared_not_widget">هذا الرابط لا يحتوي على أداة: \u2068%1$s\u2069.</string>
+    <string name="store_shared_unnamed_app">تطبيق</string>
+    <string name="store_shared_unnamed_widget">أداة</string>
+    <string name="store_shared_info">مُشارَكة معك\u2068%1$s\u2069 · %2$.1f كيلوبايت</string>
+    <string name="store_shared_warning">لا تضفها إلا إذا كنت تثق بمن أرسلها. ستشغّل الأوامر أدناه في Arch باسمك، مع ملفاتك والشبكة.</string>
+    <string name="store_shared_needs_newer">تحتاج إلى مشغّل أحدث (owl %1$d)؛ حدّث المشغّل لإضافتها</string>
+    <string name="store_shared_replace">استبدال \u2068%1$s\u2069 المُشارَكة سابقًا</string>
+    <string name="store_add_to_drawer">إضافة إلى قائمة التطبيقات</string>
+    <string name="store_add_to_panels">إضافة إلى لوحات الإيماءات</string>
+    <string name="store_add_to_widgets_folder">إضافة إلى مجلد أدواتك</string>
+    <string name="store_hide_file">إخفاء الملف</string>
+    <string name="store_show_file">عرض الملف كاملًا</string>
+    <string name="store_review_with_agent">مراجعة بوكيل</string>
+
+    <string name="store_share_title">مشاركة \u2068%1$s\u2069</string>
+    <string name="store_check_secrets">البحث عن أسرار بوكيل</string>
+    <string name="store_share_unreadable">لا يمكن قراءة \u2068%1$s\u2069</string>
+    <string name="store_share_too_big">\u200F\u2068%1$s\u2069 أكبر من %2$d كيلوبايت، وهذا أكثر مما يقبله المشغّل</string>
+    <string name="store_uploading">جارٍ الرفع…</string>
+    <string name="store_share_get_code">الحصول على رمز QR</string>
+    <string name="store_something_wrong">حدث خطأ ما</string>
+    <string name="store_share_uploads">يرفعها، بشكل عام، إلى \u2068%1$s\u2069 لمدة %2$d يومًا</string>
+    <string name="store_share_send_link">أو أرسل الرابط: دائم، والأداة كاملة بداخله.</string>
+    <string name="store_share_too_big_link">أكبر من أن تُرسل كرابط: رمز QR هو طريقة مشاركتها.</string>
+    <string name="store_share_pasted_permanent">يشير إلى \u2068%1$s\u2069، ويختفي بعد %2$d يومًا. الرابط أدناه دائم.</string>
+    <string name="store_share_pasted">يشير إلى \u2068%1$s\u2069، ويختفي بعد %2$d يومًا.</string>
+    <string name="store_share_permanent">دائم: الأداة كاملة داخل الصورة.</string>
+    <string name="store_share_code">مشاركة رمز QR</string>
+    <string name="store_share_link">مشاركة الرابط</string>
+    <string name="store_copied">تم النسخ</string>
+    <string name="store_copy_link">نسخ الرابط</string>
+    <string name="store_share_subject">أداة \u2068%1$s\u2069</string>
+    <string name="store_share_code_clip">رمز QR لـ \u2068%1$s\u2069</string>
+    <string name="store_share_chooser">مشاركة \u2068%1$s\u2069</string>
+    <string name="store_in_store">في المتجر</string>
+    <string name="store_issue_info">طلب (issue) على \u2066github.com/%1$s\u2069؛ وبعد المراجعة يستطيع أي شخص تثبيتها.</string>
+    <string name="store_pr_info">أو طلب سحب (pull request) من وكيلك، ويمكنه إضافة معاينة أيضًا:</string>
+    <string name="store_create_pr">إنشاء طلب سحب بوكيل</string>
+    <string name="store_open_issue">فتح طلب على GitHub</string>
+    <string name="store_no_browser">لا يوجد متصفح لفتح \u2068%1$s\u2069</string>
+    <string name="store_issue_uploads">يرفعها، بشكل عام، إلى \u2068%1$s\u2069 للمراجعة</string>
+    <string name="store_upload_failed">✗ تعذّر الرفع: \u2068%1$s\u2069</string>
+
+    <string name="store_pin_title">إضافة إلى الشاشة الرئيسية؟</string>
+    <string name="store_pin_from">من \u2068%1$s\u2069</string>
+    <string name="store_cancel">إلغاء</string>
+    <string name="store_add">إضافة</string>
+
+    <string name="store_theme_title">سمات المجتمع</string>
+    <string name="store_theme_search">ابحث في %1$d سمة</string>
+    <string name="store_theme_header">من صنع المجتمع، مدرجة على omarchy.org/themes · تُثبَّت من GitHub</string>
+    <string name="store_theme_in_use">✓ قيد الاستخدام</string>
+    <string name="store_theme_light">فاتحة</string>
+    <string name="store_theme_dark">داكنة</string>
+    <plurals name="store_theme_wallpapers">
+        <item quantity="zero">\u200F%d خلفية</item>
+        <item quantity="one">خلفية واحدة</item>
+        <item quantity="two">خلفيتان</item>
+        <item quantity="few">\u200F%d خلفيات</item>
+        <item quantity="many">\u200F%d خلفية</item>
+        <item quantity="other">\u200F%d خلفية</item>
+    </plurals>
+    <string name="store_theme_use">استخدام</string>
+    <string name="store_theme_github">GitHub</string>
+    <string name="store_theme_install_message">من \u2068%1$s\u2069. يحصل Linux على ألوانها وخلفياتها، لا على سكربتاتها أو إعدادات طرفيتها.</string>
+    <string name="store_theme_install_message_replaces">من \u2068%1$s\u2069. يحصل Linux على ألوانها وخلفياتها، لا على سكربتاتها أو إعدادات طرفيتها.\n\nتستبدل \u2068%2$s\u2069 الخاصة بك.</string>
+    <string name="store_theme_install_message_over">من \u2068%1$s\u2069. يحصل Linux على ألوانها وخلفياتها، لا على سكربتاتها أو إعدادات طرفيتها.\n\nتحل محل \u2068%2$s\u2069 من Omarchy؛ وإزالتها تعيدها.</string>
+    <string name="store_theme_installing">جارٍ تثبيت \u2068%1$s\u2069… %2$d ميغابايت</string>
+    <string name="store_theme_catalog_failed">تعذّر تحميل omarchy.org/themes: \u2068%1$s\u2069</string>
+    <string name="store_theme_page_changed">تغيّرت الصفحة ولا يمكن قراءتها</string>
+    <string name="store_theme_not_github">ليس مستودع GitHub: \u2068%1$s\u2069</string>
+    <string name="store_theme_not_on_github">\u200F\u2068%1$s\u2069 غير موجود على GitHub</string>
+    <string name="store_theme_no_colors">لا تحتوي على colors.toml أو alacritty.toml</string>
+    <string name="store_theme_cant_move">لا يمكن نقل السمة إلى مكانها</string>
+</resources>

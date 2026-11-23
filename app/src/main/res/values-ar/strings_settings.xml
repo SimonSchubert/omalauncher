@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">الإعدادات</string>
+
+    <string name="settings_style">المظهر</string>
+    <string name="settings_style_subtitle">السمة، الخلفية، الشاشة الرئيسية</string>
+    <string name="settings_pages">الصفحات</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="zero">\u200F%1$d صفحة · ترتيب، تعديل، إزالة</item>
+        <item quantity="one">صفحة واحدة · ترتيب، تعديل، إزالة</item>
+        <item quantity="two">صفحتان · ترتيب، تعديل، إزالة</item>
+        <item quantity="few">\u200F%1$d صفحات · ترتيب، تعديل، إزالة</item>
+        <item quantity="many">\u200F%1$d صفحة · ترتيب، تعديل، إزالة</item>
+        <item quantity="other">\u200F%1$d صفحة · ترتيب، تعديل، إزالة</item>
+    </plurals>
+    <string name="settings_gestures">الإيماءات</string>
+    <string name="settings_gestures_subtitle">لأعلى: \u2068%1$s\u2069 · لأسفل: \u2068%2$s\u2069</string>
+    <string name="settings_language">اللغة</string>
+    <string name="settings_language_phone">لغة الهاتف</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">مثبّت · إزالة</string>
+    <string name="settings_linux_stopped">مثبّت · متوقف</string>
+    <string name="settings_linux_installing_percent">جارٍ التثبيت %1$d%% · \u2068%2$s\u2069</string>
+    <string name="settings_linux_installing">جارٍ التثبيت · \u2068%1$s\u2069</string>
+    <string name="settings_linux_failed">توقف الإعداد · أعد المحاولة</string>
+    <string name="settings_linux_removing">جارٍ الإزالة…</string>
+    <string name="settings_linux_not_installed">غير مثبّت · ثبّت Arch Linux لتطبيقات الطرفية والوكلاء</string>
+    <string name="settings_agents">وكلاء البرمجة</string>
+    <string name="settings_agents_default">الافتراضي: \u2068%1$s\u2069</string>
+    <string name="settings_agents_install">ثبّت Claude Code وOpenCode و…</string>
+    <string name="settings_needs_linux">يحتاج إلى linux</string>
+    <string name="settings_packages">الحزم</string>
+    <string name="settings_packages_subtitle">ثبّت تطبيقات وأدوات Linux باستخدام pacman وAUR</string>
+    <string name="settings_home_app">تطبيق الشاشة الرئيسية الافتراضي</string>
+    <string name="settings_home_app_subtitle">اجعل Omalauncher شاشتك الرئيسية</string>
+    <string name="settings_local_network">الشبكة المحلية</string>
+    <string name="settings_local_network_subtitle">اسمح للأدوات وlinux بالوصول إلى طابعتك وHome Assistant و…</string>
+    <string name="settings_permissions">الأذونات</string>
+    <string name="settings_permissions_subtitle">الميكروفون، الموقع، الملفات، …</string>
+
+    <string name="permissions_title">الأذونات</string>
+    <string name="permissions_folders_title">مجلدات الهاتف</string>
+    <string name="permissions_folders_about">مجلدات صورك وتنزيلاتك ومستنداتك لـ linux: في الملفات، وللوكلاء والسكربتات عبر omalauncher</string>
+    <string name="permissions_folders_sdcard">ما يحفظه linux في \u2066%1$s/Download\u2069 أو \u2066%1$s/Documents\u2069 تراه التطبيقات الأخرى أيضًا</string>
+    <string name="permissions_folders_add">إضافة مجلد</string>
+    <string name="permissions_folders_remove">إزالة</string>
+    <string name="permissions_folders_cant_keep">لم يسمح android للمشغّل بالاحتفاظ بهذا المجلد</string>
+    <string name="permissions_folders_no_picker">لا يوجد في هذا الهاتف منتقي مجلدات</string>
+    <string name="permissions_note">يمكن للأدوات والوكلاء استخدام كل ما هو مفعّل هنا. يحتفظ android بالمفاتيح: التفعيل يطلب الإذن، والإيقاف يفتح إعدادات android الخاصة به</string>
+    <string name="permissions_on">مفعّل · \u2068%1$s\u2069</string>
+    <string name="permissions_off">متوقف · \u2068%1$s\u2069</string>
+    <string name="permissions_mic">الميكروفون</string>
+    <string name="permissions_mic_uses">ميكروفون شريط الأوامر، الصوت، الأدوات التي تستمع</string>
+    <string name="permissions_location">الموقع</string>
+    <string name="permissions_location_uses">تقريبي · أدوات مثل الطقس، أثناء ظهورها على الشاشة · الوكلاء عبر omalauncher location</string>
+    <string name="permissions_calendar">التقويم</string>
+    <string name="permissions_calendar_uses">أحداثك، للقراءة فقط · أدوات التقويم · الوكلاء عبر omalauncher calendar</string>
+    <string name="permissions_bluetooth">البلوتوث</string>
+    <string name="permissions_bluetooth_uses">بطاريات AirPods وإعداداتها · أدوات AirPods · الوكلاء عبر omalauncher airpods</string>
+    <string name="permissions_notifications">الإشعارات</string>
+    <string name="permissions_notifications_uses">\u200Flinux أثناء عمله، الأدوات التي ترسل لك إشعارات</string>
+    <string name="permissions_notification_access">الوصول إلى الإشعارات</string>
+    <string name="permissions_notification_access_uses">نقاط الإشعارات، وما يُشغَّل الآن، ووضع عدم الإزعاج للأدوات</string>
+
+    <string name="settings_android">إعدادات android</string>
+    <string name="settings_android_subtitle">إعدادات نظام الهاتف</string>
+    <string name="settings_licenses">التراخيص</string>
+    <string name="settings_licenses_subtitle">البرامج مفتوحة المصدر في Omalauncher</string>
+
+    <string name="settings_system_updating">جارٍ تحديث النظام: \u2068%1$s\u2069…</string>
+    <string name="settings_system_update_failed">لم يكتمل تحديث للنظام</string>
+    <string name="settings_retry">إعادة المحاولة</string>
+    <string name="settings_system_updates">تحديثات النظام</string>
+    <string name="settings_widget_updates">الأدوات</string>
+    <string name="settings_launcher_updates">المشغّل</string>
+    <string name="settings_launcher_update_available">إصدار جديد من Omalauncher متاح على Google Play</string>
+    <string name="settings_launcher_update_failed">تعذّر على Google Play تحديث Omalauncher</string>
+    <string name="settings_launcher_update_github">\u200FOmalauncher \u2068%1$s\u2069 ← \u2068%2$s\u2069 على GitHub</string>
+    <string name="settings_update_all">تحديث الكل</string>
+    <string name="settings_check">فحص</string>
+    <string name="settings_update">تحديث</string>
+    <string name="settings_updating">جارٍ التحديث…</string>
+    <string name="settings_checking">جارٍ الفحص…</string>
+    <string name="settings_not_checked">لم يُفحص بعد</string>
+    <string name="settings_up_to_date">محدَّث · آخر فحص \u2068%1$s\u2069</string>
+    <string name="settings_store_unreachable">تعذّر الوصول إلى المتجر</string>
+    <string name="settings_updates_held">معدَّلة، لذا لم تُحدَّث هنا: \u2068%1$s\u2069 · تحديث إحداها من المتجر يستبدل تغييراتك</string>
+    <string name="settings_more_lines">\u200F+%1$d أخرى</string>
+    <string name="settings_just_now">الآن</string>
+    <string name="settings_minutes_ago">قبل %1$d د</string>
+    <string name="settings_hours_ago">قبل %1$d س</string>
+    <string name="settings_days_ago">قبل %1$d ي</string>
+</resources>

@@ -18,8 +18,12 @@ private fun entry(
     exec: String,
     terminal: Boolean = true,
     icon: String? = null,
+    names: Map<String, String> = emptyMap(),
 ) = buildString {
-    append("[Desktop Entry]\nType=Application\nName=$name\nExec=$exec\nTerminal=$terminal\n")
+    append("[Desktop Entry]\nType=Application\nName=$name\n")
+    // The name in other languages, as Name[ar]=; the drawer shows the one in the launcher's.
+    for ((language, translated) in names) append("Name[$language]=$translated\n")
+    append("Exec=$exec\nTerminal=$terminal\n")
     if (icon != null) append("Icon=$icon\n")
 }
 
@@ -32,8 +36,8 @@ private val CURATED =
     mapOf(
         "foot" to entry("Terminal", "foot", terminal = false, icon = "foot"),
         "btop" to entry("btop", "btop", icon = "btop"),
-        "omarchy-files" to entry("Files", FILES_COMMAND, terminal = false, icon = bundledIcon("files")),
-        "micro" to entry("Editor", EDIT_COMMAND, terminal = false, icon = bundledIcon("editor")),
+        "omarchy-files" to entry("Files", FILES_COMMAND, terminal = false, icon = bundledIcon("files"), names = mapOf("ar" to "الملفات")),
+        "micro" to entry("Editor", EDIT_COMMAND, terminal = false, icon = bundledIcon("editor"), names = mapOf("ar" to "المحرر")),
         "omarchy-voice" to entry("Voice", VOICE_COMMAND, terminal = false, icon = bundledIcon("voice")),
         "cliamp" to entry("Cliamp", "cliamp", icon = bundledIcon("cliamp")),
     )

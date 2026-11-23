@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -52,6 +53,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import dev.omalauncher.R
@@ -200,6 +202,8 @@ internal fun FolderPanel(
     onName: (String) -> Unit = {},
     /** Typing the name is over: Done, or the field went away. */
     onNamed: () -> Unit = {},
+    /** The language's direction, for where the bar lines up: home lays the panel out left to right. */
+    direction: LayoutDirection = LayoutDirection.Ltr,
 ) {
     val density = LocalDensity.current
     // Keys go between its apps while it's open, not to the tiles behind it.
@@ -266,7 +270,8 @@ internal fun FolderPanel(
                 render(
                     app,
                     Modifier
-                        .offset { at.value }
+                        // Absolute: the app's own direction, right to left in Arabic, mustn't mirror where it goes.
+                        .absoluteOffset { at.value }
                         .size(with(density) { r.width.toDp() }, with(density) { r.height.toDp() }),
                     app.key == selected,
                 )
@@ -274,12 +279,12 @@ internal fun FolderPanel(
         }
         val sel = folder.apps.indexOfFirst { it.key == selected }
         if (sel >= 0) {
-            // Above the panel, so it covers neither the name nor the other apps, or below it with no room there; lined up with the app.
+            // Above the panel, so it covers neither the name nor the other apps, or below it with no room there; lined up with the app, by its right edge in a right-to-left language.
             val r = geometry.app(sel)
             val barGap = with(density) { 8.dp.roundToPx() }
             fun at(size: IntSize) =
                 IntOffset(
-                    r.left.coerceAtMost(p.right - size.width).coerceAtLeast(0),
+                    (if (direction == LayoutDirection.Rtl) r.right - size.width else r.left).coerceAtMost(p.right - size.width).coerceAtLeast(0),
                     (p.top - size.height - barGap).takeIf { it >= 0 } ?: (p.bottom + barGap),
                 )
             DisposableEffect(Unit) { onDispose { onBar(null) } }

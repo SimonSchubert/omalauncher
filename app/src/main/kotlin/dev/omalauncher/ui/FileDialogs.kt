@@ -1,5 +1,6 @@
 package dev.omalauncher.ui
 
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -97,7 +98,7 @@ internal fun TextDialog(
             value = field,
             onValueChange = { field = it },
             singleLine = true,
-            textStyle = Mono.copy(fontSize = TextSize.Large),
+            textStyle = Mono.copy(fontSize = TextSize.Large).typedIn(LocalLayoutDirection.current),
             cursorBrush = SolidColor(Palette.accent),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { if (text.isNotBlank()) onConfirm(text.trim()) }),
