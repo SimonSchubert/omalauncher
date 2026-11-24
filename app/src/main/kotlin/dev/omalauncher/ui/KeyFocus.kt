@@ -332,6 +332,7 @@ fun focusFromKey() = keyDownAt > 0 && SystemClock.uptimeMillis() - keyDownAt < 5
 @Composable
 fun Modifier.passesKeys(vararg to: FocusRequester): Modifier {
     val view = LocalView.current
+    val inputMode = LocalInputModeManager.current
     val had = remember { booleanArrayOf(false) }
     val targets = to.toList()
     val pass = remember { arrayOf<() -> Unit>({}) }
@@ -343,6 +344,9 @@ fun Modifier.passesKeys(vararg to: FocusRequester): Modifier {
         // in the same frame, so it can take focus once that's done.
         view.post {
             if (passing[root] == at) passing -= root
+            // Only while keys are in use. While touching, all that has focus is a text field, and one that let go, like a
+            // widget's as its keyboard closes, would have the next text field take it, and raise the keyboard again.
+            if (inputMode.inputMode != InputMode.Keyboard) return@post
             if ((dropped[root] ?: -1) >= at && targets.none { it.requestFocus() }) waiting[root] = true
         }
     }
