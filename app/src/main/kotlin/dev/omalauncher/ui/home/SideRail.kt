@@ -190,7 +190,8 @@ private fun unfoldedScreen(window: IntSize): Boolean = LauncherStyle.unfoldedLay
  * Whether [window] is a foldable's unfolded inner screen, in either orientation: each half of it is phone-shaped and
  * wide enough to be worth a page of its own. Phones, tablets, phone landscape, and a square screen too narrow to split
  * usefully aren't. A screen's shape alone can't tell a real foldable from a phone that's merely square, which
- * [TWO_PAGES_MIN_WIDTH] rules out by width, nor a squarer inner screen from a 4:3 tablet, which the hinge does.
+ * [TWO_PAGES_MIN_WIDTH] rules out by width, nor a 4:3-like inner screen from a 4:3 tablet in either orientation, which
+ * the hinge does.
  */
 @Composable
 private fun unfoldedShape(window: IntSize): Boolean {
@@ -200,11 +201,12 @@ private fun unfoldedShape(window: IntSize): Boolean {
 }
 
 /**
- * [unfoldedShape] without Compose, given each half's width in dp and whether the device has a [hinge]. A half is
- * phone-shaped from 0.4 to 0.65, its width over the height: most inner screens run from about 0.52 (Pixel 9 Pro Fold)
- * to 0.6 (Pixel Fold), and tablets in landscape stay out, at 0.75 for 3:2 and 0.8 for 16:10. A Galaxy Z Fold8's
- * halves are 0.662 (#246), as phone-shaped as a 4:3 tablet's (0.667), so up to 0.7 counts only on a device with a
- * hinge: the tablet keeps its one page.
+ * [unfoldedShape] without Compose, given each half's width in dp and whether the device has a [hinge]. Going by shape
+ * alone, a half is phone-shaped from 0.4 to 0.65, its width over the height: most inner screens run from about 0.52
+ * (Pixel 9 Pro Fold) to 0.6 (Pixel Fold) in landscape and stay above 0.4 in portrait, while tablets stay out (0.75 for
+ * 3:2 and 0.8 for 16:10 in landscape; 0.33 and 0.31 in portrait). A Galaxy Z Fold8's halves are 0.662 wide in
+ * landscape and 0.377 in portrait (#246), as close to 4:3 as a 4:3 tablet's (0.667 and 0.375), so the wider 0.35..0.7
+ * range counts only on a device with a hinge: the tablet keeps its one page in both orientations.
  */
 internal fun isUnfoldedShape(
     window: IntSize,
@@ -212,14 +214,17 @@ internal fun isUnfoldedShape(
     hinge: Boolean,
 ): Boolean {
     if (window.height <= 0 || halfWidth < TWO_PAGES_MIN_WIDTH) return false
+    val min = if (hinge) HINGED_HALF_MIN_ASPECT else UNFOLDED_HALF_MIN_ASPECT
     val max = if (hinge) HINGED_HALF_MAX_ASPECT else UNFOLDED_HALF_MAX_ASPECT
-    return window.width / 2f / window.height in 0.4f..max
+    return window.width / 2f / window.height in min..max
 }
 
-/** The widest half, width over height, that counts as a page of its own on an unfolded screen going by shape alone. */
+/** The narrowest and widest halves, width over height, that count as pages of their own on an unfolded screen going by shape alone. */
+private const val UNFOLDED_HALF_MIN_ASPECT = 0.4f
 private const val UNFOLDED_HALF_MAX_ASPECT = 0.65f
 
-/** The same on a device with a hinge, where a half this wide can't be a tablet's. */
+/** The same on a device with a hinge, where halves this close to 4:3 in either orientation can't be a tablet's. */
+private const val HINGED_HALF_MIN_ASPECT = 0.35f
 private const val HINGED_HALF_MAX_ASPECT = 0.7f
 
 /** Whether the device folds: it reports a hinge angle sensor, by its feature or the sensor itself. Tablets and plain phones don't. */
