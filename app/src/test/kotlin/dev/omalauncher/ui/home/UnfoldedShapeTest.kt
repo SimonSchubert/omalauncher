@@ -46,6 +46,13 @@ class UnfoldedShapeTest {
         }
     }
 
+    @Test fun tabletsInPortraitStayOnOnePage() {
+        for (hinge in listOf(false, true)) {
+            assertFalse(isUnfoldedShape(IntSize(1600, 2560), half(IntSize(1600, 2560), 2.0f), hinge)) // 16:10, 0.3125
+            assertFalse(isUnfoldedShape(IntSize(1920, 2880), half(IntSize(1920, 2880), 2.0f), hinge)) // 3:2, 0.333
+        }
+    }
+
     @Test fun squarerTabletsWithoutAHingeStayOnOnePage() {
         // As phone-shaped as a Fold8's halves, in landscape or portrait, so only the hinge tells them apart.
         for (window in listOf(
