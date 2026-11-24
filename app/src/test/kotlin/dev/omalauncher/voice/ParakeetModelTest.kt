@@ -21,7 +21,7 @@ class ParakeetModelTest {
         // wrote the saved pick into a state there, and the launcher crashed at each start.
         val snapshot = Snapshot.takeSnapshot()
         try {
-            assertTrue(snapshot.enter { ParakeetModel.onState { true }.value })
+            assertTrue(snapshot.enter { ParakeetModel.files.onState { true }.value })
         } finally {
             snapshot.dispose()
         }
@@ -29,7 +29,7 @@ class ParakeetModelTest {
 
     @Test
     fun downloadIsTheModelAndTheVad() {
-        assertEquals(671_220_638L, ParakeetModel.SIZE)
+        assertEquals(671_220_638L, ParakeetModel.files.size)
     }
 
     @Test

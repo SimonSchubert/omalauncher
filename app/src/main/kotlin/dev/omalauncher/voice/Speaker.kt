@@ -224,7 +224,7 @@ class Speaker(
     fun languages(): List<String> {
         val engine = runCatching { tts?.availableLanguages?.map { AppLanguage.short(it.language) } }.getOrNull().orEmpty()
         // As Android names them ("in" for Indonesian, not Supertonic's "id"), or the list shows one twice.
-        val own = if (SupertonicModel.on(context) && SupertonicModel.files.downloaded(context)) SupertonicModel.LANGUAGES.map { Locale(it).language } else emptyList()
+        val own = if (SupertonicModel.files.used(context)) SupertonicModel.LANGUAGES.map { Locale(it).language } else emptyList()
         return (engine + own).distinct()
     }
 

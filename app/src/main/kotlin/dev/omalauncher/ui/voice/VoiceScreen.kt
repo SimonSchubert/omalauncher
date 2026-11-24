@@ -700,7 +700,7 @@ private fun VoiceSettings(
     val launcher = configuration.locales[0]
     val shown = language ?: launcher.language
     // Read here, so picking, downloading or deleting Supertonic shows its languages and voices at once.
-    val supertonicOn = SupertonicModel.files.changes.let { SupertonicModel.on(context) && SupertonicModel.files.downloaded(context) }
+    val supertonicOn = SupertonicModel.files.changes.let { SupertonicModel.files.used(context) }
     val bySupertonic = supertonicOn && speaker.supertonic(shown)
     val languages =
         remember(ready, returns, supertonicOn) {
@@ -833,15 +833,14 @@ private fun VoiceSettings(
 private fun Recognition(locale: Locale) {
     val context = LocalContext.current
     val model = ParakeetModel
+    val size = model.files.size(context, model.files.size)
     OnDevice(
         name = stringResource(R.string.voice_recognition),
         files = model.files,
-        on = model.on(context),
-        setOn = { model.setOn(context, it) },
         phone = stringResource(R.string.voice_recognition_phone),
         own = stringResource(R.string.voice_recognition_parakeet),
-        about = stringResource(R.string.voice_parakeet_about, model.size(context, model.SIZE)),
-        delete = stringResource(R.string.voice_parakeet_delete, model.size(context, model.SIZE)),
+        about = stringResource(R.string.voice_parakeet_about, size),
+        delete = stringResource(R.string.voice_parakeet_delete, size),
         unknown = if (!model.speaks(locale)) stringResource(R.string.voice_parakeet_language, AppLanguage.name(locale.language)) else null,
     )
 }
@@ -855,8 +854,6 @@ private fun Reading(language: String) {
     OnDevice(
         name = stringResource(R.string.voice_reading),
         files = model.files,
-        on = model.on(context),
-        setOn = { model.setOn(context, it) },
         phone = stringResource(R.string.voice_reading_phone),
         own = stringResource(R.string.voice_reading_supertonic),
         about = stringResource(R.string.voice_supertonic_about, size),
@@ -874,8 +871,6 @@ private fun Reading(language: String) {
 private fun OnDevice(
     name: String,
     files: ModelFiles,
-    on: Boolean,
-    setOn: (Boolean) -> Unit,
     phone: String,
     own: String,
     about: String,
@@ -884,6 +879,7 @@ private fun OnDevice(
 ) {
     val context = LocalContext.current
     val downloaded = remember(files.changes) { files.downloaded(context) }
+    val on = files.on(context)
     Setting(name) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (downloaded) {
@@ -896,7 +892,7 @@ private fun OnDevice(
                             selected = on,
                             position = BelowAnchorStart,
                             onDismiss = { picking = false },
-                            onPick = setOn,
+                            onPick = { files.setOn(context, it) },
                             label = { if (it) own else phone },
                         )
                     }

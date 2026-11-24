@@ -1,15 +1,12 @@
 package dev.omalauncher.voice
 
 import android.content.Context
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
 import dev.omalauncher.voice.ModelFiles.Part
 import java.io.File
 
 /**
  * Supertonic 3's files on the phone ([ModelFiles]), for [SherpaVoice] to read replies aloud with: downloaded when
- * asked for in the voice settings, from Hugging Face. Whether it reads is a setting of its own ([on]), so the phone's
- * text-to-speech can be picked again without downloading it again.
+ * asked for in the voice settings, from Hugging Face.
  */
 internal object SupertonicModel {
     private const val HF = "https://huggingface.co/csukuangfj2/sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/main"
@@ -26,7 +23,7 @@ internal object SupertonicModel {
             Part("$MODEL/voice.bin", "$HF/voice.bin", 517_168, "67d5209b0ee8ce6c74105ffbe12fe6a7628aea3b4ba2fcb308a4a67938a93ce8"),
         )
 
-    val files = ModelFiles("supertonic", "tts", PARTS) { setOn(it, true) }
+    val files = ModelFiles("supertonic", "tts", PARTS, pref = "supertonic")
 
     /** Supertonic 3's languages. */
     val LANGUAGES = setOf("en", "ko", "ja", "ar", "bg", "cs", "da", "de", "el", "es", "et", "fi", "fr", "hi", "hr", "hu", "id", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "vi")
@@ -50,32 +47,9 @@ internal object SupertonicModel {
 
     fun speaks(language: String) = code(language) in LANGUAGES
 
-    /** Whether replies in [language] ("de") are read by Supertonic: downloaded, [on], and a language it knows. */
+    /** Whether replies in [language] ("de") are read by Supertonic: downloaded, picked, and a language it knows. */
     fun used(
         context: Context,
         language: String,
-    ) = speaks(language) && on(context) && files.downloaded(context)
-
-    private const val PREFS = "speech"
-    private const val ON = "supertonic"
-
-    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-
-    @Volatile
-    private var onState: MutableState<Boolean>? = null
-
-    /** The pick as Compose state, made from the saved one by its first reader. */
-    private fun onState(context: Context): MutableState<Boolean> =
-        onState ?: synchronized(this) { onState ?: mutableStateOf(prefs(context).getBoolean(ON, true)).also { onState = it } }
-
-    /** Whether Supertonic is picked over the phone's text-to-speech, once it's downloaded. */
-    fun on(context: Context): Boolean = onState(context).value
-
-    fun setOn(
-        context: Context,
-        on: Boolean,
-    ) {
-        onState(context).value = on
-        prefs(context).edit().putBoolean(ON, on).apply()
-    }
+    ) = speaks(language) && files.used(context)
 }

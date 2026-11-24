@@ -29,9 +29,4 @@ class SupertonicModelTest {
     fun downloadIsTheSevenFiles() {
         assertEquals(145_295_768L, SupertonicModel.files.size)
     }
-
-    @Test
-    fun parakeetsDownloadIsUnchanged() {
-        assertEquals(671_220_638L, ParakeetModel.files.size)
-    }
 }

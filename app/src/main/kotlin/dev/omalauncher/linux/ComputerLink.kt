@@ -250,8 +250,8 @@ class ComputerLink(
                     snapshotFlow { computers.isNotEmpty() || following() }.first { it }
                 }
                 // And the widgets synced with the devices this phone follows (DeviceSync), whose engine reads this too.
-                val following = withContext(Dispatchers.IO) { File(proot.rootfs, "root/.local/state/omalauncher/sync").listFiles { f -> f.name.startsWith("synced-") }.orEmpty().flatMap { runCatching { it.readLines() }.getOrDefault(emptyList()) } }
-                val names = (computers.flatMap { it.widgets } + following.filter(::validName)).toSortedSet()
+                val followed = withContext(Dispatchers.IO) { File(proot.rootfs, "root/.local/state/omalauncher/sync").listFiles { f -> f.name.startsWith("synced-") }.orEmpty().flatMap { runCatching { it.readLines() }.getOrDefault(emptyList()) } }
+                val names = (computers.flatMap { it.widgets } + followed.filter(::validName)).toSortedSet()
                 val digest =
                     if (names.isEmpty()) {
                         ""

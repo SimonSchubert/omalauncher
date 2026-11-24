@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.text.format.Formatter
 import android.util.Log
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -21,13 +22,14 @@ import java.security.MessageDigest
 /**
  * A speech model's files on the phone ([ParakeetModel], [SupertonicModel]): downloaded when asked for in the voice
  * settings, each checked against its SHA-256. A download that stops picks up where it was. In noBackupFilesDir/[folder]:
- * hundreds of MB have no place in a backup. [ready] runs once all of it is in, on the main thread.
+ * hundreds of MB have no place in a backup. Whether the model is used is a setting of its own ([on], saved as [pref]),
+ * so the phone's own service can be picked again without downloading it again; a finished download turns it on.
  */
 internal class ModelFiles(
     private val tag: String,
     private val folder: String,
     private val parts: List<Part>,
-    private val ready: (Context) -> Unit,
+    private val pref: String,
 ) {
     class Part(
         /** Where it goes, in [dir]. */
@@ -49,6 +51,31 @@ internal class ModelFiles(
 
     /** Whether every file is there; each was checked as it arrived. */
     fun downloaded(context: Context) = parts.all { file(context, it).length() == it.size }
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    @Volatile
+    private var onState: MutableState<Boolean>? = null
+
+    /**
+     * The pick as Compose state, made from [saved] by its first reader. Made, not written: the first reader can be the
+     * drawer's snapshotFlow, whose snapshot is read-only, and a write there throws.
+     */
+    internal fun onState(saved: () -> Boolean): MutableState<Boolean> = onState ?: synchronized(this) { onState ?: mutableStateOf(saved()).also { onState = it } }
+
+    /** Whether the model is picked over the phone's own service, once it's downloaded. */
+    fun on(context: Context): Boolean = onState { prefs(context).getBoolean(pref, true) }.value
+
+    fun setOn(
+        context: Context,
+        on: Boolean,
+    ) {
+        onState { on }.value = on
+        prefs(context).edit().putBoolean(pref, on).apply()
+    }
+
+    /** Whether the model is the one used: picked ([on]) and downloaded. */
+    fun used(context: Context) = on(context) && downloaded(context)
 
     /** Bytes there so far, while [downloading]. */
     var done by mutableLongStateOf(0L)
@@ -78,7 +105,7 @@ internal class ModelFiles(
         bytes: Long,
     ): String = Formatter.formatShortFileSize(context, bytes)
 
-    /** Downloads what's missing, then calls [ready]. Main thread. */
+    /** Downloads what's missing, then turns the model [on]. Main thread. */
     fun download(context: Context) {
         if (downloading) return
         val app = context.applicationContext
@@ -98,7 +125,7 @@ internal class ModelFiles(
             main.post {
                 downloading = false
                 changes++
-                if (failed == null) ready(app) else if (!cancelled) error = failed
+                if (failed == null) setOn(app, true) else if (!cancelled) error = failed
             }
         }, "$tag-download").start()
     }
@@ -215,6 +242,7 @@ internal class ModelFiles(
     }
 
     private companion object {
+        const val PREFS = "speech"
         const val PARTIAL = ".part"
         const val REPORT = 1024 * 1024L
         const val SPARE = 200 * 1024 * 1024L
