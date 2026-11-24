@@ -1,0 +1,33 @@
+extension: give the extensions of a child their syscall lists
+
+Some kernels (crDroid's 4.14 for sm6150, and the ones of termux/proot#397)
+clear the message of the last ptrace event on every ptrace request, so
+PTRACE_GETEVENTMSG always reads 0. PRoot detects them and takes the flags
+of a PTRACE_EVENT_SECCOMP stop from the lists its filter was built from:
+its own and the ones of the stopped tracee's extensions. Only the first
+tracee had these lists, as inherit_extensions() didn't hand them on, so
+every forked process lost the FILTER_SYSEXIT of the extensions and its
+syscalls skipped their exit stage. With -0 that is where getuid(2) and
+the like turn into 0: "proot -0 sh -c 'id -u | cat'" printed the real
+uid, and pacman-key stopped with "needs to be run as root".
+
+A child's extensions now point at the same lists as its parent's, which
+never change after initialization. Nothing else reads them: the filter is
+built once, before the first tracee runs, and on kernels that keep the
+event message they are not looked up at all.
+
+Upstream fixed this in 4006c630f with a table of the flags (after
+5.1.107.102); this patch can go once proot is updated past it.
+
+diff --git a/src/extension/extension.c b/src/extension/extension.c
+--- a/src/extension/extension.c
++++ b/src/extension/extension.c
+@@ -155,6 +155,8 @@
+ 			continue;
+ 		}
+ 
++		child_extension->filtered_sysnums = parent_extension->filtered_sysnums;
++
+ 		if (status == 0) {
+ 			/* ... with a shared config or ...  */
+ 			child_extension->config =
