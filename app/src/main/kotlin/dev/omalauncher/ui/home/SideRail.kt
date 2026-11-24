@@ -1,6 +1,8 @@
 package dev.omalauncher.ui.home
 
+import android.content.Context
 import android.content.res.Configuration
+import android.hardware.SensorManager
 import android.hardware.display.DisplayManager
 import android.os.Handler
 import android.os.Looper
@@ -35,6 +37,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -187,24 +190,46 @@ private fun unfoldedScreen(window: IntSize): Boolean = LauncherStyle.unfoldedLay
  * Whether [window] is a foldable's unfolded inner screen, in either orientation: each half of it is phone-shaped and
  * wide enough to be worth a page of its own. Phones, tablets, phone landscape, and a square screen too narrow to split
  * usefully aren't. A screen's shape alone can't tell a real foldable from a phone that's merely square, which
- * [TWO_PAGES_MIN_WIDTH] rules out by width.
+ * [TWO_PAGES_MIN_WIDTH] rules out by width, nor a squarer inner screen from a 4:3 tablet, which the hinge does.
  */
 @Composable
-private fun unfoldedShape(window: IntSize): Boolean =
-    isUnfoldedShape(window, with(LocalDensity.current) { (window.width / 2).toDp() })
+private fun unfoldedShape(window: IntSize): Boolean {
+    val context = LocalContext.current
+    val hinge = remember(context) { hasHinge(context) }
+    return isUnfoldedShape(window, with(LocalDensity.current) { (window.width / 2).toDp() }, hinge)
+}
 
 /**
- * [unfoldedShape] without Compose, given each half's width in dp. A half is phone-shaped from 0.4 to 0.7, its width
- * over the height: inner screens run from about 0.52 (Pixel 9 Pro Fold) to 0.662 (Galaxy Z Fold8, #246). Tablets in
- * landscape stay out, at 0.75 for 3:2 and 0.8 for 16:10; a 4:3 one's halves (0.667) are as phone-shaped as a Fold8's,
- * so it gets two pages too.
+ * [unfoldedShape] without Compose, given each half's width in dp and whether the device has a [hinge]. A half is
+ * phone-shaped from 0.4 to 0.65, its width over the height: most inner screens run from about 0.52 (Pixel 9 Pro Fold)
+ * to 0.6 (Pixel Fold), and tablets in landscape stay out, at 0.75 for 3:2 and 0.8 for 16:10. A Galaxy Z Fold8's
+ * halves are 0.662 (#246), as phone-shaped as a 4:3 tablet's (0.667), so up to 0.7 counts only on a device with a
+ * hinge: the tablet keeps its one page.
  */
-internal fun isUnfoldedShape(window: IntSize, halfWidth: Dp): Boolean =
-    window.height > 0 && window.width / 2f / window.height in 0.4f..UNFOLDED_HALF_MAX_ASPECT &&
-        halfWidth >= TWO_PAGES_MIN_WIDTH
+internal fun isUnfoldedShape(
+    window: IntSize,
+    halfWidth: Dp,
+    hinge: Boolean,
+): Boolean {
+    if (window.height <= 0 || halfWidth < TWO_PAGES_MIN_WIDTH) return false
+    val max = if (hinge) HINGED_HALF_MAX_ASPECT else UNFOLDED_HALF_MAX_ASPECT
+    return window.width / 2f / window.height in 0.4f..max
+}
 
-/** The widest half, width over height, that still counts as a page of its own on an unfolded screen. */
-private const val UNFOLDED_HALF_MAX_ASPECT = 0.7f
+/** The widest half, width over height, that counts as a page of its own on an unfolded screen going by shape alone. */
+private const val UNFOLDED_HALF_MAX_ASPECT = 0.65f
+
+/** The same on a device with a hinge, where a half this wide can't be a tablet's. */
+private const val HINGED_HALF_MAX_ASPECT = 0.7f
+
+/** Whether the device folds: it reports a hinge angle sensor, by its feature or the sensor itself. Tablets and plain phones don't. */
+private fun hasHinge(context: Context): Boolean =
+    context.packageManager.hasSystemFeature(FEATURE_HINGE_ANGLE) ||
+        context.getSystemService(SensorManager::class.java)?.getDefaultSensor(TYPE_HINGE_ANGLE) != null
+
+/** PackageManager.FEATURE_SENSOR_HINGE_ANGLE and Sensor.TYPE_HINGE_ANGLE, both API 30; older Android has neither. */
+private const val FEATURE_HINGE_ANGLE = "android.hardware.sensor.hinge_angle"
+private const val TYPE_HINGE_ANGLE = 36
 
 /** Narrower than this, a "page" isn't worth having its own: smaller than the shortest common phone width. */
 private val TWO_PAGES_MIN_WIDTH = 320.dp

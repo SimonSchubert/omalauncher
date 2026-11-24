@@ -16,8 +16,8 @@ class UnfoldedShapeTest {
 
     @Test fun aGalaxyZFold8InnerScreenShowsTwoPages() {
         val fold8 = IntSize(2448, 1848)
-        assertTrue(isUnfoldedShape(fold8, half(fold8, 2.625f)))
-        assertTrue(isUnfoldedShape(fold8, half(fold8, 3.0f)))
+        assertTrue(isUnfoldedShape(fold8, half(fold8, 2.625f), hinge = true))
+        assertTrue(isUnfoldedShape(fold8, half(fold8, 3.0f), hinge = true))
     }
 
     @Test fun otherInnerScreensStillDo() {
@@ -27,29 +27,47 @@ class UnfoldedShapeTest {
             IntSize(2152, 2076), // Pixel 9 Pro Fold, 0.518
             IntSize(2440, 2268), // OnePlus Open, 0.538
         )) {
-            assertTrue("$window", isUnfoldedShape(window, half(window, 2.625f)))
+            assertTrue("$window", isUnfoldedShape(window, half(window, 2.625f), hinge = true))
+            assertTrue("$window by shape alone", isUnfoldedShape(window, half(window, 2.625f), hinge = false))
         }
     }
 
     @Test fun tabletsInLandscapeStayOnOnePage() {
-        assertFalse(isUnfoldedShape(IntSize(2560, 1600), half(IntSize(2560, 1600), 2.0f))) // 16:10, 0.8
-        assertFalse(isUnfoldedShape(IntSize(2880, 1920), half(IntSize(2880, 1920), 2.0f))) // 3:2, 0.75
+        for (hinge in listOf(false, true)) {
+            assertFalse(isUnfoldedShape(IntSize(2560, 1600), half(IntSize(2560, 1600), 2.0f), hinge)) // 16:10, 0.8
+            assertFalse(isUnfoldedShape(IntSize(2880, 1920), half(IntSize(2880, 1920), 2.0f), hinge)) // 3:2, 0.75
+        }
+    }
+
+    @Test fun squarerTabletsWithoutAHingeStayOnOnePage() {
+        // As phone-shaped as a Fold8's halves, so only the hinge tells them apart.
+        for (window in listOf(
+            IntSize(2048, 1536), // 4:3, 0.667
+            IntSize(2800, 2000), // 7:5 (OnePlus Pad), 0.700
+            IntSize(2448, 1848), // a Fold8-shaped screen without a hinge, 0.662
+        )) {
+            assertFalse("$window", isUnfoldedShape(window, half(window, 2.0f), hinge = false))
+        }
     }
 
     @Test fun phonesInEitherOrientationStayOnOnePage() {
         val upright = IntSize(1080, 2400)
-        assertFalse(isUnfoldedShape(upright, half(upright, 2.625f)))   // 0.225
+        for (hinge in listOf(false, true)) {
+            assertFalse(isUnfoldedShape(upright, half(upright, 2.625f), hinge)) // 0.225
+        }
         val sideways = IntSize(2400, 1080)
-        assertFalse(isUnfoldedShape(sideways, half(sideways, 2.625f))) // 1.11
+        for (hinge in listOf(false, true)) {
+            assertFalse(isUnfoldedShape(sideways, half(sideways, 2.625f), hinge)) // 1.11
+        }
     }
 
     @Test fun aFoldShapedScreenTooNarrowForTwoPagesDoesNot() {
         // The Fold8's shape at a density that leaves each half under 320 dp.
         val fold8 = IntSize(2448, 1848)
-        assertFalse(isUnfoldedShape(fold8, half(fold8, 4.0f)))
+        assertFalse(isUnfoldedShape(fold8, half(fold8, 4.0f), hinge = true))
     }
 
     @Test fun anEmptyWindowDoesNot() {
-        assertFalse(isUnfoldedShape(IntSize(0, 0), 0.dp))
+        assertFalse(isUnfoldedShape(IntSize(0, 0), 0.dp, hinge = true))
     }
 }
