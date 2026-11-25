@@ -58,6 +58,12 @@ class PhoneBridge(
     private val context: Context,
     private val proot: Proot,
     private val location: PhoneLocation,
+    /**
+     * Whether a home screen is up right now ([dev.omalauncher.widgets.WidgetEngine.visible]): [location] and
+     * [calendar] both read "while a widget showing them is on screen" per their own class docs, so neither answers
+     * while the launcher's away, no matter how fast a script asks.
+     */
+    private val visible: () -> Boolean,
     private val calendar: PhoneCalendar,
     private val airpods: () -> AirPods,
     private val folders: PhoneFolders,
@@ -150,11 +156,13 @@ class PhoneBridge(
     }
 
     /**
-     * No foreground gate, unlike [location]: a calendar widget can be fine refreshing from the background, and the
-     * provider's cheap to ask once in a while. But a script asking in a loop isn't once in a while, and calendars
-     * don't change by the second, so answers are at least [CALENDAR_EVERY_MS] apart regardless of who's asking.
+     * [PhoneCalendar]'s own doc says it's read "while a widget showing them is on screen, like every android
+     * source" — same intent as [location], which this was missing. A script asking in a loop isn't once in a
+     * while either, and calendars don't change by the second, so answers are also at least [CALENDAR_EVERY_MS]
+     * apart regardless of who's asking.
      */
     private suspend fun calendar(days: String?): Answer {
+        if (!visible()) return Answer.Denied(NOT_IN_FRONT)
         val n = if (days.isNullOrEmpty()) DAYS else days.toIntOrNull()?.takeIf { it in 1..MAX_DAYS } ?: return Answer.Usage("days: 1 to $MAX_DAYS")
         val now = System.currentTimeMillis()
         if (now - lastCalendarAt < CALENDAR_EVERY_MS) return Answer.Denied(TOO_SOON.format("calendar", CALENDAR_EVERY_MS / 1000))
@@ -354,6 +362,7 @@ class PhoneBridge(
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
         const val TOO_SOON = "the %s was just read; wait at least %d seconds and ask again"
+        const val NOT_IN_FRONT = "the launcher isn't on screen, so no widget could be showing this; bring it to the front and ask again"
         const val LOCATION_MS = 10_000L
         /** A minute's plenty for a widget's own refresh, and too slow to be worth polling for. */
         const val CALENDAR_EVERY_MS = 60_000L

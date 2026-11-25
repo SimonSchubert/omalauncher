@@ -132,7 +132,7 @@ class Runtime(
     val phoneFolders = PhoneFolders(context)
 
     /** `omalauncher` in the guest (and `phone`, its old name): location, calendar and AirPods for agents, as far as widgets were allowed them; the phone folders. */
-    private val phoneBridge by lazy { PhoneBridge(context, proot, location, calendar, { widgets.airpods }, phoneFolders, { computerLink }, { deviceSync }, scope) }
+    private val phoneBridge by lazy { PhoneBridge(context, proot, location, { widgets.visible }, calendar, { widgets.airpods }, phoneFolders, { computerLink }, { deviceSync }, scope) }
 
     /** Computers linked to the phone (the Omarchy plugin): they change its widgets and theme over SSH to the guest. */
     val computerLink: ComputerLink by lazy { ComputerLink(context, proot, widgets, themes, scope, { deviceSync.devices.isNotEmpty() }).also { it.onPauseChanged = { deviceSync.pauseChanged() } } }
