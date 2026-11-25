@@ -32,7 +32,7 @@ import java.util.zip.GZIPInputStream
 import kotlin.concurrent.thread
 
 private const val TAG = "bootstrap"
-private const val ROOTFS_URL = "http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
+private const val ROOTFS_URL = "https://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
 private const val TARBALL = "ArchLinuxARM-aarch64-latest.tar.gz"
 
 /** Attempts per network step before setup (or an update) reports a failure. */
@@ -178,6 +178,9 @@ class Bootstrap(
     /** The agents picked when installing Linux, one bin per line; its existence means an install was started. */
     private val choiceFile get() = File(proot.filesDir, "setup-agents")
 
+    /** SHA-256 of the last rootfs tarball this phone trusted; see [checkRootfsDigest]. */
+    private val rootfsDigestFile get() = File(proot.filesDir, "rootfs-sha256")
+
     /** The coding agents setup installs, in the order they were listed. */
     val chosenAgents: List<Agent>
         get() = runCatching { choiceFile.readLines() }.getOrDefault(emptyList()).mapNotNull { bin -> AGENTS.find { it.bin == bin } }
@@ -317,6 +320,7 @@ class Bootstrap(
                 journal.reset()
                 provisioner.forgetAll()
                 choiceFile.delete()
+                rootfsDigestFile.delete()
                 proot.keymap.delete()
                 context.cacheDir.listFiles { f -> f.name.startsWith(TARBALL) }?.forEach { it.delete() }
                 log.clear()
@@ -440,6 +444,7 @@ class Bootstrap(
             } catch (e: Exception) {
                 throw if (e.outOfSpace()) outOfSpace(e) else e
             }
+        checkRootfsDigest(tarball)
         try {
             extract(tarball)
         } catch (e: Exception) {
@@ -535,6 +540,36 @@ class Bootstrap(
             }
         }
         check(total <= 0 || partial.length() == total) { text(R.string.linux_error_cut_short) }
+    }
+
+    /**
+     * Arch Linux ARM's "latest" tarball is a rolling release: there's no fixed, signed hash from
+     * upstream to check it against, unlike cliamp's pinned release, so full verification isn't
+     * possible here. This is trust-on-first-use instead: the first install's hash is recorded, and
+     * HTTPS (see [ROOTFS_URL]) keeps a network attacker from swapping that first download. A later
+     * download that doesn't match what this phone trusted before is logged, since that's also what
+     * a hijacked mirror would look like — though the hash moving is normal too, as "latest" is a
+     * new build each time, so this doesn't fail setup by itself. A future mirror that publishes a
+     * signed hash for the build it serves would let this become real verification.
+     */
+    private fun checkRootfsDigest(tarball: File) {
+        val digest = fileSha256(tarball)
+        val trusted = rootfsDigestFile.takeIf { it.exists() }?.readText()
+        if (trusted != null && trusted != digest) {
+            log.add(text(R.string.linux_log_rootfs_changed))
+            Log.w(TAG, "rootfs sha256 $digest doesn't match the trusted $trusted")
+        }
+        writeAtomically(rootfsDigestFile, digest.toByteArray())
+    }
+
+    /** Streamed so hashing an ~830 MB tarball doesn't need to hold it all in memory. */
+    private fun fileSha256(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        DigestInputStream(file.inputStream(), digest).use { input ->
+            val buf = ByteArray(1 shl 16)
+            while (input.read(buf) >= 0) checkCancelled()
+        }
+        return digest.digest().hex()
     }
 
     private fun extract(tarball: File) {
