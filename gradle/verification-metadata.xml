@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  STATUS: SCAFFOLDED BUT NOT POPULATED. This file currently provides NO real protection.
+
+  Why this file exists: Gradle has no mechanism to catch a compromised or typosquatted
+  artifact silently substituted at one of our pinned group:artifact:version coordinates
+  (see gradle/libs.versions.toml) unless this file lists a real checksum for every
+  artifact Gradle resolves - direct AND transitive. Today there are no such checksums
+  anywhere in this repo, so dependency verification is effectively absent.
+
+  Why <components> below is empty and <trusted-artifacts> trusts everything:
+  The moment gradle/verification-metadata.xml exists at this path, Gradle enables
+  dependency verification for every build automatically. If verification is enabled
+  and a resolved artifact has no matching <component> entry and is not covered by a
+  <trust> rule, Gradle FAILS THE BUILD (hard failure, not a silent skip) with a
+  "no checksums declared" error - for every single dependency, direct and transitive
+  (realistically well over a hundred artifacts once Compose Multiplatform, AGP, and
+  Kotlin's transitive graphs are included). This file could not have been produced
+  by hand in this environment: there is no Android SDK / network access available here
+  to actually resolve the dependency graph and compute genuine checksums, and fabricating
+  checksum values would be worse than having none - it would either break the build with
+  wrong values or, if gotten "right" by copying from an untrusted source, give false
+  confidence that an artifact was checked when it wasn't.
+
+  So, to avoid landing a change that silently breaks every build (local, CI, and the
+  F-Droid build) the instant this file is merged, the single blanket <trust> rule below
+  matches every artifact and exempts all of them from verification. That rule is a
+  deliberate, temporary no-op: as committed, this file checks nothing. It exists purely
+  as a correctly-structured scaffold, not as a working control.
+
+  WHAT A HUMAN WITH A REAL ANDROID SDK + NETWORK ACCESS NEEDS TO DO NEXT:
+    1. Run the exact command quoted in the "reason" attribute of the <trust> element
+       below (an XML comment can't contain two adjacent hyphens, so Gradle's actual
+       write-verification-metadata flag, which needs two leading hyphens, is spelled
+       out there instead, where that's legal). sha256 covers integrity; pgp
+       additionally verifies upstream signatures where publishers sign their
+       artifacts - include it if that's desired/available.
+    2. This downloads every dependency, direct and transitive, and regenerates
+       gradle/verification-metadata.xml with real, computed checksums for each one,
+       populating <components> for real.
+    3. Review the generated file (diff it against this scaffold) before committing:
+       check for unexpected new/unfamiliar coordinates, and confirm nothing beyond the
+       expected dependency graph snuck in.
+    4. Remove the blanket "trust everything" rule below (or narrow it to the small,
+       specific set of exceptions Gradle's own docs recommend, such as locally built
+       files or generated javadoc/sources jars) now that real <component> checksums
+       exist to do the actual verifying.
+    5. Re-run a full build (and CI) once more after removing the blanket trust rule, to
+       confirm every resolved artifact now has a matching, passing checksum entry.
+
+  The dependency coordinates this project declares directly, for reference (see
+  gradle/libs.versions.toml, settings.gradle.kts, app/build.gradle.kts, owl/build.gradle.kts;
+  the real generation run above will also pull in every one of their transitive
+  dependencies, which is most of what actually needs covering):
+    Plugins:
+      com.android.application                         9.5.2
+      org.jetbrains.kotlin.plugin.compose              2.4.21
+      org.jetbrains.kotlin.jvm                         2.4.21
+    Libraries:
+      androidx.activity:activity-compose                1.13.0
+      org.jetbrains.compose.runtime:runtime             1.12.2
+      org.jetbrains.compose.foundation:foundation       1.12.2
+      org.jetbrains.compose.ui:ui                       1.12.2
+      junit:junit                                       4.13.2
+      org.json:json                                     20260814
+      com.caverock:androidsvg-aar                       1.4
+      org.apache.commons:commons-compress               1.28.0
+      androidx.fragment:fragment                        1.9.1
+      com.google.android.play:app-update                2.1.0
+      com.google.zxing:core                             3.5.4
+    (The sherpa-onnx AAR used by app/build.gradle.kts is fetched outside Gradle/Maven
+    entirely and is already pinned by an explicit SHA-256 check in that build script -
+    it needs no entry here.)
+-->
+<verification-metadata xmlns="https://schema.gradle.org/dependency-verification"
+                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                        xsi:schemaLocation="https://schema.gradle.org/dependency-verification https://schema.gradle.org/dependency-verification/dependency-verification-1.3.xsd">
+   <configuration>
+      <!-- Also check POM/module/ivy metadata file checksums, not just artifact checksums. -->
+      <verify-metadata>true</verify-metadata>
+      <!-- No PGP keyring/network access was available to validate signatures when this
+           scaffold was written; leave signature verification off until a human
+           deliberately opts in (see the "pgp" argument in step 1 above) and reviews
+           which publishers actually sign their releases. -->
+      <verify-signatures>false</verify-signatures>
+      <trusted-artifacts>
+         <!-- TEMPORARY, INTENTIONAL NO-OP - see the file header above.
+              This matches every group/artifact/version and must be deleted (or narrowed
+              to genuine, specific exceptions) once real <components> entries exist below;
+              leaving it in place after that point would silently disable verification
+              for everything, which is exactly the failure mode this file is meant to
+              prevent. -->
+         <trust group=".*" name=".*" regex="true"
+                reason="Placeholder scaffold, no real checksums yet. To populate for real, run: ./gradlew --write-verification-metadata sha256,pgp help; then review the result and delete this blanket trust rule."/>
+      </trusted-artifacts>
+   </configuration>
+   <components>
+      <!-- Intentionally empty. See the "reason" attribute on the <trust> element in
+           <configuration> above for the exact command to populate this for real. -->
+   </components>
+</verification-metadata>
