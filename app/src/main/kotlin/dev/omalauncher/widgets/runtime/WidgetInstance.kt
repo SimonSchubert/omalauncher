@@ -547,6 +547,9 @@ class WidgetInstance(
         slot: Int,
     ) = services.shortcuts(key) { list -> write(slot, list) }
 
+    /** How many `x = post(...)` have been sent into each state, by slot. */
+    private val posts = java.util.concurrent.ConcurrentHashMap<Int, Int>()
+
     override fun post(
         url: String,
         body: Value,
@@ -560,12 +563,14 @@ class WidgetInstance(
         val bytes = (json ?: if (body == Null) "" else body.toString()).toByteArray()
         val sent = if (json != null && headers.keys.none { it.equals("Content-Type", true) }) headers + ("Content-Type" to "application/json") else headers
         val scope = scope ?: return
+        // Into a state, the last one sent wins: an earlier one that answers later doesn't overwrite its answer.
+        val n = slot?.let { posts.merge(it, 1, Int::plus) }
         scope.launch {
             val r = services.http(url, sent, POST_TIMEOUT_S, bytes, method, pin)
             val ok = r.code in 200..299
             // `x = post(...)` gets the answer and handles it (a sign-in polled while pending is a 400 each time).
             if (!ok && slot == null) report("post: ${httpFailure(r)}")
-            if (slot != null) {
+            if (slot != null && posts[slot] == n) {
                 // err says why it failed, as a source's status does: offline, refused, a redirect not followed.
                 write(slot, Obj(mapOf("code" to Num(r.code.toDouble()), "ok" to if (ok) TRUE else FALSE, "out" to if (r.out.isEmpty()) Null else Json.parseOrText(r.out), "err" to Str(r.err))))
             }
@@ -838,6 +843,7 @@ class WidgetInstance(
                 scope.launch {
                     // The command or URL a cmd or http source last ran, and when; whether it must run again now.
                     var last: Value? = null
+                    var lastAsked: List<Value>? = null
                     var lastAt = 0L
                     var lastWait = 0L
                     var due = true
@@ -899,11 +905,16 @@ class WidgetInstance(
                                     due = false
                                     continue
                                 }
+                                // An http source's headers and pin are what it asks for too: a token switched to another
+                                // account fetches again, as a URL changed does.
+                                val extras = asks(g)
+                                val asked = extras?.invoke()
                                 // An interval of NaN ("NaN" is a number) would be 0: a % by zero for a clock, a busy loop otherwise.
                                 val wait = (g.every * 1000).toLong().coerceAtLeast(100)
                                 // Back to what it last ran, within the interval (a tab shown again): its value still holds.
-                                if (due || arg != last || System.currentTimeMillis() >= lastAt + lastWait) {
+                                if (due || arg != last || asked != lastAsked || System.currentTimeMillis() >= lastAt + lastWait) {
                                     last = arg
+                                    lastAsked = asked
                                     lastAt = System.currentTimeMillis()
                                     // A failed fetch (offline, or a server's rate limit) is tried again in half a minute.
                                     fetches++
@@ -921,9 +932,10 @@ class WidgetInstance(
                                 // Sleeps until the interval is up, a refresh() wakes it early, or what it runs changes
                                 // (a coin tapped, a tab opened): then it runs at once, not at the next interval.
                                 val changed = built?.let { snapshotFlow { eval(it, root, g.name) }.filter { v -> v != arg }.map { false } } ?: emptyFlow()
-                                due = withTimeoutOrNull(target) { merge(refreshes.filter { it != seen }.map { true }, changed).first() } ?: true
+                                val changedAsks = extras?.let { snapshotFlow { it() }.filter { v -> v != asked }.map { false } } ?: emptyFlow()
+                                due = withTimeoutOrNull(target) { merge(refreshes.filter { it != seen }.map { true }, changed, changedAsks).first() } ?: true
                                 // A command built from something that changes all the time runs at most once a second.
-                                if (built != null && !due) delay((lastAt + MIN_RERUN_MS - System.currentTimeMillis()).coerceAtLeast(0))
+                                if ((built != null || extras != null) && !due) delay((lastAt + MIN_RERUN_MS - System.currentTimeMillis()).coerceAtLeast(0))
                             }
                         }
                     }
@@ -1341,6 +1353,12 @@ class WidgetInstance(
         if (secrets.isNotEmpty()) seal(secrets.map { read(it) })
     }
 
+    /** An http source's headers and pin as they are now, when either is built from something that changes; null otherwise. */
+    private fun asks(g: Global.Source): (() -> List<Value>)? {
+        if (g.kind != "http" || listOfNotNull(g.headers, g.pin).all { it.const != null }) return null
+        return { listOf(g.headers?.let { eval(it, root, g.name) } ?: Null, g.pin?.let { eval(it, root, g.name) } ?: Null) }
+    }
+
     /** Runs [g] and writes its value; false when an http fetch failed, so it's tried again soon. */
     private suspend fun update(
         slot: Int,
@@ -1352,6 +1370,7 @@ class WidgetInstance(
                 "clock" -> Num(Math.floor(System.currentTimeMillis() / 1000.0))
                 "cmd", "http" -> {
                     val target = eval(g.arg!!, root, g.name).toString()
+                    val sent = asks(g)?.invoke()
                     try {
                         val r =
                             if (g.kind == "http") {
@@ -1361,6 +1380,9 @@ class WidgetInstance(
                             } else {
                                 services.cmd(target, g.timeout)
                             }
+                        // What it asks for changed while it was out (another account, another tab): the answer is for
+                        // the old one, so it's dropped, and the source runs again for the new one.
+                        if (eval(g.arg!!, root, g.name).toString() != target || asks(g)?.invoke() != sent) return true
                         // Up to a megabyte of JSON: parsed off the main thread.
                         val out = if (g.json) withContext(Dispatchers.Default) { Json.parseOrText(r.out) } else Str(r.out)
                         // A response too big now is as big in 30 seconds.
