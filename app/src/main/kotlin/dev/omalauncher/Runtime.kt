@@ -179,6 +179,7 @@ class Runtime(
                 { computerLink.managed() },
                 { deviceSync.managed() },
                 proot::managed,
+                gpu::managed,
                 pacman::managed,
                 agents::managed,
                 themes::managed,

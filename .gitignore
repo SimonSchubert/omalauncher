@@ -19,3 +19,5 @@ fastlane/README.md
 keystore.properties
 # captured by scripts/collage-captures.sh
 store/collage/raw/
+# scripts/zero-copy/build.sh output; the layer it ships is copied into app/src/main/assets/zero-copy
+scripts/zero-copy/build/

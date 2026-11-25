@@ -127,6 +127,9 @@
     <string name="linux_cpu_pinning_title">panggilan sistem cepat</string>
     <string name="linux_cpu_pinning_on">aktif · menjaga Linux di satu inti CPU cepat · untuk program yang dijalankan mulai sekarang</string>
     <string name="linux_cpu_pinning_off">nonaktif · untuk program yang dijalankan mulai sekarang</string>
+    <string name="linux_zero_copy_title">frame gpu tanpa salinan</string>
+    <string name="linux_zero_copy_off">nonaktif · eksperimental · aplikasi GPU menggambar langsung ke apa yang ditampilkan layar: lebih mulus, CPU lebih hemat · untuk aplikasi yang dibuka mulai sekarang</string>
+    <string name="linux_zero_copy_on">aktif · eksperimental · jika jendela aplikasi GPU menjadi hitam atau rusak, matikan ini · untuk aplikasi yang dibuka mulai sekarang</string>
     <string name="linux_session_title">sesi</string>
     <string name="linux_session_running">berjalan · aplikasi Linux, terminal, dan agen berfungsi</string>
     <string name="linux_session_starting">memulai…</string>

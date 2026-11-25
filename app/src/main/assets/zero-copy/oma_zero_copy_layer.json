@@ -1,0 +1,13 @@
+{
+    "file_format_version": "1.2.0",
+    "layer": {
+        "name": "VK_LAYER_OMA_zero_copy",
+        "type": "GLOBAL",
+        "library_path": "/usr/local/lib/libVkLayer_oma_zero_copy.so",
+        "api_version": "1.4.0",
+        "implementation_version": "1",
+        "description": "OmaLauncher: Wayland swapchains in the compositor's buffers, shown without copies",
+        "enable_environment": { "OMA_ZERO_COPY": "1" },
+        "disable_environment": { "OMA_ZERO_COPY_DISABLE": "1" }
+    }
+}

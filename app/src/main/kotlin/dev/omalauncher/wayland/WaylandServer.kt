@@ -54,6 +54,7 @@ class WaylandServer(
             Global("zxdg_decoration_manager_v1", 1, ::DecorationManager),
             Global("zwp_text_input_manager_v3", 1, ::TextInputManager),
             Global("org_kde_kwin_server_decoration_manager", 1, ::ServerDecorationManager),
+            Global("oma_ahb_allocator_v1", 1, ::AhbAllocator),
         )
 
     val clients = mutableListOf<Client>()

@@ -131,6 +131,9 @@
     <string name="linux_cpu_pinning_title">llamadas al sistema rápidas</string>
     <string name="linux_cpu_pinning_on">activadas · mantiene Linux en un núcleo de CPU rápido · para los programas que se inicien a partir de ahora</string>
     <string name="linux_cpu_pinning_off">desactivadas · para los programas que se inicien a partir de ahora</string>
+    <string name="linux_zero_copy_title">imágenes de la gpu sin copias</string>
+    <string name="linux_zero_copy_off">desactivado · experimental · las apps con GPU dibujan directamente en lo que muestra la pantalla: más fluidas, menos CPU · para las apps que abras a partir de ahora</string>
+    <string name="linux_zero_copy_on">activado · experimental · si la ventana de una app con GPU se ve negra o corrupta, desactívalo · para las apps que abras a partir de ahora</string>
     <string name="linux_session_title">sesión</string>
     <string name="linux_session_running">en marcha · las apps de Linux, las terminales y los agentes funcionan</string>
     <string name="linux_session_starting">iniciando…</string>

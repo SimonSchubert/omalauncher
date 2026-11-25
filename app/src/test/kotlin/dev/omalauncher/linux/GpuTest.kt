@@ -37,6 +37,23 @@ class GpuTest {
         assertEquals(GpuKind.MALI, gpuKind(hasMali = true, hasKgsl = true, kgslModel = "Adreno 740"))
     }
 
+    /** Off by default, and when on the layer still needs the driver's own WSI for what it leaves to it. */
+    @Test fun zeroCopyOnlyAddsItsVariable() {
+        val driver = GpuDrivers.of(GpuKind.TURNIP)
+        assertEquals(driver.env, driver.appEnv(zeroCopy = false))
+        assertEquals(driver.env + GpuDrivers.ZERO_COPY_ENV, driver.appEnv(zeroCopy = true))
+        assertTrue("MESA_VK_WSI_DEBUG=sw" in driver.appEnv(zeroCopy = true))
+    }
+
+    /** The manifest the launcher installs loads the library it installs, and only under the variable it sets. */
+    @Test fun zeroCopyManifestMatchesTheInstall() {
+        val manifest = File("src/main/assets/zero-copy/oma_zero_copy_layer.json").readText()
+        assertTrue(manifest.contains("\"library_path\": \"${GpuDrivers.ZERO_COPY_LAYER}\""))
+        val (name, value) = GpuDrivers.ZERO_COPY_ENV.split("=")
+        assertTrue(Regex("\"enable_environment\":\\s*\\{\\s*\"$name\":\\s*\"$value\"").containsMatchIn(manifest))
+        assertTrue(GpuDrivers.ZERO_COPY_MANIFEST.startsWith("/usr/local/share/vulkan/implicit_layer.d/"))
+    }
+
     @Test fun softwareEnvNamesOnlyLavapipe() {
         val icds = listOf(GpuDrivers.of(GpuKind.MALI).icdPath, GpuDrivers.of(GpuKind.TURNIP).icdPath)
         assertEquals(

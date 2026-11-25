@@ -49,4 +49,34 @@ object Native {
     @JvmStatic external fun windowBlit(window: Long, store: Long, x: Int, y: Int, width: Int, height: Int, opaque: Boolean)
 
     @JvmStatic external fun windowEnd(window: Long)
+
+    // AHardwareBuffers, see cpp/ahb.c and Ahb.kt.
+
+    /** Whether buffers of AHardwareBuffer [format] (1 RGBA, 5 BGRA) can be allocated for clients here. */
+    @JvmStatic external fun ahbSupported(format: Int): Boolean
+
+    /** A [width] x [height] buffer of AHardwareBuffer [format]; [info] gets its pixels' dma-buf fd (ours to close), offset and bytes per row. 0 on failure. */
+    @JvmStatic external fun ahbAllocate(width: Int, height: Int, format: Int, info: IntArray): Long
+
+    @JvmStatic external fun ahbRelease(ahb: Long)
+
+    /** Copies a buffer into the locked window, as [windowBlit] does a store. */
+    @JvmStatic external fun windowBlitAhb(window: Long, ahb: Long, x: Int, y: Int, width: Int, height: Int, opaque: Boolean)
+
+    /** A layer of its own above the window's pixels, for a buffer to show without a copy; 0 on failure. */
+    @JvmStatic external fun overlayCreate(window: Long): Long
+
+    @JvmStatic external fun txBegin(): Long
+
+    /** Shows [ahb] on [overlay]; [done] runs once the display is done with it, after a later buffer or [txRemove] replaced it. */
+    @JvmStatic external fun txSetBuffer(tx: Long, overlay: Long, ahb: Long, done: Runnable, opaque: Boolean)
+
+    /** Shows [overlay]'s whole [srcWidth] x [srcHeight] buffer at [x], [y], scaled to [width] x [height]; [z] from 1 up. */
+    @JvmStatic external fun txPlace(tx: Long, overlay: Long, srcWidth: Int, srcHeight: Int, x: Int, y: Int, width: Int, height: Int, z: Int)
+
+    /** Takes [overlay] off screen and frees it. */
+    @JvmStatic external fun txRemove(tx: Long, overlay: Long)
+
+    /** Applies and frees [tx]. */
+    @JvmStatic external fun txApply(tx: Long)
 }
