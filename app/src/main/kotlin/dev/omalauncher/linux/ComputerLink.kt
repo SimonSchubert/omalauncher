@@ -392,8 +392,9 @@ class ComputerLink(
     /**
      * Asks before [what] (plain English: "add the widget \"x.owl\"") happens to [computer]: a notification naming it,
      * which the user taps to allow or deny. Unanswered within the two minutes omalauncher-link itself waits, or
-     * notifications off here, this denies it (a stale notification is then also taken down). Skipped for [SELF]:
-     * that's this phone acting on what DeviceSync already decided to follow, not a linked computer's own request.
+     * notifications off here, this denies it (a stale notification is then also taken down). Not skipped for [SELF]:
+     * "self" (or "self:&lt;id&gt;") is itself just a string any guest process can type on the same unauthenticated
+     * command line as a real id, so exempting it would hand back everything this function is for, for free.
      *
      * This is what [request]'s comment points to: a mutating verb still needs a tap here, on this device, whatever
      * guessed or copied the id that named it.
@@ -447,11 +448,13 @@ class ComputerLink(
     // request() can't tell omalauncher-link's own ssh session from a bare `omalauncher link ...` run by any other
     // guest process: both land in the same inbox (PhoneBridge.receive), and the id argument is only what devices()
     // already hands out in plain text to anyone, with no secret of its own (hello's proof is checked once, right
-    // after linking, and never again). So a guest process that only read an id this way can act here as if it were
-    // that computer. confirm(), above, is the mitigation this file has for it: a mutating verb still stops short of
-    // doing anything until the user taps a notification, so the worst a guessed id buys without that tap is reading
-    // what's already synced. Giving the ssh path its own channel - a socket or fd tied to that one session, instead
-    // of this shared file inbox any guest process can write - would close it properly; that's not done here.
+    // after linking, and never again); "self" (what this phone's own omalauncher-sync, following another device,
+    // passes as the id below) is just as reachable, with no id to even guess first. So a guest process that only
+    // read an id this way, or typed "self" outright, can act here as if it were that computer. confirm(), above, is
+    // the mitigation this file has for it: a mutating verb still stops short of doing anything until the user taps a
+    // notification, so the worst any of this buys without that tap is reading what's already synced. Giving the ssh
+    // path its own channel - a socket or fd tied to that one session, instead of this shared file inbox any guest
+    // process can write - would close it properly; that's not done here.
     private suspend fun request(
         args: List<String>,
         following: DeviceSync,
@@ -561,7 +564,7 @@ class ComputerLink(
             if (sent.length() > MAX_BYTES) return PhoneBridge.Answer.Usage("put: a widget is at most ${MAX_BYTES / 1024} KB")
             val bytes = sent.readBytes()
             if (!isText(bytes)) return PhoneBridge.Answer.Usage("put: $name isn't UTF-8 text")
-            if (computer.id != SELF && !confirm(computer, "add or change the widget \"$name\"")) return notConfirmed()
+            if (!confirm(computer, "add or change the widget \"$name\"")) return notConfirmed()
             val target = File(widgetsDir, name)
             val created = !target.exists()
             widgetsDir.mkdirs()
@@ -581,7 +584,7 @@ class ComputerLink(
         if (!validName(name)) return badName(name)
         val f = File(widgetsDir, name)
         if (!f.isFile) return PhoneBridge.Answer.Error("no widget $name there")
-        if (computer.id != SELF && !confirm(computer, "remove the widget \"$name\"")) return notConfirmed()
+        if (!confirm(computer, "remove the widget \"$name\"")) return notConfirmed()
         f.delete()
         note(computer.name, "removed $name")
         return PhoneBridge.Answer.Ok(null)
@@ -603,13 +606,13 @@ class ComputerLink(
         if (name == themes.picked) return PhoneBridge.Answer.Ok(null)
         val repo = source?.trim()?.takeIf { SOURCE.matches(it) }?.let(ThemeRepo::parse)?.takeIf { it.themeName == name }
         if (themes.choices.none { it.name == name } && repo != null) {
-            if (computer.id != SELF && !confirm(computer, "install the theme \"$name\" from ${repo.url}")) return notConfirmed()
+            if (!confirm(computer, "install the theme \"$name\" from ${repo.url}")) return notConfirmed()
             note(computer.name, "installed theme $name from ${repo.url}")
             themes.install(repo.url)
             return if (themes.picked == name) PhoneBridge.Answer.Ok(null) else PhoneBridge.Answer.Error("couldn't install theme '$name' from ${repo.url}")
         }
         val theme = themes.choices.firstOrNull { it.name == name } ?: return PhoneBridge.Answer.Error("no theme '$name' there; `themes` lists them")
-        if (computer.id != SELF && !confirm(computer, "switch the theme to \"$name\"")) return notConfirmed()
+        if (!confirm(computer, "switch the theme to \"$name\"")) return notConfirmed()
         themes.pick(theme)
         note(computer.name, "switched the theme to $name")
         scope.launch { if (themes.complete) themes.applyPicked() else themes.fetchPicked() }
@@ -635,7 +638,7 @@ class ComputerLink(
         if (current == null || current.name != theme || themes.picked != theme) return PhoneBridge.Answer.Ok(null)
         if (themes.background?.name == name) return PhoneBridge.Answer.Ok(null)
         val file = withContext(Dispatchers.IO) { current.backgroundNamed(name) } ?: return PhoneBridge.Answer.Error("missing: no background $name for $theme")
-        if (!fromBgput && computer.id != SELF && !confirm(computer, "set the background to \"$name\"")) return notConfirmed()
+        if (!fromBgput && !confirm(computer, "set the background to \"$name\"")) return notConfirmed()
         themes.setBackground(file)
         note(computer.name, "set the background to $name")
         return PhoneBridge.Answer.Ok(null)
@@ -658,7 +661,7 @@ class ComputerLink(
             val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeFile(sent.path, opts)
             if (opts.outWidth <= 0 || opts.outHeight <= 0) return PhoneBridge.Answer.Usage("bgput: $name isn't an image it can show")
-            if (computer.id != SELF && !confirm(computer, "send the background \"$name\" for \"$theme\"")) return notConfirmed()
+            if (!confirm(computer, "send the background \"$name\" for \"$theme\"")) return notConfirmed()
             val dir = File(dev.omalauncher.storage.LauncherData.userBackgroundsDir(context), theme)
             dir.mkdirs()
             writeAtomically(File(dir, name), sent.readBytes())
@@ -683,7 +686,7 @@ class ComputerLink(
         return PhoneBridge.Answer.Ok(Obj(mapOf("path" to Str("/tmp/" + out.name))))
     }
 
-    private fun sync(
+    private suspend fun sync(
         computer: Computer,
         args: List<String>,
     ): PhoneBridge.Answer {
@@ -696,6 +699,14 @@ class ComputerLink(
                     "off" -> false
                     else -> return usage
                 }
+            val what =
+                when {
+                    widget && validName(args.getOrNull(1).orEmpty()) -> "${if (on) "sync" else "stop syncing"} the widget \"${args[1]}\""
+                    args[0] == "theme" -> "${if (on) "sync" else "stop syncing"} its theme"
+                    args[0] == "background" -> "${if (on) "sync" else "stop syncing"} its background"
+                    else -> return usage
+                }
+            if (!confirm(computer, what)) return notConfirmed()
             when {
                 widget && validName(args.getOrNull(1).orEmpty()) -> setSyncWidget(computer.id, args[1], on)
                 args[0] == "theme" -> setSyncTheme(computer.id, on)
@@ -768,7 +779,7 @@ class ComputerLink(
         val keptAt = (kept?.fields?.get("savedAt") as? Num)?.v ?: 0.0
         // The same values are no change (each side writing back what it took would go on forever); older ones lose.
         if (kept?.fields?.get("values") == values || at <= keptAt) return PhoneBridge.Answer.Ok(Obj(mapOf("taken" to bool(false))))
-        if (computer.id != SELF && !confirm(computer, "change the synced values of \"$name\"")) return notConfirmed()
+        if (!confirm(computer, "change the synced values of \"$name\"")) return notConfirmed()
         val out = "{\"v\":1,\"savedAt\":${at.toLong()},\"values\":" + (Json.write(values) ?: return PhoneBridge.Answer.Usage("state put: values")) + "}"
         withContext(Dispatchers.IO) {
             file.parentFile?.mkdirs()

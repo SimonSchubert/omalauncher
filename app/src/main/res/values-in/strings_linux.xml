@@ -227,4 +227,8 @@
     <string name="link_paused">dijeda. tidak ada perangkat yang bisa menjangkau perangkat ini dan perangkat ini tidak mengikuti yang lain sampai kamu melanjutkan.</string>
     <string name="link_activity">aktivitas</string>
     <string name="link_activity_none">belum ada</string>
+    <string name="link_confirm_channel">perangkat tersambung</string>
+    <string name="link_confirm_text">ingin %1$s</string>
+    <string name="link_confirm_approve">izinkan</string>
+    <string name="link_confirm_deny">tolak</string>
 </resources>

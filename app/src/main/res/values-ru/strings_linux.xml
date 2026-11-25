@@ -242,4 +242,8 @@
     <string name="link_paused">на паузе. ни одно устройство не достанет до этого, и оно ни за кем не следует, пока не возобновишь.</string>
     <string name="link_activity">активность</string>
     <string name="link_activity_none">пока ничего</string>
+    <string name="link_confirm_channel">подключённые устройства</string>
+    <string name="link_confirm_text">хочет %1$s</string>
+    <string name="link_confirm_approve">разрешить</string>
+    <string name="link_confirm_deny">запретить</string>
 </resources>

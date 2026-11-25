@@ -241,4 +241,8 @@
     <string name="link_paused">đang tạm dừng. không thiết bị nào truy cập được thiết bị này và nó không theo thiết bị nào cho đến khi bạn tiếp tục.</string>
     <string name="link_activity">hoạt động</string>
     <string name="link_activity_none">chưa có gì</string>
+    <string name="link_confirm_channel">thiết bị đã kết nối</string>
+    <string name="link_confirm_text">muốn %1$s</string>
+    <string name="link_confirm_approve">cho phép</string>
+    <string name="link_confirm_deny">từ chối</string>
 </resources>

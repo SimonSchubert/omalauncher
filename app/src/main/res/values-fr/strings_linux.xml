@@ -236,4 +236,8 @@
     <string name="link_paused">en pause. aucun appareil n\'atteint celui-ci et il n\'en suit aucun tant que tu ne reprends pas.</string>
     <string name="link_activity">activité</string>
     <string name="link_activity_none">rien pour l\'instant</string>
+    <string name="link_confirm_channel">appareils connectés</string>
+    <string name="link_confirm_text">veut %1$s</string>
+    <string name="link_confirm_approve">autoriser</string>
+    <string name="link_confirm_deny">refuser</string>
 </resources>

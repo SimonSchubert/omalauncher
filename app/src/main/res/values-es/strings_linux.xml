@@ -237,4 +237,8 @@
     <string name="link_paused">en pausa. ningún dispositivo llega a este y este no sigue a ninguno hasta que reanudes.</string>
     <string name="link_activity">actividad</string>
     <string name="link_activity_none">nada todavía</string>
+    <string name="link_confirm_channel">dispositivos conectados</string>
+    <string name="link_confirm_text">quiere %1$s</string>
+    <string name="link_confirm_approve">permitir</string>
+    <string name="link_confirm_deny">rechazar</string>
 </resources>
