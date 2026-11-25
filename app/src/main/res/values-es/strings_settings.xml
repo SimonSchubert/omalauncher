@@ -82,6 +82,7 @@
     <string name="settings_up_to_date">al día · comprobado %1$s</string>
     <string name="settings_store_unreachable">no se pudo conectar con la tienda</string>
     <string name="settings_updates_held">editados, así que no se actualizan aquí: %1$s · actualizar uno en la tienda reemplaza tus cambios</string>
+    <string name="settings_updates_held_risky">parece arriesgado, así que no se actualiza aquí: %1$s · actualízalo en la tienda</string>
     <string name="settings_more_lines">+%1$d más</string>
     <string name="settings_just_now">ahora mismo</string>
     <string name="settings_minutes_ago">hace %1$d min</string>

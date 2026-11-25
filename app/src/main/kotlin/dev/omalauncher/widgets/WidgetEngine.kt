@@ -36,6 +36,7 @@ import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.lang.Program
 import dev.omalauncher.widgets.lang.Source
 import dev.omalauncher.widgets.lang.phoneLanguage
+import dev.omalauncher.widgets.market.Review
 import dev.omalauncher.widgets.market.Shared
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -173,7 +174,10 @@ class WidgetEngine(
         scope.launch { for (m in markets) m.refresh() }
     }
 
-    /** Installs every store update but edited ones, which only the store replaces, on the engine's scope: leaving settings doesn't stop it. */
+    /**
+     * Installs every store update but edited ones, which only the store replaces, and risky ones, which only the
+     * store's own confirm asks about, on the engine's scope: leaving settings doesn't stop it.
+     */
     fun updateAll() {
         if (updating) return
         updating = true
@@ -181,7 +185,7 @@ class WidgetEngine(
         scope.launch {
             try {
                 for (m in markets) {
-                    for (e in m.updates.filterNot(m::edited)) {
+                    for (e in m.updates.filterNot(m::edited).filterNot { Review.risks(it.commands).isNotEmpty() }) {
                         m.install(e, page = 0)?.let { updateError = "${e.name}: $it" }
                     }
                 }

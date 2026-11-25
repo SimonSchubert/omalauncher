@@ -81,6 +81,7 @@
     <string name="settings_up_to_date">güncel · son kontrol: %1$s</string>
     <string name="settings_store_unreachable">mağazaya ulaşılamadı</string>
     <string name="settings_updates_held">düzenlendiği için burada güncellenmedi: %1$s · birini mağazadan güncellersen değişikliklerin silinir</string>
+    <string name="settings_updates_held_risky">riskli görünüyor, bu yüzden burada güncellenmedi: %1$s · mağazadan güncelle</string>
     <string name="settings_more_lines">+%1$d daha</string>
     <string name="settings_just_now">az önce</string>
     <string name="settings_minutes_ago">%1$d dk önce</string>

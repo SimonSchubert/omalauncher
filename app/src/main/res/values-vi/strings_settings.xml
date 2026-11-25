@@ -94,6 +94,7 @@
     <string name="settings_store_unreachable">không kết nối được cửa hàng</string>
     <!-- %1$s lists the edited widgets with their versions. -->
     <string name="settings_updates_held">đã chỉnh sửa nên không cập nhật ở đây: %1$s · cập nhật trong cửa hàng sẽ thay thế thay đổi của bạn</string>
+    <string name="settings_updates_held_risky">có vẻ rủi ro nên không cập nhật ở đây: %1$s · hãy cập nhật trong cửa hàng</string>
     <!-- Below a list cut short: how many lines are left out. -->
     <string name="settings_more_lines">+%1$d nữa</string>
     <string name="settings_just_now">vừa xong</string>

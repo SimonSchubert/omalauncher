@@ -90,6 +90,7 @@
     <string name="store_packages_none">tidak ada</string>
     <string name="store_runs_no_commands">tidak menjalankan perintah</string>
     <string name="store_runs_commands">menjalankan perintah berikut di Arch:</string>
+    <string name="store_risky_title">ini tampak berisiko — baca sebelum mengonfirmasi</string>
 
     <string name="store_installing">menginstal…</string>
     <string name="store_updating">memperbarui…</string>

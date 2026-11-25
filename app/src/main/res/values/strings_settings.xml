@@ -95,6 +95,8 @@
     <string name="settings_store_unreachable">couldn\'t reach the store</string>
     <!-- %1$s lists the edited widgets with their versions. -->
     <string name="settings_updates_held">edited, so not updated here: %1$s · updating one in the store replaces your changes</string>
+    <!-- %1$s lists the widgets with their versions; their update runs something Review flagged, so bulk update skips it. -->
+    <string name="settings_updates_held_risky">needs a second look, so not updated here: %1$s · update it in the store</string>
     <!-- Below a list cut short: how many lines are left out. -->
     <string name="settings_more_lines">+%1$d more</string>
     <string name="settings_just_now">just now</string>

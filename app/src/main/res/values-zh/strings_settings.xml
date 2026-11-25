@@ -80,6 +80,7 @@
     <string name="settings_up_to_date">已是最新 · %1$s检查</string>
     <string name="settings_store_unreachable">无法连接商店</string>
     <string name="settings_updates_held">已修改，因此这里不更新：%1$s · 在商店里更新会覆盖你的修改</string>
+    <string name="settings_updates_held_risky">看起来有风险，因此这里不更新：%1$s · 请在商店中更新它</string>
     <string name="settings_more_lines">还有 %1$d 条</string>
     <string name="settings_just_now">刚刚</string>
     <string name="settings_minutes_ago">%1$d 分钟前</string>

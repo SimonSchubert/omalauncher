@@ -43,6 +43,7 @@ import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.widgets.Market
 import dev.omalauncher.widgets.WidgetEngine
 import dev.omalauncher.widgets.market.CatalogEntry
+import dev.omalauncher.widgets.market.Review
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import dev.omalauncher.ui.BelowAnchorEnd
@@ -270,8 +271,9 @@ private fun UpdatesBox(
     }
     val linuxPending = linux && (updates.pending?.count ?: 0) > 0
     val pending = markets.flatMap { m -> m.updates.map { m to it } }
-    // Edited ones are left to the store, which says their changes would go.
-    val (held, ready) = pending.partition { (m, e) -> m.edited(e) }
+    // Edited ones, and risky ones Review flagged, are left to the store: it says edited changes would go, and
+    // asks about risky ones itself (RiskyAction) — updateAll() skips both the same way.
+    val (held, ready) = pending.partition { (m, e) -> m.edited(e) || Review.risks(e.commands).isNotEmpty() }
     val busy = updates.job is JobState.Working || updates.checking || engine.updating || markets.any { it.loading } || launcher.checking
     val widgets = pending.isNotEmpty() || engine.updating || engine.updateError != null
     val launcherShown = launcher.available || launcher.failed
@@ -343,7 +345,8 @@ private fun LinuxUpdatesRows(runtime: Runtime) {
 
 /**
  * Store updates for installed widgets and apps, from the catalogs (reloaded when an hour old); "update" installs the
- * [ready] ones. [held] ones were edited, so they're only listed.
+ * [ready] ones. [held] ones were edited, or Review found something risky in them, so they're only listed: each goes
+ * through the store, which either warns changes would be lost or asks its own risky confirm (RiskyAction) first.
  */
 @Composable
 private fun WidgetUpdatesRows(
@@ -364,8 +367,16 @@ private fun WidgetUpdatesRows(
         }
     UpdateLines(lines, ready.isNotEmpty() && !engine.updating && !checking, engine::updateAll)
     if (!engine.updating && !checking && held.isNotEmpty()) {
-        val names = held.joinToString { (m, e) -> "${e.name} ${m.installedVersion(e)?.version} → ${e.version}" }
-        BasicText(stringResource(R.string.settings_updates_held, names), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        // Same held list, split back out by why, so each gets the message that's actually true of it.
+        val (heldEdited, heldRisky) = held.partition { (m, e) -> m.edited(e) }
+        if (heldEdited.isNotEmpty()) {
+            val names = heldEdited.joinToString { (m, e) -> "${e.name} ${m.installedVersion(e)?.version} → ${e.version}" }
+            BasicText(stringResource(R.string.settings_updates_held, names), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        }
+        if (heldRisky.isNotEmpty()) {
+            val names = heldRisky.joinToString { (m, e) -> "${e.name} ${m.installedVersion(e)?.version} → ${e.version}" }
+            BasicText(stringResource(R.string.settings_updates_held_risky, names), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+        }
     }
     engine.updateError?.let { BasicText(it, style = Mono.copy(color = Palette.red, fontSize = TextSize.Small), maxLines = 3) }
 }

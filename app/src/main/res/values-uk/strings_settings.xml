@@ -83,6 +83,7 @@
     <string name="settings_up_to_date">усе оновлено · перевірено %1$s</string>
     <string name="settings_store_unreachable">не вдалося зв\'язатися з магазином</string>
     <string name="settings_updates_held">змінені вами, тож тут не оновлюються: %1$s · оновлення в магазині замінить ваші зміни</string>
+    <string name="settings_updates_held_risky">виглядає ризиковано, тому тут не оновлюється: %1$s · оновіть його в магазині</string>
     <string name="settings_more_lines">ще %1$d</string>
     <string name="settings_just_now">щойно</string>
     <string name="settings_minutes_ago">%1$d хв тому</string>

@@ -80,6 +80,7 @@
     <string name="settings_up_to_date">最新です · 確認：%1$s</string>
     <string name="settings_store_unreachable">ストアに接続できませんでした</string>
     <string name="settings_updates_held">編集済みのため、ここでは更新されません：%1$s · ストアで更新すると、加えた変更は上書きされます</string>
+    <string name="settings_updates_held_risky">リスクがあるため、ここでは更新されません：%1$s · ストアで更新してください</string>
     <string name="settings_more_lines">ほか %1$d 件</string>
     <string name="settings_just_now">たった今</string>
     <string name="settings_minutes_ago">%1$d 分前</string>

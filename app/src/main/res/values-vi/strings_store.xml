@@ -116,6 +116,7 @@
     <string name="store_packages_none">không có</string>
     <string name="store_runs_no_commands">không chạy lệnh nào</string>
     <string name="store_runs_commands">chạy các lệnh này trong Arch:</string>
+    <string name="store_risky_title">có vẻ rủi ro — hãy đọc trước khi xác nhận</string>
 
     <!-- What's happening to an entry, while it is. -->
     <string name="store_installing">đang cài đặt…</string>

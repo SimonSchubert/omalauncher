@@ -90,6 +90,7 @@
     <string name="store_packages_none">无</string>
     <string name="store_runs_no_commands">不运行任何命令</string>
     <string name="store_runs_commands">在 Arch 中运行这些命令：</string>
+    <string name="store_risky_title">这看起来有风险，确认前请先阅读</string>
 
     <string name="store_installing">正在安装…</string>
     <string name="store_updating">正在更新…</string>

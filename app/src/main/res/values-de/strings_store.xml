@@ -115,6 +115,7 @@
     <string name="store_packages_none">keine</string>
     <string name="store_runs_no_commands">führt keine befehle aus</string>
     <string name="store_runs_commands">führt diese befehle in Arch aus:</string>
+    <string name="store_risky_title">das sieht riskant aus — lies, bevor du bestätigst</string>
 
     <!-- What's happening to an entry, while it is. -->
     <string name="store_installing">wird installiert…</string>

@@ -91,6 +91,7 @@
     <string name="store_packages_none">yok</string>
     <string name="store_runs_no_commands">komut çalıştırmaz</string>
     <string name="store_runs_commands">Arch’ta şu komutları çalıştırır:</string>
+    <string name="store_risky_title">bu riskli görünüyor — onaylamadan önce oku</string>
 
     <string name="store_installing">yükleniyor…</string>
     <string name="store_updating">güncelleniyor…</string>

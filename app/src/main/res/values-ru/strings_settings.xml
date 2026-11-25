@@ -83,6 +83,7 @@
     <string name="settings_up_to_date">всё актуально · проверено %1$s</string>
     <string name="settings_store_unreachable">не удалось связаться с магазином</string>
     <string name="settings_updates_held">изменены, поэтому здесь не обновляются: %1$s · обновление через магазин заменит ваши правки</string>
+    <string name="settings_updates_held_risky">выглядит рискованно, поэтому не обновляется здесь: %1$s · обновите его в магазине</string>
     <string name="settings_more_lines">и ещё %1$d</string>
     <string name="settings_just_now">только что</string>
     <string name="settings_minutes_ago">%1$d мин назад</string>

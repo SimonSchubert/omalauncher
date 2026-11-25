@@ -94,6 +94,7 @@
     <string name="store_packages_none">ninguno</string>
     <string name="store_runs_no_commands">no ejecuta comandos</string>
     <string name="store_runs_commands">ejecuta estos comandos en Arch:</string>
+    <string name="store_risky_title">esto parece arriesgado — lee antes de confirmar</string>
 
     <string name="store_installing">instalando…</string>
     <string name="store_updating">actualizando…</string>

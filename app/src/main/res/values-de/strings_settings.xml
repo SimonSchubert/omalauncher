@@ -88,6 +88,7 @@
     <string name="settings_store_unreachable">store gerade nicht erreichbar</string>
     <!-- %1$s lists the edited widgets with their versions. -->
     <string name="settings_updates_held">von dir bearbeitet, also hier nicht aktualisiert: %1$s · ein update im store ersetzt deine änderungen</string>
+    <string name="settings_updates_held_risky">sieht riskant aus, also hier nicht aktualisiert: %1$s · aktualisiere es im store</string>
     <!-- Below a list cut short: how many lines are left out. -->
     <string name="settings_more_lines">+%1$d weitere</string>
     <string name="settings_just_now">gerade eben</string>

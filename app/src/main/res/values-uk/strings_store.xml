@@ -95,6 +95,7 @@
     <string name="store_packages_none">жодних</string>
     <string name="store_runs_no_commands">не запускає команд</string>
     <string name="store_runs_commands">запускає в Arch ці команди:</string>
+    <string name="store_risky_title">це виглядає ризиковано — прочитайте, перш ніж підтвердити</string>
 
     <string name="store_installing">встановлення…</string>
     <string name="store_updating">оновлення…</string>

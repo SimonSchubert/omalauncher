@@ -82,6 +82,7 @@
     <string name="settings_up_to_date">à jour · vérifié %1$s</string>
     <string name="settings_store_unreachable">impossible de joindre la boutique</string>
     <string name="settings_updates_held">modifiés, donc pas mis à jour ici : %1$s · en mettre un à jour dans la boutique remplace tes changements</string>
+    <string name="settings_updates_held_risky">semble risqué, donc pas mis à jour ici : %1$s · mets-le à jour dans la boutique</string>
     <string name="settings_more_lines">+%1$d de plus</string>
     <string name="settings_just_now">à l’instant</string>
     <string name="settings_minutes_ago">il y a %1$d min</string>

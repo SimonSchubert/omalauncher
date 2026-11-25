@@ -80,6 +80,7 @@
     <string name="settings_up_to_date">terbaru · diperiksa %1$s</string>
     <string name="settings_store_unreachable">tidak dapat terhubung ke toko</string>
     <string name="settings_updates_held">sudah diedit, jadi tidak diperbarui di sini: %1$s · memperbarui di toko akan menimpa perubahanmu</string>
+    <string name="settings_updates_held_risky">tampak berisiko, jadi tidak diperbarui di sini: %1$s · perbarui itu di toko</string>
     <string name="settings_more_lines">+%1$d lagi</string>
     <string name="settings_just_now">baru saja</string>
     <string name="settings_minutes_ago">%1$d mnt lalu</string>

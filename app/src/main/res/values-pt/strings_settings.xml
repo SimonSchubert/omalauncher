@@ -82,6 +82,7 @@
     <string name="settings_up_to_date">em dia · verificado %1$s</string>
     <string name="settings_store_unreachable">não foi possível acessar a loja</string>
     <string name="settings_updates_held">editados, por isso não atualizados aqui: %1$s · atualizar um na loja substitui suas alterações</string>
+    <string name="settings_updates_held_risky">parece arriscado, por isso não atualizado aqui: %1$s · atualize-o na loja</string>
     <string name="settings_more_lines">+%1$d a mais</string>
     <string name="settings_just_now">agora mesmo</string>
     <string name="settings_minutes_ago">há %1$d min</string>

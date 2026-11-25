@@ -82,6 +82,7 @@
     <string name="settings_up_to_date">aggiornato · controllato %1$s</string>
     <string name="settings_store_unreachable">impossibile raggiungere lo store</string>
     <string name="settings_updates_held">modificati, quindi non aggiornati qui: %1$s · aggiornarne uno nello store sostituisce le tue modifiche</string>
+    <string name="settings_updates_held_risky">sembra rischioso, quindi non aggiornato qui: %1$s · aggiornalo nello store</string>
     <string name="settings_more_lines">+%1$d altri</string>
     <string name="settings_just_now">proprio ora</string>
     <string name="settings_minutes_ago">%1$d min fa</string>

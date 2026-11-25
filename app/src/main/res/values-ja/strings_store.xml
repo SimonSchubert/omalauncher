@@ -89,6 +89,7 @@
     <string name="store_packages_none">なし</string>
     <string name="store_runs_no_commands">コマンドは実行しません</string>
     <string name="store_runs_commands">Arch で次のコマンドを実行します：</string>
+    <string name="store_risky_title">これはリスクがあります。確認する前に読んでください</string>
 
     <string name="store_installing">インストール中…</string>
     <string name="store_updating">更新中…</string>
