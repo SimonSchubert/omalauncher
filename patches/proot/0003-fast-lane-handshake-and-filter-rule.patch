@@ -177,32 +177,89 @@ index 58deeb3..f7e2c88 100644
 --- a/src/syscall/seccomp.c
 +++ b/src/syscall/seccomp.c
 @@ -41,6 +41,7 @@
- 
+
  #include "syscall/seccomp.h"
  #include "tracee/tracee.h"
 +#include "tracee/fastpath.h"
  #include "syscall/syscall.h"
  #include "syscall/sysnum.h"
  #include "extension/extension.h"
-@@ -96,6 +97,8 @@ static int add_statements(struct sock_fprog *program, size_t nb_statements,
+@@ -89,6 +90,50 @@ static int add_statements(struct sock_fprog *program, size_t nb_statements,
+ 	return 0;
+ }
+
++/* The syscalls the fast lane library (patches/proot/fastpath) itself
++ * executes from its one fixed instruction, see tracee/fastpath.h:
++ * stat/lstat/fstatat (newfstatat, PR_fstatat64), statx, access
++ * (faccessat), readlink(at), a read-only open, fstat, close, and the
++ * xattr and id calls it also answers itself.
++ *
++ * Only these syscall numbers may use the instruction-pointer bypass
++ * below.  add_trace_syscall() is called once for every syscall in
++ * PRoot's whole traced-syscall table, not just these few: without
++ * this whitelist the bypass template would apply uniformly to all of
++ * them.  The fast lane's trampoline is just "svc 0; ret" at one
++ * fixed, non-ASLR address, with the syscall number taken from
++ * whatever a guest put in its syscall register -- so any native code
++ * running in the guest could jump there with an arbitrary syscall
++ * number and have that syscall, not just these few, let through
++ * completely untraced, bypassing PRoot's path-translation and
++ * fake-root confinement for it.  No memory-corruption bug needed.  */
++static const Sysnum fastpath_syscalls[] = {
++	PR_fstatat64,
++	PR_statx,
++	PR_faccessat,
++	PR_readlinkat,
++	PR_openat,
++	PR_fstat,
++	PR_close,
++	PR_getxattr,
++	PR_lgetxattr,
++	PR_listxattr,
++	PR_llistxattr,
++	PR_getpid,
++	PR_getuid,
++};
++
++static bool is_fastpath_syscall(word_t syscall)
++{
++	size_t i;
++
++	for (i = 0; i < sizeof(fastpath_syscalls) / sizeof(fastpath_syscalls[0]); i++)
++		if (syscall == (word_t) fastpath_syscalls[i])
++			return true;
++
++	return false;
++}
++
+ /**
+  * Append to @program->filter the statements required to notify PRoot
+  * about the given @syscall made by a tracee, with the given @flag.
+@@ -96,6 +141,8 @@ static int add_statements(struct sock_fprog *program, size_t nb_statements,
   */
  static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int flag)
  {
 +	/* The instruction pointer is a 64-bit little-endian field.  */
 +	const size_t ip_offset = offsetof(struct seccomp_data, instruction_pointer);
  	int status;
- 
+
  	/* Sanity check.  */
-@@ -112,15 +115,38 @@ static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int fla
+@@ -112,15 +159,62 @@ static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int fla
  		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag)
  	};
- 
+
 +	/* The same, but let the syscall pass untraced when it is made
 +	 * from the fast lane's one syscall instruction: the preloaded
 +	 * library has translated its paths already (tracee/fastpath.h).
 +	 * Only syscalls PRoot traces look at the instruction pointer, so
 +	 * the kernel can still tell that all the others are always
-+	 * allowed, and skip the filter for them.  */
++	 * allowed, and skip the filter for them.
++	 *
++	 * This template is only ever used for a syscall in
++	 * fastpath_syscalls[] above; is_fastpath_syscall() below picks
++	 * between it and fastpath_traced_statements, so every other
++	 * traced syscall keeps being traced whatever the instruction
++	 * pointer is, even when the fast lane is on.  */
 +	#define LENGTH_FASTPATH_SYSCALL 7
 +	struct sock_filter fastpath_statements[LENGTH_FASTPATH_SYSCALL] = {
 +		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, syscall, 0, 6),
@@ -214,42 +271,60 @@ index 58deeb3..f7e2c88 100644
 +		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag)
 +	};
 +
++	/* Same length as fastpath_statements above (LENGTH_TRACED relies
++	 * on every traced syscall taking the same number of statements
++	 * when the fast lane is on), but never allows: for a syscall
++	 * that isn't in fastpath_syscalls[], the instruction pointer is
++	 * never looked at, so there is no fixed address to jump to from
++	 * guest code to bypass tracing of it.  */
++	struct sock_filter fastpath_traced_statements[LENGTH_FASTPATH_SYSCALL] = {
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, syscall, 0, 6),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag)
++	};
++
  	DEBUG_FILTER("FILTER:     trace if syscall == %ld\n", syscall);
- 
+
 -	status = add_statements(program, LENGTH_TRACE_SYSCALL, statements);
-+	if (fastpath_enabled())
++	if (fastpath_enabled() && is_fastpath_syscall(syscall))
 +		status = add_statements(program, LENGTH_FASTPATH_SYSCALL, fastpath_statements);
++	else if (fastpath_enabled())
++		status = add_statements(program, LENGTH_FASTPATH_SYSCALL, fastpath_traced_statements);
 +	else
 +		status = add_statements(program, LENGTH_TRACE_SYSCALL, statements);
  	if (status < 0)
  		return status;
- 
+
  	return 0;
  }
- 
+
 +/* Statements per traced syscall, see add_trace_syscall().  */
 +#define LENGTH_TRACED (fastpath_enabled() ? LENGTH_FASTPATH_SYSCALL : LENGTH_TRACE_SYSCALL)
 +
  /**
   * Append to @program->filter the statements that allow anything (if
   * unfiltered).  Note that @nb_traced_syscalls is used to make a
-@@ -144,7 +170,7 @@ static int end_arch_section(struct sock_fprog *program, size_t nb_traced_syscall
- 
+@@ -144,7 +238,7 @@ static int end_arch_section(struct sock_fprog *program, size_t nb_traced_syscall
+
  	/* Sanity check, see start_arch_section().  */
  	if (   talloc_array_length(program->filter) - program->len
 -	    != LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACE_SYSCALL)
 +	    != LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACED)
  		return -ERANGE;
- 
+
  	return 0;
-@@ -161,7 +187,7 @@ static int start_arch_section(struct sock_fprog *program, uint32_t arch, size_t
+@@ -161,7 +255,7 @@ static int start_arch_section(struct sock_fprog *program, uint32_t arch, size_t
  	const size_t arch_offset    = offsetof(struct seccomp_data, arch);
  	const size_t syscall_offset = offsetof(struct seccomp_data, nr);
  	const size_t section_length = LENGTH_END_SECTION +
 -					nb_traced_syscalls * LENGTH_TRACE_SYSCALL;
 +					nb_traced_syscalls * LENGTH_TRACED;
  	int status;
- 
+
  	/* Sanity checks.  */
 diff --git a/src/tracee/fastpath.c b/src/tracee/fastpath.c
 new file mode 100644
