@@ -3,6 +3,7 @@ package dev.omalauncher.linux
 import android.os.FileObserver
 import android.os.SystemClock
 import java.io.File
+import java.io.RandomAccessFile
 import java.util.Locale
 import kotlin.concurrent.thread
 
@@ -13,9 +14,14 @@ import kotlin.concurrent.thread
  * reports the CPU time of our own process tree (launcher + everything in the
  * guest), the only CPU usage an app is allowed to see.
  *
- * Scanning every process for that costs a little each time, so the stand-ins
- * are kept current every second only while the guest reads them (btop, top,
- * fetch); nobody reading, they are refreshed once a minute.
+ * Scanning every process for /proc/stat costs a little each time, so it is
+ * kept current every second only while the guest reads it (btop, top, fetch);
+ * nobody reading, it is refreshed once a minute. /proc/uptime costs nothing to
+ * write and is kept current every second, so a one-off read is right too.
+ *
+ * The stand-ins are rewritten in place, as /proc's own files change under a
+ * reader: top keeps /proc/stat open and reads it again from the start each time,
+ * and a file replaced by a new one would show it the first numbers forever.
  */
 class ProcShim(
     private val dir: File,
@@ -46,9 +52,18 @@ class ProcShim(
     /** Only kept current while something can show it: a Linux window or the home screen's widgets. */
     private var active = true
 
-    /** When the guest last opened stat or uptime, in [SystemClock.uptimeMillis]. */
+    /** When the guest last opened or read stat, in [SystemClock.uptimeMillis]. */
     @Volatile
     private var lastRead = 0L
+
+    /** When /proc/stat was last scanned for, in [SystemClock.uptimeMillis]. */
+    private var lastScan = 0L
+
+    /**
+     * The stand-ins, open for writing from the start: opened again for each write, they'd count as the guest's
+     * reads. Only the update thread (and [binds] before it starts) writes them.
+     */
+    private val files = HashMap<String, RandomAccessFile>()
 
     /** Held here: a FileObserver that is collected stops watching. */
     private var reads: FileObserver? = null
@@ -57,16 +72,17 @@ class ProcShim(
         if (started || binds.isEmpty()) return
         started = true
         reads =
-            object : FileObserver(dir, OPEN) {
+            // ACCESS too: a reader that keeps the file open, like top, opens it only once.
+            object : FileObserver(dir, OPEN or ACCESS) {
                 override fun onEvent(
                     event: Int,
                     path: String?,
                 ) {
-                    if (path != "stat" && path != "uptime") return
+                    if (path != "stat") return
                     val now = SystemClock.uptimeMillis()
                     val idle = !reading(now, lastRead)
                     lastRead = now
-                    // This read got the last minute's numbers; the next one, a second from now, gets current ones.
+                    // This read got the last minute's numbers; the next one gets current ones.
                     if (idle) synchronized(lock) { lock.notify() }
                 }
             }.apply { startWatching() }
@@ -74,7 +90,7 @@ class ProcShim(
             while (true) {
                 synchronized(lock) { while (!active) lock.wait() }
                 runCatching { update() }
-                synchronized(lock) { lock.wait(nextUpdateMs(SystemClock.uptimeMillis(), lastRead)) }
+                synchronized(lock) { lock.wait(UPDATE_MS) }
             }
         }
     }
@@ -88,26 +104,46 @@ class ProcShim(
     companion object {
         /** How long after a read the guest counts as still reading: btop and top read every 1 to 3 s. */
         const val READING_MS = 10_000L
-        const val READING_UPDATE_MS = 1_000L
 
-        /** Nobody reading: often enough that uptime stays close for a one-off read. */
-        const val IDLE_UPDATE_MS = 60_000L
+        /** How often uptime is written, and stat while the guest reads it. */
+        const val UPDATE_MS = 1_000L
+
+        /** How often stat is scanned for while nobody reads it. */
+        const val IDLE_SCAN_MS = 60_000L
 
         fun reading(
             now: Long,
             lastRead: Long,
         ) = lastRead > 0 && now - lastRead < READING_MS
 
-        fun nextUpdateMs(
+        fun scanDue(
             now: Long,
             lastRead: Long,
-        ) = if (reading(now, lastRead)) READING_UPDATE_MS else IDLE_UPDATE_MS
+            lastScan: Long,
+        ) = lastScan == 0L || reading(now, lastRead) || now - lastScan >= IDLE_SCAN_MS - UPDATE_MS / 2
+
+        /**
+         * [text] at least [length] long, filled with spaces before its last newline: written over a longer
+         * version in place, it leaves none of that one's end behind. Parsers of /proc split on white space.
+         */
+        fun padded(
+            text: String,
+            length: Int,
+        ): String {
+            if (text.length >= length) return text
+            val fill = " ".repeat(length - text.length)
+            return if (text.endsWith("\n")) text.dropLast(1) + fill + "\n" else text + fill
+        }
     }
 
     private fun readable(path: String) = runCatching { File(path).inputStream().use { it.read() } }.isSuccess
 
     private fun update() {
         val uptimeS = SystemClock.elapsedRealtime() / 1000.0
+        write("uptime") { "%.2f %.2f\n".format(Locale.ROOT, uptimeS, uptimeS * cpus) }
+        val now = SystemClock.uptimeMillis()
+        if (!scanDue(now, lastRead, lastScan)) return
+        lastScan = now
         val (user, system) = ownCpuTicks()
         // Ticks are 1/100 s. Everything we can't attribute to our processes counts as idle.
         val total = ((SystemClock.elapsedRealtime() - startMs) / 10) * cpus
@@ -124,7 +160,6 @@ class ProcShim(
                 appendLine("procs_blocked 0")
             }
         }
-        write("uptime") { "%.2f %.2f\n".format(Locale.ROOT, uptimeS, uptimeS * cpus) }
     }
 
     /** Sums utime/stime over all processes we can see, which Android limits to our own uid. */
@@ -144,8 +179,10 @@ class ProcShim(
         content: () -> String,
     ) {
         if (name !in hidden) return
-        val tmp = File(dir, "$name.tmp")
-        tmp.writeText(content())
-        tmp.renameTo(File(dir, name))
+        val file = files.getOrPut(name) { RandomAccessFile(File(dir, name), "rw") }
+        // One write from the start, never shorter than before, so a reader sees no gap or end of the old numbers.
+        val bytes = padded(content(), file.length().toInt()).toByteArray()
+        file.seek(0)
+        file.write(bytes)
     }
 }
