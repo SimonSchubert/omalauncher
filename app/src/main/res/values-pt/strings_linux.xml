@@ -28,6 +28,7 @@
     <string name="linux_log_retrying">%1$s; tentando de novo (%2$d de %3$d)</string>
     <string name="linux_log_step_failed">falha em \"%1$s\": %2$s; tente de novo nas configurações</string>
     <string name="linux_log_agent_failed">%1$s não foi instalado; tente de novo em configurações › agentes de programação</string>
+    <string name="linux_log_rootfs_changed">o sistema baixado não corresponde ao que este telefone confiava antes; a build contínua do arch também muda por conta própria, então isso só não é prova de violação, mas vale a pena olhar se você não confia nessa rede</string>
 
     <string name="linux_error_no_space">espaço insuficiente: o Linux precisa de %1$s livres, o telefone tem %2$s; libere espaço e tente de novo</string>
     <string name="linux_error_out_of_space">o telefone ficou sem espaço; o Linux precisa de cerca de %1$s livres; libere espaço e tente de novo</string>

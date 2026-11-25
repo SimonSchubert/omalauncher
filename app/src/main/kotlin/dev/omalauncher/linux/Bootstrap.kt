@@ -320,7 +320,8 @@ class Bootstrap(
                 journal.reset()
                 provisioner.forgetAll()
                 choiceFile.delete()
-                rootfsDigestFile.delete()
+                // Kept across an uninstall/reinstall on purpose: it's the trust baseline checkRootfsDigest
+                // compares the next real download against, and that's exactly when it matters most.
                 proot.keymap.delete()
                 context.cacheDir.listFiles { f -> f.name.startsWith(TARBALL) }?.forEach { it.delete() }
                 log.clear()
@@ -444,7 +445,7 @@ class Bootstrap(
             } catch (e: Exception) {
                 throw if (e.outOfSpace()) outOfSpace(e) else e
             }
-        checkRootfsDigest(tarball)
+        val digest = checkRootfsDigest(tarball)
         try {
             extract(tarball)
         } catch (e: Exception) {
@@ -457,6 +458,9 @@ class Bootstrap(
             if (tarball.parentFile == context.cacheDir) tarball.delete()
             throw e
         }
+        // Only trusted once it has actually unpacked: a garbage download must not poison the baseline
+        // that the next, real retry gets compared against.
+        writeAtomically(rootfsDigestFile, digest.toByteArray())
         tarball.delete() // ~830 MB we no longer need
     }
 
@@ -552,14 +556,14 @@ class Bootstrap(
      * new build each time, so this doesn't fail setup by itself. A future mirror that publishes a
      * signed hash for the build it serves would let this become real verification.
      */
-    private fun checkRootfsDigest(tarball: File) {
+    private fun checkRootfsDigest(tarball: File): String {
         val digest = fileSha256(tarball)
         val trusted = rootfsDigestFile.takeIf { it.exists() }?.readText()
         if (trusted != null && trusted != digest) {
             log.add(text(R.string.linux_log_rootfs_changed))
             Log.w(TAG, "rootfs sha256 $digest doesn't match the trusted $trusted")
         }
-        writeAtomically(rootfsDigestFile, digest.toByteArray())
+        return digest
     }
 
     /** Streamed so hashing an ~830 MB tarball doesn't need to hold it all in memory. */

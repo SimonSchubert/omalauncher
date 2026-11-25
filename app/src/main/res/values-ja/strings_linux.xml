@@ -26,6 +26,7 @@
     <string name="linux_log_retrying">%1$s。再試行します（%2$d/%3$d）</string>
     <string name="linux_log_step_failed">%1$sに失敗しました：%2$s。設定から再試行できます</string>
     <string name="linux_log_agent_failed">%1$s をインストールできませんでした。設定 › コーディングエージェント からもう一度お試しください</string>
+    <string name="linux_log_rootfs_changed">ダウンロードしたシステムが、この端末が以前信頼していたものと一致しません。archのローリングビルドは自然に変わることもあるため、これだけでは改ざんの証拠にはなりませんが、このネットワークを信頼できない場合は確認する価値があります</string>
 
     <string name="linux_error_no_space">空き容量が足りません：Linux には %1$s の空きが必要ですが、スマートフォンの空きは %2$s です。空きを増やしてから、もう一度お試しください</string>
     <string name="linux_error_out_of_space">スマートフォンの空き容量がなくなりました。Linux には約 %1$s の空きが必要です。空きを増やしてから、もう一度お試しください</string>

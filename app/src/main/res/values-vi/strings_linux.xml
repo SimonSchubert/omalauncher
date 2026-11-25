@@ -31,6 +31,7 @@
     <string name="linux_log_retrying">%1$s; đang thử lại (lần %2$d/%3$d)</string>
     <string name="linux_log_step_failed">lỗi ở bước \"%1$s\": %2$s; thử lại trong cài đặt</string>
     <string name="linux_log_agent_failed">chưa cài được %1$s; thử lại trong cài đặt › tác nhân lập trình</string>
+    <string name="linux_log_rootfs_changed">hệ thống vừa tải xuống không khớp với hệ thống mà điện thoại này đã tin trước đó; bản build cuốn chiếu của arch cũng tự thay đổi, nên riêng điều này không phải là bằng chứng bị can thiệp, nhưng đáng xem lại nếu bạn không tin mạng này</string>
 
     <!-- Why setup stopped, in red under the phase. -->
     <string name="linux_error_no_space">không đủ dung lượng: Linux cần trống %1$s, điện thoại còn %2$s; hãy giải phóng bớt rồi thử lại</string>

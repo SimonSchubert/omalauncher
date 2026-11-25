@@ -26,6 +26,7 @@
     <string name="linux_log_retrying">%1$s；正在重试（第 %2$d 次，共 %3$d 次）</string>
     <string name="linux_log_step_failed">%1$s 失败：%2$s；可在设置中重试</string>
     <string name="linux_log_agent_failed">%1$s 没有装上；请在 设置 › 编程智能体 中重试</string>
+    <string name="linux_log_rootfs_changed">下载的系统和这台手机之前信任的不一致；arch 的滚动构建本身也会变，所以这不能单独证明被篡改，但如果不信任这个网络，值得留意一下</string>
 
     <string name="linux_error_no_space">空间不足：Linux 需要 %1$s 可用空间，手机只有 %2$s；清理一些空间后再试</string>
     <string name="linux_error_out_of_space">手机空间用完了；Linux 需要约 %1$s 可用空间；清理一些空间后再试</string>

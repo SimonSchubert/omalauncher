@@ -27,6 +27,7 @@
     <string name="linux_log_retrying">%1$s; tekrar deneniyor (%2$d/%3$d)</string>
     <string name="linux_log_step_failed">“%1$s” adımı başarısız oldu: %2$s; ayarlardan tekrar dene</string>
     <string name="linux_log_agent_failed">%1$s yüklenemedi; ayarlar › kodlama ajanları bölümünden tekrar dene</string>
+    <string name="linux_log_rootfs_changed">indirilen sistem, bu telefonun daha önce güvendiği sistemle eşleşmiyor; arch’ın sürekli güncellenen derlemesi kendiliğinden de değişiyor, yani bu tek başına bir müdahale kanıtı değil, ama bu ağa güvenmiyorsan göz atmaya değer</string>
 
     <string name="linux_error_no_space">yeterli alan yok: Linux’un %1$s boş alana ihtiyacı var, telefonda %2$s var; biraz yer aç, sonra tekrar dene</string>
     <string name="linux_error_out_of_space">telefonda yer kalmadı; Linux’un yaklaşık %1$s boş alana ihtiyacı var; biraz yer aç, sonra tekrar dene</string>
