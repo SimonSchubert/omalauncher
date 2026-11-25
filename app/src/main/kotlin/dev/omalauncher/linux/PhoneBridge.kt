@@ -70,6 +70,8 @@ class PhoneBridge(
 ) {
     private val inbox = File(proot.runtimeDir, "phone")
     private var observer: FileObserver? = null
+    /** When `calendar` last answered: a script looping it can't pull the calendar more often than [CALENDAR_EVERY_MS]. */
+    private var lastCalendarAt = 0L
 
     fun managed(): List<Managed> {
         val bin = File(proot.rootfs, "usr/local/bin")
@@ -147,8 +149,16 @@ class PhoneBridge(
         }
     }
 
+    /**
+     * No foreground gate, unlike [location]: a calendar widget can be fine refreshing from the background, and the
+     * provider's cheap to ask once in a while. But a script asking in a loop isn't once in a while, and calendars
+     * don't change by the second, so answers are at least [CALENDAR_EVERY_MS] apart regardless of who's asking.
+     */
     private suspend fun calendar(days: String?): Answer {
         val n = if (days.isNullOrEmpty()) DAYS else days.toIntOrNull()?.takeIf { it in 1..MAX_DAYS } ?: return Answer.Usage("days: 1 to $MAX_DAYS")
+        val now = System.currentTimeMillis()
+        if (now - lastCalendarAt < CALENDAR_EVERY_MS) return Answer.Denied(TOO_SOON.format("calendar", CALENDAR_EVERY_MS / 1000))
+        lastCalendarAt = now
         val events = calendar.read(n, MAX_EVENTS) ?: return Answer.Denied(NOT_ALLOWED.format("calendar"))
         return Answer.Ok(Lst(events))
     }
@@ -343,7 +353,10 @@ class PhoneBridge(
         val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "devices", "version")
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
+        const val TOO_SOON = "the %s was just read; wait at least %d seconds and ask again"
         const val LOCATION_MS = 10_000L
+        /** A minute's plenty for a widget's own refresh, and too slow to be worth polling for. */
+        const val CALENDAR_EVERY_MS = 60_000L
         const val AIRPODS_MS = 12_000L
         const val CONTROL_MS = 2_000L
         /** Under the script's 2 minutes, so a picker left open says nothing was picked. */
