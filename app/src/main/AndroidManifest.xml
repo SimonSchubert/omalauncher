@@ -138,6 +138,18 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity-alias>
+        <!-- Asks how a file a Linux app gave to xdg-open opens: in Files, or handed to Android's apps.
+             Its own task, out of Recents, over whatever was on screen; gone once answered. Not exported:
+             only the launcher itself starts it. -->
+        <activity
+            android:name=".OpenFileActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Omalauncher.Dialog" />
+
         <!-- Asks before an app pins a shortcut to home (ShortcutManager.requestPinShortcut); browsers only install
              websites when the home app has this. Its own task, so the system's CLEAR_TASK never touches home's,
              gone once left. Not exported: the system starts it, and other apps have no reason to. -->

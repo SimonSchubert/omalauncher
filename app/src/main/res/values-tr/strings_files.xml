@@ -42,6 +42,9 @@
     <string name="files_select_all">tümünü seç</string>
     <string name="files_edit">düzenle</string>
     <string name="files_open_with">şununla aç…</string>
+    <string name="files_open_title">%1$s nasıl açılsın?</string>
+    <string name="files_open_linux">Files</string>
+    <string name="files_open_android">Android</string>
     <string name="files_share">paylaş</string>
     <string name="files_cancel">iptal</string>
     <string name="files_move_here">buraya taşı</string>

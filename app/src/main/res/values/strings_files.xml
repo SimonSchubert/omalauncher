@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Files (ui/FilesScreen.kt, FilesChrome.kt, FileDialogs.kt), the editor (ui/EditorScreen.kt) and the prompt bar
-     with its speech input (ui/PromptBar.kt, ui/Speech.kt). -->
+<!-- Files (ui/FilesScreen.kt, FilesChrome.kt, FileDialogs.kt), the editor (ui/EditorScreen.kt), the file
+     a Linux app's xdg-open asks about (OpenFileActivity.kt) and the prompt bar with its speech input
+     (ui/PromptBar.kt, ui/Speech.kt). -->
 <resources>
     <!-- A file operation failed without saying why. -->
     <string name="files_failed">failed</string>
@@ -58,6 +59,11 @@
     <string name="files_select_all">select all</string>
     <string name="files_edit">edit</string>
     <string name="files_open_with">open with…</string>
+    <!-- What a Linux app's xdg-open of a file asks (OpenFileActivity): the launcher's Files, or Android's apps. -->
+    <!-- %1$s is a file name. -->
+    <string name="files_open_title">open %1$s with</string>
+    <string name="files_open_linux">Files</string>
+    <string name="files_open_android">Android</string>
     <string name="files_share">share</string>
     <string name="files_cancel">cancel</string>
     <string name="files_move_here">move here</string>

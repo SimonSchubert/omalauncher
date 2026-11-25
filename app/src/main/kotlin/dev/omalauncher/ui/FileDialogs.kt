@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.view.ViewCompat
@@ -132,6 +133,31 @@ internal fun ConfirmDialog(
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             BracketAction(stringResource(R.string.files_cancel), Palette.muted, onClick = onDismiss)
             BracketAction(confirm, confirmColor, onClick = onConfirm)
+        }
+    }
+}
+
+/**
+ * Asks how [name], a file a Linux app gave to xdg-open, opens: in the launcher's Files, or handed
+ * over to Android's apps, where the default one for its type opens it (see OpenFileActivity).
+ */
+@Composable
+internal fun OpenFileDialog(
+    name: String,
+    onFiles: () -> Unit,
+    onAndroid: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    DialogFrame(onDismiss) {
+        BasicText(
+            stringResource(R.string.files_open_title, name),
+            style = Mono.copy(fontSize = TextSize.Title),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            BracketAction(stringResource(R.string.files_open_linux), Palette.accent, onClick = onFiles)
+            BracketAction(stringResource(R.string.files_open_android), Palette.accent, onClick = onAndroid)
         }
     }
 }

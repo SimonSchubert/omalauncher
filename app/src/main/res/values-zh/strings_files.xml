@@ -40,6 +40,9 @@
     <string name="files_select_all">全选</string>
     <string name="files_edit">编辑</string>
     <string name="files_open_with">打开方式…</string>
+    <string name="files_open_title">如何打开 %1$s</string>
+    <string name="files_open_linux">Files</string>
+    <string name="files_open_android">Android</string>
     <string name="files_share">分享</string>
     <string name="files_cancel">取消</string>
     <string name="files_move_here">移到此处</string>

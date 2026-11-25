@@ -21,6 +21,8 @@ class OpenBridge(
     private val context: Context,
     private val proot: Proot,
     private val onOpenFiles: (String) -> Unit,
+    /** A guest path to open, and its Android file, handed over by a Linux app's xdg-open. */
+    private val onOpenFile: (String, File) -> Unit,
     private val onOpenVoice: () -> Unit,
     /** A guest path to edit, and the host path of the FIFO that gets the reply once it's closed. */
     private val onEdit: (String, String) -> Unit,
@@ -61,8 +63,12 @@ class OpenBridge(
             return onEdit(path, proot.guestFile(reply)?.path ?: return)
         }
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            Log.i(TAG, "ignoring non-URL $url")
-            return
+            // A file a Linux app asked to open (a path, or a file:// URI): the launcher's Files or
+            // Android's apps, whichever the user picks. A folder, or what's gone, stays ignored.
+            val path = xdgOpenPath(url) ?: run { Log.i(TAG, "ignoring non-URL $url"); return }
+            val file = proot.guestFile(path)
+            if (file?.isFile != true) { Log.i(TAG, "ignoring non-URL $url"); return }
+            return onOpenFile(path, file)
         }
         if (!context.openUrl(url)) Log.w(TAG, "no browser for $url")
     }
@@ -74,7 +80,8 @@ class OpenBridge(
             Managed.text(File(bin, "xdg-open"), Policy.Owned, executable = true) {
                 """
                 #!/bin/sh
-                # omalauncher: opens URLs in the Android browser (see OpenBridge.kt)
+                # omalauncher: opens URLs in the Android browser, and asks where a file opens: in Files or Android's apps (see OpenBridge.kt)
+                case ${'$'}1 in /*|*://*) ;; *) set -- "${'$'}{PWD}/${'$'}1" ;; esac
                 timeout 2 sh -c 'printf "%s\n" "${'$'}1" > $guestFifo' sh "${'$'}1"
                 """.trimIndent() + "\n"
             },
@@ -132,5 +139,52 @@ class OpenBridge(
         const val FILES_PREFIX = "omarchy-files:"
         const val EDIT_PREFIX = "omarchy-edit:"
         const val VOICE_PREFIX = "omarchy-voice:"
+    }
+}
+
+/**
+ * The guest path a Linux app asked to open through xdg-open: an absolute path, or a file:// URI with
+ * its escapes read out and its fragment and query left off. Null for anything else, like a URL, which
+ * the bridge opens in the browser.
+ */
+fun xdgOpenPath(target: String): String? {
+    val path =
+        when {
+            target.startsWith("file:") -> {
+                val rest = target.removePrefix("file:").removePrefix("//")
+                decodeEscapes(rest.substringBefore('#').substringBefore('?'))
+            }
+            target.startsWith("/") -> target
+            else -> return null
+        }
+    return path.takeIf { it.startsWith("/") }
+}
+
+/** Reads the percent escapes out of a file URI's path: a run of them is bytes, read as UTF-8. */
+private fun decodeEscapes(path: String): String {
+    val out = StringBuilder(path.length)
+    val run = ArrayList<Byte>()
+    var at = 0
+    while (at < path.length) {
+        val hi = if (path[at] == '%' && at + 2 < path.length) path[at + 1].digitToIntOrNull(16) else null
+        val lo = hi?.let { path[at + 2].digitToIntOrNull(16) }
+        if (hi != null && lo != null) {
+            run.add((hi * 16 + lo).toByte())
+            at += 3
+        } else {
+            readRun(out, run)
+            out.append(path[at])
+            at++
+        }
+    }
+    readRun(out, run)
+    return out.toString()
+}
+
+/** Appends [run], the bytes of a row of escapes, as UTF-8 text. */
+private fun readRun(out: StringBuilder, run: ArrayList<Byte>) {
+    if (run.isNotEmpty()) {
+        out.append(String(run.toByteArray(), Charsets.UTF_8))
+        run.clear()
     }
 }

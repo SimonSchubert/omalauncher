@@ -40,6 +40,9 @@
     <string name="files_select_all">すべて選択</string>
     <string name="files_edit">編集</string>
     <string name="files_open_with">アプリで開く…</string>
+    <string name="files_open_title">%1$s を開く…</string>
+    <string name="files_open_linux">Files</string>
+    <string name="files_open_android">Android</string>
     <string name="files_share">共有</string>
     <string name="files_cancel">キャンセル</string>
     <string name="files_move_here">ここに移動</string>

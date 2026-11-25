@@ -114,7 +114,7 @@ class Runtime(
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
-    private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onOpenVoice = ::openVoice, onEdit = ::edit)
+    private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onOpenFile = ::openFile, onOpenVoice = ::openVoice, onEdit = ::edit)
     val agents = AgentStore(proot, text = { id, arg -> context.getString(id, arg) }, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
     val widgets = WidgetEngine(context, proot, this)
@@ -784,6 +784,14 @@ class Runtime(
     /** Opens the Files app, at [path] (a guest path) if given. */
     fun openFiles(path: String? = null) {
         InstantActivity.startInstantly(context, Intent(context, FilesActivity::class.java).putExtra(FilesActivity.EXTRA_PATH, path))
+    }
+
+    /** Asks how [path] (a guest path), a file a Linux app gave to xdg-open, opens: in Files or on Android. */
+    fun openFile(
+        path: String,
+        file: File,
+    ) {
+        InstantActivity.startInstantly(context, OpenFileActivity.intent(context, path, file))
     }
 
     /**
