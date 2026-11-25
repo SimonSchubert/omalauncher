@@ -44,6 +44,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import dev.omalauncher.Runtime
 import dev.omalauncher.linux.TerminalFont
+import dev.omalauncher.theme.Style
 import dev.omalauncher.linux.shellQuote
 import dev.omalauncher.wayland.WindowRenderer
 import dev.omalauncher.wayland.XdgToplevel
@@ -52,10 +53,12 @@ import java.util.Collections
 import java.util.WeakHashMap
 import dev.omalauncher.ui.EmbeddedBrowser
 import dev.omalauncher.ui.KeyboardSink
+import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.TextSize
 import dev.omalauncher.ui.keyActivated
+import dev.omalauncher.ui.terminalScrollInput
 import dev.omalauncher.ui.linuxWindowInput
 
 /**
@@ -64,9 +67,9 @@ import dev.omalauncher.ui.linuxWindowInput
  * app_id, and the window manager hands that toplevel to the tile rather than
  * opening an activity for it.
  *
- * A tile is inert until tapped, so swipes still turn pages and open the
- * drawer; tapping it gives it the keyboard and its touches, until a tap
- * outside, Back, or leaving the page. A widget's own text field (an Input)
+ * A tile is inert until tapped, so swipes still turn pages and open the drawer, unless
+ * terminal.scroll-unfocused is on: then a vertical drag scrolls it without opening the keyboard.
+ * Tapping it gives it the keyboard and its touches, until a tap outside, Back, or leaving the page. A widget's own text field (an Input)
  * that takes the keyboard is treated the same way: its tile lifts above the
  * keyboard and lets go on the same tap outside, Back or page turn. A Browser tile's page too:
  * a WebView would take every touch meant for the page swipe or a long press, so its tile is
@@ -462,7 +465,8 @@ fun TerminalView(
     // The tile's tab went away (its visible turned false) or the node did: out of sight, the terminal mustn't keep the
     // keyboard, or the home screen lifted for a tile that no longer shows.
     DisposableEffect(term) { onDispose { if (tiles.active === term) tiles.deactivate() } }
-    Box(modifier.onGloballyPositioned { term.bounds = it.boundsInWindow().translate(0f, tiles.lift) }) {
+    val scroll = if (interactive && !active && window != null && LauncherStyle.style[Style.TERMINAL_SCROLL_UNFOCUSED]) Modifier.terminalScrollInput(tiles.windowManager, window) else Modifier
+    Box(modifier.onGloballyPositioned { term.bounds = it.boundsInWindow().translate(0f, tiles.lift) }.then(scroll)) {
         AndroidView(
             factory = { EmbeddedWindowView(it, tiles) },
             update = { it.window = window },

@@ -129,6 +129,8 @@
     <string name="style_terminal_hint">áp dụng cho terminal mở từ giờ · thêm phông bằng pacman, như ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">gợi ý bàn phím</string>
     <string name="style_keyboard_suggestions_hint">gợi ý, nhập bằng cách vuốt và đọc chính tả; chữ đến terminal từng từ một · từ lần mở bàn phím tiếp theo</string>
+    <string name="style_terminal_scroll">cuộn không cần bàn phím</string>
+    <string name="style_terminal_scroll_hint">kéo dọc sẽ cuộn terminal chưa được chọn mà không mở bàn phím; vuốt ngang vẫn chuyển trang</string>
     <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->
     <plurals name="style_terminal_size">
         <item quantity="other">%1$s pt · %2$d cột khi dọc</item>

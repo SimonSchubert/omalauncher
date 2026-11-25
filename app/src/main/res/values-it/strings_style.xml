@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">terminali aperti da adesso in poi · altri caratteri con pacman, come ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">parole suggerite</string>
     <string name="style_keyboard_suggestions_hint">suggerimenti, digitazione gestuale e dettatura; il testo arriva al terminale una parola alla volta · dalla prossima apertura della tastiera</string>
+    <string name="style_terminal_scroll">scorri senza tastiera</string>
+    <string name="style_terminal_scroll_hint">trascinando in verticale si scorre un terminale non attivo senza aprire la tastiera; lo scorrimento laterale cambia ancora pagina</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d colonna in verticale</item>
         <item quantity="many">%1$s pt · %2$d colonne in verticale</item>

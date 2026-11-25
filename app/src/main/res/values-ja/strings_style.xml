@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">これから開くターミナルに適用 · フォントは pacman で追加できます（例：ttf-cascadia-code）</string>
     <string name="style_keyboard_suggestions">入力候補</string>
     <string name="style_keyboard_suggestions_hint">入力候補、グライド入力、音声入力が使えます。テキストは単語ごとにターミナルへ送られます · 次にキーボードを開いたときから適用</string>
+    <string name="style_terminal_scroll">キーボードなしでスクロール</string>
+    <string name="style_terminal_scroll_hint">非アクティブなターミナルを縦にドラッグすると、キーボードを開かずにスクロールします。横スワイプでは引き続きページが切り替わります</string>
     <plurals name="style_terminal_size">
         <item quantity="other">%1$s pt · 縦向きで %2$d 桁</item>
     </plurals>

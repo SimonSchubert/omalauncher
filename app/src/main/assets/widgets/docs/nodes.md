@@ -252,7 +252,10 @@ widget "shell" {
 }
 ```
 
-- The tile is inert until tapped, so swipes still turn pages. Tapping it gives it
+- The tile is inert until tapped, so swipes still turn pages. With
+  `terminal.scroll-unfocused = true` in style.toml (Style › terminal), a vertical drag
+  on an unfocused terminal scrolls it without opening the keyboard instead; sideways
+  swipes still turn pages. Tapping it gives it
   the keyboard and its touches (drag scrolls, hold-and-drag selects). A tap
   outside it, Back or another page lets go. The ⌨ button toggles the soft keyboard,
   and a tap on the line with the terminal's cursor (its prompt) brings it back.

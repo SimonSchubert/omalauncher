@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">untuk terminal yang dibuka mulai sekarang · lebih banyak lewat pacman, misalnya ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">saran keyboard</string>
     <string name="style_keyboard_suggestions_hint">saran, ketik geser, dan dikte; teks masuk ke terminal per kata · mulai saat keyboard dibuka berikutnya</string>
+    <string name="style_terminal_scroll">gulir tanpa keyboard</string>
+    <string name="style_terminal_scroll_hint">seret vertikal menggulir terminal yang tidak aktif tanpa membuka keyboard; geser ke samping tetap berpindah halaman</string>
     <plurals name="style_terminal_size">
         <item quantity="other">%1$s pt · %2$d kolom saat potret</item>
     </plurals>
