@@ -307,6 +307,8 @@ class GuestImages(
     private val context: Context,
     val dir: File,
     private val guestPath: (File) -> String?,
+    /** How a saved image's name starts, before the time. */
+    private val prefix: String = "clipboard",
 ) {
     /** Copies the image at [uri] into Linux, of type [mime] or else the one its app says; null if it can't be read. */
     fun save(
@@ -316,7 +318,7 @@ class GuestImages(
         val type = mime ?: runCatching { context.contentResolver.getType(uri) }.getOrNull()
         val ext = type?.let(MimeTypeMap.getSingleton()::getExtensionFromMimeType) ?: "img"
         // Several picked at once share a second: numbered after the first.
-        val name = "clipboard-${LocalDateTime.now().format(NAME_TIME)}"
+        val name = "$prefix-${LocalDateTime.now().format(NAME_TIME)}"
         val file = generateSequence(1) { it + 1 }.map { File(dir, if (it == 1) "$name.$ext" else "$name-$it.$ext") }.first { !it.exists() }
         try {
             dir.mkdirs()

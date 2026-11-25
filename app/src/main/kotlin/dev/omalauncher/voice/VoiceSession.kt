@@ -170,7 +170,7 @@ class VoiceSession(
      * Where attached pictures are kept for the agent: in Linux, so it reads them with its own tools, and in its home
      * rather than /tmp, so a conversation continued after the launcher restarts still finds them.
      */
-    private val pictures = GuestImages(context, File(proot.home, ".cache/omalauncher/voice-images"), proot::guestPath)
+    private val pictures = GuestImages(context, File(proot.home, ".cache/omalauncher/voice-images"), proot::guestPath, prefix = "picture")
 
     /**
      * Copies the picture at [uri] into Linux to go with the next message. [keep] is held until it's copied: content a
