@@ -36,8 +36,12 @@ object Native {
 
     @JvmStatic external fun storeFree(ptr: Long)
 
-    /** Copies [count] rects (x, y, w, h in buffer pixels) of a shm buffer into a store of its size. */
-    @JvmStatic external fun storeCopy(shm: Long, offset: Int, stride: Int, format: Int, store: Long, rects: IntArray, count: Int): Int
+    /**
+     * Copies [count] rects (x, y, w, h in buffer pixels) of a shm buffer into a store of its
+     * size. [shmSize] is the client's pool mapping size, used to bounds-check [offset]/[stride]
+     * before any read.
+     */
+    @JvmStatic external fun storeCopy(shm: Long, shmSize: Int, offset: Int, stride: Int, format: Int, store: Long, rects: IntArray, count: Int): Int
 
     @JvmStatic external fun windowCreate(surface: Surface, width: Int, height: Int, translucent: Boolean): Long
 

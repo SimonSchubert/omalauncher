@@ -142,20 +142,22 @@ JNIEXPORT void JNICALL FN(munmap)(JNIEnv *env, jclass cls, jlong ptr, jint size)
     if (ptr) munmap((void *) (intptr_t) ptr, (size_t) size);
 }
 
-// A client may shrink its pool file under us; guard reads against SIGBUS so a
-// misbehaving client can't take down the launcher.
-static __thread sigjmp_buf *bus_jmp;
-static struct sigaction old_bus;
+// A client may shrink its pool file under us (SIGBUS on the truncated pages)
+// or a bounds check below may have a gap (SIGSEGV off the mapping entirely);
+// guard reads against both so a misbehaving client can't take down the launcher.
+static __thread sigjmp_buf *fault_jmp;
+static struct sigaction old_bus, old_segv;
 
-static void on_sigbus(int sig, siginfo_t *info, void *ctx) {
-    if (bus_jmp) siglongjmp(*bus_jmp, 1);
-    sigaction(SIGBUS, &old_bus, NULL);
-    raise(SIGBUS);
+static void on_fault(int sig, siginfo_t *info, void *ctx) {
+    if (fault_jmp) siglongjmp(*fault_jmp, 1);
+    sigaction(sig, sig == SIGBUS ? &old_bus : &old_segv, NULL);
+    raise(sig);
 }
 
 JNIEXPORT void JNICALL FN(installSigbusGuard)(JNIEnv *env, jclass cls) {
-    struct sigaction sa = {.sa_sigaction = on_sigbus, .sa_flags = SA_SIGINFO | SA_ONSTACK};
+    struct sigaction sa = {.sa_sigaction = on_fault, .sa_flags = SA_SIGINFO | SA_ONSTACK};
     sigaction(SIGBUS, &sa, &old_bus);
+    sigaction(SIGSEGV, &sa, &old_segv);
 }
 
 // --- pixel stores ----------------------------------------------------------
@@ -201,21 +203,32 @@ static inline uint32_t swizzle_row(uint32_t *restrict d, const uint32_t *restric
 }
 
 // Copies the given rects (x, y, w, h in buffer pixels) of a shm buffer into
-// the store, which has the buffer's size. Returns 0, or -1 on SIGBUS.
-JNIEXPORT jint JNICALL FN(storeCopy)(JNIEnv *env, jclass cls, jlong shm, jint offset, jint stride, jint format,
-                                     jlong store, jintArray jrects, jint count) {
+// the store, which has the buffer's size. [shmSize] is the client's pool
+// mapping size; offset and stride are the client's and are untrusted, so
+// every rect is bounds-checked against it before it's read, and a rect that
+// doesn't fit is skipped rather than read out of bounds. Returns 0, or -1 on
+// a bad offset/stride or a SIGBUS/SIGSEGV while reading.
+JNIEXPORT jint JNICALL FN(storeCopy)(JNIEnv *env, jclass cls, jlong shm, jint shmSize, jint offset, jint stride,
+                                     jint format, jlong store, jintArray jrects, jint count) {
     Store *st = (Store *) (intptr_t) store;
+    // No legitimate buffer needs a negative stride; reject it outright rather
+    // than let it sign-extend into a wild pointer below.
+    if (shmSize < 0 || offset < 0 || offset >= shmSize || stride < 0) return -1;
+    size_t avail = (size_t) shmSize - (size_t) offset;
     jint *rects = (*env)->GetIntArrayElements(env, jrects, NULL);
     const uint8_t *src = (const uint8_t *) (intptr_t) shm + offset;
     uint32_t alpha = format == 1 ? 0xff000000u : 0;
     sigjmp_buf jmp;
     int result = 0;
     if (sigsetjmp(jmp, 1) == 0) {
-        bus_jmp = &jmp;
+        fault_jmp = &jmp;
         for (int i = 0; i < count; i++) {
             int x0 = max_i(rects[i * 4], 0), y0 = max_i(rects[i * 4 + 1], 0);
             int x1 = min_i(rects[i * 4] + rects[i * 4 + 2], st->width);
             int y1 = min_i(rects[i * 4 + 1] + rects[i * 4 + 3], st->height);
+            if (x0 >= x1 || y0 >= y1) continue;
+            // Rows run [y0, y1); the last one reaches furthest into the mapping.
+            if ((size_t) (y1 - 1) * stride + (size_t) x1 * 4 > avail) continue;
             uint32_t all = 0xff000000u;
             for (int y = y0; y < y1; y++) {
                 const uint32_t *s = (const uint32_t *) (src + (size_t) y * stride) + x0;
@@ -229,10 +242,10 @@ JNIEXPORT jint JNICALL FN(storeCopy)(JNIEnv *env, jclass cls, jlong shm, jint of
             }
         }
     } else {
-        __android_log_print(ANDROID_LOG_WARN, TAG, "SIGBUS reading client buffer");
+        __android_log_print(ANDROID_LOG_WARN, TAG, "signal reading client buffer");
         result = -1;
     }
-    bus_jmp = NULL;
+    fault_jmp = NULL;
     (*env)->ReleaseIntArrayElements(env, jrects, rects, JNI_ABORT);
     return result;
 }

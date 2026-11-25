@@ -449,7 +449,7 @@ class ShmBuffer(
         synchronized(pool) {
             // A pool can be resized smaller than a buffer by a buggy client; never read past the mapping.
             if (pool.ptr == 0L || offset + stride.toLong() * height > pool.size) return false
-            Native.storeCopy(pool.ptr, offset, stride, format, store.ptr, flat, count) == 0
+            Native.storeCopy(pool.ptr, pool.size, offset, stride, format, store.ptr, flat, count) == 0
         }
 
     /** Hands the buffer back to the client; thread-safe. */
