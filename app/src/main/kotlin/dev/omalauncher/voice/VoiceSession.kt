@@ -819,7 +819,7 @@ class VoiceSession(
         process = null
         val code = runCatching { p.exitValue() }.getOrDefault(-1)
         val said = complaints.joinToString(" ").lowercase()
-        Log.i(TAG, "${agent?.bin} exited $code: ${said.takeLast(300)}")
+        Log.i(TAG, "${agent?.bin} exited $code, ${said.length} chars of output")
         val wasBusy = busy
         turns = 0
         approvals.clear()
