@@ -540,8 +540,14 @@ class WidgetServices(
             },
         )
 
-    /** One app as `android.drawer` and `android.strip` list them; see [drawer]. */
-    private fun appValue(hit: AppHit): Value {
+    /**
+     * One app as `android.drawer` and `android.strip` list them; see [drawer]. [voice] is the session's canTalk, asked
+     * once for the whole list: it asks the package manager, which took long enough per app to freeze home.
+     */
+    private fun appValue(
+        hit: AppHit,
+        voice: Boolean,
+    ): Value {
         val dot = hit.hasDot
         return Obj(
             mapOf(
@@ -560,7 +566,7 @@ class WidgetServices(
                 "hasIcon" to bool(appIconOf(runtime, hit.key, LauncherStyle.monochromeIcons) != null),
                 "initials" to Str(initials(hit.label)),
                 // Voice's only with someone to talk to and a way to hear the user (owl 26).
-                "actions" to Lst(hit.actionWords(voice = runtime.voice.canTalk).map(::Str)),
+                "actions" to Lst(hit.actionWords(voice = voice).map(::Str)),
                 "score" to Num(Math.round(runtime.usage.score(hit.key) * 10.0) / 10.0),
                 "last" to (runtime.usage.last(hit.key)?.let { Num((it / 1000).toDouble()) } ?: Null),
             ),
@@ -577,9 +583,10 @@ class WidgetServices(
     private fun strip(): Value {
         // Not before every kind of app is listed: the ones missing would push in as their kind arrived.
         val apps = if (runtime.appsListed) recentApps(runtime, STRIP_APPS) else emptyList()
+        val voice = runtime.voice.canTalk
         return Obj(
             mapOf(
-                "apps" to Lst(apps.map(::appValue)),
+                "apps" to Lst(apps.map { appValue(it, voice) }),
                 "vertical" to bool(runtime.widgets.stripVertical),
                 "monochrome" to bool(LauncherStyle.monochromeIcons),
                 "bare" to bool(LauncherStyle.bareAppIcons),
@@ -607,7 +614,8 @@ class WidgetServices(
             runtime.widgets.apps().sortedBy { it.name.lowercase() }.map { AppHit.Owl(it) } + runtime.linuxApps.apps.map { AppHit.Linux(it) } +
                 apps.shortcuts.filter { !it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { !it.work }.map { AppHit.Android(it) } +
                 apps.shortcuts.filter { it.work }.map { AppHit.Shortcut(it) } + apps.apps.filter { it.work }.map { AppHit.Android(it) }
-        val list = hits.take(Builtins.MAX_LIST).map(::appValue)
+        val voice = runtime.voice.canTalk
+        val list = hits.take(Builtins.MAX_LIST).map { appValue(it, voice) }
         val work = if (apps.workProfiles.isEmpty()) Null else Obj(mapOf("paused" to bool(apps.workProfiles.any { apps.paused(it) })))
         return Obj(mapOf("apps" to Lst(list), "linux" to Str(linuxWord(runtime.bootstrap.state.value)), "monochrome" to bool(LauncherStyle.monochromeIcons), "work" to work, "updates" to Num((runtime.updates.pending?.count ?: 0).toDouble())))
     }
