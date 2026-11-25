@@ -886,7 +886,10 @@ private fun TiledPage(
 ) {
     val density = LocalDensity.current
     val carried = arrange.carry?.item?.key
-    LaunchedEffect(items.map { it.key }, grid.cols, grid.rows) {
+    // Also when a tile already here loses its cell (a widget that compiles at last goes back to its own size, layout.toml
+    // gives one no spot): drawn only with a cell, it would stay invisible.
+    val unplaced = items.filter { layout.cell(it.key) == null }.map { it.key }
+    LaunchedEffect(items.map { it.key }, unplaced, grid.cols, grid.rows) {
         layout.place(items, grid.cols, grid.rows).forEach(onNoRoom)
     }
     BoxWithConstraints(Modifier.fillMaxSize()) {
