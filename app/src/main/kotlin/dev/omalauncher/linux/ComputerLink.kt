@@ -1,6 +1,13 @@
 package dev.omalauncher.linux
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.graphics.drawable.Icon
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.os.Build
@@ -10,6 +17,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import dev.omalauncher.BuildConfig
+import dev.omalauncher.R
+import dev.omalauncher.system.registerNotExported
 import dev.omalauncher.theme.ThemeDirs
 import dev.omalauncher.theme.ThemeRepo
 import dev.omalauncher.theme.ThemeStore
@@ -28,6 +37,7 @@ import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.hex
 import dev.omalauncher.widgets.lang.sha256Hex
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -38,6 +48,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -378,6 +389,69 @@ class ComputerLink(
 
     private fun pausedAnswer() = PhoneBridge.Answer.Denied("connected devices are paused on this device; its user resumes them in the settings, connected devices")
 
+    /**
+     * Asks before [what] (plain English: "add the widget \"x.owl\"") happens to [computer]: a notification naming it,
+     * which the user taps to allow or deny. Unanswered within the two minutes omalauncher-link itself waits, or
+     * notifications off here, this denies it (a stale notification is then also taken down). Skipped for [SELF]:
+     * that's this phone acting on what DeviceSync already decided to follow, not a linked computer's own request.
+     *
+     * This is what [request]'s comment points to: a mutating verb still needs a tap here, on this device, whatever
+     * guessed or copied the id that named it.
+     */
+    private suspend fun confirm(
+        computer: Computer,
+        what: String,
+    ): Boolean {
+        val nm = context.getSystemService(NotificationManager::class.java)
+        if (!nm.areNotificationsEnabled()) return false
+        nm.createNotificationChannel(NotificationChannel(CONFIRM_CHANNEL, context.getString(R.string.link_confirm_channel), NotificationManager.IMPORTANCE_HIGH))
+        if (nm.getNotificationChannel(CONFIRM_CHANNEL)?.importance == NotificationManager.IMPORTANCE_NONE) return false
+        val id = randomHex(8)
+        val notificationId = id.hashCode()
+        val result = CompletableDeferred<Boolean>()
+        val receiver =
+            context.registerNotExported(IntentFilter().apply { addAction(ACTION_APPROVE); addAction(ACTION_DENY) }) { intent ->
+                if (intent.getStringExtra(EXTRA_REQUEST) == id) result.complete(intent.action == ACTION_APPROVE)
+            }
+        try {
+            fun pending(action: String) =
+                PendingIntent.getBroadcast(
+                    context,
+                    notificationId,
+                    Intent(action).setPackage(context.packageName).putExtra(EXTRA_REQUEST, id),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
+            val icon = Icon.createWithResource(context, R.drawable.ic_notification)
+            val n =
+                Notification.Builder(context, CONFIRM_CHANNEL)
+                    .setSmallIcon(R.drawable.ic_notification)
+                    .setContentTitle(computer.name)
+                    .setContentText(context.getString(R.string.link_confirm_text, what))
+                    .setStyle(Notification.BigTextStyle().bigText(context.getString(R.string.link_confirm_text, what)))
+                    .addAction(Notification.Action.Builder(icon, context.getString(R.string.link_confirm_approve), pending(ACTION_APPROVE)).build())
+                    .addAction(Notification.Action.Builder(icon, context.getString(R.string.link_confirm_deny), pending(ACTION_DENY)).build())
+                    // Swiped away, as not tapped: denied, same as the two minutes running out.
+                    .setDeleteIntent(pending(ACTION_DENY))
+                    .setAutoCancel(true)
+                    .build()
+            nm.notify(notificationId, n)
+            return withTimeoutOrNull(CONFIRM_MS) { result.await() } == true
+        } finally {
+            runCatching { context.unregisterReceiver(receiver) }
+            nm.cancel(notificationId)
+        }
+    }
+
+    private fun notConfirmed() = PhoneBridge.Answer.Denied("needs approving on this device first; a notification asks, open for two minutes")
+
+    // request() can't tell omalauncher-link's own ssh session from a bare `omalauncher link ...` run by any other
+    // guest process: both land in the same inbox (PhoneBridge.receive), and the id argument is only what devices()
+    // already hands out in plain text to anyone, with no secret of its own (hello's proof is checked once, right
+    // after linking, and never again). So a guest process that only read an id this way can act here as if it were
+    // that computer. confirm(), above, is the mitigation this file has for it: a mutating verb still stops short of
+    // doing anything until the user taps a notification, so the worst a guessed id buys without that tap is reading
+    // what's already synced. Giving the ssh path its own channel - a socket or fd tied to that one session, instead
+    // of this shared file inbox any guest process can write - would close it properly; that's not done here.
     private suspend fun request(
         args: List<String>,
         following: DeviceSync,
@@ -400,10 +474,10 @@ class ComputerLink(
             "hello" -> hello(computer)
             "widgets" -> withContext(Dispatchers.IO) { widgets() }
             "get" -> withContext(Dispatchers.IO) { get(computer.name, rest.getOrNull(0).orEmpty()) }
-            "put" -> withContext(Dispatchers.IO) { put(computer.name, rest.getOrNull(0).orEmpty(), rest.getOrNull(1).orEmpty()) }
-            "remove" -> withContext(Dispatchers.IO) { remove(computer.name, rest.getOrNull(0).orEmpty()) }
+            "put" -> withContext(Dispatchers.IO) { put(computer, rest.getOrNull(0).orEmpty(), rest.getOrNull(1).orEmpty()) }
+            "remove" -> withContext(Dispatchers.IO) { remove(computer, rest.getOrNull(0).orEmpty()) }
             "themes" -> PhoneBridge.Answer.Ok(Lst(themes.choices.map { Obj(mapOf("name" to Str(it.name), "current" to bool(it.name == themes.picked))) }))
-            "theme" -> if (!computer.syncTheme) themeSyncOff() else theme(computer.name, rest.getOrNull(0).orEmpty(), rest.getOrNull(1))
+            "theme" -> if (!computer.syncTheme) themeSyncOff() else theme(computer, rest.getOrNull(0).orEmpty(), rest.getOrNull(1))
             // omalauncher-link asks before it watches: what this computer may follow.
             "watch" ->
                 if (!computer.syncTheme && !computer.syncBackground) {
@@ -420,7 +494,7 @@ class ComputerLink(
                     "put" -> statePut(computer, rest.getOrNull(1).orEmpty(), rest.getOrNull(2).orEmpty())
                     else -> PhoneBridge.Answer.Usage("state: get <name> | put <name>")
                 }
-            "background" -> if (!computer.syncBackground) backgroundSyncOff() else background(computer.name, rest.getOrNull(0).orEmpty(), rest.getOrNull(1).orEmpty())
+            "background" -> if (!computer.syncBackground) backgroundSyncOff() else background(computer, rest.getOrNull(0).orEmpty(), rest.getOrNull(1).orEmpty())
             "bgput" -> withContext(Dispatchers.IO) { bgput(computer, rest.getOrNull(0).orEmpty(), rest.getOrNull(1).orEmpty(), rest.getOrNull(2).orEmpty()) }
             "bgget" -> if (!computer.syncBackground) backgroundSyncOff() else withContext(Dispatchers.IO) { bgget(computer.name, rest.getOrNull(0).orEmpty()) }
             else -> PhoneBridge.Answer.Usage("link: unknown request '$verb'")
@@ -476,8 +550,8 @@ class ComputerLink(
     }
 
     /** [path]: the guest file omalauncher-link wrote stdin to; read and deleted here. */
-    private fun put(
-        who: String,
+    private suspend fun put(
+        computer: Computer,
         name: String,
         path: String,
     ): PhoneBridge.Answer {
@@ -487,27 +561,29 @@ class ComputerLink(
             if (sent.length() > MAX_BYTES) return PhoneBridge.Answer.Usage("put: a widget is at most ${MAX_BYTES / 1024} KB")
             val bytes = sent.readBytes()
             if (!isText(bytes)) return PhoneBridge.Answer.Usage("put: $name isn't UTF-8 text")
+            if (computer.id != SELF && !confirm(computer, "add or change the widget \"$name\"")) return notConfirmed()
             val target = File(widgetsDir, name)
             val created = !target.exists()
             widgetsDir.mkdirs()
             // Whole, so the widget engine never compiles half a file.
             writeAtomically(target, bytes)
-            note(who, (if (created) "added " else "changed ") + name)
+            note(computer.name, (if (created) "added " else "changed ") + name)
             return PhoneBridge.Answer.Ok(Obj(mapOf("name" to Str(name), "sha256" to Str(sha256Hex(bytes)), "created" to bool(created))))
         } finally {
             sent.delete()
         }
     }
 
-    private fun remove(
-        who: String,
+    private suspend fun remove(
+        computer: Computer,
         name: String,
     ): PhoneBridge.Answer {
         if (!validName(name)) return badName(name)
         val f = File(widgetsDir, name)
         if (!f.isFile) return PhoneBridge.Answer.Error("no widget $name there")
+        if (computer.id != SELF && !confirm(computer, "remove the widget \"$name\"")) return notConfirmed()
         f.delete()
-        note(who, "removed $name")
+        note(computer.name, "removed $name")
         return PhoneBridge.Answer.Ok(null)
     }
 
@@ -518,21 +594,24 @@ class ComputerLink(
      * (see ThemeDirs.isFromRepo), so it asks nobody.
      */
     private suspend fun theme(
-        who: String,
+        computer: Computer,
         name: String,
         source: String?,
     ): PhoneBridge.Answer {
-        // Already it: the computer that follows the phone sends back what it just took from it.
+        // Already it: the computer that follows the phone sends back what it just took from it. No change, so
+        // nothing to ask about.
         if (name == themes.picked) return PhoneBridge.Answer.Ok(null)
         val repo = source?.trim()?.takeIf { SOURCE.matches(it) }?.let(ThemeRepo::parse)?.takeIf { it.themeName == name }
         if (themes.choices.none { it.name == name } && repo != null) {
-            note(who, "installed theme $name from ${repo.url}")
+            if (computer.id != SELF && !confirm(computer, "install the theme \"$name\" from ${repo.url}")) return notConfirmed()
+            note(computer.name, "installed theme $name from ${repo.url}")
             themes.install(repo.url)
             return if (themes.picked == name) PhoneBridge.Answer.Ok(null) else PhoneBridge.Answer.Error("couldn't install theme '$name' from ${repo.url}")
         }
         val theme = themes.choices.firstOrNull { it.name == name } ?: return PhoneBridge.Answer.Error("no theme '$name' there; `themes` lists them")
+        if (computer.id != SELF && !confirm(computer, "switch the theme to \"$name\"")) return notConfirmed()
         themes.pick(theme)
-        note(who, "switched the theme to $name")
+        note(computer.name, "switched the theme to $name")
         scope.launch { if (themes.complete) themes.applyPicked() else themes.fetchPicked() }
         return PhoneBridge.Answer.Ok(null)
     }
@@ -540,20 +619,25 @@ class ComputerLink(
     /**
      * The computer's background [name] for [theme], when the phone is on that theme: the theme's own or the user's
      * extra by that name. Missing, the answer says so (exit 1), and the computer sends it with bgput.
+     *
+     * [fromBgput]: bgput already asked about sending this image; showing it at once is part of the same thing, not a
+     * second one.
      */
     private suspend fun background(
-        who: String,
+        computer: Computer,
         theme: String,
         name: String,
+        fromBgput: Boolean = false,
     ): PhoneBridge.Answer {
         if (!validImage(name)) return PhoneBridge.Answer.Usage("background: '$name' isn't an image's file name")
         val current = themes.current
-        // Picked on the other side for another theme, or this one is still switching: not ours to show.
+        // Picked on the other side for another theme, or this one is still switching: not ours to show, and no change either.
         if (current == null || current.name != theme || themes.picked != theme) return PhoneBridge.Answer.Ok(null)
         if (themes.background?.name == name) return PhoneBridge.Answer.Ok(null)
         val file = withContext(Dispatchers.IO) { current.backgroundNamed(name) } ?: return PhoneBridge.Answer.Error("missing: no background $name for $theme")
+        if (!fromBgput && computer.id != SELF && !confirm(computer, "set the background to \"$name\"")) return notConfirmed()
         themes.setBackground(file)
-        note(who, "set the background to $name")
+        note(computer.name, "set the background to $name")
         return PhoneBridge.Answer.Ok(null)
     }
 
@@ -574,6 +658,7 @@ class ComputerLink(
             val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeFile(sent.path, opts)
             if (opts.outWidth <= 0 || opts.outHeight <= 0) return PhoneBridge.Answer.Usage("bgput: $name isn't an image it can show")
+            if (computer.id != SELF && !confirm(computer, "send the background \"$name\" for \"$theme\"")) return notConfirmed()
             val dir = File(dev.omalauncher.storage.LauncherData.userBackgroundsDir(context), theme)
             dir.mkdirs()
             writeAtomically(File(dir, name), sent.readBytes())
@@ -581,7 +666,7 @@ class ComputerLink(
         } finally {
             sent.delete()
         }
-        return withContext(Dispatchers.Main) { background(computer.name, theme, name) }
+        return withContext(Dispatchers.Main) { background(computer, theme, name, fromBgput = true) }
     }
 
     /** One of the current theme's backgrounds, copied to /tmp for omalauncher-link to send and delete: {path}. */
@@ -683,6 +768,7 @@ class ComputerLink(
         val keptAt = (kept?.fields?.get("savedAt") as? Num)?.v ?: 0.0
         // The same values are no change (each side writing back what it took would go on forever); older ones lose.
         if (kept?.fields?.get("values") == values || at <= keptAt) return PhoneBridge.Answer.Ok(Obj(mapOf("taken" to bool(false))))
+        if (computer.id != SELF && !confirm(computer, "change the synced values of \"$name\"")) return notConfirmed()
         val out = "{\"v\":1,\"savedAt\":${at.toLong()},\"values\":" + (Json.write(values) ?: return PhoneBridge.Answer.Usage("state put: values")) + "}"
         withContext(Dispatchers.IO) {
             file.parentFile?.mkdirs()
@@ -888,6 +974,15 @@ class ComputerLink(
         private const val PHONE_ID = "phone_id"
         private const val PAUSED = "paused"
         const val MAX_ACTIVITY = 50
+
+        /** confirm()'s notification channel and its two actions, this app's own and not exported (see registerNotExported). */
+        private const val CONFIRM_CHANNEL = "link-confirm"
+        private const val ACTION_APPROVE = "dev.omalauncher.linux.link.APPROVE"
+        private const val ACTION_DENY = "dev.omalauncher.linux.link.DENY"
+        private const val EXTRA_REQUEST = "request"
+
+        /** Under omalauncher-link.sh's own two minutes, so a tap still reaches it before that gives up. */
+        private const val CONFIRM_MS = 110_000L
 
         /**
          * [list] with [entry] on top. The same thing from the same device again takes the place of the last time: a
