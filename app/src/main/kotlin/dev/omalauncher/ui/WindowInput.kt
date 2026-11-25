@@ -18,7 +18,8 @@ import dev.omalauncher.wayland.SurfaceHit
 import dev.omalauncher.wayland.XdgToplevel
 import kotlin.math.roundToInt
 
-private const val WHEEL_STEP = 15f
+/** Logical pixels one wheel click scrolls. */
+internal const val WHEEL_STEP = 15f
 
 /**
  * Routes pointer input over a Linux window's view to its surfaces. Mouse input

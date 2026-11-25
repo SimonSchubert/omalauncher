@@ -115,6 +115,16 @@ JNIEXPORT jint JNICALL FN(send)(JNIEnv *env, jclass cls, jint fd, jobject jbuf, 
     return sent;
 }
 
+// Sends len bytes of the direct buffer if the socket has room for them now, without waiting.
+// Returns bytes sent (fewer when it filled up) or -errno, -EAGAIN when it's full.
+JNIEXPORT jint JNICALL FN(sendNow)(JNIEnv *env, jclass cls, jint fd, jobject jbuf, jint len) {
+    uint8_t *buf = (*env)->GetDirectBufferAddress(env, jbuf);
+    if (!buf) return -EINVAL;
+    ssize_t n;
+    do n = send(fd, buf, (size_t) len, MSG_DONTWAIT | MSG_NOSIGNAL); while (n < 0 && errno == EINTR);
+    return n < 0 ? -errno : (jint) n;
+}
+
 JNIEXPORT void JNICALL FN(close)(JNIEnv *env, jclass cls, jint fd) {
     close(fd);
 }

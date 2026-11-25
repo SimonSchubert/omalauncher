@@ -92,6 +92,12 @@ text becomes a small `shared-<date>-<time>.txt` file.
 Touch input in Linux windows: tap is a left click, long press is a right
 click, drag scrolls; apps with touch support (foot, GTK) get real touch.
 
+Linux games can use what's connected to the phone too. A game controller is
+an Xbox 360 pad to them: while a program has it open and a Linux window is in
+front, its buttons and sticks are the program's, and Back on the screen leaves
+the window. A game that locks the pointer gets the mouse to look around with,
+and a physical keyboard's held keys stay held.
+
 ### Keyboard and gamepad
 
 | Keys | Where | What it does |
@@ -101,7 +107,7 @@ click, drag scrolls; apps with touch support (foot, GTK) get real touch.
 | Super+Down | home | the swipe-down panel |
 | Super+1..9 | home | home pages |
 | Super+W | Linux window | close it |
-| Super+Esc, gamepad B | Linux window, terminal tile | leave it without closing it, since Esc itself is theirs (the gamepad's buttons stay the launcher's) |
+| Super+Esc, gamepad B | Linux window, terminal tile | leave it without closing it, since Esc itself is theirs (the gamepad's buttons stay the launcher's, except in a Linux window while a Linux program has the gamepad open) |
 | Arrows, Tab, D-pad | home, drawer, panels, widgets | move between tiles and what takes taps, past the first or last tile to the next page |
 | Right / Left | widget | into its own buttons / back out to its tile |
 | Up | the bar | back to the tiles, or into the open drawer |

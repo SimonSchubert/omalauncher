@@ -34,12 +34,13 @@ a module folder; the OWL language is under
   mapping, per-surface pixel stores, and compositing them into a window's
   `ANativeWindow`
 - `wayland/`: the Wayland server in Kotlin (wl_compositor, wl_shm,
-  wl_subcompositor, wl_seat, wl_output, xdg_wm_base, xdg-decoration, and
-  text-input-v3 for where a client's text cursor is) and
+  wl_subcompositor, wl_seat, wl_output, xdg_wm_base, xdg-decoration,
+  text-input-v3 for where a client's text cursor is, and relative-pointer and
+  pointer-constraints for games that look around with the mouse) and
   `WindowRenderer`, which draws one window into its activity's SurfaceView
   (or, for a widget's `Terminal`, into a TextureView in the tile)
 - `linux/`: proot, the rootfs setup and its update steps, pacman, coding
-  agents, and the bridges to Android (audio, URLs, /proc)
+  agents, and the bridges to Android (audio, URLs, /proc, game controllers)
 - `ui/`: Compose. The package itself holds what every screen shares (the
   palette, panels and dialogs, icons, key focus, the keyboard); `home/` is the
   home screen, the bar and its app list, folders and tiles; `settings/` the
@@ -72,6 +73,33 @@ snapshots the surface tree, redraws only the dirty region of the SurfaceView
 (everything, if a surface moved or appeared), posts, and then sends the frame
 callbacks. Hidden windows get no frame callbacks, so their clients stop
 drawing.
+
+## Input
+
+Keys reach the window with the keyboard through `KeyboardBridge`, a mouse and
+touch through `ui/WindowInput.kt`, both as wl_keyboard, wl_pointer and
+wl_touch events. A physical keyboard's keys are taken before the keyboard app
+(`preIme`): with the soft keyboard wanted, keyboard apps hand them back as
+instant presses and releases, so a held key in a game would be taps. A game
+that locks the pointer (pointer-constraints) gets the mouse captured for its
+window (`View.requestPointerCapture`), and the mouse's movement as
+relative-pointer events; Android lets go when the window loses focus.
+
+Game controllers can't be devices in the guest: without root, /dev/input is
+closed to the app. `linux/Gamepads.kt` puts a unix socket for each pad at
+`files/input/eventN`, bound over the guest's /dev/input, and the guest library
+`patches/proot/gamepads` (preloaded into every program, ahead of the fast
+lane) opens it in place of a device: it reads a description of an Xbox 360
+pad (`PadLayout`) and answers evdev's ioctls from it, and the program reads
+real input_events from the socket. SDL and gilrs find pads by watching
+/dev/input, as told by `SDL_JOYSTICK_DISABLE_UDEV` and `GILRS_DISABLE_UDEV`.
+Programs that only ask libudev (RetroArch's default driver, Godot) find them
+in records `UdevRecords` writes into the /sys stand-in and /run/udev/data,
+which libudev reads with `SYSTEMD_DEVICE_VERIFY_SYSFS=0`. No udev daemon runs,
+so those programs see the pads there when they start, not ones plugged in
+later. A pad goes to Linux only while some program has it open and a Linux
+window is in front (any one: a game left running keeps it in a terminal too);
+otherwise it moves around the launcher.
 
 ## Browser tiles
 

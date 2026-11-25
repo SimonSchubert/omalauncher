@@ -5,9 +5,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
@@ -48,10 +50,16 @@ import dev.omalauncher.ui.KeyboardSink
 import dev.omalauncher.ui.WidgetAsks
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
+import dev.omalauncher.ui.WHEEL_STEP
 import dev.omalauncher.ui.linuxWindowInput
+import dev.omalauncher.wayland.AXIS_SOURCE_WHEEL
+import dev.omalauncher.wayland.BTN_LEFT
+import dev.omalauncher.wayland.BTN_MIDDLE
+import dev.omalauncher.wayland.BTN_RIGHT
 import dev.omalauncher.wayland.WindowRenderer
 import dev.omalauncher.wayland.XdgToplevel
 import kotlinx.coroutines.flow.first
+import kotlin.math.roundToInt
 
 /**
  * Shows a single Linux window as its own Android task, so it gets its own
@@ -111,6 +119,8 @@ class LinuxWindowActivity : InstantActivity() {
     // Lint flags super.dispatchKeyEvent: ComponentActivity marks its override @RestrictTo, but Activity's is public API.
     @SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // A game controller's buttons, while a program here has it open.
+        if (runtime.gamepads.key(event) { backInstantly() }) return true
         // Super+Esc leaves the window as Back does, where Esc itself is the window's: it keeps running in Recents.
         if (event.keyCode == KeyEvent.KEYCODE_ESCAPE && event.isMetaPressed && event.action == KeyEvent.ACTION_DOWN) {
             if (event.repeatCount == 0) backInstantly()
@@ -120,10 +130,17 @@ class LinuxWindowActivity : InstantActivity() {
         return super.dispatchKeyEvent(event)
     }
 
+    /** A game controller's sticks, triggers and hat, while a program here has it open. */
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (runtime.gamepads.motion(event)) return true
+        return super.dispatchGenericMotionEvent(event)
+    }
+
     /** Keys held as the window goes, like Super, would stay down for it: Android sends their lift elsewhere. */
     override fun onPause() {
         super.onPause()
         runtime.keyboard.releaseHeld()
+        runtime.gamepads.releaseAll()
         if (runtime.keyboard.imagePicker === imagePicker) runtime.keyboard.imagePicker = null
         asks.paused(runtime)
     }
@@ -189,7 +206,10 @@ private fun AppWindow(
         // so the keyboard and the extra keys go over it, and only the Linux window gets smaller.
         AndroidView(
             factory = { context -> WindowSurfaceView(context, runtime, window).also { surfaceView = it } },
-            update = { it.background = background },
+            update = {
+                it.background = background
+                it.captureWanted = runtime.wm.pointerLock === window
+            },
             modifier = Modifier.fillMaxSize(),
         )
         val keyboardHeight = with(density) { keyboard.toDp() }
@@ -239,6 +259,88 @@ private class WindowSurfaceView(
 
     var background by renderer::background
 
+    /**
+     * Whether the window's program locked the pointer, as a game does to look around with the mouse. The mouse is
+     * captured then, while the window has focus: the cursor goes and only movement arrives ([onCapturedPointerEvent]).
+     * Android lets go when the window loses focus, and this asks again when it's back.
+     */
+    var captureWanted = false
+        set(value) {
+            if (value == field) return
+            field = value
+            syncCapture()
+        }
+
+    private fun syncCapture() {
+        if (captureWanted && hasWindowFocus()) {
+            if (hasPointerCapture()) return
+            // Captured events go to the focused view, which is otherwise the keyboard's.
+            isFocusable = true
+            isFocusableInTouchMode = true
+            requestFocus()
+            requestPointerCapture()
+        } else if (hasPointerCapture()) {
+            releasePointerCapture()
+        }
+    }
+
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        syncCapture()
+    }
+
+    override fun onFocusChanged(
+        gainFocus: Boolean,
+        direction: Int,
+        previouslyFocusedRect: Rect?,
+    ) {
+        super.onFocusChanged(gainFocus, direction, previouslyFocusedRect)
+        if (gainFocus) return
+        // Something else took focus, like the keyboard from the ⌨ button: the mouse is free until the window's back.
+        isFocusable = false
+        if (hasPointerCapture()) releasePointerCapture()
+    }
+
+    /** Focused while the mouse is captured: a physical keyboard's keys skip the keyboard app here too. */
+    override fun dispatchKeyEventPreIme(event: KeyEvent): Boolean =
+        runtime.keyboard.preIme(event) || super.dispatchKeyEventPreIme(event)
+
+    override fun onPointerCaptureChange(hasCapture: Boolean) {
+        super.onPointerCaptureChange(hasCapture)
+        capturedButtons = 0
+        runtime.wm.pointerCaptured(window, hasCapture)
+    }
+
+    private var capturedButtons = 0
+
+    /** The captured mouse: movement, its buttons and the wheel, as Android reports them while the cursor is gone. */
+    override fun onCapturedPointerEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_MOVE, MotionEvent.ACTION_HOVER_MOVE -> {
+                // Each sample is a movement of its own; a batch holds several.
+                var dx = event.x
+                var dy = event.y
+                for (i in 0 until event.historySize) {
+                    dx += event.getHistoricalX(i)
+                    dy += event.getHistoricalY(i)
+                }
+                if (dx != 0f || dy != 0f) runtime.wm.relativeMotion(dx, dy)
+            }
+            MotionEvent.ACTION_SCROLL -> {
+                val h = event.getAxisValue(MotionEvent.AXIS_HSCROLL)
+                val v = -event.getAxisValue(MotionEvent.AXIS_VSCROLL)
+                runtime.wm.scroll(h * WHEEL_STEP, v * WHEEL_STEP, AXIS_SOURCE_WHEEL, v.roundToInt())
+            }
+        }
+        val buttons = event.buttonState
+        for ((bit, code) in CAPTURED_BUTTONS) {
+            if (buttons and bit != 0 && capturedButtons and bit == 0) runtime.wm.pointerButton(code, true)
+            if (buttons and bit == 0 && capturedButtons and bit != 0) runtime.wm.pointerButton(code, false)
+        }
+        capturedButtons = buttons
+        return true
+    }
+
     private var surfaceWidth = 0
     private var surfaceHeight = 0
 
@@ -287,4 +389,13 @@ private class WindowSurfaceView(
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) = renderer.detach()
+
+    private companion object {
+        val CAPTURED_BUTTONS =
+            listOf(
+                MotionEvent.BUTTON_PRIMARY to BTN_LEFT,
+                MotionEvent.BUTTON_SECONDARY to BTN_RIGHT,
+                MotionEvent.BUTTON_TERTIARY to BTN_MIDDLE,
+            )
+    }
 }
