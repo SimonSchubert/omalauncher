@@ -33,7 +33,6 @@ import dev.omalauncher.widgets.market.Shared
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import dev.omalauncher.ui.BracketAction
 import dev.omalauncher.ui.CodeBlock
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.OverlayPanel
@@ -104,14 +103,16 @@ fun SharedWidgetScreen(
                     when (same) {
                         true -> AddedMark(kind)
                         false ->
-                            BracketAction(stringResource(R.string.store_shared_replace, shared.name), Palette.accent) {
+                            // Review.risks runs on these same commands; a risky one gets a second confirm (RiskyAction, StoreScreen.kt)
+                            // before it replaces what's there, same as a fresh add below.
+                            RiskyAction(stringResource(R.string.store_shared_replace, shared.name), Palette.accent, risks = shared.risks) {
                                 scope.launch {
                                     engine.addSharedWidget(shared, page)
                                     onDismiss()
                                 }
                             }
                         null ->
-                            BracketAction(
+                            RiskyAction(
                                 when (kind) {
                                     OwlKind.App -> stringResource(R.string.store_add_to_drawer)
                                     OwlKind.Face -> stringResource(R.string.store_add_as_face)
@@ -120,6 +121,7 @@ fun SharedWidgetScreen(
                                     OwlKind.Keybar, OwlKind.Strip -> stringResource(R.string.store_add_to_widgets_folder)
                                 },
                                 Palette.accent,
+                                risks = shared.risks,
                             ) {
                                 scope.launch {
                                     engine.addSharedWidget(shared, page)

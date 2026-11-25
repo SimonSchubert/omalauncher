@@ -77,10 +77,13 @@ import dev.omalauncher.widgets.WidgetEngine
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.market.Catalog
 import dev.omalauncher.widgets.market.CatalogEntry
+import dev.omalauncher.widgets.market.Review
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import dev.omalauncher.ui.BracketAction
 import dev.omalauncher.ui.CodeBlock
 import dev.omalauncher.ui.ConfirmDialog
+import dev.omalauncher.ui.DialogFrame
 import dev.omalauncher.ui.ImageViewer
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.LocalPanelBack
@@ -914,6 +917,8 @@ private fun Detail(
     val update = market.hasUpdate(e)
     val preview = rememberPreview(market, e, theme)
     val busy = market.busy[e.id]
+    // What Review flagged in its commands, restated behind a second confirm before onInstall runs.
+    val risks = remember(e.commands) { Review.risks(e.commands) }
     // Keyed by the widget, so picking another one beside the grid starts its page at the top.
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // An app's page reads like an app store's: its icon, name and install first, then its screens and what it does.
@@ -963,9 +968,9 @@ private fun Detail(
                         stringResource(if (installed?.sha256 == null) R.string.store_may_have_changes else R.string.store_you_changed),
                         style = Mono.copy(color = Palette.red, fontSize = TextSize.Small),
                     )
-                    BracketAction(stringResource(R.string.store_update_anyway, installed?.version.toString(), e.version), Palette.accent, Modifier.passesKeys(), onInstall)
+                    RiskyAction(stringResource(R.string.store_update_anyway, installed?.version.toString(), e.version), Palette.accent, Modifier.passesKeys(), risks = risks, onConfirm = onInstall)
                 }
-            update -> BracketAction(stringResource(R.string.store_update, installed?.version.toString(), e.version), Palette.accent, Modifier.passesKeys(), onInstall)
+            update -> RiskyAction(stringResource(R.string.store_update, installed?.version.toString(), e.version), Palette.accent, Modifier.passesKeys(), risks = risks, onConfirm = onInstall)
             // An app opens from here, unless it waits for Linux.
             installed != null && market.kind == OwlKind.App && (linux || !e.needsLinux) ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -983,7 +988,7 @@ private fun Detail(
                 }
             installed != null -> AddedMark(market.kind)
             else ->
-                BracketAction(
+                RiskyAction(
                     when (market.kind) {
                         OwlKind.Widget -> stringResource(R.string.store_add_to_page, page)
                         OwlKind.Face -> stringResource(R.string.store_add_as_face)
@@ -992,7 +997,8 @@ private fun Detail(
                     Palette.accent,
                     // Keys on it wait out the install, for the open an app ends with.
                     Modifier.passesKeys(),
-                    onInstall,
+                    risks = risks,
+                    onConfirm = onInstall,
                 )
         }
         if (installed != null && busy == null) {
@@ -1095,4 +1101,64 @@ internal fun InstallDisclosure(
         BasicText(stringResource(if (commands.isEmpty()) R.string.store_runs_no_commands else R.string.store_runs_commands), style = Mono.copy(fontSize = TextSize.Small))
     }
     for (c in commands) CodeBlock(c.trimEnd())
+}
+
+/** How long a risky confirm stays unclickable: enough that a reflex tap from the first screen can't also clear it. */
+private const val RiskyHoldMs = 1200L
+
+/**
+ * [label]'s usual tap, unless Review.risks found something in [risks]: then a second screen restates it and
+ * holds its own confirm for a moment before [onConfirm] (addSharedWidget, Market.install) runs.
+ *
+ * Every widget's commands run in the one Arch filesystem all widgets — and any installed coding agent — share
+ * (WidgetServices.kt's cmd/run), so a widget that reads ~/.ssh or pipes a download into a shell can reach another
+ * widget's or agent's secrets. This doesn't change that; it only stops a tap on autopilot from handing it over.
+ * Real isolation would need per-widget mount/namespace separation in Proot.kt, which is out of scope here.
+ */
+@Composable
+internal fun RiskyAction(
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    risks: List<String>,
+    onConfirm: () -> Unit,
+) {
+    var confirming by remember { mutableStateOf(false) }
+    BracketAction(label, color, modifier) { if (risks.isEmpty()) onConfirm() else confirming = true }
+    if (confirming) {
+        RiskyConfirmDialog(risks, label, onDismiss = { confirming = false }) {
+            confirming = false
+            onConfirm()
+        }
+    }
+}
+
+/** What looked risky, and [confirm], which only takes a tap once [RiskyHoldMs] has passed. */
+@Composable
+private fun RiskyConfirmDialog(
+    risks: List<String>,
+    confirm: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    var ready by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(RiskyHoldMs)
+        ready = true
+    }
+    DialogFrame(onDismiss) {
+        BasicText(stringResource(R.string.store_risky_title), style = Mono.copy(fontSize = TextSize.Title, color = Palette.red))
+        for (risk in risks) BasicText("⚠ $risk", style = Mono.copy(color = Palette.red, fontSize = TextSize.Small))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            BracketAction(stringResource(R.string.files_cancel), Palette.muted, onClick = onDismiss)
+            if (ready) {
+                BracketAction(confirm, Palette.red, onClick = onConfirm)
+            } else {
+                // Same shape as the button it becomes, so nothing jumps when it turns clickable.
+                Box(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                    BasicText("[ $confirm ]", style = Mono.copy(color = Palette.muted))
+                }
+            }
+        }
+    }
 }

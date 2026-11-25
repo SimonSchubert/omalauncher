@@ -119,6 +119,9 @@
     <string name="store_runs_no_commands">runs no commands</string>
     <string name="store_runs_commands">runs these commands in Arch:</string>
 
+    <!-- A second confirm when Review.risks found something in what it runs: adding or installing waits behind it. -->
+    <string name="store_risky_title">this looks risky — read before you confirm</string>
+
     <!-- What's happening to an entry, while it is. -->
     <string name="store_installing">installing…</string>
     <string name="store_updating">updating…</string>
