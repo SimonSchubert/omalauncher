@@ -1,6 +1,8 @@
 package dev.omalauncher.ui
 
+import dev.omalauncher.theme.Style
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class TerminalDragTest {
@@ -30,5 +32,9 @@ class TerminalDragTest {
         assertEquals(TerminalDrag.PassThrough, drag(0f, 0f, held = 500))
         assertEquals(TerminalDrag.PassThrough, drag(0f, 40f, held = 600))
         assertEquals(TerminalDrag.Scroll, drag(0f, 40f, held = 499))
+    }
+
+    @Test fun scrollingAnUnfocusedTerminalIsOffByDefault() {
+        assertFalse(Style()[Style.TERMINAL_SCROLL_UNFOCUSED])
     }
 }

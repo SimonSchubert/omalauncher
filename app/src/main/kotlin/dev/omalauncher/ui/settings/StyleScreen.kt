@@ -499,6 +499,8 @@ private fun TerminalSection(
     OptionHint(pluralStringResource(R.plurals.style_terminal_size, columns, TerminalFont.format(font.size).removeSuffix(".0"), columns), Modifier.padding(top = 2.dp))
     Flag(R.string.style_keyboard_suggestions, R.string.style_on, R.string.style_off, style, Style.TERMINAL_SUGGESTIONS)
     OptionHint(stringResource(R.string.style_keyboard_suggestions_hint), Modifier.padding(bottom = 4.dp))
+    Flag(R.string.style_terminal_scroll, R.string.style_on, R.string.style_off, style, Style.TERMINAL_SCROLL_UNFOCUSED)
+    OptionHint(stringResource(R.string.style_terminal_scroll_hint), Modifier.padding(bottom = 4.dp))
     TerminalPreview(font, launcherFont)
 }
 

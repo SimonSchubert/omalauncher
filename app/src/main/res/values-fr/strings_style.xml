@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">terminaux ouverts à partir de maintenant · d’autres polices avec pacman, comme ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">suggestions du clavier</string>
     <string name="style_keyboard_suggestions_hint">suggestions, saisie gestuelle et dictée ; le texte arrive dans le terminal mot par mot · dès la prochaine ouverture du clavier</string>
+    <string name="style_terminal_scroll">défiler sans clavier</string>
+    <string name="style_terminal_scroll_hint">un glissement vertical fait défiler un terminal inactif sans ouvrir le clavier ; un balayage latéral change toujours de page</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d colonne en portrait</item>
         <item quantity="many">%1$s pt · %2$d colonnes en portrait</item>

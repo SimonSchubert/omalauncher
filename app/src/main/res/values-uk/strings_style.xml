@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">для терміналів, відкритих відтепер · інші шрифти через pacman, як-от ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">підказки клавіатури</string>
     <string name="style_keyboard_suggestions_hint">підказки, безперервне введення і диктування; текст потрапляє в термінал по одному слову · з наступного відкриття клавіатури</string>
+    <string name="style_terminal_scroll">прокручування без клавіатури</string>
+    <string name="style_terminal_scroll_hint">вертикальне перетягування прокручує неактивний термінал, не відкриваючи клавіатуру; бокові свайпи, як і раніше, гортають сторінки</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s пт · %2$d стовпець у книжковій орієнтації</item>
         <item quantity="few">%1$s пт · %2$d стовпці у книжковій орієнтації</item>

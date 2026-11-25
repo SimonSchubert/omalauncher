@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">para las terminales que abras a partir de ahora · más con pacman, como ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">sugerencias del teclado</string>
     <string name="style_keyboard_suggestions_hint">sugerencias, escritura deslizante y dictado; el texto llega a la terminal palabra por palabra · desde la próxima vez que se abra el teclado</string>
+    <string name="style_terminal_scroll">desplazar sin teclado</string>
+    <string name="style_terminal_scroll_hint">arrastrar en vertical desplaza una terminal sin foco sin abrir el teclado; deslizar de lado sigue cambiando de página</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d columna en vertical</item>
         <item quantity="many">%1$s pt · %2$d columnas en vertical</item>

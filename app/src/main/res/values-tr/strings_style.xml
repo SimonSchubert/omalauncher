@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">bundan sonra açılan terminaller · pacman ile daha fazlası, örneğin ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">klavye önerileri</string>
     <string name="style_keyboard_suggestions_hint">öneriler, kaydırarak yazma ve dikte; metin terminale kelime kelime ulaşır · klavyenin bir sonraki açılışından itibaren</string>
+    <string name="style_terminal_scroll">klavyesiz kaydırma</string>
+    <string name="style_terminal_scroll_hint">dikey sürükleme, etkin olmayan terminali klavyeyi açmadan kaydırır; yana kaydırma yine sayfaları çevirir</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · dikeyde %2$d sütun</item>
         <item quantity="other">%1$s pt · dikeyde %2$d sütun</item>
