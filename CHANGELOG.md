@@ -6,6 +6,21 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.11.0 (versionCode 47) – 2026-11-25
+
+- Voice reads replies aloud with Supertonic, natural voices that run on the phone itself: a 145 MB
+  download under reading aloud in the voice settings, ten voices, 31 languages, offline.
+- Voice takes pictures and the clipboard: the paperclip adds a photo or what's copied, and the
+  keyboard's pictures and pasted ones go in while typing, with the next message, said or typed.
+- A Galaxy Z Fold8's inner screen shows two pages (#281).
+- Linux setup no longer stops at pacman-key with "needs to be run as root" on phones whose kernel
+  clears ptrace event messages, such as crDroid 4.14 (#179).
+- Less battery: connected devices share one SSH connection and wait for changes, and Linux's /proc
+  stand-ins are scanned only while something reads them.
+- Fix: a text field on a home tile or full-screen widget could raise the keyboard again after it
+  closed (#237); top in Linux showed 0.0% CPU; a widget that compiled a moment after a failed save
+  stayed invisible.
+
 ## 1.10.0 (versionCode 46) – 2026-11-22
 
 - Connected devices: other phones with Omalauncher and Omarchy computers (the Omalauncher plugin)

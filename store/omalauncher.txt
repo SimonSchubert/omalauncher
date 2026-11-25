@@ -1,6 +1,6 @@
 Privacy Policy
 
-Effective Date: 22.11.2026
+Effective Date: 25.11.2026
 
 Omalauncher ("the App") is an Android home screen launcher developed by Simon Schubert ("we," "us," or "our"). This Privacy Policy explains how the App handles information.
 
@@ -54,10 +54,11 @@ Optional Linux environment
 - Only if you choose to install Linux, the App downloads Arch Linux ARM from archlinuxarm.org and its mirrors. Packages you install come from Arch Linux ARM mirrors and, if you choose, the Arch User Repository (aur.archlinux.org).
 
 Optional coding agents
-- Only if you choose to install a coding agent (for example Claude Code, Codex or OpenCode), it is downloaded from its vendor. The prompts you send to an agent, and the files it works with, are sent to that agent's provider under the provider's own terms and privacy policy. You sign in to each agent with your own account.
+- Only if you choose to install a coding agent (for example Claude Code, Codex or OpenCode), it is downloaded from its vendor. The prompts you send to an agent, the pictures you add to them in Voice, and the files it works with, are sent to that agent's provider under the provider's own terms and privacy policy. You sign in to each agent with your own account.
 
-Hugging Face (huggingface.co) and GitHub (optional speech recognition)
+Hugging Face (huggingface.co) and GitHub (optional speech recognition and reading aloud)
 - Only if you choose to download Parakeet speech recognition in the voice settings, the App downloads its model from huggingface.co and github.com, once. Speech is then recognized on your device and never sent to them.
+- Only if you choose to download Supertonic for reading aloud in the voice settings, the App downloads its voices from huggingface.co, once. Replies are then read aloud on your device and never sent to them.
 - Privacy Policy: https://huggingface.co/privacy
 
 We do not share any data with third parties ourselves.
