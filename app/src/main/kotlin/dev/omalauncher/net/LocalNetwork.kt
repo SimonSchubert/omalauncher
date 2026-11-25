@@ -34,11 +34,44 @@ object LocalNetwork {
         return if (isLocal(url)) "Android keeps the launcher off the local network until it's allowed: settings, local network" else null
     }
 
+    /** [url]'s host, or null if it has none or [url] doesn't parse as one. */
+    private fun hostOf(url: String): String? = runCatching { URI(url).host?.removeSurrounding("[", "]") }.getOrNull()
+
+    /** [host]'s addresses, resolved; empty if it doesn't resolve. */
+    private fun addressesOf(host: String): List<InetAddress> = runCatching { InetAddress.getAllByName(host) }.getOrNull().orEmpty()
+
+    /** A private, link-local or unique local address: on the local network, not the open internet. */
+    private val InetAddress.isLocalAddress: Boolean
+        get() = isSiteLocalAddress || isLinkLocalAddress || (this is Inet6Address && (address[0].toInt() and 0xfe) == 0xfc)
+
     /** Whether [url]'s host is on the local network: a private, link-local or unique local address. */
-    fun isLocal(url: String): Boolean {
-        val host = runCatching { URI(url).host?.removeSurrounding("[", "]") }.getOrNull() ?: return false
-        return runCatching { InetAddress.getAllByName(host) }.getOrNull().orEmpty().any {
-            it.isSiteLocalAddress || it.isLinkLocalAddress || (it is Inet6Address && (it.address[0].toInt() and 0xfe) == 0xfc)
-        }
+    fun isLocal(url: String): Boolean = hostOf(url)?.let(::addressesOf).orEmpty().any { it.isLocalAddress }
+
+    /**
+     * Why a widget's connection to [url] is refused before it's ever attempted, or null to let it through.
+     * Resolved, not matched against the URL's literal text, so a hostname that answers with a local address
+     * is caught the same as a literal one would be. Resolving twice, once here and once more for the real
+     * connection, leaves a narrow DNS-rebinding window open (a server answering this lookup with a public
+     * address and the next one, moments later, with a local one); closing that fully would mean connecting
+     * to the address checked here rather than letting the real connection re-resolve the host, which is more
+     * than this check does.
+     *
+     * Loopback is refused unconditionally: a third-party widget (often installed from a store or a shared
+     * link, so effectively untrusted code) has no legitimate reason to reach the phone's own loopback
+     * interface, and Android's [PERMISSION] doesn't cover it either, so nothing else is standing in the way.
+     * The rest of the local network ([isLocal]) is refused unconditionally too, for now: widgets have no way
+     * to declare "I talk to a LAN device" the way a `secret` is declared in the widget language, so there's
+     * no sound way to let some of them through while keeping others off a smart-home hub or someone else's
+     * app listening on the LAN. That trades away legitimate local-network widgets; a consent declaration at
+     * install time, checked here instead of a blanket refusal, would be the better long-term fix.
+     *
+     * Looks the host up, so not on the main thread.
+     */
+    fun refuse(url: String): String? {
+        val host = hostOf(url) ?: return null
+        val addresses = addressesOf(host)
+        if (addresses.any { it.isLoopbackAddress }) return "$host is this device's own loopback address"
+        if (addresses.any { it.isLocalAddress }) return "$host is on the local network, which widgets can't reach"
+        return null
     }
 }

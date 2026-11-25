@@ -757,6 +757,9 @@ class WidgetServices(
                 // Followed here rather than by HttpURLConnection, which would take the widget's headers (an API key, a
                 // secret) along to whatever server a redirect names: they go only to the server the widget wrote out.
                 repeat(MAX_REDIRECTS + 1) {
+                    // Checked again on every hop: a redirect could point an otherwise ordinary URL at the
+                    // phone's loopback interface or the LAN behind it.
+                    LocalNetwork.refuse(target.toString())?.let { return@withContext ShellResult("", it, -1) }
                     val connection = openHttp(target.toString(), timeoutSeconds * 1000, timeoutSeconds * 1000)
                     try {
                         connection.instanceFollowRedirects = false
@@ -811,6 +814,7 @@ class WidgetServices(
         onBinary: () -> Unit,
     ) {
         val pinned = pin?.let { Pins.normalize(it) ?: throw IOException("pin: isn't a SHA-256 (64 hex digits): $it") }
+        withContext(Dispatchers.IO) { LocalNetwork.refuse(url) }?.let { throw IOException(it) }
         // Each holds a thread and a connection the whole time its page shows.
         if (webSockets.incrementAndGet() > MAX_WEBSOCKETS) {
             webSockets.decrementAndGet()
