@@ -2,6 +2,7 @@ package dev.omalauncher.linux
 
 import android.content.Context
 import android.os.FileObserver
+import android.os.SystemClock
 import android.util.Log
 import dev.omalauncher.BuildConfig
 import dev.omalauncher.storage.PhoneFolders
@@ -48,6 +49,35 @@ import java.io.File
 
 private const val TAG = "phone"
 
+/** [PhoneBridge]'s rate-limit map never holds more than this many distinct keys (least-recently-used dropped first),
+ * comfortably above any real location/calendar/link-target set, so eviction only ever bites a flood of made-up keys
+ * (e.g. a fabricated link target per request), not a real caller's rate-limit state. */
+internal const val MAX_LAST_CALL_KEYS = 64
+
+/**
+ * True, and [calls] remembering [now] for [key], only the first time [key] is asked within [minMs] of its last
+ * recorded call there; false (and [calls] left unchanged) otherwise. A top-level function, not a method on
+ * [PhoneBridge], so this rate-limit arithmetic is testable without the class's Android constructor dependencies.
+ */
+internal fun allowedCall(
+    calls: MutableMap<String, Long>,
+    key: String,
+    minMs: Long,
+    now: Long,
+): Boolean {
+    val last = calls[key]
+    if (last != null && now - last < minMs) return false
+    calls[key] = now
+    return true
+}
+
+/** A map for [allowedCall], capped at [MAX_LAST_CALL_KEYS] keys so an unbounded stream of distinct keys (a guest
+ * process cycling fabricated link targets, say) can't grow it forever. */
+internal fun cappedCallMap(): LinkedHashMap<String, Long> =
+    object : LinkedHashMap<String, Long>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>) = size > MAX_LAST_CALL_KEYS
+    }
+
 /**
  * `omalauncher` for the guest (`phone` until 0.20, which stays as another name for it): the phone's location, calendar
  * AirPods and battery for agents and scripts, as JSON, from the same sources widgets read; and notifications and
@@ -74,8 +104,9 @@ class PhoneBridge(
     private val inbox = File(proot.runtimeDir, "phone")
     private var observer: FileObserver? = null
 
-    /** `location`/`calendar`/`link:<target>`'s last call, for [allow]. Main thread only, like [receive]. */
-    private val lastCall = HashMap<String, Long>()
+    /** `location`/`calendar`/`link:<target>`'s last call, for [allow]. Capped by [cappedCallMap] against a flood of
+     * made-up `link:<target>` keys. Main thread only, like [receive]. */
+    private val lastCall = cappedCallMap()
 
     private val _recentActivity = MutableStateFlow<List<Entry>>(emptyList())
 
@@ -163,17 +194,14 @@ class PhoneBridge(
         }
     }
 
-    /** True, and remembers [now], only the first time [key] is asked within [minMs]; false (and no change) otherwise. */
+    /** True, and remembers [now], only the first time [key] is asked within [minMs]; false (and no change) otherwise.
+     * [now] defaults to the monotonic clock, not wall-clock time, so a backward clock adjustment (NTP sync, manual
+     * date fix) can't make a legitimate caller look overdue and get denied until wall-clock time catches back up. */
     private fun allow(
         key: String,
         minMs: Long,
-        now: Long = System.currentTimeMillis(),
-    ): Boolean {
-        val last = lastCall[key]
-        if (last != null && now - last < minMs) return false
-        lastCall[key] = now
-        return true
-    }
+        now: Long = SystemClock.elapsedRealtime(),
+    ): Boolean = allowedCall(lastCall, key, minMs, now)
 
     private fun rateLimited(command: String) = Answer.Denied("too many '$command' requests; wait a moment and ask again")
 
