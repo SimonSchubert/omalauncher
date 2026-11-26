@@ -8,18 +8,23 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels its run still going; every push to main is tested.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 25
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       # The NDK app/build.gradle.kts pins; installed up front so AGP doesn't download it mid-build.
       - name: Install the NDK
@@ -34,3 +39,12 @@ jobs:
       # The play build adds Play's in-app updates and their dependencies; linting it too catches what they break.
       - name: Build and lint
         run: ./gradlew :app:assembleFossDebug :app:lintFossDebug :app:lintPlayDebug
+
+      # The log shows only which test failed; its report has the message and the stack trace.
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: '*/build/reports/tests/'
+          if-no-files-found: ignore
