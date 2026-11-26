@@ -52,6 +52,17 @@ private fun brightnessToAlpha(bmp: Bitmap) {
     val h = bmp.height
     val pixels = IntArray(w * h)
     bmp.getPixels(pixels, 0, w, 0, 0, w, h)
+    val changed =
+        when (PixelsNative.iconMask(pixels, BLACK_LOGO)) {
+            1 -> true
+            0 -> false
+            else -> brightnessToAlpha(pixels)
+        }
+    if (changed) bmp.setPixels(pixels, 0, w, 0, 0, w, h)
+}
+
+/** [brightnessToAlpha] of ARGB [pixels], in place; false for a black logo, left as it was. cpp/pixels.c does the same. */
+internal fun brightnessToAlpha(pixels: IntArray): Boolean {
     val values = IntArray(pixels.size)
     var max = 1
     for (i in pixels.indices) {
@@ -61,10 +72,10 @@ private fun brightnessToAlpha(bmp: Bitmap) {
         values[i] = v
         if (v > max) max = v
     }
-    if (max < BLACK_LOGO) return
+    if (max < BLACK_LOGO) return false
     for (i in pixels.indices) pixels[i] = ((values[i] * 255 / max) shl 24) or 0xffffff
-    bmp.setPixels(pixels, 0, w, 0, 0, w, h)
+    return true
 }
 
 /** Below this brightness at its brightest (of 255), a logo counts as black and keeps its shape. */
-private const val BLACK_LOGO = 16
+internal const val BLACK_LOGO = 16

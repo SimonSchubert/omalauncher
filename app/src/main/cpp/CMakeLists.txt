@@ -8,6 +8,9 @@ target_link_libraries(wlbridge android log)
 add_library(scene3d SHARED scene3d.c mesh3d.c)
 target_compile_options(scene3d PRIVATE -O3 -Wall -ffp-contract=off)
 target_link_libraries(scene3d m)
+# Frost's blur and icon masks, see pixels.c. Its numbers are the Kotlin's too.
+add_library(pixels SHARED pixels.c)
+target_compile_options(pixels PRIVATE -O3 -Wall -ffp-contract=off)
 # android.airpods' L2CAP socket, see aap.c.
 add_library(aap SHARED aap.c)
 target_compile_options(aap PRIVATE -Wall)

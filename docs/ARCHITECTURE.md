@@ -41,6 +41,8 @@ a module folder; the OWL language is under
   holds it, set in `App`, and the Kotlin it ports runs where it isn't set
   (`MeshNativeTest`). The native tests build the C for the machine they run
   on (`HostNative`) and are skipped without a compiler
+- `app/src/main/cpp/pixels.c`: frost's blur and icon masks, with the Kotlin
+  kept as the fallback (`PixelsNativeTest`)
 - `wayland/`: the Wayland server in Kotlin (wl_compositor, wl_shm,
   wl_subcompositor, wl_seat, wl_output, xdg_wm_base, xdg-decoration, and
   text-input-v3 for where a client's text cursor is) and

@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import dev.omalauncher.ui.PixelsNative
 import dev.omalauncher.widgets.lang.num
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +52,7 @@ class Backdrop(
 val LocalBackdrop = staticCompositionLocalOf<Backdrop?> { null }
 
 /** The background small and blurred, one per file and radius, shared by every frosted node. */
-private object FrostCache {
+internal object FrostCache {
     /** Blurred at an eighth of the screen: cheap to make and to draw, and the blur hides the scale. */
     const val SCALE = 8
 
@@ -102,13 +103,22 @@ private object FrostCache {
         val h = bmp.height
         val px = IntArray(w * h)
         bmp.getPixels(px, 0, w, 0, 0, w, h)
-        // Three box blurs come close to a gaussian.
+        if (!PixelsNative.frostBlur(px, w, h, radius)) blur(px, w, h, radius)
+        return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888).asImageBitmap()
+    }
+
+    /** [px], [w] by [h], blurred in place by [radius]: three box blurs come close to a gaussian. cpp/pixels.c does the same. */
+    fun blur(
+        px: IntArray,
+        w: Int,
+        h: Int,
+        radius: Int,
+    ) {
         val tmp = IntArray(w * h)
         repeat(3) {
             box(px, tmp, w, h, radius, 1, w)
             box(tmp, px, h, w, radius, w, 1)
         }
-        return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888).asImageBitmap()
     }
 
     /**
