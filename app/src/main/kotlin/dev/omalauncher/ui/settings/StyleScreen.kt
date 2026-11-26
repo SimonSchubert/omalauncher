@@ -495,9 +495,17 @@ private fun TerminalSection(
     Heading(R.string.style_terminal)
     // Only where this build has it (TerminalLibrary): a style.toml asking for it elsewhere gets foot.
     if (TerminalLibrary.available) {
-        val builtIn = style.style[Style.TERMINAL_BUILT_IN]
-        val options = listOf(stringResource(R.string.style_terminal_foot), stringResource(R.string.style_terminal_built_in))
-        StyleOption(R.string.style_terminal_opens_in, options, if (builtIn) 1 else 0) { i -> style.update { it.with(Style.TERMINAL_BUILT_IN, i == 1) } }
+        val foot = stringResource(R.string.style_terminal_foot)
+        val own = stringResource(R.string.style_terminal_omaterminal)
+        val selected = if (style.style[Style.TERMINAL_BUILT_IN]) own else foot
+        DropdownOption(
+            stringResource(R.string.style_terminal_opens_in),
+            value = { BasicText(selected, Modifier.weight(1f, fill = false), style = Mono.copy(color = Palette.foreground), maxLines = 1) },
+        ) { close ->
+            ChoicePopup(listOf(foot, own), selected, BelowAnchorStart, onDismiss = close, onPick = { pick ->
+                style.update { it.with(Style.TERMINAL_BUILT_IN, pick == own) }
+            }, label = { it })
+        }
         OptionHint(stringResource(R.string.style_terminal_built_in_hint), Modifier.padding(bottom = 4.dp))
     }
     FontOption(font.families, font.family) { family -> style.update { it.with(Style.TERMINAL_FONT, family) } }

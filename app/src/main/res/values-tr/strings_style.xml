@@ -109,8 +109,7 @@
     <string name="style_keyboard_suggestions">klavye önerileri</string>
     <string name="style_keyboard_suggestions_hint">öneriler, kaydırarak yazma ve dikte; metin terminale kelime kelime ulaşır · klavyenin bir sonraki açılışından itibaren</string>
     <string name="style_terminal_opens_in">açıldığı yer</string>
-    <string name="style_terminal_built_in">yerleşik</string>
-    <string name="style_terminal_built_in_hint">yerleşik: Omalauncher’ın kendi terminali, her uygulamadaki gibi telefonun klavyesiyle · bundan sonra açılan terminaller</string>
+    <string name="style_terminal_built_in_hint">omaterminal: Omalauncher’ın kendi terminali, her uygulamadaki gibi telefonun klavyesiyle · bundan sonra açılan terminaller</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · dikeyde %2$d sütun</item>
         <item quantity="other">%1$s pt · dikeyde %2$d sütun</item>

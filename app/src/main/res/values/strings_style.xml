@@ -132,8 +132,8 @@
     <!-- The terminal foot, a program's name. -->
     <string name="style_terminal_foot" translatable="false">foot</string>
     <string name="style_terminal_opens_in">opens in</string>
-    <string name="style_terminal_built_in">built-in</string>
-    <string name="style_terminal_built_in_hint">built-in: Omalauncher’s own terminal, with the phone’s keyboard as in any app · for terminals opened from now on</string>
+    <string name="style_terminal_omaterminal" translatable="false">omaterminal</string>
+    <string name="style_terminal_built_in_hint">omaterminal: Omalauncher’s own terminal, with the phone’s keyboard as in any app · for terminals opened from now on</string>
     <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d column in portrait</item>

@@ -130,8 +130,7 @@
     <string name="style_keyboard_suggestions">اقتراحات لوحة المفاتيح</string>
     <string name="style_keyboard_suggestions_hint">اقتراحات وكتابة بالتمرير وإملاء؛ يصل النص إلى الطرفية كلمة كلمة · من الفتح التالي للوحة المفاتيح</string>
     <string name="style_terminal_opens_in">تُفتح في</string>
-    <string name="style_terminal_built_in">المدمجة</string>
-    <string name="style_terminal_built_in_hint">المدمجة: طرفية Omalauncher نفسه، بلوحة مفاتيح الهاتف كما في أي تطبيق · للطرفيات التي تُفتح من الآن</string>
+    <string name="style_terminal_built_in_hint">omaterminal: طرفية Omalauncher نفسه، بلوحة مفاتيح الهاتف كما في أي تطبيق · للطرفيات التي تُفتح من الآن</string>
     <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->
     <plurals name="style_terminal_size">
         <item quantity="zero">⁨%1$s pt⁩ · بلا أعمدة في الوضع العمودي</item>

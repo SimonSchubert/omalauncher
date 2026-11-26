@@ -109,8 +109,7 @@
     <string name="style_keyboard_suggestions">подсказки клавиатуры</string>
     <string name="style_keyboard_suggestions_hint">подсказки, непрерывный ввод и диктовка; текст попадает в терминал по одному слову · со следующего открытия клавиатуры</string>
     <string name="style_terminal_opens_in">открывать в</string>
-    <string name="style_terminal_built_in">встроенный</string>
-    <string name="style_terminal_built_in_hint">встроенный: собственный терминал Omalauncher, с клавиатурой телефона, как в любом приложении · для терминалов, открытых после этого</string>
+    <string name="style_terminal_built_in_hint">omaterminal: собственный терминал Omalauncher, с клавиатурой телефона, как в любом приложении · для терминалов, открытых после этого</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s пт · %2$d столбец в книжной ориентации</item>
         <item quantity="few">%1$s пт · %2$d столбца в книжной ориентации</item>

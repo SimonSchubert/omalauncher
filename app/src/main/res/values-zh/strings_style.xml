@@ -109,8 +109,7 @@
     <string name="style_keyboard_suggestions">键盘建议</string>
     <string name="style_keyboard_suggestions_hint">支持建议、滑动输入和语音输入；文字按词送到终端 · 下次打开键盘时生效</string>
     <string name="style_terminal_opens_in">打开方式</string>
-    <string name="style_terminal_built_in">内置</string>
-    <string name="style_terminal_built_in_hint">内置：Omalauncher 自带的终端，像在其他应用中一样使用手机键盘 · 对之后打开的终端生效</string>
+    <string name="style_terminal_built_in_hint">omaterminal：Omalauncher 自带的终端，像在其他应用中一样使用手机键盘 · 对之后打开的终端生效</string>
     <plurals name="style_terminal_size">
         <item quantity="other">%1$s pt · 竖屏 %2$d 列</item>
     </plurals>
