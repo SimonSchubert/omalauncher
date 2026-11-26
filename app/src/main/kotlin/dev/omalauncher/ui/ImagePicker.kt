@@ -12,8 +12,8 @@ import dev.omalauncher.wayland.XdgToplevel
 import kotlinx.coroutines.launch
 
 /**
- * Android's photo picker for pickImages(), the key bar's image key: the picked images go into the Linux window that had
- * the keyboard as their paths, which agents attach (see [KeyboardBridge.insertImages]). Each activity that shows the key
+ * Android's photo picker for pickImages(), the key bar's image key: the picked images go into the Linux window (or the
+ * built-in terminal) that had the keyboard as their paths, which agents attach (see [KeyboardBridge.insertImages]). Each activity that shows the key
  * bar has one, made with it, since the key bar is gone while the picker covers it and couldn't take the result.
  * Needs no permission: Android hands over only what's picked.
  */
@@ -21,29 +21,39 @@ class ImagePicker(
     private val activity: ComponentActivity,
     private val runtime: () -> Runtime,
 ) {
-    /** The window that had the keyboard when the picker opened, and the view that raised the soft keyboard for it. */
+    /**
+     * The window that had the keyboard when the picker opened, or the built-in terminal that had it, and the view that
+     * raised the soft keyboard for it.
+     */
     private var target: XdgToplevel? = null
+    private var keyTarget: KeyTarget? = null
     private var sink: KeyboardSink? = null
 
     private val launcher = activity.registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(), ::picked)
 
     fun launch() {
-        target = runtime().wm.focused ?: return
+        keyTarget = runtime().keyboard.target
+        if (keyTarget == null) target = runtime().wm.focused ?: return
         sink = activity.currentFocus as? KeyboardSink
         launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
     /** Also with none picked, so the window has the keyboard back as it had before, the soft one too. */
     private fun picked(uris: List<Uri>) {
-        val window = target ?: return
+        val window = target
+        val keyTarget = keyTarget
+        if (window == null && keyTarget == null) return
         val sink = sink
         target = null
+        this.keyTarget = null
         this.sink = null
         // The result comes before onResume, which takes the keyboard from home's terminal tiles.
         activity.lifecycleScope.launch {
             activity.withResumed {
                 val runtime = runtime()
-                if (!runtime.terminals.refocus(window)) return@withResumed
+                // A built-in terminal takes the keyboard back as its activity resumes.
+                if (keyTarget != null && runtime.keyboard.target !== keyTarget) return@withResumed
+                if (window != null && !runtime.terminals.refocus(window)) return@withResumed
                 sink?.takeIf { it.isAttachedToWindow }?.let(::showKeyboard)
                 if (uris.isNotEmpty()) runtime.keyboard.insertImages(uris)
             }

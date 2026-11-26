@@ -129,6 +129,9 @@
     <string name="style_terminal_hint">برای ترمینال‌هایی که از این پس باز می‌شوند · فونت‌های بیشتر با pacman، مثل ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">پیشنهادهای صفحه‌کلید</string>
     <string name="style_keyboard_suggestions_hint">پیشنهادها، تایپ لغزشی و تایپ صوتی؛ متن واژه‌به‌واژه به ترمینال می‌رسد · از دفعه بعد که صفحه‌کلید باز شود</string>
+    <string name="style_terminal_opens_in">باز شدن در</string>
+    <string name="style_terminal_built_in">داخلی</string>
+    <string name="style_terminal_built_in_hint">داخلی: ترمینال خود Omalauncher، با صفحه‌کلید گوشی مثل هر برنامه‌ای · برای ترمینال‌هایی که از این پس باز می‌شوند</string>
     <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->
     <plurals name="style_terminal_size">
         <item quantity="one">⁨%1$s pt⁩ · %2$d ستون در حالت عمودی</item>

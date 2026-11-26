@@ -84,6 +84,7 @@ import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.TerminalText
+import dev.omalauncher.terminal.TerminalLibrary
 import dev.omalauncher.theme.OmarchyTheme
 import dev.omalauncher.theme.Setting
 import dev.omalauncher.theme.Style
@@ -492,6 +493,13 @@ private fun TerminalSection(
 ) {
     LaunchedEffect(Unit) { font.refreshFamilies() }
     Heading(R.string.style_terminal)
+    // Only where this build has it (TerminalLibrary): a style.toml asking for it elsewhere gets foot.
+    if (TerminalLibrary.available) {
+        val builtIn = style.style[Style.TERMINAL_BUILT_IN]
+        val options = listOf(stringResource(R.string.style_terminal_foot), stringResource(R.string.style_terminal_built_in))
+        StyleOption(R.string.style_terminal_opens_in, options, if (builtIn) 1 else 0) { i -> style.update { it.with(Style.TERMINAL_BUILT_IN, i == 1) } }
+        OptionHint(stringResource(R.string.style_terminal_built_in_hint), Modifier.padding(bottom = 4.dp))
+    }
     FontOption(font.families, font.family) { family -> style.update { it.with(Style.TERMINAL_FONT, family) } }
     OptionHint(stringResource(R.string.style_terminal_hint), Modifier.padding(bottom = 4.dp))
     NumberOption(R.string.style_text, TerminalText.entries.map { it.label to it.em.toDouble() }, Style.TERMINAL_TEXT, style, unit = " dp")
@@ -508,7 +516,8 @@ private fun TerminalSection(
 /**
  * Terminal output in the chosen [TerminalFont] and the theme's terminal colors,
  * drawn here as foot will draw it: at its pixel size and pad, wrapped at its
- * columns, without ligatures. The family loads from Linux's files; until it
+ * columns, without ligatures. The built-in terminal has the same cells, so this
+ * shows its wrapping too. The family loads from Linux's files; until it
  * has, the one before it (or Android's monospace) stands in.
  */
 @Composable

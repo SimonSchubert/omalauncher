@@ -108,6 +108,9 @@
     <string name="style_terminal_hint">для терміналів, відкритих відтепер · інші шрифти через pacman, як-от ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">підказки клавіатури</string>
     <string name="style_keyboard_suggestions_hint">підказки, безперервне введення і диктування; текст потрапляє в термінал по одному слову · з наступного відкриття клавіатури</string>
+    <string name="style_terminal_opens_in">відкривати в</string>
+    <string name="style_terminal_built_in">вбудований</string>
+    <string name="style_terminal_built_in_hint">вбудований: власний термінал Omalauncher, з клавіатурою телефона, як у будь-якому застосунку · для терміналів, відкритих відтепер</string>
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s пт · %2$d стовпець у книжковій орієнтації</item>
         <item quantity="few">%1$s пт · %2$d стовпці у книжковій орієнтації</item>

@@ -92,6 +92,15 @@ class StyleTest {
         assertEquals(ColorSpec.NONE, decoded.style[Style.NAVIGATION_BAR.border])
     }
 
+    /** foot stays the terminal until someone picks the built-in one, in the Style menu or the file. */
+    @Test fun terminalIsFootUnlessPicked() {
+        assertFalse(Style()[Style.TERMINAL_BUILT_IN])
+        val decoded = StyleFile.decode(mapOf("terminal.built-in" to true))
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertTrue(decoded.style[Style.TERMINAL_BUILT_IN])
+        assertEquals(1, StyleFile.decode(mapOf("terminal.built-in" to "yes")).problems.size)
+    }
+
     @Test fun eachBarHasItsOwnBorderWidth() {
         val decoded = StyleFile.decode(mapOf("status-bar.border-width" to 0.0, "navigation-bar.border-width" to 9.0))
         assertEquals(0.0, decoded.style[Style.STATUS_BAR.borderWidth], 0.0)
