@@ -861,7 +861,9 @@ class LangTest {
         // A text long enough that one match takes a while, on this machine, but gives up on its own. The faster of two
         // runs, so the first one's warm-up (class loading, the regex thread) on a slow runner doesn't pass for it.
         while (minOf(timed(), timed()) < 60)host.slots[0] = Num((host.slots[0] as Num).v + 4)
-        host.slots[1] = Num(40.0)
+        // Far more than the second of matches needed: once the JIT compiles the regex engine, a match can take a
+        // fraction of what it took above, and 40 of them finished in time on CI.
+        host.slots[1] = Num(400.0)
         val started = System.nanoTime()
         try {
             host.budget.eval(ev, Env.root(host))
@@ -869,7 +871,7 @@ class LangTest {
         } catch (e: WidgetError) {
             assertTrue(e.message, e.message!!.contains("in all in one update"))
         }
-        // Over 40 times 60 ms before.
+        // Over 400 times 60 ms before.
         assertTrue((System.nanoTime() - started) / 1_000_000 < 1800)
         // The pattern isn't refused, and the next update has its own allowance.
         host.slots[1] = Num(1.0)
