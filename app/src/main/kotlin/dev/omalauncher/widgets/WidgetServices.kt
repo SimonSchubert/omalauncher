@@ -908,16 +908,34 @@ class WidgetServices(
         }
     }
 
-    /** A file's bytes, or null for anything but a 2xx or a response over [MAX_FILE_BYTES]. */
+    /**
+     * A file's bytes, or null for anything but a 2xx or a response over [MAX_FILE_BYTES]. Used for a widget's
+     * image/font `src`, exactly as attacker-controlled as [http]'s `url` — so it gets the same [LocalNetwork]
+     * pre-flight, and redirects are followed by hand instead of by HttpURLConnection for the same reason
+     * [http] does it: a redirect could point an otherwise ordinary URL at loopback or the LAN behind it, and
+     * HttpURLConnection's own automatic following wouldn't be checked at all.
+     */
     private fun download(url: String): ByteArray? {
-        val connection = openHttp(url, readTimeout = 20_000)
-        try {
-            connection.setRequestProperty("User-Agent", "omalauncher-widgets")
-            if (connection.responseCode !in 200..299) return null
-            return connection.inputStream.use { it.readUpTo(MAX_FILE_BYTES + 1) }.takeIf { it.size <= MAX_FILE_BYTES }
-        } finally {
-            connection.disconnect()
+        var target = URL(url)
+        repeat(MAX_REDIRECTS + 1) {
+            if (LocalNetwork.refuse(target.toString()) != null) return null
+            val connection = openHttp(target.toString(), readTimeout = 20_000)
+            try {
+                connection.instanceFollowRedirects = false
+                connection.setRequestProperty("User-Agent", "omalauncher-widgets")
+                val code = connection.responseCode
+                val location = connection.getHeaderField("Location")
+                if (code in REDIRECTS && location != null) {
+                    target = runCatching { redirect(code, target, URL(target, location), "GET", null).url }.getOrNull() ?: return null
+                    return@repeat
+                }
+                if (code !in 200..299) return null
+                return connection.inputStream.use { it.readUpTo(MAX_FILE_BYTES + 1) }.takeIf { it.size <= MAX_FILE_BYTES }
+            } finally {
+                connection.disconnect()
+            }
         }
+        return null
     }
 
     /** Deletes the longest-kept files until the cache is under [FILE_CACHE_BYTES]. */

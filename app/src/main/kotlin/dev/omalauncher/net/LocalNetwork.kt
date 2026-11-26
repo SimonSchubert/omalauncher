@@ -5,7 +5,7 @@ import android.content.Context
 import android.os.Build
 import java.net.Inet6Address
 import java.net.InetAddress
-import java.net.URI
+import java.net.URL
 import dev.omalauncher.system.hasPermission
 
 /**
@@ -34,8 +34,14 @@ object LocalNetwork {
         return if (isLocal(url)) "Android keeps the launcher off the local network until it's allowed: settings, local network" else null
     }
 
-    /** [url]'s host, or null if it has none or [url] doesn't parse as one. */
-    private fun hostOf(url: String): String? = runCatching { URI(url).host?.removeSurrounding("[", "]") }.getOrNull()
+    /**
+     * [url]'s host, or null if it has none or [url] doesn't parse as one. Parsed the same way the real
+     * connection is ([java.net.URL], not the stricter [java.net.URI]): a path character [java.net.URI] rejects
+     * (a space, `{`, `|`, a bad `%`...) but [java.net.URL] tolerates would otherwise make this return null —
+     * "doesn't parse, so let it through" — for a URL the real connection goes ahead and makes anyway.
+     */
+    private fun hostOf(url: String): String? =
+        runCatching { URL(url).host }.getOrNull()?.removeSurrounding("[", "]")?.takeIf { it.isNotEmpty() }
 
     /** [host]'s addresses, resolved; empty if it doesn't resolve. */
     private fun addressesOf(host: String): List<InetAddress> = runCatching { InetAddress.getAllByName(host) }.getOrNull().orEmpty()
@@ -70,7 +76,10 @@ object LocalNetwork {
     fun refuse(url: String): String? {
         val host = hostOf(url) ?: return null
         val addresses = addressesOf(host)
-        if (addresses.any { it.isLoopbackAddress }) return "$host is this device's own loopback address"
+        // 0.0.0.0/:: ("any" address) is never a real remote host either: on Linux, the kernel a widget's
+        // request ultimately runs on treats connecting *to* it as connecting to loopback, the same quirk
+        // multiple browsers were caught by in 2024 ("0.0.0.0 Day"). Refused the same way loopback is.
+        if (addresses.any { it.isLoopbackAddress || it.isAnyLocalAddress }) return "$host is this device's own loopback address"
         if (addresses.any { it.isLocalAddress }) return "$host is on the local network, which widgets can't reach"
         return null
     }
