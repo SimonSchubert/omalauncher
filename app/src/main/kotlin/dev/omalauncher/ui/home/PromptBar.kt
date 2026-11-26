@@ -280,7 +280,7 @@ internal fun PromptBar(
                     // Takes no room: it shows over the recent apps strip rather than pushing it into the grid.
                     .layout { measurable, constraints ->
                         val p = measurable.measure(constraints)
-                        layout(p.width, 0) { p.place(0, -p.height) }
+                        layout(p.width, 0) { p.placeRelative(0, -p.height) }
                     }.background(Palette.background)
                     .clickable { speech.error = null }
                     .padding(horizontal = 10.dp, vertical = 4.dp),
@@ -582,7 +582,7 @@ private class AboveAnchor(
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ) = IntOffset(
-        anchorBounds.left.coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
+        (if (layoutDirection == LayoutDirection.Ltr) anchorBounds.left else anchorBounds.right - popupContentSize.width).coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
         (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0),
     )
 }

@@ -79,6 +79,7 @@ import dev.omalauncher.ui.FrameWidth
 import dev.omalauncher.ui.Icons
 import dev.omalauncher.ui.KeyGap
 import dev.omalauncher.ui.KeyRowHeight
+import dev.omalauncher.ui.LeftToRight
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.PanelFrame
@@ -295,6 +296,8 @@ private fun EditorBody(
                 }
             },
         ) {
+            // Line numbers at the left and lines from the left in every language, as code is written.
+            LeftToRight {
             Row(Modifier.weight(1f).fillMaxWidth()) {
                 Gutter(state, layout, scroll, Modifier.fillMaxHeight())
                 BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
@@ -335,6 +338,7 @@ private fun EditorBody(
                         )
                     }
                 }
+            }
             }
         }
         if (extraKeysWanted()) {

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Whether this folder's language is written right to left. True only beside a right-to-left translation, so the
+         launcher's screens follow the language its text is in, not the phone's: a Hebrew phone gets English, left to right. -->
+    <bool name="rtl">false</bool>
+</resources>

@@ -206,3 +206,23 @@ widget "inbox" {
   Dates and numbers follow the phone's language already, through `fmtTime` and `fmtNum`.
 - `lang()` is the phone's language code, for an API that takes one: `http("https://wttr.in/?lang=${lang()}")`.
 - A widget follows a change of the phone's language when it compiles anew, which the launcher does then.
+
+### Right to left
+
+Arabic, Persian, Hebrew and Urdu are written right to left. A file of owl 27 or later that has a `strings` set for
+the phone's language, one of those (`ar`, `fa`, `he`, `ur`), is laid out right to left on that phone:
+
+- A `Row`'s first child is the rightmost, and `Flow` and `Grid` fill from the right.
+- `start` is the right side and `end` the left, in `align`, `justify`, and a Text's `align`. `center`, `top`
+  and `bottom` stay.
+- A `Popup` lines up with its anchor's right edge.
+- `padding: [l, t, r, b]` is start, top, end, bottom: its first number is the right side's.
+
+What stays as it is: a `Canvas`, `offset` and a drag's or touch's x (all still count from the left), a `Slider` (its
+low end is on the left), a key bar, `screenLeft` and `screenRight`, and the home screen's pages. Text itself is always written in its own direction,
+with or without this: Arabic in a left-to-right widget still reads right to left, only from the left edge.
+
+Any other file stays left to right on every phone, as it was made: one without that language's set (its text shows
+in English), and one below owl 27, which was never seen mirrored. So adding an `ar` or `fa` set means looking at the
+widget in that language: anything that says "next" or "back" with an arrow or its place (`›`, a bar that fills from
+the left) should follow. `lang()` tells which language it is.

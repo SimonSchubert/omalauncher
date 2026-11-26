@@ -2285,6 +2285,22 @@ class LangTest {
         assertEquals(listOf("3:2: id has no b, so those show in English"), warned)
     }
 
+    @Test fun rightToLeftOnlyWithThatLanguagesStringsFromOwl27() {
+        fun rtl(level: Int, sets: String, language: String, kind: String = "widget \"t\"") =
+            Compiler.compile("$kind {\n meta { owl: $level }\n strings { en { a: \"a\" } $sets }\n Text { text: str.a }\n}", language).rtl
+        assertTrue(rtl(27, "ar { a: \"ا\" }", "ar"))
+        assertTrue(rtl(27, "fa { a: \"ا\" }", "fa", "app \"t\""))
+        assertTrue(rtl(27, "ar { a: \"ا\" }", "ar", "panel \"t\""))
+        assertTrue(rtl(27, "ar { a: \"ا\" }", "ar", "strip \"t\""))
+        // Made before owl 27, never seen mirrored: as it was.
+        assertFalse(rtl(26, "ar { a: \"ا\" }", "ar"))
+        // No set for the phone's language: English text, left to right.
+        assertFalse(rtl(27, "ar { a: \"ا\" }", "fa"))
+        assertFalse(rtl(27, "", "ar"))
+        assertFalse(rtl(27, "de { a: \"ä\" }", "de"))
+        assertFalse(Compiler.compile("widget {\n meta { owl: 27 }\n Text { text: 1 }\n}", "ar").rtl)
+    }
+
     @Test fun lockHoldsTheHomeScreenStill() {
         val playing = "state playing = false\n Button { text: \"x\"; onTap: playing = !playing }"
         assertTrue(compileError("widget {\n lock: playing\n $playing\n}").contains("lock needs owl 18: add meta { owl: 18 }"))

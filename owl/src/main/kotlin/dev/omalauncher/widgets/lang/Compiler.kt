@@ -27,7 +27,7 @@ class Compiler private constructor(
          * instead of failing on what they don't know. Bump it with every
          * addition a widget could depend on: nodes, properties, builtins.
          */
-        const val LEVEL = 26
+        const val LEVEL = 27
         private const val MAX_ASSET_BYTES = 2 shl 20
 
         /** Pages as far out as a file can ask for; past Int's range, the pages either side of them would wrap. */
@@ -234,6 +234,9 @@ class Compiler private constructor(
     /** What `str.x` names, from [Decl.Strings]: the phone's language's, or en's where it has none; null without strings. */
     private var texts: Map<String, Expr>? = null
 
+    /** Whether [Decl.Strings] has a set for the phone's language and that language is written right to left. */
+    private var textsRtl = false
+
     /** The commands that are fixed text, so their programs can be read off them. */
     private val scripts = LinkedHashSet<String>()
 
@@ -407,6 +410,7 @@ class Compiler private constructor(
             name = ast.name ?: "widget",
             meta = meta,
             level = level,
+            rtl = level >= RTL_LEVEL && textsRtl,
             size = props["size"]?.let { cells(it) },
             statusBar = statusBar,
             lock = lock,
@@ -519,6 +523,7 @@ class Compiler private constructor(
             name = ast.name ?: "app",
             meta = meta,
             level = level,
+            rtl = level >= RTL_LEVEL && textsRtl,
             globals = globals,
             screen = tree,
             screenTitle = title,
@@ -596,6 +601,7 @@ class Compiler private constructor(
             name = ast.name ?: "panel",
             meta = meta,
             level = level,
+            rtl = level >= RTL_LEVEL && textsRtl,
             globals = globals,
             screen = tree,
             onSubmit = onSubmit,
@@ -655,6 +661,7 @@ class Compiler private constructor(
             name = ast.name ?: ast.kind.word,
             meta = meta,
             level = level,
+            rtl = level >= RTL_LEVEL && textsRtl,
             globals = globals,
             screen = tree,
             triggers = triggers,
@@ -1023,6 +1030,7 @@ class Compiler private constructor(
         val mine = d.sets.firstOrNull { it.first == language }?.second.orEmpty().associateBy { it.name }
         val chosen = en.associate { it.name to (mine[it.name] ?: it).value }
         texts = chosen
+        textsRtl = language in RTL_LANGUAGES && d.sets.any { it.first == language }
         return Global.Let(d.name, ex(Expr.MapLit(chosen.filterValues { it !is Expr.Lambda }.toList(), d.pos), root))
     }
 

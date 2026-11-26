@@ -383,6 +383,12 @@ class Program(
     val meta: Map<String, Value>,
     /** The owl language version it needs; see [Compiler.LEVEL]. */
     val level: Int,
+    /**
+     * Its nodes run right to left: `start` is the right side, a Row's first child the rightmost. Only a file of owl 27
+     * or later whose `strings` has a set for the phone's language, one written right to left; any other stays left to
+     * right on every phone, as it was made.
+     */
+    val rtl: Boolean = false,
     /** The tile's: an app has none of these. */
     val size: Pair<Int, Int>? = null,
     val minSize: Pair<Int, Int> = 1 to 1,

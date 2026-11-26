@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Debug builds only: the right-to-left pseudo-locale (cmd locale set-app-locales dev.omalauncher -\-locales ar-XB)
+         mirrors the screens before a real translation does. -->
+    <bool name="rtl">true</bool>
+</resources>

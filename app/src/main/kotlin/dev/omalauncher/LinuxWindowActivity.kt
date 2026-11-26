@@ -45,6 +45,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.ui.ExtraKeys
 import dev.omalauncher.ui.ImagePicker
 import dev.omalauncher.ui.KeyboardSink
+import dev.omalauncher.ui.LeftToRight
 import dev.omalauncher.ui.WidgetAsks
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
@@ -71,7 +72,7 @@ class LinuxWindowActivity : InstantActivity() {
         }
         this.window = window
         setInstantContent {
-            AppWindow(runtime, window)
+            LeftToRight { AppWindow(runtime, window) }
             BackHandler { backInstantly() }
             LaunchedEffect(window) {
                 snapshotFlow { window in runtime.wm.appWindows }.first { !it }

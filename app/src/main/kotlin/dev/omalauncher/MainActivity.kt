@@ -27,6 +27,7 @@ import dev.omalauncher.ui.WidgetAsks
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.theme.Style
 import dev.omalauncher.ui.KeyIndicated
+import dev.omalauncher.ui.LauncherDirection
 import dev.omalauncher.ui.keyPressed
 import dev.omalauncher.ui.keysFocused
 import dev.omalauncher.ui.keysStartAgain
@@ -68,7 +69,7 @@ class MainActivity : ComponentActivity() {
         runtime.start()
         state.onSettings = { page, homePage -> runtime.openSettings(page, homePage) }
         setContent {
-            KeyIndicated { LauncherRoot(runtime, state) }
+            KeyIndicated { LauncherDirection { LauncherRoot(runtime, state) } }
             SystemBarsEffect(this@MainActivity)
             // A face whose statusBar is false takes the status bar's room too.
             val fullScreen by remember { derivedStateOf { state.fullScreen && runtime.widgets.openScreen == null } }

@@ -27,6 +27,26 @@ object AppLanguage {
     /** The languages the launcher has its text in, as language tags; more come with their translations. */
     val supported = listOf("en", "id", "es", "pt", "de", "zh", "ru", "ja", "uk", "fr", "tr", "it", "vi")
 
+    /**
+     * The languages with digits of their own (٣, ۳) that the launcher shows with 0 to 9 all the same: columns are
+     * measured for those, and numbers it formats go into commands, file names and versions too.
+     */
+    private val ownDigits = setOf("ar", "fa")
+
+    /** [locale] with 0 to 9 for its digits where it has its own, unless it already says which it wants. */
+    internal fun latinDigits(locale: Locale): Locale =
+        if (locale.language in ownDigits && locale.getUnicodeLocaleType("nu") == null) {
+            Locale.Builder().setLocale(locale).setUnicodeLocaleKeyword("nu", "latn").build()
+        } else {
+            locale
+        }
+
+    /** The same list where none of [locales] changes, which is asked on every read of the app's resources. */
+    private fun latinDigits(locales: LocaleList): LocaleList {
+        if ((0 until locales.size()).all { latinDigits(locales[it]) === locales[it] }) return locales
+        return LocaleList(*Array(locales.size()) { latinDigits(locales[it]) })
+    }
+
     private const val KEY = "language"
 
     private val picked = MutableStateFlow<String?>(null)
@@ -83,7 +103,8 @@ object AppLanguage {
         if (language == picked.value) return
         LauncherData.prefs(context).edit().putString(KEY, language).apply()
         picked.value = language
-        if (language == null) phoneDefault() else applyDefault()
+        if (language == null) phoneDefault()
+        applyDefault()
         activities.toList().forEach(Activity::recreate)
     }
 
@@ -92,9 +113,9 @@ object AppLanguage {
      * (turning the phone, dark mode), so the app calls this again before passing the change on.
      */
     fun applyDefault() {
-        val tag = picked.value ?: return
-        val locale = Locale.forLanguageTag(tag)
-        if (Locale.getDefault() != locale) LocaleList.setDefault(LocaleList(locale))
+        val now = LocaleList.getDefault()
+        val wanted = picked.value?.let { LocaleList(latinDigits(Locale.forLanguageTag(it))) } ?: latinDigits(now)
+        if (now != wanted) LocaleList.setDefault(wanted)
     }
 
     /** Back to the phone's language as the default Locale: Android itself only sets it on a configuration change. */
@@ -105,17 +126,20 @@ object AppLanguage {
         context: Context,
         base: Resources,
     ): Resources {
-        val tag = picked.value ?: return base
+        val locales = locales(base.configuration.locales) ?: return base
+        val tag = locales.toLanguageTags()
         localized?.takeIf { it.first == tag }?.let { return it.second }
-        return context.createConfigurationContext(overrides(tag)).resources.also { localized = tag to it }
+        return context.createConfigurationContext(Configuration().apply { setLocales(locales) }).resources.also { localized = tag to it }
     }
 
     /** Puts the picked language over [activity]'s resources; called from its attachBaseContext. */
     fun applyTo(activity: ContextThemeWrapper) {
-        picked.value?.let { activity.applyOverrideConfiguration(overrides(it)) }
+        locales(Resources.getSystem().configuration.locales)?.let { activity.applyOverrideConfiguration(Configuration().apply { setLocales(it) }) }
     }
 
-    private fun overrides(tag: String) = Configuration().apply { setLocales(LocaleList(Locale.forLanguageTag(tag))) }
+    /** What goes over [phone]'s languages: the picked one, or the phone's with [latinDigits]; null when they're right as they are. */
+    private fun locales(phone: LocaleList): LocaleList? =
+        picked.value?.let { LocaleList(latinDigits(Locale.forLanguageTag(it))) } ?: latinDigits(phone).takeIf { it !== phone }
 
     /**
      * [code] in two letters where it has them ("deu" → "de"), as the launcher and speech recognizers name languages:
@@ -135,7 +159,7 @@ object AppLanguage {
         vararg args: Any,
     ): String? {
         if (supported.none { Locale.forLanguageTag(it).language == locale.language }) return null
-        val config = Configuration(context.resources.configuration).apply { setLocale(locale) }
+        val config = Configuration(context.resources.configuration).apply { setLocale(latinDigits(locale)) }
         return context.createConfigurationContext(config).getString(id, *args)
     }
 

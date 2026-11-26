@@ -46,6 +46,7 @@ import dev.omalauncher.ui.Glyph
 import dev.omalauncher.ui.Icons
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.MenuItems
+import dev.omalauncher.ui.LeftToRight
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.PanelPadding
@@ -69,6 +70,8 @@ internal fun Breadcrumbs(
     val crumbs = listOf((if (phone) stringResource(R.string.files_place_phone_folders) else "/") to root) + parts.indices.map { i -> parts[i] to root + parts.take(i + 1).joinToString("/") }
     val state = rememberLazyListState()
     LaunchedEffect(path) { state.scrollToItem(crumbs.lastIndex) }
+    // A path reads from the left in every language.
+    LeftToRight {
     LazyRow(
         Modifier.bleed(PanelPadding),
         state = state,
@@ -86,6 +89,7 @@ internal fun Breadcrumbs(
                 style = Mono.copy(color = if (last) Palette.accent else Palette.muted),
             )
         }
+    }
     }
 }
 
