@@ -65,6 +65,34 @@ class TerminalKeyboardTest {
         assertEquals("\r", combo("enter"))
     }
 
+    @Test fun shiftedTextUnderKittyProtocol() {
+        // nvim and Claude Code turn on "disambiguate": keys that type text with Shift still send just the text.
+        vt.write("\u001b[>1u".encodeToByteArray())
+        assertEquals("A", chord(Keys.KEY_LEFTSHIFT, 30))
+        assertEquals(":", chord(Keys.KEY_LEFTSHIFT, 39))
+        assertEquals("!", chord(Keys.KEY_LEFTSHIFT, 2))
+        assertEquals("a", chord(30))
+        assertEquals("\u001b[13;2u", combo("shift+enter"))
+        assertEquals("\u001b[97;6u", chord(Keys.KEY_LEFTCTRL, Keys.KEY_LEFTSHIFT, 30))
+    }
+
+    @Test fun modifierPressedTwiceIsUpAfterOneRelease() {
+        // The keyboard bridge can press Shift twice (implied by a key's meta state, then its own press) and release
+        // it once, as Wayland takes it: it must not stay held.
+        keys.key(vt, Keys.KEY_LEFTSHIFT, true)
+        keys.key(vt, Keys.KEY_LEFTSHIFT, true)
+        keys.key(vt, Keys.KEY_LEFTSHIFT, false)
+        assertEquals(0, keys.mods)
+        assertEquals("a", chord(30))
+        // Left and right are separate keys.
+        keys.key(vt, Keys.KEY_LEFTSHIFT, true)
+        keys.key(vt, TerminalKeyboard.KEY_RIGHTSHIFT, true)
+        keys.key(vt, Keys.KEY_LEFTSHIFT, false)
+        assertEquals(Vt.SHIFT, keys.mods)
+        keys.key(vt, TerminalKeyboard.KEY_RIGHTSHIFT, false)
+        assertEquals(0, keys.mods)
+    }
+
     @Test fun copyAndPaste() {
         assertEquals(TerminalKeyboard.Action.Copy, chord(Keys.KEY_LEFTCTRL, Keys.KEY_LEFTSHIFT, 46))
         assertEquals(TerminalKeyboard.Action.Paste, chord(Keys.KEY_LEFTCTRL, Keys.KEY_LEFTSHIFT, 47))

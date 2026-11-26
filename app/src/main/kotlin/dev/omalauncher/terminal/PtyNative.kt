@@ -106,6 +106,7 @@ object VtNative {
         h: Long,
         key: Int,
         mods: Int,
+        consumed: Int,
         text: String?,
         unshifted: Int,
     ): ByteArray?

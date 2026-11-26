@@ -233,9 +233,11 @@ JNIEXPORT void JNICALL FN(scroll)(JNIEnv *env, jclass cls, jlong h, jint delta) 
 }
 
 // The bytes a key press sends, in the encoding the program asked for (legacy, application cursor keys, the kitty
-// keyboard protocol): key a GhosttyKey, mods GhosttyMods, text what the key types (or null), unshifted the
-// character it types without modifiers (or 0). Null when it sends nothing.
-JNIEXPORT jbyteArray JNICALL FN(key)(JNIEnv *env, jclass cls, jlong h, jint key, jint mods, jstring jtext, jint unshifted) {
+// keyboard protocol): key a GhosttyKey, mods GhosttyMods, consumed the mods that went into text (Shift for "A"),
+// text what the key types (or null), unshifted the character it types without modifiers (or 0). Null when it sends
+// nothing.
+JNIEXPORT jbyteArray JNICALL FN(key)(JNIEnv *env, jclass cls, jlong h, jint key, jint mods, jint consumed, jstring jtext,
+                                     jint unshifted) {
     (void)cls;
     Vt *v = vt(h);
     const char *text = jtext ? (*env)->GetStringUTFChars(env, jtext, NULL) : NULL;
@@ -249,6 +251,7 @@ JNIEXPORT jbyteArray JNICALL FN(key)(JNIEnv *env, jclass cls, jlong h, jint key,
     ghostty_key_event_set_action(v->key, GHOSTTY_KEY_ACTION_PRESS);
     ghostty_key_event_set_key(v->key, (GhosttyKey)key);
     ghostty_key_event_set_mods(v->key, (GhosttyMods)mods);
+    ghostty_key_event_set_consumed_mods(v->key, (GhosttyMods)consumed);
     ghostty_key_event_set_unshifted_codepoint(v->key, (uint32_t)unshifted);
     ghostty_key_event_set_utf8(v->key, (GhosttyString){.ptr = (const uint8_t *)text, .len = text ? strlen(text) : 0});
     GhosttyResult r = ghostty_key_encoder_encode(v->keys, v->key, out, sizeof out, &len);

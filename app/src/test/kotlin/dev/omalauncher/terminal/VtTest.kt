@@ -31,7 +31,8 @@ class VtTest {
         mods: Int = 0,
         text: String? = null,
         unshifted: Int = 0,
-    ) = vt.key(key, mods, text, unshifted)?.decodeToString()
+        consumed: Int = 0,
+    ) = vt.key(key, mods, text, unshifted, consumed)?.decodeToString()
 
     @Test fun text() {
         write("hello\r\nworld")
@@ -133,6 +134,9 @@ class VtTest {
     @Test fun legacyKeys() {
         assertEquals("\r", key(VtKey.ENTER))
         assertEquals("a", key(VtKey.A, text = "a", unshifted = 'a'.code))
+        // Shift that went into the text: sent as the text.
+        assertEquals("A", key(VtKey.A, Vt.SHIFT, "A", 'a'.code, consumed = Vt.SHIFT))
+        assertEquals(":", key(VtKey.SEMICOLON, Vt.SHIFT, ":", ';'.code, consumed = Vt.SHIFT))
         assertEquals("A", key(VtKey.A, Vt.SHIFT, text = "A", unshifted = 'a'.code))
         assertEquals("\u0003", key(VtKey.C, Vt.CTRL, unshifted = 'c'.code))
         assertEquals("\u007f", key(VtKey.BACKSPACE))
@@ -157,6 +161,9 @@ class VtTest {
         assertEquals("\u001b[27u", key(VtKey.ESCAPE))
         assertEquals("\u001b[99;5u", key(VtKey.C, Vt.CTRL, unshifted = 'c'.code))
         assertEquals("a", key(VtKey.A, text = "a", unshifted = 'a'.code))
+        // Shift that went into the text: sent as the text.
+        assertEquals("A", key(VtKey.A, Vt.SHIFT, "A", 'a'.code, consumed = Vt.SHIFT))
+        assertEquals(":", key(VtKey.SEMICOLON, Vt.SHIFT, ":", ';'.code, consumed = Vt.SHIFT))
         // Popping the flags goes back to the legacy encoding.
         write("\u001b[<u")
         assertEquals("\u001b", key(VtKey.ESCAPE))

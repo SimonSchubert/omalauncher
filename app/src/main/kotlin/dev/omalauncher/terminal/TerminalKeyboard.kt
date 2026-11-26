@@ -19,14 +19,19 @@ class TerminalKeyboard {
         data object Paste : Action
     }
 
-    private var shift = 0
-    private var ctrl = 0
-    private var alt = 0
-    private var meta = 0
+    /**
+     * The modifier keys down now, by code. A set, as a Wayland keyboard keeps it: a key pressed twice (Shift implied
+     * by a key's meta state, then its own press) is up again after one release, so it can't stay held.
+     */
+    private val held = mutableSetOf<Int>()
     private var capsLock = false
 
     /** [Vt.SHIFT] and the others, held now. */
-    val mods get() = (if (shift > 0) Vt.SHIFT else 0) or (if (ctrl > 0) Vt.CTRL else 0) or (if (alt > 0) Vt.ALT else 0) or (if (meta > 0) Vt.SUPER else 0)
+    val mods get() =
+        (if (KEY_LEFTSHIFT in held || KEY_RIGHTSHIFT in held) Vt.SHIFT else 0) or
+            (if (KEY_LEFTCTRL in held || KEY_RIGHTCTRL in held) Vt.CTRL else 0) or
+            (if (KEY_LEFTALT in held || KEY_RIGHTALT in held) Vt.ALT else 0) or
+            (if (KEY_LEFTMETA in held || KEY_RIGHTMETA in held) Vt.SUPER else 0)
 
     /** Evdev [code] went down or up; what it does, if anything. Releases do nothing: no program asks for them yet. */
     fun key(
@@ -34,12 +39,9 @@ class TerminalKeyboard {
         code: Int,
         pressed: Boolean,
     ): Action? {
-        val step = if (pressed) 1 else -1
         when (code) {
-            KEY_LEFTSHIFT, KEY_RIGHTSHIFT -> shift = (shift + step).coerceAtLeast(0)
-            KEY_LEFTCTRL, KEY_RIGHTCTRL -> ctrl = (ctrl + step).coerceAtLeast(0)
-            KEY_LEFTALT, KEY_RIGHTALT -> alt = (alt + step).coerceAtLeast(0)
-            KEY_LEFTMETA, KEY_RIGHTMETA -> meta = (meta + step).coerceAtLeast(0)
+            KEY_LEFTSHIFT, KEY_RIGHTSHIFT, KEY_LEFTCTRL, KEY_RIGHTCTRL, KEY_LEFTALT, KEY_RIGHTALT, KEY_LEFTMETA, KEY_RIGHTMETA ->
+                if (pressed) held += code else held -= code
             KEY_CAPSLOCK -> if (pressed) capsLock = !capsLock
             else -> return if (pressed) press(vt, code) else null
         }
@@ -48,10 +50,7 @@ class TerminalKeyboard {
 
     /** Forgets held modifiers, as the terminal loses the keyboard. */
     fun reset() {
-        shift = 0
-        ctrl = 0
-        alt = 0
-        meta = 0
+        held.clear()
     }
 
     private fun press(
@@ -69,7 +68,9 @@ class TerminalKeyboard {
         val char = if (shifted) k.shifted ?: k.plain else k.plain
         // Text only where the key types it: Ctrl makes a control character, which the encoder works out itself.
         val text = char?.takeIf { mods and (Vt.CTRL or Vt.SUPER) == 0 }?.toString()
-        return vt.key(k.key, mods, text, k.plain?.code ?: 0)?.let { Action.Send(it) }
+        // Shift that picked the character is part of it: the kitty protocol sends Shift+; as ":", not as Shift+;.
+        val consumed = if (text != null && mods and Vt.SHIFT != 0 && k.shifted != null) Vt.SHIFT else 0
+        return vt.key(k.key, mods, text, k.plain?.code ?: 0, consumed)?.let { Action.Send(it) }
     }
 
     private class Key(

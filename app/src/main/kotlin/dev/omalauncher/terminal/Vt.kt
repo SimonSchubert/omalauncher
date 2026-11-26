@@ -63,14 +63,16 @@ class Vt(
     /**
      * The bytes pressing [key] with [mods] sends, as the program asked for them: plain, application cursor keys,
      * or the kitty keyboard protocol. [text] is what the key types ("A" with Shift), [unshifted] the character it
-     * types without modifiers. Null when it sends nothing.
+     * types without modifiers, [consumed] the [mods] that went into [text] (Shift for "A" or ":"): the kitty protocol
+     * sends those keys as their text. Null when it sends nothing.
      */
     fun key(
         key: VtKey,
         mods: Int = 0,
         text: String? = null,
         unshifted: Int = 0,
-    ): ByteArray? = live { VtNative.key(it, key.code, mods, text, unshifted) }
+        consumed: Int = 0,
+    ): ByteArray? = live { VtNative.key(it, key.code, mods, consumed, text, unshifted) }
 
     /** The default colours, as foot.ini's: ARGB, [cursor] 0 for the text's own; [palette] the first of the 256. */
     fun colors(
