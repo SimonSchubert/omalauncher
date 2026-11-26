@@ -33,6 +33,9 @@ a module folder; the OWL language is under
 - `app/src/main/cpp/wlbridge.c`: JNI for unix sockets with fd passing, shm
   mapping, per-surface pixel stores, and compositing them into a window's
   `ANativeWindow`
+- `app/src/main/cpp/scene3d.c`: a 3D scene's work per triangle, a port of the
+  Kotlin in owl's `Space3d.kt` that gives the same numbers (`SceneNativeTest`);
+  `Scene3d` takes it as its `SceneKernel` and works without one
 - `wayland/`: the Wayland server in Kotlin (wl_compositor, wl_shm,
   wl_subcompositor, wl_seat, wl_output, xdg_wm_base, xdg-decoration, and
   text-input-v3 for where a client's text cursor is) and

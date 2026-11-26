@@ -104,7 +104,7 @@ private class Kept {
     var theme: Any? = null
 
     /** A scene's triangles, its arrays reused from frame to frame; see [Scene3d]. */
-    val scene by lazy { Scene3d() }
+    val scene by lazy { Scene3d(NativeKernel.create()) }
 
     /** Images models are textured with. */
     val textures = Textures(unit = false)

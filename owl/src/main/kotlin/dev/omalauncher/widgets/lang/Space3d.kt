@@ -699,6 +699,48 @@ class Camera(
 }
 
 /**
+ * A [Scene3d]'s work per triangle, done somewhere faster than here: the app's is C (cpp/scene3d.c). It keeps the
+ * staged triangles itself, and must give the numbers [Scene3d] gives without it.
+ */
+interface SceneKernel {
+    /** Starts a frame: nothing is staged. */
+    fun reset()
+
+    /**
+     * Stages a model's faces that show: [v] is [Scene3d.KERNEL_FLOATS] numbers in the order [Scene3d.add] fills them in,
+     * [flags] of KERNEL_ ones, the arrays a [Mesh]'s, [order] its faces' order when its tree gave one. Returns the
+     * triangles staged so far in the frame, or less than 0 when there are too many.
+     */
+    fun add(
+        v: FloatArray,
+        color: Int,
+        flags: Int,
+        texIndex: Int,
+        triangles: Int,
+        points: FloatArray,
+        tris: IntArray,
+        faceNormals: FloatArray,
+        cornerNormals: FloatArray?,
+        uvs: FloatArray?,
+        colorIndex: IntArray?,
+        palette: IntArray?,
+        order: IntArray?,
+    ): Int
+
+    /**
+     * Sorts the staged triangles far to near into [verts], [texs] and [colors], which have room for them, and their
+     * runs by texture into [batches], three each: first triangle, how many, texture. Returns how many runs there
+     * are; [batches] is only filled when it has room for them all.
+     */
+    fun finish(
+        verts: FloatArray,
+        texs: FloatArray,
+        colors: IntArray,
+        batches: IntArray,
+    ): Int
+}
+
+/**
  * Turns a scene's models into 2D triangles, ready for one drawVertices call per texture: each model is moved
  * into the camera's view, skipped whole when it's out of view, its faces turned away dropped, the rest lit,
  * fogged, cut at the near plane and projected; then every triangle of the scene is sorted far to near, so the
@@ -707,7 +749,10 @@ class Camera(
  *
  * Kept by a Canvas between frames: its arrays grow to the largest scene and are reused.
  */
-class Scene3d {
+class Scene3d(
+    /** Does the work per triangle instead of the Kotlin here, when given. */
+    private val kernel: SceneKernel? = null,
+) {
     private lateinit var cam: Camera
     private var w = 0f
     private var h = 0f
@@ -768,6 +813,10 @@ class Scene3d {
     private val rot = FloatArray(9)
     private val tmp = FloatArray(3)
 
+    /** What [kernel] is told of a model, and its runs. */
+    private val kv = FloatArray(KERNEL_FLOATS)
+    private var kbatches = IntArray(3 * 16)
+
     /** A model's faces in its tree's order. */
     private var order = IntArray(256)
 
@@ -810,6 +859,7 @@ class Scene3d {
         batches = 0
         textures.clear()
         texSizes.clear()
+        kernel?.reset()
     }
 
     /**
@@ -922,6 +972,22 @@ class Scene3d {
         val ci = drawn.colorIndex
         val near = cam.near
         val far = cam.far
+        if (kernel != null) {
+            val v = kv
+            v[0] = c00; v[1] = c01; v[2] = c02; v[3] = c10; v[4] = c11; v[5] = c12; v[6] = c20; v[7] = c21; v[8] = c22
+            v[9] = ox; v[10] = oy; v[11] = oz
+            v[12] = n00; v[13] = n01; v[14] = n02; v[15] = n10; v[16] = n11; v[17] = n12; v[18] = n20; v[19] = n21; v[20] = n22
+            v[21] = near; v[22] = far; v[23] = tx; v[24] = ty; v[25] = focal; v[26] = w; v[27] = h
+            v[28] = lx; v[29] = ly; v[30] = lz; v[31] = amb
+            v[32] = fogFrom; v[33] = fogR; v[34] = fogG; v[35] = fogB
+            v[36] = if (texIndex >= 0) texSizes[2 * texIndex] else 0f
+            v[37] = if (texIndex >= 0) texSizes[2 * texIndex + 1] else 0f
+            val flags = (if (twoSided) KERNEL_TWO_SIDED else 0) or (if (fog) KERNEL_FOG else 0) or (if (bsp != null) KERNEL_OWN_ORDER else 0)
+            val staged = kernel.add(v, color, flags, texIndex, drawn.triangles, pts, tris, fn, cn, uvs, ci, palette, if (bsp != null) order else null)
+            if (staged < 0) throw WidgetError("more than $MAX_SCENE_TRIANGLES triangles in one scene")
+            n = staged
+            return
+        }
         for (q in 0 until drawn.triangles) {
             val t = if (bsp != null) order[q] else q
             val a = tris[3 * t]
@@ -1080,6 +1146,32 @@ class Scene3d {
 
     /** Sorts the staged triangles far to near into [verts], [colors] and [texs], in [batches] by texture. */
     fun finish() {
+        if (kernel != null) {
+            if (verts.size < 6 * n) {
+                val size = maxOf(6 * n, verts.size * 2)
+                verts = FloatArray(size)
+                texs = FloatArray(size)
+                colors = IntArray(size)
+            }
+            var runs = kernel.finish(verts, texs, colors, kbatches)
+            if (3 * runs > kbatches.size) {
+                kbatches = IntArray(3 * runs)
+                runs = kernel.finish(verts, texs, colors, kbatches)
+            }
+            if (runs < 0) throw WidgetError("a scene ran out of memory")
+            if (batchStart.size < runs) {
+                batchStart = IntArray(runs)
+                batchCount = IntArray(runs)
+                batchTexture = IntArray(runs)
+            }
+            for (b in 0 until runs) {
+                batchStart[b] = kbatches[3 * b]
+                batchCount[b] = kbatches[3 * b + 1]
+                batchTexture[b] = kbatches[3 * b + 2]
+            }
+            batches = runs
+            return
+        }
         if (keys.size < n) keys = LongArray(depth.size)
         // Depths are positive, so their float bits sort as they do; ties keep the order the models came in.
         for (i in 0 until n) keys[i] = (java.lang.Float.floatToRawIntBits(depth[i]).toLong() shl 32) or (n - i).toLong()
@@ -1111,5 +1203,15 @@ class Scene3d {
             }
             batchCount[batches - 1]++
         }
+    }
+
+    companion object {
+        /** How many numbers [SceneKernel.add] takes: the matrices of [add], then the view, the light, the fog and the texture's size. */
+        const val KERNEL_FLOATS = 38
+        const val KERNEL_TWO_SIDED = 1
+        const val KERNEL_FOG = 2
+
+        /** The model's faces came in its tree's order, which stands: see the end of [add]. */
+        const val KERNEL_OWN_ORDER = 4
     }
 }
