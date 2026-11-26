@@ -55,7 +55,8 @@ class TerminalSessionTest {
     }
 
     @Test fun runsOnATerminalOfItsSize() {
-        val s = sh("tty; stty size")
+        // tty's name with a newline of its own: uutils' tty (Ubuntu 26.04, CI's runner) ends it without one.
+        val s = sh("printf '%s\\n' \"\$(tty)\"; stty size")
         s.awaitExit()
         val lines = s.vt.text().lines()
         assertTrue(lines[0], lines[0].startsWith("/dev/"))
