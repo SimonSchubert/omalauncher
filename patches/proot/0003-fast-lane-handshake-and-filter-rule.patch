@@ -177,17 +177,17 @@ index 58deeb3..f7e2c88 100644
 --- a/src/syscall/seccomp.c
 +++ b/src/syscall/seccomp.c
 @@ -41,6 +41,7 @@
-
+ 
  #include "syscall/seccomp.h"
  #include "tracee/tracee.h"
 +#include "tracee/fastpath.h"
  #include "syscall/syscall.h"
  #include "syscall/sysnum.h"
  #include "extension/extension.h"
-@@ -89,6 +90,50 @@ static int add_statements(struct sock_fprog *program, size_t nb_statements,
+@@ -89,13 +90,68 @@ static int add_statements(struct sock_fp
  	return 0;
  }
-
+ 
 +/* The syscalls the fast lane library (patches/proot/fastpath) itself
 + * executes from its one fixed instruction, see tracee/fastpath.h:
 + * stat/lstat/fstatat (newfstatat, PR_fstatat64), statx, access
@@ -221,12 +221,21 @@ index 58deeb3..f7e2c88 100644
 +	PR_getuid,
 +};
 +
-+static bool is_fastpath_syscall(word_t syscall)
++static bool is_fastpath_syscall(Abi abi, word_t syscall)
 +{
 +	size_t i;
 +
++	/* fastpath_syscalls[] holds Sysnum values -- PRoot's abstract,
++	 * architecture-independent syscall enum, not real syscall
++	 * numbers -- while @syscall is already the real, per-@abi number
++	 * detranslate_sysnum() produced for the filter.  Detranslate each
++	 * whitelist entry the same way before comparing, or this would
++	 * compare numbers from two unrelated spaces: PR_close's own enum
++	 * value happens to equal arm64's real "statfs" syscall number, for
++	 * instance, so a raw-to-enum comparison would wrongly let statfs
++	 * through the untraced bypass below instead of close.  */
 +	for (i = 0; i < sizeof(fastpath_syscalls) / sizeof(fastpath_syscalls[0]); i++)
-+		if (syscall == (word_t) fastpath_syscalls[i])
++		if (syscall == detranslate_sysnum(abi, fastpath_syscalls[i]))
 +			return true;
 +
 +	return false;
@@ -234,20 +243,23 @@ index 58deeb3..f7e2c88 100644
 +
  /**
   * Append to @program->filter the statements required to notify PRoot
-  * about the given @syscall made by a tracee, with the given @flag.
-@@ -96,6 +141,8 @@ static int add_statements(struct sock_fprog *program, size_t nb_statements,
+- * about the given @syscall made by a tracee, with the given @flag.
+- * This function returns -errno if an error occurred, otherwise 0.
++ * about the given @syscall made by a tracee under @abi, with the given
++ * @flag.  This function returns -errno if an error occurred, otherwise 0.
   */
- static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int flag)
+-static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int flag)
++static int add_trace_syscall(struct sock_fprog *program, Abi abi, word_t syscall, int flag)
  {
 +	/* The instruction pointer is a 64-bit little-endian field.  */
 +	const size_t ip_offset = offsetof(struct seccomp_data, instruction_pointer);
  	int status;
-
+ 
  	/* Sanity check.  */
-@@ -112,15 +159,62 @@ static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int fla
+@@ -112,15 +168,62 @@ static int add_trace_syscall(struct sock
  		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag)
  	};
-
+ 
 +	/* The same, but let the syscall pass untraced when it is made
 +	 * from the fast lane's one syscall instruction: the preloaded
 +	 * library has translated its paths already (tracee/fastpath.h).
@@ -288,9 +300,9 @@ index 58deeb3..f7e2c88 100644
 +	};
 +
  	DEBUG_FILTER("FILTER:     trace if syscall == %ld\n", syscall);
-
+ 
 -	status = add_statements(program, LENGTH_TRACE_SYSCALL, statements);
-+	if (fastpath_enabled() && is_fastpath_syscall(syscall))
++	if (fastpath_enabled() && is_fastpath_syscall(abi, syscall))
 +		status = add_statements(program, LENGTH_FASTPATH_SYSCALL, fastpath_statements);
 +	else if (fastpath_enabled())
 +		status = add_statements(program, LENGTH_FASTPATH_SYSCALL, fastpath_traced_statements);
@@ -298,34 +310,43 @@ index 58deeb3..f7e2c88 100644
 +		status = add_statements(program, LENGTH_TRACE_SYSCALL, statements);
  	if (status < 0)
  		return status;
-
+ 
  	return 0;
  }
-
+ 
 +/* Statements per traced syscall, see add_trace_syscall().  */
 +#define LENGTH_TRACED (fastpath_enabled() ? LENGTH_FASTPATH_SYSCALL : LENGTH_TRACE_SYSCALL)
 +
  /**
   * Append to @program->filter the statements that allow anything (if
   * unfiltered).  Note that @nb_traced_syscalls is used to make a
-@@ -144,7 +238,7 @@ static int end_arch_section(struct sock_fprog *program, size_t nb_traced_syscall
-
+@@ -144,7 +247,7 @@ static int end_arch_section(struct sock_
+ 
  	/* Sanity check, see start_arch_section().  */
  	if (   talloc_array_length(program->filter) - program->len
 -	    != LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACE_SYSCALL)
 +	    != LENGTH_END_SECTION + nb_traced_syscalls * LENGTH_TRACED)
  		return -ERANGE;
-
+ 
  	return 0;
-@@ -161,7 +255,7 @@ static int start_arch_section(struct sock_fprog *program, uint32_t arch, size_t
+@@ -161,7 +264,7 @@ static int start_arch_section(struct soc
  	const size_t arch_offset    = offsetof(struct seccomp_data, arch);
  	const size_t syscall_offset = offsetof(struct seccomp_data, nr);
  	const size_t section_length = LENGTH_END_SECTION +
 -					nb_traced_syscalls * LENGTH_TRACE_SYSCALL;
 +					nb_traced_syscalls * LENGTH_TRACED;
  	int status;
-
+ 
  	/* Sanity checks.  */
+@@ -292,7 +395,7 @@ static int set_seccomp_filters(const Fil
+ 					continue;
+ 
+ 				/* Filter: trace if handled syscall */
+-				status = add_trace_syscall(&program, syscall, sysnums[k].flags);
++				status = add_trace_syscall(&program, seccomp_archs[i].abis[j], syscall, sysnums[k].flags);
+ 				if (status < 0)
+ 					goto end;
+ 			}
 diff --git a/src/tracee/fastpath.c b/src/tracee/fastpath.c
 new file mode 100644
 index 0000000..8c21ba1
