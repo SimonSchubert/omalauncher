@@ -242,6 +242,8 @@
     <string name="licenses_use_androidsvg">نمادهای SVG را رسم می‌کند</string>
     <string name="licenses_use_zxing">کدهای QR هم‌رسانی ابزارک‌ها را رسم می‌کند</string>
     <string name="licenses_use_json">\u200fJSON را می‌خواند و می‌نویسد</string>
+    <string name="licenses_use_ghostty">موتور omaterminal</string>
+    <string name="licenses_use_ghostty_part">بخشی از موتور omaterminal</string>
 
     <!-- Linking a computer (ui/settings/LinkComputer.kt, linux/ComputerLink.kt). -->
     <string name="link_title">اتصال دستگاه</string>

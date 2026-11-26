@@ -13,6 +13,7 @@ OUT="$ROOT/app/src/main/cpp/ghostty-vt"
 
 # libghostty-vt's release tag and the commit it points at; git checks the source against the commit hash.
 # Update both together; the C API is stable within 1.x (include/ghostty/vt.h).
+# LicensesScreen.kt names this release and commit: change them together.
 GHOSTTY_TAG=vt-1.0.2
 GHOSTTY_COMMIT=573c4a21e02311ae87844af26b6a7a179f82858e
 

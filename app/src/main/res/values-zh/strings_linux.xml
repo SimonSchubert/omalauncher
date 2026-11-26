@@ -186,6 +186,8 @@
     <string name="licenses_use_androidsvg">绘制 SVG 图标</string>
     <string name="licenses_use_zxing">绘制分享小组件用的二维码</string>
     <string name="licenses_use_json">读写 JSON</string>
+    <string name="licenses_use_ghostty">omaterminal 的引擎</string>
+    <string name="licenses_use_ghostty_part">omaterminal 引擎的一部分</string>
 
     <string name="link_title">连接设备</string>
     <string name="link_ask">%1$s 想连接到此设备</string>

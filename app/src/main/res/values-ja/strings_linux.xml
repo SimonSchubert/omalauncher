@@ -185,6 +185,8 @@
     <string name="licenses_use_androidsvg">SVG アイコンの描画</string>
     <string name="licenses_use_zxing">ウィジェット共有用 QR コードの描画</string>
     <string name="licenses_use_json">JSON の読み書き</string>
+    <string name="licenses_use_ghostty">omaterminal のエンジン</string>
+    <string name="licenses_use_ghostty_part">omaterminal のエンジンの一部</string>
 
     <string name="link_title">デバイスを接続</string>
     <string name="link_ask">%1$s がこのデバイスへの接続を求めています</string>

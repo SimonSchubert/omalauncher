@@ -200,6 +200,8 @@
     <string name="licenses_use_androidsvg">vẽ biểu tượng SVG</string>
     <string name="licenses_use_zxing">vẽ mã QR dùng để chia sẻ tiện ích</string>
     <string name="licenses_use_json">đọc và ghi JSON</string>
+    <string name="licenses_use_ghostty">lõi của omaterminal</string>
+    <string name="licenses_use_ghostty_part">một phần lõi của omaterminal</string>
 
     <string name="link_title">kết nối thiết bị</string>
     <string name="link_ask">%1$s muốn kết nối với thiết bị này</string>

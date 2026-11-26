@@ -242,6 +242,8 @@
     <string name="licenses_use_androidsvg">draws SVG icons</string>
     <string name="licenses_use_zxing">draws the QR codes widgets are shared with</string>
     <string name="licenses_use_json">reads and writes JSON</string>
+    <string name="licenses_use_ghostty">omaterminal’s engine</string>
+    <string name="licenses_use_ghostty_part">part of omaterminal’s engine</string>
 
     <!-- Linking a computer (ui/settings/LinkComputer.kt, linux/ComputerLink.kt). -->
     <string name="link_title">connect a device</string>

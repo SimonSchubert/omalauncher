@@ -111,6 +111,27 @@ private val COMPONENTS =
             "Copyright (c) David Heinemeier Hansson",
             "https://github.com/omacom/omarchy",
         ),
+        // libghostty-vt, omaterminal's engine (scripts/fetch-ghostty-vt.sh pins the release), and what its Zig build
+        // compiles into it. Builds without it don't have these, but list them anyway: one list for every build.
+        Component(
+            "libghostty-vt",
+            R.string.licenses_use_ghostty,
+            "mit",
+            "Copyright (c) 2024 Mitchell Hashimoto, Ghostty contributors. Release vt-1.0.2.",
+            "https://ghostty.org",
+            source = "https://github.com/ghostty-org/ghostty/tree/573c4a21e02311ae87844af26b6a7a179f82858e",
+        ),
+        Component("simdutf", R.string.licenses_use_ghostty_part, "mit", "Copyright 2021 The simdutf authors", "https://simdutf.github.io/simdutf/"),
+        Component("Highway", R.string.licenses_use_ghostty_part, APACHE, "Copyright (c) The Highway Project Authors", "https://github.com/google/highway"),
+        Component("Wuffs", R.string.licenses_use_ghostty_part, APACHE, "Copyright 2023 The Wuffs Authors", "https://github.com/google/wuffs"),
+        Component(
+            "uucode",
+            R.string.licenses_use_ghostty_part,
+            "mit",
+            "Copyright (c) 2026 Jacob Sandlund\nIts UTF-8 decoder: Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de> (MIT)",
+            "https://github.com/jacobsandlund/uucode",
+        ),
+        Component("Unicode data", R.string.licenses_use_ghostty_part, "unicode-3.0", "Copyright © 1991-2025 Unicode, Inc.", "https://www.unicode.org/license.txt"),
         Component("Nerd Fonts", R.string.licenses_use_nerd_fonts, "mit", "Copyright (c) 2014 Ryan L McIntyre", "https://www.nerdfonts.com"),
         Component(
             "Weather Icons",

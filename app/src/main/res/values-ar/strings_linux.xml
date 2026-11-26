@@ -254,6 +254,8 @@
     <string name="licenses_use_androidsvg">يرسم أيقونات SVG</string>
     <string name="licenses_use_zxing">يرسم رموز QR التي تُشارَك بها الأدوات</string>
     <string name="licenses_use_json">يقرأ JSON ويكتبه</string>
+    <string name="licenses_use_ghostty">محرك omaterminal</string>
+    <string name="licenses_use_ghostty_part">جزء من محرك omaterminal</string>
 
     <!-- Linking a computer (ui/settings/LinkComputer.kt, linux/ComputerLink.kt). -->
     <string name="link_title">توصيل جهاز</string>

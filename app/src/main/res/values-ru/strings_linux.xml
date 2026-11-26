@@ -195,6 +195,8 @@
     <string name="licenses_use_androidsvg">рисует значки SVG</string>
     <string name="licenses_use_zxing">рисует QR-коды, через которые делятся виджетами</string>
     <string name="licenses_use_json">читает и записывает JSON</string>
+    <string name="licenses_use_ghostty">движок omaterminal</string>
+    <string name="licenses_use_ghostty_part">часть движка omaterminal</string>
 
     <string name="link_title">подключить устройство</string>
     <string name="link_ask">%1$s хочет подключиться к этому устройству</string>

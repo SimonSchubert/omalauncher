@@ -192,6 +192,8 @@
     <string name="licenses_use_androidsvg">desenha ícones SVG</string>
     <string name="licenses_use_zxing">desenha os QR codes com que os widgets são compartilhados</string>
     <string name="licenses_use_json">lê e escreve JSON</string>
+    <string name="licenses_use_ghostty">motor do omaterminal</string>
+    <string name="licenses_use_ghostty_part">parte do motor do omaterminal</string>
 
     <string name="link_title">conectar um dispositivo</string>
     <string name="link_ask">%1$s quer se conectar a este dispositivo</string>

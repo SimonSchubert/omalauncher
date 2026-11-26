@@ -186,6 +186,8 @@
     <string name="licenses_use_androidsvg">menggambar ikon SVG</string>
     <string name="licenses_use_zxing">menggambar kode QR untuk berbagi widget</string>
     <string name="licenses_use_json">membaca dan menulis JSON</string>
+    <string name="licenses_use_ghostty">mesin omaterminal</string>
+    <string name="licenses_use_ghostty_part">bagian dari mesin omaterminal</string>
 
     <string name="link_title">sambungkan perangkat</string>
     <string name="link_ask">%1$s ingin tersambung ke perangkat ini</string>
