@@ -109,6 +109,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
@@ -1318,6 +1319,7 @@ private fun TextNode(
         }
     val defaultColor: () -> Color = if (style == "muted" || style == "label") ({ Palette.muted }) else ({ Palette.foreground })
     val color = p.color("color", defaultColor)
+    val rtl = p.inst.program.rtl
     val textStyle =
         TextStyle(
             fontFamily = fontFamily(p.observe("font"), p.inst),
@@ -1325,12 +1327,15 @@ private fun TextNode(
             fontWeight = weight(p.observe("fontWeight")) ?: if (p.observe("bold")?.truthy == true) FontWeight.Bold else null,
             letterSpacing = textUnit(p.observe("letterSpacing")) ?: androidx.compose.ui.unit.TextUnit.Unspecified,
             fontStyle = if (p.observe("italic")?.truthy == true) FontStyle.Italic else null,
+            // In a right-to-left file each text is written in its own direction, so a version or a path in it stays
+            // readable, and starts at the right whichever that is.
             textAlign =
                 when (p.observe("align")?.toString()) {
                     "center" -> TextAlign.Center
-                    "end" -> TextAlign.End
-                    else -> TextAlign.Start
+                    "end" -> if (rtl) TextAlign.Left else TextAlign.End
+                    else -> if (rtl) TextAlign.Right else TextAlign.Start
                 },
+            textDirection = if (rtl) TextDirection.Content else TextDirection.Unspecified,
         )
     val pieces = p.observe("spans")
     // Big text stays on one line in narrow tiles instead of breaking mid-word.

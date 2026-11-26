@@ -3,7 +3,7 @@ widget "fetch" {
   order: 2
   size: 3x3
   minSize: 2x2
-  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.11"; license: "MIT"; category: "system"; owl: 16 }
+  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.11"; license: "MIT"; category: "system"; owl: 27 }
 
   // What it says, in the phone's language where it has a set. Words fastfetch and Linux use as names (os, host,
   // kernel, cpu, shell) stay as they are. Android's battery words come in English, so a set names them itself.

@@ -22,6 +22,7 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import dev.omalauncher.ui.LauncherDirection
 import dev.omalauncher.ui.KeybarPreview
 import dev.omalauncher.ui.home.StripPreview
 import dev.omalauncher.ui.home.LocalOffscreen
@@ -127,7 +128,8 @@ internal class Previews(
                     window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
                     val view =
                         ComposeView(this.context).apply {
-                            setContent { CompositionLocalProvider(LocalOffscreen provides true) { content() } }
+                            // A screen's frame runs the way the launcher does, as it will where it really shows.
+                            setContent { CompositionLocalProvider(LocalOffscreen provides true) { LauncherDirection { content() } } }
                         }
                     setContentView(view, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                     window?.decorView?.let {
