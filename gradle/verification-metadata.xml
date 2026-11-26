@@ -41,11 +41,22 @@
     3. Review the generated file (diff it against this scaffold) before committing:
        check for unexpected new/unfamiliar coordinates, and confirm nothing beyond the
        expected dependency graph snuck in.
-    4. Remove the blanket "trust everything" rule below (or narrow it to the small,
+    4. If step 1 included "pgp": explicitly confirm <verify-signatures> in the
+       regenerated <configuration> block (see below) ended up "true", and set it to
+       "true" by hand if it didn't. Gradle's own docs describe bootstrapping with "pgp"
+       as producing "a configuration file with signature verification enabled", but
+       that's documented for generating a file from scratch - this file already exists
+       with <verify-signatures> explicitly set to "false" below, and it is not verified
+       here whether regenerating on top of an existing file flips that value or leaves
+       the existing explicit setting alone. Don't skip this check: real PGP signature
+       data sitting in <components> while <verify-signatures> is still "false" performs
+       no signature checks at all, silently, while looking fully populated to anyone
+       who doesn't read the <configuration> block specifically.
+    5. Remove the blanket "trust everything" rule below (or narrow it to the small,
        specific set of exceptions Gradle's own docs recommend, such as locally built
        files or generated javadoc/sources jars) now that real <component> checksums
        exist to do the actual verifying.
-    5. Re-run a full build (and CI) once more after removing the blanket trust rule, to
+    6. Re-run a full build (and CI) once more after removing the blanket trust rule, to
        confirm every resolved artifact now has a matching, passing checksum entry.
 
   The dependency coordinates this project declares directly, for reference (see
@@ -81,7 +92,9 @@
       <!-- No PGP keyring/network access was available to validate signatures when this
            scaffold was written; leave signature verification off until a human
            deliberately opts in (see the "pgp" argument in step 1 above) and reviews
-           which publishers actually sign their releases. -->
+           which publishers actually sign their releases. IMPORTANT: if you regenerate
+           this file with "pgp", explicitly verify this element reads "true" afterward
+           (see step 4 above) - do not assume the regeneration flips it for you. -->
       <verify-signatures>false</verify-signatures>
       <trusted-artifacts>
          <!-- TEMPORARY, INTENTIONAL NO-OP - see the file header above.
