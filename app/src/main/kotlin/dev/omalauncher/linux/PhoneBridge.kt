@@ -1,5 +1,6 @@
 package dev.omalauncher.linux
 
+import android.Manifest
 import android.content.Context
 import android.os.FileObserver
 import android.os.SystemClock
@@ -17,6 +18,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import androidx.core.content.FileProvider
+import dev.omalauncher.system.hasPermission
 import dev.omalauncher.system.postLinuxNotification
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
@@ -153,13 +155,24 @@ class PhoneBridge(
     private suspend fun location(): Answer {
         if (!visible()) return Answer.Denied(NOT_IN_FRONT)
         val now = SystemClock.elapsedRealtime()
-        lastLocation?.let { if (now - lastLocationAt < LOCATION_EVERY_MS) return it }
+        lastLocation?.let {
+            // A cached Ok is only replayed while the permission it was fetched under is still granted: revoking it
+            // (Android's settings, mid-window) must stop a real fix from going out immediately, not up to
+            // LOCATION_EVERY_MS later. A cheap permission check, not a real fetch, so the cache still saves the
+            // real cost (recheck() + the up-to-LOCATION_MS wait below) in the common case.
+            if (now - lastLocationAt < LOCATION_EVERY_MS && (it !is Answer.Ok || context.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))) return it
+        }
         location.recheck()
         val v = location.updates().settle(LOCATION_MS) { !it.flag("granted") || it.flag("available") }
+        // The wait above can take up to LOCATION_MS (10s); re-check rather than trust the entry check, so a caller
+        // who backgrounds the launcher mid-wait doesn't still get a real fix once it resolves. Not cached: once
+        // visible again, a fresh call should see the real cache, not this transient denial.
+        if (!visible()) return Answer.Denied(NOT_IN_FRONT)
         val answer =
             when {
                 v == null || !v.flag("granted") -> Answer.Denied(NOT_ALLOWED.format("location"))
-                !v.flag("available") -> Answer.Error("no location yet; is location on, and the launcher in front?")
+                // Not "in front?" too: visible() just confirmed that, twice.
+                !v.flag("available") -> Answer.Error("no location yet; is location on?")
                 else -> Answer.Ok(v.without("granted", "available"))
             }
         lastLocation = answer
