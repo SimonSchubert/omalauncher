@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="voice_listening">جارٍ الاستماع · انقر للإرسال</string>
+    <string name="voice_listening_working">جارٍ الاستماع · العمل مستمر</string>
+    <!-- Under the orb right after a tap, while on-device speech recognition loads: what's said is kept. -->
+    <string name="voice_listening_preparing">قيد التحضير · يمكنك التحدث من الآن</string>
+    <string name="voice_starting">جارٍ التشغيل</string>
+    <!-- Under the orb while an agent waits for an OK; %1$s is the time it has been working, like 0:12. -->
+    <string name="voice_needs_ok">بانتظار موافقتك · ⁨%1$s⁩</string>
+    <string name="voice_working">يعمل · ⁨%1$s⁩</string>
+    <!-- Under the orb while a reply is read aloud: a tap talks over it. -->
+    <string name="voice_tap_over">انقر للتحدث ومقاطعته</string>
+    <string name="voice_tap">انقر للتحدث</string>
+    <!-- A toggle: every question the agent asks is answered yes. -->
+    <string name="voice_allow_all">السماح بالكل</string>
+    <!-- Starts a new conversation; the last one can be resumed. -->
+    <string name="voice_new">جديدة</string>
+    <!-- Brings back the last conversation. -->
+    <string name="voice_resume">استئناف</string>
+    <string name="voice_no_speech">يحتاج «الصوت» إلى خدمة للتعرف على الكلام، ولا توجد واحدة على هذا الهاتف. ثبّت خدمة مثل Speech Recognition &amp; Synthesis من Google، واخترها في إعدادات الإدخال الصوتي في Android. أو اكتب بدلا من ذلك.</string>
+    <string name="voice_input_settings">الإدخال الصوتي</string>
+    <!-- Switches from talking to typing. -->
+    <string name="voice_type">كتابة</string>
+    <string name="voice_no_agent">يتحدث «الصوت» مع وكيل برمجة في Linux. ثبّت وكيلا لتتحدث معه.</string>
+    <string name="voice_agents">الوكلاء</string>
+    <string name="voice_log_in">تسجيل الدخول</string>
+    <string name="voice_thinking">يفكر</string>
+    <plurals name="voice_steps">
+        <item quantity="zero">لا خطوات</item>
+        <item quantity="one">خطوة واحدة</item>
+        <item quantity="two">خطوتان</item>
+        <item quantity="few">%1$d خطوات</item>
+        <item quantity="many">%1$d خطوة</item>
+        <item quantity="other">%1$d خطوة</item>
+    </plurals>
+    <!-- The text field's hint; %1$s is the agent, like Claude Code. -->
+    <string name="voice_message">رسالة إلى ⁨%1$s⁩</string>
+    <string name="voice_answer_hint">نعم، أو لا، أو ما تريده بدلا من ذلك</string>
+    <string name="voice_send">إرسال</string>
+    <string name="voice_erase">مسح ما قلته</string>
+    <string name="voice_stop">إيقاف</string>
+    <!-- The approval card; %1$s is the agent, %2$s what it wants to do (a voice_do_ phrase, like "run a command"). -->
+    <string name="voice_wants">يريد ⁨%1$s⁩ %2$s</string>
+    <string name="voice_allow">سماح</string>
+    <string name="voice_always">دائما</string>
+    <string name="voice_deny">رفض</string>
+    <string name="voice_or_type">أو اكتب نعم، أو لا، أو ما تريده بدلا من ذلك</string>
+    <string name="voice_or_say">أو انقر على الدائرة وقل نعم، أو لا، أو ما تريده بدلا من ذلك</string>
+    <!-- Under a picture shown whole. -->
+    <string name="voice_tap_close">انقر للإغلاق</string>
+    <!-- Steps of a task, shown as they happen. %1$s is a command's description or the command. -->
+    <string name="voice_step_run">تشغيل: ⁨%1$s⁩</string>
+    <!-- %1$s is a file name or a web site. -->
+    <string name="voice_step_read">قراءة ⁨%1$s⁩</string>
+    <string name="voice_step_write">كتابة ⁨%1$s⁩</string>
+    <string name="voice_step_edit">تعديل ⁨%1$s⁩</string>
+    <string name="voice_step_delete">حذف ⁨%1$s⁩</string>
+    <string name="voice_step_search">البحث عن ⁨%1$s⁩</string>
+    <string name="voice_step_web">البحث في الويب: ⁨%1$s⁩</string>
+    <string name="voice_step_subtask">مهمة فرعية: ⁨%1$s⁩</string>
+    <string name="voice_step_plan">التخطيط</string>
+    <!-- A step whose tool has no name. -->
+    <string name="voice_step_tool">إحدى أدواته</string>
+    <!-- What the agent wants to do, in "%1$s wants to %2$s" (voice_wants, voice_say_wants): an infinitive phrase. -->
+    <string name="voice_do_run">تشغيل أمر: ⁨%1$s⁩</string>
+    <!-- Like voice_do_run when the command itself is shown below. -->
+    <string name="voice_do_command">تشغيل أمر</string>
+    <string name="voice_do_read">قراءة ⁨%1$s⁩</string>
+    <string name="voice_do_write">كتابة ⁨%1$s⁩</string>
+    <string name="voice_do_edit">تعديل ⁨%1$s⁩</string>
+    <string name="voice_do_delete">حذف ⁨%1$s⁩</string>
+    <string name="voice_do_search">البحث عن ⁨%1$s⁩</string>
+    <string name="voice_do_web">البحث في الويب عن ⁨%1$s⁩</string>
+    <string name="voice_do_subtask">بدء مهمة فرعية: ⁨%1$s⁩</string>
+    <string name="voice_do_plan">وضع خطة</string>
+    <string name="voice_do_tool">استخدام ⁨%1$s⁩</string>
+    <string name="voice_do_tool_unknown">استخدام إحدى أدواته</string>
+    <!-- Said aloud when the agent asks to do something; %2$s is one of the voice_do_ phrases. -->
+    <string name="voice_say_wants">يريد ⁨%1$s⁩ %2$s. هل تسمح بذلك؟</string>
+    <!-- Said aloud while the agent works quietly. -->
+    <string name="voice_say_failed">عذرا، لم ينجح ذلك.</string>
+    <!-- In place of the agent's name when there is none. -->
+    <string name="voice_the_agent">الوكيل</string>
+    <!-- Notes in the conversation, lower case. -->
+    <string name="voice_note_allow_all">السماح بكل ما يطلبه ⁨%1$s⁩</string>
+    <string name="voice_note_ask_again">العودة إلى السؤال قبل كل إجراء</string>
+    <string name="voice_note_task_stopped">أُوقفت المهمة الأخيرة؛ قل «تابع» لإكمالها</string>
+    <string name="voice_note_cant_continue">تعذرت متابعة المحادثة الأخيرة؛ هذه محادثة جديدة</string>
+    <string name="voice_cant_start">تعذر تشغيل ⁨%1$s⁩: ⁨%2$s⁩</string>
+    <string name="voice_restarted">توقف ⁨%1$s⁩ وأعيد تشغيله؛ اسأل مجددا</string>
+    <!-- %2$s is what the agent printed last, in its own words. -->
+    <string name="voice_stopped">توقف ⁨%1$s⁩: ⁨%2$s⁩</string>
+    <string name="voice_nothing_to_say">لم يكن في رد ⁨%1$s⁩ ما يقال</string>
+    <string name="voice_no_answer">لا رد من ⁨%1$s⁩ بعد؛ ربما استنفد حصته أو لم يسجل الدخول</string>
+    <string name="voice_quiet">لم يصدر عن ⁨%1$s⁩ شيء منذ دقيقتين؛ أوقفه إن كان عالقا</string>
+    <string name="voice_offline">لا اتصال بالإنترنت: لن يرد ⁨%1$s⁩ حتى يتصل الهاتف</string>
+    <!-- When the agent gave no reason for a failure. -->
+    <string name="voice_failed">فشل</string>
+    <!-- %1$s is the agent's error, like a network error. -->
+    <string name="voice_retrying">جارٍ إعادة المحاولة: ⁨%1$s⁩</string>
+    <!-- The voice settings: the chip in the top row and the dialog it opens. -->
+    <string name="voice_voice">الصوت</string>
+    <string name="voice_language">اللغة</string>
+    <!-- The language picked in the launcher, which Voice uses unless another is picked; %1$s is its name. -->
+    <string name="voice_language_launcher">الافتراضية (⁨%1$s⁩)</string>
+    <string name="voice_default">الافتراضي</string>
+    <string name="voice_default_named">الافتراضي (⁨%1$s⁩)</string>
+    <!-- After a voice that needs the internet. -->
+    <string name="voice_online">عبر الإنترنت</string>
+    <string name="voice_speed">السرعة</string>
+    <string name="voice_tts_settings">إعدادات تحويل النص إلى كلام</string>
+    <string name="voice_no_voice">لا يوجد صوت للغة ⁨%1$s⁩ على هذا الهاتف بعد: نزّل واحدا من إعدادات تحويل النص إلى كلام.</string>
+    <string name="voice_sample">هكذا سيكون صوت الردود.</string>
+    <!-- Speech recognition in the voice settings: the phone's recognizer, or Parakeet, downloaded on request. -->
+    <string name="voice_recognition">التعرف على الكلام</string>
+    <!-- Which recognizer listens: the phone's own (usually Google's), as opposed to Parakeet. -->
+    <string name="voice_recognition_phone">خدمة الهاتف</string>
+    <string name="voice_recognition_parakeet">⁨Parakeet⁩، على هذا الهاتف</string>
+    <string name="voice_parakeet_about">يتعرف Parakeet على الكلام على هذا الهاتف نفسه: بلا إنترنت، وبلا صفير، وفي 25 لغة أوروبية. حجم التنزيل ⁨%1$s⁩.</string>
+    <string name="voice_parakeet_download">تنزيل</string>
+    <string name="voice_parakeet_mobile_data">أنت تستخدم بيانات الجوال</string>
+    <!-- Download progress: %1$s and %2$s are sizes, like 312 MB of 670 MB. -->
+    <string name="voice_parakeet_progress">⁨%1$s⁩ من ⁨%2$s⁩</string>
+    <string name="voice_parakeet_checking">جارٍ فحص التنزيل…</string>
+    <string name="voice_parakeet_cancel">إلغاء</string>
+    <string name="voice_parakeet_delete">حذف Parakeet · ⁨%1$s⁩</string>
+    <string name="voice_parakeet_failed">توقف التنزيل: ⁨%1$s⁩</string>
+    <string name="voice_parakeet_space">المساحة لا تكفي: يلزم ⁨%1$s⁩ إضافية</string>
+    <string name="voice_parakeet_damaged">تلف التنزيل؛ أعد المحاولة</string>
+    <!-- %1$s is a language name, like Japanese. -->
+    <string name="voice_parakeet_language">لا يعرف Parakeet اللغة ⁨%1$s⁩: تستمع خدمة الهاتف بدلا منه.</string>
+    <!-- Reading aloud in the voice settings: the phone's text-to-speech, or Supertonic, downloaded on request. -->
+    <string name="voice_reading">القراءة الصوتية</string>
+    <string name="voice_reading_phone">تحويل النص إلى كلام في الهاتف</string>
+    <string name="voice_reading_supertonic">⁨Supertonic⁩، على هذا الهاتف</string>
+    <string name="voice_supertonic_about">يقرأ Supertonic الردود بصوت مسموع على هذا الهاتف نفسه: بلا إنترنت، وبأصوات طبيعية، وفي 31 لغة. حجم التنزيل ⁨%1$s⁩.</string>
+    <string name="voice_supertonic_delete">حذف Supertonic · ⁨%1$s⁩</string>
+    <!-- %1$s is a language name, like Chinese. -->
+    <string name="voice_supertonic_language">لا يعرف Supertonic اللغة ⁨%1$s⁩: تقرأ خدمة تحويل النص إلى كلام في الهاتف بدلا منه.</string>
+    <!-- Supertonic's voices, numbered: female 1 to 5, male 1 to 5. -->
+    <string name="voice_female">صوت نسائي %1$d</string>
+    <string name="voice_male">صوت رجالي %1$d</string>
+    <!-- In the voice settings: how long a pause in speech sends it to the agent; off means only a tap on the orb does. -->
+    <string name="voice_send_after">الإرسال بعد صمت</string>
+    <string name="voice_send_after_off">إيقاف</string>
+    <!-- A number of seconds, short: 2 s. -->
+    <string name="voice_seconds">%1$d ث</string>
+    <!-- Under the orb while the agent waits for the answer to a question it asked; %1$s is the time it has been working. -->
+    <string name="voice_needs_answer">بانتظار إجابتك · ⁨%1$s⁩</string>
+    <string name="voice_your_answer">إجابتك</string>
+    <!-- Above a question the agent asks the user; %1$s is the agent, like Hermes. -->
+    <string name="voice_asks">يسأل ⁨%1$s⁩</string>
+    <!-- Answers the agent's question with nothing. -->
+    <string name="voice_skip">تخطي</string>
+    <string name="voice_skipped">تم تخطي السؤال</string>
+    <string name="voice_or_type_answer">أو اكتب إجابتك أنت</string>
+    <string name="voice_or_say_answer">أو انقر على الدائرة وقل إجابتك</string>
+    <!-- Said aloud after a question the agent asks; %1$s is its choices, separated by commas. -->
+    <string name="voice_say_choices">الخيارات: ⁨%1$s⁩.</string>
+    <!-- In the conversation when Voice was opened to change a widget or app; %1$s is its name. -->
+    <string name="voice_note_edit">تعديل ⁨%1$s⁩ · قل ما تريد تغييره</string>
+    <!-- The button by the controls that adds a picture or what's copied to the next message, said or typed. -->
+    <string name="voice_attach">إرفاق صورة أو محتوى الحافظة</string>
+    <!-- Its two choices: one from the phone's photos, or what's on the clipboard. -->
+    <string name="voice_attach_picture">صورة</string>
+    <string name="voice_attach_paste">لصق</string>
+    <string name="voice_attach_failed">تعذر إرفاق هذه الصورة</string>
+    <!-- Takes a picture or pasted text off the message before it's sent. -->
+    <string name="voice_detach">إزالة</string>
+</resources>

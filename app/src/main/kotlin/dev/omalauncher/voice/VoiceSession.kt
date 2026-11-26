@@ -1227,6 +1227,25 @@ class VoiceSession(
          * ICU counts CJK as word characters and the JVM doesn't, and Chinese has no word breaks to find anyway.
          */
         private const val EDGE = "[\\s\\p{P}]*"
+
+        /** How an Arabic word in -an ends, as speech-to-text writes it: a bare alef, or with the tanween before or after it. */
+        private const val AN = "(?:ا\\u064B?|\\u064Bا)"
+
+        /** Persian ی and ک, or the Arabic letters speech-to-text may write for them. */
+        private const val Y = "[یي]"
+        private const val K = "[کك]"
+
+        /** Inside a Persian compound (نمی‌خوام): a half-space, a space or nothing. */
+        private const val ZW = "[\\u200C ]?"
+
+        /** تأیید as it's spelled: تأیید, تایید, تائید. */
+        private const val TAYID = "ت[أا][یيئ]${Y}د"
+
+        /**
+         * After an Arabic yes that is also the first word of Persian sentences: not when a Persian sentence goes on,
+         * told by a letter only Persian has before any punctuation ("تمام فایل‌ها…" is all files, "موافق نیستم" I don't agree).
+         */
+        private const val NOT_PERSIAN = "(?!\\s+[^\\p{P}]*[پچژگکی\\u200C])"
         internal val YES =
             Regex(
                 "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|allow|allowed|approve|go ahead|do it|go|fine|alright|please do|" +
@@ -1236,6 +1255,21 @@ class VoiceSession(
                     "vâng|ừ|Ừ|ừm|Ừm|dạ được|đồng ý|Đồng ý|cho phép|làm đi|tiếp tục|được rồi|Được rồi|chắc chắn rồi)(?![\\p{L}\\p{N}])" +
                     // Vietnamese yes, but only alone: "có thể…" (can …) and "được…" start other sentences.
                     "|(?:có|Có|được|Được|dạ|Dạ)(?=$EDGE$)" +
+                    // Arabic, with the spellings speech-to-text gives a hamza (أ ا إ). The letter check after it keeps
+                    // "نعمل…" (we work …) and "تماما…" from counting as نعم and تمام.
+                    "|(?:نعم|[أاإ]يو[هةا]|موافق$NOT_PERSIAN|[أا]وافق|تمام$NOT_PERSIAN|حسن$AN|طيب|ماشي|[أا]كيد|بالت[أا]كيد|طبع$AN|بالطبع|تفضل|[أاإ]سمح|سماح|السماح|مسموح|" +
+                    "[أا]وكي|[أا]وكيه|[أا]وك|[اإ]فعلها|[اإ]فعل ذلك|[اإ]فعل هذا|نفذ ذلك|نفذه|نفذها|لا ب[أا]س|لا مانع|لا مشكل[ةه])(?![\\p{L}\\p{N}])" +
+                    // Arabic yes, but only alone: "أجل المهمة" (postpone the task), "ممكن…" (could you …), "تابع…" and
+                    // "افعل…" start other sentences.
+                    "|(?:[أا]جل|ممكن|جيد|صح|صحيح|تابع|[أا]كمل|كمل|[اإ]ستمر|[اإ]فعل|نفذ|[إاأ]ي|[إا]يه|[آأا]ه|يلا|هيا)(?=$EDGE$)" +
+                    // Persian, with ی / ي, ک / ك and the half-space as speech-to-text writes them.
+                    "|(?:بله|بل$Y|[آا]ره|[آا]ر$Y|باشه|باشد|حتم$AN|او$K$Y|او$K${Y}ه|ا$K$Y|قبوله|قبول دارم|قبول م$Y$ZW${K}نم|موافقم|" +
+                    "$TAYID م$Y$ZW${K}نم|$TAYID شد|$TAYID${K}ن|$TAYID ${K}ن|اجازه بده|اجازه م$Y${ZW}ده?م|اجازه دادم|مجازه|مجاز است|" +
+                    "انجام بده|انجامش بده|اجرا ${K}ن|اجراش ${K}ن|ادامه بده|شروع ${K}ن|بزن بر${Y}م|بفرما|بفرما[یيئ]${Y}د|" +
+                    "درسته|خوبه|عال${Y}ه|حله|مش${K}ل$Y ن${Y}ست|اش${K}ال$Y ندار[هد]|ع${Y}ب$Y ندار[هد]|مانع$Y ندار[هد]|چرا ${K}ه نه)(?![\\p{L}\\p{N}])" +
+                    // Persian yes, but only alone: the "not" comes after these ("اجازه نده" don't allow, "قبول نمی‌کنم",
+                    // "تایید نکن"), "البته که نه" is of course not, and "برو به…" (go to …) starts another sentence.
+                    "|(?:اجازه|مجاز|قبول|$TAYID|البته|انجام|ادامه|اجرا|درست|خوب|عال$Y|برو|ب${K}ن)(?=$EDGE$)" +
                     // Ukrainian yes, but only alone: a Russian sentence often starts with it ("so, …").
                     "|так(?=$EDGE$)" +
                     "|是|好|可以|行|对|嗯|はい|ええ|うん|いいよ|どうぞ|お願い)",
@@ -1250,6 +1284,17 @@ class VoiceSession(
                     "hayır|hayır teşekkürler|yok|olmaz|istemiyorum|İstemiyorum|gerek yok|iptal|iptal et|İptal|İptal et|dur|vazgeç|boş ver|yapma|" +
                     "không|không cần|không được|không, cảm ơn|thôi|thôi khỏi|khỏi|hủy|hủy bỏ|đừng|Đừng|đừng làm|Đừng làm|dừng lại|bỏ qua|" +
                     "nggak|gak|enggak|нет|не надо|не нужно|стоп|отмена|ні|не треба|скасуй|" +
+                    // Arabic, with the spellings speech-to-text gives a hamza (أ ا إ), ة / ه and ى / ي.
+                    "لا|ل[أا]ء?|كلا|لا،? شكر$AN|[إاأ]لغاء|[أا]لغ[يه]?|[أا]لغها|توقف|قف|وقف|[أا]وقف|[أا]وقفه|[أا]وقفها|كف[ىي]|كفاي[ةه]|" +
+                    "لا تفعل|لا تفعل ذلك|لا تفعل هذا|لا تفعلها|لا تنفذ|لا تنفذه|لا تنفذها|لا تسمح|لا [أا]ريد|لا [أا]وافق|غير موافق|[أا]رفض|رفض|مرفوض|ممنوع|" +
+                    "لا داعي|لا يهم|[اإ]نس[ىي]?|[اإ]نس[ىي]? ال[أا]مر|دعك من ذلك|دعك من هذا|خلاص|بلاش|" +
+                    // Persian, with ی / ي, ک / ك and the half-space as speech-to-text writes them. توقف is in the Arabic.
+                    "نه|نه نه|نه[،,]? ممنون|نه[،,]? مرس$Y|نه[،,]? متش${K}رم|نخ${Y}ر|نه خ${Y}ر|لغو|لغو ${K}ن|لغوش ${K}ن|${K}نسل|${K}نسل ${K}ن|${K}نسلش ${K}ن|" +
+                    "متوقف ${K}ن|متوقفش ${K}ن|متوقف شو|وا${Y}سا|وا${Y}ستا|ا${Y}ست|ب[ایي]?${Y}ست|بس ${K}ن|بسه|بس است|${K}اف${Y}ه|${K}اف$Y است|" +
+                    "ن${K}ن|ا${Y}ن ${K}ار رو ن${K}ن|ا${Y}ن ${K}ار را ن${K}ن|انجام نده|انجامش نده|اجرا ن${K}ن|اجراش ن${K}ن|ادامه نده|اجازه نده|اجازه نم$Y${ZW}ده?م|اجازه ن${Y}ست|مجاز ن${Y}ست|" +
+                    "نم$Y${ZW}خواه?م|لازم ن${Y}ست|ن${Y}از$Y? ن${Y}ست|موافق ن${Y}ستم|مخالفم|قبول ن${Y}ست|قبول ن${K}ن|قبول نم$Y$ZW${K}نم|$TAYID ن${K}ن|$TAYID نم$Y$ZW${K}نم|" +
+                    "رد|رد ${K}ن|ردش ${K}ن|رد م$Y$ZW${K}نم|ب$Y${ZW}خ${Y}ال|ب$Y${ZW}خ${Y}الش|ب$Y${ZW}خ${Y}ال شو|ب$Y${ZW}خ${Y}الش شو|ولش|ولش ${K}ن|مهم ن${Y}ست|فراموشش ${K}ن|فراموش ${K}ن|" +
+                    "ه${Y}چ$Y|اصل$AN|ابد$AN|هرگز|به ه${Y}چ وجه|" +
                     "不要|不用|不行|不|别|算了|いいえ|いや|だめ|ダメ|やめて|キャンセル)$EDGE$",
                 RegexOption.IGNORE_CASE,
             )
@@ -1260,9 +1305,13 @@ class VoiceSession(
          */
         internal val ALWAYS =
             Regex(
-                "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|ja|si|sí|sì|certo|oui|sim|ya|iya|да|так|evet|tamam|có|Có|vâng|ừ|Ừ|được|Được)$EDGE|(?:是|好|はい)$EDGE)?" +
-                    "(?:allow always|always|immer|siempre|toujours|sempre|selalu|всегда|завжди|总是|始终|一直|永远|いつも|常に|ずっと|her zaman|hep|daima|consenti sempre|luôn luôn|luôn cho phép|cho phép luôn|luôn)" +
-                    "(?:$EDGE(?:allow it|allow|erlauben|autoriser|izin ver|consenti|autorizza|cho phép|允许|許可))?$EDGE$",
+                "^$EDGE(?:(?:yes|yeah|yep|sure|ok|okay|ja|si|sí|sì|certo|oui|sim|ya|iya|да|так|evet|tamam|có|Có|vâng|ừ|Ừ|được|Được|نعم|[أا]جل|[أاإ]يو[هةا]|موافق|تمام|طيب|[أا]وكي|بله|[آا]ره|باشه|حتم$AN|البته|او$K$Y)$EDGE|(?:是|好|はい)$EDGE)?" +
+                    "(?:allow always|always|immer|siempre|toujours|sempre|selalu|всегда|завжди|总是|始终|一直|永远|いつも|常に|ずっと|her zaman|hep|daima|consenti sempre|luôn luôn|luôn cho phép|cho phép luôn|luôn|" +
+                    // Arabic: دائما with ئ or ي, and "allow always" in the orders it is said.
+                    "(?:(?:[أاإ]سمح|[أاإ]سمح به|[أاإ]سمح بذلك|السماح|سماح)$EDGE)?دا[ئي]م$AN|سماح دائم|دوم$AN|على الدوام|في كل مر[ةه]|كل مر[ةه]|" +
+                    // Persian: همیشه, the card's word, and "allow always" in the orders it is said. دائما is in the Arabic.
+                    "(?:(?:اجازه بده|اجازه|مجاز)$EDGE)?(?:برا$Y )?هم${Y}شه|اجازه هم${Y}شگ$Y|هم${Y}شگ$Y|همواره|هر بار|هر دفعه|دا\\u06CCم$AN)" +
+                    "(?:$EDGE(?:allow it|allow|erlauben|autoriser|izin ver|consenti|autorizza|cho phép|[أاإ]سمح|[أاإ]سمح به|[أاإ]سمح بذلك|السماح|سماح|مسموح|اجازه بده|اجازه م$Y${ZW}ده?م|اجازه|مجاز|مجازه|مجاز است|مجاز باشه|مجاز باشد|允许|許可))?$EDGE$",
                 RegexOption.IGNORE_CASE,
             )
 

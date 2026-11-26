@@ -8,6 +8,10 @@ import android.content.res.Resources
 import android.os.Bundle
 import android.os.LocaleList
 import android.view.ContextThemeWrapper
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import dev.omalauncher.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.Collections
@@ -25,7 +29,7 @@ import dev.omalauncher.storage.LauncherData
  */
 object AppLanguage {
     /** The languages the launcher has its text in, as language tags; more come with their translations. */
-    val supported = listOf("en", "id", "es", "pt", "de", "zh", "ru", "ja", "uk", "fr", "tr", "it", "vi")
+    val supported = listOf("en", "id", "es", "pt", "de", "zh", "ru", "ja", "uk", "fr", "tr", "it", "vi", "ar", "fa")
 
     /**
      * The languages with digits of their own (٣, ۳) that the launcher shows with 0 to 9 all the same: columns are
@@ -49,6 +53,16 @@ object AppLanguage {
 
     private const val KEY = "language"
 
+    /**
+     * Whether the launcher's text is in a language written right to left, the phone's or the picked one: res/values-ar
+     * and values-fa say so (R.bool.rtl), so it follows the text and not the phone. A Hebrew phone gets English, left
+     * to right.
+     */
+    var rightToLeft by mutableStateOf(false)
+        private set
+
+    private var app: Application? = null
+
     private val picked = MutableStateFlow<String?>(null)
 
     /** The picked language's tag, or null for the phone's. */
@@ -65,6 +79,7 @@ object AppLanguage {
         base: Context,
     ) {
         picked.value = LauncherData.prefs(base).getString(KEY, null)?.takeIf { it in supported }
+        this.app = app
         applyDefault()
         app.registerActivityLifecycleCallbacks(
             object : Application.ActivityLifecycleCallbacks {
@@ -116,6 +131,7 @@ object AppLanguage {
         val now = LocaleList.getDefault()
         val wanted = picked.value?.let { LocaleList(latinDigits(Locale.forLanguageTag(it))) } ?: latinDigits(now)
         if (now != wanted) LocaleList.setDefault(wanted)
+        app?.let { rightToLeft = it.resources.getBoolean(R.bool.rtl) }
     }
 
     /** Back to the phone's language as the default Locale: Android itself only sets it on a configuration change. */

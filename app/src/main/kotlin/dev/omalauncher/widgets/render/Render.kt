@@ -263,7 +263,7 @@ class LongPressClaim {
 val LocalLongPressClaim = staticCompositionLocalOf<LongPressClaim?> { null }
 
 /** Widget text, 13sp as widgets were made for, whatever size the launcher's own text is. */
-internal val WidgetMono get() = Mono.copy(fontSize = 13.sp)
+internal val WidgetMono get() = Mono.copy(fontSize = 13.sp, textAlign = TextAlign.Unspecified)
 
 /** The widget's screen { } block, filling [modifier]; `screenWidth` and `screenHeight` follow its size. */
 @Composable

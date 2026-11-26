@@ -2,11 +2,9 @@ package dev.omalauncher.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
-import dev.omalauncher.R
+import dev.omalauncher.system.AppLanguage
 
 /**
  * [content] in the direction of the language the launcher's text is in: right to left in Arabic or Persian, whether
@@ -17,10 +15,7 @@ import dev.omalauncher.R
  */
 @Composable
 fun LauncherDirection(content: @Composable () -> Unit) {
-    // Read so a new language recomposes this: the resources below are the same object before and after.
-    LocalConfiguration.current
-    val rtl = LocalContext.current.resources.getBoolean(R.bool.rtl)
-    CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr, content = content)
+    CompositionLocalProvider(LocalLayoutDirection provides if (AppLanguage.rightToLeft) LayoutDirection.Rtl else LayoutDirection.Ltr, content = content)
 }
 
 /**

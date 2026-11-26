@@ -23,6 +23,9 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
+import dev.omalauncher.system.AppLanguage
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -259,17 +262,37 @@ fun Modifier.tile(focused: Boolean = false): Modifier =
         Palette.glass,
     )
 
-/** The launcher's text style in the theme's foreground color and the user's font. */
+/**
+ * The launcher's text style in the theme's foreground color and the user's font. Where the launcher runs right to
+ * left, each text is written in its own direction (by its first letter): Compose would write all of it right to left
+ * there, and a file called .config would show as "config.". It still starts at the right, a Latin name in a list
+ * too, as Android's own text does; what's left to right whatever the language says so itself ([MonoLtr]).
+ */
 val Mono: TextStyle
     get() {
         val palette = Palette.current
         val font = LauncherStyle.font
-        monoCache?.let { if (it.first === palette && it.second === font) return it.third }
-        return palette.mono.copy(fontFamily = font).also { monoCache = Triple(palette, font, it) }
+        val rtl = AppLanguage.rightToLeft
+        monoCache?.let { if (it.palette === palette && it.font === font && it.rtl == rtl) return it.style }
+        val style = if (rtl) palette.mono.copy(fontFamily = font, textDirection = TextDirection.Content, textAlign = TextAlign.Right) else palette.mono.copy(fontFamily = font)
+        return style.also { monoCache = MonoCache(palette, font, rtl, it) }
     }
 
+/** [Mono] for text that starts at the left in every language: code, commands, a terminal's lines. */
+val MonoLtr: TextStyle get() = if (AppLanguage.rightToLeft) Mono.copy(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left) else Mono
+
+/** Where text that ends a row lines up, like a number in its column: the far side from where the launcher's text starts. */
+val TextAlignEnd: TextAlign get() = if (AppLanguage.rightToLeft) TextAlign.Left else TextAlign.End
+
 /** [Mono] for the last palette and font, as it's read for every piece of text. */
-private var monoCache: Triple<ThemePalette, FontFamily, TextStyle>? = null
+private var monoCache: MonoCache? = null
+
+private class MonoCache(
+    val palette: ThemePalette,
+    val font: FontFamily,
+    val rtl: Boolean,
+    val style: TextStyle,
+)
 
 /**
  * The launcher's text sizes. Nothing is smaller than [Small], which is still

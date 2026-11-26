@@ -115,6 +115,22 @@ panel "app drawer" {
       open: "mở"; ask: "hỏi"; askInstallLinux: "hỏi tác nhân · cài đặt linux"; askInstallAgent: "hỏi tác nhân · cài một tác nhân"
       askAgent: (bin, text) => "hỏi ${bin}: ${text}"
     }
+    ar {
+      personal: "شخصي"; work: "العمل"; apps: "التطبيقات"; linux: "linux"; shortcuts: "الاختصارات"; android: "android"
+      workApps: "تطبيقات العمل"; workPaused: "تطبيقات العمل متوقفة مؤقتا"; linuxApps: "تطبيقات linux"; appStore: "متجر التطبيقات"
+      pin: "إضافة إلى الشاشة الرئيسية"; info: "معلومات التطبيق"; uninstall: "إلغاء التثبيت"; remove: "إزالة"; edit: "تعديل"; voice: "تعديل بالصوت"; share: "مشاركة"
+      settings: "الإعدادات"; turnOn: "تفعيل"; pause: "إيقاف مؤقت"; installing: "جارٍ التثبيت…"; installLinux: "تثبيت linux"
+      open: "فتح"; ask: "اسأل"; askInstallLinux: "اسأل وكيلا · ثبّت linux"; askInstallAgent: "اسأل وكيلا · ثبّت واحدا"
+      askAgent: (bin, text) => "اسأل ${bin}: ${text}"
+    }
+    fa {
+      personal: "شخصی"; work: "کاری"; apps: "برنامه‌ها"; linux: "linux"; shortcuts: "میان‌برها"; android: "android"
+      workApps: "برنامه‌های کاری"; workPaused: "برنامه‌های کاری در مکث"; linuxApps: "برنامه‌های linux"; appStore: "فروشگاه برنامه"
+      pin: "افزودن به صفحه اصلی"; info: "اطلاعات برنامه"; uninstall: "حذف نصب"; remove: "برداشتن"; edit: "ویرایش"; voice: "ویرایش با صدا"; share: "هم‌رسانی"
+      settings: "تنظیمات"; turnOn: "روشن کردن"; pause: "مکث"; installing: "در حال نصب…"; installLinux: "نصب linux"
+      open: "باز کردن"; ask: "پرسیدن"; askInstallLinux: "از عامل بپرسید · نصب linux"; askInstallAgent: "از عامل بپرسید · نصب یک عامل"
+      askAgent: (bin, text) => "از ${bin} بپرسید: ${text}"
+    }
   }
   source d = android.drawer
   source ag = android.agents

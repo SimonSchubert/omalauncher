@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Omalauncher</string>
+    <string name="wallpaper_label">Omarchy</string>
+    <string name="wallpaper_description">خلفية سمة Omarchy الحالية. ألوان النظام تتبع السمة.</string>
+    <!-- Names of the app's windows in Recents. -->
+    <string name="activity_linux">Linux</string>
+    <string name="activity_terminal">الطرفية</string>
+    <string name="activity_app">تطبيق</string>
+    <string name="activity_files">الملفات</string>
+    <string name="activity_voice">الصوت</string>
+    <string name="activity_settings">الإعدادات</string>
+    <!-- In Android's notification access settings. -->
+    <string name="notification_listener">أدوات Omalauncher</string>
+</resources>

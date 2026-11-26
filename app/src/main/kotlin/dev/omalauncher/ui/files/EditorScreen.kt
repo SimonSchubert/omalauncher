@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.drawText
@@ -325,7 +326,8 @@ private fun EditorBody(
                                     .fillMaxHeight()
                                     .then(if (wrap) Modifier.fillMaxWidth() else Modifier.widthIn(min = viewport))
                                     .focusRequester(editorFocus),
-                            textStyle = Mono.copy(fontSize = TextSize.Large),
+                            // Each line in its own direction, from the left: Arabic prose still reads right to left.
+                            textStyle = Mono.copy(fontSize = TextSize.Large, textAlign = TextAlign.Left),
                             keyboardOptions =
                                 KeyboardOptions(
                                     capitalization = if (prose) KeyboardCapitalization.Sentences else KeyboardCapitalization.None,

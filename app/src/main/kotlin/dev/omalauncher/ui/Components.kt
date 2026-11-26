@@ -280,7 +280,7 @@ fun Modifier.card(
 fun CodeBlock(text: String) =
     // Code starts at the left in every language.
     LeftToRight {
-        BasicText(remember(text) { text.cutLongLines() }, Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).keyScrolled().padding(6.dp), style = Mono.copy(fontSize = TextSize.Small))
+        BasicText(remember(text) { text.cutLongLines() }, Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).keyScrolled().padding(6.dp), style = MonoLtr.copy(fontSize = TextSize.Small))
     }
 
 private const val MAX_CODE_LINE = 10_000

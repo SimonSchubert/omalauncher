@@ -83,6 +83,16 @@ widget "owl" {
       music: "nhạc"; minutes: n => "${n} phút"; hours: n => "${n} giờ"
       day: d => "ngày ${d}"; tiredShort: b => "mệt · ${b}%"; tired: b => "mệt · pin ${b}%"; fed: t => "đã ăn ${t} trước"
     }
+    ar {
+      eggShort: "انقر لتفقس"; egg: "بيضة · انقر لتفقس"; hungryShort: "انقر لإطعامها"; hungry: "جائعة · انقر لإطعامها"
+      music: "موسيقى"; minutes: n => "${n} د"; hours: n => "${n} س"
+      day: d => "اليوم ${d}"; tiredShort: b => "متعبة · ${b}%"; tired: b => "متعبة · البطارية ${b}%"; fed: t => "أكلت قبل ${t}"
+    }
+    fa {
+      eggShort: "ضربه بزنید"; egg: "تخم · ضربه بزنید تا دربیاید"; hungryShort: "غذا بدهید"; hungry: "گرسنه · برای غذا ضربه بزنید"
+      music: "موسیقی"; minutes: n => "${n} دقیقه"; hours: n => "${n} ساعت"
+      day: d => "روز ${d}"; tiredShort: b => "خسته · ${b}%"; tired: b => "خسته · باتری ${b}%"; fed: t => "غذا: ${t} پیش"
+    }
   }
 
   source now = clock every 1s

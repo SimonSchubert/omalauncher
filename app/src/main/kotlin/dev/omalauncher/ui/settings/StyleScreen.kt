@@ -110,6 +110,8 @@ import dev.omalauncher.ui.EdgeGap
 import dev.omalauncher.ui.Glyph
 import dev.omalauncher.ui.HomeGap
 import dev.omalauncher.ui.LauncherStyle
+import dev.omalauncher.ui.LeftToRight
+import dev.omalauncher.ui.TextAlignEnd
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.OverlayPanel
 import dev.omalauncher.ui.Palette
@@ -499,7 +501,8 @@ private fun TerminalSection(
     OptionHint(pluralStringResource(R.plurals.style_terminal_size, columns, TerminalFont.format(font.size).removeSuffix(".0"), columns), Modifier.padding(top = 2.dp))
     Flag(R.string.style_keyboard_suggestions, R.string.style_on, R.string.style_off, style, Style.TERMINAL_SUGGESTIONS)
     OptionHint(stringResource(R.string.style_keyboard_suggestions_hint), Modifier.padding(bottom = 4.dp))
-    TerminalPreview(font, launcherFont)
+    // A terminal's lines start at the left in every language.
+    LeftToRight { TerminalPreview(font, launcherFont) }
 }
 
 /**
@@ -905,7 +908,7 @@ private fun NumberSlider(
                     drawRoundRect(accent, Offset((size.width - thumbW) * f, cy - thumbH / 2), Size(thumbW, thumbH), CornerRadius(3.dp.toPx() * LauncherStyle.cornerScale))
                 },
         )
-        BasicText(Toml.format(value), Modifier.widthIn(min = 56.dp).padding(start = 12.dp), style = Mono.copy(textAlign = TextAlign.End), softWrap = false)
+        BasicText(Toml.format(value), Modifier.widthIn(min = 56.dp).padding(start = 12.dp), style = Mono.copy(textAlign = TextAlignEnd), softWrap = false)
         // Always there, so the slider doesn't narrow under the finger as it leaves the default.
         BracketAction(stringResource(R.string.style_reset), Palette.muted) { style.update { it.with(setting, setting.default) } }
     }
