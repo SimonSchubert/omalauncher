@@ -131,7 +131,6 @@ data class Gradient(
 
 /** An arrow function, only ever passed to built-ins like map and filter. */
 class Fn(
-    val arity: Int,
     val call: (List<Value>) -> Value,
 ) : Value {
     override fun toString() = "<fn>"

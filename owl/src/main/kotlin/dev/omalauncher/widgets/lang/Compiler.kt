@@ -1914,7 +1914,7 @@ class Compiler private constructor(
                 val body = ex(e.body, inner)
                 val n = e.params.size
                 Ev(null) { env ->
-                    Fn(n) { args ->
+                    Fn { args ->
                         env.host.budget.tick()
                         // Not env.child(*...): spreading would copy the array.
                         body(Env(env.host, env, Array<Value>(n) { args.getOrElse(it) { Null } }))

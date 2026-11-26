@@ -642,7 +642,7 @@ class WidgetServices(
         val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)?.takeIf { it > 0 }?.let { it / 1000.0 }
         // Hidden extras most phones fill in while plugged in, in µA and µV, and 0 otherwise.
         fun charger(name: String) = intent?.getIntExtra(name, 0)?.takeIf { it > 0 && !onBattery }
-        val chargeTime = if (Build.VERSION.SDK_INT >= 28) manager?.computeChargeTimeRemaining()?.takeIf { it >= 0 } else null
+        val chargeTime = manager?.computeChargeTimeRemaining()?.takeIf { it >= 0 }
         fun num(v: Number?) = v?.let { Num(it.toDouble()) } ?: Null
         return Obj(
             mapOf(
