@@ -1,7 +1,9 @@
 package dev.omalauncher.theme
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Instant
 
 class ThemeCatalogTest {
     /** Entries as omarchy.org/themes has them, plus ones it shouldn't take. */
@@ -38,5 +40,55 @@ class ThemeCatalogTest {
         assertEquals("colors.toml", files.colorsFile)
         assertEquals("alacritty.toml", RepoFiles(mapOf("alacritty.toml" to 1L)).colorsFile)
         assertEquals(null, RepoFiles(mapOf("README.md" to 1L)).colorsFile)
+    }
+
+    @Test fun buildsGitHubQueriesWithinTheApiLimit() {
+        val repos =
+            ThemeCatalog.parse(html).map { it.repo } +
+                (1..20).map { ThemeRepo.parse("https://github.com/o/omarchy-theme-$it-theme")!! }
+        val queries = repoQueries(repos)
+        assertTrue(queries.size > 1)
+        assertTrue(queries.all { it.length <= REPO_QUERY_LIMIT })
+        assertEquals(repos.map { "repo:${it.owner}/${it.repo}" }.toSet(), queries.flatMap { it.split(' ') }.toSet())
+    }
+
+    @Test fun readsGitHubRepoStats() {
+        val json =
+            """
+            {"items":[
+              {"full_name":"OldJobobo/omarchy-batman-theme","created_at":"2026-01-02T03:04:05Z","stargazers_count":7},
+              {"full_name":"somerocketeer/omarchy-bauhaus-theme","created_at":"nope","stargazers_count":2}
+            ]}
+            """.trimIndent()
+        val stats = parseRepoStats(json)
+        assertEquals(Instant.parse("2026-01-02T03:04:05Z").toEpochMilli(), stats["github.com/oldjobobo/omarchy-batman-theme"]?.created)
+        assertEquals(7L, stats["github.com/oldjobobo/omarchy-batman-theme"]?.stars)
+        assertEquals(null, stats["github.com/somerocketeer/omarchy-bauhaus-theme"]?.created)
+        assertEquals(2L, stats["github.com/somerocketeer/omarchy-bauhaus-theme"]?.stars)
+    }
+
+    @Test fun readsReleaseDownloadCounts() {
+        assertEquals(0L, parseDownloadCount("""{"message":"no releases found"}"""))
+        assertEquals(25L, parseDownloadCount("""{"message":"25"}"""))
+        assertEquals(1_200L, parseDownloadCount("""{"message":"1.2k"}"""))
+        assertEquals(117_000_000L, parseDownloadCount("""{"message":"117M"}"""))
+        assertEquals(null, parseDownloadCount("""{"message":"unavailable"}"""))
+    }
+
+    @Test fun sortsThemesByTheChosenNumber() {
+        val themes = ThemeCatalog.parse(html)
+        val stats =
+            mapOf(
+                themes[0].repo.label.lowercase() to CatalogStats(created = 100L, downloads = 5L, stars = 9L),
+                themes[1].repo.label.lowercase() to CatalogStats(created = 200L, downloads = 50L, stars = 2L),
+            )
+        fun titles(sort: ThemeSort) = sortThemes(themes, sort, stats).map { it.title }
+        assertEquals(listOf("Batman", "Rock & Roll"), titles(ThemeSort.LISTED))
+        assertEquals(listOf("Rock & Roll", "Batman"), titles(ThemeSort.NEWEST))
+        assertEquals(listOf("Rock & Roll", "Batman"), titles(ThemeSort.DOWNLOADS))
+        assertEquals(listOf("Batman", "Rock & Roll"), titles(ThemeSort.RATING))
+        // A theme GitHub didn't answer about goes last even when the other's number is low.
+        val partial = mapOf(themes[0].repo.label.lowercase() to CatalogStats(stars = 1L))
+        assertEquals(listOf("Batman", "Rock & Roll"), sortThemes(themes, ThemeSort.RATING, partial).map { it.title })
     }
 }

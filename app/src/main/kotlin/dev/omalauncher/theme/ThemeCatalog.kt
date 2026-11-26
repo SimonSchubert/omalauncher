@@ -9,12 +9,58 @@ import dev.omalauncher.net.httpGet
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.sha256Hex
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.net.URLEncoder
+import java.time.Instant
 
 private const val TAG = "theme-catalog"
+
+/** GitHub's search query limit is 256 characters; leave room for percent-encoding and the API's own terms. */
+internal const val REPO_QUERY_LIMIT = 200
+
+/** GitHub's numbers for a theme, used to sort the catalog; null where they weren't available. */
+data class CatalogStats(
+    /** When its GitHub repo was created, as the theme's upload date. */
+    val created: Long? = null,
+    /** Downloads of its GitHub release assets, 0 when it has no releases. */
+    val downloads: Long? = null,
+    /** GitHub stars, as the community's rating. */
+    val stars: Long? = null,
+) {
+    internal fun mergedWith(other: CatalogStats) =
+        copy(
+            created = other.created ?: created,
+            downloads = other.downloads ?: downloads,
+            stars = other.stars ?: stars,
+        )
+}
+
+/** The orders offered above the catalog grid. */
+internal enum class ThemeSort { LISTED, NEWEST, DOWNLOADS, RATING }
+
+/** [themes] in [sort], with themes GitHub didn't answer about last. */
+internal fun sortThemes(
+    themes: List<CatalogTheme>,
+    sort: ThemeSort,
+    stats: Map<String, CatalogStats>,
+): List<CatalogTheme> {
+    if (sort == ThemeSort.LISTED) return themes
+    fun value(theme: CatalogTheme) =
+        stats[theme.repo.label.lowercase()]?.let { s ->
+            when (sort) {
+                ThemeSort.NEWEST -> s.created
+                ThemeSort.DOWNLOADS -> s.downloads
+                ThemeSort.RATING -> s.stars
+                ThemeSort.LISTED -> null
+            }
+        }
+    return themes.sortedWith(compareBy<CatalogTheme> { value(it) == null }.thenByDescending { value(it) ?: 0 })
+}
 
 /** A theme on omarchy.org/themes. */
 class CatalogTheme(
@@ -79,8 +125,17 @@ class ThemeCatalog(
         private set
     var error by mutableStateOf<ThemeError?>(null)
         private set
+    /** Sort values by repo label, from GitHub and kept between runs. */
+    var stats by mutableStateOf<Map<String, CatalogStats>>(emptyMap())
+        private set
+    var statsLoading by mutableStateOf(false)
+        private set
+    var downloadsLoading by mutableStateOf(false)
+        private set
 
+    private var statsSavedAt = 0L
     private val page get() = File(cacheDir, "theme-catalog.html")
+    private val statsFile get() = File(cacheDir, "theme-catalog-stats.json")
     private val images get() = File(cacheDir, "theme-catalog")
 
     /** Shows the cached list right away, then the page's current one. */
@@ -94,14 +149,130 @@ class ThemeCatalog(
             val parsed = parse(html)
             // A redesign of the page would parse to nothing; keep what we had and say so.
             if (parsed.isEmpty()) throw ThemeFailure(R.string.store_theme_page_changed)
+            val cached = withContext(Dispatchers.IO) { runCatching { readStats() }.getOrDefault(emptyMap()) }
             entries = parsed
+            stats = cached
             withContext(Dispatchers.IO) { writeAtomically(page, html.toByteArray()) }
+            // Sorting is optional: a failed or rate-limited GitHub call keeps the cached numbers.
+            if (System.currentTimeMillis() - statsSavedAt > STATS_MAX_AGE || needsRepoStats(parsed)) {
+                statsLoading = true
+                val fresh =
+                    runCatching { withContext(Dispatchers.IO) { fetchRepoStats(parsed) } }
+                        .onFailure { Log.w(TAG, "no repo stats", it) }
+                        .getOrNull()
+                if (!fresh.isNullOrEmpty()) {
+                    // Downloads may have been fetched while GitHub's search calls were running.
+                    val merged = mergeStats(stats, fresh)
+                    stats = merged
+                    withContext(Dispatchers.IO) { runCatching { writeStats(merged) }.onFailure { Log.w(TAG, "no stats cache", it) } }
+                }
+            }
         } catch (e: Exception) {
             Log.w(TAG, "refresh failed", e)
             error = if (e is ThemeFailure) ThemeError(e.reason) else ThemeError(null, e.message ?: e.toString())
         } finally {
+            statsLoading = false
             loading = false
         }
+    }
+
+    /**
+     * GitHub's release download counts for the listed themes, on the first sort by downloads and then once a day.
+     * GitHub has no bulk count, so these come from its numbers via shields.io; themes without releases count as 0.
+     */
+    suspend fun loadDownloads() {
+        if (downloadsLoading || entries.isEmpty()) return
+        val wanted =
+            if (System.currentTimeMillis() - statsSavedAt > STATS_MAX_AGE) entries
+            else entries.filter { stats[it.repo.label.lowercase()]?.downloads == null }
+        if (wanted.isEmpty()) return
+        downloadsLoading = true
+        try {
+            var found = emptyMap<String, CatalogStats>()
+            for (part in wanted.chunked(DOWNLOAD_BATCH)) {
+                val answers =
+                    withContext(Dispatchers.IO) {
+                        part
+                            .map { theme ->
+                                async {
+                                    val repo = theme.repo
+                                    val url = "https://img.shields.io/github/downloads/${repo.owner}/${repo.repo}/total.json"
+                                    runCatching { parseDownloadCount(String(httpGet(url))) }
+                                        .onFailure { Log.w(TAG, "no downloads for ${theme.title}", it) }
+                                        .getOrNull()
+                                        ?.let { repo.label.lowercase() to CatalogStats(downloads = it) }
+                                }
+                            }.awaitAll().filterNotNull().toMap()
+                    }
+                if (answers.isNotEmpty()) {
+                    found += answers
+                    stats = mergeStats(stats, answers)
+                }
+            }
+            if (found.isNotEmpty()) withContext(Dispatchers.IO) { runCatching { writeStats(stats) }.onFailure { Log.w(TAG, "no stats cache", it) } }
+        } finally {
+            downloadsLoading = false
+        }
+    }
+
+    private fun mergeStats(
+        old: Map<String, CatalogStats>,
+        new: Map<String, CatalogStats>,
+    ): Map<String, CatalogStats> = old + new.mapValues { (key, value) -> old[key]?.mergedWith(value) ?: value }
+
+    private fun needsRepoStats(themes: List<CatalogTheme>) =
+        themes.any { theme ->
+            val s = stats[theme.repo.label.lowercase()]
+            s?.created == null || s.stars == null
+        }
+
+    /** Repo creation dates and stars, in as few GitHub search calls as its 256-character query allows. */
+    private suspend fun fetchRepoStats(themes: List<CatalogTheme>): Map<String, CatalogStats> {
+        val out = LinkedHashMap<String, CatalogStats>()
+        val queries = repoQueries(themes.map { it.repo }.distinctBy { it.label.lowercase() })
+        for ((i, query) in queries.withIndex()) {
+            // GitHub allows ten unauthenticated search calls a minute; stay inside that without
+            // holding up the catalog, which already shows the cached entries and numbers.
+            if (i > 0) delay(GITHUB_SEARCH_INTERVAL)
+            val encoded = URLEncoder.encode(query, "UTF-8")
+            val answer =
+                runCatching { String(httpGet("https://api.github.com/search/repositories?q=$encoded&per_page=100")) }
+                    .onFailure { Log.w(TAG, "no repo stats for $query", it) }
+                    .getOrNull() ?: continue
+            out += parseRepoStats(answer)
+        }
+        return out
+    }
+
+    private fun readStats(): Map<String, CatalogStats> {
+        val json = JSONObject(statsFile.readText())
+        statsSavedAt = json.optLong("saved", 0L)
+        val repos = json.optJSONObject("repos") ?: return emptyMap()
+        val out = LinkedHashMap<String, CatalogStats>()
+        for (key in repos.keys()) {
+            val o = repos.getJSONObject(key)
+            out[key] =
+                CatalogStats(
+                    created = o.optLong("created", -1L).takeIf { it >= 0 },
+                    downloads = o.optLong("downloads", -1L).takeIf { it >= 0 },
+                    stars = o.optLong("stars", -1L).takeIf { it >= 0 },
+                )
+        }
+        return out
+    }
+
+    private fun writeStats(stats: Map<String, CatalogStats>) {
+        val now = System.currentTimeMillis()
+        val repos = JSONObject()
+        stats.forEach { (key, value) ->
+            val o = JSONObject()
+            value.created?.let { o.put("created", it) }
+            value.downloads?.let { o.put("downloads", it) }
+            value.stars?.let { o.put("stars", it) }
+            repos.put(key, o)
+        }
+        writeAtomically(statsFile, JSONObject().put("saved", now).put("repos", repos).toString().toByteArray())
+        statsSavedAt = now
     }
 
     /** The entry for [repo], from the cached page when the catalog wasn't opened since the launcher started. */
@@ -176,6 +347,9 @@ class ThemeCatalog(
     companion object {
         const val PAGE = "https://omarchy.org/themes/"
         private const val SITE = "https://omarchy.org"
+        private const val GITHUB_SEARCH_INTERVAL = 6_000L
+        private const val DOWNLOAD_BATCH = 16
+        private const val STATS_MAX_AGE = 24 * 60 * 60 * 1000L
         private val SAFE_FILE = Regex("^[A-Za-z0-9_-][A-Za-z0-9._-]*$")
 
         /** An entry: `<li><a href="repo"><img src="/assets/themes/x.webp" …/><span …>Title</span></a></li>`. */
@@ -201,4 +375,50 @@ class ThemeCatalog(
                 .replace("&gt;", ">")
                 .replace("&amp;", "&")
     }
+}
+
+/** `repo:` search terms for [repos], short enough for GitHub's 256-character query limit. */
+internal fun repoQueries(repos: List<ThemeRepo>): List<String> {
+    val out = ArrayList<String>()
+    var current = ""
+    for (repo in repos) {
+        val term = "repo:${repo.owner}/${repo.repo}"
+        val next = if (current.isEmpty()) term else "$current $term"
+        if (next.length > REPO_QUERY_LIMIT) {
+            if (current.isNotEmpty()) out += current
+            current = term
+        } else {
+            current = next
+        }
+    }
+    if (current.isNotEmpty()) out += current
+    return out
+}
+
+/** GitHub's repository search answer, by `github.com/owner/repo`. */
+internal fun parseRepoStats(json: String): Map<String, CatalogStats> {
+    val items = JSONObject(json).optJSONArray("items") ?: return emptyMap()
+    val out = LinkedHashMap<String, CatalogStats>()
+    for (i in 0 until items.length()) {
+        val item = items.getJSONObject(i)
+        val name = item.optString("full_name").takeIf { it.isNotEmpty() } ?: continue
+        val created = item.optString("created_at").takeIf { it.isNotEmpty() }?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
+        out["github.com/${name.lowercase()}"] = CatalogStats(created = created, stars = item.optLong("stargazers_count", -1L).takeIf { it >= 0 })
+    }
+    return out
+}
+
+/** Shields' `github/downloads/<owner>/<repo>/total.json` message, or null when it wasn't a count. */
+internal fun parseDownloadCount(json: String): Long? {
+    val message = JSONObject(json).optString("message").trim()
+    if (message.equals("no releases found", ignoreCase = true)) return 0L
+    val m = Regex("""^([\d.,]+)\s*([kKmM]?)""").find(message) ?: return null
+    val amount = m.groupValues[1].replace(",", "").toDoubleOrNull() ?: return null
+    val scale =
+        when (m.groupValues[2].lowercase()) {
+            "k" -> 1_000
+            "m" -> 1_000_000
+            else -> 1
+        }
+    return (amount * scale).toLong()
 }

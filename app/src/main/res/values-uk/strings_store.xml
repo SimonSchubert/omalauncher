@@ -157,6 +157,13 @@
     <string name="store_theme_title">теми спільноти</string>
     <string name="store_theme_search">пошук серед %1$d тем</string>
     <string name="store_theme_header">створені спільнотою, перелічені на omarchy.org/themes · встановлюються з GitHub</string>
+    <string name="store_theme_sort">сортування</string>
+    <string name="store_theme_sort_listed">як у списку</string>
+    <string name="store_theme_sort_newest">найновіші</string>
+    <string name="store_theme_sort_downloads">завантаження</string>
+    <string name="store_theme_sort_rating">рейтинг</string>
+    <string name="store_theme_sort_loading">отримуємо кількість завантажень GitHub…</string>
+    <string name="store_theme_sort_stats_loading">отримуємо дані GitHub…</string>
     <string name="store_theme_in_use">✓ вибрана</string>
     <string name="store_theme_light">світла</string>
     <string name="store_theme_dark">темна</string>

@@ -56,7 +56,9 @@ import dev.omalauncher.theme.ThemeCatalog
 import dev.omalauncher.theme.ThemeDirs
 import dev.omalauncher.theme.ThemeError
 import dev.omalauncher.theme.ThemeInstall
+import dev.omalauncher.theme.ThemeSort
 import dev.omalauncher.theme.ThemeStore
+import dev.omalauncher.theme.sortThemes
 import dev.omalauncher.ui.BracketAction
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.LocalPanelBack
@@ -87,6 +89,7 @@ fun ThemeCatalogScreen(
     val context = LocalContext.current
     val keyboard = LocalSoftwareKeyboardController.current
     var query by remember { mutableStateOf("") }
+    var sort by remember { mutableStateOf(ThemeSort.LISTED) }
     // The theme whose screenshot is open in the panel, in place of the grid.
     var viewing by remember { mutableStateOf<CatalogTheme?>(null) }
     // Out here, so the grid is where it was after a screenshot.
@@ -94,6 +97,7 @@ fun ThemeCatalogScreen(
     BackHandler(onBack = onDismiss)
     BackHandler(enabled = viewing != null) { viewing = null }
     LaunchedEffect(catalog) { catalog.refresh() }
+    LaunchedEffect(sort, catalog.entries) { if (sort == ThemeSort.DOWNLOADS) catalog.loadDownloads() }
     RescanThemes(store)
     // Which repos are installed, by github.com/owner/repo; read from the themes' source markers.
     val installedFrom by produceState(emptyMap<String, String>(), store.themes) {
@@ -125,7 +129,8 @@ fun ThemeCatalogScreen(
             return@OverlayPanel
         }
         val q = query.trim().lowercase()
-        val shown = catalog.entries.filter { q.isEmpty() || q in it.title.lowercase() || q in it.repo.label.lowercase() }
+        val matched = catalog.entries.filter { q.isEmpty() || q in it.title.lowercase() || q in it.repo.label.lowercase() }
+        val shown = sortThemes(matched, sort, catalog.stats)
         SearchField(query, { query = it }, onGo = { keyboard?.hide() }, placeholder = stringResource(R.string.store_theme_search, catalog.entries.size))
         Spacer(Modifier.height(8.dp))
         LazyVerticalGrid(
@@ -142,6 +147,21 @@ fun ThemeCatalogScreen(
                         Modifier.clickable { context.openUrl(ThemeCatalog.PAGE) },
                         style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small),
                     )
+                    BasicText(stringResource(R.string.store_theme_sort), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                    LazyRow(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(ThemeSort.entries.toList(), key = { it.name }) { option ->
+                            SortChip(option.label(), option == sort) { sort = option }
+                        }
+                    }
+                    val sortLoading =
+                        when {
+                            sort == ThemeSort.DOWNLOADS && catalog.downloadsLoading -> R.string.store_theme_sort_loading
+                            sort != ThemeSort.LISTED && catalog.statsLoading -> R.string.store_theme_sort_stats_loading
+                            else -> null
+                        }
+                    if (sortLoading != null) {
+                        BasicText(stringResource(sortLoading), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
+                    }
                     InstallStatus(store)
                     when {
                         catalog.loading && catalog.entries.isEmpty() -> BasicText(stringResource(R.string.store_loading), style = Mono.copy(color = Palette.muted))
@@ -160,6 +180,33 @@ fun ThemeCatalogScreen(
             }
         }
     }
+}
+
+@Composable
+private fun ThemeSort.label() =
+    stringResource(
+        when (this) {
+            ThemeSort.LISTED -> R.string.store_theme_sort_listed
+            ThemeSort.NEWEST -> R.string.store_theme_sort_newest
+            ThemeSort.DOWNLOADS -> R.string.store_theme_sort_downloads
+            ThemeSort.RATING -> R.string.store_theme_sort_rating
+        },
+    )
+
+@Composable
+private fun SortChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    BasicText(
+        label,
+        Modifier
+            .frame(1.dp, if (selected) Palette.accent else Palette.border, if (selected) Palette.accent.copy(alpha = 0.15f) else Color.Transparent, radius = 14.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        style = Mono.copy(color = if (selected) Palette.accent else Palette.muted, fontSize = TextSize.Small),
+    )
 }
 
 /** What [theme] is here, in words and their color: installing, in use, installed, or the repo it would come from. */

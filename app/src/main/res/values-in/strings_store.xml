@@ -152,6 +152,13 @@
     <string name="store_theme_title">tema komunitas</string>
     <string name="store_theme_search">cari %1$d tema</string>
     <string name="store_theme_header">dibuat oleh komunitas, terdaftar di omarchy.org/themes · diinstal dari GitHub</string>
+    <string name="store_theme_sort">urutkan</string>
+    <string name="store_theme_sort_listed">sesuai daftar</string>
+    <string name="store_theme_sort_newest">terbaru</string>
+    <string name="store_theme_sort_downloads">unduhan</string>
+    <string name="store_theme_sort_rating">rating</string>
+    <string name="store_theme_sort_loading">mengambil jumlah unduhan GitHub…</string>
+    <string name="store_theme_sort_stats_loading">mengambil data GitHub…</string>
     <string name="store_theme_in_use">✓ dipakai</string>
     <string name="store_theme_light">terang</string>
     <string name="store_theme_dark">gelap</string>
