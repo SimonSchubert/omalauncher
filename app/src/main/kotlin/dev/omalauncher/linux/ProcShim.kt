@@ -134,6 +134,18 @@ class ProcShim(
             val fill = " ".repeat(length - text.length)
             return if (text.endsWith("\n")) text.dropLast(1) + fill + "\n" else text + fill
         }
+
+        /** [ownCpuTicks] in Kotlin, of the processes in [proc]. cpp/procstat.c does the same. */
+        internal fun kotlinCpuTicks(proc: File = File("/proc")): Pair<Long, Long> {
+            var user = 0L
+            var system = 0L
+            proc.listFiles { f -> f.name.all(Char::isDigit) }.orEmpty().forEach { p ->
+                val fields = statFields(p) ?: return@forEach
+                user += fields.getOrNull(11)?.toLongOrNull() ?: 0
+                system += fields.getOrNull(12)?.toLongOrNull() ?: 0
+            }
+            return user to system
+        }
     }
 
     private fun readable(path: String) = runCatching { File(path).inputStream().use { it.read() } }.isSuccess
@@ -163,16 +175,8 @@ class ProcShim(
     }
 
     /** Sums utime/stime over all processes we can see, which Android limits to our own uid. */
-    private fun ownCpuTicks(): Pair<Long, Long> {
-        var user = 0L
-        var system = 0L
-        File("/proc").listFiles { f -> f.name.all(Char::isDigit) }.orEmpty().forEach { p ->
-            val fields = statFields(p) ?: return@forEach
-            user += fields.getOrNull(11)?.toLongOrNull() ?: 0
-            system += fields.getOrNull(12)?.toLongOrNull() ?: 0
-        }
-        return user to system
-    }
+    private fun ownCpuTicks(): Pair<Long, Long> = ProcStatNative.cpuTicks("/proc")?.let { it[0] to it[1] } ?: kotlinCpuTicks()
+
 
     private inline fun write(
         name: String,

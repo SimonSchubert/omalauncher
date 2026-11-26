@@ -43,6 +43,8 @@ a module folder; the OWL language is under
   on (`HostNative`) and are skipped without a compiler
 - `app/src/main/cpp/pixels.c`: frost's blur and icon masks, with the Kotlin
   kept as the fallback (`PixelsNativeTest`)
+- `app/src/main/cpp/procstat.c`: `ProcShim`'s count of CPU time, with the
+  Kotlin kept as the fallback (`ProcStatNativeTest`)
 - `wayland/`: the Wayland server in Kotlin (wl_compositor, wl_shm,
   wl_subcompositor, wl_seat, wl_output, xdg_wm_base, xdg-decoration, and
   text-input-v3 for where a client's text cursor is) and
