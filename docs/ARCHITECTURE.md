@@ -70,7 +70,11 @@ the surface's pixel store, outside the server lock, and hands the buffer back
 right away. Each window's `WindowRenderer` runs on its own thread: at vsync it
 snapshots the surface tree, redraws only the dirty region of the SurfaceView
 (everything, if a surface moved or appeared), posts, and then sends the frame
-callbacks. Hidden windows get no frame callbacks, so their clients stop
+callbacks. The SurfaceView has a few buffers that take turns, and the whole
+window is locked each time: locking only the dirty region makes Android copy
+the rest of the frame from the buffer on screen, which cost more than the
+drawing. `BufferDamage` keeps what each buffer missed while the others were
+drawn, and that is what gets repainted. Hidden windows get no frame callbacks, so their clients stop
 drawing.
 
 ## Browser tiles

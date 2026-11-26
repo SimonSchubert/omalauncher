@@ -47,7 +47,7 @@ internal fun fitScale(
  * Draws one Linux window (its surface tree and popups) into the Android
  * surface of its activity's SurfaceView. It runs on its own thread, paced by
  * vsync: each frame snapshots the scene under the server lock (no pixels
- * move under it), redraws only what changed, posts, and then tells the
+ * move under it), redraws only what changed (see [BufferDamage]), posts, and then tells the
  * clients the frame is done, so they draw at most once per display frame,
  * 60 times a second at most, and not at all while the window is hidden.
  */
@@ -89,6 +89,9 @@ class WindowRenderer(
     @Volatile
     private var redrawAll = true
     private val dirty = IntArray(4)
+
+    /** What each of the view's buffers still has to catch up on; a new view surface has new buffers. */
+    private var buffers = BufferDamage()
     private val callback = Choreographer.FrameCallback(::frame)
 
     /** What's on screen, bottom to top; read by hit testing on the main thread. */
@@ -107,6 +110,7 @@ class WindowRenderer(
             native = Native.windowCreate(surface, w, h, translucent)
             width = w
             height = h
+            buffers = BufferDamage()
             redrawAll = true
         }
         requestFrame()
@@ -188,13 +192,18 @@ class WindowRenderer(
     }
 
     private fun draw(layers: List<Layer>): Boolean {
-        if (!Native.windowBegin(native, dirty, background)) return false
+        val buffer = Native.windowBegin(native)
+        if (buffer == 0L) return false
+        // From what changed this frame to what this buffer lacks: it was last drawn a frame or two ago.
+        buffers.repaint(buffer, Native.windowCanary(native), dirty, width, height)
+        Native.windowClear(native, dirty, background)
         for (layer in layers) {
             val store = layer.store ?: continue
             synchronized(store) {
                 if (store.ptr != 0L) Native.windowBlit(native, store.ptr, layer.x, layer.y, layer.width, layer.height, store.opaque)
             }
         }
+        buffers.drawn(buffer, Native.windowCanary(native))
         Native.windowEnd(native)
         return true
     }
