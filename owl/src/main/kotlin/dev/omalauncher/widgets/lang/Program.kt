@@ -184,6 +184,13 @@ class Ev internal constructor(
 ) {
     constructor(const: Value?, f: (Env) -> Value) : this(const, f, null)
 
+    /**
+     * A list literal's items, when it isn't constant: whoever wants them one at a time, like a model's at: [x, y, z]
+     * every frame, can read them without building the list.
+     */
+    var items: List<Ev>? = null
+        internal set
+
     operator fun invoke(env: Env): Value = const ?: f(env)
 
     /** The value as a number, as [Value.num] gives it, or [default]; arithmetic doesn't box on the way. */

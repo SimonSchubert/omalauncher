@@ -813,6 +813,11 @@ class Scene3d(
     private val rot = FloatArray(9)
     private val tmp = FloatArray(3)
 
+    /** The turn [rot] is of, as float bits (none yet: no turn never reaches it); models turned alike, one after the other, skip the sines and cosines. */
+    private var rotX = 0
+    private var rotY = 0
+    private var rotZ = 0
+
     /** What [kernel] is told of a model, and its runs. */
     private val kv = FloatArray(KERNEL_FLOATS)
     private var kbatches = IntArray(3 * 16)
@@ -884,7 +889,7 @@ class Scene3d(
         if (mesh.triangles == 0) return
         val first = n
         val amb = if (ambient.isNaN()) this.ambient else ambient.coerceIn(0f, 1f)
-        val r = Meshes.rotation(turn[0], turn[1], turn[2], rot)
+        val r = rotation(turn)
         val sx = scale[0]
         val sy = scale[1]
         val sz = scale[2]
@@ -1144,6 +1149,21 @@ class Scene3d(
         tex = tex.copyOf(size)
     }
 
+    /** [turn]'s rotation, as [Meshes.rotation] gives it: no turn and the last model's turn are kept. */
+    private fun rotation(turn: FloatArray): FloatArray {
+        val x = java.lang.Float.floatToRawIntBits(turn[0])
+        val y = java.lang.Float.floatToRawIntBits(turn[1])
+        val z = java.lang.Float.floatToRawIntBits(turn[2])
+        if (x == 0 && y == 0 && z == 0) return NO_TURN
+        if (x != rotX || y != rotY || z != rotZ) {
+            Meshes.rotation(turn[0], turn[1], turn[2], rot)
+            rotX = x
+            rotY = y
+            rotZ = z
+        }
+        return rot
+    }
+
     /** Sorts the staged triangles far to near into [verts], [colors] and [texs], in [batches] by texture. */
     fun finish() {
         if (kernel != null) {
@@ -1213,5 +1233,8 @@ class Scene3d(
 
         /** The model's faces came in its tree's order, which stands: see the end of [add]. */
         const val KERNEL_OWN_ORDER = 4
+
+        /** The rotation of no turn; read, never written. */
+        private val NO_TURN = Meshes.rotation(0f, 0f, 0f, FloatArray(9))
     }
 }

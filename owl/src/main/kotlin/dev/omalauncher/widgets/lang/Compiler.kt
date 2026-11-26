@@ -1841,7 +1841,7 @@ class Compiler private constructor(
             }
             is Expr.ListLit -> {
                 val items = e.items.map { ex(it, s) }
-                fold(items) { env -> Lst(items.map { it(env) }) }
+                fold(items) { env -> Lst(items.map { it(env) }) }.also { if (it.const == null) it.items = items }
             }
             is Expr.MapLit -> {
                 val keys = e.entries.map { it.first }

@@ -88,6 +88,17 @@ class LangTest {
         return el.props["text"]!!(Env.root(host)).toString()
     }
 
+    /** A list literal that isn't constant hands over its items, to be read one by one like a model's at: [x, y, z]. */
+    @Test fun listLiteralsKeepTheirItems() {
+        val p = Compiler.compile("widget \"t\" {\nstate x = 3\nText { text: [1, x, x * 2] }\nText { text: [1, 2] }\n}")
+        val env = Env.root(TestHost(p))
+        val (live, fixed) = p.root.map { (it as WNode.Element).props.getValue("text") }
+        assertEquals(listOf(1.0, 3.0, 6.0), live.items!!.map { it.num(env, 0.0) })
+        assertEquals("[1, 3, 6]", live(env).toString())
+        assertNull(fixed.items)
+        assertNotNull(fixed.const)
+    }
+
     private fun compileError(src: String): String =
         try {
             Compiler.compile(src)

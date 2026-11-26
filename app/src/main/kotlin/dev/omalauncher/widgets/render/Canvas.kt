@@ -59,6 +59,7 @@ import dev.omalauncher.widgets.lang.Meshes
 import dev.omalauncher.widgets.lang.Scene3d
 import dev.omalauncher.widgets.lang.Compiler
 import dev.omalauncher.widgets.lang.Env
+import dev.omalauncher.widgets.lang.Ev
 import dev.omalauncher.widgets.lang.Gradient
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
@@ -103,6 +104,12 @@ private class Kept {
     val palettes = IdentityHashMap<Obj, HashMap<Char, Brush?>>()
     var theme: Any? = null
 
+    /** A mesh's face colors as ARGB, for the model color they fall back to; they follow the theme like [palettes]. */
+    val meshPalettes = IdentityHashMap<Mesh, MeshPalette>()
+
+    /** model(...)'s named arguments by node, looked up once rather than by name for every model in every frame. */
+    val modelArgs = IdentityHashMap<WNode.Draw, ModelArgs>()
+
     /** A scene's triangles, its arrays reused from frame to frame; see [Scene3d]. */
     val scene by lazy { Scene3d(NativeKernel.create()) }
 
@@ -112,6 +119,26 @@ private class Kept {
     /** A layer's paint: saveLayer copies it, so one serves every layer, nested ones too. */
     val layerPaint by lazy { Paint() }
     val vertexPaint by lazy { android.graphics.Paint().apply { isFilterBitmap = true } }
+}
+
+/** A mesh's palette as ARGB, its entries that aren't colors in [color]. */
+private class MeshPalette(
+    val color: Int,
+    val argb: IntArray,
+)
+
+/** model(...)'s named arguments, each null when it isn't given. */
+private class ModelArgs(
+    named: Map<String, Ev>,
+) {
+    val color = named["color"]
+    val image = named["image"]
+    val at = named["at"]
+    val turn = named["turn"]
+    val scale = named["scale"]
+    val ambient = named["ambient"]
+    val smooth = named["smooth"]
+    val twoSided = named["twoSided"]
 }
 
 /** The side of the bitmap an SVG texture is drawn into. */
@@ -516,15 +543,20 @@ private class Painter(
     /** A sprite palette's brushes, filled in letter by letter as the sprites using it need them. */
     private fun palette(palette: Obj): HashMap<Char, Brush?> {
         val palettes = kept.palettes
-        // Theme names in a palette are colors of the theme they were looked up in.
-        val theme = Palette.current
-        if (kept.theme !== theme) {
-            palettes.clear()
-            kept.theme = theme
-        }
+        followTheme()
         palettes[palette]?.let { return it }
         if (palettes.size >= MAX_KEPT) palettes.clear()
         return HashMap<Char, Brush?>().also { palettes[palette] = it }
+    }
+
+    /** Theme names in a palette are colors of the theme they were looked up in: palettes go when it changes. */
+    private fun followTheme() {
+        val theme = Palette.current
+        if (kept.theme !== theme) {
+            kept.palettes.clear()
+            kept.meshPalettes.clear()
+            kept.theme = theme
+        }
     }
 
     /** Named arguments, evaluated when read: an op only pays for the ones it uses. */
@@ -574,11 +606,12 @@ private class Painter(
         val first = if (values > 0) eval(n.args[0], env) else Null
         val v = numbers
         for (i in values until n.args.size) v[i] = n.args[i].num(env, 0.0).toFloat()
+        // A scene can hold thousands of models: theirs are read without a NamedArgs.
+        if (n.op == "model") return model(n, env, first)
         val named = NamedArgs(n.named, env)
         // Transforms, text, images, clips and layers take no paint: skip evaluating it (this runs per op, per frame).
         when (n.op) {
             "scene" -> return scene(n, env, first)
-            "model" -> return model(n, env, first)
             "translate" -> return translate(v[0], v[1]) { inside(n.children!!, env) }
             "rotate" -> return rotate(v[0], Offset(v.opt(n, 1), v.opt(n, 2))) { inside(n.children!!, env) }
             "scale" -> {
@@ -794,13 +827,13 @@ private class Painter(
         val s = scene ?: return
         // A mesh still loading, from a file or the web, draws nothing yet.
         val mesh = first as? Mesh ?: if (first == Null) return else throw WidgetError("model(...) takes a mesh, like cube() or parseObj(text), not ${first.text().take(40)}")
-        val named = NamedArgs(n.named, env)
-        val color = named["color"]?.let { Builtins.argb(it, inst) } ?: Palette.foreground.toArgb()
-        val palette = if (mesh.palette.isEmpty()) null else IntArray(mesh.palette.size) { Builtins.argb(mesh.palette[it], inst) ?: color }
+        val args = kept.modelArgs[n] ?: ModelArgs(n.named).also { kept.modelArgs[n] = it }
+        val color = args.color?.let { Builtins.argb(eval(it, env), inst) } ?: Palette.foreground.toArgb()
+        val palette = if (mesh.palette.isEmpty()) null else meshPalette(mesh, color)
         var shader: android.graphics.Shader? = null
         var tw = 0f
         var th = 0f
-        named["image"]?.takeIf { it != Null }?.let { src ->
+        args.image?.let { eval(it, env) }?.takeIf { it != Null }?.let { src ->
             texture(src.toString())?.let { (sh, bitmap) ->
                 shader = sh
                 tw = bitmap.width.toFloat()
@@ -809,18 +842,51 @@ private class Painter(
         }
         s.add(
             mesh,
-            Meshes.vec3(named["at"], 0f, at),
-            Meshes.vec3(named["turn"], 0f, turn),
-            Meshes.vec3(named["scale"], 1f, scale3),
+            vec3(args.at, env, 0f, at),
+            vec3(args.turn, env, 0f, turn),
+            vec3(args.scale, env, 1f, scale3),
             color,
             palette,
-            named["ambient"]?.num()?.toFloat() ?: Float.NaN,
-            named["smooth"]?.truthy ?: mesh.smooth,
-            named["twoSided"]?.truthy == true,
+            args.ambient?.let { eval(it, env) }?.num()?.toFloat() ?: Float.NaN,
+            args.smooth?.let { eval(it, env) }?.truthy ?: mesh.smooth,
+            args.twoSided?.let { eval(it, env) }?.truthy == true,
             shader,
             tw,
             th,
         )
+    }
+
+    /** [mesh]'s palette as ARGB, kept from frame to frame while [color] and the theme stay. */
+    private fun meshPalette(
+        mesh: Mesh,
+        color: Int,
+    ): IntArray {
+        followTheme()
+        val palettes = kept.meshPalettes
+        palettes[mesh]?.takeIf { it.color == color }?.let { return it.argb }
+        if (palettes.size >= MAX_KEPT) palettes.clear()
+        val argb = IntArray(mesh.palette.size) { Builtins.argb(mesh.palette[it], inst) ?: color }
+        palettes[mesh] = MeshPalette(color, argb)
+        return argb
+    }
+
+    /**
+     * [ev]'s value as Meshes.vec3 reads it into [out]. A list literal of up to three, like at: [x, y, z], is read item
+     * by item, without building the list.
+     */
+    private fun vec3(
+        ev: Ev?,
+        env: Env,
+        default: Float,
+        out: FloatArray,
+    ): FloatArray {
+        val items = ev?.items
+        if (items == null || items.size > 3) return Meshes.vec3(ev?.let { eval(it, env) }, default, out)
+        out[0] = default
+        out[1] = default
+        out[2] = default
+        for (i in items.indices) out[i] = items[i].num(env, default.toDouble()).toFloat()
+        return out
     }
 
     /** The image at [src] as a repeating shader for a model, and its bitmap; null while it loads. */
