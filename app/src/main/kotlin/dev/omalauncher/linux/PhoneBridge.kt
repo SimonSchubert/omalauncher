@@ -15,6 +15,7 @@ import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.content.FileProvider
 import dev.omalauncher.system.postLinuxNotification
 import dev.omalauncher.upgrade.Managed
@@ -76,7 +77,12 @@ class PhoneBridge(
 ) {
     private val inbox = File(proot.runtimeDir, "phone")
     private var observer: FileObserver? = null
-    /** When `calendar` last answered: a script looping it can't pull the calendar more often than [CALENDAR_EVERY_MS]. */
+    /**
+     * [SystemClock.elapsedRealtime] when `calendar` last answered: a script looping it can't pull the calendar more
+     * often than [CALENDAR_EVERY_MS]. Elapsed-realtime, not the wall clock: a backward clock adjustment (NTP after
+     * being offline, a manual date change) mustn't make `now - lastCalendarAt` negative and deny a legitimate caller
+     * until the stale wall-clock timestamp is caught up to.
+     */
     private var lastCalendarAt = 0L
 
     fun managed(): List<Managed> {
@@ -164,10 +170,20 @@ class PhoneBridge(
     private suspend fun calendar(days: String?): Answer {
         if (!visible()) return Answer.Denied(NOT_IN_FRONT)
         val n = if (days.isNullOrEmpty()) DAYS else days.toIntOrNull()?.takeIf { it in 1..MAX_DAYS } ?: return Answer.Usage("days: 1 to $MAX_DAYS")
-        val now = System.currentTimeMillis()
+        val now = SystemClock.elapsedRealtime()
         if (now - lastCalendarAt < CALENDAR_EVERY_MS) return Answer.Denied(TOO_SOON.format("calendar", CALENDAR_EVERY_MS / 1000))
+        // Reserved before the read, not after: two calls arriving together must not both slip past the check above
+        // while the first is still suspended below. Rolled back on a denial that never touched the provider, so an
+        // ungranted/retried call doesn't cost the next genuine one its whole window.
+        val before = lastCalendarAt
         lastCalendarAt = now
-        val events = calendar.read(n, MAX_EVENTS) ?: return Answer.Denied(NOT_ALLOWED.format("calendar"))
+        val events = calendar.read(n, MAX_EVENTS) ?: run {
+            lastCalendarAt = before
+            return Answer.Denied(NOT_ALLOWED.format("calendar"))
+        }
+        // calendar.read() just suspended for a real provider query (up to MAX_DAYS/MAX_EVENTS worth); the launcher
+        // could have left the foreground during that wait, same gap issue #08's fix closed for location().
+        if (!visible()) return Answer.Denied(NOT_IN_FRONT)
         return Answer.Ok(Lst(events))
     }
 
