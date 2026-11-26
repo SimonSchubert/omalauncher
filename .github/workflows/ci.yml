@@ -34,7 +34,7 @@ jobs:
 
       # libghostty-vt, the built-in terminal's engine: its library and its tests need it. Zig and its cache (the
       # source's packages and what it built) are kept between runs until the script changes.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             build/zig
