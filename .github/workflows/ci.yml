@@ -32,6 +32,18 @@ jobs:
           ndk=$(sed -n 's/^NDK_VERSION=//p' scripts/fetch-proot.sh)
           [ -d "$ANDROID_HOME/ndk/$ndk" ] || yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$ndk" >/dev/null
 
+      # libghostty-vt, the built-in terminal's engine: its library and its tests need it. Zig and its cache (the
+      # source's packages and what it built) are kept between runs until the script changes.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            build/zig
+            ~/.cache/zig
+          key: ghostty-vt-${{ runner.os }}-${{ hashFiles('scripts/fetch-ghostty-vt.sh') }}
+
+      - name: Build libghostty-vt
+        run: scripts/fetch-ghostty-vt.sh
+
       - name: Test
         run: ./gradlew :owl:test :app:testFossDebugUnitTest :owl:owlJar
 

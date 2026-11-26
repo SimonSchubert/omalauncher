@@ -132,6 +132,20 @@ tasks.matching { it.name.matches(Regex("pre\\w*(Debug|Release)Build")) }.configu
     }
 }
 
+// libghostty-vt, the built-in terminal's engine, built by scripts/fetch-ghostty-vt.sh into the gitignored
+// src/main/cpp/ghostty-vt. Without it the app builds without the built-in terminal; built by an older script (another
+// ghostty or Zig), it would build an app with an engine the code may not fit.
+tasks.matching { it.name.matches(Regex("pre\\w*(Debug|Release)Build")) }.configureEach {
+    val vt = file("src/main/cpp/ghostty-vt")
+    val script = rootProject.file("scripts/fetch-ghostty-vt.sh")
+    inputs.file(script)
+    doFirst {
+        val built = File(vt, ".source").takeIf { it.isFile }?.readText()?.trim() ?: return@doFirst
+        val now = MessageDigest.getInstance("SHA-256").digest(script.readBytes()).joinToString("") { "%02x".format(it) }
+        check(built == now) { "$vt was built by an older scripts/fetch-ghostty-vt.sh; run it again" }
+    }
+}
+
 composeCompiler {
     stabilityConfigurationFiles.add(rootProject.layout.projectDirectory.file("app/compose-stability.conf"))
 }

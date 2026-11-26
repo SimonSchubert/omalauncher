@@ -317,6 +317,15 @@ class Proot(
         }
     }
 
+    /**
+     * [process]'s argv and environment (as NAME=value), for a guest `sh -c [script]` started on a pseudo-terminal
+     * instead (terminal/TerminalSession.kt). Fails while Linux is [stopped].
+     */
+    fun ptyCommand(script: String): Pair<List<String>, List<String>> {
+        val builder = process(script)
+        return builder.command() to builder.environment().map { (name, value) -> "$name=$value" }
+    }
+
     companion object {
         private const val CPU_PINNING = "proot_cpu_pinning"
 

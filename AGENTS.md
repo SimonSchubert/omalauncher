@@ -25,6 +25,7 @@ file.
 
 ```sh
 ./scripts/fetch-proot.sh      # once per checkout, and again when the build asks; needs bsdtar
+./scripts/fetch-ghostty-vt.sh # the built-in terminal's engine, the same way; without it its tests skip
 ./gradlew :owl:test :app:testFossDebugUnitTest :owl:owlJar
 ./gradlew :app:assembleFossDebug :app:lintFossDebug :app:lintPlayDebug
 ```
