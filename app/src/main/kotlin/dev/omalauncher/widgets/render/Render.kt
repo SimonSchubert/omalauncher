@@ -1404,11 +1404,14 @@ private fun PopupNode(
                 "end" -> Alignment.End
                 else -> Alignment.Start
             }
-        Column(
-            (if (framed) mod else Modifier.frame(2.dp, Palette.accent, Palette.background).then(mod).then(if (p.has("padding")) Modifier else Modifier.padding(4.dp))).holdsKeys(),
-            verticalArrangement = Arrangement.spacedBy(gap),
-            horizontalAlignment = align,
-        ) { Nodes(el.children, env, inst, this) }
+        // A popup is a window of its own, which Android lays out left to right whatever the widget runs.
+        OwnDirection(inst.program.rtl) {
+            Column(
+                (if (framed) mod else Modifier.frame(2.dp, Palette.accent, Palette.background).then(mod).then(if (p.has("padding")) Modifier else Modifier.padding(4.dp))).holdsKeys(),
+                verticalArrangement = Arrangement.spacedBy(gap),
+                horizontalAlignment = align,
+            ) { Nodes(el.children, env, inst, this) }
+        }
     }
 }
 

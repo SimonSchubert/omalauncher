@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import dev.omalauncher.ui.LauncherDirection
 import dev.omalauncher.storage.PhoneStorage
 import dev.omalauncher.R
 import dev.omalauncher.linux.GuestEntry
@@ -263,6 +264,6 @@ internal fun MenuPopup(
     alignment: Alignment = Alignment.TopEnd,
 ) {
     Popup(alignment = alignment, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        Box(Modifier.holdsKeys()) { MenuItems(items, onDismiss, minWidth = 200.dp, itemPadding = 13.dp) }
+        LauncherDirection { Box(Modifier.holdsKeys()) { MenuItems(items, onDismiss, minWidth = 200.dp, itemPadding = 13.dp) } }
     }
 }

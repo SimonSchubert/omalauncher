@@ -825,28 +825,31 @@ private fun Stepper(
         // Keys at the end of the range go on to the other step, and from reset as it goes, to a step.
         val minus = remember { FocusRequester() }
         val plus = remember { FocusRequester() }
-        Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            val down = value > setting.range.start
-            val up = value < setting.range.endInclusive
-            BasicText(
-                "−",
-                Modifier
-                    .focusRequester(minus)
-                    .passesKeys(plus)
-                    .clickable(enabled = down) { set(ceil(value - 1)) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                style = Mono.copy(color = if (down) Palette.foreground else Palette.muted),
-            )
-            BasicText(Toml.format(value) + " dp", Modifier.widthIn(min = 64.dp), style = Mono.copy(textAlign = TextAlign.Center), softWrap = false)
-            BasicText(
-                "+",
-                Modifier
-                    .focusRequester(plus)
-                    .passesKeys(minus)
-                    .clickable(enabled = up) { set(floor(value + 1)) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                style = Mono.copy(color = if (up) Palette.foreground else Palette.muted),
-            )
+        // Less at the left and more at the right in every language, as the sliders have it.
+        LeftToRight {
+            Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                val down = value > setting.range.start
+                val up = value < setting.range.endInclusive
+                BasicText(
+                    "−",
+                    Modifier
+                        .focusRequester(minus)
+                        .passesKeys(plus)
+                        .clickable(enabled = down) { set(ceil(value - 1)) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = Mono.copy(color = if (down) Palette.foreground else Palette.muted),
+                )
+                BasicText(Toml.format(value) + " dp", Modifier.widthIn(min = 64.dp), style = Mono.copy(textAlign = TextAlign.Center), softWrap = false)
+                BasicText(
+                    "+",
+                    Modifier
+                        .focusRequester(plus)
+                        .passesKeys(minus)
+                        .clickable(enabled = up) { set(floor(value + 1)) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = Mono.copy(color = if (up) Palette.foreground else Palette.muted),
+                )
+            }
         }
         if (all.any { style.style[it] != it.default }) {
             BracketAction(stringResource(R.string.style_reset), Palette.muted, Modifier.passesKeys(minus, plus)) { style.update { it.with(all) { s -> s.default } } }

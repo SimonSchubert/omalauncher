@@ -327,37 +327,40 @@ fun <T> ChoicePopup(
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
     Popup(popupPositionProvider = position, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        // Keys start on the one picked now; a list longer than the screen scrolls to follow them.
-        val selectedFocus = remember { FocusRequester() }
-        Column(
-            Modifier
-                .width(IntrinsicSize.Max)
-                .widthIn(min = minWidth)
-                .frame(2.dp, Palette.accent, Palette.background)
-                .holdsKeys(start = selectedFocus.takeIf { selected in options })
-                .verticalScroll(rememberScrollState())
-                .padding(4.dp),
-        ) {
-            for (option in options) {
-                val current = option == selected
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .then(if (current) Modifier.focusRequester(selectedFocus) else Modifier)
-                        .clickable {
-                            onDismiss()
-                            onPick(option)
-                        }.padding(horizontal = 10.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
-                    Column(Modifier.weight(1f)) {
-                        BasicText(label(option), style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
-                        sublabel?.invoke(option)?.let { BasicText(it, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small)) }
+        // A popup or dialog is a window of its own, and without supportsRtl Android lays every window out left to right.
+        LauncherDirection {
+            // Keys start on the one picked now; a list longer than the screen scrolls to follow them.
+            val selectedFocus = remember { FocusRequester() }
+            Column(
+                Modifier
+                    .width(IntrinsicSize.Max)
+                    .widthIn(min = minWidth)
+                    .frame(2.dp, Palette.accent, Palette.background)
+                    .holdsKeys(start = selectedFocus.takeIf { selected in options })
+                    .verticalScroll(rememberScrollState())
+                    .padding(4.dp),
+            ) {
+                for (option in options) {
+                    val current = option == selected
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .then(if (current) Modifier.focusRequester(selectedFocus) else Modifier)
+                            .clickable {
+                                onDismiss()
+                                onPick(option)
+                            }.padding(horizontal = 10.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
+                        Column(Modifier.weight(1f)) {
+                            BasicText(label(option), style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
+                            sublabel?.invoke(option)?.let { BasicText(it, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small)) }
+                        }
                     }
                 }
+                footer()
             }
-            footer()
         }
     }
 }
