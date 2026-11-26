@@ -47,6 +47,9 @@ interface Host {
         slot: Int,
     ) {}
 
+    /** `x = paste()` in onTap or onLongPress: the Android clipboard's text goes into [slot] at once, "" when it holds none. */
+    fun pasteInto(slot: Int) {}
+
     /**
      * `post(url, body, headers)` in a handler: an HTTP POST, with a map or list [body] sent as JSON. With a
      * [slot] (`x = post(...)`), the answer goes there as `{code, ok, out}` when it arrives. [method] is

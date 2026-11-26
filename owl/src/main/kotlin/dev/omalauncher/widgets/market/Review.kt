@@ -271,6 +271,7 @@ class Review(
                 Regex("""^read the phone's calls and contacts""") to "sees who you called and were called by, and your contacts; check nothing sends them elsewhere",
                 Regex("""^place phone calls""") to "places phone calls as you; check which numbers it calls and when",
                 Regex("""^delete calls from the call log""") to "deletes calls from the phone's call log; check it deletes only the one you swiped or tapped",
+                Regex("""^read the clipboard""") to "reads what you copied (passwords, codes) when you tap; check nothing sends it elsewhere",
                 Regex("""^read and change the AirPods""") to "reads and changes the AirPods connected to the phone; check where it sends what it reads",
                 Regex("""^read Android notifications""") to "sees every notification on the phone; check nothing sends them anywhere",
                 Regex("""^reply to notifications as you""") to "sends messages as you through other apps; check when it replies and what it says",

@@ -1,5 +1,5 @@
 app "phone" {
-  meta { owl: 26; description: "Your calls in one list, the phone's and WhatsApp's or Messenger's alike, grouped by day; your contacts, searched by name or number; and a keypad. A tap on the handset calls back, and a call swiped away is deleted. Nothing is read until you tap allow"; version: "1.0"; license: "MIT"; category: "productivity" }
+  meta { owl: 26; description: "Your calls in one list, the phone's and WhatsApp's or Messenger's alike, grouped by day; your contacts, searched by name or number; and a keypad, where holding the number pastes one copied. A tap on the handset calls back, and a call swiped away is deleted. Nothing is read until you tap allow"; version: "1.0"; license: "MIT"; category: "productivity" }
   title: "phone"
   // The tab bar runs along the bottom, above the navigation bar.
   edge: true
@@ -47,6 +47,7 @@ app "phone" {
   state callAt = 0                  // when a call key was tapped: it shows busy, and a second tap places no second call
   state callId = ""                 // which call key that was
   state filledAt = 0                // when the empty keypad brought back the last number, so a double tap doesn't call it
+  state clip = ""                   // the clipboard, read for a moment by a long press on the keypad's number
   state voipHint = true persist     // the notification-access banner, until it's closed
   // The call being swiped, by id, and how far; and those just let go of to delete, hidden until the list leaves them out.
   state dragging = ""
@@ -552,12 +553,33 @@ app "phone" {
           }
         }
       }
-      Box {
+      // The number on a faint line, as the search's, so it shows where to hold to paste.
+      Column {
         fill: width
         height: 64
-        align: center
-        padding: [24, 0]
-        Text { text: digits == "" ? " " : digits; fontSize: min(36, ((screenWidth ?? 400) - 48) * 1.5 / max(len(digits), 10)); fontWeight: 300; align: center; maxLines: 1 }
+        gap: 0
+        padding: [32, 0, 32, 4]
+        ripple: false
+        // A long press pastes a number copied anywhere, as phones' dialers do, in place of what's typed: the first one of
+        // seven characters or more in the text, else the first at all (112), written any way ("+420 777 123 456" with web
+        // pages' hard spaces, "(777) 123-456"); 00 is the + of an international one. The clipboard isn't kept, and text
+        // with no number, or one too long for the keypad, leaves it as it was.
+        onLongPress: {
+          clip = paste()
+          let copied = clip
+          clip = ""
+          let pastedRun = match(copied, "[+]?[0-9*#](?:[-\\u2010-\\u2015 \\u00a0\\u2009\\u202f().]*[0-9*#]){6,}") ?? match(copied, "[+]?[0-9*#][-0-9*# ().]*") ?? ""
+          let pastedDigits = join(matchAll(pastedRun, "[0-9*#]"), "")
+          let pasted = startsWith(pastedRun, "+") ? "+${pastedDigits}" : (startsWith(pastedDigits, "00") && len(pastedDigits) > 6 ? "+${sub(pastedDigits, 2, len(pastedDigits))}" : pastedDigits)
+          if pastedDigits != "" && len(pasted) <= 24 { digits = pasted }
+        }
+        Box {
+          weight: 1
+          fill: width
+          align: center
+          Text { text: digits == "" ? " " : digits; fontSize: min(36, ((screenWidth ?? 400) - 64) * 1.5 / max(len(digits), 10)); fontWeight: 300; align: center; maxLines: 1 }
+        }
+        Box { fill: width; height: 1; background: alpha(muted, digits != "" ? 0.6 : 0.35) }
       }
       Column {
         fill: width

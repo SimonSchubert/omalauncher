@@ -186,6 +186,9 @@ interface Services {
         done: (Value) -> Unit,
     ) = done(Lst(emptyList()))
 
+    /** The Android clipboard's text, "" when it holds none, for `x = paste()`. */
+    fun clipboardText(): String = ""
+
     /** Runs an action; [done] is called once its effects should be visible, to refresh the widget that ran it. */
     fun act(
         name: String,
@@ -546,6 +549,13 @@ class WidgetInstance(
         key: String,
         slot: Int,
     ) = services.shortcuts(key) { list -> write(slot, list) }
+
+    // What you copied stays yours: read only for a tap or a long press, never on a timer or a fetched value (the compiler
+    // allows it nowhere else; this catches a trigger all the same).
+    override fun pasteInto(slot: Int) {
+        if (inTrigger) return report("paste() works in a handler of a touch like onTap, not in a trigger")
+        write(slot, Str(services.clipboardText()))
+    }
 
     /** How many `x = post(...)` have been sent into each state, by slot. */
     private val posts = java.util.concurrent.ConcurrentHashMap<Int, Int>()

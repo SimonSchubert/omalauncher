@@ -1500,6 +1500,15 @@ class Compiler private constructor(
                     commands += "read an app's shortcuts (the actions its long-press menu offers)"
                     val run: (Env) -> Unit = { env -> env.host.shortcutsInto(key(env).toString(), slot) }
                     run
+                } else if (call?.name == "paste") {
+                    // x = paste(): the clipboard's text, there at once for the statements after it. Only for a tap or a long
+                    // press, so a widget can't read what you copied on a timer, a fetched value or a web page's events.
+                    if (call.args.isNotEmpty() || call.named.isNotEmpty()) fail("paste takes no values: x = paste()", call.pos)
+                    since("paste", call.pos)
+                    if (handlerName !in PASTE_HANDLERS) fail("paste() reads the clipboard, so it works only in onTap or onLongPress, where you ask for it", call.pos)
+                    commands += "read the clipboard when you tap or long-press"
+                    val run: (Env) -> Unit = { env -> env.host.pasteInto(slot) }
+                    run
                 } else {
                     val v = ex(s.value, scope)
                     val run: (Env) -> Unit = { env -> env.host.write(slot, v(env)) }
@@ -1510,6 +1519,7 @@ class Compiler private constructor(
                 val call = s.call as Expr.Call
                 if (call.name == "post") return post(call, scope, null)
                 if (call.name == "send") return send(call, scope)
+                if (call.name == "paste") fail("paste() puts the clipboard's text into a state: pasted = paste()", call.pos)
                 if (call.name == "shortcuts") fail("shortcuts(...) puts an app's shortcuts into a state, when they've loaded: menuShortcuts = shortcuts(a.key)", call.pos)
                 val arity = Builtins.actions[call.name] ?: fail("'${call.name}' isn't an action (${Builtins.actions.keys.joinToString()})", call.pos)
                 if (call.args.size !in arity) fail("${call.name} takes ${arity.first}-${arity.last} values", call.pos)
@@ -2065,6 +2075,7 @@ class Compiler private constructor(
     ): Ev {
         // str.count(n) is a text that takes values; get(str, key) and the like are the built-ins they are.
         if (e.args.isNotEmpty() && isTexts(e.args[0], s) && (e.name in texts!! || e.name !in Builtins.all)) return textCall(e, s)
+        if (e.name == "paste") fail("paste() puts the clipboard's text into a state, in onTap or onLongPress: pasted = paste()", e.pos)
         if (e.name == "speech") fail("speech(...) is an action and gives nothing back: tap with onTap: speech(\"toggle\"), and read what's heard from source said = android.speech", e.pos)
         if (e.name in Builtins.actions) fail("${e.name}(...) is an action; use it in a handler like onTap", e.pos)
         if (e.name in setOf("history", "prev")) fail("${e.name}(...) keeps samples over time, so it only works as: let x = ${e.name}(...)", e.pos)

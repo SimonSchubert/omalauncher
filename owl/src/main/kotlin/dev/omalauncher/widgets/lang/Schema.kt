@@ -210,7 +210,9 @@ internal val SINCE =
         // owl 26: talking to the agent in Voice about an owl app, to change it.
         mapOf("appAction(\"voice\")" to 26) +
         // owl 28: the phone's calls (its own and other apps' calls) and contacts, for a phone app.
-        listOf("android.calls", "calls").associateWith { 28 }
+        listOf("android.calls", "calls").associateWith { 28 } +
+        // owl 28: the clipboard's text, read when a touch asks for it, like a number pasted into a keypad.
+        mapOf("paste" to 28)
 
 /** The level from which a file that shows a right-to-left language's `strings` set is laid out right to left; see [Program.rtl]. */
 internal const val RTL_LEVEL = 27
@@ -383,6 +385,9 @@ internal class Words(
     val numbers: Boolean = false,
     val forms: Map<String, Pair<IntRange, String>> = emptyMap(),
 )
+
+/** The handlers paste() works in (owl 28): a touch that asks for it, never a page's or a source's event. */
+internal val PASTE_HANDLERS = setOf("onTap", "onLongPress")
 
 /** The handlers calls("call") works in (owl 28): a finger that has lifted, never a page's or a source's event. */
 internal val CALL_HANDLERS = setOf("onTap", "onLongPress")

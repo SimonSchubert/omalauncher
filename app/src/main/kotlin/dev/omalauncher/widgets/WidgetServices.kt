@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets
 
+import dev.omalauncher.system.clipboardText
 import dev.omalauncher.system.copyText
 import dev.omalauncher.system.registerNotExported
 import dev.omalauncher.system.shareText
@@ -60,6 +61,7 @@ import dev.omalauncher.widgets.lang.sha256Hex
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.Builtins
 import dev.omalauncher.widgets.lang.KeyNames
+import dev.omalauncher.widgets.lang.MAX_TEXT
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
@@ -1083,6 +1085,8 @@ class WidgetServices(
         if (agent == null) return launcherAction?.invoke("agents") ?: runtime.openSettings(SettingsPage.Agents)
         runtime.terminal("${agentInvocation(agent.bin, p)}; exec bash", agent.name, agent)
     }
+
+    override fun clipboardText(): String = context.clipboardText(MAX_TEXT)
 
     private fun copy(text: String) {
         context.copyText("widget", text)

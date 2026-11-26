@@ -22,6 +22,13 @@ fun Context.copyText(
     text: String,
 ) = getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(label, text))
 
+/**
+ * The clipboard's text, at most [max] characters; "" when it holds none (a link to another app's file or an intent isn't
+ * opened or spelt out), or Android won't say (another app has focus).
+ */
+fun Context.clipboardText(max: Int): String =
+    getSystemService(ClipboardManager::class.java).primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString().orEmpty().take(max)
+
 /** Android's share sheet for [text], to send it to any app. */
 fun Context.shareText(
     text: String,

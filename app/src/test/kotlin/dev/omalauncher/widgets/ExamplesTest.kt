@@ -1,10 +1,15 @@
 package dev.omalauncher.widgets
 
+import dev.omalauncher.widgets.lang.Budget
 import dev.omalauncher.widgets.lang.Builtins
 import dev.omalauncher.widgets.lang.CompileError
 import dev.omalauncher.widgets.lang.Compiler
+import dev.omalauncher.widgets.lang.Env
+import dev.omalauncher.widgets.lang.Host
 import dev.omalauncher.widgets.lang.OwlKind
 import dev.omalauncher.widgets.lang.Source
+import dev.omalauncher.widgets.lang.Str
+import dev.omalauncher.widgets.lang.Value
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -27,6 +32,62 @@ class ExamplesTest {
     @Test fun everyExampleCompiles() {
         assertTrue("no examples found", examples.size >= 8)
         for (f in examples) compile(f.name, f.readText())
+    }
+
+    /** The phone app's keypad pastes the first number in what was copied, written any way, and leaves the keypad be without one. */
+    @Test fun phoneKeypadPastesANumber() {
+        val src = File("src/main/assets/widgets/examples/phone.owl").readText()
+        val start = src.indexOf("onLongPress: {\n          clip = paste()")
+        assertTrue("phone.owl's keypad has no paste", start >= 0)
+        val handler = src.substring(start + "onLongPress: ".length, src.indexOf("\n        }\n", start) + "\n        }".length)
+        val p = compile("paste", "widget {\n meta { owl: 26 }\n state digits = \"12\"\n state clip = \"\"\n onTap: $handler\n Text { text: digits }\n}")
+        for ((copied, digits) in listOf(
+            "+420 777 123 456" to "+420777123456",
+            // Web pages' hard and thin spaces, and their hyphens.
+            "+420\u00a0777\u00a0123\u00a0456" to "+420777123456",
+            "777\u2011123\u2011456" to "777123456",
+            "777\u2013123\u2013456" to "777123456",
+            "call me at (777) 123-456 tomorrow" to "777123456",
+            // The number, not the first digit in the text.
+            "Jan Novák, Dlouhá 5, 110 00 Praha, +420 777 123 456" to "+420777123456",
+            "Meeting at 14:30, call 777123456" to "777123456",
+            "112" to "112",
+            // Too long for the keypad: it isn't cut into a different number to call.
+            "1234 5678 9012 3456 7890 1234 5678" to "12",
+            "00420777123456" to "+420777123456",
+            "*#06#" to "*#06#",
+            "no number here" to "12",
+            "" to "12",
+        )) {
+            val slots = arrayOf<Value>(Str("12"), Str(""))
+            val host =
+                object : Host {
+                    override val budget = Budget()
+
+                    override fun read(slot: Int) = slots[slot]
+
+                    override fun write(
+                        slot: Int,
+                        value: Value,
+                    ) {
+                        slots[slot] = value
+                    }
+
+                    override fun theme(name: String): Int? = null
+
+                    override fun time() = 0.0
+
+                    override fun act(
+                        name: String,
+                        args: List<Value>,
+                    ) {}
+
+                    override fun pasteInto(slot: Int) = write(slot, Str(copied))
+                }
+            p.onTap!!.run(Env.root(host), emptyList())
+            assertEquals(copied, Str(digits), slots[0])
+            assertEquals("the clipboard isn't kept", Str(""), slots[1])
+        }
     }
 
     /** The store's built-in agent tiles. */

@@ -73,6 +73,13 @@ class LangTest {
         ) {
             actions += "send $slot $message"
         }
+
+        var clipboard = ""
+
+        override fun pasteInto(slot: Int) {
+            slots[slot] = Str(clipboard)
+            actions += "paste $slot"
+        }
     }
 
     /** Compiles a widget with one Text and evaluates its text. */
@@ -290,6 +297,26 @@ class LangTest {
         p.onTap!!.run(Env.root(host), emptyList())
         assertEquals(listOf("runInto 0 date", "copy null", "notify hi, null", "androidApp org.pkg"), host.actions)
         assertEquals(listOf("date"), p.commands)
+    }
+
+    @Test fun pasteGivesTheClipboardToTheStatementsAfterIt() {
+        val p = Compiler.compile("widget {\n meta { owl: 26 }\n state clip = \"\"\n state n = 0\n onTap: { clip = paste(); n = len(clip); clip = \"\" }\n Text { text: n }\n}")
+        val host = TestHost(p)
+        host.clipboard = "+420 777"
+        p.onTap!!.run(Env.root(host), emptyList())
+        assertEquals(listOf(Str(""), Num(8.0)), host.slots.take(2))
+        assertEquals(listOf("paste 0"), host.actions)
+        assertEquals(listOf("read the clipboard when you tap or long-press"), p.commands)
+        // Only into a state, with no values, from a touch, at owl 26.
+        val widget = "widget {\n meta { owl: 26 }\n state clip = \"\"\n"
+        assertTrue(compileError("$widget onTap: paste()\n Text { text: clip } }").contains("puts the clipboard's text into a state"))
+        assertTrue(compileError("$widget onTap: clip = paste(1)\n Text { text: clip } }").contains("paste takes no values"))
+        assertTrue(compileError("$widget every 5s { clip = paste() }\n Text { text: clip } }").contains("only in onTap or onLongPress"))
+        // A web page's events aren't a touch: a page could read it whenever it changes its title.
+        assertTrue(compileError("$widget Browser { url: \"https://x.test\"; onTitle: clip = paste() } }").contains("only in onTap or onLongPress"))
+        assertTrue(compileError("$widget Text { text: paste() } }").contains("puts the clipboard's text into a state"))
+        assertTrue(compileError("$widget onTap: { let c = paste() }\n Text { text: clip } }").contains("puts the clipboard's text into a state"))
+        assertTrue(compileError("widget {\n meta { owl: 25 }\n state clip = \"\"\n onTap: clip = paste()\n Text { text: clip } }").contains("needs owl 26"))
     }
 
     @Test fun httpSources() {
