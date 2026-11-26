@@ -146,10 +146,17 @@ JNIEXPORT void JNICALL FN(munmap)(JNIEnv *env, jclass cls, jlong ptr, jint size)
 // or a bounds check below may have a gap (SIGSEGV off the mapping entirely);
 // guard reads against both so a misbehaving client can't take down the launcher.
 static __thread sigjmp_buf *fault_jmp;
+// Which signal the current fault_jmp recovery is for, so callers can log
+// SIGBUS (expected: a client shrank its pool file under us) separately from
+// SIGSEGV (a bug: a gap in a bounds check let a read land off the mapping).
+static __thread int fault_sig;
 static struct sigaction old_bus, old_segv;
 
 static void on_fault(int sig, siginfo_t *info, void *ctx) {
-    if (fault_jmp) siglongjmp(*fault_jmp, 1);
+    if (fault_jmp) {
+        fault_sig = sig;
+        siglongjmp(*fault_jmp, 1);
+    }
     sigaction(sig, sig == SIGBUS ? &old_bus : &old_segv, NULL);
     raise(sig);
 }
@@ -242,7 +249,7 @@ JNIEXPORT jint JNICALL FN(storeCopy)(JNIEnv *env, jclass cls, jlong shm, jint sh
             }
         }
     } else {
-        __android_log_print(ANDROID_LOG_WARN, TAG, "signal reading client buffer");
+        __android_log_print(ANDROID_LOG_WARN, TAG, "%s reading client buffer", strsignal(fault_sig));
         result = -1;
     }
     fault_jmp = NULL;
