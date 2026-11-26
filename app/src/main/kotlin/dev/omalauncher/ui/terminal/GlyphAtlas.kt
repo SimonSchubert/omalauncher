@@ -14,9 +14,14 @@ import androidx.core.graphics.withClip
  * cell textured from here and tinted with its colour, however many colours the row has (btop's graphs, a colour
  * test). Slots are a cell wide or two (wide characters) and a cell tall, a pixel apart. A white block at the top
  * left textures backgrounds and lines. Colour emoji keep their own colours: [COLORED] marks them, to be tinted white.
- * Starts small and doubles when full, up to [MAX]; past that it starts over. Main thread.
+ * Starts small and doubles when full, up to [MAX]; past that it starts over. Terminals with the same font and size
+ * share one ([join]). Main thread.
  */
-internal class GlyphAtlas {
+internal class GlyphAtlas private constructor(
+    private val key: Any,
+    private val cellW: Int,
+    private val cellH: Int,
+) {
     var bitmap: Bitmap = createBitmap(START, START)
         private set
     private var canvas = Canvas(bitmap)
@@ -28,56 +33,85 @@ internal class GlyphAtlas {
     var generation = 0
         private set
 
-    private var cellW = 0
-    private var cellH = 0
+    /** Each terminal drawing from here, as what to call when [generation] goes up. */
+    private val users = ArrayList<() -> Unit>()
+
     private var x = 0
     private var y = 0
 
-    /** Slots of one-code-point glyphs by [key], and of longer ones by their text and [key] bits. */
+    /** Slots of one-code-point glyphs by [key], and of longer ones by their text, a map per face and width. */
     private val singles = LongIntMap()
-    private val clusters = HashMap<String, Int>()
+    private val clusters = Array(8) { HashMap<String, Int>() }
     private var pixels = IntArray(0)
 
     init {
-        reset(1, 1)
+        start()
     }
 
-    /** The cell size changed (font, zoom): every slot is drawn again. */
-    fun reset(
-        cellWidth: Int,
-        cellHeight: Int,
-    ) {
-        cellW = cellWidth
-        cellH = cellHeight
-        clear()
-    }
-
-    private fun clear() {
-        singles.clear()
-        clusters.clear()
-        bitmap.eraseColor(Color.TRANSPARENT)
+    /** An empty [bitmap] but for the white block. */
+    private fun start() {
         canvas.drawRect(0f, 0f, WHITE.toFloat(), WHITE.toFloat(), Paint().apply { color = Color.WHITE })
         x = WHITE + GAP
         y = 0
         paint.shader = BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
-        generation++
     }
 
+    /** No longer [moved]'s atlas; the last one to leave frees it. */
+    fun leave(moved: () -> Unit) {
+        users -= moved
+        if (users.isEmpty() && shared[key] === this) shared.remove(key)
+    }
+
+    private fun moved() {
+        generation++
+        for (user in users) user()
+    }
+
+    /** Full at its largest: every slot is drawn again, into a bitmap of that size. */
+    private fun startOver() {
+        singles.clear()
+        clusters.forEach { it.clear() }
+        // A new one, not this one erased: rows other terminals drew show the old one until they're drawn again.
+        bitmap = createBitmap(bitmap.width, bitmap.height)
+        canvas = Canvas(bitmap)
+        start()
+        moved()
+    }
+
+    private fun bits(
+        face: Int,
+        span: Int,
+    ) = face shl 1 or (span - 1)
+
+    private fun key(
+        cp: Int,
+        face: Int,
+        span: Int,
+    ) = cp.toLong() shl 3 or bits(face, span).toLong()
+
     /**
-     * The slot of [text] in face [face] (0-3) [span] cells wide, drawn by [draw] at its top left if new; packed as
-     * [slotX], [slotY] and [COLORED]. -1 when it can't be had (a cell bigger than the atlas).
+     * The slot of code point [cp], or of [text] for a cell of several, in face [face] (0-3) [span] cells wide (1 or
+     * 2): packed as [slotX], [slotY] and [COLORED], or -1 while it has none ([add]). Called for every cell drawn, so
+     * it allocates nothing.
      */
-    fun slot(
+    fun find(
+        cp: Int,
+        text: String?,
+        face: Int,
+        span: Int,
+    ): Int = if (text == null) singles[key(cp, face, span)] else clusters[bits(face, span)][text] ?: -1
+
+    /**
+     * A slot for a glyph [find] didn't have, drawn by [draw] at its top left. -1 when it can't be had (a cell
+     * bigger than the atlas).
+     */
+    fun add(
         cp: Int,
         text: String?,
         face: Int,
         span: Int,
         draw: (Canvas, Float, Float, Float) -> Unit,
     ): Int {
-        val bits = face shl 1 or (span - 1)
-        val key = if (text == null) cp.toLong() shl 3 or bits.toLong() else -1L
-        val found = if (text == null) singles[key] else clusters["$bits$text"] ?: -1
-        if (found != -1) return found
         val w = cellW * span
         if (w + GAP > MAX || cellH + GAP > MAX) return -1
         if (x + w > bitmap.width) {
@@ -86,7 +120,7 @@ internal class GlyphAtlas {
         }
         if (y + cellH > bitmap.height) {
             grow()
-            return slot(cp, text, face, span, draw)
+            return add(cp, text, face, span, draw)
         }
         // The white block sits left of the first shelf's first slot, never in one.
         val sx = x
@@ -95,7 +129,7 @@ internal class GlyphAtlas {
         x = sx + w + GAP
         var packed = sx shl 14 or sy
         if (colored(sx, sy, w)) packed = packed or COLORED
-        if (text == null) singles[key] = packed else clusters["$bits$text"] = packed
+        if (text == null) singles[key(cp, face, span)] = packed else clusters[bits(face, span)][text] = packed
         return packed
     }
 
@@ -123,7 +157,7 @@ internal class GlyphAtlas {
     private fun grow() {
         val size = bitmap.width * 2
         if (size > MAX) {
-            clear()
+            startOver()
             return
         }
         val bigger = createBitmap(size, size)
@@ -136,10 +170,24 @@ internal class GlyphAtlas {
         x = 0
         y = size / 2
         paint.shader = BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
-        generation++
+        moved()
     }
 
     companion object {
+        private val shared = HashMap<Any, GlyphAtlas>()
+
+        /**
+         * The atlas of [key], which stands for how glyphs are drawn (the faces and their size), with cells of
+         * [cellWidth] by [cellHeight]: one for all terminals of that key. [moved] is called when its [generation]
+         * goes up, also while that terminal draws; [leave] with it when done.
+         */
+        fun join(
+            key: Any,
+            cellWidth: Int,
+            cellHeight: Int,
+            moved: () -> Unit,
+        ): GlyphAtlas = shared.getOrPut(key) { GlyphAtlas(key, cellWidth, cellHeight) }.also { it.users += moved }
+
         const val COLORED = 1 shl 28
         private const val START = 512
         private const val MAX = 4096

@@ -105,6 +105,33 @@ class TerminalSessionTest {
         assertEquals("ready", s.vt.text())
     }
 
+    @Test fun aProgramThatDoesNotReadHoldsNobodyUp() {
+        val s = sh("stty raw -echo; echo ready; sleep 30")
+        s.awaitText("ready")
+        // Far more than a terminal buffers: taken at once, and hanging up still ends the shell.
+        val started = System.nanoTime()
+        assertTrue(s.send(ByteArray(1 shl 20) { 'x'.code.toByte() }))
+        assertTrue(s.type("more"))
+        assertTrue("send waited", System.nanoTime() - started < 2_000_000_000)
+        s.hangUp()
+        assertEquals(128 + 1, s.awaitExit())
+    }
+
+    @Test fun aLotOfInputArrivesWholeAndInOrder() {
+        val s = sh("stty raw -echo; echo ready; head -c 300003 | cksum")
+        s.awaitText("ready")
+        val block = ByteArray(100_000) { ('a' + it % 26).code.toByte() }
+        repeat(3) { assertTrue(s.send(block)) }
+        s.type("end")
+        // cksum of that input, as `cksum` prints it for the same bytes from a file.
+        val all = block + block + block + "end".encodeToByteArray()
+        val file = java.io.File.createTempFile("input", ".bin").apply { deleteOnExit() }
+        file.writeBytes(all)
+        val expected = ProcessBuilder("cksum", file.path).start().inputStream.bufferedReader().readText().substringBefore(' ')
+        s.awaitText(expected)
+        assertEquals(0, s.awaitExit())
+    }
+
     @Test fun endsWhenTheProgramDoes() {
         val s = sh("exit 0")
         assertEquals(0, s.awaitExit())

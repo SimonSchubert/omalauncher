@@ -3,12 +3,14 @@ package dev.omalauncher.terminal
 import dev.omalauncher.linux.Proot
 import dev.omalauncher.linux.shellQuote
 import java.io.IOException
+import java.util.concurrent.LinkedBlockingQueue
 import kotlin.concurrent.thread
 
 /**
  * A program on a pseudo-terminal, with [vt] the screen it draws: what it writes is read on a thread of the
- * session's own into [vt] ([onOutput] after each read), keys and text go to it with [press] and [type], and
- * [hangUp] closes the terminal as closing foot's window does. [onExit] gets its exit code, on that thread.
+ * session's own into [vt] ([onOutput] after each read), keys and text go to it with [press] and [type] (written
+ * by a second thread, so a program that isn't reading holds up neither the caller nor the reading), and
+ * [hangUp] closes the terminal as closing foot's window does. [onExit] gets its exit code, on the reading thread.
  * [vt] stays readable after the program ends, until [close]. Needs [TerminalLibrary.available].
  */
 class TerminalSession(
@@ -37,7 +39,14 @@ class TerminalSession(
 
     /** Guards [fd] and [wakeWrite]: once the reading thread closes them, their numbers may belong to other files. */
     private val lock = Any()
-    private var open = true
+
+    /** Whether [send] still takes anything, and whether the files are closed: [lock] guards the second. */
+    @Volatile private var open = true
+    private var closed = false
+
+    /** What [send] was given, for [writer] to write in that order; [END] stops it. */
+    private val outbox = LinkedBlockingQueue<ByteArray>()
+    private val writer: Thread
 
     /** The program's exit code, once it has ended. */
     @Volatile var exitCode: Int? = null
@@ -56,7 +65,15 @@ class TerminalSession(
         wakeRead = wake[0]
         wakeWrite = wake[1]
         if (cellWidth > 0 && cellHeight > 0) PtyNative.resize(fd, rows, cols, cols * cellWidth, rows * cellHeight)
+        writer = thread(name = "terminal-$pid-keys", isDaemon = true) { write() }
         thread(name = "terminal-$pid", isDaemon = true) { pump() }
+    }
+
+    private fun write() {
+        while (true) {
+            val bytes = outbox.take()
+            if (bytes === END || !PtyNative.write(fd, wakeRead, bytes, 0, bytes.size)) break
+        }
     }
 
     private fun pump() {
@@ -64,16 +81,21 @@ class TerminalSession(
         while (true) {
             val n = PtyNative.read(fd, wakeRead, buf)
             if (n <= 0) break
-            vt.write(buf, n)
-            vt.replies()?.let(::send)
-            for (e in vt.events()) onEvent(e)
+            val left = vt.write(buf, n)
+            if (left and Vt.REPLIES != 0) vt.replies()?.let(::send)
+            if (left and Vt.EVENTS != 0) for (e in vt.events()) onEvent(e)
             onOutput()
         }
+        // The writer first, out of whatever it waits in, as it uses the same files.
+        open = false
+        outbox.put(END)
+        synchronized(lock) { PtyNative.wake(wakeWrite) }
+        writer.join()
         // Closing the master hangs the terminal up: its session leader gets SIGHUP, as when foot's window closes.
         synchronized(lock) {
-            open = false
             PtyNative.close(fd)
             PtyNative.close(wakeWrite)
+            closed = true
         }
         PtyNative.close(wakeRead)
         val code = PtyNative.waitFor(pid)
@@ -81,8 +103,15 @@ class TerminalSession(
         onExit(code)
     }
 
-    /** Sends [bytes] to the program as typed; false once the terminal is closed. */
-    fun send(bytes: ByteArray): Boolean = synchronized(lock) { open && PtyNative.write(fd, bytes, 0, bytes.size) }
+    /**
+     * Sends [bytes] to the program as typed, after what was sent before; false once the terminal is closed. Doesn't
+     * wait for the program to take them.
+     */
+    fun send(bytes: ByteArray): Boolean {
+        if (!open) return false
+        outbox.put(bytes)
+        return true
+    }
 
     /** Sends [text] as typed: characters, not keys, so the program's key protocol doesn't apply. */
     fun type(text: String) = send(text.encodeToByteArray())
@@ -109,7 +138,7 @@ class TerminalSession(
         cellHeight: Int = 0,
     ) {
         vt.resize(cols, rows, cellWidth, cellHeight)
-        synchronized(lock) { if (open) PtyNative.resize(fd, rows, cols, cols * cellWidth, rows * cellHeight) }
+        synchronized(lock) { if (!closed) PtyNative.resize(fd, rows, cols, cols * cellWidth, rows * cellHeight) }
     }
 
     /**
@@ -117,7 +146,7 @@ class TerminalSession(
      * as after closing foot. [onExit] follows once the program has ended.
      */
     fun hangUp() {
-        synchronized(lock) { if (open) PtyNative.wake(wakeWrite) }
+        synchronized(lock) { if (!closed) PtyNative.wake(wakeWrite) }
     }
 
     /** Hangs up and frees [vt]. */
@@ -128,6 +157,7 @@ class TerminalSession(
 
     companion object {
         private const val BUFFER = 64 * 1024
+        private val END = ByteArray(0)
 
         /**
          * A terminal in the guest, as foot opens one: the guest's login shell for root, or `bash -c` [command].

@@ -28,6 +28,12 @@ typedef struct {
     size_t reply_len, reply_cap;
     // Synchronized output (mode 2026): the program asked for the screen not to be drawn yet.
     int held;
+    // The grid cells() last read: another one is read whole.
+    int read_cols, read_rows;
+    // Which row was where at that read, ids_rows of them (0: not known), and room for the next read's: a screen
+    // that only scrolled is told by them.
+    GhosttyRenderStateRowId *ids, *ids_next;
+    int ids_rows, ids_cap;
     // What happened since events() last asked: bells, a new title, a clipboard write (OSC 52), a notification
     // (OSC 9/777). Strings are malloc'd, NULL when there is none.
     int bells;
@@ -119,6 +125,8 @@ static void destroy(Vt *v) {
     if (v->term) ghostty_terminal_free(v->term);
     pthread_mutex_destroy(&v->lock);
     free(v->reply);
+    free(v->ids);
+    free(v->ids_next);
     free(v->clipboard);
     free(v->notify_title);
     free(v->notify_body);
@@ -173,16 +181,19 @@ JNIEXPORT void JNICALL FN(free)(JNIEnv *env, jclass cls, jlong h) {
     if (h) destroy(vt(h));
 }
 
-// Feeds len bytes the program wrote.
-JNIEXPORT void JNICALL FN(write)(JNIEnv *env, jclass cls, jlong h, jbyteArray jbuf, jint len) {
+// Feeds len bytes the program wrote. Returns what that left to fetch: 1 for replies(), 2 for events(), or both.
+JNIEXPORT jint JNICALL FN(write)(JNIEnv *env, jclass cls, jlong h, jbyteArray jbuf, jint len) {
     (void)cls;
     Vt *v = vt(h);
     jbyte *buf = (*env)->GetByteArrayElements(env, jbuf, NULL);
-    if (!buf) return;
+    if (!buf) return 0;
     pthread_mutex_lock(&v->lock);
     ghostty_terminal_vt_write(v->term, (const uint8_t *)buf, (size_t)len);
+    jint left = (v->reply_len ? 1 : 0) |
+                (v->bells || v->title_changed || v->clipboard || v->notify_title || v->notify_body ? 2 : 0);
     pthread_mutex_unlock(&v->lock);
     (*env)->ReleaseByteArrayElements(env, jbuf, buf, JNI_ABORT);
+    return left;
 }
 
 // What the terminal has answered the program since the last call, or null.
@@ -198,12 +209,6 @@ JNIEXPORT jbyteArray JNICALL FN(replies)(JNIEnv *env, jclass cls, jlong h) {
     }
     pthread_mutex_unlock(&v->lock);
     return out;
-}
-
-JNIEXPORT jboolean JNICALL FN(held)(JNIEnv *env, jclass cls, jlong h) {
-    (void)env;
-    (void)cls;
-    return vt(h)->held ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT void JNICALL FN(resize)(JNIEnv *env, jclass cls, jlong h, jint cols, jint rows, jint cellWidth, jint cellHeight) {
@@ -273,120 +278,297 @@ JNIEXPORT jbyteArray JNICALL FN(text)(JNIEnv *env, jclass cls, jlong h) {
 
 static jint argb(GhosttyColorRgb c) { return (jint)(0xff000000u | (uint32_t)c.r << 16 | (uint32_t)c.g << 8 | c.b); }
 
-// The cells on screen, row by row, into arrays of at least cols * rows: the first code point of each (0 for an
-// empty cell), foreground and background as ARGB (the defaults where the cell sets none) and Cells' flags (Vt.kt).
-// Cells of more than one code point (an emoji sequence, combining marks) also go into more, as {cell index, count,
-// code points...}. Returns INFO_* (Vt.kt): {cols, rows, cursor column, cursor row (-1, -1 when it's off the view),
-// cursor visible (0/1), filled (0 when the arrays are too small for cols * rows: nothing was written), cursor style
-// (GhosttyCursorStyle), ints used in more (minus what it needs when it was too small), default foreground, default background, cursor
-// colour (0 for none), cursor on a wide character's second cell (0/1)}, or null.
-JNIEXPORT jintArray JNICALL FN(cells)(JNIEnv *env, jclass cls, jlong h, jintArray jcp, jintArray jfg, jintArray jbg,
-                                      jintArray jflags, jintArray jmore) {
+static bool mode(Vt *v, uint16_t value, bool ansi) {
+    GhosttyTerminalModeConfig m = {.mode = ghostty_mode_new(value, ansi)};
+    return ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_MODE, &m) == GHOSTTY_SUCCESS && m.value;
+}
+
+// Vt.state's bits: what the program asked of the terminal, read together. With the lock held.
+static jint state(Vt *v) {
+    bool tracking = false;
+    ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_MOUSE_TRACKING, &tracking);
+    GhosttyTerminalScreen screen = GHOSTTY_TERMINAL_SCREEN_PRIMARY;
+    ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_ACTIVE_SCREEN, &screen);
+    bool bottom = true;
+    ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_VIEWPORT_ACTIVE, &bottom);
+    return (tracking ? 1 : 0) | (screen == GHOSTTY_TERMINAL_SCREEN_ALTERNATE ? 2 : 0) | (mode(v, 1007, false) ? 4 : 0) |
+           (mode(v, 1, false) ? 8 : 0) | (bottom ? 16 : 0) | (mode(v, 2004, false) ? 32 : 0) | (mode(v, 1004, false) ? 64 : 0) |
+           (v->held ? 128 : 0);
+}
+
+JNIEXPORT jint JNICALL FN(state)(JNIEnv *env, jclass cls, jlong h) {
+    (void)env;
     (void)cls;
     Vt *v = vt(h);
     pthread_mutex_lock(&v->lock);
-    GhosttyResult updated = ghostty_render_state_update(v->render, v->term);
+    jint s = state(v);
     pthread_mutex_unlock(&v->lock);
-    if (updated != GHOSTTY_SUCCESS) return NULL;
-    // The render state is a copy: read without the lock. Only one thread draws.
-    uint16_t cols = 0, rows = 0;
-    ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_COLS, &cols);
-    ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_ROWS, &rows);
-    jsize need = (jsize)cols * rows;
-    bool fits = (*env)->GetArrayLength(env, jcp) >= need && (*env)->GetArrayLength(env, jfg) >= need &&
-                (*env)->GetArrayLength(env, jbg) >= need && (*env)->GetArrayLength(env, jflags) >= need;
-    GhosttyRenderStateColors colors = GHOSTTY_INIT_SIZED(GhosttyRenderStateColors);
-    ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_COLORS, &colors);
-    GhosttyRenderStateCursor cursor = GHOSTTY_INIT_SIZED(GhosttyRenderStateCursor);
-    ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_CURSOR, &cursor);
+    return s;
+}
 
-    jint *cp = fits ? (*env)->GetIntArrayElements(env, jcp, NULL) : NULL;
-    jint *fg = fits ? (*env)->GetIntArrayElements(env, jfg, NULL) : NULL;
-    jint *bg = fits ? (*env)->GetIntArrayElements(env, jbg, NULL) : NULL;
-    jint *flags = fits ? (*env)->GetIntArrayElements(env, jflags, NULL) : NULL;
-    jsize more_cap = (*env)->GetArrayLength(env, jmore);
-    jint *more = fits ? (*env)->GetIntArrayElements(env, jmore, NULL) : NULL;
-    jint more_len = 0, more_need = 0;
-    bool filled = cp && fg && bg && flags && more;
-    if (filled) {
-        memset(cp, 0, sizeof(jint) * (size_t)need);
-        ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, &v->rows);
-        for (int y = 0; y < rows && ghostty_render_state_row_iterator_next(v->rows); y++) {
-            ghostty_render_state_row_get(v->rows, GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, &v->cells);
-            for (int x = 0; x < cols && ghostty_render_state_row_cells_next(v->cells); x++) {
-                int i = y * cols + x;
-                uint32_t glen = 0, cluster[16];
-                ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_LEN, &glen);
-                if (glen) {
-                    GhosttyCodepointBuffer b = {.ptr = cluster, .cap = 16};
-                    ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_BUF, &b);
-                    cp[i] = (jint)cluster[0];
-                    if (glen > 1) {
-                        uint32_t n = glen < 16 ? glen : 16;
-                        if (more_len + 2 + (jint)n <= more_cap) {
-                            more[more_len++] = i;
-                            more[more_len++] = (jint)n;
-                            for (uint32_t k = 0; k < n; k++) more[more_len++] = (jint)cluster[k];
-                        }
-                        more_need += 2 + (jint)n;
+// What cells() writes into its info array (Vt.kt has the same), and INFO_RESULT's values.
+enum {
+    INFO_RESULT,
+    INFO_COLS,
+    INFO_ROWS,
+    INFO_CURSOR_X,
+    INFO_CURSOR_Y,
+    INFO_CURSOR_VISIBLE,
+    INFO_CURSOR_STYLE,
+    INFO_CURSOR_COLOR,
+    INFO_CURSOR_WIDE_TAIL,
+    INFO_FG,
+    INFO_BG,
+    INFO_MORE,
+    INFO_STATE,
+    INFO_ALL,
+    INFO_SCROLLED,
+    INFO_COUNT
+};
+enum { RESULT_HELD, RESULT_READ, RESULT_SMALL, RESULT_MORE };
+
+// The arrays cells() fills, and how much of more is used and would be needed.
+typedef struct {
+    jint *cp, *fg, *bg, *flags, *more;
+    jsize more_cap;
+    jint more_len, more_need;
+} Out;
+
+// The row the iterator is on into the arrays from index at, cols cells. Whether any cell differs from what was there.
+static bool read_row(Vt *v, Out *o, int at, int cols, const GhosttyRenderStateColors *colors) {
+    bool changed = false;
+    jint default_fg = argb(colors->foreground), default_bg = argb(colors->background);
+    GhosttyRenderStateRowSelection sel = GHOSTTY_INIT_SIZED(GhosttyRenderStateRowSelection);
+    bool selected = ghostty_render_state_row_get(v->rows, GHOSTTY_RENDER_STATE_ROW_DATA_SELECTION, &sel) == GHOSTTY_SUCCESS;
+    ghostty_render_state_row_get(v->rows, GHOSTTY_RENDER_STATE_ROW_DATA_CELLS, &v->cells);
+    for (int x = 0; x < cols; x++) {
+        int i = at + x;
+        jint cp = 0, fg = default_fg, bg = default_bg, f = 0;
+        // A row shorter than the screen ends in empty cells.
+        if (ghostty_render_state_row_cells_next(v->cells)) {
+            uint32_t glen = 0, cluster[16];
+            ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_LEN, &glen);
+            if (glen) {
+                GhosttyCodepointBuffer b = {.ptr = cluster, .cap = 16};
+                ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_GRAPHEMES_BUF, &b);
+                cp = (jint)cluster[0];
+                if (glen > 1) {
+                    jint n = glen < 16 ? (jint)glen : 16;
+                    if (o->more_len + 2 + n <= o->more_cap) {
+                        o->more[o->more_len++] = i;
+                        o->more[o->more_len++] = n;
+                        for (jint k = 0; k < n; k++) o->more[o->more_len++] = (jint)cluster[k];
                     }
+                    o->more_need += 2 + n;
+                    f |= 1 << 12;
                 }
-                GhosttyColorRgb c;
-                int f = 0;
-                fg[i] = ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_FG_COLOR, &c) == GHOSTTY_SUCCESS
-                            ? argb(c) : argb(colors.foreground);
-                if (ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_BG_COLOR, &c) == GHOSTTY_SUCCESS) {
-                    bg[i] = argb(c);
-                    f |= 1 << 7;
-                } else {
-                    bg[i] = argb(colors.background);
-                }
-                GhosttyStyle st = {0};
-                ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE, &st);
-                if (st.flags & GHOSTTY_STYLE_FLAG_BOLD) f |= 1 << 0;
-                if (st.flags & GHOSTTY_STYLE_FLAG_ITALIC) f |= 1 << 1;
-                if (GHOSTTY_STYLE_UNDERLINE(st)) f |= 1 << 2;
-                if (st.flags & GHOSTTY_STYLE_FLAG_INVERSE) f |= 1 << 3;
-                if (st.flags & GHOSTTY_STYLE_FLAG_FAINT) f |= 1 << 6;
-                if (st.flags & GHOSTTY_STYLE_FLAG_STRIKETHROUGH) f |= 1 << 8;
-                if (st.flags & GHOSTTY_STYLE_FLAG_INVISIBLE) f |= 1 << 11;
-                bool selected = false;
-                ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_SELECTED, &selected);
-                if (selected) f |= 1 << 9;
-                GhosttyCell raw;
-                if (ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_RAW, &raw) == GHOSTTY_SUCCESS) {
-                    GhosttyCellWide w = GHOSTTY_CELL_WIDE_NARROW;
-                    ghostty_cell_get(raw, GHOSTTY_CELL_DATA_WIDE, &w);
-                    if (w == GHOSTTY_CELL_WIDE_WIDE) f |= 1 << 4;
-                    if (w == GHOSTTY_CELL_WIDE_SPACER_TAIL || w == GHOSTTY_CELL_WIDE_SPACER_HEAD) f |= 1 << 5;
-                    bool link = false;
-                    ghostty_cell_get(raw, GHOSTTY_CELL_DATA_HAS_HYPERLINK, &link);
-                    if (link) f |= 1 << 10;
-                }
-                flags[i] = f;
+            }
+            GhosttyColorRgb c;
+            if (ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_FG_COLOR, &c) == GHOSTTY_SUCCESS) fg = argb(c);
+            if (ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_BG_COLOR, &c) == GHOSTTY_SUCCESS) {
+                bg = argb(c);
+                f |= 1 << 7;
+            }
+            GhosttyStyle st = {0};
+            ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_STYLE, &st);
+            if (st.flags & GHOSTTY_STYLE_FLAG_BOLD) f |= 1 << 0;
+            if (st.flags & GHOSTTY_STYLE_FLAG_ITALIC) f |= 1 << 1;
+            if (GHOSTTY_STYLE_UNDERLINE(st)) f |= 1 << 2;
+            if (st.flags & GHOSTTY_STYLE_FLAG_INVERSE) f |= 1 << 3;
+            if (st.flags & GHOSTTY_STYLE_FLAG_FAINT) f |= 1 << 6;
+            if (st.flags & GHOSTTY_STYLE_FLAG_STRIKETHROUGH) f |= 1 << 8;
+            if (st.flags & GHOSTTY_STYLE_FLAG_INVISIBLE) f |= 1 << 11;
+            if (selected && x >= sel.start_x && x <= sel.end_x) f |= 1 << 9;
+            GhosttyCell raw;
+            if (ghostty_render_state_row_cells_get(v->cells, GHOSTTY_RENDER_STATE_ROW_CELLS_DATA_RAW, &raw) == GHOSTTY_SUCCESS) {
+                GhosttyCellWide w = GHOSTTY_CELL_WIDE_NARROW;
+                ghostty_cell_get(raw, GHOSTTY_CELL_DATA_WIDE, &w);
+                if (w == GHOSTTY_CELL_WIDE_WIDE) f |= 1 << 4;
+                if (w == GHOSTTY_CELL_WIDE_SPACER_TAIL || w == GHOSTTY_CELL_WIDE_SPACER_HEAD) f |= 1 << 5;
+                bool link = false;
+                ghostty_cell_get(raw, GHOSTTY_CELL_DATA_HAS_HYPERLINK, &link);
+                if (link) f |= 1 << 10;
             }
         }
+        if (o->cp[i] != cp || o->fg[i] != fg || o->bg[i] != bg || o->flags[i] != f) {
+            o->cp[i] = cp;
+            o->fg[i] = fg;
+            o->bg[i] = bg;
+            o->flags[i] = f;
+            changed = true;
+        }
     }
-    if (more) (*env)->ReleaseIntArrayElements(env, jmore, more, 0);
-    if (flags) (*env)->ReleaseIntArrayElements(env, jflags, flags, 0);
-    if (bg) (*env)->ReleaseIntArrayElements(env, jbg, bg, 0);
-    if (fg) (*env)->ReleaseIntArrayElements(env, jfg, fg, 0);
-    if (cp) (*env)->ReleaseIntArrayElements(env, jcp, cp, 0);
-    jint info[12] = {cols,
-                     rows,
-                     cursor.viewport_has_value ? cursor.viewport_x : -1,
-                     cursor.viewport_has_value ? cursor.viewport_y : -1,
-                     cursor.visible ? 1 : 0,
-                     filled ? 1 : 0,
-                     (jint)cursor.visual_style,
-                     more_need > more_len ? -more_need : more_len,
-                     argb(colors.foreground),
-                     argb(colors.background),
-                     colors.cursor_has_value ? argb(colors.cursor) : 0,
-                     cursor.wide_tail ? 1 : 0};
-    jintArray arr = (*env)->NewIntArray(env, 12);
-    if (arr) (*env)->SetIntArrayRegion(env, arr, 0, 12, info);
-    return arr;
+    return changed;
+}
+
+// The ids of the render state's rows into ids_next. False without room for them.
+static bool row_ids(Vt *v, int rows) {
+    if (rows > v->ids_cap) {
+        GhosttyRenderStateRowId *a = realloc(v->ids, sizeof *a * (size_t)rows);
+        if (a) v->ids = a;
+        GhosttyRenderStateRowId *b = realloc(v->ids_next, sizeof *b * (size_t)rows);
+        if (b) v->ids_next = b;
+        v->ids_rows = 0;
+        if (!a || !b) return false;
+        v->ids_cap = rows;
+    }
+    memset(v->ids_next, 0, sizeof *v->ids_next * (size_t)rows);
+    ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, &v->rows);
+    for (int y = 0; y < rows && ghostty_render_state_row_iterator_next(v->rows); y++)
+        ghostty_render_state_row_get(v->rows, GHOSTTY_RENDER_STATE_ROW_DATA_ID, &v->ids_next[y]);
+    return true;
+}
+
+static bool same_row(GhosttyRenderStateRowId a, GhosttyRenderStateRowId b) {
+    return (a.bits[0] || a.bits[1]) && a.bits[0] == b.bits[0] && a.bits[1] == b.bits[1];
+}
+
+// How many rows the screen moved up since the last read (down when negative), going by where its first or its last
+// row was then; 0 when neither was on screen. A guess is enough: rows are still compared with what's moved there.
+static int scrolled(const Vt *v, int rows) {
+    for (int d = 1; d < rows; d++)
+        if (same_row(v->ids_next[0], v->ids[d])) return d;
+    for (int d = 1; d < rows; d++)
+        if (same_row(v->ids_next[rows - 1], v->ids[rows - 1 - d])) return -d;
+    return 0;
+}
+
+// Moves the rows of a by d rows up (down when negative), as the screen moved.
+static void move_rows(jint *a, int cols, int rows, int d) {
+    size_t n = sizeof(jint) * (size_t)cols;
+    if (d > 0) memmove(a, a + (size_t)d * cols, n * (size_t)(rows - d));
+    else memmove(a + (size_t)-d * cols, a, n * (size_t)(rows + d));
+}
+
+// The screen into arrays of at least cols * rows, row by row: the first code point of each cell (0 for an empty
+// one), foreground and background as ARGB (the defaults where the cell sets none) and Cells' flags (Vt.kt). Only the
+// rows the program wrote to since the last call are read; changed (a boolean per row) says which of them now
+// differ from what the arrays held, so the arrays must be the last call's, or all is set: then every row is read and
+// counts as changed. When the screen only scrolled since then, the arrays' rows are moved first and INFO_SCROLLED
+// says by how many (up when positive), so rows that just moved haven't changed; the rows that came into view have.
+// Cells of more than one code point (an emoji sequence, combining marks) in the rows read also go
+// into more, as {cell index, count, code points...}. Nothing is read while the program holds the screen
+// (synchronized output), unless while_held. info gets INFO_*: the result, the grid, the cursor (column and row -1
+// when it's off the view, its GhosttyCursorStyle, colour 0 for none, whether it's on a wide character's second
+// cell), the default colours, the ints used in more, state()'s bits and whether every row was read. The result is
+// RESULT_HELD (nothing read), RESULT_READ, RESULT_SMALL (the arrays don't hold cols * rows cells, nothing read) or
+// RESULT_MORE (more is too small: INFO_MORE says what it needs; call again with all). False when it fails.
+JNIEXPORT jboolean JNICALL FN(cells)(JNIEnv *env, jclass cls, jlong h, jintArray jcp, jintArray jfg, jintArray jbg,
+                                     jintArray jflags, jintArray jmore, jbooleanArray jchanged, jintArray jinfo,
+                                     jboolean all, jboolean while_held) {
+    (void)cls;
+    Vt *v = vt(h);
+    jint info[INFO_COUNT] = {0};
+    if ((*env)->GetArrayLength(env, jinfo) < INFO_COUNT) return JNI_FALSE;
+    // Only taking the terminal's changes needs the lock; the render state is a copy that one thread reads.
+    pthread_mutex_lock(&v->lock);
+    info[INFO_STATE] = state(v);
+    bool held = v->held && !while_held;
+    GhosttyResult updated = held ? GHOSTTY_SUCCESS : ghostty_render_state_begin_update(v->render, v->term);
+    pthread_mutex_unlock(&v->lock);
+    if (updated != GHOSTTY_SUCCESS) return JNI_FALSE;
+    jsize rows_cap = (*env)->GetArrayLength(env, jchanged);
+    jboolean *changed = (*env)->GetBooleanArrayElements(env, jchanged, NULL);
+    if (!changed) return JNI_FALSE;
+    memset(changed, 0, (size_t)rows_cap);
+    if (held) {
+        info[INFO_RESULT] = RESULT_HELD;
+    } else {
+        ghostty_render_state_end_update(v->render);
+        uint16_t cols = 0, rows = 0;
+        ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_COLS, &cols);
+        ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_ROWS, &rows);
+        GhosttyRenderStateColors colors = GHOSTTY_INIT_SIZED(GhosttyRenderStateColors);
+        ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_COLORS, &colors);
+        GhosttyRenderStateCursor cursor = GHOSTTY_INIT_SIZED(GhosttyRenderStateCursor);
+        ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_CURSOR, &cursor);
+        GhosttyRenderStateDirty dirty = GHOSTTY_RENDER_STATE_DIRTY_FULL;
+        ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_DIRTY, &dirty);
+        info[INFO_COLS] = cols;
+        info[INFO_ROWS] = rows;
+        info[INFO_CURSOR_X] = cursor.viewport_has_value ? cursor.viewport_x : -1;
+        info[INFO_CURSOR_Y] = cursor.viewport_has_value ? cursor.viewport_y : -1;
+        info[INFO_CURSOR_VISIBLE] = cursor.visible ? 1 : 0;
+        info[INFO_CURSOR_STYLE] = (jint)cursor.visual_style;
+        info[INFO_CURSOR_COLOR] = colors.cursor_has_value ? argb(colors.cursor) : 0;
+        info[INFO_CURSOR_WIDE_TAIL] = cursor.wide_tail ? 1 : 0;
+        info[INFO_FG] = argb(colors.foreground);
+        info[INFO_BG] = argb(colors.background);
+        jsize need = (jsize)cols * rows;
+        if (cols != v->read_cols || rows != v->read_rows) all = JNI_TRUE;
+        if ((*env)->GetArrayLength(env, jcp) < need || (*env)->GetArrayLength(env, jfg) < need ||
+            (*env)->GetArrayLength(env, jbg) < need || (*env)->GetArrayLength(env, jflags) < need || rows_cap < rows) {
+            info[INFO_RESULT] = RESULT_SMALL;
+        } else if (all || dirty != GHOSTTY_RENDER_STATE_DIRTY_FALSE) {
+            bool ids = row_ids(v, rows);
+            int moved = ids && !all && v->ids_rows == rows ? scrolled(v, rows) : 0;
+            // A screen that moved is compared row by row, whatever the terminal marked.
+            bool every = all || moved || dirty == GHOSTTY_RENDER_STATE_DIRTY_FULL;
+            // No JNI call and nothing that waits while the arrays are held.
+            Out o = {.more_cap = (*env)->GetArrayLength(env, jmore)};
+            o.cp = (*env)->GetPrimitiveArrayCritical(env, jcp, NULL);
+            o.fg = (*env)->GetPrimitiveArrayCritical(env, jfg, NULL);
+            o.bg = (*env)->GetPrimitiveArrayCritical(env, jbg, NULL);
+            o.flags = (*env)->GetPrimitiveArrayCritical(env, jflags, NULL);
+            o.more = (*env)->GetPrimitiveArrayCritical(env, jmore, NULL);
+            bool got = o.cp && o.fg && o.bg && o.flags && o.more;
+            if (got) {
+                if (moved) {
+                    move_rows(o.cp, cols, rows, moved);
+                    move_rows(o.fg, cols, rows, moved);
+                    move_rows(o.bg, cols, rows, moved);
+                    move_rows(o.flags, cols, rows, moved);
+                }
+                ghostty_render_state_get(v->render, GHOSTTY_RENDER_STATE_DATA_ROW_ITERATOR, &v->rows);
+                // Every row, or the ones the terminal marked: clean rows are as the arrays have them.
+                for (uint16_t y = 0, n = 0;; n++) {
+                    if (every) {
+                        if (n >= rows || !ghostty_render_state_row_iterator_next(v->rows)) break;
+                        y = n;
+                    } else if (!ghostty_render_state_row_iterator_next_dirty(v->rows, &y) || y >= rows) {
+                        break;
+                    }
+                    // A row that came into view counts as changed even if it looks like the one that was there.
+                    bool came = moved > 0 ? y >= rows - moved : y < -moved;
+                    changed[y] = read_row(v, &o, y * cols, cols, &colors) || all || came;
+                }
+            }
+            if (o.more) (*env)->ReleasePrimitiveArrayCritical(env, jmore, o.more, 0);
+            if (o.flags) (*env)->ReleasePrimitiveArrayCritical(env, jflags, o.flags, 0);
+            if (o.bg) (*env)->ReleasePrimitiveArrayCritical(env, jbg, o.bg, 0);
+            if (o.fg) (*env)->ReleasePrimitiveArrayCritical(env, jfg, o.fg, 0);
+            if (o.cp) (*env)->ReleasePrimitiveArrayCritical(env, jcp, o.cp, 0);
+            if (!got) {
+                (*env)->ReleaseBooleanArrayElements(env, jchanged, changed, JNI_ABORT);
+                return JNI_FALSE;
+            }
+            // The arrays no longer hold the last call's rows, whether or not all of more fitted.
+            v->read_cols = v->read_rows = v->ids_rows = 0;
+            if (o.more_need > o.more_len) {
+                info[INFO_RESULT] = RESULT_MORE;
+                info[INFO_MORE] = o.more_need;
+            } else {
+                info[INFO_RESULT] = RESULT_READ;
+                info[INFO_MORE] = o.more_len;
+                info[INFO_ALL] = all ? 1 : 0;
+                info[INFO_SCROLLED] = moved;
+                v->read_cols = cols;
+                v->read_rows = rows;
+                if (ids) {
+                    GhosttyRenderStateRowId *was = v->ids;
+                    v->ids = v->ids_next;
+                    v->ids_next = was;
+                    v->ids_rows = rows;
+                }
+                ghostty_render_state_clean(v->render);
+            }
+        } else {
+            info[INFO_RESULT] = RESULT_READ;
+        }
+    }
+    (*env)->ReleaseBooleanArrayElements(env, jchanged, changed, 0);
+    (*env)->SetIntArrayRegion(env, jinfo, 0, INFO_COUNT, info);
+    return JNI_TRUE;
 }
 
 static GhosttyColorRgb rgb(jint c) {
@@ -412,29 +594,6 @@ JNIEXPORT void JNICALL FN(colors)(JNIEnv *env, jclass cls, jlong h, jint jfg, ji
     ghostty_terminal_set(v->term, GHOSTTY_TERMINAL_OPT_COLOR_CURSOR, jcursor ? &cursor : NULL);
     ghostty_terminal_set(v->term, GHOSTTY_TERMINAL_OPT_COLOR_PALETTE, palette);
     pthread_mutex_unlock(&v->lock);
-}
-
-static bool mode(Vt *v, uint16_t value, bool ansi) {
-    GhosttyTerminalModeConfig m = {.mode = ghostty_mode_new(value, ansi)};
-    return ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_MODE, &m) == GHOSTTY_SUCCESS && m.value;
-}
-
-// Vt.state's bits: what the program asked of the terminal, read together.
-JNIEXPORT jint JNICALL FN(state)(JNIEnv *env, jclass cls, jlong h) {
-    (void)env;
-    (void)cls;
-    Vt *v = vt(h);
-    pthread_mutex_lock(&v->lock);
-    bool tracking = false;
-    ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_MOUSE_TRACKING, &tracking);
-    GhosttyTerminalScreen screen = GHOSTTY_TERMINAL_SCREEN_PRIMARY;
-    ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_ACTIVE_SCREEN, &screen);
-    bool bottom = true;
-    ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_VIEWPORT_ACTIVE, &bottom);
-    jint s = (tracking ? 1 : 0) | (screen == GHOSTTY_TERMINAL_SCREEN_ALTERNATE ? 2 : 0) | (mode(v, 1007, false) ? 4 : 0) |
-             (mode(v, 1, false) ? 8 : 0) | (bottom ? 16 : 0) | (mode(v, 2004, false) ? 32 : 0) | (mode(v, 1004, false) ? 64 : 0);
-    pthread_mutex_unlock(&v->lock);
-    return s;
 }
 
 // {total rows, the view's first row, rows in view}.

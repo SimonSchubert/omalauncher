@@ -143,11 +143,11 @@ class NativeTerminalView(
     private var zoom = 1f
 
     private val keys = TerminalKeyboard()
+
+    /** The screen as last read from the session; the terminal says which rows it changed since ([Cells.changed]). */
     private val cells = Cells()
 
-    /** What each row's node was recorded from, to re-record only rows that changed. */
-    private var drawn = Cells()
-    private var drawnClusters = arrayOfNulls<String>(0)
+    /** A node per row, recorded again only when the row changed, or all of them when [allDirty]. */
     private var rowNodes = arrayOfNulls<RenderNode>(0)
     private var allDirty = true
     private var lastGrid: IntArray? = null
@@ -190,7 +190,8 @@ class NativeTerminalView(
             q.textSize = size
             q.textScaleX = scaleX
         }
-        atlas.reset(cellWidth, cellHeight)
+        textPx = size
+        joinAtlas()
         fitGrid()
         invalidateRows()
     }
@@ -231,13 +232,14 @@ class NativeTerminalView(
 
     override fun onDraw(canvas: Canvas) {
         framePending.set(false)
-        val vt = session?.vt
-        if (vt != null && !holding(vt)) vt.cells(cells)
+        val atlas = atlas ?: return
+        val read = session?.vt?.let(::read) == true
         val bg = if (cells.cols > 0) cells.defaultBg else colors.background
         if (!transparent) canvas.drawColor(bg)
         if (cells.cols == 0) return
         val hardware = canvas.isHardwareAccelerated
-        if (rowNodes.size != cells.rows || drawn.cols != cells.cols || drawn.rows != cells.rows) newGrid()
+        if (rowNodes.size != cells.rows) newGrid()
+        if (read && hardware && cells.scrolled != 0) scrollNodes(cells.scrolled)
         // Glyphs moved in the atlas (or it was replaced): rows drawn from the old one are drawn again.
         if (atlas.generation != atlasGeneration) allDirty = true
         val generation = atlas.generation
@@ -245,98 +247,85 @@ class NativeTerminalView(
         for (row in 0 until cells.rows) {
             val top = padPx + row * cellHeight
             if (!hardware) {
-                canvas.withTranslation(padPx.toFloat(), top.toFloat()) { drawRow(this, row) }
+                canvas.withTranslation(padPx.toFloat(), top.toFloat()) { drawRow(this, row, atlas) }
                 continue
             }
             var node = rowNodes[row]
-            if (node == null || allDirty || rowChanged(row)) {
+            if (node == null || allDirty || read && cells.changed(row)) {
                 if (node == null) node = RenderNode("terminal-row").also { rowNodes[row] = it }
                 node.setPosition(padPx, top, padPx + rowWidth, top + cellHeight)
                 val c = node.beginRecording(rowWidth, cellHeight)
                 try {
-                    drawRow(c, row)
+                    drawRow(c, row, atlas)
                 } finally {
                     node.endRecording()
                 }
-                keepRow(row)
             }
             canvas.drawRenderNode(node)
         }
-        allDirty = false
+        // Drawn without nodes, a later frame with them starts from nothing.
+        allDirty = !hardware
+        // If the atlas grew or started over while rows were drawn, the next frame draws them all again ([atlasMoved]).
         atlasGeneration = generation
-        // The atlas grew or started over while rows were drawn: the rows before that are drawn again next frame.
-        if (atlas.generation != generation) postInvalidateOnAnimation()
         drawCursor(canvas)
         drawComposing(canvas)
         drawSelectionHandles(canvas)
-        drawScrollbar(canvas, vt)
+        drawScrollbar(canvas)
     }
 
-    /** The screen has another number of rows or columns: every row is drawn again into nodes of its own. */
+    /** The screen has another number of rows: every row is drawn again into a node of its own. */
     private fun newGrid() {
         rowNodes.forEach { it?.discardDisplayList() }
         rowNodes = arrayOfNulls(cells.rows)
-        drawnClusters = arrayOfNulls(cells.rows)
-        drawn = Cells().apply { ensure(cells.cols * cells.rows) }
-        drawn.cols = cells.cols
-        drawn.rows = cells.rows
         allDirty = true
     }
 
-    /** Whether to keep showing the last frame: the program holds its screen, for a second at most, as Ghostty waits. */
-    private fun holding(vt: Vt): Boolean {
-        if (!vt.held) {
-            heldSince = 0L
-            return false
+    /**
+     * The screen moved [by] rows up (down when negative): the rows' nodes move with it instead of being recorded
+     * again. The ones that left the screen go to the rows that came into view, which are recorded anew.
+     */
+    private fun scrollNodes(by: Int) {
+        val rows = rowNodes.size
+        val moved = arrayOfNulls<RenderNode>(rows)
+        val rowWidth = cells.cols * cellWidth
+        for (row in 0 until rows) {
+            val node = rowNodes[Math.floorMod(row + by, rows)] ?: continue
+            val top = padPx + row * cellHeight
+            node.setPosition(padPx, top, padPx + rowWidth, top + cellHeight)
+            moved[row] = node
         }
+        rowNodes = moved
+    }
+
+    /**
+     * Reads [vt]'s screen into [cells], unless the program holds it (synchronized output): then the last frame stays,
+     * for a second at most, as Ghostty waits. False when nothing was read.
+     */
+    private fun read(vt: Vt): Boolean {
         val now = SystemClock.uptimeMillis()
-        if (heldSince == 0L) heldSince = now
-        if (now - heldSince >= HOLD_MAX_MS) return false
-        postInvalidateDelayed(HOLD_MAX_MS - (now - heldSince))
-        return cells.cols > 0
-    }
-
-    private fun rowChanged(row: Int): Boolean {
-        val from = row * cells.cols
-        for (i in from until from + cells.cols) {
-            if (cells.codepoints[i] != drawn.codepoints[i] || cells.fg[i] != drawn.fg[i] || cells.bg[i] != drawn.bg[i] ||
-                cells.flags[i] != drawn.flags[i]
-            ) {
-                return true
-            }
+        val waited = heldSince != 0L && now - heldSince >= HOLD_MAX_MS
+        // A first frame is read even while held: there is no last one to show.
+        val whileHeld = waited || cells.cols == 0
+        if (!vt.cells(cells, whileHeld)) return false
+        if (cells.state and Vt.HELD == 0) {
+            heldSince = 0L
+        } else if (heldSince == 0L) {
+            heldSince = now
+            postInvalidateDelayed(HOLD_MAX_MS)
         }
-        return clusters(row) != drawnClusters[row]
-    }
-
-    private fun keepRow(row: Int) {
-        val from = row * cells.cols
-        System.arraycopy(cells.codepoints, from, drawn.codepoints, from, cells.cols)
-        System.arraycopy(cells.fg, from, drawn.fg, from, cells.cols)
-        System.arraycopy(cells.bg, from, drawn.bg, from, cells.cols)
-        System.arraycopy(cells.flags, from, drawn.flags, from, cells.cols)
-        drawnClusters[row] = clusters(row)
-    }
-
-    /** The row's cells of more than one code point, which the arrays alone don't show; null when it has none. */
-    private fun clusters(row: Int): String? {
-        var out: StringBuilder? = null
-        val from = row * cells.cols
-        for (i in from until from + cells.cols) {
-            if (cells.isCluster(i)) (out ?: StringBuilder().also { out = it }).append(i).append(cells.text(i))
-        }
-        return out?.toString()
+        return whileHeld || cells.state and Vt.HELD == 0
     }
 
     private fun Int.has(flag: Int) = this and flag != 0
 
-    /** Cell [i]'s background as drawn, or null where it shows what's behind ([transparent], no colour of its own). */
-    private fun backgroundOf(i: Int): Int? {
+    /** Cell [i]'s background as drawn, or [NONE] where it shows what's behind ([transparent], no colour of its own). */
+    private fun backgroundOf(i: Int): Int {
         val f = cells.flags[i]
         return when {
             f.has(Cells.SELECTED) -> colors.selectionBackground
             f.has(Cells.INVERSE) -> cells.fg[i]
             f.has(Cells.HAS_BG) || !transparent -> cells.bg[i]
-            else -> null
+            else -> NONE
         }
     }
 
@@ -351,8 +340,31 @@ class NativeTerminalView(
         return if (f.has(Cells.FAINT)) (c and 0x00ffffff) or 0x80000000.toInt() else c
     }
 
-    private val atlas = GlyphAtlas()
+    /**
+     * The glyphs of [faces] at [textPx], shared with every terminal that draws the same; only while the view is in
+     * a window, so one that's dropped without ever leaving holds on to none.
+     */
+    private var atlas: GlyphAtlas? = null
     private var atlasGeneration = -1
+    private var textPx = 0f
+    private val atlasMoved: () -> Unit = { postInvalidateOnAnimation() }
+
+    private fun joinAtlas() {
+        leaveAtlas()
+        if (isAttachedToWindow) atlas = GlyphAtlas.join(faces to textPx, cellWidth, cellHeight, atlasMoved)
+    }
+
+    private fun leaveAtlas() {
+        atlas?.leave(atlasMoved)
+        atlas = null
+        atlasGeneration = -1
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        joinAtlas()
+        invalidateRows()
+    }
 
     /** A white paint per face, for glyphs drawn into [atlas]. */
     private val whites = Array(4) { Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply { color = Color.WHITE } }
@@ -397,25 +409,26 @@ class NativeTerminalView(
         quad(l, t, r, b, w, w, w, w, color)
     }
 
-    /** The atlas slot of cell [i]'s glyph, drawn into it if new; -1 if it has none. */
-    private fun glyphSlot(
-        i: Int,
+    /**
+     * Draws a glyph the atlas doesn't have yet into it: code point [cp], or [text] for a cell of several. Its slot,
+     * or -1 if it can't have one.
+     */
+    private fun newGlyph(
+        atlas: GlyphAtlas,
+        cp: Int,
+        text: String?,
         face: Int,
         span: Int,
-    ): Int {
-        val cp = cells.codepoints[i]
-        val cluster = cells.isCluster(i)
-        val text = if (cluster) cells.text(i) else null
-        return atlas.slot(cp, text, face, span) { c, left, top, w ->
+    ): Int =
+        atlas.add(cp, text, face, span) { c, left, top, w ->
             c.translate(left, top)
             val paint = whites[face]
-            if (!cluster && BoxDrawing.handles(cp)) {
+            if (text == null && BoxDrawing.handles(cp)) {
                 BoxDrawing.draw(c, cp, 0f, 0f, w, cellHeight.toFloat(), paint)
             } else {
                 drawGlyph(c, text ?: String(Character.toChars(cp)), 0f, w, paint)
             }
         }
-    }
 
     /**
      * Row [row] at 0, 0 as one drawVertices call: a quad per run of background, per glyph (from [atlas], tinted
@@ -424,6 +437,7 @@ class NativeTerminalView(
     private fun drawRow(
         c: Canvas,
         row: Int,
+        atlas: GlyphAtlas,
     ) {
         val cols = cells.cols
         val from = row * cols
@@ -443,7 +457,7 @@ class NativeTerminalView(
             var end = x + 1
             while (end < cols && backgroundOf(from + end) == color) end++
             // The default background is the view's own, drawn once already.
-            if (color != null && (transparent || color != cells.defaultBg)) rect(x * cw, 0f, end * cw, ch, color)
+            if (color != NONE && (transparent || color != cells.defaultBg)) rect(x * cw, 0f, end * cw, ch, color)
             x = end
         }
         // Glyphs and their lines.
@@ -461,7 +475,9 @@ class NativeTerminalView(
             val fg = foregroundOf(i)
             if (cp != 0 && cp != ' '.code && !f.has(Cells.INVISIBLE)) {
                 val face = (if (f.has(Cells.BOLD)) 1 else 0) or (if (f.has(Cells.ITALIC)) 2 else 0)
-                val slot = glyphSlot(i, face, span)
+                val text = if (f.has(Cells.CLUSTER)) cells.text(i) else null
+                var slot = atlas.find(cp, text, face, span)
+                if (slot == -1) slot = newGlyph(atlas, cp, text, face, span)
                 if (slot != -1) {
                     val sx = GlyphAtlas.slotX(slot).toFloat()
                     val sy = GlyphAtlas.slotY(slot).toFloat()
@@ -557,12 +573,9 @@ class NativeTerminalView(
     }
 
     /** A thin bar at the right while the view is back in the scrollback, where it is. */
-    private fun drawScrollbar(
-        canvas: Canvas,
-        vt: Vt?,
-    ) {
-        if (vt == null || vt.state.has(Vt.AT_BOTTOM)) return
-        val (total, offset, len) = vt.scrollbar()?.toList() ?: return
+    private fun drawScrollbar(canvas: Canvas) {
+        if (cells.state.has(Vt.AT_BOTTOM)) return
+        val (total, offset, len) = session?.vt?.scrollbar()?.toList() ?: return
         if (total <= len) return
         val h = height.toFloat()
         val top = h * offset / total
@@ -1017,7 +1030,7 @@ class NativeTerminalView(
             .onFailure { Log.w(TAG, "can't open $url", it) }
     }
 
-    // Last, once every field above has its value: measuring fills the atlas's paints.
+    // Last, once every field above has its value: measuring fills the paints glyphs are drawn with.
     init {
         isFocusable = false
         measureCells()
@@ -1027,6 +1040,7 @@ class NativeTerminalView(
         actionMode?.finish()
         for (n in rowNodes) n?.discardDisplayList()
         rowNodes = arrayOfNulls(0)
+        leaveAtlas()
         super.onDetachedFromWindow()
     }
 
@@ -1035,6 +1049,9 @@ class NativeTerminalView(
         const val HOLD_MAX_MS = 1000L
         const val MIN_EM_PX = 6f
         const val MAX_EM_PX = 200f
+
+        /** No background colour: a real one is opaque, so never 0. */
+        const val NONE = 0
 
         val URL = Regex("""(?:https?|file)://[^\s<>"'`]+""")
     }

@@ -57,7 +57,10 @@ JNIEXPORT jintArray JNICALL FN(start)(JNIEnv *env, jclass cls, jobjectArray jarg
 
     char name[128];
     int fd = posix_openpt(O_RDWR | O_NOCTTY);
-    if (fd >= 0 && (fcntl(fd, F_SETFD, FD_CLOEXEC) || grantpt(fd) || unlockpt(fd) || ptsname_r(fd, name, sizeof name))) {
+    // Not blocking: write() waits for room together with its wake (below), so a program that doesn't read holds
+    // nobody up for good.
+    if (fd >= 0 && (fcntl(fd, F_SETFD, FD_CLOEXEC) || fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK) || grantpt(fd) ||
+                    unlockpt(fd) || ptsname_r(fd, name, sizeof name))) {
         close(fd);
         fd = -1;
     }
@@ -150,13 +153,15 @@ JNIEXPORT jint JNICALL FN(read)(JNIEnv *env, jclass cls, jint fd, jint wake, jby
         do n = read(fd, buf, (size_t)cap);
         while (n < 0 && errno == EINTR);
         (*env)->ReleaseByteArrayElements(env, jbuf, buf, n > 0 ? 0 : JNI_ABORT);
-        // EIO: every handle on the program's side is closed. EAGAIN can't happen on a blocking fd.
+        if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) continue;
+        // EIO: every handle on the program's side is closed.
         return n > 0 ? (jint)n : -1;
     }
 }
 
-// Writes len bytes of buf from off; false once the terminal is gone.
-JNIEXPORT jboolean JNICALL FN(write)(JNIEnv *env, jclass cls, jint fd, jbyteArray jbuf, jint off, jint len) {
+// Writes len bytes of buf from off, waiting while the program doesn't take them. False once the terminal is gone,
+// or when wake became readable while it waited (see wakePipe): what was left is dropped.
+JNIEXPORT jboolean JNICALL FN(write)(JNIEnv *env, jclass cls, jint fd, jint wake, jbyteArray jbuf, jint off, jint len) {
     (void)cls;
     jbyte *buf = (*env)->GetByteArrayElements(env, jbuf, NULL);
     if (!buf) return JNI_FALSE;
@@ -165,19 +170,28 @@ JNIEXPORT jboolean JNICALL FN(write)(JNIEnv *env, jclass cls, jint fd, jbyteArra
     jboolean ok = JNI_TRUE;
     while (left > 0) {
         ssize_t w = write(fd, p, left);
-        if (w < 0) {
-            if (errno == EINTR) continue;
-            ok = JNI_FALSE;
-            break;
+        if (w >= 0) {
+            p += w;
+            left -= (size_t)w;
+            continue;
         }
-        p += w;
-        left -= (size_t)w;
+        if (errno == EINTR) continue;
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            struct pollfd q[2] = {{.fd = fd, .events = POLLOUT}, {.fd = wake, .events = POLLIN}};
+            if (poll(q, 2, -1) < 0 && errno != EINTR) ok = JNI_FALSE;
+            else if (q[1].revents) ok = JNI_FALSE;
+            if (ok) continue;
+        } else {
+            ok = JNI_FALSE;
+        }
+        break;
     }
     (*env)->ReleaseByteArrayElements(env, jbuf, buf, JNI_ABORT);
     return ok;
 }
 
-// A pipe {read end, write end} whose read end read() also waits on: a byte written to it wakes the reader.
+// A pipe {read end, write end} whose read end read() and write() also wait on: a byte written to it wakes both, and
+// stays there, so neither waits again.
 JNIEXPORT jintArray JNICALL FN(wakePipe)(JNIEnv *env, jclass cls) {
     (void)cls;
     int p[2];

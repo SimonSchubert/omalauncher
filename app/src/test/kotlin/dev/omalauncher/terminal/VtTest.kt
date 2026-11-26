@@ -20,7 +20,9 @@ class VtTest {
 
     @After fun close() = vt.close()
 
-    private fun write(s: String) = vt.write(s.encodeToByteArray())
+    private fun write(s: String) {
+        vt.write(s.encodeToByteArray())
+    }
 
     private fun screen(): Cells = cells.also { assertTrue(vt.cells(it)) }
 
@@ -310,6 +312,152 @@ class VtTest {
             vt.events(),
         )
         assertEquals(emptyList<VtEvent>(), vt.events())
+    }
+
+    private fun changedRows(s: Cells) = (0 until s.rows).filter(s::changed)
+
+    @Test fun onlyChangedRowsCountAsChanged() {
+        write("one\r\ntwo\r\nthree")
+        // A first read is of everything.
+        assertEquals((0 until 6).toList(), changedRows(screen()))
+        assertEquals(emptyList<Int>(), changedRows(screen()))
+        write("\u001b[2;1Htoo")
+        val s = screen()
+        assertEquals(listOf(1), changedRows(s))
+        assertEquals("one", s.row(0))
+        assertEquals("too", s.row(1))
+        assertEquals("three", s.row(2))
+        // The same text written again changes nothing; moving the cursor neither.
+        write("\u001b[2;1Htoo\u001b[3;2H")
+        assertEquals(emptyList<Int>(), changedRows(screen()))
+        assertEquals(1, s.cursorX)
+        assertEquals(2, s.cursorY)
+        // Other cells than the last read's get the whole screen.
+        val other = Cells()
+        assertTrue(vt.cells(other))
+        assertEquals((0 until 6).toList(), changedRows(other))
+        assertEquals("too", other.row(1))
+        assertEquals((0 until 6).toList(), changedRows(screen()))
+    }
+
+    @Test fun whatChangesTheScreenBesidesOutputIsReadToo() {
+        write("one two\r\nthree\r\n" + (1..10).joinToString("\r\n") { "line $it" })
+        screen()
+        // A selection, and taking it away.
+        assertTrue(vt.select(0, 1, 2, 2))
+        var s = screen()
+        assertEquals(listOf(1, 2), changedRows(s))
+        assertTrue(s.flags[s.index(0, 1)] and Cells.SELECTED != 0)
+        assertTrue(s.flags[s.index(2, 2)] and Cells.SELECTED != 0)
+        assertFalse(s.flags[s.index(3, 2)] and Cells.SELECTED != 0)
+        vt.clearSelection()
+        s = screen()
+        assertEquals(listOf(1, 2), changedRows(s))
+        assertFalse(s.flags[s.index(0, 1)] and Cells.SELECTED != 0)
+        // The scrollback.
+        vt.scroll(-2)
+        s = screen()
+        assertEquals("line 3", s.row(0))
+        assertEquals(listOf(0, 1), changedRows(s))
+        vt.scrollToBottom()
+        assertEquals("line 5", screen().row(0))
+        // The theme's colours.
+        val before = s.fg[0]
+        vt.colors(before xor 0x00ffffff, 0xff111111.toInt(), 0, IntArray(16) { 0xff000000.toInt() or (it * 0x101010) })
+        s = screen()
+        assertEquals(before xor 0x00ffffff, s.fg[0])
+        assertEquals(0xff111111.toInt(), s.bg[0])
+        assertEquals((0 until 6).toList(), changedRows(s))
+        // Another size.
+        vt.resize(10, 4)
+        s = screen()
+        assertEquals((0 until 4).toList(), changedRows(s))
+        assertEquals("line 10", s.row(s.cursorY))
+    }
+
+    @Test fun aScreenThatScrollsMovesItsRows() {
+        write((1..6).joinToString("\r\n") { "line $it" })
+        assertEquals(0, screen().scrolled)
+        // Output at the bottom: every row moves up one, and only the new one has changed.
+        write("\r\nline 7")
+        var s = screen()
+        assertEquals(1, s.scrolled)
+        assertEquals(listOf(5), changedRows(s))
+        assertEquals((2..7).map { "line $it" }, (0 until 6).map(s::row))
+        assertEquals(0, screen().scrolled)
+        // Three more lines, one of them like the row it lands on: it still counts.
+        write("\r\nline 8\r\nline 9\r\nline 7")
+        s = screen()
+        assertEquals(3, s.scrolled)
+        assertEquals(listOf(3, 4, 5), changedRows(s))
+        assertEquals(listOf("line 5", "line 6", "line 7", "line 8", "line 9", "line 7"), (0 until 6).map(s::row))
+        // Back through the scrollback, and to the bottom again.
+        vt.scroll(-2)
+        s = screen()
+        assertEquals(-2, s.scrolled)
+        assertEquals(listOf(0, 1), changedRows(s))
+        assertEquals(listOf("line 3", "line 4", "line 5", "line 6", "line 7", "line 8"), (0 until 6).map(s::row))
+        vt.scrollToBottom()
+        s = screen()
+        assertEquals(2, s.scrolled)
+        assertEquals(listOf(4, 5), changedRows(s))
+        assertEquals("line 7", s.row(5))
+        // A row that changes while it moves, and long characters that move with theirs.
+        write("\u001b[3;1He\u0301")
+        screen()
+        write("\u001b[1;1HLINE\u001b[6;1H\r\nlast")
+        s = screen()
+        assertEquals(1, s.scrolled)
+        assertEquals(listOf(5), changedRows(s))
+        assertEquals("e\u0301ine 7", s.row(1))
+        // Further than the screen is high, nothing is where it was.
+        write("\r\n".repeat(7) + "far")
+        s = screen()
+        assertEquals(0, s.scrolled)
+        assertEquals("far", s.row(5))
+    }
+
+    @Test fun aLongCharacterThatChangesAfterItsFirstCodePoint() {
+        write("ab\r\ne\u0301")
+        screen()
+        write("\re\u0302")
+        var s = screen()
+        assertEquals(listOf(1), changedRows(s))
+        assertEquals("e\u0302", s.text(s.index(0, 1)))
+        write("\re")
+        s = screen()
+        assertEquals(listOf(1), changedRows(s))
+        assertFalse(s.isCluster(s.index(0, 1)))
+        assertEquals("e", s.text(s.index(0, 1)))
+    }
+
+    @Test fun aHeldScreenIsReadOnlyWhenAsked() {
+        write("before")
+        screen()
+        write("\u001b[?2026h\rafter!")
+        assertTrue(vt.cells(cells, whileHeld = false))
+        assertTrue(cells.state and Vt.HELD != 0)
+        assertEquals("before", cells.row(0))
+        assertEquals(emptyList<Int>(), changedRows(cells))
+        // Asked to, or once the program lets go, what it wrote meanwhile is there.
+        assertTrue(vt.cells(cells, whileHeld = true))
+        assertEquals("after!", cells.row(0))
+        assertEquals(listOf(0), changedRows(cells))
+        write("\u001b[2;1Hmore\u001b[?2026l")
+        assertTrue(vt.cells(cells, whileHeld = false))
+        assertFalse(cells.state and Vt.HELD != 0)
+        assertEquals("more", cells.row(1))
+        assertEquals(listOf(1), changedRows(cells))
+    }
+
+    @Test fun writeSaysWhatThereIsToFetch() {
+        assertEquals(0, vt.write("plain".encodeToByteArray()))
+        assertEquals(Vt.REPLIES, vt.write("\u001b[6n".encodeToByteArray()))
+        assertEquals(Vt.REPLIES or Vt.EVENTS, vt.write("\u0007".encodeToByteArray()))
+        vt.replies()
+        assertEquals(Vt.EVENTS, vt.write("x".encodeToByteArray()))
+        vt.events()
+        assertEquals(0, vt.write("x".encodeToByteArray()))
     }
 
     companion object {

@@ -45,14 +45,16 @@ object PtyNative {
         buf: ByteArray,
     ): Int
 
+    /** Writes [buf], waiting for the program to take it; false once it's gone or [wake] was woken. */
     @JvmStatic external fun write(
         fd: Int,
+        wake: Int,
         buf: ByteArray,
         off: Int,
         len: Int,
     ): Boolean
 
-    /** {read end, write end} of a pipe for [read]'s wake. */
+    /** {read end, write end} of a pipe for [read]'s and [write]'s wake. */
     @JvmStatic external fun wakePipe(): IntArray?
 
     @JvmStatic external fun wake(fd: Int)
@@ -83,11 +85,9 @@ object VtNative {
         h: Long,
         buf: ByteArray,
         len: Int,
-    )
+    ): Int
 
     @JvmStatic external fun replies(h: Long): ByteArray?
-
-    @JvmStatic external fun held(h: Long): Boolean
 
     @JvmStatic external fun resize(
         h: Long,
@@ -119,7 +119,11 @@ object VtNative {
         bg: IntArray,
         flags: IntArray,
         more: IntArray,
-    ): IntArray?
+        changed: BooleanArray,
+        info: IntArray,
+        all: Boolean,
+        whileHeld: Boolean,
+    ): Boolean
 
     @JvmStatic external fun colors(
         h: Long,
