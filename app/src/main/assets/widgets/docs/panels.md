@@ -12,7 +12,12 @@ is picked in settings › gestures, or in style.toml as the panel's file name (s
 [gestures]
 swipe-up = "my-drawer.owl"     # drawer.owl by default; "none" leaves the swipe to tapping the bar
 swipe-down = "controls.owl"    # "none" nothing
+overscroll-close = false       # true by default: scrolling past the end of a panel's list closes it
 ```
+
+Scrolling on past the end of a panel's list closes the panel, like a stock drawer: down past the top in the drawer,
+up past the bottom in the panel from the top. In a long list that's easy to do by accident, so `overscroll-close =
+false` turns it off for both; Back, a tap outside the panel and dragging the panel itself still close it.
 
 The drawer is the panel picked for swiping up, else `drawer.owl`, else `.stock-drawer.owl`: the drawer as this
 launcher ships it, which it keeps that way. So a drawer that's removed or stops compiling never locks anyone out of
