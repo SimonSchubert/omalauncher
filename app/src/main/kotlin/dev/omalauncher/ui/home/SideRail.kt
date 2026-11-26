@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import dev.omalauncher.system.AppLanguage
 import dev.omalauncher.R
 import dev.omalauncher.Runtime
 import dev.omalauncher.ui.EdgeGap
@@ -331,7 +332,8 @@ private fun PromptRail(
             val line = with(LocalDensity.current) { style.fontSize.toDp() } * 1.3f
             // Less the prompt sign and the cursor.
             val room = (maxHeight / line).toInt() - 2
-            val hint = hints.firstOrNull { it.length <= room }.orEmpty()
+            // One letter per line pulls Arabic script apart into letters that no longer join, so there the rail has no hint.
+            val hint = if (AppLanguage.rightToLeft) "" else hints.firstOrNull { it.length <= room }.orEmpty()
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(Modifier.height(line), contentAlignment = Alignment.Center) {
                     BasicText("❯", Modifier.rotate(90f), style = style.copy(color = Palette.accent))
