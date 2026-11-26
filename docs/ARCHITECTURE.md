@@ -36,6 +36,11 @@ a module folder; the OWL language is under
 - `app/src/main/cpp/scene3d.c`: a 3D scene's work per triangle, a port of the
   Kotlin in owl's `Space3d.kt` that gives the same numbers (`SceneNativeTest`);
   `Scene3d` takes it as its `SceneKernel` and works without one
+- `app/src/main/cpp/mesh3d.c`: building a mesh (smooth corner normals, the
+  `Bsp` tree, reading OBJ files), in the same library; owl's `MeshKernels`
+  holds it, set in `App`, and the Kotlin it ports runs where it isn't set
+  (`MeshNativeTest`). The native tests build the C for the machine they run
+  on (`HostNative`) and are skipped without a compiler
 - `wayland/`: the Wayland server in Kotlin (wl_compositor, wl_shm,
   wl_subcompositor, wl_seat, wl_output, xdg_wm_base, xdg-decoration, and
   text-input-v3 for where a client's text cursor is) and

@@ -25,7 +25,11 @@ object SceneNative {
         uvs: FloatArray?,
         colorIndex: IntArray?,
         palette: IntArray?,
-        order: IntArray?,
+        planes: FloatArray?,
+        nodes: IntArray?,
+        ex: Float,
+        ey: Float,
+        ez: Float,
     ): Int
 
     @JvmStatic external fun finish(
@@ -56,8 +60,12 @@ class NativeKernel private constructor(
         uvs: FloatArray?,
         colorIndex: IntArray?,
         palette: IntArray?,
-        order: IntArray?,
-    ) = SceneNative.add(scene, v, color, flags, texIndex, triangles, points, tris, faceNormals, cornerNormals, uvs, colorIndex, palette, order)
+        planes: FloatArray?,
+        nodes: IntArray?,
+        ex: Float,
+        ey: Float,
+        ez: Float,
+    ) = SceneNative.add(scene, v, color, flags, texIndex, triangles, points, tris, faceNormals, cornerNormals, uvs, colorIndex, palette, planes, nodes, ex, ey, ez)
 
     override fun finish(
         verts: FloatArray,

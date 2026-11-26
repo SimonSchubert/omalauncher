@@ -1,5 +1,6 @@
 package dev.omalauncher.widgets.render
 
+import dev.omalauncher.HostNative
 import dev.omalauncher.widgets.lang.Camera
 import dev.omalauncher.widgets.lang.Lst
 import dev.omalauncher.widgets.lang.MAX_SCENE_TRIANGLES
@@ -16,10 +17,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
-import org.junit.Assume.assumeTrue
 import org.junit.BeforeClass
 import org.junit.Test
-import java.io.File
 import java.util.Random
 
 /**
@@ -45,8 +44,12 @@ class SceneNativeTest {
             uvs: FloatArray?,
             colorIndex: IntArray?,
             palette: IntArray?,
-            order: IntArray?,
-        ) = SceneNative.add(scene, v, color, flags, texIndex, triangles, points, tris, faceNormals, cornerNormals, uvs, colorIndex, palette, order)
+            planes: FloatArray?,
+            nodes: IntArray?,
+            ex: Float,
+            ey: Float,
+            ez: Float,
+        ) = SceneNative.add(scene, v, color, flags, texIndex, triangles, points, tris, faceNormals, cornerNormals, uvs, colorIndex, palette, planes, nodes, ex, ey, ez)
 
         override fun finish(
             verts: FloatArray,
@@ -208,26 +211,7 @@ class SceneNativeTest {
         @BeforeClass
         @JvmStatic
         fun build() {
-            val source = File("src/main/cpp/scene3d.c")
-            assertTrue("run from the app module: $source", source.isFile)
-            val include = File(System.getProperty("java.home"), "include")
-            val platform = include.listFiles { f -> f.isDirectory && File(f, "jni_md.h").isFile }?.firstOrNull()
-            assumeTrue("no JDK headers in $include", File(include, "jni.h").isFile && platform != null)
-            val out = File.createTempFile("scene3d", if (System.getProperty("os.name").startsWith("Mac")) ".dylib" else ".so").apply { deleteOnExit() }
-            val log =
-                try {
-                    val p =
-                        ProcessBuilder("cc", "-O2", "-Wall", "-ffp-contract=off", "-shared", "-fPIC", "-I$include", "-I$platform", "-o", out.path, source.path, "-lm")
-                            .redirectErrorStream(true)
-                            .start()
-                    val text = p.inputStream.bufferedReader().readText()
-                    if (p.waitFor() != 0) fail("scene3d.c doesn't build:\n$text")
-                    text
-                } catch (e: java.io.IOException) {
-                    null
-                }
-            assumeTrue("no C compiler", log != null)
-            System.load(out.path)
+            HostNative.load("scene3d.c", "mesh3d.c")
             assertNotNull(SceneNative)
         }
     }

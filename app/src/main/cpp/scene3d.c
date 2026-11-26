@@ -58,6 +58,9 @@ typedef struct {
     // Runs of triangles with one texture, three ints each: first, count, texture.
     int batches, bcap;
     int32_t *batch;
+    // A model's faces in its tree's order, and the walk's stack.
+    int ocap, stcap;
+    int32_t *order, *stack;
 } Scene;
 
 static int grow(Scene *s) {
@@ -122,6 +125,46 @@ static int farFirst(const void *pa, const void *pb) {
     if (a != a) x = 0x7fc00000; else memcpy(&x, &a, 4);
     if (b != b) y = 0x7fc00000; else memcpy(&y, &b, 4);
     return x > y ? -1 : x < y;
+}
+
+// Bsp.order: the faces of a tree's mesh far to near from eye ex, ey, ez into s->order. 1, 0 out of memory, -1 for a
+// tree that doesn't fit its mesh.
+static int walk(Scene *s, const float *planes, const int32_t *nodes, int count, int triangles, float ex, float ey, float ez) {
+    if (count < 1) return -1;
+    if (triangles > s->ocap) {
+        int32_t *order = realloc(s->order, sizeof(int32_t) * triangles);
+        if (!order) return 0;
+        s->order = order;
+        s->ocap = triangles;
+    }
+    if (2 * count > s->stcap) {
+        int32_t *stack = realloc(s->stack, sizeof(int32_t) * 2 * count);
+        if (!stack) return 0;
+        s->stack = stack;
+        s->stcap = 2 * count;
+    }
+    int32_t *stack = s->stack, *out = s->order;
+    int top = 0, k = 0;
+    stack[top++] = 0;
+    while (top > 0) {
+        int node = stack[--top];
+        if (node < 0) {
+            const int32_t *m = nodes + 4 * (-1 - node);
+            if (m[2] < 0 || m[3] < 0 || m[3] > triangles - k || m[2] > triangles - m[3]) return -1;
+            for (int i = m[2]; i < m[2] + m[3]; i++) out[k++] = i;
+            continue;
+        }
+        const float *pl = planes + 4 * node;
+        const int32_t *nd = nodes + 4 * node;
+        int inFront = pl[0] * ex + pl[1] * ey + pl[2] * ez - pl[3] > 0.0f;
+        int near = inFront ? nd[0] : nd[1], far = inFront ? nd[1] : nd[0];
+        if (near >= count || far >= count || top + 3 > 2 * count) return -1;
+        if (near >= 0) stack[top++] = near;
+        stack[top++] = -1 - node;
+        if (far >= 0) stack[top++] = far;
+    }
+    // Every face staged is one of the mesh's; add() reads the first triangles of them.
+    return k == triangles ? 1 : -1;
 }
 
 static int add(Scene *s, const float *v, int32_t color, int flags, int32_t texIndex, int triangles, int points, const float *pts,
@@ -338,6 +381,8 @@ JNIEXPORT void JNICALL FN(destroy)(JNIEnv *env, jclass cls, jlong ptr) {
         free(s->idx[i]);
     }
     free(s->batch);
+    free(s->order);
+    free(s->stack);
     free(s);
 }
 
@@ -350,14 +395,14 @@ JNIEXPORT void JNICALL FN(reset)(JNIEnv *env, jclass cls, jlong ptr) {
 // Adds a model's triangles; the staged count so far, -1 when the scene is full, -2 for arrays that don't fit the mesh.
 JNIEXPORT jint JNICALL FN(add)(JNIEnv *env, jclass cls, jlong ptr, jfloatArray jv, jint color, jint flags, jint texIndex, jint triangles,
                                jfloatArray jpoints, jintArray jtris, jfloatArray jfn, jfloatArray jcn, jfloatArray juvs, jintArray jci,
-                               jintArray jpalette, jintArray jorder) {
+                               jintArray jpalette, jfloatArray jplanes, jintArray jnodes, jfloat ex, jfloat ey, jfloat ez) {
     Scene *s = (Scene *)(intptr_t)ptr;
     jsize points = (*env)->GetArrayLength(env, jpoints) / 3;
     jsize paletteSize = jpalette ? (*env)->GetArrayLength(env, jpalette) : 0;
     if (triangles < 0 || (*env)->GetArrayLength(env, jv) < V_COUNT || (*env)->GetArrayLength(env, jtris) < 3 * triangles ||
         (*env)->GetArrayLength(env, jfn) < 3 * triangles || (jcn && (*env)->GetArrayLength(env, jcn) < 9 * triangles) ||
         (juvs && (*env)->GetArrayLength(env, juvs) < 6 * triangles) || (jci && (*env)->GetArrayLength(env, jci) < triangles) ||
-        (jorder && (*env)->GetArrayLength(env, jorder) < triangles))
+        (!jplanes != !jnodes) || (jnodes && (*env)->GetArrayLength(env, jplanes) < (*env)->GetArrayLength(env, jnodes)))
         return -2;
     // Nothing between here and the releases calls back into the VM.
     float *v = (*env)->GetPrimitiveArrayCritical(env, jv, NULL);
@@ -368,10 +413,15 @@ JNIEXPORT jint JNICALL FN(add)(JNIEnv *env, jclass cls, jlong ptr, jfloatArray j
     float *uvs = juvs ? (*env)->GetPrimitiveArrayCritical(env, juvs, NULL) : NULL;
     int32_t *ci = jci ? (*env)->GetPrimitiveArrayCritical(env, jci, NULL) : NULL;
     int32_t *palette = jpalette ? (*env)->GetPrimitiveArrayCritical(env, jpalette, NULL) : NULL;
-    int32_t *order = jorder ? (*env)->GetPrimitiveArrayCritical(env, jorder, NULL) : NULL;
-    int ok = v && pts && tris && fn && (!jcn || cn) && (!juvs || uvs) && (!jci || ci) && (!jpalette || palette) && (!jorder || order) &&
-             add(s, v, color, flags, texIndex, triangles, points, pts, tris, fn, cn, uvs, ci, palette, paletteSize, order);
-    if (order) (*env)->ReleasePrimitiveArrayCritical(env, jorder, order, JNI_ABORT);
+    jsize count = jnodes ? (*env)->GetArrayLength(env, jnodes) / 4 : 0;
+    float *planes = jplanes ? (*env)->GetPrimitiveArrayCritical(env, jplanes, NULL) : NULL;
+    int32_t *nodes = jnodes ? (*env)->GetPrimitiveArrayCritical(env, jnodes, NULL) : NULL;
+    int walked = nodes && planes ? walk(s, planes, nodes, count, triangles, ex, ey, ez) : 1;
+    int ok = walked > 0 && v && pts && tris && fn && (!jcn || cn) && (!juvs || uvs) && (!jci || ci) && (!jpalette || palette) &&
+             (!jnodes || (planes && nodes)) &&
+             add(s, v, color, flags, texIndex, triangles, points, pts, tris, fn, cn, uvs, ci, palette, paletteSize, jnodes ? s->order : NULL);
+    if (nodes) (*env)->ReleasePrimitiveArrayCritical(env, jnodes, nodes, JNI_ABORT);
+    if (planes) (*env)->ReleasePrimitiveArrayCritical(env, jplanes, planes, JNI_ABORT);
     if (palette) (*env)->ReleasePrimitiveArrayCritical(env, jpalette, palette, JNI_ABORT);
     if (ci) (*env)->ReleasePrimitiveArrayCritical(env, jci, ci, JNI_ABORT);
     if (uvs) (*env)->ReleasePrimitiveArrayCritical(env, juvs, uvs, JNI_ABORT);
@@ -380,7 +430,7 @@ JNIEXPORT jint JNICALL FN(add)(JNIEnv *env, jclass cls, jlong ptr, jfloatArray j
     if (tris) (*env)->ReleasePrimitiveArrayCritical(env, jtris, tris, JNI_ABORT);
     if (pts) (*env)->ReleasePrimitiveArrayCritical(env, jpoints, pts, JNI_ABORT);
     if (v) (*env)->ReleasePrimitiveArrayCritical(env, jv, v, JNI_ABORT);
-    return ok ? s->n : -1;
+    return walked < 0 ? -2 : ok ? s->n : -1;
 }
 
 // Sorts the staged triangles far to near into verts, texs and colors, which have room for them (six floats and three

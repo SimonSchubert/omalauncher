@@ -103,8 +103,8 @@ android {
 // ExamplesTest reads the widget examples and the README from here, so editing them reruns it.
 tasks.withType<Test>().configureEach {
     inputs.dir("src/main/assets/widgets")
-    // SceneNativeTest builds this for the machine it runs on.
-    inputs.file("src/main/cpp/scene3d.c")
+    // The native tests build these for the machine they run on (HostNative).
+    inputs.dir("src/main/cpp")
 }
 
 // Gitignored, built by scripts/fetch-proot.sh. Without it a release still builds, but every Linux command fails.

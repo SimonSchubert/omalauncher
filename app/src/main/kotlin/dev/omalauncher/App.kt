@@ -5,9 +5,17 @@ import android.content.Context
 import android.content.res.Configuration
 import android.content.res.Resources
 import dev.omalauncher.system.AppLanguage
+import dev.omalauncher.widgets.lang.MeshKernels
+import dev.omalauncher.widgets.render.NativeMeshKernel
 
 class App : Application() {
     val runtime by lazy { Runtime(this) }
+
+    override fun onCreate() {
+        super.onCreate()
+        // Widgets' meshes are built in C; its library loads when the first one is.
+        MeshKernels.kernel = NativeMeshKernel
+    }
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)

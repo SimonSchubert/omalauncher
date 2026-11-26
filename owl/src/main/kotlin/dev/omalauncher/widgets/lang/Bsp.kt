@@ -20,14 +20,13 @@ const val MAX_BSP_TRIANGLES = 8192
  */
 class Bsp private constructor(
     val mesh: Mesh,
-    /** Each node's plane: normal x, y, z and its distance from the origin along it. */
-    private val planes: FloatArray,
-    private val front: IntArray,
-    private val back: IntArray,
-    /** Each node's faces: from [first], [count] of them in [faces]. */
-    private val first: IntArray,
-    private val count: IntArray,
-    private val faces: IntArray,
+    /** Each node's plane: normal x, y, z and its distance from the origin along it. Read by a [SceneKernel]. */
+    val planes: FloatArray,
+    /**
+     * Each node's front and back child (-1 for none), and its faces: the first of [mesh]'s and how many, four ints
+     * per node, the root first. Read by a [SceneKernel].
+     */
+    val nodes: IntArray,
 ) {
     /** The faces of [mesh] drawn far to near from eye [ex], [ey], [ez] (in the mesh's own space) into [out]. */
     fun order(
@@ -38,22 +37,22 @@ class Bsp private constructor(
     ) {
         // Without recursion: a tree of a mesh with tens of thousands of faces can be as deep, too deep for the stack.
         // Each entry is a node to visit, or (as -1 - node) one whose faces come next; a node is pushed at most twice.
-        val stack = IntArray(2 * count.size)
+        val stack = IntArray(nodes.size / 2)
         var top = 0
         var k = 0
         stack[top++] = 0
         while (top > 0) {
             val node = stack[--top]
             if (node < 0) {
-                val m = -1 - node
-                for (i in first[m] until first[m] + count[m]) out[k++] = faces[i]
+                val m = 4 * (-1 - node)
+                for (i in nodes[m + 2] until nodes[m + 2] + nodes[m + 3]) out[k++] = i
                 continue
             }
             val o = 4 * node
             val inFront = planes[o] * ex + planes[o + 1] * ey + planes[o + 2] * ez - planes[o + 3] > 0f
             // Popped last to first: the far side, the node's faces, the near side.
-            val near = if (inFront) front[node] else back[node]
-            val far = if (inFront) back[node] else front[node]
+            val near = if (inFront) nodes[o] else nodes[o + 1]
+            val far = if (inFront) nodes[o + 1] else nodes[o]
             if (near >= 0) stack[top++] = near
             stack[top++] = -1 - node
             if (far >= 0) stack[top++] = far
@@ -73,7 +72,19 @@ class Bsp private constructor(
         /** The tree for [mesh], or null when it needs none (convex, or one face) or would cut into too many faces. */
         fun build(mesh: Mesh): Bsp? {
             val n = mesh.triangles
-            if (n < 2 || n > MAX_BSP_TRIANGLES || isConvex(mesh)) return null
+            if (n < 2 || n > MAX_BSP_TRIANGLES) return null
+            val parts = MeshKernels.kernel?.bsp(mesh.points, mesh.tris, mesh.uvs, mesh.faceNormals, mesh.radius, MAX_MESH_TRIANGLES) ?: parts(mesh)
+            if (parts === BspParts.NONE) return null
+            val faces = parts.src.size
+            val ci = mesh.colorIndex?.let { c -> IntArray(faces) { c[parts.src[it]] } }
+            val cut = Mesh(parts.points, IntArray(3 * faces) { it }, parts.uvs, ci, mesh.palette, mesh.smooth)
+            return Bsp(cut, parts.planes, parts.nodes)
+        }
+
+        /** [build]'s tree in Kotlin, [BspParts.NONE] for none. */
+        private fun parts(mesh: Mesh): BspParts {
+            val n = mesh.triangles
+            if (isConvex(mesh)) return BspParts.NONE
             val eps = 1e-4f * max(1f, mesh.radius)
             val faces = ArrayList<Face>(n)
             val pts = mesh.points
@@ -85,7 +96,7 @@ class Bsp private constructor(
                 for (k in 0..2) System.arraycopy(pts, 3 * tris[3 * t + k], p, 3 * k, 3)
                 faces += Face(p, uvs?.copyOfRange(6 * t, 6 * t + 6), t)
             }
-            if (faces.size < 2) return null
+            if (faces.size < 2) return BspParts.NONE
             // Cutting can multiply the faces; past this the mesh is drawn as it was.
             val limit = minOf(MAX_MESH_TRIANGLES, max(4 * faces.size, faces.size + 2000))
             val out = ArrayList<Face>(faces.size * 2)
@@ -141,19 +152,23 @@ class Bsp private constructor(
                     if (fs.isNotEmpty()) work.addLast(Triple(fs, node, true))
                 }
             } catch (_: TooBig) {
-                return null
+                return BspParts.NONE
             }
             // The cut mesh: three points of its own per face, so each face keeps its corners after a cut.
             val points = FloatArray(9 * out.size)
-            val ftris = IntArray(3 * out.size) { it }
             val fuv = if (uvs != null) FloatArray(6 * out.size) else null
-            val ci = mesh.colorIndex?.let { c -> IntArray(out.size) { c[out[it].src] } }
             out.forEachIndexed { i, f ->
                 System.arraycopy(f.p, 0, points, 9 * i, 9)
                 if (fuv != null && f.uv != null) System.arraycopy(f.uv, 0, fuv, 6 * i, 6)
             }
-            val cut = Mesh(points, ftris, fuv, ci, mesh.palette, mesh.smooth)
-            return Bsp(cut, planes.toArray(), front.toArray(), back.toArray(), first.toArray(), count.toArray(), IntArray(out.size) { it })
+            val nodes = IntArray(4 * count.size)
+            for (i in 0 until count.size) {
+                nodes[4 * i] = front[i]
+                nodes[4 * i + 1] = back[i]
+                nodes[4 * i + 2] = first[i]
+                nodes[4 * i + 3] = count[i]
+            }
+            return BspParts(planes.toArray(), nodes, points, fuv, IntArray(out.size) { out[it].src })
         }
 
         /** Whether every face has all of the mesh's points on or behind its plane: then no face can hide another that faces the eye. */
@@ -325,6 +340,8 @@ class Bsp private constructor(
         ) {
             a[i] = x
         }
+
+        operator fun get(i: Int) = a[i]
 
         fun toArray() = a.copyOf(size)
     }
