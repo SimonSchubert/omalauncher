@@ -119,7 +119,10 @@ class Input(
         keyboardFocus = surface
         surface?.let { s ->
             // The selection goes to a client before its keyboard focus, so a paste right away works.
-            if (s.client !== previous?.client) server.selection.focusChanged(s.client)
+            if (s.client !== previous?.client) {
+                server.selection.focusChanged(s.client)
+                server.primary.offer(s.client)
+            }
             keyboardsOf(s.client).forEach {
                 it.send(it.event(1).uint(server.nextSerial()).obj(s.id).ints(IntArray(0)))
                 sendModifiers(it)
