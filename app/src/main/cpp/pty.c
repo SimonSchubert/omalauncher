@@ -18,8 +18,24 @@
 #ifdef __linux__
 #include <sys/syscall.h>
 #endif
+#ifdef __ANDROID__
+#include <android/api-level.h>
+#endif
 
 #define FN(name) Java_dev_omalauncher_terminal_PtyNative_##name
+
+// Whether the child may close its handles with close_range. Android 10 to 12 (and 13, some say) don't allow it to apps:
+// their seccomp kills the program (SIGSYS) rather than failing the call, before the loop could take over. Bionic has
+// it from Android 14 (API 34), so it's allowed there.
+#if defined(__linux__) && defined(SYS_close_range)
+static int closeRange(void) {
+#ifdef __ANDROID__
+    return android_get_device_api_level() >= 34;
+#else
+    return 1;
+#endif
+}
+#endif
 
 static char **strings(JNIEnv *env, jobjectArray arr) {
     jsize n = (*env)->GetArrayLength(env, arr);
@@ -79,6 +95,9 @@ JNIEXPORT jintArray JNICALL FN(start)(JNIEnv *env, jclass cls, jobjectArray jarg
         struct winsize ws = {.ws_row = (unsigned short)rows, .ws_col = (unsigned short)cols};
         struct rlimit rl;
         int maxfd = getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur < 65536 ? (int)rl.rlim_cur : 65536;
+#if defined(__linux__) && defined(SYS_close_range)
+        int range = closeRange();
+#endif
 
         // Only async-signal-safe calls between fork and exec: the JVM has threads.
         pid = fork();
@@ -103,7 +122,7 @@ JNIEXPORT jintArray JNICALL FN(start)(JNIEnv *env, jclass cls, jobjectArray jarg
             dup2(pts, 1);
             dup2(pts, 2);
 #if defined(__linux__) && defined(SYS_close_range)
-            if (syscall(SYS_close_range, 3, ~0U, 0) != 0)
+            if (!range || syscall(SYS_close_range, 3, ~0U, 0) != 0)
 #endif
                 for (int i = 3; i < maxfd; i++) close(i);
             if (chdir(cwd)) {}
