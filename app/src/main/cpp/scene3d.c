@@ -97,7 +97,7 @@ static inline void project(Scene *s, const float *v, const float *src, int k) {
     float f = v[V_FOCAL] / src[2];
     s->sxy[6 * n + 2 * k] = v[V_W] / 2 + src[0] * f;
     s->sxy[6 * n + 2 * k + 1] = v[V_H] / 2 - src[1] * f;
-    s->cols[3 * n + k] = (channel(src[6]) << 24) | (channel(src[3]) << 16) | (channel(src[4]) << 8) | channel(src[5]);
+    s->cols[3 * n + k] = (int32_t)((uint32_t)channel(src[6]) << 24 | (uint32_t)channel(src[3]) << 16 | (uint32_t)channel(src[4]) << 8 | (uint32_t)channel(src[5]));
     s->uv[6 * n + 2 * k] = src[7] * v[V_TEX_W];
     s->uv[6 * n + 2 * k + 1] = src[8] * v[V_TEX_H];
 }
