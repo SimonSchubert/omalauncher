@@ -28,9 +28,10 @@ file.
 ./scripts/fetch-ghostty-vt.sh # the built-in terminal's engine, the same way; without it its tests skip
 ./gradlew :owl:test :app:testFossDebugUnitTest :owl:owlJar
 ./gradlew :app:assembleFossDebug :app:lintFossDebug :app:lintPlayDebug
+./scripts/sanitize-c.sh       # the C's tests again with ASan and UBSan; needs gcc
 ```
 
-These are what CI runs (`.github/workflows/ci.yml`). Run both before you call a
+These are what CI runs (`.github/workflows/ci.yml`). Run them before you call a
 change done.
 
 - `app/src/main/jniLibs/` (proot) and `local.properties` are gitignored. A new

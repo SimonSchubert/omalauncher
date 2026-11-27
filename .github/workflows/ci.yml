@@ -47,6 +47,10 @@ jobs:
       - name: Test
         run: ./gradlew :owl:test :app:testFossDebugUnitTest :owl:owlJar
 
+      # The tests of the app's C again, built with AddressSanitizer and UndefinedBehaviorSanitizer (some seconds).
+      - name: Test the C with sanitizers
+        run: scripts/sanitize-c.sh
+
       # Builds without proot (scripts/fetch-proot.sh), which is enough to compile wlbridge and run lint.
       # The play build adds Play's in-app updates and their dependencies; linting it too catches what they break.
       - name: Build and lint
