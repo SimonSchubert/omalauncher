@@ -108,6 +108,21 @@ class LangTest {
             Source(src).format(e)
         }
 
+    /** A short offending line prints in full; a huge one is windowed, so the message stays small (no OOM from a link). */
+    @Test fun formatWindowsAHugeLine() {
+        val short = compileError("widget \"x\" { size: 2x2; let a = 1 @ }")
+        assertTrue(short, short.contains("let a = 1 @"))
+        assertFalse(short, short.contains("…"))
+
+        val huge = compileError("widget \"x\" {\n  let a = \"${"A".repeat(1_000_000)}\" @\n}")
+        assertTrue("message stayed small: ${huge.length}", huge.length < 400)
+        assertTrue(huge, huge.contains("…"))
+        // The caret still points somewhere inside the shown window.
+        val lines = huge.lines()
+        assertEquals('^', lines.last().trim().single())
+        assertTrue(huge, lines.last().indexOf('^') in 2..lines[lines.size - 2].length)
+    }
+
     @Test fun arithmeticAndPrecedence() {
         assertEquals("7", text("1 + 2 * 3"))
         assertEquals("9", text("(1 + 2) * 3"))
