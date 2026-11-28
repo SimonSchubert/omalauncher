@@ -66,7 +66,7 @@ private val COMPONENTS =
             "PRoot",
             R.string.licenses_use_proot,
             "gpl-2.0",
-            "Copyright (C) 2015 STMicroelectronics. Built from Termux's 5.1.107.96 with omalauncher's patches; the binary's libtalloc.so.2 dependency is renamed to libtalloc.so.",
+            "Copyright (C) 2015 STMicroelectronics. Built from Termux's 5.1.107.102 with omalauncher's patches; the binary's libtalloc.so.2 dependency is renamed to libtalloc.so.",
             "https://proot-me.github.io",
             source = "https://github.com/SimonSchubert/omalauncher/tree/main/patches/proot",
         ),
