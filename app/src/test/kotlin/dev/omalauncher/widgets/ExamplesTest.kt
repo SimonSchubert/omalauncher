@@ -40,7 +40,7 @@ class ExamplesTest {
         val start = src.indexOf("onLongPress: {\n          clip = paste()")
         assertTrue("phone.owl's keypad has no paste", start >= 0)
         val handler = src.substring(start + "onLongPress: ".length, src.indexOf("\n        }\n", start) + "\n        }".length)
-        val p = compile("paste", "widget {\n meta { owl: 26 }\n state digits = \"12\"\n state clip = \"\"\n onTap: $handler\n Text { text: digits }\n}")
+        val p = compile("paste", "widget {\n meta { owl: 28 }\n state digits = \"12\"\n state clip = \"\"\n onTap: $handler\n Text { text: digits }\n}")
         for ((copied, digits) in listOf(
             "+420 777 123 456" to "+420777123456",
             // Web pages' hard and thin spaces, and their hyphens.

@@ -106,6 +106,41 @@ class VoipTrackerTest {
         assertEquals(listOf("missed"), t.due(34_000).map { it.direction })
     }
 
+    @Test fun aPhoneCallKeptFromTheDialerIsOneCallOnThePhone() {
+        val t = VoipTracker(grace = 4_000)
+        val dialer = "com.google.android.dialer"
+        // Without the call log (the Play build), the phone app's call screen and Telecom's notifications count as one app's.
+        t.posted(dialer, "ring", ringing = true, name = "", number = "+420777123456", video = false, now = 0, phone = true)
+        t.audio(calling = true, now = 5_000)
+        t.posted(dialer, "ongoing", ringing = false, name = "", number = "", video = false, now = 5_000, phone = true)
+        t.removed("ring", now = 5_000)
+        t.removed("ongoing", now = 65_000)
+        t.audio(calling = false, now = 65_000)
+        val call = t.due(70_000).single()
+        assertTrue(call.phone)
+        assertEquals("in", call.direction)
+        assertEquals("+420777123456", call.number)
+        assertEquals(60, call.duration)
+        // Another app's calls aren't the phone's.
+        t.posted(wa, "ring", ringing = true, name = "Jana", number = "", video = false, now = 100_000)
+        t.removed("ring", now = 110_000)
+        assertFalse(t.due(120_000).single().phone)
+    }
+
+    @Test fun theDialerNamesAnUnknownCallerByTheirNumber() {
+        assertEquals("+420 777 123 456", VoipTracker.numberIn("+420 777 123 456"))
+        // Wrapped in direction marks, with a hard space or a non-breaking hyphen.
+        assertEquals("+420\u00A0777 123 456", VoipTracker.numberIn("\u202A+420\u00A0777 123 456\u202C"))
+        assertEquals("(555) 010\u20119999", VoipTracker.numberIn("(555) 010\u20119999"))
+        assertEquals("112", VoipTracker.numberIn("112"))
+        // A name is a name, even with digits in it, and too few digits aren't a number.
+        assertEquals("", VoipTracker.numberIn("Jana"))
+        assertEquals("", VoipTracker.numberIn("Office 2"))
+        assertEquals("", VoipTracker.numberIn("Pizza 4 You 777"))
+        assertEquals("", VoipTracker.numberIn("12"))
+        assertEquals("", VoipTracker.numberIn(""))
+    }
+
     @Test fun anUnknownRemovalChangesNothing() {
         val t = VoipTracker(grace = 4_000)
         t.posted(wa, "a", ringing = false, name = "Jana", number = "", video = false, now = 0)
@@ -116,7 +151,26 @@ class VoipTrackerTest {
 
     @Test fun numbersMatchHoweverTheyAreWritten() {
         val keys = listOf("+420 777 123 456", "777123456", "00420777123456", "(+420) 777-123-456").map(PhoneCalls::numberKey).toSet()
-        assertEquals(setOf("777123456"), keys)
+        assertEquals(1, keys.size)
+        // An eight-digit national number, with its country code or without.
+        assertEquals(PhoneCalls.numberKey("12345678"), PhoneCalls.numberKey("+47 12 34 56 78"))
+        assertTrue(PhoneCalls.numberKey("+420 777 123 456") != PhoneCalls.numberKey("+420 777 123 457"))
+    }
+
+    @Test fun aSecondCallRingingDuringOneDoesNotRenameIt() {
+        val t = VoipTracker(grace = 4_000)
+        val dialer = "com.google.android.dialer"
+        t.posted(dialer, "ring", ringing = true, name = "Jana", number = "+420777123456", video = false, now = 0, phone = true)
+        t.posted(dialer, "ongoing", ringing = false, name = "Jana", number = "", video = false, now = 2_000, phone = true)
+        t.removed("ring", now = 2_000)
+        // Call waiting: another caller rings while Jana's call goes on.
+        t.posted(dialer, "waiting", ringing = true, name = "Petr", number = "+420602000000", video = false, now = 30_000, phone = true)
+        t.removed("waiting", now = 40_000)
+        t.removed("ongoing", now = 62_000)
+        val call = t.due(70_000).single()
+        assertEquals("Jana", call.name)
+        assertEquals("+420777123456", call.number)
+        assertEquals(60, call.duration)
     }
 
     @Test fun aWhatsAppCallIsMatchedByItsNumberElseByAUniqueName() {

@@ -36,6 +36,8 @@ import dev.omalauncher.ui.TextSize
 import dev.omalauncher.ui.appDetails
 import dev.omalauncher.ui.card
 import dev.omalauncher.ui.rememberAskPermission
+import dev.omalauncher.widgets.runtime.PhoneCalls
+import dev.omalauncher.widgets.runtime.VoipCalls
 
 /** One thing Android lets the launcher do, as a row: whether it may, and the way to switch it. */
 private class Permission(
@@ -120,13 +122,18 @@ fun PermissionsScreen(
                     askCalendar,
                     appDetails,
                 ),
-                Permission(
-                    R.string.permissions_call_log,
-                    stringResource(R.string.permissions_call_log_uses),
-                    context.hasPermission(Manifest.permission.READ_CALL_LOG),
-                    askCallLog,
-                    appDetails,
-                ),
+                // The Play build has no call log: it keeps the phone's calls from their notifications instead.
+                if (PhoneCalls.callLogDeclared(context)) {
+                    Permission(
+                        R.string.permissions_call_log,
+                        stringResource(R.string.permissions_call_log_uses),
+                        context.hasPermission(Manifest.permission.READ_CALL_LOG),
+                        askCallLog,
+                        appDetails,
+                    )
+                } else {
+                    null
+                },
                 Permission(
                     R.string.permissions_contacts,
                     stringResource(R.string.permissions_contacts_uses),
@@ -141,6 +148,22 @@ fun PermissionsScreen(
                     askCalling,
                     appDetails,
                 ),
+                // Calls kept from notifications for phone apps: listed while on, which only a phone app's tap turns on.
+                // Off stops it and forgets them.
+                if (VoipCalls.recording(context)) {
+                    Permission(
+                        R.string.permissions_kept_calls,
+                        stringResource(R.string.permissions_kept_calls_uses),
+                        true,
+                        turnOn = {},
+                        turnOff = {
+                            VoipCalls.stop(context)
+                            changed()
+                        },
+                    )
+                } else {
+                    null
+                },
                 // Before Android 12, Bluetooth is an install-time permission without a switch.
                 if (sdk >= Build.VERSION_CODES.S) {
                     Permission(

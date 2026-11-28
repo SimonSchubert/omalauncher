@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -49,8 +50,10 @@ import kotlinx.coroutines.withContext
 /**
  * The phone's calls and contacts, for widgets and owl apps: `source c = android.calls`, and `calls("request")`,
  * `calls("call", n)`, `calls("open", e)`, `calls("contact", x)`, `calls("delete", e)` and `calls("undo")`. The call log
- * (READ_CALL_LOG) and the contacts (READ_CONTACTS) are only read once a tap's calls("request") allowed them, and calls in other apps, WhatsApp and the
- * like, only kept from then on ([VoipCalls]). Read while a widget showing them is on screen, like every android source.
+ * (READ_CALL_LOG, the foss build only: Play allows it only to the default phone app) and the contacts (READ_CONTACTS)
+ * are only read once a tap's calls("request") allowed them, and calls in other apps, WhatsApp and the like, only kept
+ * from then on ([VoipCalls]), the phone's own too where the call log can't be read. Read while a widget showing them is
+ * on screen, like every android source.
  */
 class PhoneCalls(
     private val context: Context,
@@ -66,8 +69,14 @@ class PhoneCalls(
     /** Bumped as an activity resumes, since notification access is given in Android's settings, not here. */
     private var resumed by mutableIntStateOf(0)
 
-    /** Entries calls("delete") took away, by id: left out of android.calls until they're deleted or calls("undo"). */
+    /**
+     * Entries calls("delete") took away, by id: left out of android.calls until calls("undo"), or once deleted, until
+     * a read no longer has them, so they don't show again for the moment the list takes to be read anew.
+     */
     private var hidden by mutableStateOf(emptySet<String>())
+
+    /** Those of [hidden] past undo: deleted, or being deleted. */
+    private var settled by mutableStateOf(emptySet<String>())
     private val deleting = HashMap<String, Job>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -83,14 +92,15 @@ class PhoneCalls(
     }
 
     /**
-     * calls("request") from a tap: from now on calls in other apps are kept, then Android's dialogs for the call log,
-     * the contacts and placing calls, each one not yet allowed, one after another; then notification access, which
-     * those calls are seen through, if it's missing.
+     * calls("request") from a tap: from now on calls in other apps are kept, then Android's dialogs for the call log
+     * (where this build has it), the contacts and placing calls, each one not yet allowed, one after another; then
+     * notification access, which those calls are seen through, if it's missing.
      */
     fun request() {
         VoipCalls.record(context)
         recheck()
-        val missing = listOf(Manifest.permission.READ_CALL_LOG, Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE).filterNot(::check)
+        val log = Manifest.permission.READ_CALL_LOG.takeIf { callLogDeclared(context) }
+        val missing = listOfNotNull(log, Manifest.permission.READ_CONTACTS, Manifest.permission.CALL_PHONE).filterNot(::check)
         val ask = ask
         // A preview or a widget behind another app has no activity to ask from.
         if (missing.isEmpty() || ask == null) return accessThen()
@@ -211,22 +221,27 @@ class PhoneCalls(
 
     /**
      * calls("delete", e): takes an entry of calls out of the list at once and deletes it [UNDO_MS] later, unless
-     * calls("undo") brings it back first: the phone's from Android's call log (where the dialer loses it too, so it needs
-     * WRITE_CALL_LOG, asked for here the first time), another app's from the calls kept here. Gone for good after that.
+     * calls("undo") brings it back first: one from Android's call log from there (where the dialer loses it too, so it
+     * needs WRITE_CALL_LOG, asked for here the first time), one kept here from a notification from the calls kept. Gone
+     * for good after that.
      */
     fun delete(target: Value?) {
         val id = (target as? Obj)?.fields?.get("id").textOrNull() ?: return
         if (id in hidden) return
         val row = id.removePrefix("log:").takeIf { it != id }?.toLongOrNull()
-        val voip = id.removePrefix("voip:").takeIf { it != id }
+        val kept = id.removePrefix("kept:").takeIf { it != id }
         when {
-            voip != null -> later(id) { VoipCalls.forget(context, voip).join() }
-            row != null -> {
+            kept != null ->
+                later(id) {
+                    VoipCalls.forget(context, kept).join()
+                    true
+                }
+            // Only the build with the call log lists its rows; a made-up id asks nothing of the Play build.
+            row != null && callLogDeclared(context) -> {
                 val gone = suspend {
                     withContext(Dispatchers.IO) {
-                        runCatching { context.contentResolver.delete(CallLog.Calls.CONTENT_URI, "${CallLog.Calls._ID} = ?", arrayOf(row.toString())) }
+                        runCatching { context.contentResolver.delete(CallLog.Calls.CONTENT_URI, "${CallLog.Calls._ID} = ?", arrayOf(row.toString())) }.isSuccess
                     }
-                    Unit
                 }
                 if (check(Manifest.permission.WRITE_CALL_LOG)) return later(id, gone)
                 // A preview has no activity to ask from; refused, the entry stays.
@@ -237,7 +252,7 @@ class PhoneCalls(
 
     private fun later(
         id: String,
-        gone: suspend () -> Unit,
+        gone: suspend () -> Boolean,
     ) {
         hidden = hidden + id
         deleting[id] =
@@ -245,10 +260,24 @@ class PhoneCalls(
                 delay(UNDO_MS)
                 // Past undo now: a calls("undo") from here on leaves it, and the delete runs to its end.
                 deleting.remove(id)
-                withContext(NonCancellable) { gone() }
-                // Shown again only once it's gone from what the list is read from.
-                hidden = hidden - id
+                settled = settled + id
+                val done = withContext(NonCancellable) { gone() }
+                // Not deleted (the call log refused): it shows again. Deleted, it stays out until a read has it no more.
+                if (!done) {
+                    hidden = hidden - id
+                    settled = settled - id
+                }
             }
+    }
+
+    /** Lets go of the deleted entries a new read no longer has, so [hidden] only holds what's still to go. */
+    private fun forgetDeleted(read: Value) {
+        if (settled.isEmpty()) return
+        val ids = ((read as? Obj)?.fields?.get("calls") as? Lst)?.items.orEmpty().mapTo(HashSet()) { (it as? Obj)?.fields?.get("id").textOrNull() }
+        val left = settled.filterTo(HashSet()) { it !in ids }
+        if (left.isEmpty()) return
+        hidden = hidden - left
+        settled = settled - left
     }
 
     /** calls("undo"): every entry calls("delete") took away and hasn't started deleting yet comes back. */
@@ -261,7 +290,7 @@ class PhoneCalls(
     /** Started from the launcher in front; false where nothing handles it, which mustn't crash the launcher. */
     private fun start(intent: Intent): Boolean = runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
 
-    /** android.calls: {granted, contactsGranted, canCall, voip, calls, contacts, deleting}, the lists empty until each is allowed. */
+    /** android.calls: {granted, log, contactsGranted, canCall, voip, calls, contacts, deleting}, the lists empty until each is allowed. */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun updates(): Flow<Value> =
         snapshotFlow { Grants(log, contacts, calling, resumed) }.flatMapLatest { g ->
@@ -269,12 +298,15 @@ class PhoneCalls(
                 // Provider queries can block; never on the UI thread. A grant can be taken back at any time.
                 withContext(Dispatchers.IO) { value(g) }
             }.catch { if (it is SecurityException) emit(value(Grants(false, false, calling, resumed))) else throw it }
-        }.combine(snapshotFlow { hidden }, ::withoutHidden).distinctUntilChanged()
+        }.onEach { withContext(Dispatchers.Main.immediate) { forgetDeleted(it) } }
+            .combine(snapshotFlow { hidden to settled }) { read, (hidden, settled) -> withoutHidden(read, hidden, settled) }
+            .distinctUntilChanged()
 
     /** What was read, less the entries calls("delete") took away: at once, without reading it all again. */
     private fun withoutHidden(
         read: Value,
         hidden: Set<String>,
+        settled: Set<String>,
     ): Value {
         val fields = (read as? Obj)?.fields ?: return read
         val calls = (fields["calls"] as? Lst)?.items.orEmpty()
@@ -282,7 +314,8 @@ class PhoneCalls(
             fields +
                 mapOf(
                     "calls" to Lst(if (hidden.isEmpty()) calls else calls.filter { (it as? Obj)?.fields?.get("id").textOrNull() !in hidden }),
-                    "deleting" to Num(hidden.size.toDouble()),
+                    // Only those undo can still bring back.
+                    "deleting" to Num((hidden - settled).size.toDouble()),
                 ),
         )
     }
@@ -314,10 +347,9 @@ class PhoneCalls(
         val people = if (g.contacts) runCatching { people() }.getOrDefault(emptyList()) else emptyList()
         val byNumber = HashMap<String, Person>()
         val byName = HashMap<String, Person>()
-        for (p in people) {
-            for (n in p.numbers) byNumber.putIfAbsent(numberKey(n), p)
-            byName.putIfAbsent(p.name.lowercase(), p)
-        }
+        for (p in people) for (n in p.numbers) byNumber.putIfAbsent(numberKey(n), p)
+        // A name finds a contact only when one has it: two people of the same name would call back the wrong one.
+        for ((name, same) in people.groupBy { it.name.lowercase() }) same.singleOrNull()?.let { byName[name] = it }
         val dialer = runCatching { context.getSystemService(TelecomManager::class.java)?.defaultDialerPackage }.getOrNull().orEmpty()
         val rows = ArrayList<Pair<Long, Value>>()
         if (g.log) runCatching { rows += logged(dialer, byNumber) }
@@ -329,12 +361,17 @@ class PhoneCalls(
             val waByDigits = wa.associateBy { numberKey(it.digits) }
             val waByName = wa.groupBy { it.name.lowercase() }
             for (c in VoipCalls.all(context)) {
+                if (c.phone) {
+                    // Kept only for want of the call log: where it can be read now, it has these calls itself.
+                    if (!g.log) rows += c.start to keptPhoneCall(c, dialer, byNumber, byName)
+                    continue
+                }
                 val onWa = if (c.pkg != WHATSAPP) null else whatsappMatch(c.number, c.name, waByDigits, waByName)
                 val known = onWa?.let { w -> people.firstOrNull { it.id == w.contact } } ?: c.number.takeIf { it.isNotBlank() }?.let { byNumber[numberKey(it)] }
                     ?: if (c.pkg == WHATSAPP) null else byName[c.name.lowercase()]
                 val number = onWa?.let { "+${it.digits}" } ?: c.number.ifBlank { known?.numbers?.singleOrNull().orEmpty() }
                 rows += c.start to entry(
-                    id = "voip:${c.id}", pkg = c.pkg, app = labels[c.pkg], direction = c.direction, name = known?.name ?: onWa?.name ?: c.name,
+                    id = "kept:${c.id}", pkg = c.pkg, app = labels[c.pkg], direction = c.direction, name = known?.name ?: onWa?.name ?: c.name,
                     number = number, video = c.video, start = c.start, duration = c.duration,
                     voip = true, contact = known?.id ?: onWa?.contact, callable = onWa != null,
                 )
@@ -343,13 +380,34 @@ class PhoneCalls(
         val calls = rows.sortedByDescending { it.first }.take(MAX_CALLS).map { it.second }
         return Obj(
             mapOf(
-                "granted" to bool(g.log),
+                // The phone's calls are listed: from the call log, or kept from its notifications from calls("request") on.
+                "granted" to bool(g.log || recording),
+                "log" to bool(g.log),
                 "contactsGranted" to bool(g.contacts),
                 "canCall" to bool(g.calling),
                 "voip" to bool(recording && media.granted),
                 "calls" to Lst(calls),
                 "contacts" to Lst(people.map { it.value }),
             ),
+        )
+    }
+
+    /**
+     * A call on the phone kept from the phone app's notifications, as the call log would list it: its number from the
+     * notification, or from the contact of that name where they have only the one number.
+     */
+    private fun keptPhoneCall(
+        c: VoipCall,
+        dialer: String,
+        byNumber: Map<String, Person>,
+        byName: Map<String, Person>,
+    ): Value {
+        val known = c.number.takeIf { it.isNotBlank() }?.let { byNumber[numberKey(it)] } ?: c.name.takeIf { it.isNotBlank() }?.let { byName[it.lowercase()] }
+        val number = c.number.ifBlank { known?.numbers?.singleOrNull().orEmpty() }
+        return entry(
+            id = "kept:${c.id}", pkg = dialer.ifEmpty { c.pkg }, app = "phone", direction = c.direction, name = known?.name ?: c.name,
+            number = number, video = c.video, start = c.start, duration = c.duration,
+            voip = false, contact = known?.id, callable = number.any(Char::isDigit),
         )
     }
 
@@ -443,6 +501,23 @@ class PhoneCalls(
     }
 
     companion object {
+        @Volatile
+        private var declared: Boolean? = null
+
+        /**
+         * Whether this build may have the call log at all: the foss build declares READ_CALL_LOG
+         * (src/foss/AndroidManifest.xml), the Play build doesn't, so it never asks for it.
+         */
+        fun callLogDeclared(context: Context): Boolean =
+            declared ?: runCatching {
+                @Suppress("DEPRECATION")
+                val info = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)
+                Manifest.permission.READ_CALL_LOG in info.requestedPermissions.orEmpty()
+            }.getOrDefault(false).also { declared = it }
+
+        /** Whether the phone's own calls come from the call log now; otherwise [VoipCalls] keeps them from its notifications. */
+        fun callLogReadable(context: Context): Boolean = callLogDeclared(context) && context.hasPermission(Manifest.permission.READ_CALL_LOG)
+
         /** The newest calls listed, the phone's and other apps' together. */
         const val MAX_CALLS = 500
         const val MAX_CONTACTS = 5000
@@ -464,10 +539,11 @@ class PhoneCalls(
             )
 
         /**
-         * One number however it's written: +420 777 123 456, 777123456 and 00420777123456 are the same. Its last nine
-         * digits, which is a whole national number in much of Europe and tells numbers apart well enough elsewhere.
+         * One number however it's written: +420 777 123 456, 777123456 and 00420777123456 are the same, and so are
+         * +47 12345678 and 12345678. Its last eight digits: the whole of an eight-digit national number (Norway,
+         * Denmark, Singapore), and enough to tell numbers apart elsewhere.
          */
-        fun numberKey(number: String): String = number.filter(Char::isDigit).takeLast(9)
+        fun numberKey(number: String): String = number.filter(Char::isDigit).takeLast(8)
 
         /**
          * Who a WhatsApp call was with: by the number its notification gave, which is never overridden; without one, the

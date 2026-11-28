@@ -66,6 +66,9 @@
     <string name="permissions_contacts_uses">names and numbers, read only · phone apps</string>
     <string name="permissions_phone">phone calls</string>
     <string name="permissions_phone_uses">calls you start from a phone app</string>
+    <!-- Calls kept from notifications for android.calls (VoipCalls), listed while that's on; turning it off stops it and forgets them. -->
+    <string name="permissions_kept_calls">kept calls</string>
+    <string name="permissions_kept_calls_uses">whatsapp, messenger and, without the call log, the phone\'s calls, from their notifications · on the phone only · off forgets them</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">your AirPods\' batteries and settings · AirPods widgets · agents with omalauncher airpods</string>
     <string name="permissions_notifications">notifications</string>

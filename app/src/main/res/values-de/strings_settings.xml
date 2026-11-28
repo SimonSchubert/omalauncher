@@ -61,6 +61,8 @@
     <string name="permissions_contacts_uses">namen und nummern, nur lesen · telefon-apps</string>
     <string name="permissions_phone">anrufen</string>
     <string name="permissions_phone_uses">anrufe, die du in einer telefon-app startest</string>
+    <string name="permissions_kept_calls">gemerkte anrufe</string>
+    <string name="permissions_kept_calls_uses">whatsapp, messenger und ohne anrufliste die anrufe des telefons, aus ihren benachrichtigungen · nur auf dem telefon · aus vergisst sie</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">akkus und einstellungen deiner AirPods · AirPods-widgets · agenten mit omalauncher airpods</string>
     <string name="permissions_notifications">benachrichtigungen</string>

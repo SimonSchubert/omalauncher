@@ -64,6 +64,7 @@ class MediaListener : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         gone()
+        VoipCalls.disconnected(this)
         changes.update { it + 1 }
     }
 

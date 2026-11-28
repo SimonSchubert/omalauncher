@@ -464,7 +464,7 @@ internal val ACTION_WORDS =
                 "calendar takes request or open; the events are in source x = android.calendar",
                 forms = mapOf("request" to (1..1 to "calendar(\"request\")"), "open" to (1..2 to "calendar(\"open\"), or calendar(\"open\", event)")),
             ),
-        // owl 26 in this fork: calls("call", n) places a call, so only from onTap, and calls("delete", e) deletes one, only
+        // owl 28: calls("call", n) places a call, so only from onTap, and calls("delete", e) deletes one, only
         // from a touch; the compiler and WidgetInstance check.
         "calls" to
             Words(

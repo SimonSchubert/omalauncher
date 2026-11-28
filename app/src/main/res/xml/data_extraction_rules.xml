@@ -14,6 +14,9 @@
         <exclude domain="file" path="updates.json" />
         <exclude domain="file" path="omarchy" />
         <exclude domain="file" path=".omarchy.download" />
+        <!-- Calls kept for android.calls stay on the phone (store/omalauncher.txt); moving to a new phone takes them. -->
+        <exclude domain="file" path="voip-calls.json" />
+        <exclude domain="sharedpref" path="calls.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="arch" />

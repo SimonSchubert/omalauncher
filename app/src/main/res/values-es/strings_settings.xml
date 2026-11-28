@@ -58,6 +58,8 @@
     <string name="permissions_contacts_uses">nombres y números, solo lectura · apps de teléfono</string>
     <string name="permissions_phone">llamadas</string>
     <string name="permissions_phone_uses">llamadas que inicias desde una app de teléfono</string>
+    <string name="permissions_kept_calls">llamadas guardadas</string>
+    <string name="permissions_kept_calls_uses">whatsapp, messenger y, sin el registro de llamadas, las del teléfono, desde sus notificaciones · solo en el teléfono · al desactivarlo se olvidan</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">las baterías y la configuración de tus AirPods · widgets de AirPods · agentes con omalauncher airpods</string>
     <string name="permissions_notifications">notificaciones</string>

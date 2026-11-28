@@ -24,7 +24,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/** A call made or missed in a calling app (WhatsApp, Messenger, …), as [VoipTracker] saw it in the app's notifications. */
+/**
+ * A call made or missed in a calling app (WhatsApp, Messenger, …), or on the phone itself where the call log can't be
+ * read ([phone]), as [VoipTracker] saw it in the app's notifications.
+ */
 data class VoipCall(
     val pkg: String,
     /** in, out or missed. */
@@ -37,6 +40,8 @@ data class VoipCall(
     val start: Long,
     /** Seconds from when it was answered (or, going out, placed) to its last notification going, 0 for a missed one. */
     val duration: Long,
+    /** A call on the phone itself, kept from the phone app's call notifications: [pkg] is the phone app. */
+    val phone: Boolean = false,
 ) {
     val id get() = "$pkg-$start"
 }
@@ -63,6 +68,7 @@ class VoipTracker(
         var name: String,
         var number: String,
         var video: Boolean,
+        val phone: Boolean,
         val keys: MutableSet<String> = HashSet(),
         var gone: Long? = null,
     )
@@ -76,7 +82,10 @@ class VoipTracker(
     /** Whether a call is under way or waiting out its grace, so the listener knows to come back for [due]. */
     val busy get() = live.isNotEmpty()
 
-    /** A call notification [key] of [pkg] posted, again or for the first time; [ringing] for one that rings, else ongoing. */
+    /**
+     * A call notification [key] of [pkg] posted, again or for the first time; [ringing] for one that rings, else ongoing.
+     * [phone] for the phone app's own, a call on the phone.
+     */
     fun posted(
         pkg: String,
         key: String,
@@ -85,15 +94,19 @@ class VoipTracker(
         number: String,
         video: Boolean,
         now: Long,
+        phone: Boolean = false,
     ) {
         val call =
             live.getOrPut(pkg) {
                 // Answered calls are timed from when the ongoing notification came; outgoing ones from the start.
-                Live(pkg, incoming = ringing, start = now, answered = if (ringing) null else now, name = name, number = number, video = video)
+                Live(pkg, incoming = ringing, start = now, answered = if (ringing) null else now, name = name, number = number, video = video, phone = phone)
             }
+        // A second call ringing while this one is answered (call waiting) doesn't rename it; it isn't listed of its own.
+        val waiting = ringing && call.answered != null && key !in call.keys
         call.gone = null
         call.keys += key
         if (!ringing && call.answered == null) call.answered = now
+        if (waiting) return
         if (name.isNotBlank()) call.name = name
         if (number.isNotBlank()) call.number = number
         call.video = call.video || video
@@ -138,20 +151,34 @@ class VoipTracker(
                 video = c.video,
                 start = c.start,
                 duration = c.answered?.let { ((end - it) / 1000).coerceAtLeast(0) } ?: 0,
+                phone = c.phone,
             )
         }
     }
 
     companion object {
         const val GRACE_MS = 4_000L
+
+        /**
+         * [text] when it is a phone number and nothing else, as the phone app names a caller it has no contact for
+         * ("+420 777 123 456", "(555) 010-9999", often wrapped in direction marks), else "".
+         */
+        fun numberIn(text: String): String {
+            val t = text.filterNot { it in DIRECTION_MARKS }.trim()
+            return if (t.count(Char::isDigit) >= 3 && t.all { it.isDigit() || it in NUMBER_MARKS }) t else ""
+        }
+
+        private const val DIRECTION_MARKS = "\u200E\u200F\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069"
+        private const val NUMBER_MARKS = "+()-./*# \u00A0\u2009\u202F\u2010\u2011\u2012\u2013"
     }
 }
 
 /**
  * Calls in other calling apps, for android.calls: [MediaListener] hands every notification here, and once the user
  * allowed calls("request") the calls it sees are kept in `files/voip-calls.json`, newest first, at most [MAX]. The
- * phone's own calls are in Android's call log, so the dialer's notifications are skipped. Without notification access
- * nothing comes, and nothing is kept before the user asked.
+ * phone's own calls come from Android's call log where it can be read; where it can't (the Play build never has it, see
+ * [PhoneCalls.callLogDeclared], and the foss build only once it's allowed), the phone app's call notifications are kept
+ * too, as [VoipCall.phone]. Without notification access nothing comes, and nothing is kept before the user asked.
  */
 object VoipCalls {
     /** One at a time and in order, as notifications come. */
@@ -184,7 +211,7 @@ object VoipCalls {
         val call = callOf(context, sbn) ?: return
         val now = System.currentTimeMillis()
         worker.launch {
-            tracker.posted(sbn.packageName, sbn.key, call.ringing, call.name, call.number, call.video, now)
+            tracker.posted(call.pkg, sbn.key, call.ringing, call.name, call.number, call.video, now, call.phone)
             settle(context)
         }
     }
@@ -213,8 +240,33 @@ object VoipCalls {
             val showing = active.mapNotNull { sbn -> callOf(listener, sbn)?.let { sbn to it } }
             val keys = showing.mapTo(HashSet()) { it.first.key }
             for (key in tracker.keys() - keys) tracker.removed(key, now)
-            for ((sbn, call) in showing) tracker.posted(sbn.packageName, sbn.key, call.ringing, call.name, call.number, call.video, sbn.postTime.takeIf { it in 1..now } ?: now)
+            for ((sbn, call) in showing) tracker.posted(call.pkg, sbn.key, call.ringing, call.name, call.number, call.video, sbn.postTime.takeIf { it in 1..now } ?: now, call.phone)
             settle(context = listener)
+        }
+    }
+
+    /**
+     * The listener lost its binding (notification access taken back, or Android unbound it): no removals come now, so
+     * the calls showing end as if their notifications went, timed by the audio, and the audio isn't watched for ever.
+     */
+    fun disconnected(context: Context) {
+        val now = System.currentTimeMillis()
+        worker.launch {
+            for (key in tracker.keys()) tracker.removed(key, now)
+            settle(context)
+        }
+    }
+
+    /**
+     * Stops keeping calls and forgets those kept: settings' switch for them. A tap's calls("request") starts again.
+     * Off at once for what comes next; the file goes on the worker, after a call it was keeping.
+     */
+    fun stop(context: Context) {
+        prefs(context).edit { putBoolean(RECORD, false) }
+        worker.launch {
+            calls = emptyList()
+            runCatching { file(context).delete() }
+            changes.update { it + 1 }
         }
     }
 
@@ -244,7 +296,8 @@ object VoipCalls {
         context: Context,
         ended: List<VoipCall>,
     ) {
-        if (ended.isEmpty()) return
+        // Stopped meanwhile: a call under way then isn't kept either.
+        if (ended.isEmpty() || !recording(context)) return
         save(context, (ended + all(context)).distinctBy { it.id }.sortedByDescending { it.start }.take(MAX))
     }
 
@@ -274,7 +327,8 @@ object VoipCalls {
                     .put("number", c.number)
                     .put("video", c.video)
                     .put("start", c.start)
-                    .put("duration", c.duration),
+                    .put("duration", c.duration)
+                    .put("phone", c.phone),
             )
         }
         runCatching { Versioned.writeFile(file(context), VERSION, JSONObject().put("calls", array)) }.onFailure { Log.w("widgets", "voip calls: ${it.message}") }
@@ -291,10 +345,14 @@ object VoipCalls {
                 video = it.optBoolean("video"),
                 start = it.getLong("start"),
                 duration = it.optLong("duration"),
+                phone = it.optBoolean("phone"),
             )
         }.orEmpty()
 
     private class Seen(
+        /** The app the call is in; the phone's calls all count as the phone app's, whichever part of it posted them. */
+        val pkg: String,
+        val phone: Boolean,
         val ringing: Boolean,
         val name: String,
         val number: String,
@@ -303,8 +361,8 @@ object VoipCalls {
 
     /**
      * A calling app's call notification: Android's CallStyle says so with its call type, older ones only with the call
-     * category, and then a full-screen intent is what rings. The dialer's own (in the call log already), group
-     * summaries and missed-call notices aren't calls.
+     * category, and then a full-screen intent is what rings. The phone app's own count only while the call log can't be
+     * read (else it has them); group summaries and missed-call notices aren't calls.
      */
     private fun callOf(
         context: Context,
@@ -317,12 +375,24 @@ object VoipCalls {
             val extras = n.extras
             val type = extras.getInt(EXTRA_CALL_TYPE, 0)
             if (type == 0 && n.category != Notification.CATEGORY_CALL) return null
-            if (sbn.packageName == context.packageName || sbn.packageName in dialers(context)) return null
+            if (sbn.packageName == context.packageName) return null
+            val dialer = defaultDialer(context)
+            val phone = sbn.packageName in DIALERS || sbn.packageName == dialer || sbn.packageName == systemDialer(context)
+            if (phone && PhoneCalls.callLogReadable(context)) return null
             val ringing = if (type != 0) type == CALL_TYPE_INCOMING || type == CALL_TYPE_SCREENING else n.fullScreenIntent != null
+            // Without CallStyle, one that doesn't ring is a call under way only while it's ongoing: a notice left in the
+            // shade, like a missed call's, isn't.
+            if (type == 0 && !ringing && n.flags and (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE) == 0) return null
             val person = personOf(extras)
-            val name = person?.name?.toString()?.takeIf { it.isNotBlank() } ?: extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
-            val number = person?.uri?.takeIf { it.startsWith("tel:") }?.removePrefix("tel:")?.let(android.net.Uri::decode).orEmpty()
-            Seen(ringing, name.trim(), number, extras.getBoolean(EXTRA_CALL_IS_VIDEO, false))
+            var name = person?.name?.toString()?.takeIf { it.isNotBlank() } ?: extras.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+            var number = person?.uri?.takeIf { it.startsWith("tel:") }?.removePrefix("tel:")?.let(android.net.Uri::decode).orEmpty()
+            // The phone app names a caller it has no contact for by their number: that's the number, and no name.
+            val named = VoipTracker.numberIn(name)
+            if (phone && named.isNotEmpty()) {
+                if (number.isBlank()) number = named
+                name = ""
+            }
+            Seen(if (phone) dialer ?: sbn.packageName else sbn.packageName, phone, ringing, name.trim(), number, extras.getBoolean(EXTRA_CALL_IS_VIDEO, false))
         }.getOrNull()
     }
 
@@ -334,9 +404,11 @@ object VoipCalls {
             extras.getParcelable<Person>(EXTRA_CALL_PERSON)
         }
 
-    /** The phone's own call screens, whose calls the call log has. */
-    private fun dialers(context: Context): Set<String> =
-        DIALERS + listOfNotNull(runCatching { context.getSystemService(TelecomManager::class.java)?.defaultDialerPackage }.getOrNull())
+    /** The phone app picked as the default, whose call screen posts the phone's calls along with [DIALERS]. */
+    private fun defaultDialer(context: Context): String? = runCatching { context.getSystemService(TelecomManager::class.java)?.defaultDialerPackage }.getOrNull()
+
+    /** The phone app the phone came with, whose call screen shows calls even with another app picked as the default. */
+    private fun systemDialer(context: Context): String? = runCatching { context.getSystemService(TelecomManager::class.java)?.systemDialerPackage }.getOrNull()
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -349,7 +421,8 @@ object VoipCalls {
     private const val PREFS = "calls"
     private const val RECORD = "record_voip"
     private val DIRECTIONS = setOf("in", "out", "missed")
-    private val DIALERS = setOf("com.android.server.telecom", "com.android.phone", "com.android.dialer", "com.google.android.dialer", "com.samsung.android.incallui", "com.samsung.android.dialer")
+    /** The phone's own call screens and the parts of Android that post about its calls. */
+    private val DIALERS = setOf("com.android.server.telecom", "com.android.phone", "com.android.dialer", "com.android.incallui", "com.google.android.dialer", "com.samsung.android.incallui", "com.samsung.android.dialer")
 
     // Notification.CallStyle's extras, public under these names from Android 12; read by name to work before it.
     private const val EXTRA_CALL_TYPE = "android.callType"

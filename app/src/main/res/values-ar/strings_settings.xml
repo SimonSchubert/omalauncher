@@ -64,6 +64,14 @@
     <string name="permissions_location_uses">تقريبي · أدوات مثل الطقس، أثناء ظهورها على الشاشة · الوكلاء عبر omalauncher location</string>
     <string name="permissions_calendar">التقويم</string>
     <string name="permissions_calendar_uses">أحداثك، للقراءة فقط · أدوات التقويم · الوكلاء عبر omalauncher calendar</string>
+    <string name="permissions_call_log">سجل المكالمات</string>
+    <string name="permissions_call_log_uses">مكالماتك، وحذف ما تسحبه جانبا · تطبيقات الهاتف</string>
+    <string name="permissions_contacts">جهات الاتصال</string>
+    <string name="permissions_contacts_uses">الأسماء والأرقام، للقراءة فقط · تطبيقات الهاتف</string>
+    <string name="permissions_phone">المكالمات الهاتفية</string>
+    <string name="permissions_phone_uses">المكالمات التي تبدؤها من تطبيق هاتف</string>
+    <string name="permissions_kept_calls">المكالمات المحفوظة</string>
+    <string name="permissions_kept_calls_uses">واتساب وماسنجر، ومكالمات الهاتف عند غياب سجل المكالمات، من إشعاراتها · على الهاتف فقط · إيقافها يحذفها</string>
     <string name="permissions_bluetooth">بلوتوث</string>
     <string name="permissions_bluetooth_uses">بطاريات AirPods وإعداداتها · أدوات AirPods · الوكلاء عبر omalauncher airpods</string>
     <string name="permissions_notifications">الإشعارات</string>

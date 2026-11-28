@@ -56,6 +56,8 @@
     <string name="permissions_contacts_uses">nama dan nomor, hanya dibaca · aplikasi telepon</string>
     <string name="permissions_phone">panggilan telepon</string>
     <string name="permissions_phone_uses">panggilan yang kamu mulai dari aplikasi telepon</string>
+    <string name="permissions_kept_calls">panggilan tersimpan</string>
+    <string name="permissions_kept_calls_uses">whatsapp, messenger dan, tanpa log panggilan, panggilan telepon, dari notifikasinya · hanya di ponsel · mematikannya menghapusnya</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">baterai dan setelan AirPods-mu · widget AirPods · agen dengan omalauncher airpods</string>
     <string name="permissions_notifications">notifikasi</string>

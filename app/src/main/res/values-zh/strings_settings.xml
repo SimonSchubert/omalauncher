@@ -56,6 +56,8 @@
     <string name="permissions_contacts_uses">姓名和号码，只读 · 电话应用</string>
     <string name="permissions_phone">拨打电话</string>
     <string name="permissions_phone_uses">从电话应用发起的通话</string>
+    <string name="permissions_kept_calls">保存的通话</string>
+    <string name="permissions_kept_calls_uses">WhatsApp、Messenger，以及没有通话记录时手机本身的通话，来自其通知 · 仅在手机上 · 关闭即删除</string>
     <string name="permissions_bluetooth">蓝牙</string>
     <string name="permissions_bluetooth_uses">AirPods 的电量和设置 · AirPods 小组件 · 智能体用 omalauncher airpods</string>
     <string name="permissions_notifications">通知</string>

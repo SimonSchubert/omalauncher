@@ -59,6 +59,8 @@
     <string name="permissions_contacts_uses">имена и номера, только чтение · приложения-телефоны</string>
     <string name="permissions_phone">звонки</string>
     <string name="permissions_phone_uses">звонки, которые вы начинаете из приложения-телефона</string>
+    <string name="permissions_kept_calls">сохранённые звонки</string>
+    <string name="permissions_kept_calls_uses">whatsapp, messenger и без журнала звонков звонки телефона, из их уведомлений · только на телефоне · выключение их удаляет</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">заряд и настройки ваших AirPods · виджеты AirPods · агенты через omalauncher airpods</string>
     <string name="permissions_notifications">уведомления</string>

@@ -1,5 +1,5 @@
 app "phone" {
-  meta { owl: 26; description: "Your calls in one list, the phone's and WhatsApp's or Messenger's alike, grouped by day; your contacts, searched by name or number; and a keypad, where holding the number pastes one copied. A tap on the handset calls back, and a call swiped away is deleted. Nothing is read until you tap allow"; version: "1.0"; license: "MIT"; category: "productivity" }
+  meta { owl: 28; description: "Your calls in one list, the phone's and WhatsApp's or Messenger's alike, grouped by day; your contacts, searched by name or number; and a keypad, where holding the number pastes one copied. A tap on the handset calls back, and a call swiped away is deleted. Nothing is read until you tap allow"; version: "1.0"; license: "MIT"; category: "productivity" }
   title: "phone"
   // The tab bar runs along the bottom, above the navigation bar.
   edge: true
@@ -35,7 +35,7 @@ app "phone" {
   // The call log, other apps' calls kept from their notifications, and the contacts; nothing until a tap allows it.
   source c = android.calls
   source now = clock every 1m
-  // Only for the allow button's busy moment.
+  // A clock of seconds for short moments: the allow and call keys busy, swiped rows kept out, the keypad's double tap.
   source tick = clock every 1s
 
   state tab = "recents" persist     // recents, contacts or keypad
@@ -448,7 +448,7 @@ app "phone" {
       Spacer { weight: 1 }
     } else if tab == "recents" {
       if !c.granted && len(calls) == 0 {
-        Empty { head: "your calls in one list"; note: "the phone's call log, and from now on calls in whatsapp, messenger and other calling apps, grouped by day. kept on the phone"; allow: true }
+        Empty { head: "your calls in one list"; note: "the phone's calls and those in whatsapp, messenger and other calling apps, grouped by day. kept on the phone"; allow: true }
       } else {
         Row {
           fill: width
@@ -459,7 +459,8 @@ app "phone" {
           Chip { word: "missed"; v: "missed" }
         }
         if len(recentRows) == 0 {
-          Empty { head: typed != "" ? "nothing matches" : (only == "missed" ? "no missed calls" : "no calls yet"); note: typed != "" ? "try part of a name or a number" : (only == "missed" ? "calls you didn't answer show here" : "calls you make and get show here") }
+          // Without the call log (the launcher from Google Play) calls are kept from their notifications: none come without access.
+          Empty { head: typed != "" ? "nothing matches" : (only == "missed" ? "no missed calls" : "no calls yet"); note: typed != "" ? "try part of a name or a number" : (!c.voip && !c.log ? "calls show here once the launcher may see their notifications" : (only == "missed" ? "calls you didn't answer show here" : (c.log ? "calls you make and get show here" : "calls you make and get from now on show here"))); allow: !c.voip && !c.log && typed == "" }
         } else {
           Column {
             weight: 1
@@ -477,7 +478,7 @@ app "phone" {
                 padding: [12, 0, 12, 0]
                 background: alpha(yellow, 0.1)
                 Icon { src: icOpen; tint: yellow; s: 18 }
-                Text { text: "whatsapp & messenger calls need notification access"; style: small; color: yellow; weight: 1; maxLines: 2 }
+                Text { text: c.log ? "whatsapp & messenger calls need notification access" : "new calls need notification access"; style: small; color: yellow; weight: 1; maxLines: 2 }
                 Box {
                   width: 72
                   height: 44
@@ -619,7 +620,7 @@ app "phone" {
                   haptic("light")
                   digits = lastOut
                   filledAt = tick
-                } else if !dialing && tick - filledAt >= 1 {
+                } else if !dialing && tick - filledAt >= 2 {
                   haptic()
                   callAt = tick
                   callId = "keypad"
