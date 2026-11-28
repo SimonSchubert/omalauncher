@@ -52,6 +52,12 @@
     <string name="permissions_location_uses">aproximada · widgets como el clima, mientras están en pantalla · agentes con omalauncher location</string>
     <string name="permissions_calendar">calendario</string>
     <string name="permissions_calendar_uses">tus eventos, solo lectura · widgets de calendario · agentes con omalauncher calendar</string>
+    <string name="permissions_call_log">historial de llamadas</string>
+    <string name="permissions_call_log_uses">tus llamadas, y borrar las que deslizas · apps de teléfono</string>
+    <string name="permissions_contacts">contactos</string>
+    <string name="permissions_contacts_uses">nombres y números, solo lectura · apps de teléfono</string>
+    <string name="permissions_phone">llamadas</string>
+    <string name="permissions_phone_uses">llamadas que inicias desde una app de teléfono</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">las baterías y la configuración de tus AirPods · widgets de AirPods · agentes con omalauncher airpods</string>
     <string name="permissions_notifications">notificaciones</string>

@@ -46,3 +46,4 @@ file only this phone runs, `owl: 12` is fine; for the store, a lower level reach
 - **25**: `launcher("store:apps")`, the store on its apps alone, which older launchers ignore; `volume("request")` and `android.volume`'s `output.battery` and `output.granted`
 - **26**: `appAction("voice", key)`, an owl app changed by talking to the agent in Voice
 - **27**: a file whose `strings` has a set for a right-to-left language (`ar`, `fa`, `he`, `ur`) is laid out right to left on a phone in that language; see Right to left in docs/declarations.md
+- **28**: `android.calls` and `calls`

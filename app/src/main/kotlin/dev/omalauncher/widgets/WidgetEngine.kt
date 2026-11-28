@@ -146,6 +146,9 @@ class WidgetEngine(
     /** android.volume and volume(...), whose "request" asks the activity in front for Bluetooth. */
     val volume get() = services.volume
 
+    /** android.calls and calls(...), whose "request" asks the activity in front for the call log, contacts and calling. */
+    val calls get() = services.calls
+
     /** android.media, and android.modes' Do Not Disturb switch: both need notification access. */
     val media get() = services.media
 

@@ -16,6 +16,12 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <!-- Widgets' android.calendar, only after a tap on calendar("request"). -->
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- Widgets' android.calls (this fork's phone app), only after a tap on calls("request"). -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <!-- calls("delete"): a call swiped out of a phone app's list leaves the call log; asked for at the first one. -->
+    <uses-permission android:name="android.permission.WRITE_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <!-- AirPods' batteries and settings for android.airpods (AirPods.kt), over their own link. Asked for by a widget's
          first airpods(...); before Android 12, BLUETOOTH covers it. -->
@@ -29,6 +35,10 @@
 
     <uses-feature
         android:name="android.software.live_wallpaper"
+        android:required="false" />
+    <!-- CALL_PHONE would otherwise keep the launcher off tablets without a SIM; there, calls(...) opens a dialer if any. -->
+    <uses-feature
+        android:name="android.hardware.telephony"
         android:required="false" />
 
     <queries>

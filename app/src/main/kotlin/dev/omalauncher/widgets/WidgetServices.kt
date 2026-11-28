@@ -95,6 +95,7 @@ import dev.omalauncher.widgets.runtime.Media
 import dev.omalauncher.widgets.runtime.Modes
 import dev.omalauncher.widgets.runtime.Motion
 import dev.omalauncher.widgets.runtime.Notifications
+import dev.omalauncher.widgets.runtime.PhoneCalls
 import dev.omalauncher.widgets.runtime.Services
 import dev.omalauncher.widgets.runtime.Sim
 import dev.omalauncher.widgets.runtime.Streams
@@ -189,6 +190,8 @@ class WidgetServices(
     private val motion = Motion(context)
     /** android.airpods and airpods(...); each activity that shows widgets lets it ask for Bluetooth while it's in front. */
     val airpods = AirPods(context, scope)
+    /** android.calls and calls(...); each activity that shows widgets lets it ask for the call log, contacts and calling. */
+    val calls = PhoneCalls(context, media)
     private val panels = SystemPanels(context)
 
     /** Opens launcher screens ("style" or "themes", "agents", "store" or "store:apps", "drawer"); set by the UI. */
@@ -262,6 +265,7 @@ class WidgetServices(
             "motion" -> motion.updates()
             "location" -> runtime.location.updates()
             "calendar" -> runtime.calendar.updates()
+            "calls" -> calls.updates()
             "airpods" -> airpods.updates()
             // Both read Compose state: the app list and its usage, the installed agents and the one picked.
             // The apps are up to a thousand values made on each change, as the drawer's are: not on the main thread.
@@ -685,6 +689,19 @@ class WidgetServices(
                     args.getOrNull(1) == Null -> Unit
                     else -> runtime.calendar.open(args.getOrNull(1))
                 }
+            "calls" -> {
+                // An entry still loading (…) would call or open nothing useful.
+                if (args.getOrNull(1) == Null) return
+                return when (arg) {
+                    "request" -> calls.request()
+                    "call" -> calls.call(args.getOrNull(1))
+                    "open" -> calls.open(args.getOrNull(1))
+                    "contact" -> calls.contact(args.getOrNull(1))
+                    "delete" -> calls.delete(args.getOrNull(1))
+                    "undo" -> calls.undo()
+                    else -> Unit
+                }
+            }
         }
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.

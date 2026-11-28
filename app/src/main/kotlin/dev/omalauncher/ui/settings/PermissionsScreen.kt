@@ -64,6 +64,7 @@ fun PermissionsScreen(
         tick++
         runtime.location.recheck()
         runtime.calendar.recheck()
+        runtime.widgets.calls.recheck()
         runtime.widgets.airpods.recheck()
         runtime.widgets.volume.recheck()
     }
@@ -81,6 +82,9 @@ fun PermissionsScreen(
     val askMic = rememberAskPermission(Manifest.permission.RECORD_AUDIO, then = answered)
     val askLocation = rememberAskPermission(Manifest.permission.ACCESS_COARSE_LOCATION, then = answered)
     val askCalendar = rememberAskPermission(Manifest.permission.READ_CALENDAR, then = answered)
+    val askCallLog = rememberAskPermission(Manifest.permission.READ_CALL_LOG, then = answered)
+    val askContacts = rememberAskPermission(Manifest.permission.READ_CONTACTS, then = answered)
+    val askCalling = rememberAskPermission(Manifest.permission.CALL_PHONE, then = answered)
 
     @SuppressLint("InlinedApi")
     val askBluetooth = rememberAskPermission(Manifest.permission.BLUETOOTH_CONNECT, then = answered)
@@ -114,6 +118,27 @@ fun PermissionsScreen(
                     stringResource(R.string.permissions_calendar_uses),
                     context.hasPermission(Manifest.permission.READ_CALENDAR),
                     askCalendar,
+                    appDetails,
+                ),
+                Permission(
+                    R.string.permissions_call_log,
+                    stringResource(R.string.permissions_call_log_uses),
+                    context.hasPermission(Manifest.permission.READ_CALL_LOG),
+                    askCallLog,
+                    appDetails,
+                ),
+                Permission(
+                    R.string.permissions_contacts,
+                    stringResource(R.string.permissions_contacts_uses),
+                    context.hasPermission(Manifest.permission.READ_CONTACTS),
+                    askContacts,
+                    appDetails,
+                ),
+                Permission(
+                    R.string.permissions_phone,
+                    stringResource(R.string.permissions_phone_uses),
+                    context.hasPermission(Manifest.permission.CALL_PHONE),
+                    askCalling,
                     appDetails,
                 ),
                 // Before Android 12, Bluetooth is an install-time permission without a switch.

@@ -53,6 +53,12 @@
     <string name="permissions_location_uses">приблизне · віджети на кшталт погоди, поки вони на екрані · агенти через omalauncher location</string>
     <string name="permissions_calendar">календар</string>
     <string name="permissions_calendar_uses">ваші події, лише читання · віджети календаря · агенти через omalauncher calendar</string>
+    <string name="permissions_call_log">журнал дзвінків</string>
+    <string name="permissions_call_log_uses">ваші дзвінки та видалення змахнутих · застосунки-телефони</string>
+    <string name="permissions_contacts">контакти</string>
+    <string name="permissions_contacts_uses">імена й номери, лише читання · застосунки-телефони</string>
+    <string name="permissions_phone">дзвінки</string>
+    <string name="permissions_phone_uses">дзвінки, які ви починаєте із застосунку-телефона</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">заряд і налаштування ваших AirPods · віджети AirPods · агенти через omalauncher airpods</string>
     <string name="permissions_notifications">сповіщення</string>
