@@ -8,8 +8,9 @@ import org.junit.Test
 
 /**
  * [isUnfoldedShape] decides when home shows two pages side by side. The Fold8 numbers are from #246: its inner
- * screen's window is 2448x1848 px, so each half is 1224x1848, 0.662 wide for its height. The others are published
- * panel resolutions, each half's width given in dp at a typical density.
+ * screen's window is 2448x1848 px (each half 1224x1848, 0.662 wide for its height), or 1848x2448 turned upright
+ * (each half 924x2448, 0.377), and its cover screen is 1248x1972. The others are published panel resolutions, each
+ * half's width given in dp at a typical density.
  */
 class UnfoldedShapeTest {
     private fun half(window: IntSize, density: Float) = (window.width / 2 / density).dp
@@ -18,6 +19,12 @@ class UnfoldedShapeTest {
         val fold8 = IntSize(2448, 1848)
         assertTrue(isUnfoldedShape(fold8, half(fold8, 2.625f), hinge = true))
         assertTrue(isUnfoldedShape(fold8, half(fold8, 3.0f), hinge = true))
+    }
+
+    @Test fun aGalaxyZFold8InnerScreenInPortraitShowsTwoPages() {
+        val upright = IntSize(1848, 2448) // halves 924x2448 (0.377), 352 dp wide at 2.625
+        assertTrue(isUnfoldedShape(upright, half(upright, 2.625f), hinge = true))
+        assertFalse(isUnfoldedShape(upright, half(upright, 2.625f), hinge = false))
     }
 
     @Test fun otherInnerScreensStillDo() {
@@ -39,12 +46,21 @@ class UnfoldedShapeTest {
         }
     }
 
+    @Test fun tabletsInPortraitStayOnOnePage() {
+        for (hinge in listOf(false, true)) {
+            assertFalse(isUnfoldedShape(IntSize(1600, 2560), half(IntSize(1600, 2560), 2.0f), hinge)) // 16:10, 0.3125
+            assertFalse(isUnfoldedShape(IntSize(1920, 2880), half(IntSize(1920, 2880), 2.0f), hinge)) // 3:2, 0.333
+        }
+    }
+
     @Test fun squarerTabletsWithoutAHingeStayOnOnePage() {
-        // As phone-shaped as a Fold8's halves, so only the hinge tells them apart.
+        // As phone-shaped as a Fold8's halves, in landscape or portrait, so only the hinge tells them apart.
         for (window in listOf(
             IntSize(2048, 1536), // 4:3, 0.667
             IntSize(2800, 2000), // 7:5 (OnePlus Pad), 0.700
             IntSize(2448, 1848), // a Fold8-shaped screen without a hinge, 0.662
+            IntSize(1536, 2048), // 4:3 in portrait, 0.375
+            IntSize(1848, 2448), // a Fold8-shaped screen in portrait without a hinge, 0.377
         )) {
             assertFalse("$window", isUnfoldedShape(window, half(window, 2.0f), hinge = false))
         }
@@ -61,10 +77,17 @@ class UnfoldedShapeTest {
         }
     }
 
+    @Test fun aGalaxyZFold8CoverScreenStaysOnOnePage() {
+        val cover = IntSize(1248, 1972) // halves 624x1972 (0.316), 238 dp wide at 2.625
+        assertFalse(isUnfoldedShape(cover, half(cover, 2.625f), hinge = true))
+    }
+
     @Test fun aFoldShapedScreenTooNarrowForTwoPagesDoesNot() {
-        // The Fold8's shape at a density that leaves each half under 320 dp.
+        // The Fold8's shape at densities that leave each half under 320 dp.
         val fold8 = IntSize(2448, 1848)
         assertFalse(isUnfoldedShape(fold8, half(fold8, 4.0f), hinge = true))
+        val upright = IntSize(1848, 2448) // 308 dp halves at 3.0
+        assertFalse(isUnfoldedShape(upright, half(upright, 3.0f), hinge = true))
     }
 
     @Test fun anEmptyWindowDoesNot() {
