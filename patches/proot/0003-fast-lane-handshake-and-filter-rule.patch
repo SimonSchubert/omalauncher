@@ -184,16 +184,79 @@ index 97451e6..0a19cbf 100644
  #include "syscall/syscall.h"
  #include "syscall/sysnum.h"
  #include "extension/extension.h"
-@@ -96,6 +97,8 @@ static int add_statements(struct sock_fprog *program, size_t nb_statements,
+@@ -89,13 +90,68 @@ static int add_statements(struct sock_fp
+ 	return 0;
+ }
+ 
++/* The syscalls the fast lane library (patches/proot/fastpath) itself
++ * executes from its one fixed instruction, see tracee/fastpath.h:
++ * stat/lstat/fstatat (newfstatat, PR_fstatat64), statx, access
++ * (faccessat), readlink(at), a read-only open, fstat, close, and the
++ * xattr and id calls it also answers itself.
++ *
++ * Only these syscall numbers may use the instruction-pointer bypass
++ * below.  add_trace_syscall() is called once for every syscall in
++ * PRoot's whole traced-syscall table, not just these few: without
++ * this whitelist the bypass template would apply uniformly to all of
++ * them.  The fast lane's trampoline is just "svc 0; ret" at one
++ * fixed, non-ASLR address, with the syscall number taken from
++ * whatever a guest put in its syscall register -- so any native code
++ * running in the guest could jump there with an arbitrary syscall
++ * number and have that syscall, not just these few, let through
++ * completely untraced, bypassing PRoot's path-translation and
++ * fake-root confinement for it.  No memory-corruption bug needed.  */
++static const Sysnum fastpath_syscalls[] = {
++	PR_fstatat64,
++	PR_statx,
++	PR_faccessat,
++	PR_readlinkat,
++	PR_openat,
++	PR_fstat,
++	PR_close,
++	PR_getxattr,
++	PR_lgetxattr,
++	PR_listxattr,
++	PR_llistxattr,
++	PR_getpid,
++	PR_getuid,
++};
++
++static bool is_fastpath_syscall(Abi abi, word_t syscall)
++{
++	size_t i;
++
++	/* fastpath_syscalls[] holds Sysnum values -- PRoot's abstract,
++	 * architecture-independent syscall enum, not real syscall
++	 * numbers -- while @syscall is already the real, per-@abi number
++	 * detranslate_sysnum() produced for the filter.  Detranslate each
++	 * whitelist entry the same way before comparing, or this would
++	 * compare numbers from two unrelated spaces: PR_close's own enum
++	 * value happens to equal arm64's real "statfs" syscall number, for
++	 * instance, so a raw-to-enum comparison would wrongly let statfs
++	 * through the untraced bypass below instead of close.  */
++	for (i = 0; i < sizeof(fastpath_syscalls) / sizeof(fastpath_syscalls[0]); i++)
++		if (syscall == detranslate_sysnum(abi, fastpath_syscalls[i]))
++			return true;
++
++	return false;
++}
++
+ /**
+  * Append to @program->filter the statements required to notify PRoot
+- * about the given @syscall made by a tracee, with the given @flag.
+- * This function returns -errno if an error occurred, otherwise 0.
++ * about the given @syscall made by a tracee under @abi, with the given
++ * @flag.  This function returns -errno if an error occurred, otherwise 0.
   */
- static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int flag)
+-static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int flag)
++static int add_trace_syscall(struct sock_fprog *program, Abi abi, word_t syscall, int flag)
  {
 +	/* The instruction pointer is a 64-bit little-endian field.  */
 +	const size_t ip_offset = offsetof(struct seccomp_data, instruction_pointer);
  	int status;
  
  	/* Sanity check.  */
-@@ -112,15 +115,38 @@ static int add_trace_syscall(struct sock_fprog *program, word_t syscall, int fla
+@@ -112,15 +168,62 @@ static int add_trace_syscall(struct sock
  		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag)
  	};
  
@@ -202,7 +265,13 @@ index 97451e6..0a19cbf 100644
 +	 * library has translated its paths already (tracee/fastpath.h).
 +	 * Only syscalls PRoot traces look at the instruction pointer, so
 +	 * the kernel can still tell that all the others are always
-+	 * allowed, and skip the filter for them.  */
++	 * allowed, and skip the filter for them.
++	 *
++	 * This template is only ever used for a syscall in
++	 * fastpath_syscalls[] above; is_fastpath_syscall() below picks
++	 * between it and fastpath_traced_statements, so every other
++	 * traced syscall keeps being traced whatever the instruction
++	 * pointer is, even when the fast lane is on.  */
 +	#define LENGTH_FASTPATH_SYSCALL 7
 +	struct sock_filter fastpath_statements[LENGTH_FASTPATH_SYSCALL] = {
 +		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, syscall, 0, 6),
@@ -214,11 +283,29 @@ index 97451e6..0a19cbf 100644
 +		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag)
 +	};
 +
++	/* Same length as fastpath_statements above (LENGTH_TRACED relies
++	 * on every traced syscall taking the same number of statements
++	 * when the fast lane is on), but never allows: for a syscall
++	 * that isn't in fastpath_syscalls[], the instruction pointer is
++	 * never looked at, so there is no fixed address to jump to from
++	 * guest code to bypass tracing of it.  */
++	struct sock_filter fastpath_traced_statements[LENGTH_FASTPATH_SYSCALL] = {
++		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, syscall, 0, 6),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag),
++		BPF_STMT(BPF_RET + BPF_K, SECCOMP_RET_TRACE + flag)
++	};
++
  	DEBUG_FILTER("FILTER:     trace if syscall == %ld\n", syscall);
  
 -	status = add_statements(program, LENGTH_TRACE_SYSCALL, statements);
-+	if (fastpath_enabled())
++	if (fastpath_enabled() && is_fastpath_syscall(abi, syscall))
 +		status = add_statements(program, LENGTH_FASTPATH_SYSCALL, fastpath_statements);
++	else if (fastpath_enabled())
++		status = add_statements(program, LENGTH_FASTPATH_SYSCALL, fastpath_traced_statements);
 +	else
 +		status = add_statements(program, LENGTH_TRACE_SYSCALL, statements);
  	if (status < 0)
@@ -233,7 +320,7 @@ index 97451e6..0a19cbf 100644
  /**
   * Append to @program->filter the statements that allow anything (if
   * unfiltered).  Note that @nb_traced_syscalls is used to make a
-@@ -144,7 +170,7 @@ static int end_arch_section(struct sock_fprog *program, size_t nb_traced_syscall
+@@ -144,7 +247,7 @@ static int end_arch_section(struct sock_
  
  	/* Sanity check, see start_arch_section().  */
  	if (   talloc_array_length(program->filter) - program->len
@@ -242,7 +329,7 @@ index 97451e6..0a19cbf 100644
  		return -ERANGE;
  
  	return 0;
-@@ -161,7 +187,7 @@ static int start_arch_section(struct sock_fprog *program, uint32_t arch, size_t
+@@ -161,7 +264,7 @@ static int start_arch_section(struct soc
  	const size_t arch_offset    = offsetof(struct seccomp_data, arch);
  	const size_t syscall_offset = offsetof(struct seccomp_data, nr);
  	const size_t section_length = LENGTH_END_SECTION +
@@ -251,6 +338,15 @@ index 97451e6..0a19cbf 100644
  	int status;
  
  	/* Sanity checks.  */
+@@ -292,7 +395,7 @@ static int set_seccomp_filters(const Fil
+ 					continue;
+ 
+ 				/* Filter: trace if handled syscall */
+-				status = add_trace_syscall(&program, syscall, sysnums[k].flags);
++				status = add_trace_syscall(&program, seccomp_archs[i].abis[j], syscall, sysnums[k].flags);
+ 				if (status < 0)
+ 					goto end;
+ 			}
 diff --git a/src/tracee/fastpath.c b/src/tracee/fastpath.c
 new file mode 100644
 index 0000000..8c21ba1
