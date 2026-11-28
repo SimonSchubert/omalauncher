@@ -5,7 +5,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.graphics.drawable.ColorDrawable
+import android.graphics.Point
 import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
 import android.media.Image
 import android.media.ImageReader
 import android.os.Handler
@@ -35,6 +37,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
@@ -106,6 +110,20 @@ internal class Previews(
     ): Boolean {
         // A widget can declare a size of thousands of rows; that's no tile to draw, and its bitmap would run out of memory.
         if (widthPx !in 1..MAX_SIDE || heightPx !in 1..MAX_SIDE) return false
+        // One at a time: they share the display.
+        return oneAtATime.withLock { drawNow(spec, widthPx, heightPx, out, ready, content) }
+    }
+
+    private val oneAtATime = Mutex()
+
+    private suspend fun drawNow(
+        spec: WidgetSpec,
+        widthPx: Int,
+        heightPx: Int,
+        out: File,
+        ready: suspend () -> Unit,
+        content: @Composable () -> Unit,
+    ): Boolean {
         val reader = ImageReader.newInstance(widthPx, heightPx, PixelFormat.RGBA_8888, 3)
         val handler = Handler(Looper.getMainLooper())
         var latest: Image? = null
@@ -116,13 +134,11 @@ internal class Previews(
                 latest = image
             }
         }, handler)
-        val dm = context.getSystemService(DisplayManager::class.java)
-        val dpi = context.resources.displayMetrics.densityDpi
-        // Private (no flags): only this app draws on it, and it needs no permission.
-        val display = dm.createVirtualDisplay("omalauncher-preview", widthPx, heightPx, dpi, reader.surface, 0)
         val owner = Owner()
         var presentation: Presentation? = null
+        var display: VirtualDisplay? = null
         try {
+            display = displayOf(widthPx, heightPx, reader)
             presentation =
                 Presentation(context, display.display).apply {
                     window?.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
@@ -156,13 +172,48 @@ internal class Previews(
             return false
         } finally {
             // The window manager can refuse the removal (IllegalStateException from system_server on a Pixel 9 Pro,
-            // Android 17); thrown from here it crashed the launcher and skipped releasing the display.
+            // Android 17); thrown from here it crashed the launcher and skipped what follows.
             runCatching { presentation?.dismiss() }.onFailure { Log.w("widgets", "cannot dismiss the preview", it) }
             owner.destroy()
-            display.release()
+            // Kept for the next preview, drawing nowhere meanwhile.
+            runCatching { display?.surface = null }
             latest?.close()
             reader.close()
         }
+    }
+
+    /**
+     * The one display every preview is drawn on; main thread only. A display per preview, released after it, left
+     * about six layers behind in SurfaceFlinger on Android 17, and after some 700 previews the system server ran out
+     * of them and restarted the phone's UI.
+     */
+    private var shared: VirtualDisplay? = null
+
+    /** [shared] at [widthPx] x [heightPx], drawing into [reader]. */
+    private suspend fun displayOf(
+        widthPx: Int,
+        heightPx: Int,
+        reader: ImageReader,
+    ): VirtualDisplay {
+        val dpi = context.resources.displayMetrics.densityDpi
+        val display =
+            shared?.also {
+                it.resize(widthPx, heightPx, dpi)
+                it.surface = reader.surface
+            }
+                // Private (no flags): only this app draws on it, and it needs no permission.
+                ?: context.getSystemService(DisplayManager::class.java).createVirtualDisplay("omalauncher-preview", widthPx, heightPx, dpi, reader.surface, 0).also { shared = it }
+        // The new size reaches the display a moment after resize() returns, and a window made before that has the old one.
+        val size = Point()
+        withTimeoutOrNull(RESIZE_TIMEOUT_MS) {
+            while (true) {
+                @Suppress("DEPRECATION")
+                display.display.getRealSize(size)
+                if (size.x == widthPx && size.y == heightPx) break
+                delay(16)
+            }
+        }
+        return display
     }
 
     private fun Image.toBitmap(
@@ -200,6 +251,9 @@ internal class Previews(
         /** How long sources get to load before the preview is taken anyway. */
         const val READY_TIMEOUT_MS = 8_000L
         const val SETTLE_MS = 600L
+
+        /** How long the display gets to take a new size. */
+        const val RESIZE_TIMEOUT_MS = 1_000L
 
         /** The largest preview side in pixels; a phone screen fits. */
         const val MAX_SIDE = 8192
