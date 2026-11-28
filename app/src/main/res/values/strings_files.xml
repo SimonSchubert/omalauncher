@@ -108,6 +108,7 @@
     <string name="prompt_hint_ask">open an app or ask %1$s…</string>
     <!-- Shown after typing: Enter sends the text to the coding agent. -->
     <string name="prompt_enter_ask">⏎ ask</string>
+    <string name="prompt_enter_google">⏎ Google</string>
     <!-- In place of the coding agent's name when none is picked. -->
     <string name="prompt_agent">agent</string>
     <!-- The leading spaces line it up with the agents above it. -->

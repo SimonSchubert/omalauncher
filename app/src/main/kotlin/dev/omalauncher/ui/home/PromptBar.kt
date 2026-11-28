@@ -82,6 +82,7 @@ import dev.omalauncher.linux.agentInvocation
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.gestures.detectTapGestures
 import dev.omalauncher.system.hasPermission
+import dev.omalauncher.system.openGoogleSearch
 import dev.omalauncher.ui.ChoicePopup
 import dev.omalauncher.ui.EdgeGap
 import dev.omalauncher.ui.Glyph
@@ -141,6 +142,14 @@ internal fun PromptBar(
     }
 
     fun send(prompt: String) {
+        googleSearchQuery(prompt)?.let { query ->
+            context.openGoogleSearch(query)
+            state.query = ""
+            focusManager.clearFocus()
+            keyboard?.hide()
+            state.closeNow()
+            return
+        }
         val p = prompt.trim()
         if (p.isEmpty()) return
         if (!linux) return offerLinux()
@@ -163,7 +172,13 @@ internal fun PromptBar(
 
     /** Enter: what the drawer does with it (open the app it picked), or, from a drawer without onSubmit, the agent. */
     fun submit() {
-        if (drawer()?.submit(text) == true) state.query = "" else send(text)
+        if (googleSearchQuery(text) != null) {
+            send(text)
+        } else if (drawer()?.submit(text) == true) {
+            state.query = ""
+        } else {
+            send(text)
+        }
     }
 
     /** The drawer gets [key] with its `onKey`, and moves its own highlight; false without one, and the key goes on. */
@@ -362,8 +377,11 @@ internal fun PromptBar(
                         }
                     },
                 )
-                // The drawer says what its Enter does, with its `enter`.
-                val enter = drawer()?.enterHint() ?: stringResource(R.string.prompt_enter_ask)
+                // A Google query takes priority over the drawer's app match and agent action.
+                val googleEnter = stringResource(R.string.prompt_enter_google)
+                val enter =
+                    if (googleSearchQuery(text) != null) googleEnter
+                    else drawer()?.enterHint() ?: stringResource(R.string.prompt_enter_ask)
                 if (text.isNotBlank() && !listening && enter.isNotEmpty()) {
                     // Says what Enter does, so opening an app instead of asking is never a surprise.
                     Box(

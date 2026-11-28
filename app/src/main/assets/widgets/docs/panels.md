@@ -59,8 +59,10 @@ panel "my drawer" {
 The launcher keeps what's around a panel: the backdrop, the panel following the finger as it opens, closing it by
 pulling down past the top of its list (pushing up past the end, for one from the top), a tap on its empty space or
 Back. The drawer sits above the prompt bar, which stays with its microphone and agent menu: `query` is the bar's text
-as it's typed, and `onSubmit` runs on Enter with it as `value`; without `onSubmit`, Enter asks the agent. Only a
-panel opened by swiping up has the bar: in one from the top, `query` stays "" and `onSubmit`, `enter` and `onKey` never run. `enter` is what the bar shows it does, like
+as it's typed, and `onSubmit` runs on Enter with it as `value`; without `onSubmit`, Enter asks the agent.
+The bar reserves `g ` followed by a non-empty query for Google Search before calling the panel's `onSubmit`:
+it opens the Google app, or a browser if the app isn't installed. An empty `g ` still goes to the panel.
+Only a panel opened by swiping up has the bar: in one from the top, `query` stays "" and `onSubmit`, `enter` and `onKey` never run. `enter` is what the bar shows it does, like
 `enter: opens ? "▸ open" : "⏎ ask"` ("" shows nothing). With a keyboard attached, the bar's Up, Down, Tab and
 Shift+Tab go to `onKey` with `value` set to `up`, `down`, `tab` or `shift-tab`, so a panel can move its own
 highlight (drawer.owl keeps a `pick`). Up and Down come only while what's typed is one line; in more, they move

@@ -81,6 +81,7 @@
     <string name="prompt_hint_apps">app öffnen…</string>
     <string name="prompt_hint_ask">app öffnen oder %1$s fragen…</string>
     <string name="prompt_enter_ask">⏎ fragen</string>
+    <string name="prompt_enter_google">⏎ Google</string>
     <string name="prompt_agent">agent</string>
     <string name="prompt_manage_agents">"  agenten verwalten…"</string>
 
