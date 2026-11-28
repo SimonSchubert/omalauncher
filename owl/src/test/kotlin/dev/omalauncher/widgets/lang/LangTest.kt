@@ -88,6 +88,14 @@ class LangTest {
         return el.props["text"]!!(Env.root(host)).toString()
     }
 
+    /** wttr.in gives "-0" for a temperature just under zero; today shows it through num(), which has no negative zero. */
+    @Test fun numOfMinusZeroShowsAsZero() {
+        assertEquals("0°", text("\"${'$'}{num(t)}°\"", "state t = \"-0\""))
+        assertEquals("-3°", text("\"${'$'}{num(t)}°\"", "state t = \"-3\""))
+        val today = java.io.File("../app/src/main/assets/widgets/10-today.owl").readText()
+        assertFalse(Regex("""\$\{get\((cur|day|d), "(temp_|FeelsLike|maxtemp|mintemp)""").containsMatchIn(today))
+    }
+
     /** A list literal that isn't constant hands over its items, to be read one by one like a model's at: [x, y, z]. */
     @Test fun listLiteralsKeepTheirItems() {
         val p = Compiler.compile("widget \"t\" {\nstate x = 3\nText { text: [1, x, x * 2] }\nText { text: [1, 2] }\n}")

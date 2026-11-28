@@ -3,7 +3,7 @@ widget "today" {
   order: 1
   size: 3x3
   minSize: 2x2
-  meta { description: "The date and the weather where you are: a city you type, or the phone's location once you allow it, or else by IP. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.8"; license: "MIT"; category: "world"; owl: 27 }
+  meta { description: "The date and the weather where you are: a city you type, or the phone's location once you allow it, or else by IP. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.9"; license: "MIT"; category: "world"; owl: 27 }
 
   // What it says, in the phone's language where it has a set. wttr names the sky and the moon in English, and
   // its own Indonesian misses newer conditions, so other languages name them from wttr's codes.
@@ -595,17 +595,17 @@ widget "today" {
         gap: 6
         align: bottom
         Text { text: weatherIcon(cur.weatherCode, night); font: icon; fontSize: 32; color: sky; width: 26; padding: [0, 0, 0, 3] }
-        Text { text: "${get(cur, "temp_" + unit)}°"; fontSize: 28; color: cyan; width: 68; maxLines: 1 }
+        Text { text: "${num(get(cur, "temp_" + unit))}°"; fontSize: 28; color: cyan; width: 68; maxLines: 1 }
         if !narrow {
           Column {
             gap: 0
             weight: 1
             Text { text: str.sky(cur.weatherCode, cur.weatherDesc[0].value); style: small; align: end; maxLines: 1 }
-            Text { text: "↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}°"; style: small; color: muted; align: end; maxLines: 1; padding: [0, 0, 0, 5] }
+            Text { text: "↑${num(get(day, "maxtemp" + unit))}° ↓${num(get(day, "mintemp" + unit))}°"; style: small; color: muted; align: end; maxLines: 1; padding: [0, 0, 0, 5] }
           }
         }
       }
-      Text { text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1 }
+      Text { text: "${str.feels} ${num(get(cur, "FeelsLike" + unit))}° · ${lower(area.areaName[0].value)}"; style: small; color: muted; maxLines: 1 }
       if !low {
         Spacer { weight: 1 }
         Spacer { height: 1; fill: width; background: alpha(muted, 0.25) }
@@ -622,7 +622,7 @@ widget "today" {
               align: center
               Text { text: lower(fmtTime(parseTime(d.date), "EEE")); style: label; color: muted; align: center }
               Text { text: weatherIcon(d.hourly[4].weatherCode, false); font: icon; fontSize: 18; align: center }
-              Text { text: "${get(d, "maxtemp" + unit)}° ${get(d, "mintemp" + unit)}°"; style: small; align: center; maxLines: 1 }
+              Text { text: "${num(get(d, "maxtemp" + unit))}° ${num(get(d, "mintemp" + unit))}°"; style: small; align: center; maxLines: 1 }
             }
           }
           if !narrow {
@@ -677,7 +677,7 @@ widget "today" {
             gap: 0
             weight: 1
             Text {
-              text: "${get(cur, "temp_" + unit)}°${unit}"
+              text: "${num(get(cur, "temp_" + unit))}°${unit}"
               fontSize: 44
               color: cyan
               maxLines: 1
@@ -687,7 +687,7 @@ widget "today" {
           }
         }
         Text {
-          text: "${str.feels} ${get(cur, "FeelsLike" + unit)}° · ↑${get(day, "maxtemp" + unit)}° ↓${get(day, "mintemp" + unit)}° · ${lower(area.areaName[0].value)}, ${lower(area.country[0].value)}"
+          text: "${str.feels} ${num(get(cur, "FeelsLike" + unit))}° · ↑${num(get(day, "maxtemp" + unit))}° ↓${num(get(day, "mintemp" + unit))}° · ${lower(area.areaName[0].value)}, ${lower(area.country[0].value)}"
           style: small
           color: muted
         }
