@@ -495,9 +495,9 @@ private val cjkLanguages = setOf("zh", "ja", "ko")
 /** Each modifier's meta state bit with its left and right evdev codes. */
 private val impliedModifiers =
     listOf(
-        Triple(KeyEvent.META_SHIFT_ON, Keys.KEY_LEFTSHIFT, 54),
-        Triple(KeyEvent.META_CTRL_ON, Keys.KEY_LEFTCTRL, 97),
-        Triple(KeyEvent.META_ALT_ON, Keys.KEY_LEFTALT, 100),
+        Triple(KeyEvent.META_SHIFT_ON, Keys.KEY_LEFTSHIFT, Keys.KEY_RIGHTSHIFT),
+        Triple(KeyEvent.META_CTRL_ON, Keys.KEY_LEFTCTRL, Keys.KEY_RIGHTCTRL),
+        Triple(KeyEvent.META_ALT_ON, Keys.KEY_LEFTALT, Keys.KEY_RIGHTALT),
     )
 
 private val volumeKeys = setOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)

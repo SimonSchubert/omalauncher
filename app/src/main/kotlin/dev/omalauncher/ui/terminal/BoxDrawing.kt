@@ -12,7 +12,7 @@ import kotlin.math.roundToInt
  * btop's panels) show gaps between rows.
  */
 internal object BoxDrawing {
-    fun handles(cp: Int) = cp in 0x256d..0x2570 || cp in 0x2580..0x259f || cp in 0x2500..0x257f && arms(cp) != null
+    fun handles(cp: Int) = cp in 0x256d..0x2570 || cp in 0x2580..0x259f || cp in 0x2500..0x257f && ARMS[cp - 0x2500] != null
 
     /**
      * Up, right, down and left arm of a line character: 0 none, 1 light, 2 heavy, 3 double; null for one drawn
@@ -53,7 +53,7 @@ internal object BoxDrawing {
             "0201", "1020", "0102", "2010",
         )
 
-    /** Draws [cp] in the cell at [x], [y] of [w] x [h] with [paint]'s colour; false if it isn't one of these. */
+    /** Draws [cp], one that [handles] takes, in the cell at [x], [y] of [w] x [h] with [paint]'s colour. */
     fun draw(
         canvas: Canvas,
         cp: Int,
@@ -62,23 +62,19 @@ internal object BoxDrawing {
         w: Float,
         h: Float,
         paint: Paint,
-    ): Boolean {
+    ) {
         val light = max(1f, (w / 8f).roundToInt().toFloat())
         val heavy = light * 2
         val style = paint.style
         val alpha = paint.alpha
         paint.style = Paint.Style.FILL
         try {
-            arms(cp)?.let {
-                lines(canvas, it, x, y, w, h, light, heavy, paint)
-                return true
+            val arms = arms(cp)
+            when {
+                arms != null -> lines(canvas, arms, x, y, w, h, light, heavy, paint)
+                cp in 0x256d..0x2570 -> arc(canvas, cp, x, y, w, h, light, paint)
+                cp in 0x2580..0x259f -> block(canvas, cp, x, y, w, h, paint, alpha)
             }
-            when (cp) {
-                in 0x256d..0x2570 -> arc(canvas, cp, x, y, w, h, light, paint)
-                in 0x2580..0x259f -> block(canvas, cp, x, y, w, h, paint, alpha)
-                else -> return false
-            }
-            return true
         } finally {
             paint.style = style
             paint.alpha = alpha
@@ -98,7 +94,7 @@ internal object BoxDrawing {
     ) {
         val cx = x + (w / 2).roundToInt()
         val cy = y + (h / 2).roundToInt()
-        val (up, right, down, left) = arms.toList()
+        val (up, right, down, left) = arms
         fun thick(kind: Int) = if (kind == 2) heavy else light
         // How far an arm reaches past the centre, so lines of different weights meet without notches.
         val reachX = maxOf(thick(up), thick(down)) / 2 * (if (up != 0 || down != 0) 1 else 0)

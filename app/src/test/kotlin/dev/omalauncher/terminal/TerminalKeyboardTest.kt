@@ -40,11 +40,11 @@ class TerminalKeyboardTest {
     }
 
     @Test fun capsLock() {
-        chord(TerminalKeyboard.KEY_CAPSLOCK)
+        chord(Keys.KEY_CAPSLOCK)
         assertEquals("A", chord(30))
         assertEquals("a", chord(Keys.KEY_LEFTSHIFT, 30))
         assertEquals("1", chord(2))
-        chord(TerminalKeyboard.KEY_CAPSLOCK)
+        chord(Keys.KEY_CAPSLOCK)
         assertEquals("a", chord(30))
     }
 
@@ -86,10 +86,10 @@ class TerminalKeyboardTest {
         assertEquals("a", chord(30))
         // Left and right are separate keys.
         keys.key(vt, Keys.KEY_LEFTSHIFT, true)
-        keys.key(vt, TerminalKeyboard.KEY_RIGHTSHIFT, true)
+        keys.key(vt, Keys.KEY_RIGHTSHIFT, true)
         keys.key(vt, Keys.KEY_LEFTSHIFT, false)
         assertEquals(Vt.SHIFT, keys.mods)
-        keys.key(vt, TerminalKeyboard.KEY_RIGHTSHIFT, false)
+        keys.key(vt, Keys.KEY_RIGHTSHIFT, false)
         assertEquals(0, keys.mods)
     }
 

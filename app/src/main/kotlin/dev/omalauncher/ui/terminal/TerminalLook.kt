@@ -11,13 +11,12 @@ import dev.omalauncher.linux.shellQuote
 import java.io.File
 
 /**
- * The faces a built-in terminal draws text in: the guest's font [family] as foot finds it with fontconfig, its bold
+ * The faces a built-in terminal draws text in: the guest's font family as foot finds it with fontconfig, its bold
  * and italic files where it has them, then the first fonts of fontconfig's fallback list for it (where foot finds
  * Claude Code's ⏵ and Nerd Font icons), then Android's own (emoji, scripts the guest lacks). [Fallback] where Linux
  * has no fonts.
  */
 class TerminalFaces(
-    val family: String,
     val regular: Typeface,
     val bold: Typeface,
     val italic: Typeface,
@@ -38,7 +37,6 @@ class TerminalFaces(
 
         val Fallback =
             TerminalFaces(
-                "monospace",
                 Typeface.MONOSPACE,
                 Typeface.create(Typeface.MONOSPACE, Typeface.BOLD),
                 Typeface.create(Typeface.MONOSPACE, Typeface.ITALIC),
@@ -97,7 +95,6 @@ class TerminalFaces(
                 }
             }
             return TerminalFaces(
-                family,
                 face(null, FontStyle.FONT_WEIGHT_NORMAL, FontStyle.FONT_SLANT_UPRIGHT),
                 face(bold, FontStyle.FONT_WEIGHT_BOLD, FontStyle.FONT_SLANT_UPRIGHT),
                 face(italic, FontStyle.FONT_WEIGHT_NORMAL, FontStyle.FONT_SLANT_ITALIC),
