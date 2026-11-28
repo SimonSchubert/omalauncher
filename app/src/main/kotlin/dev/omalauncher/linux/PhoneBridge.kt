@@ -15,6 +15,7 @@ import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.content.FileProvider
 import dev.omalauncher.system.postLinuxNotification
 import dev.omalauncher.upgrade.Managed
@@ -58,6 +59,12 @@ class PhoneBridge(
     private val context: Context,
     private val proot: Proot,
     private val location: PhoneLocation,
+    /**
+     * Whether a home screen is up right now ([dev.omalauncher.widgets.WidgetEngine.visible]): [location] and
+     * [calendar] both read "while a widget showing them is on screen" per their own class docs, so neither answers
+     * while the launcher's away, no matter how fast a script asks.
+     */
+    private val visible: () -> Boolean,
     private val calendar: PhoneCalendar,
     private val airpods: () -> AirPods,
     private val folders: PhoneFolders,
@@ -70,6 +77,13 @@ class PhoneBridge(
 ) {
     private val inbox = File(proot.runtimeDir, "phone")
     private var observer: FileObserver? = null
+    /**
+     * [SystemClock.elapsedRealtime] when `calendar` last answered: a script looping it can't pull the calendar more
+     * often than [CALENDAR_EVERY_MS]. Elapsed-realtime, not the wall clock: a backward clock adjustment (NTP after
+     * being offline, a manual date change) mustn't make `now - lastCalendarAt` negative and deny a legitimate caller
+     * until the stale wall-clock timestamp is caught up to.
+     */
+    private var lastCalendarAt = 0L
 
     fun managed(): List<Managed> {
         val bin = File(proot.rootfs, "usr/local/bin")
@@ -147,9 +161,29 @@ class PhoneBridge(
         }
     }
 
+    /**
+     * [PhoneCalendar]'s own doc says it's read "while a widget showing them is on screen, like every android
+     * source" — same intent as [location], which this was missing. A script asking in a loop isn't once in a
+     * while either, and calendars don't change by the second, so answers are also at least [CALENDAR_EVERY_MS]
+     * apart regardless of who's asking.
+     */
     private suspend fun calendar(days: String?): Answer {
+        if (!visible()) return Answer.Denied(NOT_IN_FRONT)
         val n = if (days.isNullOrEmpty()) DAYS else days.toIntOrNull()?.takeIf { it in 1..MAX_DAYS } ?: return Answer.Usage("days: 1 to $MAX_DAYS")
-        val events = calendar.read(n, MAX_EVENTS) ?: return Answer.Denied(NOT_ALLOWED.format("calendar"))
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastCalendarAt < CALENDAR_EVERY_MS) return Answer.Denied(TOO_SOON.format("calendar", CALENDAR_EVERY_MS / 1000))
+        // Reserved before the read, not after: two calls arriving together must not both slip past the check above
+        // while the first is still suspended below. Rolled back on a denial that never touched the provider, so an
+        // ungranted/retried call doesn't cost the next genuine one its whole window.
+        val before = lastCalendarAt
+        lastCalendarAt = now
+        val events = calendar.read(n, MAX_EVENTS) ?: run {
+            lastCalendarAt = before
+            return Answer.Denied(NOT_ALLOWED.format("calendar"))
+        }
+        // calendar.read() just suspended for a real provider query (up to MAX_DAYS/MAX_EVENTS worth); the launcher
+        // could have left the foreground during that wait, same gap issue #08's fix closed for location().
+        if (!visible()) return Answer.Denied(NOT_IN_FRONT)
         return Answer.Ok(Lst(events))
     }
 
@@ -343,7 +377,11 @@ class PhoneBridge(
         val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "devices", "version")
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
+        const val TOO_SOON = "the %s was just read; wait at least %d seconds and ask again"
+        const val NOT_IN_FRONT = "the launcher isn't on screen, so no widget could be showing this; bring it to the front and ask again"
         const val LOCATION_MS = 10_000L
+        /** A minute's plenty for a widget's own refresh, and too slow to be worth polling for. */
+        const val CALENDAR_EVERY_MS = 60_000L
         const val AIRPODS_MS = 12_000L
         const val CONTROL_MS = 2_000L
         /** Under the script's 2 minutes, so a picker left open says nothing was picked. */
