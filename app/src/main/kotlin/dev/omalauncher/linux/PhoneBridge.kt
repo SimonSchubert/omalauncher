@@ -1,7 +1,9 @@
 package dev.omalauncher.linux
 
+import android.Manifest
 import android.content.Context
 import android.os.FileObserver
+import android.os.SystemClock
 import android.util.Log
 import dev.omalauncher.BuildConfig
 import dev.omalauncher.storage.PhoneFolders
@@ -16,6 +18,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.PowerManager
 import androidx.core.content.FileProvider
+import dev.omalauncher.system.hasPermission
 import dev.omalauncher.system.postLinuxNotification
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
@@ -58,6 +61,11 @@ class PhoneBridge(
     private val context: Context,
     private val proot: Proot,
     private val location: PhoneLocation,
+    /**
+     * Whether a home screen is up right now ([dev.omalauncher.widgets.WidgetEngine.visible]), the same count that
+     * gates widgets: a script can ask for `location` as fast as it likes, but never while the launcher's away.
+     */
+    private val visible: () -> Boolean,
     private val calendar: PhoneCalendar,
     private val airpods: () -> AirPods,
     private val folders: PhoneFolders,
@@ -136,15 +144,40 @@ class PhoneBridge(
         }
     }
 
-    /** The fix android.location has, or the first one within [LOCATION_MS]. */
+    /** The last answer [location] gave, and when ([SystemClock.elapsedRealtime]): [LOCATION_EVERY_MS] apart is plenty, like a coarse fix moving. */
+    private var lastLocation: Answer? = null
+    private var lastLocationAt = 0L
+
+    /**
+     * The fix android.location has, or the first one within [LOCATION_MS]. Never while the launcher's in the
+     * background (no widget could be showing it), and not faster than [LOCATION_EVERY_MS], a loop's `sleep` or not.
+     */
     private suspend fun location(): Answer {
+        if (!visible()) return Answer.Denied(NOT_IN_FRONT)
+        val now = SystemClock.elapsedRealtime()
+        lastLocation?.let {
+            // A cached Ok is only replayed while the permission it was fetched under is still granted: revoking it
+            // (Android's settings, mid-window) must stop a real fix from going out immediately, not up to
+            // LOCATION_EVERY_MS later. A cheap permission check, not a real fetch, so the cache still saves the
+            // real cost (recheck() + the up-to-LOCATION_MS wait below) in the common case.
+            if (now - lastLocationAt < LOCATION_EVERY_MS && (it !is Answer.Ok || context.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION))) return it
+        }
         location.recheck()
         val v = location.updates().settle(LOCATION_MS) { !it.flag("granted") || it.flag("available") }
-        return when {
-            v == null || !v.flag("granted") -> Answer.Denied(NOT_ALLOWED.format("location"))
-            !v.flag("available") -> Answer.Error("no location yet; is location on, and the launcher in front?")
-            else -> Answer.Ok(v.without("granted", "available"))
-        }
+        // The wait above can take up to LOCATION_MS (10s); re-check rather than trust the entry check, so a caller
+        // who backgrounds the launcher mid-wait doesn't still get a real fix once it resolves. Not cached: once
+        // visible again, a fresh call should see the real cache, not this transient denial.
+        if (!visible()) return Answer.Denied(NOT_IN_FRONT)
+        val answer =
+            when {
+                v == null || !v.flag("granted") -> Answer.Denied(NOT_ALLOWED.format("location"))
+                // Not "in front?" too: visible() just confirmed that, twice.
+                !v.flag("available") -> Answer.Error("no location yet; is location on?")
+                else -> Answer.Ok(v.without("granted", "available"))
+            }
+        lastLocation = answer
+        lastLocationAt = now
+        return answer
     }
 
     private suspend fun calendar(days: String?): Answer {
@@ -343,7 +376,10 @@ class PhoneBridge(
         val COMMANDS = listOf("location", "calendar", "airpods", "battery", "notify", "share", "folders", "ls", "get", "put", "pick", "devices", "version")
         const val NO_NOTIFICATIONS = "the launcher may not post notifications; turn them on in its settings (permissions), or the \"agents and scripts\" ones in Android's"
         const val NOT_ALLOWED = "the launcher isn't allowed the %s; a widget that shows it asks, or Android's settings for the app"
+        const val NOT_IN_FRONT = "no background location: the launcher isn't on screen, so no widget could be showing it; bring it to the front and ask again"
         const val LOCATION_MS = 10_000L
+        /** A coarse fix moves in steps of a kilometre or so (see PhoneLocation): nothing is lost answering from the same one this often, even to a loop with no `sleep` at all. */
+        const val LOCATION_EVERY_MS = 5_000L
         const val AIRPODS_MS = 12_000L
         const val CONTROL_MS = 2_000L
         /** Under the script's 2 minutes, so a picker left open says nothing was picked. */
