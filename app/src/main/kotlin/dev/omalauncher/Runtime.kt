@@ -760,7 +760,7 @@ class Runtime(
         wm.appWindows
             .firstOrNull { (it.appId.isNotEmpty() && app.matches(it.appId)) || it.title.equals(app.name, ignoreCase = true) }
             ?.let { if (bringToFront(it)) return }
-        launch(app.exec)
+        launchApp(app.exec)
     }
 
     /** Moves [window]'s Android task to the front; false if it has none (yet). */
@@ -842,6 +842,18 @@ class Runtime(
     fun launch(
         command: String,
         onExit: () -> Unit = {},
+    ) = start(command, keepChildren = false, onExit)
+
+    /**
+     * Starts an app by its command, as its icon does. Unlike [launch], what the command leaves running when it
+     * exits stays: some apps' commands only start the app (see [Proot.process]).
+     */
+    fun launchApp(command: String) = start(command, keepChildren = true) {}
+
+    private fun start(
+        command: String,
+        keepChildren: Boolean,
+        onExit: () -> Unit,
     ) {
         if (!linux) {
             openSettings(SettingsPage.Linux)
@@ -854,7 +866,7 @@ class Runtime(
             var lines = 0
             val code =
                 runCatching {
-                    proot.run("exec $command") {
+                    proot.run("exec $command", keepChildren) {
                         lines++
                         if (BuildConfig.DEBUG) Log.i(TAG, "[${command.take(24)}] $it")
                     }

@@ -221,15 +221,14 @@ class Proot(
         listOf(Managed.asset(context, "bwrap-shim.sh", File(rootfs, "usr/local/bin/bwrap"), Policy.Owned, executable = true)) +
             if (fastLaneSource.isFile) listOf(Managed(fastLane, Policy.Owned) { fastLaneSource.readBytes() }) else emptyList()
 
-    private fun command(script: String): List<String> {
-        return listOf(
-            File(nativeDir, "libproot.so").path,
-            "--kill-on-exit",
-            "--link2symlink",
-            "-0",
-            "-r",
-            rootfs.path,
-        ) + procShim.binds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
+    private fun command(
+        script: String,
+        keepChildren: Boolean,
+    ): List<String> {
+        return listOf(File(nativeDir, "libproot.so").path) +
+            (if (keepChildren) emptyList() else listOf("--kill-on-exit")) +
+            listOf("--link2symlink", "-0", "-r", rootfs.path) +
+            procShim.binds.flatMap { (guest, host) -> listOf("-b", "${host.path}:$guest") } +
             listOf(
                 "-b", "/dev",
                 "-b", "/proc",
@@ -293,10 +292,20 @@ class Proot(
         }
     }
 
-    /** A guest `sh -c [script]`, stderr merged into stdout. Needs [prepare] to have run; fails while Linux is [stopped]. */
-    fun process(script: String): ProcessBuilder {
+    /**
+     * A guest `sh -c [script]`, stderr merged into stdout. Needs [prepare] to have run; fails while Linux is [stopped].
+     *
+     * What the script leaves running is killed when it exits (--kill-on-exit), so a widget's or an agent's command
+     * can't pile up background processes. [keepChildren] is for launching an app: one whose launcher starts the real
+     * program and exits (VS Code's `code`) lost its window a moment after it opened. proot then stays until the last
+     * of them is gone, and exits with that one's status instead of the script's. [killAll] ends them like any other.
+     */
+    fun process(
+        script: String,
+        keepChildren: Boolean = false,
+    ): ProcessBuilder {
         if (stopped) throw java.io.IOException("Linux is stopped")
-        return ProcessBuilder(command(script)).apply {
+        return ProcessBuilder(command(script, keepChildren)).apply {
             environment().apply {
                 clear()
                 put("PROOT_LOADER", File(nativeDir, "libproot-loader.so").path)

@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun handleDebugExec(intent: Intent) {
         if (!BuildConfig.DEBUG) return
-        intent.getStringExtra("exec")?.let(runtime::launch)
+        intent.getStringExtra("exec")?.let(runtime::launchApp)
         intent.getStringExtra("theme")?.let { name ->
             lifecycleScope.launch {
                 snapshotFlow { runtime.themes.loaded }.first { it }

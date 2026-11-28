@@ -128,9 +128,10 @@ class OutputTail(
  */
 fun Proot.run(
     script: String,
+    keepChildren: Boolean = false,
     onLine: (String) -> Unit = {},
 ): Int {
-    val process = process(script).start()
+    val process = process(script, keepChildren).start()
     process.inputStream.bufferedReader().use { forEachOutputLine(it, onLine) }
     return process.waitFor()
 }

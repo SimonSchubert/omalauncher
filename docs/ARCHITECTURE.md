@@ -202,8 +202,10 @@ script bundles, and the download fetches the files it lists in
 is 180), keeping what arrived across interrupted attempts. Changing the second updates Linux installs through the steps
 above.
 
-Guest processes die with the app (`--kill-on-exit`), so the Wayland protocol,
-the socket and the guest environment carry no state across an update.
+Guest processes die with the app, so the Wayland protocol, the socket and the
+guest environment carry no state across an update. A guest command's leftover
+children die when it exits (`--kill-on-exit`), except an app's, whose command
+may only start it (`Proot.process`, `Runtime.launchApp`).
 
 Settings › Linux can stop an installed Linux (`Runtime.stopLinux`): every
 guest process is killed, the foreground service goes, and `Proot.process`

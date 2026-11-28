@@ -689,7 +689,7 @@ class WidgetServices(
         when (name) {
             // Named after the command (btop, dua, ...) unless the widget passes a name.
             "terminal" -> runtime.terminal("$arg; exec bash", args.getOrNull(1)?.toString() ?: arg.substringBefore(' '))
-            "app" -> runtime.launch(arg)
+            "app" -> runtime.launchApp(arg)
             // Any scheme an app handles: tel:, geo:, mailto:, ... One nothing handles mustn't crash the launcher.
             "url" -> if (!context.openUrl(arg)) Toast.makeText(context, context.getString(R.string.widgets_no_app_opens, arg), Toast.LENGTH_SHORT).show()
             "launcher" -> launcherAction?.invoke(arg)
