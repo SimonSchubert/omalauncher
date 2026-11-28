@@ -29,6 +29,11 @@ class ExamplesTest {
         for (f in examples) compile(f.name, f.readText())
     }
 
+    /** A warning in a widget the launcher ships is in its .errors file on every phone, where agents read it as something to fix. */
+    @Test fun stockWidgetsCompileWithoutWarnings() {
+        for (f in examples) assertEquals(f.name, emptyList<String>(), compile(f.name, f.readText()).warnings)
+    }
+
     /** The store's built-in agent tiles. */
     @Test fun agentWidgetsCompile() {
         for (agent in dev.omalauncher.linux.AGENTS) {
