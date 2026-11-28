@@ -208,7 +208,11 @@ internal val SINCE =
         // owl 25: the battery of the Bluetooth device media plays on, once a tap has allowed Bluetooth.
         mapOf("volume(\"request\")" to 25) +
         // owl 26: talking to the agent in Voice about an owl app, to change it.
-        mapOf("appAction(\"voice\")" to 26)
+        mapOf("appAction(\"voice\")" to 26) +
+        // owl 28: the phone's calls (its own and other apps' calls) and contacts, for a phone app.
+        listOf("android.calls", "calls").associateWith { 28 } +
+        // owl 28: the clipboard's text, read when a touch asks for it, like a number pasted into a keypad.
+        mapOf("paste" to 28)
 
 /** The level from which a file that shows a right-to-left language's `strings` set is laid out right to left; see [Program.rtl]. */
 internal const val RTL_LEVEL = 27
@@ -366,10 +370,10 @@ val SPEECH_ANYWHERE = setOf("stop", "cancel")
  * The android sources a widget asks Android's permission for, each with x("request") from a tap: never a press, before
  * the finger lifts, or a trigger, so a widget can't ask on its own. The compiler and WidgetInstance both check.
  */
-val ASKS = setOf("location", "calendar", "airpods", "volume")
+val ASKS = setOf("location", "calendar", "airpods", "volume", "calls")
 
 /** Data from the phone and the launcher; device is fixed, system, network and power are polled, the rest update as they change. */
-internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar", "motion", "strip")
+internal val ANDROID = setOf("battery", "device", "media", "notifications", "volume", "system", "network", "power", "sim", "alarm", "modes", "apps", "agents", "recent", "drawer", "modifiers", "speech", "location", "airpods", "calendar", "motion", "strip", "calls")
 
 /**
  * The words an action's first value may be, when it's written out; [numbers] also allows a number. [forms] are the
@@ -381,6 +385,18 @@ internal class Words(
     val numbers: Boolean = false,
     val forms: Map<String, Pair<IntRange, String>> = emptyMap(),
 )
+
+/** The handlers paste() works in (owl 28): a touch that asks for it, never a page's or a source's event. */
+internal val PASTE_HANDLERS = setOf("onTap", "onLongPress")
+
+/** The handlers calls("call") works in (owl 28): a finger that has lifted, never a page's or a source's event. */
+internal val CALL_HANDLERS = setOf("onTap", "onLongPress")
+
+/** The handlers calls("delete") and calls("undo") work in, a swipe let go of too (undo also on a press). */
+internal val DELETE_HANDLERS = setOf("onTap", "onLongPress", "onDragEnd")
+
+/** What the store's review lists for a widget that reads android.calls. */
+internal const val CALLS_COMMAND = "read the phone's calls and contacts, once you allow it"
 
 /** What the store's review lists for a widget that reads or changes AirPods, from the source or airpods(...). */
 internal const val AIRPODS_COMMAND = "read and change the AirPods connected to the phone over Bluetooth, once you allow it"
@@ -447,6 +463,22 @@ internal val ACTION_WORDS =
                 setOf("request", "open"),
                 "calendar takes request or open; the events are in source x = android.calendar",
                 forms = mapOf("request" to (1..1 to "calendar(\"request\")"), "open" to (1..2 to "calendar(\"open\"), or calendar(\"open\", event)")),
+            ),
+        // owl 28: calls("call", n) places a call, so only from onTap, and calls("delete", e) deletes one, only
+        // from a touch; the compiler and WidgetInstance check.
+        "calls" to
+            Words(
+                setOf("request", "call", "open", "contact", "delete", "undo"),
+                "calls takes request, call, open, contact, delete or undo; the calls and contacts are in source x = android.calls",
+                forms =
+                    mapOf(
+                        "request" to (1..1 to "calls(\"request\")"),
+                        "call" to (2..2 to "calls(\"call\", number), or calls(\"call\", entry)"),
+                        "open" to (2..2 to "calls(\"open\", entry)"),
+                        "contact" to (2..2 to "calls(\"contact\", entry), or calls(\"contact\", number)"),
+                        "delete" to (2..2 to "calls(\"delete\", entry)"),
+                        "undo" to (1..1 to "calls(\"undo\")"),
+                    ),
             ),
         // owl 18: where a Browser goes, or how it loads where it is.
         "web" to setOf("back", "forward", "reload", "stop").let { Words(it, "web takes ${it.joinToString()}") },

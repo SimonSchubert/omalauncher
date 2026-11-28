@@ -52,6 +52,14 @@
     <string name="permissions_location_uses">approximative · widgets comme la météo, quand ils sont à l’écran · agents avec omalauncher location</string>
     <string name="permissions_calendar">agenda</string>
     <string name="permissions_calendar_uses">tes événements, en lecture seule · widgets d’agenda · agents avec omalauncher calendar</string>
+    <string name="permissions_call_log">journal d’appels</string>
+    <string name="permissions_call_log_uses">tes appels, et supprimer ceux que tu balaies · apps téléphone</string>
+    <string name="permissions_contacts">contacts</string>
+    <string name="permissions_contacts_uses">noms et numéros, en lecture seule · apps téléphone</string>
+    <string name="permissions_phone">appels</string>
+    <string name="permissions_phone_uses">appels que tu lances depuis une app téléphone</string>
+    <string name="permissions_kept_calls">appels gardés</string>
+    <string name="permissions_kept_calls_uses">whatsapp, messenger et, sans le journal d\'appels, ceux du téléphone, depuis leurs notifications · sur le téléphone seulement · désactiver les oublie</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">batterie et paramètres de tes AirPods · widgets AirPods · agents avec omalauncher airpods</string>
     <string name="permissions_notifications">notifications</string>

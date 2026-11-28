@@ -50,6 +50,14 @@
     <string name="permissions_location_uses">おおよその位置情報 · 天気などのウィジェット（表示中のみ） · omalauncher location を使うエージェント</string>
     <string name="permissions_calendar">カレンダー</string>
     <string name="permissions_calendar_uses">予定（読み取りのみ） · カレンダーウィジェット · omalauncher calendar を使うエージェント</string>
+    <string name="permissions_call_log">通話履歴</string>
+    <string name="permissions_call_log_uses">通話（スワイプで削除も） · 電話アプリ</string>
+    <string name="permissions_contacts">連絡先</string>
+    <string name="permissions_contacts_uses">名前と番号（読み取りのみ） · 電話アプリ</string>
+    <string name="permissions_phone">電話の発信</string>
+    <string name="permissions_phone_uses">電話アプリから発信する通話</string>
+    <string name="permissions_kept_calls">保存した通話</string>
+    <string name="permissions_kept_calls_uses">WhatsApp、Messenger、通話履歴がない場合は電話の通話も、その通知から · 端末内のみ · オフにすると消去</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">AirPods のバッテリー残量と設定 · AirPods ウィジェット · omalauncher airpods を使うエージェント</string>
     <string name="permissions_notifications">通知</string>

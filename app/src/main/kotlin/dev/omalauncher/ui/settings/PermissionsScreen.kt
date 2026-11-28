@@ -36,6 +36,8 @@ import dev.omalauncher.ui.TextSize
 import dev.omalauncher.ui.appDetails
 import dev.omalauncher.ui.card
 import dev.omalauncher.ui.rememberAskPermission
+import dev.omalauncher.widgets.runtime.PhoneCalls
+import dev.omalauncher.widgets.runtime.VoipCalls
 
 /** One thing Android lets the launcher do, as a row: whether it may, and the way to switch it. */
 private class Permission(
@@ -64,6 +66,7 @@ fun PermissionsScreen(
         tick++
         runtime.location.recheck()
         runtime.calendar.recheck()
+        runtime.widgets.calls.recheck()
         runtime.widgets.airpods.recheck()
         runtime.widgets.volume.recheck()
     }
@@ -81,6 +84,9 @@ fun PermissionsScreen(
     val askMic = rememberAskPermission(Manifest.permission.RECORD_AUDIO, then = answered)
     val askLocation = rememberAskPermission(Manifest.permission.ACCESS_COARSE_LOCATION, then = answered)
     val askCalendar = rememberAskPermission(Manifest.permission.READ_CALENDAR, then = answered)
+    val askCallLog = rememberAskPermission(Manifest.permission.READ_CALL_LOG, then = answered)
+    val askContacts = rememberAskPermission(Manifest.permission.READ_CONTACTS, then = answered)
+    val askCalling = rememberAskPermission(Manifest.permission.CALL_PHONE, then = answered)
 
     @SuppressLint("InlinedApi")
     val askBluetooth = rememberAskPermission(Manifest.permission.BLUETOOTH_CONNECT, then = answered)
@@ -116,6 +122,51 @@ fun PermissionsScreen(
                     askCalendar,
                     appDetails,
                 ),
+                // The Play build has no call log: it keeps the phone's calls from their notifications instead.
+                if (PhoneCalls.callLogDeclared(context)) {
+                    Permission(
+                        R.string.permissions_call_log,
+                        stringResource(R.string.permissions_call_log_uses),
+                        context.hasPermission(Manifest.permission.READ_CALL_LOG),
+                        askCallLog,
+                        appDetails,
+                    )
+                } else {
+                    null
+                },
+                Permission(
+                    R.string.permissions_contacts,
+                    stringResource(R.string.permissions_contacts_uses),
+                    context.hasPermission(Manifest.permission.READ_CONTACTS),
+                    askContacts,
+                    appDetails,
+                ),
+                Permission(
+                    R.string.permissions_phone,
+                    stringResource(R.string.permissions_phone_uses),
+                    context.hasPermission(Manifest.permission.CALL_PHONE),
+                    askCalling,
+                    appDetails,
+                ),
+                // Calls kept from notifications for phone apps: listed once a phone app's tap first turned it on. Off stops
+                // it and forgets them; on keeps calls again from then.
+                if (VoipCalls.asked(context)) {
+                    Permission(
+                        R.string.permissions_kept_calls,
+                        stringResource(R.string.permissions_kept_calls_uses),
+                        VoipCalls.recording(context),
+                        turnOn = {
+                            VoipCalls.record(context)
+                            changed()
+                        },
+                        turnOff = {
+                            VoipCalls.stop(context)
+                            changed()
+                        },
+                    )
+                } else {
+                    null
+                },
                 // Before Android 12, Bluetooth is an install-time permission without a switch.
                 if (sdk >= Build.VERSION_CODES.S) {
                     Permission(

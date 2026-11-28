@@ -73,6 +73,13 @@ class LangTest {
         ) {
             actions += "send $slot $message"
         }
+
+        var clipboard = ""
+
+        override fun pasteInto(slot: Int) {
+            slots[slot] = Str(clipboard)
+            actions += "paste $slot"
+        }
     }
 
     /** Compiles a widget with one Text and evaluates its text. */
@@ -305,6 +312,26 @@ class LangTest {
         p.onTap!!.run(Env.root(host), emptyList())
         assertEquals(listOf("runInto 0 date", "copy null", "notify hi, null", "androidApp org.pkg"), host.actions)
         assertEquals(listOf("date"), p.commands)
+    }
+
+    @Test fun pasteGivesTheClipboardToTheStatementsAfterIt() {
+        val p = Compiler.compile("widget {\n meta { owl: 28 }\n state clip = \"\"\n state n = 0\n onTap: { clip = paste(); n = len(clip); clip = \"\" }\n Text { text: n }\n}")
+        val host = TestHost(p)
+        host.clipboard = "+420 777"
+        p.onTap!!.run(Env.root(host), emptyList())
+        assertEquals(listOf(Str(""), Num(8.0)), host.slots.take(2))
+        assertEquals(listOf("paste 0"), host.actions)
+        assertEquals(listOf("read the clipboard when you tap or long-press"), p.commands)
+        // Only into a state, with no values, from a touch, at owl 28.
+        val widget = "widget {\n meta { owl: 28 }\n state clip = \"\"\n"
+        assertTrue(compileError("$widget onTap: paste()\n Text { text: clip } }").contains("puts the clipboard's text into a state"))
+        assertTrue(compileError("$widget onTap: clip = paste(1)\n Text { text: clip } }").contains("paste takes no values"))
+        assertTrue(compileError("$widget every 5s { clip = paste() }\n Text { text: clip } }").contains("only in onTap or onLongPress"))
+        // A web page's events aren't a touch: a page could read it whenever it changes its title.
+        assertTrue(compileError("$widget Browser { url: \"https://x.test\"; onTitle: clip = paste() } }").contains("only in onTap or onLongPress"))
+        assertTrue(compileError("$widget Text { text: paste() } }").contains("puts the clipboard's text into a state"))
+        assertTrue(compileError("$widget onTap: { let c = paste() }\n Text { text: clip } }").contains("puts the clipboard's text into a state"))
+        assertTrue(compileError("widget {\n meta { owl: 27 }\n state clip = \"\"\n onTap: clip = paste()\n Text { text: clip } }").contains("needs owl 28"))
     }
 
     @Test fun httpSources() {
@@ -1410,6 +1437,48 @@ class LangTest {
         assertTrue(compileError(src.replace(" Text {", " every 1m { calendar(\"request\") }\n Text {")).contains("not in a trigger"))
         assertTrue(compileError(src.replace(" source agenda = android.calendar\n", "").replace("agenda.granted", "true")).contains("declare it"))
         assertEquals(listOf("sees calendar event titles, times and locations; check nothing sends them elsewhere"), Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") })
+    }
+
+    @Test fun androidCallsAskedForOnATapAndCalledOnlyFromOne() {
+        val src = "app \"phone\" {\n meta { owl: 28 }\n source c = android.calls\n Column { if !c.granted { Text { text: \"allow\"; onTap: calls(\"request\") } }\n for e in c.calls key e.id { Text { text: e.name; onTap: calls(\"call\", e) } } } }"
+        val p = Compiler.compile(src)
+        assertEquals("android.calls", (p.globals.single() as Global.Source).kind)
+        assertEquals(listOf("read the phone's calls and contacts, once you allow it", "place phone calls when you tap"), p.commands)
+        assertTrue(compileError(src.replace("owl: 28", "owl: 27")).contains("needs owl 28"))
+        assertTrue(compileError(src.replace("\"request\"", "\"dial\"")).contains("calls takes request, call, open, contact, delete or undo"))
+        assertTrue(compileError(src.replace("calls(\"call\", e)", "calls(\"call\")")).contains("calls(\"call\", number)"))
+        // Asking and calling come only from a touch that has lifted, never a press or a trigger.
+        assertTrue(compileError(src.replace("onTap: calls(\"call\"", "onPress: calls(\"call\"")).contains("put it in onTap"))
+        assertTrue(compileError(src.replace(" Column {", " every 1m { calls(\"call\", \"123\") }\n Column {")).contains("not in a trigger"))
+        assertTrue(compileError(src.replace(" Column {", " every 1m { calls(\"request\") }\n Column {")).contains("not in a trigger"))
+        assertTrue(compileError(src.replace(" source c = android.calls\n", "").replace("!c.granted", "true").replace("for e in c.calls", "for e in []")).contains("declare it"))
+        // Opening an entry or a contact places no call, and can come from a long press too.
+        val open = Compiler.compile(src.replace("onTap: calls(\"call\", e)", "onTap: calls(\"open\", e); onLongPress: calls(\"contact\", e)"))
+        assertEquals(listOf("read the phone's calls and contacts, once you allow it"), open.commands)
+        assertEquals(
+            listOf("sees who you called and were called by, and your contacts; check nothing sends them elsewhere", "places phone calls as you; check which numbers it calls and when"),
+            Review.risks(p.commands).map { it.removePrefix("command ").substringBefore(": ") },
+        )
+        // A swipe deletes one, and a tap brings it back; never a timer, and the review says it deletes.
+        val swipe = src.replace("onTap: calls(\"call\", e)", "drag: horizontal; onDrag: haptic(); onDragEnd: calls(\"delete\", e); onTap: calls(\"undo\")")
+        val deletes = Compiler.compile(swipe)
+        assertEquals(listOf("read the phone's calls and contacts, once you allow it", "delete calls from the call log when you swipe or tap"), deletes.commands)
+        assertTrue(Review.risks(deletes.commands).any { it.contains("deletes calls from the phone's call log") })
+        assertTrue(compileError(src.replace(" Column {", " every 1m { calls(\"delete\", c.calls[0]) }\n Column {")).contains("not in a trigger"))
+        assertTrue(compileError(src.replace(" Column {", " when c.granted { calls(\"undo\") }\n Column {")).contains("not in a trigger"))
+        assertTrue(compileError(src.replace("calls(\"call\", e)", "calls(\"delete\")")).contains("calls(\"delete\", entry)"))
+        assertTrue(compileError(src.replace("onTap: calls(\"call\", e)", "onPress: calls(\"delete\", e)")).contains("put it in onTap or onDragEnd"))
+        // A web page's events aren't a touch: a page could call or delete whenever it changes its title.
+        val page = " Browser { url: \"https://x.test\"; onTitle: %s }\n Column {"
+        assertTrue(compileError(src.replace(" Column {", page.format("calls(\"call\", \"123\")"))).contains("works only in onTap or onLongPress"))
+        assertTrue(compileError(src.replace(" Column {", page.format("calls(\"delete\", c.calls[0])"))).contains("works only in a handler of a touch"))
+        assertTrue(compileError(src.replace(" Column {", page.format("calls(\"undo\")"))).contains("works only in a handler of a touch"))
+        // Asking starts keeping calls: a page's events can't either.
+        assertTrue(compileError(src.replace(" Column {", page.format("calls(\"request\")"))).contains("starts keeping your calls, so it works only in onTap or onLongPress"))
+        Compiler.compile(src.replace("onTap: calls(\"call\", e)", "onLongPress: calls(\"call\", e); onPress: calls(\"undo\")"))
+        // A word worked out as it runs could be call or delete: the review lists both.
+        val computed = Compiler.compile(src.replace(" source c = android.calls\n", " source c = android.calls\n state w = \"open\"\n").replace("calls(\"call\", e)", "calls(w, e)"))
+        assertTrue(computed.commands.containsAll(listOf("place phone calls when you tap", "delete calls from the call log when you swipe or tap")))
     }
 
     @Test fun bluetoothBatteryAskedForOnATap() {

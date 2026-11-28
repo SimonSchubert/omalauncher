@@ -60,6 +60,14 @@
     <string name="permissions_location_uses">تقریبی · ابزارک‌هایی مثل آب‌وهوا، تا وقتی روی صفحه‌اند · عامل‌ها با ⁨omalauncher location⁩</string>
     <string name="permissions_calendar">تقویم</string>
     <string name="permissions_calendar_uses">رویدادهای شما، فقط خواندن · ابزارک‌های تقویم · عامل‌ها با ⁨omalauncher calendar⁩</string>
+    <string name="permissions_call_log">سابقهٔ تماس‌ها</string>
+    <string name="permissions_call_log_uses">تماس‌های شما، و حذف آن‌هایی که کنار می‌زنید · برنامه‌های تلفن</string>
+    <string name="permissions_contacts">مخاطبین</string>
+    <string name="permissions_contacts_uses">نام‌ها و شماره‌ها، فقط خواندن · برنامه‌های تلفن</string>
+    <string name="permissions_phone">تماس‌های تلفنی</string>
+    <string name="permissions_phone_uses">تماس‌هایی که از یک برنامهٔ تلفن شروع می‌کنید</string>
+    <string name="permissions_kept_calls">تماس‌های نگه‌داشته</string>
+    <string name="permissions_kept_calls_uses">واتس‌اپ، مسنجر و بدون سابقهٔ تماس، تماس‌های خود تلفن، از اعلان‌هایشان · فقط روی تلفن · خاموش کردن آن‌ها را پاک می‌کند</string>
     <string name="permissions_bluetooth">بلوتوث</string>
     <string name="permissions_bluetooth_uses">باتری و تنظیمات AirPods شما · ابزارک‌های AirPods · عامل‌ها با ⁨omalauncher airpods⁩</string>
     <string name="permissions_notifications">اعلان‌ها</string>

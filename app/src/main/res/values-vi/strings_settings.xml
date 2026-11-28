@@ -59,6 +59,14 @@
     <string name="permissions_location_uses">gần đúng · tiện ích như thời tiết, khi đang hiện trên màn hình · tác nhân qua omalauncher location</string>
     <string name="permissions_calendar">lịch</string>
     <string name="permissions_calendar_uses">sự kiện của bạn, chỉ đọc · tiện ích lịch · tác nhân qua omalauncher calendar</string>
+    <string name="permissions_call_log">nhật ký cuộc gọi</string>
+    <string name="permissions_call_log_uses">cuộc gọi của bạn, và xóa cuộc gọi bạn vuốt đi · ứng dụng điện thoại</string>
+    <string name="permissions_contacts">danh bạ</string>
+    <string name="permissions_contacts_uses">tên và số, chỉ đọc · ứng dụng điện thoại</string>
+    <string name="permissions_phone">gọi điện</string>
+    <string name="permissions_phone_uses">cuộc gọi bạn bắt đầu từ ứng dụng điện thoại</string>
+    <string name="permissions_kept_calls">cuộc gọi đã lưu</string>
+    <string name="permissions_kept_calls_uses">whatsapp, messenger và, khi không có nhật ký cuộc gọi, cuộc gọi của điện thoại, từ thông báo · chỉ trên điện thoại · tắt sẽ xóa chúng</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">pin và cài đặt AirPods · tiện ích AirPods · tác nhân qua omalauncher airpods</string>
     <string name="permissions_notifications">thông báo</string>

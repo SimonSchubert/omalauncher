@@ -51,17 +51,20 @@ import kotlinx.coroutines.withContext
  * requires it before an app may see other apps' media sessions (android.media),
  * and it lets widgets list notifications (android.notifications) and icons show
  * notification dots ([NotificationDots]). The shade itself is only read when a
- * widget asks; see [Notifications].
+ * widget asks; see [Notifications]. Calls in other apps are kept from their
+ * notifications once android.calls was allowed ([VoipCalls]).
  */
 class MediaListener : NotificationListenerService() {
     override fun onListenerConnected() {
         connected = this
         NotificationDots.connected(this)
+        VoipCalls.connected(this)
         changes.update { it + 1 }
     }
 
     override fun onListenerDisconnected() {
         gone()
+        VoipCalls.disconnected(this)
         changes.update { it + 1 }
     }
 
@@ -70,6 +73,7 @@ class MediaListener : NotificationListenerService() {
         rankingMap: RankingMap?,
     ) {
         if (sbn != null && rankingMap != null) NotificationDots.posted(this, sbn, rankingMap)
+        if (sbn != null) VoipCalls.posted(this, sbn)
         changes.update { it + 1 }
     }
 
@@ -78,6 +82,7 @@ class MediaListener : NotificationListenerService() {
         rankingMap: RankingMap?,
     ) {
         if (sbn != null) NotificationDots.removed(sbn.key)
+        if (sbn != null) VoipCalls.removed(this, sbn)
         changes.update { it + 1 }
     }
 

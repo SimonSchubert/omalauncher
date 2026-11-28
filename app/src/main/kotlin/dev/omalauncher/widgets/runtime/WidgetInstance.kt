@@ -186,6 +186,9 @@ interface Services {
         done: (Value) -> Unit,
     ) = done(Lst(emptyList()))
 
+    /** The Android clipboard's text, "" when it holds none, for `x = paste()`. */
+    fun clipboardText(): String = ""
+
     /** Runs an action; [done] is called once its effects should be visible, to refresh the widget that ran it. */
     fun act(
         name: String,
@@ -547,6 +550,13 @@ class WidgetInstance(
         slot: Int,
     ) = services.shortcuts(key) { list -> write(slot, list) }
 
+    // What you copied stays yours: read only for a tap or a long press, never on a timer or a fetched value (the compiler
+    // allows it nowhere else; this catches a trigger all the same).
+    override fun pasteInto(slot: Int) {
+        if (inTrigger) return report("paste() works in a handler of a touch like onTap, not in a trigger")
+        write(slot, Str(services.clipboardText()))
+    }
+
     /** How many `x = post(...)` have been sent into each state, by slot. */
     private val posts = java.util.concurrent.ConcurrentHashMap<Int, Int>()
 
@@ -610,7 +620,11 @@ class WidgetInstance(
         // An agent or an app opening on its own, from a timer or a fetched value, over whatever the user is doing: like
         // sound(...), a trigger does it only while the app or screen is open.
         val key = args.firstOrNull().textOrNull()
-        if ((name == "ask" || name == "open" || (name == "calendar" && key == "open")) && inTrigger && !foreground()) return report("$name(...) in a trigger works only while the app or screen is open")
+        if ((name == "ask" || name == "open" || (name == "calendar" && key == "open") || (name == "calls" && (key == "open" || key == "contact"))) && inTrigger && !foreground()) return report("$name(...) in a trigger works only while the app or screen is open")
+        // A phone call goes out as you: only from a touch.
+        if (name == "calls" && key == "call" && inTrigger) return report("calls(\"call\", …) works in onTap, not in a trigger")
+        // Deleting from the call log can't be taken back after a moment: only from a touch too.
+        if (name == "calls" && (key == "delete" || key == "undo") && inTrigger) return report("calls(\"$key\"${if (key == "delete") ", …" else ""}) works in a handler of a touch, not in a trigger")
         // Keys go to whatever window has the keyboard: only from a touch, never on a timer or a fetched value. Or from
         // what the user just said, to this widget's dictation a tap started: on said.final { typeText(value) }.
         if ((name == "pressKey" || name == "typeText" || name == "latch") && inTrigger && !byDictation) {

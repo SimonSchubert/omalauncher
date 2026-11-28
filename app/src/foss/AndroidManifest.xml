@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Widgets' android.calls reads the phone's own calls from the call log, only after a tap on calls("request"). Play
+         allows the call log only to the default phone app, so the Play build doesn't have it and keeps the phone's calls
+         from the phone app's call notifications instead, as it does WhatsApp's (VoipCalls). -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <!-- calls("delete"): a call swiped out of a phone app's list leaves the call log; asked for at the first one. -->
+    <uses-permission android:name="android.permission.WRITE_CALL_LOG" />
+</manifest>

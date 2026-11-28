@@ -53,6 +53,14 @@
     <string name="permissions_location_uses">приблизительное · виджеты вроде погоды, пока они на экране · агенты через omalauncher location</string>
     <string name="permissions_calendar">календарь</string>
     <string name="permissions_calendar_uses">ваши события, только чтение · виджеты календаря · агенты через omalauncher calendar</string>
+    <string name="permissions_call_log">журнал звонков</string>
+    <string name="permissions_call_log_uses">ваши звонки и удаление смахнутых · приложения-телефоны</string>
+    <string name="permissions_contacts">контакты</string>
+    <string name="permissions_contacts_uses">имена и номера, только чтение · приложения-телефоны</string>
+    <string name="permissions_phone">звонки</string>
+    <string name="permissions_phone_uses">звонки, которые вы начинаете из приложения-телефона</string>
+    <string name="permissions_kept_calls">сохранённые звонки</string>
+    <string name="permissions_kept_calls_uses">whatsapp, messenger и без журнала звонков звонки телефона, из их уведомлений · только на телефоне · выключение их удаляет</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">заряд и настройки ваших AirPods · виджеты AirPods · агенты через omalauncher airpods</string>
     <string name="permissions_notifications">уведомления</string>

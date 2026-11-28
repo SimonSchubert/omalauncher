@@ -51,6 +51,14 @@
     <string name="permissions_location_uses">yaklaşık · hava durumu gibi widget’lar, ekrandayken · omalauncher location ile ajanlar</string>
     <string name="permissions_calendar">takvim</string>
     <string name="permissions_calendar_uses">etkinliklerin, salt okunur · takvim widget’ları · omalauncher calendar ile ajanlar</string>
+    <string name="permissions_call_log">arama geçmişi</string>
+    <string name="permissions_call_log_uses">aramaların ve kaydırıp sildiklerin · telefon uygulamaları</string>
+    <string name="permissions_contacts">kişiler</string>
+    <string name="permissions_contacts_uses">adlar ve numaralar, salt okunur · telefon uygulamaları</string>
+    <string name="permissions_phone">telefon aramaları</string>
+    <string name="permissions_phone_uses">bir telefon uygulamasından başlattığın aramalar</string>
+    <string name="permissions_kept_calls">saklanan aramalar</string>
+    <string name="permissions_kept_calls_uses">whatsapp, messenger ve arama kaydı yoksa telefonun aramaları, bildirimlerinden · yalnızca telefonda · kapatmak onları siler</string>
     <string name="permissions_bluetooth">bluetooth</string>
     <string name="permissions_bluetooth_uses">AirPods pil durumu ve ayarları · AirPods widget’ları · omalauncher airpods ile ajanlar</string>
     <string name="permissions_notifications">bildirimler</string>

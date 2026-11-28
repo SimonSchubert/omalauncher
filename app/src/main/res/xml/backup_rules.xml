@@ -20,4 +20,7 @@
     <exclude domain="file" path="updates.json" />
     <exclude domain="file" path="omarchy" />
     <exclude domain="file" path=".omarchy.download" />
+    <!-- Calls kept for android.calls stay on the phone (store/omalauncher.txt), and keeping them starts only on it. -->
+    <exclude domain="file" path="voip-calls.json" />
+    <exclude domain="sharedpref" path="calls.xml" />
 </full-backup-content>
