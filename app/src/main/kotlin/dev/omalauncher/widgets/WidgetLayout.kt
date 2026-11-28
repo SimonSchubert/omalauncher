@@ -216,7 +216,8 @@ class WidgetLayout(
 
     /**
      * Moves every cell onto a grid of [to] columns (see [Cell.rescaled]); a widget stays as wide as its
-     * [HomeItem.minSize] allows. A tile that lands on one before it on its page in [tiles] (each page's, in the
+     * [HomeItem.minSize] allows. When shrinking the visible grid, tiles beyond its new bottom move up.
+     * A tile that lands on one before it on its page in [tiles] (each page's, in the
      * order they keep their spots) loses its cell, so its page places it afresh in its first free spot, or moves
      * it to a page with room. The other screens' cells move onto the new grid too; their pages aren't laid out now, so
      * which of them then overlap is settled when that screen shows.
@@ -228,18 +229,33 @@ class WidgetLayout(
     ) {
         val from = columnsOf(screen)
         if (to == from) return
-        val minWidth = tiles.flatten().associate { it.key to it.minSize.first }
+        val items = tiles.flatten().associateBy { it.key }
+        val rows = columnResizeRows
+            ?.takeIf { (measuredScreen, _) -> measuredScreen == screen && to < from }
+            ?.second?.invoke(to)
+        val movedUp = HashSet<String>()
         // The screens on this grid: one with its own columns alone, else every one without.
         val on = Screen.entries.filter { if (screen.ownColumns) it == screen else !it.ownColumns }
         for (s in on) {
             val screenCells = cellsOf.getValue(s)
-            for ((key, c) in screenCells.toMap()) screenCells[key] = c.rescaled(from, to, minWidth[key] ?: 1)
+            for ((key, c) in screenCells.toMap()) {
+                val item = items[key]
+                val resized = c.rescaled(from, to, item?.minSize?.first ?: 1)
+                screenCells[key] = if (s == screen && rows != null && item != null) {
+                    val height = if (item.resizable) resized.h else 1
+                    val y = resized.y.coerceAtMost((rows - height).coerceAtLeast(0))
+                    if (y != resized.y) movedUp += key
+                    resized.copy(y = y)
+                } else {
+                    resized
+                }
+            }
         }
         columnsBy[screen]?.let { it.intValue = to } ?: run { mainColumns = to }
         val cells = cellsOf.getValue(screen)
         for (items in tiles) {
             val kept = ArrayList<Cell>()
-            for (item in items) {
+            for (item in items.sortedBy { it.key in movedUp }) {
                 val c = cells[item.key]?.let { if (item.resizable) it else it.copy(w = 1, h = 1) } ?: continue
                 if (kept.any { it.overlaps(c) }) cells.remove(item.key) else kept += c
             }
@@ -307,6 +323,9 @@ class WidgetLayout(
     ) {
         if (portraitRows(size) != rows) prefs.edit().putInt(PORTRAIT_ROWS + size, rows).apply()
     }
+
+    /** Row count for new column settings, based on the last measured home grid. */
+    var columnResizeRows: Pair<Screen, (Int) -> Int>? = null
 
     /** The grid last laid out on screen, columns and rows; every page shares it. */
     var grid: Pair<Int, Int>? = null
