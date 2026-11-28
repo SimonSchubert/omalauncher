@@ -60,6 +60,7 @@ import dev.omalauncher.widgets.lang.WidgetError
 import dev.omalauncher.widgets.lang.bool
 import dev.omalauncher.widgets.lang.num
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -233,6 +234,8 @@ class WidgetInstance(
     private val linux: () -> Boolean = { true },
     /** An app's window or the widget's screen is showing. Snapshot state. */
     private val foreground: () -> Boolean = { false },
+    /** Takes back an error [onError] reported, once what it said no longer holds. */
+    private val onRetract: (String) -> Unit = {},
 ) : Host {
     override val budget = Budget()
     val root = Env.root(this)
@@ -245,7 +248,7 @@ class WidgetInstance(
     /** The latest time a read got while the clock was parked. */
     @Volatile private var parkedTime = 0.0
     private val cells = arrayOfNulls<State<Value>>(program.globals.size)
-    private val images = WidgetImages(program, services, ::report)
+    private val images = WidgetImages(program, services, ::report, ::retract)
     private val fonts = WidgetFonts(program, services, ::report)
 
     /** Where the sources run; set by [start]. */
@@ -735,16 +738,24 @@ class WidgetInstance(
         }
 
     override fun report(message: String) {
-        // An error about a request could quote a secret, as it is or as enc(...) put it in the URL; this goes to logcat and to Linux.
-        val message =
-            secrets.fold(message) { m, i ->
-                val v = read(i).textOrNull().orEmpty()
-                if (v.isEmpty()) m else m.replace(v, "•••").replace(urlEncode(v), "•••")
-            }
+        val message = withoutSecrets(message)
         if (reported.add(message) && reported.size < 50) {
             Log.w("widgets", "${program.name}: $message")
             onError(message)
         }
+    }
+
+    /** An error about a request could quote a secret, as it is or as enc(...) put it in the URL; this goes to logcat and to Linux. */
+    private fun withoutSecrets(message: String) =
+        secrets.fold(message) { m, i ->
+            val v = read(i).textOrNull().orEmpty()
+            if (v.isEmpty()) m else m.replace(v, "•••").replace(urlEncode(v), "•••")
+        }
+
+    /** Takes back a [report] that no longer holds (an image that loaded after all), so it can be reported again. */
+    private fun retract(message: String) {
+        val message = withoutSecrets(message)
+        if (reported.remove(message)) onRetract(message)
     }
 
     /** See [WidgetImages.image]. */
@@ -894,6 +905,12 @@ class WidgetInstance(
                                     }
                                 }
                             else -> {
+                                if (g.arg?.const == Null) {
+                                    // A null the compiler worked out (`off ? "https://…" : null` with off a let) pauses it for
+                                    // good, as one from state does for a while: it fetched the URL "null", or ran null in bash.
+                                    paused[slot] = true
+                                    awaitCancellation()
+                                }
                                 val seen = refreshes.value
                                 val built = g.arg?.takeIf { it.const == null }
                                 val arg = built?.let { eval(it, root, g.name) }

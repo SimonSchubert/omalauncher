@@ -21,6 +21,7 @@ internal class WidgetImages(
     private val program: Program,
     private val services: Services,
     private val report: (String) -> Unit,
+    private val retract: (String) -> Unit = {},
 ) {
     /** Where decodes run; set when the widget starts. */
     var scope: CoroutineScope? = null
@@ -186,7 +187,9 @@ internal class WidgetImages(
                 Result.success(runCatching { decode(src, file) }.getOrNull())
             } ?: return
         val image = decoded.getOrNull()
-        if (image == null) report(if (remote) "image '$src' couldn't be downloaded, or isn't an image" else "image '$src' couldn't be loaded")
+        val failure = if (remote) "image '$src' couldn't be downloaded, or isn't an image" else "image '$src' couldn't be loaded"
+        // A file a command hadn't written yet, or a download that failed once, is no error once it shows.
+        if (image == null) report(failure) else retract(failure)
         images[src] = image
     }
 

@@ -567,10 +567,29 @@ class WidgetEngine(
         val trash = File(dir, ".removed").apply { mkdirs() }
         spec.file.renameTo(File(trash, spec.file.name))
         instances.remove(spec.file.name)?.stop()
+        if (spec.kind == OwlKind.App) dropAppTasks(setOf(spec.file.name))
         if (openScreen == spec.file.name) openScreen = null
         shortcuts.removeOwl(spec)
         specs.remove(spec)
         forget(spec.file.name)
+    }
+
+    /**
+     * Closes the Recents cards of the apps in files [names], which went away or stopped compiling. An app in front
+     * closes itself (OwlAppActivity); one in the background doesn't run, and its card stayed until it was opened again.
+     */
+    private fun dropAppTasks(names: Set<String>) {
+        val hidden = names.filter { (shownApps[it] ?: 0) == 0 }
+        if (hidden.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            runCatching {
+                for (task in context.getSystemService(android.app.ActivityManager::class.java).appTasks) {
+                    val data = runCatching { task.taskInfo?.baseIntent?.data }.getOrNull() ?: continue
+                    // The task may have gone since it was listed.
+                    if (data.scheme == "owl" && data.schemeSpecificPart in hidden) runCatching { task.finishAndRemoveTask() }
+                }
+            }
+        }
     }
 
     /** A widget file that's gone takes its place, page and saved values along, so a new file of that name starts fresh. */
@@ -580,6 +599,8 @@ class WidgetEngine(
         File(stateDir, "$fileName.secret").delete()
         hashes.remove(fileName)
         File(checkDir, "$fileName.txt").delete()
+        // In line behind what the widget still had to report.
+        writeError(File(dir, fileName), null)
         File(previewDir, "$fileName.png").delete()
         File(previewDir, "$fileName.screen.png").delete()
     }
@@ -773,6 +794,7 @@ class WidgetEngine(
                     },
                     linux = { linux },
                     foreground = { (shownApps[name] ?: 0) > 0 || openScreen == name || name in shownPanels },
+                    onRetract = { message -> retractError(spec.file, message) },
                 )
             prev?.let(inst::adopt)
             instances[spec.file.name] = inst
@@ -783,6 +805,7 @@ class WidgetEngine(
         if (openScreen?.let { instances[it]?.program?.screen } == null) openScreen = null
         // Stopped first: stopping saves persisted values, which forget() then deletes.
         previous.values.forEach { it.stop() }
+        dropAppTasks(previous.filterValues { it.program.kind == OwlKind.App }.keys.toSet())
         // A file deleted outside the launcher (an agent, rm) frees its spot, so it doesn't come back on top of
         // whatever moved in. Only while running: an empty listing at startup must not wipe the layout.
         if (old.isNotEmpty() && files.isNotEmpty()) {
@@ -1083,6 +1106,26 @@ class WidgetEngine(
                         errorDir.mkdirs()
                         target.writeText(error + "\n")
                     }
+                }
+            }
+        }
+    }
+
+    /** Takes a runtime error that no longer holds out of .errors/<file>.txt, and the file away with its last line. */
+    private fun retractError(
+        file: File,
+        error: String,
+    ) {
+        val target = File(errorDir, file.name + ".txt")
+        scope.launch(errorWriter) {
+            runCatching {
+                if (!target.exists()) return@runCatching
+                val lines = target.readLines()
+                val kept = lines - "runtime: $error"
+                when {
+                    kept.size == lines.size -> Unit
+                    kept.isEmpty() -> target.delete()
+                    else -> target.writeText(kept.joinToString("\n", postfix = "\n"))
                 }
             }
         }

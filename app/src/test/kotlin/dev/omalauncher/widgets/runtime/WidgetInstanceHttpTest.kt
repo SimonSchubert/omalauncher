@@ -104,6 +104,15 @@ class WidgetInstanceHttpTest {
             assertEquals(listOf(Null, Str("https://x.test/items [b]")), seen.toList())
         }
 
+    /** A URL the compiler folds to null pauses the source as one from state does: it fetched the URL "null". */
+    @Test fun aConstantNullUrlPausesTheSource() =
+        run(" let off = false\n source s = http(off ? \"https://x.test/a\" : null) every 30m") { w, _, seen ->
+            delay(500)
+            assertEquals(emptyList<String>(), calls.toList())
+            assertEquals(listOf(Null), seen.toList())
+            assertTrue(w.loaded())
+        }
+
     @Test fun lastPostSentWins() =
         run(" state s = null") { w, slot, seen ->
             w.post("https://x.test/slow-first", Null, emptyMap(), slot("s"), "POST", null)
