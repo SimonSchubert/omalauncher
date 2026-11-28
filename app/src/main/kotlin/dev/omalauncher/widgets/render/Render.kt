@@ -264,7 +264,9 @@ class LongPressClaim {
 val LocalLongPressClaim = staticCompositionLocalOf<LongPressClaim?> { null }
 
 /** Widget text, 13sp as widgets were made for, whatever size the launcher's own text is. */
-internal val WidgetMono get() = Mono.copy(fontSize = 13.sp, textAlign = TextAlign.Unspecified)
+internal val WidgetMono get() = Mono.copy(fontSize = WIDGET_TEXT_SIZE, textAlign = TextAlign.Unspecified)
+
+private val WIDGET_TEXT_SIZE = 13.sp
 
 /** The widget's screen { } block, filling [modifier]; `screenWidth` and `screenHeight` follow its size. */
 @Composable
@@ -1310,12 +1312,12 @@ private fun TextNode(
     hug: Boolean,
 ) {
     val style = p.observe("style")?.toString()
-    val base =
+    val size =
         when (style) {
-            "huge" -> WidgetMono.copy(fontSize = 44.sp)
-            "title" -> WidgetMono.copy(fontSize = 20.sp)
-            "small", "label" -> WidgetMono.copy(fontSize = 11.sp)
-            else -> WidgetMono
+            "huge" -> 44.sp
+            "title" -> 20.sp
+            "small", "label" -> 11.sp
+            else -> WIDGET_TEXT_SIZE
         }
     val defaultColor: () -> Color = if (style == "muted" || style == "label") ({ Palette.muted }) else ({ Palette.foreground })
     val color = p.color("color", defaultColor)
@@ -1323,7 +1325,7 @@ private fun TextNode(
     val textStyle =
         TextStyle(
             fontFamily = fontFamily(p.observe("font"), p.inst),
-            fontSize = textUnit(p.observe("fontSize")) ?: base.fontSize,
+            fontSize = textUnit(p.observe("fontSize")) ?: size,
             fontWeight = weight(p.observe("fontWeight")) ?: if (p.observe("bold")?.truthy == true) FontWeight.Bold else null,
             letterSpacing = textUnit(p.observe("letterSpacing")) ?: androidx.compose.ui.unit.TextUnit.Unspecified,
             fontStyle = if (p.observe("italic")?.truthy == true) FontStyle.Italic else null,

@@ -163,7 +163,6 @@ class Vt(
         return raw.toList().chunked(2).mapNotNull { (tag, value) ->
             when (tag) {
                 "bell" -> VtEvent.Bell
-                "title" -> VtEvent.Title(value)
                 "clipboard" -> VtEvent.Copy(value)
                 "notify" -> VtEvent.Notify(value.substringBefore('\n'), value.substringAfter('\n'))
                 else -> null
@@ -191,7 +190,7 @@ class Vt(
     ): Boolean {
         var all = read !== into || into.from !== this
         read = null
-        // The screen grew, or holds more long characters: read it again into arrays that fit. Twice at most, as the
+        // The screen grew, or holds more long characters: read it again into arrays that fit. Twice more at most, as the
         // first read of a screen too big says nothing about its characters.
         repeat(3) {
             val ok = live { VtNative.cells(it, into.codepoints, into.fg, into.bg, into.flags, into.more, into.changes, info, all, whileHeld) }
@@ -235,16 +234,13 @@ class Vt(
         const val ALT = 4
         const val SUPER = 8
 
-        /** [state]'s bits: the program reports the mouse; draws on the alternate screen; wants the wheel as arrow keys
-         * there (1007); application cursor keys; the view is at the bottom; bracketed paste; focus reports; it holds
-         * its screen (synchronized output). */
+        /** [state]'s bits: the program reports the mouse; draws on the alternate screen; application cursor keys; the
+         * view is at the bottom; bracketed paste; it holds its screen (synchronized output). */
         const val MOUSE = 1
         const val ALTERNATE = 2
-        const val ALTERNATE_SCROLL = 4
         const val CURSOR_KEYS = 8
         const val AT_BOTTOM = 16
         const val BRACKETED_PASTE = 32
-        const val FOCUS_REPORTS = 64
         const val HELD = 128
 
         /** [write]'s bits: there is something for [replies], for [events]. */
@@ -293,10 +289,6 @@ class Vt(
 /** Something a program did besides drawing: see [Vt.events]. */
 sealed interface VtEvent {
     data object Bell : VtEvent
-
-    data class Title(
-        val title: String,
-    ) : VtEvent
 
     /** It copied [text] (OSC 52). */
     data class Copy(

@@ -246,8 +246,3 @@ JNIEXPORT jint JNICALL FN(waitFor)(JNIEnv *env, jclass cls, jint pid) {
     return WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
 }
 
-JNIEXPORT void JNICALL FN(kill)(JNIEnv *env, jclass cls, jint pid, jint signal) {
-    (void)env;
-    (void)cls;
-    kill(pid, signal);
-}

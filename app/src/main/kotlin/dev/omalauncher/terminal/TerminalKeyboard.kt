@@ -1,5 +1,15 @@
 package dev.omalauncher.terminal
 
+import dev.omalauncher.wayland.Keys.KEY_CAPSLOCK
+import dev.omalauncher.wayland.Keys.KEY_LEFTALT
+import dev.omalauncher.wayland.Keys.KEY_LEFTCTRL
+import dev.omalauncher.wayland.Keys.KEY_LEFTMETA
+import dev.omalauncher.wayland.Keys.KEY_LEFTSHIFT
+import dev.omalauncher.wayland.Keys.KEY_RIGHTALT
+import dev.omalauncher.wayland.Keys.KEY_RIGHTCTRL
+import dev.omalauncher.wayland.Keys.KEY_RIGHTMETA
+import dev.omalauncher.wayland.Keys.KEY_RIGHTSHIFT
+
 /**
  * Keys pressed and released as evdev codes on a US layout, as the launcher sends them to a Linux window, turned into
  * what a built-in terminal sends its program. Keeps which modifiers are held and Caps Lock. One thread.
@@ -80,16 +90,6 @@ class TerminalKeyboard {
     )
 
     companion object {
-        const val KEY_LEFTCTRL = 29
-        const val KEY_LEFTSHIFT = 42
-        const val KEY_RIGHTSHIFT = 54
-        const val KEY_LEFTALT = 56
-        const val KEY_CAPSLOCK = 58
-        const val KEY_RIGHTCTRL = 97
-        const val KEY_RIGHTALT = 100
-        const val KEY_LEFTMETA = 125
-        const val KEY_RIGHTMETA = 126
-
         /** Evdev codes of a US keyboard, as `wayland/Keys.kt` and `KeyNames` use them. */
         private val byCode: Map<Int, Key> =
             buildMap {

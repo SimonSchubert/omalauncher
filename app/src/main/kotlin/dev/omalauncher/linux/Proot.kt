@@ -105,9 +105,11 @@ class Proot(
 
     /**
      * Where an absolute guest path lives on the Android side, following the
-     * directory binds in [command]: /tmp in the guest isn't rootfs/tmp.
+     * directory binds in [command]: /tmp in the guest isn't rootfs/tmp. Android's CJK font is the one file bound:
+     * the rootfs has only its empty stand-in, which the built-in terminal failed to read as a font.
      */
     fun hostFile(guestPath: String): File {
+        if (guestPath == GUEST_CJK_FONT && cjkFont.isFile) return cjkFont
         for ((guest, host) in binds) {
             if (guestPath == guest || guestPath.startsWith("$guest/")) return File(host, guestPath.removePrefix(guest).removePrefix("/"))
         }

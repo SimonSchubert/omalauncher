@@ -828,7 +828,10 @@ class Runtime(
         InstantActivity.startInstantly(context, EditorActivity.intent(context, path, done))
     }
 
-    /** Starts a command inside the guest; its output goes to logcat. Returns at once; [onExit] runs on the launch thread. */
+    /**
+     * Starts a command inside the guest. Returns at once; [onExit] runs on the launch thread. A debug build logs the
+     * command line and its output; a release only the command's name and how many lines it printed, see [LogText].
+     */
     fun launch(
         command: String,
         onExit: () -> Unit = {},
@@ -838,10 +841,18 @@ class Runtime(
             onExit()
             return
         }
-        Log.i(TAG, "launch: $command")
+        val name = LogText.command(command)
+        Log.i(TAG, "launch: $name")
         thread(name = "guest-launch", isDaemon = true) {
-            val code = runCatching { proot.run("exec $command") { Log.i(TAG, "[${command.take(24)}] $it") } }.getOrElse { -1 }
-            Log.i(TAG, "exited $code: $command")
+            var lines = 0
+            val code =
+                runCatching {
+                    proot.run("exec $command") {
+                        lines++
+                        if (BuildConfig.DEBUG) Log.i(TAG, "[${command.take(24)}] $it")
+                    }
+                }.getOrElse { -1 }
+            Log.i(TAG, "exited $code: $name, $lines lines of output")
             onExit()
         }
     }

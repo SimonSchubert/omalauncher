@@ -1,6 +1,5 @@
 package dev.omalauncher.widgets.render
 
-import android.util.Log
 import dev.omalauncher.widgets.lang.BspParts
 import dev.omalauncher.widgets.lang.MeshKernel
 import dev.omalauncher.widgets.lang.ObjParts
@@ -29,23 +28,13 @@ object MeshNative {
 
 /** owl's mesh building in C, which gives the same numbers: a big model's first frame comes without the wait. */
 object NativeMeshKernel : MeshKernel {
-    private val loaded by lazy {
-        try {
-            System.loadLibrary("scene3d")
-            true
-        } catch (e: UnsatisfiedLinkError) {
-            Log.w("owl", "meshes are built without scene3d", e)
-            false
-        }
-    }
-
     override fun cornerNormals(
         points: FloatArray,
         tris: IntArray,
         faceNormals: FloatArray,
         areas: FloatArray,
         out: FloatArray,
-    ) = loaded && MeshNative.cornerNormals(points, tris, faceNormals, areas, out)
+    ) = scene3dLoaded && MeshNative.cornerNormals(points, tris, faceNormals, areas, out)
 
     override fun bsp(
         points: FloatArray,
@@ -54,9 +43,9 @@ object NativeMeshKernel : MeshKernel {
         faceNormals: FloatArray,
         radius: Float,
         limit: Int,
-    ): BspParts? = if (loaded) bspParts(MeshNative.bsp(points, tris, uvs, faceNormals, radius, limit)) else null
+    ): BspParts? = if (scene3dLoaded) bspParts(MeshNative.bsp(points, tris, uvs, faceNormals, radius, limit)) else null
 
-    override fun scanObj(text: String): ObjParts? = if (loaded) objParts(MeshNative.scanObj(text)) else null
+    override fun scanObj(text: String): ObjParts? = if (scene3dLoaded) objParts(MeshNative.scanObj(text)) else null
 
     /** What cpp/mesh3d.c's bsp() answers, as owl takes it. */
     fun bspParts(a: Array<Any?>?): BspParts? =

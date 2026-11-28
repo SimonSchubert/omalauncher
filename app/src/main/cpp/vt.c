@@ -34,10 +34,9 @@ typedef struct {
     // that only scrolled is told by them.
     GhosttyRenderStateRowId *ids, *ids_next;
     int ids_rows, ids_cap;
-    // What happened since events() last asked: bells, a new title, a clipboard write (OSC 52), a notification
+    // What happened since events() last asked: bells, a clipboard write (OSC 52), a notification
     // (OSC 9/777). Strings are malloc'd, NULL when there is none.
     int bells;
-    int title_changed;
     char *clipboard;
     char *notify_title, *notify_body;
 } Vt;
@@ -66,11 +65,6 @@ static void on_hold(GhosttyTerminal t, void *ud, bool held) {
 static void on_bell(GhosttyTerminal t, void *ud) {
     (void)t;
     ((Vt *)ud)->bells++;
-}
-
-static void on_title(GhosttyTerminal t, void *ud) {
-    (void)t;
-    ((Vt *)ud)->title_changed = 1;
 }
 
 static char *copy(GhosttyString s) {
@@ -169,7 +163,6 @@ JNIEXPORT jlong JNICALL FN(create)(JNIEnv *env, jclass cls, jint cols, jint rows
     GhosttyTerminalModeConfig alt_esc = {.mode = ghostty_mode_new(1036, false), .value = true};
     ghostty_terminal_set(v->term, GHOSTTY_TERMINAL_OPT_MODE_DEFAULT, &alt_esc);
     ghostty_terminal_set(v->term, GHOSTTY_TERMINAL_OPT_BELL, (const void *)on_bell);
-    ghostty_terminal_set(v->term, GHOSTTY_TERMINAL_OPT_TITLE_CHANGED, (const void *)on_title);
     ghostty_terminal_set(v->term, GHOSTTY_TERMINAL_OPT_CLIPBOARD_WRITE, (const void *)on_clipboard);
     ghostty_terminal_set(v->term, GHOSTTY_TERMINAL_OPT_DESKTOP_NOTIFICATION, (const void *)on_notify);
     return (jlong)(intptr_t)v;
@@ -189,8 +182,7 @@ JNIEXPORT jint JNICALL FN(write)(JNIEnv *env, jclass cls, jlong h, jbyteArray jb
     if (!buf) return 0;
     pthread_mutex_lock(&v->lock);
     ghostty_terminal_vt_write(v->term, (const uint8_t *)buf, (size_t)len);
-    jint left = (v->reply_len ? 1 : 0) |
-                (v->bells || v->title_changed || v->clipboard || v->notify_title || v->notify_body ? 2 : 0);
+    jint left = (v->reply_len ? 1 : 0) | (v->bells || v->clipboard || v->notify_title || v->notify_body ? 2 : 0);
     pthread_mutex_unlock(&v->lock);
     (*env)->ReleaseByteArrayElements(env, jbuf, buf, JNI_ABORT);
     return left;
@@ -294,9 +286,8 @@ static jint state(Vt *v) {
     ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_ACTIVE_SCREEN, &screen);
     bool bottom = true;
     ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_VIEWPORT_ACTIVE, &bottom);
-    return (tracking ? 1 : 0) | (screen == GHOSTTY_TERMINAL_SCREEN_ALTERNATE ? 2 : 0) | (mode(v, 1007, false) ? 4 : 0) |
-           (mode(v, 1, false) ? 8 : 0) | (bottom ? 16 : 0) | (mode(v, 2004, false) ? 32 : 0) | (mode(v, 1004, false) ? 64 : 0) |
-           (v->held ? 128 : 0);
+    return (tracking ? 1 : 0) | (screen == GHOSTTY_TERMINAL_SCREEN_ALTERNATE ? 2 : 0) | (mode(v, 1, false) ? 8 : 0) |
+           (bottom ? 16 : 0) | (mode(v, 2004, false) ? 32 : 0) | (v->held ? 128 : 0);
 }
 
 JNIEXPORT jint JNICALL FN(state)(JNIEnv *env, jclass cls, jlong h) {
@@ -729,8 +720,8 @@ JNIEXPORT jbyteArray JNICALL FN(link)(JNIEnv *env, jclass cls, jlong h, jint x, 
     return arr;
 }
 
-// Selects from cell x1, y1 to x2, y2 of the view, both included; the word at x1, y1 when word.
-// Which end stays where it is when a handle is dragged: SELECT_* (Vt.kt). False when nothing was selected.
+// Selects by how: 0 from cell x1, y1 to x2, y2 of the view, both included; 1 the word at x1, y1; 2 and 3 move the
+// selection's first or last end to x1, y1, as a dragged handle does. False when nothing was selected.
 JNIEXPORT jboolean JNICALL FN(select)(JNIEnv *env, jclass cls, jlong h, jint x1, jint y1, jint x2, jint y2, jint how) {
     (void)env;
     (void)cls;
@@ -836,23 +827,18 @@ static jstring utf(JNIEnv *env, const char *s) {
     return out;
 }
 
-// What happened since the last call, as pairs of strings: {"bell", ""}, {"title", the title}, {"clipboard", text},
+// What happened since the last call, as pairs of strings: {"bell", ""}, {"clipboard", text},
 // {"notify", title + "\n" + body}. Null when nothing did.
 JNIEXPORT jobjectArray JNICALL FN(events)(JNIEnv *env, jclass cls, jlong h) {
     (void)cls;
     Vt *v = vt(h);
     pthread_mutex_lock(&v->lock);
-    int bells = v->bells, titled = v->title_changed;
-    char *clip = v->clipboard, *nt = v->notify_title, *nb = v->notify_body, *title = NULL;
+    int bells = v->bells;
+    char *clip = v->clipboard, *nt = v->notify_title, *nb = v->notify_body;
     v->bells = 0;
-    v->title_changed = 0;
     v->clipboard = v->notify_title = v->notify_body = NULL;
-    if (titled) {
-        GhosttyString t = {0};
-        if (ghostty_terminal_get(v->term, GHOSTTY_TERMINAL_DATA_TITLE, &t) == GHOSTTY_SUCCESS) title = copy(t);
-    }
     pthread_mutex_unlock(&v->lock);
-    int n = (bells ? 2 : 0) + (title ? 2 : 0) + (clip ? 2 : 0) + (nt || nb ? 2 : 0);
+    int n = (bells ? 2 : 0) + (clip ? 2 : 0) + (nt || nb ? 2 : 0);
     jobjectArray out = NULL;
     if (n) {
         out = (*env)->NewObjectArray(env, n, (*env)->FindClass(env, "java/lang/String"), NULL);
@@ -865,7 +851,6 @@ JNIEXPORT jobjectArray JNICALL FN(events)(JNIEnv *env, jclass cls, jlong h) {
         }                                                                               \
     } while (0)
         if (bells) PUT("bell", (*env)->NewStringUTF(env, ""));
-        if (title) PUT("title", utf(env, title));
         if (clip) PUT("clipboard", utf(env, clip));
         if (nt || nb) {
             size_t a = nt ? strlen(nt) : 0, b = nb ? strlen(nb) : 0;
@@ -881,7 +866,6 @@ JNIEXPORT jobjectArray JNICALL FN(events)(JNIEnv *env, jclass cls, jlong h) {
         }
 #undef PUT
     }
-    free(title);
     free(clip);
     free(nt);
     free(nb);

@@ -25,19 +25,24 @@ class Source(
 
     fun format(e: CompileError): String {
         val (line, col) = lineCol(e.pos)
-        val full = text.lines().getOrElse(line - 1) { "" }.trimEnd()
-        // Keep the message small even when a line is huge (a widget from a link can be one line of a megabyte):
-        // show only a window around the caret, so the error never becomes a giant string for the UI to lay out.
-        val caret = (col - 1).coerceIn(0, full.length)
+        // The line's bounds as lineCol counts lines, without its trailing blanks; found in place, as the line can be
+        // huge (a widget from a link can be one line of a megabyte).
+        val from = e.pos.coerceIn(0, text.length) - (col - 1)
+        var to = text.indexOf('\n', from).let { if (it < 0) text.length else it }
+        while (to > from && text[to - 1].isWhitespace()) to--
+        val length = to - from
+        // Keep the message small even then: show only a window around the caret, so the error never becomes a giant
+        // string for the UI to lay out.
+        val caret = (col - 1).coerceIn(0, length)
         val (src, mark) =
-            if (full.length <= MAX_LINE) {
-                full to caret
+            if (length <= MAX_LINE) {
+                text.substring(from, to) to caret
             } else {
-                val start = (caret - MAX_LINE / 2).coerceIn(0, full.length - MAX_LINE)
-                val end = (start + MAX_LINE).coerceAtMost(full.length)
+                val start = (caret - MAX_LINE / 2).coerceIn(0, length - MAX_LINE)
+                val end = (start + MAX_LINE).coerceAtMost(length)
                 val head = if (start > 0) "…" else ""
-                val tail = if (end < full.length) "…" else ""
-                (head + full.substring(start, end) + tail) to (caret - start + head.length)
+                val tail = if (end < length) "…" else ""
+                (head + text.substring(from + start, from + end) + tail) to (caret - start + head.length)
             }
         return "$line:$col: ${e.message}\n  $src\n  ${" ".repeat(mark.coerceIn(0, src.length))}^"
     }

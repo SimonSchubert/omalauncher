@@ -63,11 +63,6 @@ object PtyNative {
 
     /** The exit code of [pid], or 128 + the signal that killed it. */
     @JvmStatic external fun waitFor(pid: Int): Int
-
-    @JvmStatic external fun kill(
-        pid: Int,
-        signal: Int,
-    )
 }
 
 /** JNI bindings, see cpp/vt.c: libghostty-vt's terminal state. [Vt] is the Kotlin side. */

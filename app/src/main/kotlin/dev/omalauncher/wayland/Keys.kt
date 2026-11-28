@@ -11,6 +11,12 @@ object Keys {
     const val KEY_LEFTCTRL = 29
     const val KEY_LEFTALT = 56
     const val KEY_INSERT = 110
+    const val KEY_RIGHTSHIFT = 54
+    const val KEY_CAPSLOCK = 58
+    const val KEY_RIGHTCTRL = 97
+    const val KEY_RIGHTALT = 100
+    const val KEY_LEFTMETA = 125
+    const val KEY_RIGHTMETA = 126
 
     private val byKeyCode =
         buildMap {

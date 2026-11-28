@@ -210,7 +210,7 @@ internal fun InputNode(
     val lines = if (password) 1 else p.observe("lines")?.num()?.toInt()?.coerceIn(1, 100) ?: 1
     val multiLine = lines > 1
     val color = p.color("color") { Palette.foreground }
-    val style = WidgetMono.copy(fontSize = p.observe("fontSize")?.num()?.sp ?: WidgetMono.fontSize)
+    val style = WidgetMono.let { mono -> p.observe("fontSize")?.num()?.let { mono.copy(fontSize = it.sp) } ?: mono }
     val onChange = p.el.handlers["onChange"]
     val onSubmit = p.el.handlers["onSubmit"]
     val focus = LocalFocusManager.current

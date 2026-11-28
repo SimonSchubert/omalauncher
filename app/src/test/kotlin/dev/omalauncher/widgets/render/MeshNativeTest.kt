@@ -17,7 +17,6 @@ import dev.omalauncher.widgets.lang.WidgetError
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -322,7 +321,6 @@ class MeshNativeTest {
         @JvmStatic
         fun build() {
             HostNative.load("scene3d.c", "mesh3d.c")
-            assertNotNull(MeshNative)
         }
     }
 }

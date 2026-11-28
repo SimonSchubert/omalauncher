@@ -304,7 +304,7 @@ class VtTest {
         repeat(20) { write("line $it\r\n") }
         vt.scroll(-3)
         assertFalse(vt.state and Vt.AT_BOTTOM != 0)
-        val (total, offset, len) = vt.scrollbar()!!.toList()
+        val (total, offset, len) = vt.scrollbar()!!
         assertEquals(6L, len)
         assertEquals(total - len - 3, offset)
         vt.scrollToBottom()
@@ -315,7 +315,7 @@ class VtTest {
         assertEquals(emptyList<VtEvent>(), vt.events())
         write("\u0007\u001b]2;my title\u0007\u001b]52;c;aMOkbGxv\u0007\u001b]777;notify;Done;All passed\u0007")
         assertEquals(
-            listOf(VtEvent.Bell, VtEvent.Title("my title"), VtEvent.Copy("hällo"), VtEvent.Notify("Done", "All passed")),
+            listOf(VtEvent.Bell, VtEvent.Copy("hällo"), VtEvent.Notify("Done", "All passed")),
             vt.events(),
         )
         assertEquals(emptyList<VtEvent>(), vt.events())

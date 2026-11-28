@@ -676,10 +676,10 @@ JNIEXPORT jobjectArray JNICALL FN(scanObj)(JNIEnv *env, jclass cls, jstring jtex
     int names = o.materials.n / 2;
     jobjectArray materials = (*env)->NewObjectArray(env, names, string, NULL);
     if (!faceTex || !smooth || !materials) goto done;
-    for (int f = 0; f < faces; f++) {
-        jboolean b = INTS(o.faceTex)[f] ? JNI_TRUE : JNI_FALSE;
-        (*env)->SetBooleanArrayRegion(env, faceTex, f, 1, &b);
-    }
+    // In one call: the ints' own memory, narrowed from its start, takes the booleans.
+    jboolean *flags = (jboolean *)o.faceTex.a;
+    for (int f = 0; f < faces; f++) flags[f] = INTS(o.faceTex)[f] ? JNI_TRUE : JNI_FALSE;
+    if (faces) (*env)->SetBooleanArrayRegion(env, faceTex, 0, faces, flags);
     jboolean s = o.smooth ? JNI_TRUE : JNI_FALSE;
     (*env)->SetBooleanArrayRegion(env, smooth, 0, 1, &s);
     for (int m = 0; m < names; m++) {

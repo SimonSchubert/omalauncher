@@ -995,21 +995,7 @@ class Scene3d(
                 bsp.order(ex, ey, ez, order)
             }
         }
-        val count = drawn.points.size / 3
-        if (px.size < count) {
-            px = FloatArray(count)
-            py = FloatArray(count)
-            pz = FloatArray(count)
-        }
         val pts = drawn.points
-        for (i in 0 until count) {
-            val x = pts[3 * i]
-            val y = pts[3 * i + 1]
-            val z = pts[3 * i + 2]
-            px[i] = c00 * x + c01 * y + c02 * z + ox
-            py[i] = c10 * x + c11 * y + c12 * z + oy
-            pz[i] = c20 * x + c21 * y + c22 * z + oz
-        }
         val texIndex =
             if (texture != null && drawn.uvs != null) {
                 // One index per image, so models that share it draw in one batch.
@@ -1044,6 +1030,21 @@ class Scene3d(
             if (staged < 0) throw WidgetError("more than $MAX_SCENE_TRIANGLES triangles in one scene")
             n = staged
             return
+        }
+        // A kernel moves the points itself.
+        val count = drawn.points.size / 3
+        if (px.size < count) {
+            px = FloatArray(count)
+            py = FloatArray(count)
+            pz = FloatArray(count)
+        }
+        for (i in 0 until count) {
+            val x = pts[3 * i]
+            val y = pts[3 * i + 1]
+            val z = pts[3 * i + 2]
+            px[i] = c00 * x + c01 * y + c02 * z + ox
+            py[i] = c10 * x + c11 * y + c12 * z + oy
+            pz[i] = c20 * x + c21 * y + c22 * z + oz
         }
         for (q in 0 until drawn.triangles) {
             val t = if (bsp != null) order[q] else q
@@ -1218,13 +1219,13 @@ class Scene3d(
 
     /** Sorts the staged triangles far to near into [verts], [colors] and [texs], in [batches] by texture. */
     fun finish() {
+        if (verts.size < 6 * n) {
+            val size = maxOf(6 * n, verts.size * 2)
+            verts = FloatArray(size)
+            texs = FloatArray(size)
+            colors = IntArray(size)
+        }
         if (kernel != null) {
-            if (verts.size < 6 * n) {
-                val size = maxOf(6 * n, verts.size * 2)
-                verts = FloatArray(size)
-                texs = FloatArray(size)
-                colors = IntArray(size)
-            }
             var runs = kernel.finish(verts, texs, colors, kbatches)
             if (3 * runs > kbatches.size) {
                 kbatches = IntArray(3 * runs)
@@ -1248,12 +1249,6 @@ class Scene3d(
         // Depths are positive, so their float bits sort as they do; ties keep the order the models came in.
         for (i in 0 until n) keys[i] = (java.lang.Float.floatToRawIntBits(depth[i]).toLong() shl 32) or (n - i).toLong()
         java.util.Arrays.sort(keys, 0, n)
-        if (verts.size < 6 * n) {
-            val size = maxOf(6 * n, verts.size * 2)
-            verts = FloatArray(size)
-            texs = FloatArray(size)
-            colors = IntArray(size)
-        }
         batches = 0
         var last = Int.MIN_VALUE
         for (k in 0 until n) {

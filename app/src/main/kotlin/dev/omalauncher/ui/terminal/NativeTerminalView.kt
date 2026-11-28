@@ -24,6 +24,7 @@ import android.widget.OverScroller
 import androidx.core.graphics.withScale
 import androidx.core.graphics.withTranslation
 import androidx.core.net.toUri
+import dev.omalauncher.LogText
 import dev.omalauncher.system.postLinuxNotification
 import dev.omalauncher.terminal.Cells
 import dev.omalauncher.terminal.TerminalKeyboard
@@ -40,10 +41,10 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * A built-in terminal: draws [session]'s screen and sends it keys, touches and pastes. Used by terminal windows and
- * tiles alike. Text is drawn in [faces] at [emPx] pixels to the em, as foot sizes it (TerminalFont), so a terminal
- * gets as many columns as foot would; colours are [colors], with the background left out when [transparent] (a tile's
- * glass). Keys come from the launcher's keyboard bridge as a [KeyTarget], set by whoever gives this view the keyboard.
+ * A built-in terminal: draws [session]'s screen and sends it keys, touches and pastes. Text is drawn in [faces] at
+ * [emPx] pixels to the em, as foot sizes it (TerminalFont), so a terminal gets as many columns as foot would; colours
+ * are [colors]. Keys come from the launcher's keyboard bridge as a [KeyTarget], set by whoever gives this view the
+ * keyboard.
  * Main thread.
  */
 class NativeTerminalView(
@@ -102,14 +103,6 @@ class NativeTerminalView(
             invalidateRows()
         }
 
-    /** Leaves out the background where the program sets none, for a tile's glass. */
-    var transparent = false
-        set(value) {
-            if (value == field) return
-            field = value
-            invalidateRows()
-        }
-
     /** Whether this terminal has the keyboard: its cursor is solid, and a program that asked hears of focus changes. */
     var keyboardFocus = false
         set(value) {
@@ -128,9 +121,6 @@ class NativeTerminalView(
 
     /** A tap that wasn't a link, a mouse click for the program or the end of a selection: the keyboard, say. */
     var onTap: () -> Unit = {}
-
-    /** The program set its title (OSC 0/2). */
-    var onTitle: (String) -> Unit = {}
 
     /** Cell size in pixels, from [faces] and [emPx]. */
     var cellWidth = 1
@@ -235,7 +225,7 @@ class NativeTerminalView(
         val atlas = atlas ?: return
         val read = session?.vt?.let(::read) == true
         val bg = if (cells.cols > 0) cells.defaultBg else colors.background
-        if (!transparent) canvas.drawColor(bg)
+        canvas.drawColor(bg)
         if (cells.cols == 0) return
         val hardware = canvas.isHardwareAccelerated
         if (rowNodes.size != cells.rows) newGrid()
@@ -318,14 +308,13 @@ class NativeTerminalView(
 
     private fun Int.has(flag: Int) = this and flag != 0
 
-    /** Cell [i]'s background as drawn, or [NONE] where it shows what's behind ([transparent], no colour of its own). */
+    /** Cell [i]'s background as drawn. */
     private fun backgroundOf(i: Int): Int {
         val f = cells.flags[i]
         return when {
             f.has(Cells.SELECTED) -> colors.selectionBackground
             f.has(Cells.INVERSE) -> cells.fg[i]
-            f.has(Cells.HAS_BG) || !transparent -> cells.bg[i]
-            else -> NONE
+            else -> cells.bg[i]
         }
     }
 
@@ -457,7 +446,7 @@ class NativeTerminalView(
             var end = x + 1
             while (end < cols && backgroundOf(from + end) == color) end++
             // The default background is the view's own, drawn once already.
-            if (color != NONE && (transparent || color != cells.defaultBg)) rect(x * cw, 0f, end * cw, ch, color)
+            if (color != cells.defaultBg) rect(x * cw, 0f, end * cw, ch, color)
             x = end
         }
         // Glyphs and their lines.
@@ -575,7 +564,7 @@ class NativeTerminalView(
     /** A thin bar at the right while the view is back in the scrollback, where it is. */
     private fun drawScrollbar(canvas: Canvas) {
         if (cells.state.has(Vt.AT_BOTTOM)) return
-        val (total, offset, len) = session?.vt?.scrollbar()?.toList() ?: return
+        val (total, offset, len) = session?.vt?.scrollbar() ?: return
         if (total <= len) return
         val h = height.toFloat()
         val top = h * offset / total
@@ -765,7 +754,6 @@ class NativeTerminalView(
     private fun event(e: VtEvent) {
         when (e) {
             VtEvent.Bell -> performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-            is VtEvent.Title -> onTitle(e.title)
             is VtEvent.Copy -> clipboard()?.setPrimaryClip(ClipData.newPlainText(null, e.text))
             // Claude Code's "needs your attention": a notification only when this terminal isn't in front.
             is VtEvent.Notify -> if (!hasWindowFocus() && e.title.isNotBlank()) context.postLinuxNotification(e.title, e.body.takeIf { it.isNotBlank() })
@@ -1027,7 +1015,7 @@ class NativeTerminalView(
 
     private fun open(url: String) {
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            .onFailure { Log.w(TAG, "can't open $url", it) }
+            .onFailure { Log.w(TAG, "can't open ${LogText.url(url)}", it) }
     }
 
     // Last, once every field above has its value: measuring fills the paints glyphs are drawn with.
@@ -1045,13 +1033,10 @@ class NativeTerminalView(
     }
 
     private companion object {
-        const val TAG = "native-terminal"
+        const val TAG = "terminal"
         const val HOLD_MAX_MS = 1000L
         const val MIN_EM_PX = 6f
         const val MAX_EM_PX = 200f
-
-        /** No background colour: a real one is opaque, so never 0. */
-        const val NONE = 0
 
         val URL = Regex("""(?:https?|file)://[^\s<>"'`]+""")
     }
