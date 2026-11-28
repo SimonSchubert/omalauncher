@@ -153,6 +153,10 @@
     <string name="store_theme_title">topluluk temaları</string>
     <string name="store_theme_search">%1$d tema içinde ara</string>
     <string name="store_theme_header">topluluk yapımı, omarchy.org/themes üzerinde listeli · GitHub’dan yüklenir</string>
+    <string name="store_theme_sort">sırala</string>
+    <string name="store_theme_sort_listed">liste sırası</string>
+    <string name="store_theme_sort_newest">en yeni</string>
+    <string name="store_theme_sort_rating">puan</string>
     <string name="store_theme_in_use">✓ kullanımda</string>
     <string name="store_theme_light">açık</string>
     <string name="store_theme_dark">koyu</string>

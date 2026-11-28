@@ -152,6 +152,10 @@
     <string name="store_theme_title">社区主题</string>
     <string name="store_theme_search">搜索 %1$d 个主题</string>
     <string name="store_theme_header">由社区制作，列于 omarchy.org/themes · 从 GitHub 安装</string>
+    <string name="store_theme_sort">排序</string>
+    <string name="store_theme_sort_listed">默认顺序</string>
+    <string name="store_theme_sort_newest">最新</string>
+    <string name="store_theme_sort_rating">评分</string>
     <string name="store_theme_in_use">✓ 使用中</string>
     <string name="store_theme_light">浅色</string>
     <string name="store_theme_dark">深色</string>

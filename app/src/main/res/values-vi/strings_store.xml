@@ -203,6 +203,10 @@
     <string name="store_theme_title">chủ đề cộng đồng</string>
     <string name="store_theme_search">tìm trong %1$d chủ đề</string>
     <string name="store_theme_header">do cộng đồng tạo, có trên omarchy.org/themes · cài đặt từ GitHub</string>
+    <string name="store_theme_sort">sắp xếp</string>
+    <string name="store_theme_sort_listed">theo danh sách</string>
+    <string name="store_theme_sort_newest">mới nhất</string>
+    <string name="store_theme_sort_rating">xếp hạng</string>
     <string name="store_theme_in_use">✓ đang dùng</string>
     <!-- Under a theme's screenshot, with its colors: whether it is a light or a dark theme, how many wallpapers it has, and its download size. -->
     <string name="store_theme_light">sáng</string>

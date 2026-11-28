@@ -202,6 +202,10 @@
     <string name="store_theme_title">community-themes</string>
     <string name="store_theme_search">%1$d themes durchsuchen</string>
     <string name="store_theme_header">von der community, gelistet auf omarchy.org/themes · installiert von GitHub</string>
+    <string name="store_theme_sort">sortieren</string>
+    <string name="store_theme_sort_listed">wie gelistet</string>
+    <string name="store_theme_sort_newest">neueste</string>
+    <string name="store_theme_sort_rating">bewertung</string>
     <string name="store_theme_in_use">✓ aktiv</string>
     <string name="store_theme_light">hell</string>
     <string name="store_theme_dark">dunkel</string>

@@ -151,6 +151,10 @@
     <string name="store_theme_title">コミュニティテーマ</string>
     <string name="store_theme_search">%1$d 件のテーマを検索</string>
     <string name="store_theme_header">コミュニティ製、omarchy.org/themes に掲載 · GitHub からインストール</string>
+    <string name="store_theme_sort">並べ替え</string>
+    <string name="store_theme_sort_listed">掲載順</string>
+    <string name="store_theme_sort_newest">新しい順</string>
+    <string name="store_theme_sort_rating">評価</string>
     <string name="store_theme_in_use">✓ 使用中</string>
     <string name="store_theme_light">ライト</string>
     <string name="store_theme_dark">ダーク</string>

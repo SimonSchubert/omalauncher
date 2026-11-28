@@ -203,6 +203,10 @@
     <string name="store_theme_title">پوسته‌های کاربران</string>
     <string name="store_theme_search">جستجو در %1$d پوسته</string>
     <string name="store_theme_header">ساخته کاربران، فهرست‌شده در ⁨omarchy.org/themes⁩ · نصب از GitHub</string>
+    <string name="store_theme_sort">مرتب‌سازی</string>
+    <string name="store_theme_sort_listed">ترتیب فهرست</string>
+    <string name="store_theme_sort_newest">جدیدترین</string>
+    <string name="store_theme_sort_rating">امتیاز</string>
     <string name="store_theme_in_use">✓ در حال استفاده</string>
     <!-- Under a theme's screenshot, with its colors: whether it is a light or a dark theme, how many wallpapers it has, and its download size. -->
     <string name="store_theme_light">روشن</string>
