@@ -9,8 +9,6 @@ import dev.omalauncher.net.httpGet
 import dev.omalauncher.upgrade.writeAtomically
 import dev.omalauncher.widgets.lang.sha256Hex
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -27,21 +25,18 @@ internal const val REPO_QUERY_LIMIT = 200
 data class CatalogStats(
     /** When its GitHub repo was created, as the theme's upload date. */
     val created: Long? = null,
-    /** Downloads of its GitHub release assets, 0 when it has no releases. */
-    val downloads: Long? = null,
     /** GitHub stars, as the community's rating. */
     val stars: Long? = null,
 ) {
     internal fun mergedWith(other: CatalogStats) =
         copy(
             created = other.created ?: created,
-            downloads = other.downloads ?: downloads,
             stars = other.stars ?: stars,
         )
 }
 
 /** The orders offered above the catalog grid. */
-internal enum class ThemeSort { LISTED, NEWEST, DOWNLOADS, RATING }
+internal enum class ThemeSort { LISTED, NEWEST, RATING }
 
 /** [themes] in [sort], with themes GitHub didn't answer about last. */
 internal fun sortThemes(
@@ -54,7 +49,6 @@ internal fun sortThemes(
         stats[theme.repo.label.lowercase()]?.let { s ->
             when (sort) {
                 ThemeSort.NEWEST -> s.created
-                ThemeSort.DOWNLOADS -> s.downloads
                 ThemeSort.RATING -> s.stars
                 ThemeSort.LISTED -> null
             }
@@ -130,8 +124,6 @@ class ThemeCatalog(
         private set
     var statsLoading by mutableStateOf(false)
         private set
-    var downloadsLoading by mutableStateOf(false)
-        private set
 
     private var statsSavedAt = 0L
     private val page get() = File(cacheDir, "theme-catalog.html")
@@ -161,7 +153,6 @@ class ThemeCatalog(
                         .onFailure { Log.w(TAG, "no repo stats", it) }
                         .getOrNull()
                 if (!fresh.isNullOrEmpty()) {
-                    // Downloads may have been fetched while GitHub's search calls were running.
                     val merged = mergeStats(stats, fresh)
                     stats = merged
                     withContext(Dispatchers.IO) { runCatching { writeStats(merged) }.onFailure { Log.w(TAG, "no stats cache", it) } }
@@ -173,45 +164,6 @@ class ThemeCatalog(
         } finally {
             statsLoading = false
             loading = false
-        }
-    }
-
-    /**
-     * GitHub's release download counts for the listed themes, on the first sort by downloads and then once a day.
-     * GitHub has no bulk count, so these come from its numbers via shields.io; themes without releases count as 0.
-     */
-    suspend fun loadDownloads() {
-        if (downloadsLoading || entries.isEmpty()) return
-        val wanted =
-            if (System.currentTimeMillis() - statsSavedAt > STATS_MAX_AGE) entries
-            else entries.filter { stats[it.repo.label.lowercase()]?.downloads == null }
-        if (wanted.isEmpty()) return
-        downloadsLoading = true
-        try {
-            var found = emptyMap<String, CatalogStats>()
-            for (part in wanted.chunked(DOWNLOAD_BATCH)) {
-                val answers =
-                    withContext(Dispatchers.IO) {
-                        part
-                            .map { theme ->
-                                async {
-                                    val repo = theme.repo
-                                    val url = "https://img.shields.io/github/downloads/${repo.owner}/${repo.repo}/total.json"
-                                    runCatching { parseDownloadCount(String(httpGet(url))) }
-                                        .onFailure { Log.w(TAG, "no downloads for ${theme.title}", it) }
-                                        .getOrNull()
-                                        ?.let { repo.label.lowercase() to CatalogStats(downloads = it) }
-                                }
-                            }.awaitAll().filterNotNull().toMap()
-                    }
-                if (answers.isNotEmpty()) {
-                    found += answers
-                    stats = mergeStats(stats, answers)
-                }
-            }
-            if (found.isNotEmpty()) withContext(Dispatchers.IO) { runCatching { writeStats(stats) }.onFailure { Log.w(TAG, "no stats cache", it) } }
-        } finally {
-            downloadsLoading = false
         }
     }
 
@@ -254,7 +206,6 @@ class ThemeCatalog(
             out[key] =
                 CatalogStats(
                     created = o.optLong("created", -1L).takeIf { it >= 0 },
-                    downloads = o.optLong("downloads", -1L).takeIf { it >= 0 },
                     stars = o.optLong("stars", -1L).takeIf { it >= 0 },
                 )
         }
@@ -267,7 +218,6 @@ class ThemeCatalog(
         stats.forEach { (key, value) ->
             val o = JSONObject()
             value.created?.let { o.put("created", it) }
-            value.downloads?.let { o.put("downloads", it) }
             value.stars?.let { o.put("stars", it) }
             repos.put(key, o)
         }
@@ -348,7 +298,6 @@ class ThemeCatalog(
         const val PAGE = "https://omarchy.org/themes/"
         private const val SITE = "https://omarchy.org"
         private const val GITHUB_SEARCH_INTERVAL = 6_000L
-        private const val DOWNLOAD_BATCH = 16
         private const val STATS_MAX_AGE = 24 * 60 * 60 * 1000L
         private val SAFE_FILE = Regex("^[A-Za-z0-9_-][A-Za-z0-9._-]*$")
 
@@ -406,19 +355,4 @@ internal fun parseRepoStats(json: String): Map<String, CatalogStats> {
         out["github.com/${name.lowercase()}"] = CatalogStats(created = created, stars = item.optLong("stargazers_count", -1L).takeIf { it >= 0 })
     }
     return out
-}
-
-/** Shields' `github/downloads/<owner>/<repo>/total.json` message, or null when it wasn't a count. */
-internal fun parseDownloadCount(json: String): Long? {
-    val message = JSONObject(json).optString("message").trim()
-    if (message.equals("no releases found", ignoreCase = true)) return 0L
-    val m = Regex("""^([\d.,]+)\s*([kKmM]?)""").find(message) ?: return null
-    val amount = m.groupValues[1].replace(",", "").toDoubleOrNull() ?: return null
-    val scale =
-        when (m.groupValues[2].lowercase()) {
-            "k" -> 1_000
-            "m" -> 1_000_000
-            else -> 1
-        }
-    return (amount * scale).toLong()
 }

@@ -159,9 +159,7 @@
     <string name="store_theme_sort">ordenar</string>
     <string name="store_theme_sort_listed">como aparecen</string>
     <string name="store_theme_sort_newest">más recientes</string>
-    <string name="store_theme_sort_downloads">descargas</string>
     <string name="store_theme_sort_rating">valoración</string>
-    <string name="store_theme_sort_loading">obteniendo descargas de GitHub…</string>
     <string name="store_theme_sort_stats_loading">obteniendo datos de GitHub…</string>
     <string name="store_theme_in_use">✓ en uso</string>
     <string name="store_theme_light">claro</string>

@@ -205,13 +205,11 @@
     <string name="store_theme_title">community themes</string>
     <string name="store_theme_search">search %1$d themes</string>
     <string name="store_theme_header">made by the community, listed on omarchy.org/themes · installed from GitHub</string>
-    <!-- The sort chips; dates and stars come from GitHub, downloads from its releases. -->
+    <!-- The sort chips; dates and stars come from GitHub. -->
     <string name="store_theme_sort">sort</string>
     <string name="store_theme_sort_listed">listed</string>
     <string name="store_theme_sort_newest">newest</string>
-    <string name="store_theme_sort_downloads">downloads</string>
     <string name="store_theme_sort_rating">rating</string>
-    <string name="store_theme_sort_loading">getting GitHub download counts…</string>
     <string name="store_theme_sort_stats_loading">getting GitHub stats…</string>
     <string name="store_theme_in_use">✓ in use</string>
     <!-- Under a theme's screenshot, with its colors: whether it is a light or a dark theme, how many wallpapers it has, and its download size. -->

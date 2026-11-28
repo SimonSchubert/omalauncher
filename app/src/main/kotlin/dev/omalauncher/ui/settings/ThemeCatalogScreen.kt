@@ -97,7 +97,6 @@ fun ThemeCatalogScreen(
     BackHandler(onBack = onDismiss)
     BackHandler(enabled = viewing != null) { viewing = null }
     LaunchedEffect(catalog) { catalog.refresh() }
-    LaunchedEffect(sort, catalog.entries) { if (sort == ThemeSort.DOWNLOADS) catalog.loadDownloads() }
     RescanThemes(store)
     // Which repos are installed, by github.com/owner/repo; read from the themes' source markers.
     val installedFrom by produceState(emptyMap<String, String>(), store.themes) {
@@ -154,11 +153,7 @@ fun ThemeCatalogScreen(
                         }
                     }
                     val sortLoading =
-                        when {
-                            sort == ThemeSort.DOWNLOADS && catalog.downloadsLoading -> R.string.store_theme_sort_loading
-                            sort != ThemeSort.LISTED && catalog.statsLoading -> R.string.store_theme_sort_stats_loading
-                            else -> null
-                        }
+                        if (sort != ThemeSort.LISTED && catalog.statsLoading) R.string.store_theme_sort_stats_loading else null
                     if (sortLoading != null) {
                         BasicText(stringResource(sortLoading), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                     }
@@ -188,7 +183,6 @@ private fun ThemeSort.label() =
         when (this) {
             ThemeSort.LISTED -> R.string.store_theme_sort_listed
             ThemeSort.NEWEST -> R.string.store_theme_sort_newest
-            ThemeSort.DOWNLOADS -> R.string.store_theme_sort_downloads
             ThemeSort.RATING -> R.string.store_theme_sort_rating
         },
     )

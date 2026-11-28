@@ -205,9 +205,7 @@
     <string name="store_theme_sort">sortieren</string>
     <string name="store_theme_sort_listed">wie gelistet</string>
     <string name="store_theme_sort_newest">neueste</string>
-    <string name="store_theme_sort_downloads">downloads</string>
     <string name="store_theme_sort_rating">bewertung</string>
-    <string name="store_theme_sort_loading">github-downloadzahlen werden geladen…</string>
     <string name="store_theme_sort_stats_loading">github-infos werden geladen…</string>
     <string name="store_theme_in_use">✓ aktiv</string>
     <string name="store_theme_light">hell</string>

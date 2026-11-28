@@ -156,9 +156,7 @@
     <string name="store_theme_sort">sırala</string>
     <string name="store_theme_sort_listed">liste sırası</string>
     <string name="store_theme_sort_newest">en yeni</string>
-    <string name="store_theme_sort_downloads">indirme</string>
     <string name="store_theme_sort_rating">puan</string>
-    <string name="store_theme_sort_loading">GitHub indirme sayıları alınıyor…</string>
     <string name="store_theme_sort_stats_loading">GitHub bilgileri alınıyor…</string>
     <string name="store_theme_in_use">✓ kullanımda</string>
     <string name="store_theme_light">açık</string>

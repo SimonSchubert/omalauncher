@@ -158,9 +158,7 @@
     <string name="store_theme_sort">trier</string>
     <string name="store_theme_sort_listed">comme listés</string>
     <string name="store_theme_sort_newest">plus récents</string>
-    <string name="store_theme_sort_downloads">téléchargements</string>
     <string name="store_theme_sort_rating">note</string>
-    <string name="store_theme_sort_loading">récupération des téléchargements GitHub…</string>
     <string name="store_theme_sort_stats_loading">récupération des infos GitHub…</string>
     <string name="store_theme_in_use">✓ utilisé</string>
     <string name="store_theme_use">utiliser</string>

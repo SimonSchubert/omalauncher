@@ -67,25 +67,16 @@ class ThemeCatalogTest {
         assertEquals(2L, stats["github.com/somerocketeer/omarchy-bauhaus-theme"]?.stars)
     }
 
-    @Test fun readsReleaseDownloadCounts() {
-        assertEquals(0L, parseDownloadCount("""{"message":"no releases found"}"""))
-        assertEquals(25L, parseDownloadCount("""{"message":"25"}"""))
-        assertEquals(1_200L, parseDownloadCount("""{"message":"1.2k"}"""))
-        assertEquals(117_000_000L, parseDownloadCount("""{"message":"117M"}"""))
-        assertEquals(null, parseDownloadCount("""{"message":"unavailable"}"""))
-    }
-
     @Test fun sortsThemesByTheChosenNumber() {
         val themes = ThemeCatalog.parse(html)
         val stats =
             mapOf(
-                themes[0].repo.label.lowercase() to CatalogStats(created = 100L, downloads = 5L, stars = 9L),
-                themes[1].repo.label.lowercase() to CatalogStats(created = 200L, downloads = 50L, stars = 2L),
+                themes[0].repo.label.lowercase() to CatalogStats(created = 100L, stars = 9L),
+                themes[1].repo.label.lowercase() to CatalogStats(created = 200L, stars = 2L),
             )
         fun titles(sort: ThemeSort) = sortThemes(themes, sort, stats).map { it.title }
         assertEquals(listOf("Batman", "Rock & Roll"), titles(ThemeSort.LISTED))
         assertEquals(listOf("Rock & Roll", "Batman"), titles(ThemeSort.NEWEST))
-        assertEquals(listOf("Rock & Roll", "Batman"), titles(ThemeSort.DOWNLOADS))
         assertEquals(listOf("Batman", "Rock & Roll"), titles(ThemeSort.RATING))
         // A theme GitHub didn't answer about goes last even when the other's number is low.
         val partial = mapOf(themes[0].repo.label.lowercase() to CatalogStats(stars = 1L))
