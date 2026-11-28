@@ -40,6 +40,9 @@
     <string name="files_select_all">pilih semua</string>
     <string name="files_edit">edit</string>
     <string name="files_open_with">buka dengan…</string>
+    <string name="files_open_title">buka %1$s dengan</string>
+    <string name="files_open_linux">Files</string>
+    <string name="files_open_android">Android</string>
     <string name="files_share">bagikan</string>
     <string name="files_cancel">batal</string>
     <string name="files_move_here">pindahkan ke sini</string>

@@ -44,6 +44,9 @@
     <string name="files_select_all">tout sélectionner</string>
     <string name="files_edit">modifier</string>
     <string name="files_open_with">ouvrir avec…</string>
+    <string name="files_open_title">ouvrir %1$s avec</string>
+    <string name="files_open_linux">Files</string>
+    <string name="files_open_android">Android</string>
     <string name="files_share">partager</string>
     <string name="files_cancel">annuler</string>
     <string name="files_move_here">déplacer ici</string>

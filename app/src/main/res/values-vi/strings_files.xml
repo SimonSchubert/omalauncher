@@ -43,6 +43,9 @@
     <string name="files_select_all">chọn tất cả</string>
     <string name="files_edit">chỉnh sửa</string>
     <string name="files_open_with">mở bằng…</string>
+    <string name="files_open_title">mở %1$s bằng</string>
+    <string name="files_open_linux">Files</string>
+    <string name="files_open_android">Android</string>
     <string name="files_share">chia sẻ</string>
     <string name="files_cancel">hủy</string>
     <string name="files_move_here">di chuyển tới đây</string>

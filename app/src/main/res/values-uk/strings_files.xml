@@ -46,6 +46,9 @@
     <string name="files_select_all">вибрати все</string>
     <string name="files_edit">змінити</string>
     <string name="files_open_with">відкрити в…</string>
+    <string name="files_open_title">чим відкрити %1$s</string>
+    <string name="files_open_linux">Files</string>
+    <string name="files_open_android">Android</string>
     <string name="files_share">поділитися</string>
     <string name="files_cancel">скасувати</string>
     <string name="files_move_here">перемістити сюди</string>
