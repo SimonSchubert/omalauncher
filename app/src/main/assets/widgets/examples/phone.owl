@@ -478,13 +478,13 @@ app "phone" {
                 padding: [12, 0, 12, 0]
                 background: alpha(yellow, 0.1)
                 Icon { src: icOpen; tint: yellow; s: 18 }
-                Text { text: c.log ? "whatsapp & messenger calls need notification access" : "new calls need notification access"; style: small; color: yellow; weight: 1; maxLines: 2 }
+                Text { text: c.log ? "whatsapp & messenger calls aren't kept" : "new calls need notification access"; style: small; color: yellow; weight: 1; maxLines: 2 }
                 Box {
                   width: 72
                   height: 44
                   align: center
                   onTap: { if !asking { haptic(); askedAt = tick; calls("request") } }
-                  Text { text: asking ? "asking…" : "allow"; style: small; color: asking ? muted : accent; align: center; fill: width; maxLines: 1 }
+                  Text { text: asking ? "asking…" : "turn on"; style: small; color: asking ? muted : accent; align: center; fill: width; maxLines: 1 }
                 }
                 Box { size: 44; align: center; onTap: voipHint = false; Text { text: "×"; fontSize: 22; color: muted; align: center; fill: width } }
               }
@@ -628,7 +628,7 @@ app "phone" {
                   digits = ""
                 }
               }
-              Round { src: icCall; tint: dialing && callId == "keypad" ? muted : green; s: 64; solid: true }
+              Round { src: icCall; tint: (dialing && callId == "keypad") || tick - filledAt < 2 ? muted : green; s: 64; solid: true }
             }
           }
         }

@@ -148,14 +148,17 @@ fun PermissionsScreen(
                     askCalling,
                     appDetails,
                 ),
-                // Calls kept from notifications for phone apps: listed while on, which only a phone app's tap turns on.
-                // Off stops it and forgets them.
-                if (VoipCalls.recording(context)) {
+                // Calls kept from notifications for phone apps: listed once a phone app's tap first turned it on. Off stops
+                // it and forgets them; on keeps calls again from then.
+                if (VoipCalls.asked(context)) {
                     Permission(
                         R.string.permissions_kept_calls,
                         stringResource(R.string.permissions_kept_calls_uses),
-                        true,
-                        turnOn = {},
+                        VoipCalls.recording(context),
+                        turnOn = {
+                            VoipCalls.record(context)
+                            changed()
+                        },
                         turnOff = {
                             VoipCalls.stop(context)
                             changed()

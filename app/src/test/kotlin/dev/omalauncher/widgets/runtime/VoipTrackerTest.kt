@@ -165,6 +165,8 @@ class VoipTrackerTest {
         t.removed("ring", now = 2_000)
         // Call waiting: another caller rings while Jana's call goes on.
         t.posted(dialer, "waiting", ringing = true, name = "Petr", number = "+420602000000", video = false, now = 30_000, phone = true)
+        // Answered in its turn, under no number: still Jana's call, with Jana's number.
+        t.posted(dialer, "waiting", ringing = false, name = "Petr", number = "", video = false, now = 35_000, phone = true)
         t.removed("waiting", now = 40_000)
         t.removed("ongoing", now = 62_000)
         val call = t.due(70_000).single()

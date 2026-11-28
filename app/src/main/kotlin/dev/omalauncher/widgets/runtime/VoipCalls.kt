@@ -70,6 +70,8 @@ class VoipTracker(
         var video: Boolean,
         val phone: Boolean,
         val keys: MutableSet<String> = HashSet(),
+        /** Notifications that first came after the call was answered: another call's, which never rename this one. */
+        val late: MutableSet<String> = HashSet(),
         var gone: Long? = null,
     )
 
@@ -101,12 +103,13 @@ class VoipTracker(
                 // Answered calls are timed from when the ongoing notification came; outgoing ones from the start.
                 Live(pkg, incoming = ringing, start = now, answered = if (ringing) null else now, name = name, number = number, video = video, phone = phone)
             }
-        // A second call ringing while this one is answered (call waiting) doesn't rename it; it isn't listed of its own.
-        val waiting = ringing && call.answered != null && key !in call.keys
+        // A notification new after the call was answered is another call's (call waiting, ringing or answered in its
+        // turn): it doesn't rename this one, nor give it the other's number. That call isn't listed of its own.
+        if (call.answered != null && key !in call.keys) call.late += key
         call.gone = null
         call.keys += key
         if (!ringing && call.answered == null) call.answered = now
-        if (waiting) return
+        if (key in call.late) return
         if (name.isNotBlank()) call.name = name
         if (number.isNotBlank()) call.number = number
         call.video = call.video || video
@@ -119,6 +122,7 @@ class VoipTracker(
     ) {
         val call = live.values.firstOrNull { key in it.keys } ?: return
         call.keys -= key
+        call.late -= key
         if (call.keys.isEmpty()) call.gone = now
     }
 
@@ -201,6 +205,9 @@ object VoipCalls {
     /** Whether calls are kept: from calls("request") on. */
     fun recording(context: Context) = prefs(context).getBoolean(RECORD, false)
 
+    /** Whether keeping was ever turned on, so settings can offer to turn it on again after it was turned off. */
+    fun asked(context: Context) = prefs(context).contains(RECORD)
+
     fun record(context: Context) = prefs(context).edit { putBoolean(RECORD, true) }
 
     fun posted(
@@ -208,8 +215,9 @@ object VoipCalls {
         sbn: StatusBarNotification,
     ) {
         if (!recording(context)) return
-        val call = callOf(context, sbn) ?: return
         val now = System.currentTimeMillis()
+        // A call's notification changed in place into something else (a missed call's notice): its call ends as if it went.
+        val call = callOf(context, sbn) ?: return removed(context, sbn)
         worker.launch {
             tracker.posted(call.pkg, sbn.key, call.ringing, call.name, call.number, call.video, now, call.phone)
             settle(context)
@@ -264,8 +272,11 @@ object VoipCalls {
     fun stop(context: Context) {
         prefs(context).edit { putBoolean(RECORD, false) }
         worker.launch {
-            calls = emptyList()
-            runCatching { file(context).delete() }
+            // Under all()'s lock, so a first read of the file under way can't bring the list back afterwards.
+            synchronized(this@VoipCalls) {
+                calls = emptyList()
+                runCatching { file(context).delete() }
+            }
             changes.update { it + 1 }
         }
     }
