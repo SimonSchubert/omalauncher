@@ -232,7 +232,7 @@ internal class Parakeet(
             val text = recognizer.getResult(stream).text.trim()
             val ms = SystemClock.elapsedRealtime() - t
             val audio = samples.size * 1000L / RATE
-            Log.i(TAG, "decoded ${audio}ms of audio in ${ms}ms (RTF %.3f): %s".format(ms.toFloat() / audio.coerceAtLeast(1), text))
+            Log.i(TAG, "decoded ${audio}ms of audio in ${ms}ms (RTF %.3f, ${text.length} chars)".format(ms.toFloat() / audio.coerceAtLeast(1)))
             return text to ms
         } finally {
             stream.release()
