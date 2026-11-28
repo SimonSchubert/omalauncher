@@ -15,8 +15,8 @@ val prootNdk = rootProject.file("scripts/fetch-proot.sh").readLines().first { it
 
 // sherpa-onnx, for on-device speech (Parakeet), isn't on Maven: its release AAR, fetched once into the gitignored
 // app/libs and checked against its SHA-256. Its other ABIs drop out with abiFilters.
-val sherpaVersion = "2.0.1"
-val sherpaSha256 = "a8d09d1d32f3eb8520482c6d3d43fae674681c5b050385967c70a3c2c9bf0ee7"
+val sherpaVersion = "2.0.3"
+val sherpaSha256 = "4c766e2e74c9d33d595338c21fe3b305c73ba45d47e96a235675c33142a2ec50"
 val sherpaAar = file("libs/sherpa-onnx-$sherpaVersion.aar").also { aar ->
     if (aar.isFile) return@also
     val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/sherpa-onnx-$sherpaVersion.aar"
