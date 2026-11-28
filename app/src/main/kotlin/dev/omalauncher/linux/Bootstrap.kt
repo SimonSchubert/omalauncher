@@ -198,6 +198,7 @@ class Bootstrap(
             Step("forks-1", Stage.Configure, R.string.linux_step_forks, network = false, isDone = { journal.setupComplete }) {
                 checkForks()
             },
+            Step("machine-id-1", Stage.Configure, R.string.linux_step_configure, network = false) { writeMachineId() },
             Step("keyring-1", Stage.Configure, R.string.linux_step_keyring, network = false) {
                 guest("pacman-key --init && pacman-key --populate archlinuxarm")
             },
@@ -606,6 +607,15 @@ class Bootstrap(
                 .replace(Regex("(?m)^(DownloadUser|CheckSpace|DisableSandbox|DisableDownloadTimeout|NoExtract)\\b.*\n"), "")
                 .replaceFirst("[options]", "[options]\nDisableSandbox\nDisableDownloadTimeout\n$NO_EXTRACT"),
         )
+    }
+
+    /**
+     * The image's /etc/machine-id is empty for systemd to fill at first boot, and the guest never boots: D-Bus
+     * and what asks it for the machine's id called that invalid. An id that's there is kept.
+     */
+    private fun writeMachineId() {
+        val file = File(proot.rootfs, "etc/machine-id")
+        if (runCatching { file.readText() }.getOrDefault("").isBlank()) file.writeText(java.util.UUID.randomUUID().toString().replace("-", "") + "\n")
     }
 
     private fun compileKeymap() {

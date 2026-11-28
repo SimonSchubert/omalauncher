@@ -35,6 +35,7 @@ import dev.omalauncher.linux.ComputerLink
 import dev.omalauncher.linux.DeviceSync
 import dev.omalauncher.linux.Pacman
 import dev.omalauncher.linux.Proot
+import dev.omalauncher.linux.SessionBus
 import dev.omalauncher.linux.SystemUpdates
 import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.TerminalFont
@@ -118,6 +119,7 @@ class Runtime(
     val usage = AppUsage(context)
     val themes = ThemeStore(context, proot, style, isLinux = { linux }, onConfigChanged = ::syncGuest)
     private val audio = AudioBridge(proot)
+    private val sessionBus = SessionBus(proot)
     private val openBridge = OpenBridge(context, proot, onOpenFiles = ::openFiles, onOpenVoice = ::openVoice, onEdit = ::edit)
     val agents = AgentStore(proot, text = { id, arg -> context.getString(id, arg) }, onChanged = ::syncGuest)
     val pacman = Pacman(context, proot)
@@ -405,6 +407,7 @@ class Runtime(
                 linux = false
                 widgets.linuxChanged(false)
                 audio.stop()
+                sessionBus.stop()
                 computerLink.linuxChanged(false)
                 deviceSync.linuxChanged(false)
                 withContext(Dispatchers.IO) { proot.stop() }
@@ -437,6 +440,7 @@ class Runtime(
                 launcherFont.forget()
                 widgets.linuxChanged(false)
                 audio.stop()
+                sessionBus.stop()
                 computerLink.linuxChanged(false)
                 deviceSync.linuxChanged(false)
                 withContext(Dispatchers.IO) { proot.killAll() }
@@ -504,6 +508,7 @@ class Runtime(
         withContext(Dispatchers.IO) {
             provisioner.sync()
             audio.start()
+            sessionBus.start()
             synchronized(server) { server.input.setKeymap(proot.keymap.path) }
             agents.load()
         }
