@@ -6,6 +6,23 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.13.0 (versionCode 49) – 2026-11-28
+
+- Chromium and VS Code open from their icons in Linux, and an app whose command only starts it and
+  exits keeps its window. Linux has a D-Bus session bus and a machine id, and comes with hostname
+  and sudo.
+- Linux runs on proot 5.1.107.102: cp -al of a folder with symlinks works, and Claude Code keeps
+  cross-session messaging without a warning.
+- The community themes store sorts by newest and stars as soon as the list shows (#358).
+- The ⌨ button in the corner of terminals and Linux apps can be hidden (style › terminal).
+- A Canvas draws 4000 calls per frame and a widget shows 64 images at once (owl 28).
+- A release's log no longer holds dictated text, agent output, a Linux app's command line and
+  output, or the full URLs opened from Linux (#355).
+- Fix: checking widgets crashed Android 17 after some 700 previews; the built-in terminal didn't
+  start programs on Android 10 to 12; a shared widget with a megabyte-long faulty line could run
+  the launcher out of memory; the today widget showed -0° just below freezing; fastfetch printed
+  "command not found" and an OS age of 20785 days.
+
 ## 1.12.0 (versionCode 48) – 2026-11-26
 
 - The launcher comes in Arabic and Persian, its first right-to-left languages: its screens, menus
