@@ -340,7 +340,7 @@ object Glyph {
     const val ChevronUp = "\uDB80\uDD43"
 }
 
-/** Status/navigation bar icons follow the theme's light or dark mode. */
+/** Initialize edge-to-edge and system bar colors before setting Activity content. */
 fun applySystemBars(
     activity: androidx.activity.ComponentActivity,
     light: Boolean,
@@ -356,13 +356,24 @@ fun applySystemBars(
 }
 
 /**
- * [applySystemBars] whenever the theme turns light or dark, and after every configuration change: a fold put the bars
- * back as the window had them at the start, white icons on a theme that had turned light since.
+ * Change only the system bar icon appearance. Reconfiguring edge-to-edge on every palette change
+ * also changes window policy; leave that to the initial [applySystemBars] call.
  */
+private fun updateSystemBarAppearance(
+    activity: androidx.activity.ComponentActivity,
+    light: Boolean,
+) {
+    val bars = androidx.core.view.WindowCompat.getInsetsController(activity.window, activity.window.decorView)
+    bars.isAppearanceLightStatusBars = light
+    bars.isAppearanceLightNavigationBars = light
+}
+
+/** Reapply icon appearance after a theme or configuration change without resetting window layout or bar visibility. */
 @Composable
 fun SystemBarsEffect(activity: androidx.activity.ComponentActivity) {
     val configuration = LocalConfiguration.current
-    LaunchedEffect(Palette.isLight, configuration) { applySystemBars(activity, Palette.isLight) }
+    val light = Palette.isLight
+    LaunchedEffect(activity, light, configuration) { updateSystemBarAppearance(activity, light) }
 }
 
 /** Home's or an app's status bar, or none: a swipe down from the top edge still brings it back for a moment, and the shade. */
