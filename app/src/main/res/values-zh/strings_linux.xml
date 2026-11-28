@@ -229,4 +229,8 @@
     <string name="link_paused">已暂停。恢复之前，任何设备都无法访问此设备，它也不跟随任何设备。</string>
     <string name="link_activity">活动</string>
     <string name="link_activity_none">暂无</string>
+    <string name="link_confirm_channel">已连接的设备</string>
+    <string name="link_confirm_text">想要%1$s</string>
+    <string name="link_confirm_approve">允许</string>
+    <string name="link_confirm_deny">拒绝</string>
 </resources>

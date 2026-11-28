@@ -243,4 +243,8 @@
     <string name="link_paused">на паузі. жоден пристрій не дістанеться до цього, і він ні за ким не стежить, доки не відновиш.</string>
     <string name="link_activity">активність</string>
     <string name="link_activity_none">поки нічого</string>
+    <string name="link_confirm_channel">під\'єднані пристрої</string>
+    <string name="link_confirm_text">хоче %1$s</string>
+    <string name="link_confirm_approve">дозволити</string>
+    <string name="link_confirm_deny">заборонити</string>
 </resources>

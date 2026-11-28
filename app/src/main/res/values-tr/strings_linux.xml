@@ -233,4 +233,8 @@
     <string name="link_paused">duraklatıldı. sen sürdürene kadar hiçbir cihaz buna ulaşamaz ve bu cihaz hiçbirini izlemez.</string>
     <string name="link_activity">etkinlik</string>
     <string name="link_activity_none">henüz yok</string>
+    <string name="link_confirm_channel">bağlı cihazlar</string>
+    <string name="link_confirm_text">%1$s istiyor</string>
+    <string name="link_confirm_approve">izin ver</string>
+    <string name="link_confirm_deny">reddet</string>
 </resources>

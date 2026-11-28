@@ -288,4 +288,8 @@
     <string name="link_paused">paused. no device reaches this one and it follows none until you resume.</string>
     <string name="link_activity">activity</string>
     <string name="link_activity_none">nothing yet</string>
+    <string name="link_confirm_channel">connected devices</string>
+    <string name="link_confirm_text">wants to %1$s</string>
+    <string name="link_confirm_approve">allow</string>
+    <string name="link_confirm_deny">deny</string>
 </resources>

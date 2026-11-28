@@ -234,4 +234,8 @@
     <string name="link_paused">pausiert. kein gerät erreicht dieses und es folgt keinem, bis du fortsetzt.</string>
     <string name="link_activity">aktivität</string>
     <string name="link_activity_none">noch nichts</string>
+    <string name="link_confirm_channel">verbundene geräte</string>
+    <string name="link_confirm_text">möchte %1$s</string>
+    <string name="link_confirm_approve">erlauben</string>
+    <string name="link_confirm_deny">ablehnen</string>
 </resources>

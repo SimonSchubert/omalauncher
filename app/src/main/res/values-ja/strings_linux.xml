@@ -228,4 +228,8 @@
     <string name="link_paused">一時停止中。再開するまで、どのデバイスもこのデバイスに接続できず、このデバイスも他のデバイスに従いません。</string>
     <string name="link_activity">アクティビティ</string>
     <string name="link_activity_none">まだありません</string>
+    <string name="link_confirm_channel">接続済みのデバイス</string>
+    <string name="link_confirm_text">%1$s しようとしています</string>
+    <string name="link_confirm_approve">許可</string>
+    <string name="link_confirm_deny">許可しない</string>
 </resources>
