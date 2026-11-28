@@ -246,10 +246,6 @@ class Proot(
                 "TERM=xterm-256color",
                 // mise-installed tools (coding agents, node) live in the last two.
                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/root/.local/bin:/root/.local/share/mise/shims",
-                // As (fake) root, GNU tar restores directory modes with fchmodat(AT_SYMLINK_NOFOLLOW), which still
-                // fails with ENOENT under proot 5.1.107.102 on a Pixel 10 (kernel 6.6) for mise's own tarball and
-                // fails mise.run, so no coding agent installs.
-                "TAR_OPTIONS=--no-same-permissions",
                 // mise's default npm installer hardlinks packages out of its store in ~/.cache/mise; under proot
                 // (--link2symlink) those become symlinks into the store, and `mise cache clear` after installs and
                 // updates then breaks them (Grok: "no platform binary installed"). npm copies the files.
