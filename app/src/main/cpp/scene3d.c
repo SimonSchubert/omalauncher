@@ -13,7 +13,7 @@
 // Scene3d's MAX_SCENE_TRIANGLES.
 #define MAX_TRIANGLES 60000
 
-// The floats add() takes, see NativeKernel in Kotlin.
+// The floats add() takes, as Scene3d.add (owl's Space3d.kt) fills them.
 enum {
     V_C = 0, // 9: the mesh's points to camera coordinates
     V_O = 9, // 3: and the offset added
@@ -125,6 +125,73 @@ static int farFirst(const void *pa, const void *pb) {
     if (a != a) x = 0x7fc00000; else memcpy(&x, &a, 4);
     if (b != b) y = 0x7fc00000; else memcpy(&y, &b, 4);
     return x > y ? -1 : x < y;
+}
+
+// Room in the sort's keys and order for every staged triangle. 0 out of memory.
+static int sortRoom(Scene *s) {
+    if (s->n <= s->scap) return 1;
+    for (int i = 0; i < 2; i++) {
+        free(s->key[i]);
+        free(s->idx[i]);
+        s->key[i] = malloc(sizeof(uint32_t) * s->cap);
+        s->idx[i] = malloc(sizeof(int32_t) * s->cap);
+    }
+    s->scap = s->key[0] && s->key[1] && s->idx[0] && s->idx[1] ? s->cap : 0;
+    return s->scap != 0;
+}
+
+// The staged depths from first on far to near, as farFirst orders them: a radix sort of their bits, turned so that
+// they sort as the numbers do, negative ones too. A NaN among them, which Java puts above every number whatever its
+// sign, leaves it to qsort. 0 out of memory.
+static int sortDepths(Scene *s, int first) {
+    int n = s->n - first;
+    float *depth = s->depth + first;
+    if (!sortRoom(s)) return 0;
+    uint32_t *key = s->key[0], *key2 = s->key[1];
+    for (int i = 0; i < n; i++) {
+        if (depth[i] != depth[i]) {
+            qsort(depth, n, sizeof(float), farFirst);
+            return 1;
+        }
+        uint32_t bits;
+        memcpy(&bits, &depth[i], 4);
+        // Far first is the keys from high to low: sorted from low to high here on their complement.
+        key[i] = ~(bits ^ (bits >> 31 ? 0xffffffffu : 0x80000000u));
+    }
+    if (n < 48) {
+        for (int i = 1; i < n; i++) {
+            uint32_t k = key[i];
+            int j = i - 1;
+            for (; j >= 0 && key[j] > k; j--) key[j + 1] = key[j];
+            key[j + 1] = k;
+        }
+    } else {
+        static const int SHIFT[3] = {0, 11, 22};
+        static const int BITS[3] = {11, 11, 10};
+        for (int pass = 0; pass < 3; pass++) {
+            uint32_t count[2048];
+            int buckets = 1 << BITS[pass];
+            uint32_t mask = (uint32_t)buckets - 1;
+            memset(count, 0, sizeof(uint32_t) * buckets);
+            for (int i = 0; i < n; i++) count[(key[i] >> SHIFT[pass]) & mask]++;
+            uint32_t at = 0;
+            for (int b = 0; b < buckets; b++) {
+                uint32_t c = count[b];
+                count[b] = at;
+                at += c;
+            }
+            for (int i = 0; i < n; i++) key2[count[(key[i] >> SHIFT[pass]) & mask]++] = key[i];
+            uint32_t *k = key;
+            key = key2;
+            key2 = k;
+        }
+    }
+    for (int i = 0; i < n; i++) {
+        uint32_t k = ~key[i];
+        uint32_t bits = k >> 31 ? k ^ 0x80000000u : ~k;
+        memcpy(&depth[i], &bits, 4);
+    }
+    return 1;
 }
 
 // Bsp.order: the faces of a tree's mesh far to near from eye ex, ey, ez into s->order. 1, 0 out of memory, -1 for a
@@ -287,7 +354,7 @@ static int add(Scene *s, const float *v, int32_t color, int flags, int32_t texIn
     }
     // The tree's order stands within the model: its faces take the depths they would have had, nearest last, so
     // across models the scene still sorts by depth.
-    if ((flags & OWN_ORDER) && s->n - first > 1) qsort(s->depth + first, s->n - first, sizeof(float), farFirst);
+    if ((flags & OWN_ORDER) && s->n - first > 1) return sortDepths(s, first);
     return 1;
 }
 
@@ -295,16 +362,7 @@ static int add(Scene *s, const float *v, int32_t color, int flags, int32_t texIn
 // which for the positive numbers depths are sort as the numbers do (and as Kotlin's sort of them as longs does).
 static int sort(Scene *s) {
     int n = s->n;
-    if (n > s->scap) {
-        for (int i = 0; i < 2; i++) {
-            free(s->key[i]);
-            free(s->idx[i]);
-            s->key[i] = malloc(sizeof(uint32_t) * s->cap);
-            s->idx[i] = malloc(sizeof(int32_t) * s->cap);
-        }
-        s->scap = s->key[0] && s->key[1] && s->idx[0] && s->idx[1] ? s->cap : 0;
-        if (!s->scap) return 0;
-    }
+    if (!sortRoom(s)) return 0;
     uint32_t *key = s->key[0], *key2 = s->key[1];
     int32_t *idx = s->idx[0], *idx2 = s->idx[1];
     // Far first is the keys from high to low: sorted from low to high here on their complement, which a stable

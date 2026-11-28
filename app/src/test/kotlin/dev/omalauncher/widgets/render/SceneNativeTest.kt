@@ -10,11 +10,9 @@ import dev.omalauncher.widgets.lang.Null
 import dev.omalauncher.widgets.lang.Num
 import dev.omalauncher.widgets.lang.Obj
 import dev.omalauncher.widgets.lang.Scene3d
-import dev.omalauncher.widgets.lang.SceneKernel
 import dev.omalauncher.widgets.lang.Str
 import dev.omalauncher.widgets.lang.WidgetError
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.BeforeClass
@@ -26,38 +24,7 @@ import java.util.Random
  * same scenes and must stage the same triangles, to the bit. Skipped where there's no C compiler.
  */
 class SceneNativeTest {
-    private class Kernel : SceneKernel {
-        val scene = SceneNative.create()
-
-        override fun reset() = SceneNative.reset(scene)
-
-        override fun add(
-            v: FloatArray,
-            color: Int,
-            flags: Int,
-            texIndex: Int,
-            triangles: Int,
-            points: FloatArray,
-            tris: IntArray,
-            faceNormals: FloatArray,
-            cornerNormals: FloatArray?,
-            uvs: FloatArray?,
-            colorIndex: IntArray?,
-            palette: IntArray?,
-            planes: FloatArray?,
-            nodes: IntArray?,
-            ex: Float,
-            ey: Float,
-            ez: Float,
-        ) = SceneNative.add(scene, v, color, flags, texIndex, triangles, points, tris, faceNormals, cornerNormals, uvs, colorIndex, palette, planes, nodes, ex, ey, ez)
-
-        override fun finish(
-            verts: FloatArray,
-            texs: FloatArray,
-            colors: IntArray,
-            batches: IntArray,
-        ) = SceneNative.finish(scene, verts, texs, colors, batches)
-    }
+    private fun kernel() = NativeKernel(SceneNative.create())
 
     private class Model(
         val mesh: Mesh,
@@ -133,7 +100,7 @@ class SceneNativeTest {
         val rnd = Random(22)
         val textures = listOf(Any(), Any())
         val kotlin = Scene3d()
-        val c = Scene3d(Kernel())
+        val c = Scene3d(kernel())
         var drawn = 0
         var cut = false
         for (round in 0 until 300) {
@@ -181,11 +148,47 @@ class SceneNativeTest {
         for (count in listOf(3, 40, 500)) {
             val models = List(count) { Model(plane, floatArrayOf(0f, 0f, 0f), floatArrayOf(90f, 0f, 0f), floatArrayOf(1f, 1f, 1f), 0xff000000.toInt() or it, null, 1f, false, true, null) }
             val kotlin = Scene3d()
-            val c = Scene3d(Kernel())
+            val c = Scene3d(kernel())
             draw(kotlin, cam, null, models)
             draw(c, cam, null, models)
             assertEquals(2 * count, kotlin.triangles)
             assertSame("$count planes", kotlin, c)
+        }
+    }
+
+    /** A tree's faces take their depths far to near, however many there are (that sort changes at a size too). */
+    @Test fun sameDepthsForATreeOfManyFaces() {
+        // A grid of slabs through each other, which the tree cuts into many more faces.
+        val obj = StringBuilder()
+        val slabs = 6
+        for (b in 0 until slabs) {
+            val along = b % 2 == 0
+            val off = (b / 2 - 1) * 0.5
+            for (i in 0..7) {
+                val long = (i and 1) * 2.0 - 1.0
+                val thin = ((i shr 1) and 1) * 0.2 - 0.1 + off
+                obj.append("v ${if (along) long else thin} ${if (along) thin else long} ${((i shr 2) and 1) - 0.5}\n")
+            }
+        }
+        for (b in 0 until slabs) {
+            for (q in listOf(listOf(1, 2, 4, 3), listOf(5, 7, 8, 6), listOf(1, 5, 6, 2), listOf(3, 4, 8, 7), listOf(1, 3, 7, 5), listOf(2, 6, 8, 4))) {
+                obj.append("f ${q.joinToString(" ") { (it + 8 * b).toString() }}\n")
+            }
+        }
+        val mesh = Meshes.parseObj(obj.toString(), Null)
+        assertTrue("${mesh.bsp?.mesh?.triangles} faces in the tree", (mesh.bsp?.mesh?.triangles ?: 0) > 100)
+        val rnd = Random(7)
+        val kotlin = Scene3d()
+        val c = Scene3d(kernel())
+        for (round in 0 until 40) {
+            // From all round, and now and then from inside, where the near plane cuts faces.
+            val far = if (round % 5 == 0) 0.4 else 6.0
+            val eye = v((rnd.nextDouble() - 0.5) * far, (rnd.nextDouble() - 0.5) * far, (rnd.nextDouble() - 0.5) * far)
+            val cam = Camera.of(Obj(mapOf("eye" to eye, "look" to v(0.0, 0.0, 0.0))))
+            val models = List(3) { Model(mesh, floatArrayOf(it * 0.7f, 0f, 0f), floatArrayOf(it * 31f, round * 17f, 0f), floatArrayOf(1f, 1f, 1f), -1, null, 0.5f, false, it == 1, null) }
+            draw(kotlin, cam, null, models)
+            draw(c, cam, null, models)
+            assertSame("round $round", kotlin, c)
         }
     }
 
@@ -194,7 +197,7 @@ class SceneNativeTest {
         val plane = Meshes.plane(128)
         val one = Model(plane, floatArrayOf(0f, 0f, 0f), floatArrayOf(0f, 0f, 0f), floatArrayOf(10f, 10f, 10f), -1, null, 1f, false, true, null)
         assertTrue(2 * plane.triangles > MAX_SCENE_TRIANGLES)
-        for (scene in listOf(Scene3d(), Scene3d(Kernel()))) {
+        for (scene in listOf(Scene3d(), Scene3d(kernel()))) {
             try {
                 draw(scene, cam, null, listOf(one, one))
                 fail("drew ${scene.triangles} triangles")
@@ -212,7 +215,6 @@ class SceneNativeTest {
         @JvmStatic
         fun build() {
             HostNative.load("scene3d.c", "mesh3d.c")
-            assertNotNull(SceneNative)
         }
     }
 }

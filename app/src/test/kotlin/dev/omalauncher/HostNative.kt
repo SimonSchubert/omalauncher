@@ -26,7 +26,7 @@ object HostNative {
         assumeTrue("no JDK headers in $include", File(include, "jni.h").isFile && platform != null)
         val suffix = if (System.getProperty("os.name").startsWith("Mac")) ".dylib" else ".so"
         val out = File.createTempFile("host-" + sources[0].substringBefore('.'), suffix).apply { deleteOnExit() }
-        // As CMakeLists.txt builds them: no fused multiply-adds, so the numbers are the Kotlin's.
+        // As in CMakeLists.txt, no fused multiply-adds, so the numbers are the Kotlin's.
         val command = listOf("cc", "-O2", "-Wall", "-ffp-contract=off", "-shared", "-fPIC", "-I$include", "-I$platform", "-o", out.path) + files.map { it.path } + extra + "-lm"
         val built =
             try {
