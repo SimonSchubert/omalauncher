@@ -15,8 +15,8 @@ val prootNdk = rootProject.file("scripts/fetch-proot.sh").readLines().first { it
 
 // sherpa-onnx, for on-device speech (Parakeet), isn't on Maven: its release AAR, fetched once into the gitignored
 // app/libs and checked against its SHA-256. Its other ABIs drop out with abiFilters.
-val sherpaVersion = "2.0.1"
-val sherpaSha256 = "a8d09d1d32f3eb8520482c6d3d43fae674681c5b050385967c70a3c2c9bf0ee7"
+val sherpaVersion = "2.0.3"
+val sherpaSha256 = "4c766e2e74c9d33d595338c21fe3b305c73ba45d47e96a235675c33142a2ec50"
 val sherpaAar = file("libs/sherpa-onnx-$sherpaVersion.aar").also { aar ->
     if (aar.isFile) return@also
     val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaVersion/sherpa-onnx-$sherpaVersion.aar"
@@ -38,8 +38,8 @@ android {
         applicationId = "dev.omalauncher"
         minSdk = 29
         targetSdk = 37
-        versionCode = 47
-        versionName = "1.11.0"
+        versionCode = 48
+        versionName = "1.12.0"
         ndk { abiFilters += "arm64-v8a" }
     }
 
@@ -101,7 +101,11 @@ android {
 }
 
 // ExamplesTest reads the widget examples and the README from here, so editing them reruns it.
-tasks.withType<Test>().configureEach { inputs.dir("src/main/assets/widgets") }
+tasks.withType<Test>().configureEach {
+    inputs.dir("src/main/assets/widgets")
+    // The native tests build these for the machine they run on (HostNative).
+    inputs.dir("src/main/cpp")
+}
 
 // Gitignored, built by scripts/fetch-proot.sh. Without it a release still builds, but every Linux command fails.
 tasks.matching { it.name.matches(Regex("pre\\w*ReleaseBuild")) }.configureEach {
@@ -125,6 +129,20 @@ tasks.matching { it.name.matches(Regex("pre\\w*(Debug|Release)Build")) }.configu
         val now = digest.digest().joinToString("") { "%02x".format(it) }
         val built = File(libs, ".source").takeIf { it.isFile }?.readText()?.trim()
         check(built == now) { "$libs was built from an older patches/proot or scripts/fetch-proot.sh; run scripts/fetch-proot.sh" }
+    }
+}
+
+// libghostty-vt, the built-in terminal's engine, built by scripts/fetch-ghostty-vt.sh into the gitignored
+// src/main/cpp/ghostty-vt. Without it the app builds without the built-in terminal; built by an older script (another
+// ghostty or Zig), it would build an app with an engine the code may not fit.
+tasks.matching { it.name.matches(Regex("pre\\w*(Debug|Release)Build")) }.configureEach {
+    val vt = file("src/main/cpp/ghostty-vt")
+    val script = rootProject.file("scripts/fetch-ghostty-vt.sh")
+    inputs.file(script)
+    doFirst {
+        val built = File(vt, ".source").takeIf { it.isFile }?.readText()?.trim() ?: return@doFirst
+        val now = MessageDigest.getInstance("SHA-256").digest(script.readBytes()).joinToString("") { "%02x".format(it) }
+        check(built == now) { "$vt was built by an older scripts/fetch-ghostty-vt.sh; run it again" }
     }
 }
 

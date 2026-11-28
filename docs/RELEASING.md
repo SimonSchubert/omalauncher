@@ -19,6 +19,7 @@ fastlane needs the Play service-account key at `fastlane/play-store-key.json`
 
 ```sh
 ./scripts/fetch-proot.sh                  # jniLibs aren't in git; a release build fails without them
+./scripts/fetch-ghostty-vt.sh             # omaterminal's engine; without it the build has foot only
 bundle exec fastlane android metadata     # listing text and images only
 bundle exec fastlane android internal     # build + upload to internal testing
 bundle exec fastlane android promote      # internal -> production

@@ -41,7 +41,7 @@ index 5ade279..6aaef1d 100644
  	tracee/statx.o		\
  	ptrace/ptrace.o		\
 diff --git a/src/syscall/exit.c b/src/syscall/exit.c
-index 2fe81b0..285b67a 100644
+index 3c9e718..76d96ce 100644
 --- a/src/syscall/exit.c
 +++ b/src/syscall/exit.c
 @@ -31,6 +31,7 @@
@@ -52,7 +52,7 @@ index 2fe81b0..285b67a 100644
  #include "syscall/sysnum.h"
  #include "syscall/socket.h"
  #include "syscall/chain.h"
-@@ -515,6 +516,11 @@ void translate_syscall_exit(Tracee *tracee)
+@@ -552,6 +553,11 @@ void translate_syscall_exit(Tracee *tracee)
  	}
  #endif
  
@@ -105,10 +105,10 @@ index 82edecb..17dceaa 100644
  
  #endif /* PIPE_SHADOW_H */
 diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
-index 198a2d1..58deeb3 100644
+index 30f7258..97451e6 100644
 --- a/src/syscall/seccomp.c
 +++ b/src/syscall/seccomp.c
-@@ -404,6 +404,8 @@ static FilteredSysnum proot_sysnums[] = {
+@@ -414,6 +414,8 @@ static FilteredSysnum proot_sysnums[] = {
  	{ PR_renameat,		FILTER_SYSEXIT },
  	{ PR_renameat2,		FILTER_SYSEXIT },
  	{ PR_rmdir,		0 },
@@ -477,7 +477,7 @@ index 0000000..e2120af
 +
 +#endif /* TRACEE_AFFINITY_H */
 diff --git a/src/tracee/event.c b/src/tracee/event.c
-index 6141e19..44eb68d 100644
+index 1fa7823..1414226 100644
 --- a/src/tracee/event.c
 +++ b/src/tracee/event.c
 @@ -38,6 +38,7 @@
@@ -488,7 +488,7 @@ index 6141e19..44eb68d 100644
  #include "tracee/mem.h"
  #include "cli/note.h"
  #include "path/path.h"
-@@ -310,6 +311,9 @@ int event_loop()
+@@ -313,6 +314,9 @@ int event_loop()
  	long status;
  	int signum;
  
@@ -498,7 +498,7 @@ index 6141e19..44eb68d 100644
  	/* Kill all tracees when exiting.  */
  	status = atexit(kill_all_tracees);
  	if (status != 0)
-@@ -397,13 +401,20 @@ int event_loop()
+@@ -400,13 +404,20 @@ int event_loop()
  		 * anymore.  */
  		shadow_pipes_reap();
  
@@ -523,15 +523,15 @@ index 6141e19..44eb68d 100644
  
  		/* Wait for the next tracee's stop. */
  		pid = waitpid(-1, &tracee_status, __WALL);
-@@ -426,6 +437,7 @@ int event_loop()
- 		assert(tracee != NULL);
+@@ -436,6 +447,7 @@ int event_loop()
+ 			tracee = get_execve_tracee(tracee);
  
  		tracee->running = false;
 +		affinity_on_stop(tracee);
  
- 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
- 		if (status != 0)
-@@ -941,6 +953,7 @@ bool restart_tracee(Tracee *tracee, int signal)
+ 		/* Fix up the registers of a new child at its first
+ 		 * stop (see attach_child()), before anything looks at
+@@ -957,6 +969,7 @@ bool restart_tracee(Tracee *tracee, int signal)
  	tracee->last_restart_how = tracee->restart_how;
  	tracee->restart_how = 0;
  	tracee->running = true;
@@ -540,10 +540,10 @@ index 6141e19..44eb68d 100644
  	return true;
  }
 diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
-index dcc9bbe..5da396f 100644
+index 6ba5460..3590752 100644
 --- a/src/tracee/tracee.c
 +++ b/src/tracee/tracee.c
-@@ -235,6 +235,17 @@ static Tracee *new_tracee(pid_t pid)
+@@ -236,6 +236,17 @@ static Tracee *new_tracee(pid_t pid)
  	return tracee;
  }
  
@@ -561,7 +561,7 @@ index dcc9bbe..5da396f 100644
  /**
   * Return the first [stopped?] tracee with the given
   * @pid (-1 for any) which has the given @ptracer, and which has a
-@@ -688,6 +699,10 @@ static int attach_child(Tracee *parent, word_t clone_flags, pid_t pid)
+@@ -810,6 +821,10 @@ static int attach_child(Tracee *parent, word_t clone_flags, pid_t pid)
  
  	child->load_info = talloc_reference(child, parent->load_info);
  
@@ -573,7 +573,7 @@ index dcc9bbe..5da396f 100644
  	 * (as returned by getppid(2)) will be the same as that of the
  	 * calling process.
 diff --git a/src/tracee/tracee.h b/src/tracee/tracee.h
-index eaf8625..b95ff78 100644
+index e905aaa..661116f 100644
 --- a/src/tracee/tracee.h
 +++ b/src/tracee/tracee.h
 @@ -89,6 +89,18 @@ typedef struct tracee {
@@ -595,7 +595,7 @@ index eaf8625..b95ff78 100644
  	/* Is this tracee ready to be freed?  TODO: move to a list
  	 * dedicated to terminated tracees instead.  */
  	bool terminated;
-@@ -400,11 +412,13 @@ typedef struct tracee {
+@@ -413,11 +425,13 @@ typedef struct tracee {
  
  } Tracee;
  

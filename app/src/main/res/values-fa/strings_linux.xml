@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Linux setup, updates and the session (linux/, ui/Setup.kt, ui/LinuxScreen.kt, LinuxService.kt), the packages
+     screen (packages_), the licenses screen (licenses_), and the share activity (ShareInActivity). -->
+<resources>
+    <!-- The phases of a fresh install, as the setup screen lists them. -->
+    <string name="linux_stage_download">بارگیری arch linux</string>
+    <string name="linux_stage_extract">استخراج سیستم</string>
+    <string name="linux_stage_configure">پیکربندی pacman</string>
+    <string name="linux_stage_packages">نصب برنامه‌های omarchy</string>
+    <string name="linux_stage_agents">نصب عامل‌های برنامه‌نویسی</string>
+    <!-- The last phase when coding agents were picked. %1$s: their names, comma-separated (Claude Code, Codex). -->
+    <string name="linux_stage_agents_named">نصب ⁨%1$s⁩</string>
+
+    <!-- What setup is doing right now, under its phase on the setup screen. Settings shows these lowercased while an
+         update of an installed system runs them ("updating the system: installing packages…"). -->
+    <string name="linux_step_download">بارگیری Arch Linux ARM</string>
+    <string name="linux_step_configure">پیکربندی سیستم</string>
+    <string name="linux_step_forks">بررسی اجرای برنامه‌ها</string>
+    <string name="linux_step_keyring">آماده‌سازی دسته‌کلید pacman</string>
+    <string name="linux_step_no_kernel">حذف بسته‌های هسته</string>
+    <string name="linux_step_packages">نصب بسته‌ها</string>
+    <string name="linux_step_keymap">کامپایل نقشه صفحه‌کلید</string>
+    <!-- cliamp is a music player's name. -->
+    <string name="linux_step_cliamp">نصب cliamp</string>
+    <!-- %1$s: a coding agent's name. -->
+    <string name="linux_step_agent">نصب ⁨%1$s⁩</string>
+    <!-- Download progress in megabytes: %1$d done of %2$d. -->
+    <string name="linux_step_downloaded">%1$d از %2$d MB</string>
+    <!-- Download progress in megabytes when the total isn't known. -->
+    <string name="linux_step_downloaded_unknown">%1$d MB</string>
+    <!-- Unpacking the system has just begun. -->
+    <string name="linux_step_extract_start">شروع</string>
+    <!-- Unpacking progress: how many files are unpacked so far. -->
+    <plurals name="linux_step_extracted">
+        <item quantity="one">%d فایل</item>
+        <item quantity="other">%d فایل</item>
+    </plurals>
+
+    <!-- Lines setup adds to the output it shows. %1$s: the error (technical, English). %2$d of %3$d: the attempt. -->
+    <string name="linux_log_retrying">⁨%1$s⁩؛ تلاش دوباره (%2$d از %3$d)</string>
+    <!-- %1$s: the step (Installing cliamp), %2$s: the error (technical, English). -->
+    <string name="linux_log_step_failed">⁨%1$s⁩ ناموفق بود: ⁨%2$s⁩؛ در تنظیمات دوباره تلاش کنید</string>
+    <!-- %1$s: a coding agent's name. -->
+    <string name="linux_log_agent_failed">⁨%1$s⁩ نصب نشد؛ در تنظیمات › عامل‌های برنامه‌نویسی دوباره تلاش کنید</string>
+
+    <!-- Why setup stopped, in red under the phase. %1$s and %2$s: sizes like "3.0 GB". -->
+    <string name="linux_error_no_space">فضای کافی نیست: Linux به ⁨%1$s⁩ فضای خالی نیاز دارد و تلفن ⁨%2$s⁩ دارد؛ کمی فضا خالی کنید و دوباره تلاش کنید</string>
+    <!-- %1$s: a size like "3.0 GB". -->
+    <string name="linux_error_out_of_space">فضای تلفن تمام شد؛ Linux به حدود ⁨%1$s⁩ فضای خالی نیاز دارد؛ کمی فضا خالی کنید و دوباره تلاش کنید</string>
+    <!-- %1$d: the HTTP status code. -->
+    <string name="linux_error_http">بارگیری ناموفق بود: HTTP %1$d</string>
+    <string name="linux_error_cut_short">بارگیری نیمه‌کاره ماند؛ برای ادامه دوباره تلاش کنید</string>
+    <string name="linux_error_move_download">فایل بارگیری‌شده به جای خودش منتقل نمی‌شود</string>
+    <!-- %1$d: the exit code. -->
+    <string name="linux_error_cant_run">\u200fLinux اینجا نمی‌تواند فرمان اجرا کند (کد خروج %1$d)</string>
+    <string name="linux_error_kernel">هسته این تلفن نمی‌گذارد برنامه‌های Linux برنامه‌های دیگر را اجرا کنند، برای همین راه‌اندازی ادامه پیدا نمی‌کند. رام‌های سفارشی با هسته 4.14 به commit شماره 05b289263772 هسته نیاز دارند که نگه‌دارنده رام باید اضافه کند؛ issue شماره 105 را در github ببینید</string>
+    <!-- %1$s: the start of a shell command, %2$d: its exit code. -->
+    <string name="linux_error_command">⁨`%1$s`⁩ ناموفق بود (کد خروج %2$d)</string>
+    <!-- %1$s: the version expected, like v2.3.0. -->
+    <string name="linux_error_cliamp_mismatch">فایل بارگیری‌شده cliamp با ⁨%1$s⁩ مطابقت ندارد</string>
+    <!-- %1$s: a file path. -->
+    <string name="linux_error_cant_replace">نمی‌توان ⁨%1$s⁩ را جایگزین کرد</string>
+
+    <!-- What a job in the guest is doing, shown as "installing…" on its row. -->
+    <string name="linux_job_installing">در حال نصب</string>
+    <string name="linux_job_removing">در حال حذف</string>
+    <!-- An AUR package is compiled on the phone. -->
+    <string name="linux_job_building">در حال ساخت</string>
+    <string name="linux_job_updating">در حال به‌روزرسانی</string>
+    <!-- Waiting for another package job to finish. -->
+    <string name="linux_job_waiting">در انتظار</string>
+    <!-- The GPU driver being tested. -->
+    <string name="linux_job_checking">در حال بررسی</string>
+    <!-- A running job on its row. %1$s: one of the job words above. -->
+    <string name="linux_job_working">%1$s…</string>
+
+    <!-- A system update check that failed, in settings' updates box. -->
+    <string name="linux_updates_unreachable">دسترسی به آینه‌ها ممکن نشد</string>
+
+    <!-- One line under each coding agent's name in the agent lists. -->
+    <string name="linux_agent_claude">عامل برنامه‌نویسی Anthropic</string>
+    <string name="linux_agent_opencode">عامل متن‌باز، با هر ارائه‌دهنده مدل</string>
+    <string name="linux_agent_codex">عامل برنامه‌نویسی OpenAI</string>
+    <string name="linux_agent_grok">عامل برنامه‌نویسی xAI</string>
+    <string name="linux_agent_copilot">عامل برنامه‌نویسی GitHub</string>
+    <string name="linux_agent_crush">عامل Charm برای ترمینال</string>
+    <string name="linux_agent_cursor">عامل Cursor برای ترمینال</string>
+    <string name="linux_agent_antigravity">عامل برنامه‌نویسی Gemini از Google</string>
+    <string name="linux_agent_pi">عامل برنامه‌نویسی ساده و توسعه‌پذیر</string>
+    <string name="linux_agent_hermes">عامل Nous Research، حدود 2.5 GB</string>
+    <string name="linux_agent_omp">همان Pi با ابزارها و افزونه‌های داخلی</string>
+    <string name="linux_agent_ori">عامل برنامه‌نویسی OpenRouter</string>
+    <string name="linux_agent_muse">عامل برنامه‌نویسی Meta</string>
+    <string name="linux_agent_kimi">عامل برنامه‌نویسی Moonshot AI</string>
+    <string name="linux_agent_qwen">عامل برنامه‌نویسی Qwen از Alibaba</string>
+    <string name="linux_agent_mcode">عامل برنامه‌نویسی MiniMax</string>
+    <string name="linux_agent_kiro">عامل برنامه‌نویسی Amazon</string>
+    <string name="linux_agent_kilo">عامل متن‌باز بر پایه OpenCode</string>
+    <string name="linux_agent_devin">عامل برنامه‌نویسی Cognition</string>
+    <string name="linux_agent_amp">عامل برنامه‌نویسی ampcode.com</string>
+    <string name="linux_agent_commandcode">عامل برنامه‌نویسی commandcode.ai</string>
+
+    <!-- The first-run screen. -->
+    <string name="linux_welcome_title">\u200fomarchy روی صفحه اصلی شما</string>
+    <string name="linux_welcome_body">پوسته‌ها و پس‌زمینه‌های Omarchy، برنامه‌های Android شما و ابزارک‌های صفحه اصلی. Arch Linux برنامه‌های ترمینال و عامل‌های برنامه‌نویسی را هم اضافه می‌کند؛ همین حالا یا بعداً در تنظیمات.</string>
+    <!-- A section heading, shown in capitals. -->
+    <string name="linux_welcome_linux">linux</string>
+    <string name="linux_welcome_choice">\u200fArch Linux هم راه‌اندازی شود</string>
+    <string name="linux_welcome_choice_detail">برنامه‌های ترمینال، عامل‌ها، pacman · حدود 1 GB بارگیری، 3 GB فضا</string>
+    <string name="linux_welcome_start">شروع</string>
+    <string name="linux_welcome_start_linux">شروع و راه‌اندازی linux</string>
+    <string name="linux_welcome_start_hint">تصویر پس‌زمینه این پوسته همین حالا بارگیری می‌شود و بقیه پوسته‌های Omarchy (حدود 70 MB) بعد از آن، پشت صحنه.</string>
+    <string name="linux_welcome_start_linux_hint">\u200fLinux حدود 1 GB بارگیری می‌کند، پس Wi-Fi بهتر است، و 3 GB فضا می‌گیرد. نصب آن در پس‌زمینه 10 تا 20 دقیقه طول می‌کشد؛ صفحه اصلی همان لحظه آماده است.</string>
+    <!-- %1$s: the theme's name, lowercased. -->
+    <string name="linux_welcome_getting">در حال دریافت ⁨%1$s⁩</string>
+    <string name="linux_welcome_theme_failed">پوسته بارگیری نشد</string>
+    <string name="linux_welcome_wallpaper">بارگیری پس‌زمینه آن</string>
+    <string name="linux_welcome_skip">ادامه بدون پس‌زمینه</string>
+    <string name="linux_welcome_skip_hint">رنگ‌های پوسته در هر حال اعمال می‌شوند. لانچر بعداً دوباره تلاش می‌کند، یا خودتان از تنظیمات › ظاهر بارگیری کنید.</string>
+
+    <!-- A section heading, shown in capitals. -->
+    <string name="linux_agents_label">عامل‌های برنامه‌نویسی</string>
+    <string name="linux_agents_hint">هر کدام را می‌خواهید انتخاب کنید تا همراه Linux نصب شود. بعداً در تنظیمات می‌توانید اضافه یا حذفشان کنید.</string>
+    <!-- A section heading over the theme swatches, shown in capitals. -->
+    <string name="linux_theme_label">پوسته</string>
+    <!-- The last tile of the theme swatches; opens the community themes. -->
+    <string name="linux_more_themes">پوسته‌های بیشتر ›</string>
+
+    <!-- The install's checklist (setup and settings › linux). -->
+    <string name="linux_progress_title">در حال راه‌اندازی linux</string>
+    <string name="linux_progress_stopped">راه‌اندازی متوقف شد</string>
+    <string name="linux_try_again">تلاش دوباره</string>
+    <string name="linux_cancel_install">لغو نصب</string>
+    <string name="linux_progress_background">می‌توانید این صفحه را ببندید و از لانچر استفاده کنید؛ راه‌اندازی در پس‌زمینه ادامه پیدا می‌کند.</string>
+    <!-- A heading over setup's command output, shown in capitals. -->
+    <string name="linux_output">خروجی</string>
+    <string name="linux_output_less">کمتر</string>
+    <string name="linux_output_more">بیشتر</string>
+
+    <!-- Settings › linux. -->
+    <string name="linux_title">linux</string>
+    <string name="linux_removing">در حال حذف linux…</string>
+    <string name="linux_offer_title">\u200farch linux، اختیاری</string>
+    <string name="linux_offer_body">برنامه‌های Linux، ابزارک‌های ترمینال، عامل‌های برنامه‌نویسی، pacman و «فایل‌ها». حدود 1 GB بارگیری و 3 GB فضا؛ در پس‌زمینه نصب می‌شود.</string>
+    <string name="linux_install">نصب linux</string>
+    <plurals name="linux_install_with_agents">
+        <item quantity="one">نصب linux و %d عامل</item>
+        <item quantity="other">نصب linux و %d عامل</item>
+    </plurals>
+    <string name="linux_arch">arch linux</string>
+    <!-- %1$s: the size on disk, like 2.1 GB, or "measuring…". -->
+    <string name="linux_installed_size">نصب‌شده · ⁨%1$s⁩</string>
+    <string name="linux_measuring">در حال اندازه‌گیری…</string>
+    <string name="linux_remove">حذف linux</string>
+    <string name="linux_remove_ask">\u200flinux حذف شود؟</string>
+    <string name="linux_remove_body">برنامه‌های Linux، عامل‌های برنامه‌نویسی، بسته‌ها و هر چه در ⁨/root⁩ هست، مثل Downloads، حذف می‌شود. پوسته‌ها، پس‌زمینه‌ها، ابزارک‌ها و صفحه اصلی شما می‌مانند.</string>
+    <string name="linux_remove_confirm">حذف</string>
+    <string name="linux_cancel">لغو</string>
+    <string name="linux_gpu_title">شتاب‌دهی gpu</string>
+    <!-- %1$s: the GPU's name, like Mali-G715 MC7. -->
+    <string name="linux_gpu_on">روشن · ⁨%1$s⁩ · برای برنامه‌هایی که از این پس باز می‌شوند</string>
+    <string name="linux_gpu_off_failed">خاموش: GPU پس از به‌روزرسانی سیستم در بررسی رد شد</string>
+    <string name="linux_gpu_waiting">روشن · در انتظار بررسی</string>
+    <string name="linux_gpu_failed">\u200fGPU در بررسی رد شد؛ برنامه‌ها با رندر نرم‌افزاری می‌مانند</string>
+    <!-- %1$s: the driver family, Mali or Adreno. -->
+    <string name="linux_gpu_offer">آزمایشی · ⁨%1$s⁩ · برنامه‌ها و بازی‌های OpenGL و Vulkan سریع‌تر می‌شوند؛ برنامه‌های ترمینال تغییری نمی‌کنند</string>
+    <string name="linux_retry">تلاش دوباره</string>
+    <string name="linux_gpu_turn_off">خاموش کردن</string>
+    <string name="linux_gpu_turn_on">روشن کردن</string>
+    <string name="linux_cpu_pinning_title">فراخوانی‌های سیستمی سریع</string>
+    <string name="linux_cpu_pinning_on">روشن · Linux را روی یک هسته سریع CPU نگه می‌دارد · برای برنامه‌هایی که از این پس اجرا می‌شوند</string>
+    <string name="linux_cpu_pinning_off">خاموش · برای برنامه‌هایی که از این پس اجرا می‌شوند</string>
+    <string name="linux_session_title">نشست</string>
+    <string name="linux_session_running">در حال اجرا · برنامه‌های Linux، ترمینال‌ها و عامل‌ها کار می‌کنند</string>
+    <string name="linux_session_starting">در حال شروع…</string>
+    <string name="linux_session_stopped">متوقف · چیزی اجرا نمی‌شود و چیزی حذف نمی‌شود · پس از راه‌اندازی مجدد هم متوقف می‌ماند</string>
+    <string name="linux_stop">توقف</string>
+    <string name="linux_start">شروع</string>
+    <string name="linux_stop_ask">\u200flinux متوقف شود؟</string>
+    <string name="linux_stop_body">برنامه‌های Linux، ترمینال‌ها و عامل‌های برنامه‌نویسی بسته می‌شوند و هر کاری که مشغولش بودند قطع می‌شود. چیزی حذف نمی‌شود. ابزارک‌ها و برنامه‌هایی که به Linux نیاز دارند منتظر می‌مانند تا دوباره همین‌جا شروعش کنید.</string>
+    <string name="linux_stop_confirm">توقف</string>
+
+    <!-- The ongoing notification while Linux runs. -->
+    <string name="linux_notification_channel">نشست Linux</string>
+    <!-- Name of the notification channel for what agents and scripts in Linux post with `omalauncher notify`, shown in Android's notification settings. -->
+    <string name="linux_notify_channel">عامل‌ها و اسکریپت‌ها</string>
+    <!-- %1$s: the install's phase (download arch linux). -->
+    <string name="linux_notification_installing">در حال نصب Linux · ⁨%1$s⁩</string>
+    <!-- %1$d: percent done, %2$s: the install's phase (download arch linux). -->
+    <string name="linux_notification_installing_percent">در حال نصب Linux · %1$d%% · ⁨%2$s⁩</string>
+    <string name="linux_notification_failed">راه‌اندازی Linux متوقف شد · برای تلاش دوباره تنظیمات › linux را باز کنید</string>
+    <string name="linux_notification_removing">در حال حذف Linux</string>
+    <string name="linux_notification_running">نشست Linux در حال اجراست</string>
+
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">در حال ذخیره در linux…</string>
+    <string name="share_in_saved">در ⁨~/Downloads⁩ ذخیره شد</string>
+    <string name="share_in_failed">در linux ذخیره نشد</string>
+    <string name="share_in_no_linux">\u200flinux هنوز راه‌اندازی نشده است</string>
+
+    <!-- Settings › packages. -->
+    <string name="packages_title">بسته‌ها</string>
+    <string name="packages_search">جستجوی بسته‌ها</string>
+    <string name="packages_intro">بسته‌های Arch Linux ARM از راه pacman، و AUR از راه yay. نصب هر بسته سیستم را هم به‌روز می‌کند، پس ممکن است کمی طول بکشد. بسته‌های AUR را کاربران فرستاده‌اند و روی همین دستگاه ساخته می‌شوند: اول PKGBUILD آن‌ها را در aur.archlinux.org بررسی کنید.</string>
+    <string name="packages_loading">در حال بارگیری…</string>
+    <string name="packages_searching">در حال جستجو…</string>
+    <!-- %1$d: how many packages are installed. -->
+    <string name="packages_installed">نصب‌شده (%1$d)</string>
+    <string name="packages_none">بسته‌ای پیدا نشد</string>
+    <!-- Search results. English keeps "1 results" as the app always showed it. -->
+    <plurals name="packages_results">
+        <item quantity="one">%d نتیجه</item>
+        <item quantity="other">%d نتیجه</item>
+    </plurals>
+    <!-- In place of remove, for packages the launcher needs. -->
+    <string name="packages_required">ضروری</string>
+    <!-- A second tap to remove a package. -->
+    <string name="packages_confirm">تأیید</string>
+    <string name="packages_remove">حذف</string>
+    <string name="packages_install">نصب</string>
+
+    <!-- Settings › licenses. -->
+    <string name="licenses_title">پروانه‌ها</string>
+    <!-- %1$s: the app's version. -->
+    <string name="licenses_header">\u200fOmalauncher ⁨%1$s⁩ · © 2026 Simon Schubert\n\nاین برنامه نرم‌افزارهای متن‌باز زیر را در خود دارد.</string>
+    <string name="licenses_website">وب‌سایت</string>
+    <string name="licenses_source">کد منبع</string>
+    <!-- What each open source component does in the app, after its license. -->
+    <string name="licenses_use_proot">سیستم اختیاری Linux را اجرا می‌کند</string>
+    <string name="licenses_use_talloc">تخصیص‌دهنده حافظه برای PRoot</string>
+    <string name="licenses_use_shmem">حافظه مشترک برای PRoot</string>
+    <string name="licenses_use_mesa">\u200fOpenGL روی پردازنده‌های گرافیکی Adreno در سیستم اختیاری Linux</string>
+    <string name="licenses_use_wayland">فایل‌های پروتکل همراه Mesa</string>
+    <string name="licenses_use_omarchy">رنگ‌های پوسته برای اولین اجرا</string>
+    <string name="licenses_use_nerd_fonts">فونت نمادها</string>
+    <string name="licenses_use_weather_icons">نمادهای آب‌وهوا در فونت نمادها</string>
+    <string name="licenses_use_mdi">نمادهایی در فونت نمادها</string>
+    <string name="licenses_use_compose">رابط کاربری</string>
+    <string name="licenses_use_jetpack">\u200factivity، Compose و دیگر کتابخانه‌های AndroidX</string>
+    <string name="licenses_use_kotlin">محیط اجرای زبان</string>
+    <string name="licenses_use_commons_compress">فایل‌های بارگیری‌شده را استخراج می‌کند</string>
+    <string name="licenses_use_androidsvg">نمادهای SVG را رسم می‌کند</string>
+    <string name="licenses_use_zxing">کدهای QR هم‌رسانی ابزارک‌ها را رسم می‌کند</string>
+    <string name="licenses_use_json">\u200fJSON را می‌خواند و می‌نویسد</string>
+    <string name="licenses_use_ghostty">موتور omaterminal</string>
+    <string name="licenses_use_ghostty_part">بخشی از موتور omaterminal</string>
+
+    <!-- Linking a computer (ui/settings/LinkComputer.kt, linux/ComputerLink.kt). -->
+    <string name="link_title">اتصال دستگاه</string>
+    <string name="link_ask">⁨%1$s⁩ می‌خواهد به این دستگاه وصل شود</string>
+    <string name="link_what">پس از اتصال می‌تواند ابزارک‌های شما را فهرست، اضافه، تغییر و حذف کند و آن‌ها، مقدارهایشان، پوسته و پس‌زمینه را از راه شبکه همگام نگه دارد، تا وقتی linux در حال اجراست. به هیچ چیز دیگری در این دستگاه دست نمی‌زند.</string>
+    <string name="link_compare">فقط اگر ⁨%1$s⁩ همین کد را نشان می‌دهد وصلش کنید:</string>
+    <string name="link_confirm">اتصال</string>
+    <string name="link_done">وصل شد. تا وقتی هر دو در یک شبکه باشند، ⁨%1$s⁩ این دستگاه را در چند ثانیه پیدا می‌کند.</string>
+    <string name="link_close">بستن</string>
+    <string name="link_unreadable">این کد خوانده نمی‌شود. یک کد تازه نشان دهید: در omarchy، omalauncher در نوار، بعد devices، بعد connect a device.</string>
+    <string name="link_needs_linux">اتصال دستگاه به linux نیاز دارد: آن را در تنظیمات نصب کنید و بعد کد را دوباره اسکن کنید.</string>
+    <string name="link_computers_title">دستگاه‌های متصل</string>
+    <string name="link_computers_none">هیچ‌کدام · از omarchy یکی وصل کنید</string>
+    <string name="link_computers_listening">در شبکه در دسترس است · پورت %1$d</string>
+    <string name="link_computers_waiting">هنوز در دسترس نیست · linux آن را راه می‌اندازد</string>
+    <string name="link_unlink">قطع اتصال</string>
+    <string name="link_computers_about">ابزارک‌ها، مقدارهایشان، پوسته و پس‌زمینه را در دستگاه‌هایتان یکسان نگه دارید. دستگاه متصل می‌تواند ابزارک‌ها، پوسته و پس‌زمینه این دستگاه را تغییر دهد، تا وقتی linux در حال اجراست. فقط همین.</string>
+    <string name="link_computers_how">اتصال دستگاه</string>
+    <string name="link_computers_how_body">تلفن دیگر: اینجا یک کد نشان دهید و با دوربین آن تلفن اسکنش کنید. omarchy: در نوار روی omalauncher کلیک کنید، بعد devices، بعد connect a device، و آن کد را با دوربین این دستگاه اسکن کنید. هر دو باید در یک شبکه باشند.</string>
+    <plurals name="link_computers_count">
+        <item quantity="one">%1$d دستگاه متصل</item>
+        <item quantity="other">%1$d دستگاه متصل</item>
+    </plurals>
+    <string name="link_sync_theme">پوسته</string>
+    <string name="link_sync_background">پس‌زمینه</string>
+    <string name="link_sync_on">همگام</string>
+    <string name="link_sync_off">خاموش</string>
+    <string name="link_sync_widgets">ابزارک‌ها</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="one">%1$d مورد همگام</item>
+        <item quantity="other">%1$d مورد همگام</item>
+    </plurals>
+    <string name="link_show_code">نمایش کد</string>
+    <string name="link_code_making">در حال ساخت کد…</string>
+    <string name="link_code_scan">آن را با دوربین دستگاه دیگر اسکن کنید؛ همان‌جا از شما می‌پرسد. فقط اگر این را نشان داد وصل کنید:</string>
+    <string name="link_code_waiting">در انتظار دستگاه…</string>
+    <string name="link_code_done">⁨%1$s⁩ وصل شد.</string>
+    <string name="link_code_failed">هیچ دستگاهی وصل نشد. دوباره تلاش کنید: هر دو به linux و یک شبکه مشترک نیاز دارند.</string>
+    <string name="link_device_asking">در حال پرسیدن اینکه چه چیزهایی همگام می‌شود…</string>
+    <string name="link_pause">مکث</string>
+    <string name="link_resume">ادامه</string>
+    <string name="link_paused">مکث شده. تا ادامه ندهید، هیچ دستگاهی به این دستگاه نمی‌رسد و این دستگاه هم از هیچ‌کدام پیروی نمی‌کند.</string>
+    <string name="link_activity">فعالیت</string>
+    <string name="link_activity_none">هنوز چیزی نیست</string>
+</resources>

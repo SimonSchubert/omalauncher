@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home, its tiles and menus, the app drawer, and shared bits of the launcher's UI. -->
+<resources>
+    <!-- A selected tile's edit bar, and the drawer's long-press menu. -->
+    <string name="home_edit">تعديل</string>
+    <!-- Beside edit on a selected tile and in the drawer's long-press menu: Voice, to say what to change. -->
+    <string name="home_edit_by_voice">تعديل بالصوت</string>
+    <string name="home_share">مشاركة</string>
+    <string name="home_remove">إزالة</string>
+
+    <!-- %1$s is a coding agent's name in lower case, like "claude code". -->
+    <string name="home_create_with">إنشاء باستخدام ⁨%1$s⁩</string>
+    <string name="home_create_with_an_agent">إنشاء باستخدام وكيل</string>
+    <string name="home_browse_store">تصفح المتجر</string>
+    <!-- After "create with …" in home's long-press menu: what the agent builds. -->
+    <string name="home_create_widget">أداة</string>
+    <string name="home_create_app">تطبيق</string>
+    <string name="home_create_panel">لوحة</string>
+
+    <!-- The empty page left of home's first, where a stock launcher has its news feed. A face is a full-screen widget, and the UI calls it that. -->
+    <string name="home_face_invite_title">أداة بملء الشاشة من صنعك</string>
+    <!-- %1$s is a coding agent's name, like "Claude Code". -->
+    <string name="home_face_invite_text">هذه الصفحة لك، املأها بأداة بملء الشاشة: موجز أخبار، لوحة معلومات، صفحة بداية، لعبة. قل ما تريد وسيبنيه ⁨%1$s⁩ هنا.</string>
+    <string name="home_face_invite_text_no_agent">هذه الصفحة لك، املأها بأداة بملء الشاشة: موجز أخبار، لوحة معلومات، صفحة بداية، لعبة. قل ما تريد وسيبنيه وكيل هنا.</string>
+    <!-- An empty page of home's tiles. -->
+    <string name="home_widget_invite_title">مساحة للأدوات</string>
+    <!-- %1$s is a coding agent's name, like "Claude Code". -->
+    <string name="home_widget_invite_text">لا شيء في هذه الصفحة بعد. املأها بالأدوات: ساعة، الطقس، قائمة مهام، وكلاؤك وهم يعملون. قل ما تريد وسيبنيه ⁨%1$s⁩.</string>
+    <string name="home_widget_invite_text_no_agent">لا شيء في هذه الصفحة بعد. املأها بالأدوات: ساعة، الطقس، قائمة مهام، وكلاؤك وهم يعملون. قل ما تريد وسيبنيه وكيل.</string>
+
+    <!-- On an empty page while a tile is dragged. -->
+    <string name="home_drop_here">أفلت هنا</string>
+    <string name="home_drop_face_only">هذا المكان لأداة بملء الشاشة فقط</string>
+    <!-- The cue over a locked home screen. -->
+    <string name="home_lock_locked">الشاشة مقفلة</string>
+    <string name="home_lock_unlock">فتح القفل</string>
+
+    <!-- The red banner over home when style.toml or layout.toml has errors. %1$s is the file's name. -->
+    <plurals name="home_file_problems">
+        <item quantity="zero">⁨%1$s⁩: لا مشاكل</item>
+        <item quantity="one">⁨%1$s⁩: مشكلة واحدة</item>
+        <item quantity="two">⁨%1$s⁩: مشكلتان</item>
+        <item quantity="few">⁨%1$s⁩: %2$d مشاكل</item>
+        <item quantity="many">⁨%1$s⁩: %2$d مشكلة</item>
+        <item quantity="other">⁨%1$s⁩: %2$d مشكلة</item>
+    </plurals>
+    <!-- %1$d problems more than the banner shows; errors.txt is a file name. -->
+    <plurals name="home_file_problems_more">
+        <item quantity="zero">لا مشاكل أخرى في errors.txt · انقر للإخفاء</item>
+        <item quantity="one">مشكلة أخرى في errors.txt · انقر للإخفاء</item>
+        <item quantity="two">مشكلتان أخريان في errors.txt · انقر للإخفاء</item>
+        <item quantity="few">%1$d مشاكل أخرى في errors.txt · انقر للإخفاء</item>
+        <item quantity="many">%1$d مشكلة أخرى في errors.txt · انقر للإخفاء</item>
+        <item quantity="other">%1$d مشكلة أخرى في errors.txt · انقر للإخفاء</item>
+    </plurals>
+    <string name="home_file_problems_hide">انقر للإخفاء</string>
+
+    <!-- A widget tile whose Linux packages are missing. %1$s lists the packages, like "jq, curl". -->
+    <string name="home_widget_needs">بحاجة إلى ⁨%1$s⁩</string>
+    <string name="home_installing">جارٍ التثبيت…</string>
+    <string name="home_install">تثبيت</string>
+    <string name="home_retry">إعادة المحاولة</string>
+    <string name="home_fix_with_agent">إصلاح عبر الوكيل</string>
+    <!-- A widget tile that runs Linux commands, before Linux is installed. -->
+    <string name="home_widget_needs_linux">بحاجة إلى Linux</string>
+    <string name="home_widget_needs_linux_text">تشغّل أوامر في Arch Linux الاختياري</string>
+    <string name="home_widget_linux_stopped">نظام Linux متوقف</string>
+    <string name="home_start_linux">تشغيل</string>
+
+    <!-- A terminal tile whose terminal isn't showing. -->
+    <string name="home_terminal_starting">جارٍ التشغيل…</string>
+    <string name="home_terminal_exited">انتهت · انقر لإعادة التشغيل</string>
+
+    <!-- The prompt bar's hint on the side rail in landscape, the longest that fits. %1$s is an agent's command, like "claude". -->
+    <string name="home_prompt_hint_agent">افتح تطبيقا أو اسأل ⁨%1$s⁩</string>
+    <string name="home_prompt_hint">افتح تطبيقا</string>
+    <string name="home_prompt_hint_short">التطبيقات</string>
+
+    <!-- What screen readers say for a folder on home. %1$s is its name. -->
+    <string name="home_folder_named">مجلد ⁨%1$s⁩</string>
+    <string name="home_app_has_notifications">⁨%1$s⁩، توجد إشعارات</string>
+    <string name="home_folder">مجلد</string>
+    <!-- An open folder's name while it has none. -->
+    <string name="home_folder_tap_to_name">انقر للتسمية</string>
+
+    <!-- Screen reader labels of a list's refresh button. -->
+    <string name="home_refresh">تحديث</string>
+    <string name="home_refreshing">جارٍ التحديث</string>
+    <!-- Above the last lines of a Linux job that failed. -->
+    <string name="home_job_failed">فشل:</string>
+    <!-- Under the last lines of a Linux job: opens all of it, closes it again, copies it. -->
+    <string name="home_job_whole_log">السجل الكامل</string>
+    <string name="home_job_less">أقل</string>
+    <string name="home_job_copy">نسخ</string>
+    <!-- Screen reader label of the gear that opens settings. -->
+    <string name="home_settings">الإعدادات</string>
+
+    <!-- A Linux window's name in Recents when it has no other. -->
+    <string name="home_linux_window">Linux</string>
+
+    <!-- The drawer's long-press menu of an app. -->
+    <!-- A message from the developer, shown once over home. -->
+    <string name="home_news_close">إغلاق</string>
+    <string name="home_news_off">عدم عرض الأخبار مجددا</string>
+    <!-- Under the numbers of a message's countdown. -->
+    <string name="home_news_days">أيام</string>
+    <string name="home_news_hours">ساعات</string>
+    <string name="home_news_minutes">دقائق</string>
+    <string name="home_news_seconds">ثوان</string>
+</resources>

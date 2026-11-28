@@ -29,7 +29,7 @@ RACCOURCIS CLAVIER
 Avec un clavier physique : Super+T ouvre un terminal, Super+D le tiroir d’applis, Super+1 à 9 changent de page et Super+W ferme une fenêtre.
 
 LANGUES
-English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe, Italiano et Tiếng Việt.
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe, Italiano, Tiếng Việt, العربية et فارسی.
 
 CONFIDENTIALITÉ
 Pas de compte, pas de pub, pas de pistage. Omalauncher ne se connecte à Internet que pour télécharger les thèmes, les widgets, la météo et, si tu le choisis, Linux et ses paquets.

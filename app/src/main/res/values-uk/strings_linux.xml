@@ -189,6 +189,8 @@
     <string name="licenses_use_androidsvg">малює значки SVG</string>
     <string name="licenses_use_zxing">малює QR-коди, якими діляться віджетами</string>
     <string name="licenses_use_json">читає й записує JSON</string>
+    <string name="licenses_use_ghostty">рушій omaterminal</string>
+    <string name="licenses_use_ghostty_part">частина рушія omaterminal</string>
 
     <string name="share_in_saving">зберігаємо в linux…</string>
     <string name="share_in_saved">збережено в ~/Downloads</string>

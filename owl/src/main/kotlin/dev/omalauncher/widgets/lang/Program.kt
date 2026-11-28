@@ -184,6 +184,13 @@ class Ev internal constructor(
 ) {
     constructor(const: Value?, f: (Env) -> Value) : this(const, f, null)
 
+    /**
+     * A list literal's items, when it isn't constant: whoever wants them one at a time, like a model's at: [x, y, z]
+     * every frame, can read them without building the list.
+     */
+    var items: List<Ev>? = null
+        internal set
+
     operator fun invoke(env: Env): Value = const ?: f(env)
 
     /** The value as a number, as [Value.num] gives it, or [default]; arithmetic doesn't box on the way. */
@@ -376,6 +383,12 @@ class Program(
     val meta: Map<String, Value>,
     /** The owl language version it needs; see [Compiler.LEVEL]. */
     val level: Int,
+    /**
+     * Its nodes run right to left: `start` is the right side, a Row's first child the rightmost. Only a file of owl 27
+     * or later whose `strings` has a set for the phone's language, one written right to left; any other stays left to
+     * right on every phone, as it was made.
+     */
+    val rtl: Boolean = false,
     /** The tile's: an app has none of these. */
     val size: Pair<Int, Int>? = null,
     val minSize: Pair<Int, Int> = 1 to 1,

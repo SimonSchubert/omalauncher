@@ -1,0 +1,10 @@
+# Keeps the workflows' actions current. Gradle dependencies are updated by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

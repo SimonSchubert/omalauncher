@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Linux setup, updates and the session (linux/, ui/Setup.kt, ui/LinuxScreen.kt, LinuxService.kt), the packages
+     screen (packages_), the licenses screen (licenses_), and the share activity (ShareInActivity). -->
+<resources>
+    <!-- The phases of a fresh install, as the setup screen lists them. -->
+    <string name="linux_stage_download">تنزيل arch linux</string>
+    <string name="linux_stage_extract">فك ضغط النظام</string>
+    <string name="linux_stage_configure">إعداد pacman</string>
+    <string name="linux_stage_packages">تثبيت تطبيقات omarchy</string>
+    <string name="linux_stage_agents">تثبيت وكلاء البرمجة</string>
+    <!-- The last phase when coding agents were picked. %1$s: their names, comma-separated (Claude Code, Codex). -->
+    <string name="linux_stage_agents_named">تثبيت ⁨%1$s⁩</string>
+
+    <!-- What setup is doing right now, under its phase on the setup screen. Settings shows these lowercased while an
+         update of an installed system runs them ("updating the system: installing packages…"). -->
+    <string name="linux_step_download">تنزيل Arch Linux ARM</string>
+    <string name="linux_step_configure">إعداد النظام</string>
+    <string name="linux_step_forks">التحقق من إمكان بدء البرامج</string>
+    <string name="linux_step_keyring">إعداد حلقة مفاتيح pacman</string>
+    <string name="linux_step_no_kernel">حذف حزم النواة</string>
+    <string name="linux_step_packages">تثبيت الحزم</string>
+    <string name="linux_step_keymap">بناء خريطة المفاتيح</string>
+    <!-- cliamp is a music player's name. -->
+    <string name="linux_step_cliamp">تثبيت cliamp</string>
+    <!-- %1$s: a coding agent's name. -->
+    <string name="linux_step_agent">تثبيت ⁨%1$s⁩</string>
+    <!-- Download progress in megabytes: %1$d done of %2$d. -->
+    <string name="linux_step_downloaded">%1$d من %2$d MB</string>
+    <!-- Download progress in megabytes when the total isn't known. -->
+    <string name="linux_step_downloaded_unknown">%1$d MB</string>
+    <!-- Unpacking the system has just begun. -->
+    <string name="linux_step_extract_start">البدء</string>
+    <!-- Unpacking progress: how many files are unpacked so far. -->
+    <plurals name="linux_step_extracted">
+        <item quantity="zero">%d ملف</item>
+        <item quantity="one">ملف واحد</item>
+        <item quantity="two">ملفان</item>
+        <item quantity="few">%d ملفات</item>
+        <item quantity="many">%d ملفا</item>
+        <item quantity="other">%d ملف</item>
+    </plurals>
+
+    <!-- Lines setup adds to the output it shows. %1$s: the error (technical, English). %2$d of %3$d: the attempt. -->
+    <string name="linux_log_retrying">⁨%1$s⁩؛ إعادة المحاولة (%2$d من %3$d)</string>
+    <!-- %1$s: the step (Installing cliamp), %2$s: the error (technical, English). -->
+    <string name="linux_log_step_failed">فشل ⁨%1$s⁩: ⁨%2$s⁩؛ أعد المحاولة من الإعدادات</string>
+    <!-- %1$s: a coding agent's name. -->
+    <string name="linux_log_agent_failed">تعذر تثبيت ⁨%1$s⁩؛ أعد المحاولة من الإعدادات › وكلاء البرمجة</string>
+
+    <!-- Why setup stopped, in red under the phase. %1$s and %2$s: sizes like "3.0 GB". -->
+    <string name="linux_error_no_space">المساحة لا تكفي: يحتاج Linux إلى ⁨%1$s⁩ فارغة، وفي الهاتف ⁨%2$s⁩؛ أفرغ بعض المساحة ثم أعد المحاولة</string>
+    <!-- %1$s: a size like "3.0 GB". -->
+    <string name="linux_error_out_of_space">امتلأت مساحة الهاتف؛ يحتاج Linux إلى نحو ⁨%1$s⁩ فارغة؛ أفرغ بعض المساحة ثم أعد المحاولة</string>
+    <!-- %1$d: the HTTP status code. -->
+    <string name="linux_error_http">فشل التنزيل: HTTP %1$d</string>
+    <string name="linux_error_cut_short">انقطع التنزيل قبل أن يكتمل؛ أعد المحاولة لمتابعته</string>
+    <string name="linux_error_move_download">تعذر نقل الملف المنزَّل إلى مكانه</string>
+    <!-- %1$d: the exit code. -->
+    <string name="linux_error_cant_run">لا يستطيع Linux تشغيل الأوامر هنا (رمز الخروج %1$d)</string>
+    <string name="linux_error_kernel">نواة هذا الهاتف تمنع برامج Linux من تشغيل برامج أخرى، فلا يمكن متابعة الإعداد. الرومات المعدلة ذات النواة 4.14 تحتاج إلى إيداع النواة (commit) 05b289263772 من القائمين عليها؛ راجع المسألة ⁨#105⁩ على github</string>
+    <!-- %1$s: the start of a shell command, %2$d: its exit code. -->
+    <string name="linux_error_command">فشل الأمر ⁨`%1$s`⁩ (رمز الخروج %2$d)</string>
+    <!-- %1$s: the version expected, like v2.3.0. -->
+    <string name="linux_error_cliamp_mismatch">تنزيل cliamp لا يطابق ⁨%1$s⁩</string>
+    <!-- %1$s: a file path. -->
+    <string name="linux_error_cant_replace">تعذر استبدال ⁨%1$s⁩</string>
+
+    <!-- What a job in the guest is doing, shown as "installing…" on its row. -->
+    <string name="linux_job_installing">التثبيت</string>
+    <string name="linux_job_removing">الحذف</string>
+    <!-- An AUR package is compiled on the phone. -->
+    <string name="linux_job_building">البناء</string>
+    <string name="linux_job_updating">التحديث</string>
+    <!-- Waiting for another package job to finish. -->
+    <string name="linux_job_waiting">الانتظار</string>
+    <!-- The GPU driver being tested. -->
+    <string name="linux_job_checking">الفحص</string>
+    <!-- A running job on its row. %1$s: one of the job words above. -->
+    <string name="linux_job_working">جارٍ ⁨%1$s⁩…</string>
+
+    <!-- A system update check that failed, in settings' updates box. -->
+    <string name="linux_updates_unreachable">تعذر الوصول إلى خوادم المرايا</string>
+
+    <!-- One line under each coding agent's name in the agent lists. -->
+    <string name="linux_agent_claude">وكيل البرمجة من Anthropic</string>
+    <string name="linux_agent_opencode">وكيل مفتوح المصدر لأي مزود نماذج</string>
+    <string name="linux_agent_codex">وكيل البرمجة من OpenAI</string>
+    <string name="linux_agent_grok">وكيل البرمجة من xAI</string>
+    <string name="linux_agent_copilot">وكيل البرمجة من GitHub</string>
+    <string name="linux_agent_crush">وكيل للطرفية من Charm</string>
+    <string name="linux_agent_cursor">وكيل للطرفية من Cursor</string>
+    <string name="linux_agent_antigravity">وكيل البرمجة Gemini من Google</string>
+    <string name="linux_agent_pi">وكيل برمجة بسيط قابل للتوسيع</string>
+    <string name="linux_agent_hermes">وكيل من Nous Research، نحو 2.5 GB</string>
+    <string name="linux_agent_omp">وكيل Pi مع أدوات مساعدة وإضافات مدمجة</string>
+    <string name="linux_agent_ori">وكيل البرمجة من OpenRouter</string>
+    <string name="linux_agent_muse">وكيل البرمجة من Meta</string>
+    <string name="linux_agent_kimi">وكيل البرمجة من Moonshot AI</string>
+    <string name="linux_agent_qwen">وكيل البرمجة Qwen من Alibaba</string>
+    <string name="linux_agent_mcode">وكيل البرمجة من MiniMax</string>
+    <string name="linux_agent_kiro">وكيل البرمجة من Amazon</string>
+    <string name="linux_agent_kilo">وكيل مفتوح المصدر مبني على OpenCode</string>
+    <string name="linux_agent_devin">وكيل البرمجة من Cognition</string>
+    <string name="linux_agent_amp">وكيل برمجة من ampcode.com</string>
+    <string name="linux_agent_commandcode">وكيل برمجة من commandcode.ai</string>
+
+    <!-- The first-run screen. -->
+    <string name="linux_welcome_title">شاشتك الرئيسية بطابع omarchy</string>
+    <string name="linux_welcome_body">سمات Omarchy وخلفياته، وتطبيقات Android التي لديك، وأدوات على الشاشة الرئيسية. ويضيف Arch Linux تطبيقات الطرفية ووكلاء البرمجة، الآن أو لاحقا من الإعدادات.</string>
+    <!-- A section heading, shown in capitals. -->
+    <string name="linux_welcome_linux">linux</string>
+    <string name="linux_welcome_choice">إعداد Arch Linux أيضا</string>
+    <string name="linux_welcome_choice_detail">تطبيقات الطرفية، الوكلاء، pacman · تنزيل نحو 1 GB، ومساحة 3 GB</string>
+    <string name="linux_welcome_start">بدء</string>
+    <string name="linux_welcome_start_linux">بدء وإعداد linux</string>
+    <string name="linux_welcome_start_hint">تُنزَّل خلفية السمة الآن، وباقي سمات Omarchy (نحو 70 MB) في الخلفية.</string>
+    <string name="linux_welcome_start_linux_hint">ينزّل Linux نحو 1 GB، فالأفضل استخدام Wi-Fi، ويشغل 3 GB من المساحة. يُثبَّت في الخلفية خلال 10 إلى 20 دقيقة، والشاشة الرئيسية جاهزة فورا.</string>
+    <!-- %1$s: the theme's name, lowercased. -->
+    <string name="linux_welcome_getting">جارٍ تنزيل ⁨%1$s⁩</string>
+    <string name="linux_welcome_theme_failed">تعذر تنزيل السمة</string>
+    <string name="linux_welcome_wallpaper">تنزيل خلفيتها</string>
+    <string name="linux_welcome_skip">المتابعة بلا خلفيات</string>
+    <string name="linux_welcome_skip_hint">ألوان السمة تُطبَّق في كل الأحوال. يعيد المشغّل المحاولة لاحقا، أو نزّلها من الإعدادات › المظهر.</string>
+
+    <!-- A section heading, shown in capitals. -->
+    <string name="linux_agents_label">وكلاء البرمجة</string>
+    <string name="linux_agents_hint">اختر ما تريد تثبيته مع Linux. يمكنك إضافة الوكلاء أو حذفهم لاحقا من الإعدادات.</string>
+    <!-- A section heading over the theme swatches, shown in capitals. -->
+    <string name="linux_theme_label">السمة</string>
+    <!-- The last tile of the theme swatches; opens the community themes. -->
+    <string name="linux_more_themes">سمات أخرى ›</string>
+
+    <!-- The install's checklist (setup and settings › linux). -->
+    <string name="linux_progress_title">إعداد linux</string>
+    <string name="linux_progress_stopped">توقف الإعداد</string>
+    <string name="linux_try_again">إعادة المحاولة</string>
+    <string name="linux_cancel_install">إلغاء التثبيت الجاري</string>
+    <string name="linux_progress_background">يمكنك إغلاق هذه الشاشة واستخدام المشغّل؛ يستمر الإعداد في الخلفية.</string>
+    <!-- A heading over setup's command output, shown in capitals. -->
+    <string name="linux_output">المخرجات</string>
+    <string name="linux_output_less">أقل</string>
+    <string name="linux_output_more">المزيد</string>
+
+    <!-- Settings › linux. -->
+    <string name="linux_title">linux</string>
+    <string name="linux_removing">جارٍ حذف linux…</string>
+    <string name="linux_offer_title">اختياري: arch linux</string>
+    <string name="linux_offer_body">تطبيقات Linux وأدوات الطرفية ووكلاء البرمجة و pacman والملفات. نحو 1 GB للتنزيل و 3 GB من المساحة؛ يُثبَّت في الخلفية.</string>
+    <string name="linux_install">تثبيت linux</string>
+    <plurals name="linux_install_with_agents">
+        <item quantity="zero">تثبيت linux بلا وكلاء</item>
+        <item quantity="one">تثبيت linux مع وكيل واحد</item>
+        <item quantity="two">تثبيت linux مع وكيلين</item>
+        <item quantity="few">تثبيت linux مع %d وكلاء</item>
+        <item quantity="many">تثبيت linux مع %d وكيلا</item>
+        <item quantity="other">تثبيت linux مع %d وكيل</item>
+    </plurals>
+    <string name="linux_arch">arch linux</string>
+    <!-- %1$s: the size on disk, like 2.1 GB, or "measuring…". -->
+    <string name="linux_installed_size">مثبّت · ⁨%1$s⁩</string>
+    <string name="linux_measuring">جارٍ قياس الحجم…</string>
+    <string name="linux_remove">حذف linux</string>
+    <string name="linux_remove_ask">حذف linux؟</string>
+    <string name="linux_remove_body">يحذف تطبيقات Linux ووكلاء البرمجة والحزم وكل ما في ⁨/root⁩، مثل Downloads. تبقى السمات والخلفيات والأدوات وشاشتك الرئيسية.</string>
+    <string name="linux_remove_confirm">حذف</string>
+    <string name="linux_cancel">إلغاء</string>
+    <string name="linux_gpu_title">تسريع gpu</string>
+    <!-- %1$s: the GPU's name, like Mali-G715 MC7. -->
+    <string name="linux_gpu_on">مفعّل · ⁨%1$s⁩ · للتطبيقات التي تُفتح من الآن</string>
+    <string name="linux_gpu_off_failed">غير مفعّل: لم يجتز GPU الفحص بعد تحديث النظام</string>
+    <string name="linux_gpu_waiting">مفعّل · بانتظار الفحص</string>
+    <string name="linux_gpu_failed">لم يجتز GPU الفحص؛ تبقى التطبيقات على الرسم البرمجي</string>
+    <!-- %1$s: the driver family, Mali or Adreno. -->
+    <string name="linux_gpu_offer">تجريبي · ⁨%1$s⁩ · تطبيقات وألعاب OpenGL و Vulkan أسرع؛ تطبيقات الطرفية لا تتغير</string>
+    <string name="linux_retry">إعادة المحاولة</string>
+    <string name="linux_gpu_turn_off">إيقاف</string>
+    <string name="linux_gpu_turn_on">تفعيل</string>
+    <string name="linux_cpu_pinning_title">استدعاءات نظام سريعة</string>
+    <string name="linux_cpu_pinning_on">مفعّل · يبقي Linux على نواة CPU واحدة سريعة · للبرامج التي تبدأ من الآن</string>
+    <string name="linux_cpu_pinning_off">غير مفعّل · للبرامج التي تبدأ من الآن</string>
+    <string name="linux_session_title">الجلسة</string>
+    <string name="linux_session_running">تعمل · تطبيقات Linux والطرفيات والوكلاء متاحة</string>
+    <string name="linux_session_starting">جارٍ التشغيل…</string>
+    <string name="linux_session_stopped">متوقفة · لا شيء يعمل ولا شيء يُحذف · تبقى متوقفة بعد إعادة التشغيل</string>
+    <string name="linux_stop">إيقاف</string>
+    <string name="linux_start">تشغيل</string>
+    <string name="linux_stop_ask">إيقاف linux؟</string>
+    <string name="linux_stop_body">يغلق تطبيقات Linux والطرفيات ووكلاء البرمجة، وينهي ما كانت تفعله. لا يُحذف شيء. الأدوات والتطبيقات التي تحتاج إلى Linux تنتظر حتى تشغّله من هنا مجددا.</string>
+    <string name="linux_stop_confirm">إيقاف</string>
+
+    <!-- The ongoing notification while Linux runs. -->
+    <string name="linux_notification_channel">جلسة Linux</string>
+    <!-- Name of the notification channel for what agents and scripts in Linux post with `omalauncher notify`, shown in Android's notification settings. -->
+    <string name="linux_notify_channel">الوكلاء والنصوص البرمجية</string>
+    <!-- %1$s: the install's phase (download arch linux). -->
+    <string name="linux_notification_installing">جارٍ تثبيت Linux · ⁨%1$s⁩</string>
+    <!-- %1$d: percent done, %2$s: the install's phase (download arch linux). -->
+    <string name="linux_notification_installing_percent">جارٍ تثبيت Linux · %1$d%% · ⁨%2$s⁩</string>
+    <string name="linux_notification_failed">توقف إعداد Linux · افتح الإعدادات › linux لإعادة المحاولة</string>
+    <string name="linux_notification_removing">جارٍ حذف Linux</string>
+    <string name="linux_notification_running">جلسة Linux تعمل</string>
+
+    <!-- Another Android app shares a file, or text, to Linux: the card while it's copied into ~/Downloads, and how it went. -->
+    <string name="share_in_saving">جارٍ الحفظ في linux…</string>
+    <string name="share_in_saved">تم الحفظ في ⁨~/Downloads⁩</string>
+    <string name="share_in_failed">تعذر الحفظ في linux</string>
+    <string name="share_in_no_linux">لم يتم إعداد linux بعد</string>
+
+    <!-- Settings › packages. -->
+    <string name="packages_title">الحزم</string>
+    <string name="packages_search">البحث في الحزم</string>
+    <string name="packages_intro">حزم Arch Linux ARM عبر pacman، وحزم AUR عبر yay. التثبيت يحدّث النظام أيضا، فقد يستغرق بعض الوقت. حزم AUR يرفعها المستخدمون وتُبنى على الجهاز: راجع ملف PKGBUILD الخاص بها على aur.archlinux.org أولا.</string>
+    <string name="packages_loading">جارٍ التحميل…</string>
+    <string name="packages_searching">جارٍ البحث…</string>
+    <!-- %1$d: how many packages are installed. -->
+    <string name="packages_installed">المثبتة (%1$d)</string>
+    <string name="packages_none">لا حزم مطابقة</string>
+    <!-- Search results. English keeps "1 results" as the app always showed it. -->
+    <plurals name="packages_results">
+        <item quantity="zero">لا نتائج</item>
+        <item quantity="one">نتيجة واحدة</item>
+        <item quantity="two">نتيجتان</item>
+        <item quantity="few">%d نتائج</item>
+        <item quantity="many">%d نتيجة</item>
+        <item quantity="other">%d نتيجة</item>
+    </plurals>
+    <!-- In place of remove, for packages the launcher needs. -->
+    <string name="packages_required">مطلوبة</string>
+    <!-- A second tap to remove a package. -->
+    <string name="packages_confirm">تأكيد</string>
+    <string name="packages_remove">حذف</string>
+    <string name="packages_install">تثبيت</string>
+
+    <!-- Settings › licenses. -->
+    <string name="licenses_title">التراخيص</string>
+    <!-- %1$s: the app's version. -->
+    <string name="licenses_header">Omalauncher ⁨%1$s⁩ · © 2026 Simon Schubert\n\nيتضمن البرمجيات المفتوحة المصدر التالية.</string>
+    <string name="licenses_website">الموقع</string>
+    <string name="licenses_source">الشيفرة المصدرية</string>
+    <!-- What each open source component does in the app, after its license. -->
+    <string name="licenses_use_proot">يشغّل نظام Linux الاختياري</string>
+    <string name="licenses_use_talloc">مخصِّص الذاكرة الذي يستخدمه PRoot</string>
+    <string name="licenses_use_shmem">ذاكرة مشتركة لأجل PRoot</string>
+    <string name="licenses_use_mesa">دعم OpenGL على معالجات Adreno الرسومية في نظام Linux الاختياري</string>
+    <string name="licenses_use_wayland">ملفات بروتوكولات مرفقة مع Mesa</string>
+    <string name="licenses_use_omarchy">ألوان السمات المرفقة للتشغيل الأول</string>
+    <string name="licenses_use_nerd_fonts">خط الرموز</string>
+    <string name="licenses_use_weather_icons">رموز الطقس في خط الرموز</string>
+    <string name="licenses_use_mdi">رموز في خط الرموز</string>
+    <string name="licenses_use_compose">واجهة المستخدم</string>
+    <string name="licenses_use_jetpack">مكتبات activity و Compose وغيرها من AndroidX</string>
+    <string name="licenses_use_kotlin">بيئة تشغيل اللغة</string>
+    <string name="licenses_use_commons_compress">يفك ضغط التنزيلات</string>
+    <string name="licenses_use_androidsvg">يرسم أيقونات SVG</string>
+    <string name="licenses_use_zxing">يرسم رموز QR التي تُشارَك بها الأدوات</string>
+    <string name="licenses_use_json">يقرأ JSON ويكتبه</string>
+    <string name="licenses_use_ghostty">محرك omaterminal</string>
+    <string name="licenses_use_ghostty_part">جزء من محرك omaterminal</string>
+
+    <!-- Linking a computer (ui/settings/LinkComputer.kt, linux/ComputerLink.kt). -->
+    <string name="link_title">توصيل جهاز</string>
+    <string name="link_ask">يريد ⁨%1$s⁩ الاتصال بهذا الجهاز</string>
+    <string name="link_what">بعد الاتصال يستطيع عرض أدواتك وإضافتها وتغييرها وإزالتها، ومزامنتها هي وقيمها والسمة والخلفية، عبر الشبكة ما دام linux يعمل. ولا شيء غير ذلك على هذا الجهاز.</string>
+    <string name="link_compare">لا تتصل به إلا إذا عرض ⁨%1$s⁩ هذا الرمز:</string>
+    <string name="link_confirm">اتصال</string>
+    <string name="link_done">تم الاتصال. يجد ⁨%1$s⁩ هذا الجهاز خلال ثوان ما دام الاثنان على الشبكة نفسها.</string>
+    <string name="link_close">إغلاق</string>
+    <string name="link_unreadable">تعذرت قراءة هذا الرمز. اعرض رمزا جديدا: في omarchy انقر omalauncher في الشريط، ثم devices، ثم connect a device.</string>
+    <string name="link_needs_linux">توصيل جهاز يحتاج إلى linux: ثبّته من الإعدادات ثم امسح الرمز مجددا.</string>
+    <string name="link_computers_title">الأجهزة المتصلة</string>
+    <string name="link_computers_none">لا شيء · وصّل جهازا من omarchy</string>
+    <string name="link_computers_listening">متاح على الشبكة · المنفذ %1$d</string>
+    <string name="link_computers_waiting">غير متاح بعد · يشغّله linux</string>
+    <string name="link_unlink">قطع الاتصال</string>
+    <string name="link_computers_about">أبقِ الأدوات وقيمها والسمة والخلفية متطابقة على أجهزتك. الجهاز المتصل يستطيع تغيير أدوات هذا الجهاز وسمته وخلفيته ما دام linux يعمل. ولا شيء غير ذلك.</string>
+    <string name="link_computers_how">توصيل جهاز</string>
+    <string name="link_computers_how_body">هاتف آخر: اعرض رمزا هنا وامسحه بكاميرا ذلك الهاتف. omarchy: انقر omalauncher في الشريط، ثم devices، ثم connect a device، وامسح ذلك الرمز بكاميرا هذا الجهاز. الاثنان على الشبكة نفسها.</string>
+    <plurals name="link_computers_count">
+        <item quantity="zero">لا أجهزة متصلة</item>
+        <item quantity="one">جهاز واحد متصل</item>
+        <item quantity="two">جهازان متصلان</item>
+        <item quantity="few">%1$d أجهزة متصلة</item>
+        <item quantity="many">%1$d جهازا متصلا</item>
+        <item quantity="other">%1$d جهاز متصل</item>
+    </plurals>
+    <string name="link_sync_theme">السمة</string>
+    <string name="link_sync_background">الخلفية</string>
+    <string name="link_sync_on">مزامنة</string>
+    <string name="link_sync_off">إيقاف</string>
+    <string name="link_sync_widgets">الأدوات</string>
+    <plurals name="link_sync_widgets_count">
+        <item quantity="zero">بلا مزامنة</item>
+        <item quantity="one">مزامنة أداة واحدة</item>
+        <item quantity="two">مزامنة أداتين</item>
+        <item quantity="few">مزامنة %1$d أدوات</item>
+        <item quantity="many">مزامنة %1$d أداة</item>
+        <item quantity="other">مزامنة %1$d أداة</item>
+    </plurals>
+    <string name="link_show_code">عرض رمز</string>
+    <string name="link_code_making">جارٍ إنشاء الرمز…</string>
+    <string name="link_code_scan">امسحه بكاميرا الجهاز الآخر؛ سيسألك هناك. لا تتصل إلا إذا عرض:</string>
+    <string name="link_code_waiting">بانتظار الجهاز…</string>
+    <string name="link_code_done">تم توصيل ⁨%1$s⁩.</string>
+    <string name="link_code_failed">لم يتصل أي جهاز. أعد المحاولة: يحتاج الاثنان إلى linux وإلى الشبكة نفسها.</string>
+    <string name="link_device_asking">جارٍ سؤاله عما يُزامَن…</string>
+    <string name="link_pause">إيقاف مؤقت</string>
+    <string name="link_resume">استئناف</string>
+    <string name="link_paused">متوقف مؤقتا. لا يصل أي جهاز إلى هذا الجهاز ولا يتبع هو أي جهاز حتى تستأنف.</string>
+    <string name="link_activity">النشاط</string>
+    <string name="link_activity_none">لا شيء بعد</string>
+</resources>

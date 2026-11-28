@@ -62,17 +62,20 @@ internal fun DialogFrame(
     content: @Composable () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .frame(2.dp, Palette.accent, Palette.surface, radius = 24.dp)
-                // Keys start in it, and Esc dismisses it as Back does: its own window doesn't pass Esc to the activity's.
-                .onKeyEvent { e ->
-                    (e.key == Key.Escape).also { if (it && e.type == KeyEventType.KeyUp) onDismiss() }
-                }.holdsKeys(start)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) { content() }
+        // A dialog is a window of its own, and without supportsRtl Android lays every window out left to right.
+        LauncherDirection {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .frame(2.dp, Palette.accent, Palette.surface, radius = 24.dp)
+                    // Keys start in it, and Esc dismisses it as Back does: its own window doesn't pass Esc to the activity's.
+                    .onKeyEvent { e ->
+                        (e.key == Key.Escape).also { if (it && e.type == KeyEventType.KeyUp) onDismiss() }
+                    }.holdsKeys(start)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) { content() }
+        }
     }
 }
 

@@ -76,6 +76,7 @@ import dev.omalauncher.widgets.render.LocalInputFocus
 import dev.omalauncher.widgets.render.LocalMenuOpened
 import dev.omalauncher.ui.EdgeGap
 import dev.omalauncher.ui.LauncherStyle
+import dev.omalauncher.ui.LeftToRight
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.PanelGap
@@ -249,7 +250,10 @@ private fun DesktopScreen(
     if (side != null && !panelShown) {
         if (!runtime.terminals.typing) {
             CompositionLocalProvider(LocalBackdrop provides backdrop) {
-                SideRail(runtime, state, handlers, side, Modifier.fillMaxSize().graphicsLayer { translationX = state.barShift() * size.width }.safePadding().lockedTaps(locked))
+                // On the side the phone was turned to, in every language.
+                LeftToRight {
+                    SideRail(runtime, state, handlers, side, Modifier.fillMaxSize().graphicsLayer { translationX = state.barShift() * size.width }.safePadding().lockedTaps(locked))
+                }
             }
         }
     } else {

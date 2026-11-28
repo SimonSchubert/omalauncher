@@ -188,6 +188,8 @@
     <string name="licenses_use_androidsvg">SVG simgeleri çizer</string>
     <string name="licenses_use_zxing">widget paylaşımında kullanılan QR kodlarını çizer</string>
     <string name="licenses_use_json">JSON okur ve yazar</string>
+    <string name="licenses_use_ghostty">omaterminal’in motoru</string>
+    <string name="licenses_use_ghostty_part">omaterminal motorunun parçası</string>
 
     <string name="link_title">cihaz bağla</string>
     <string name="link_ask">%1$s bu cihaza bağlanmak istiyor</string>

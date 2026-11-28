@@ -3,7 +3,7 @@ widget "fetch" {
   order: 2
   size: 3x3
   minSize: 2x2
-  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.11"; license: "MIT"; category: "system"; owl: 16 }
+  meta { description: "Your phone at a glance, fastfetch style, with or without Linux: CPU, memory, storage, battery and theme, plus Arch's packages once Linux is installed. Tap it for every detail"; version: "1.11"; license: "MIT"; category: "system"; owl: 27 }
 
   // What it says, in the phone's language where it has a set. Words fastfetch and Linux use as names (os, host,
   // kernel, cpu, shell) stay as they are. Android's battery words come in English, so a set names them itself.
@@ -247,6 +247,46 @@ widget "fetch" {
         "charging": "đang sạc", "plugged in": "đã cắm sạc", "on battery": "dùng pin", "good": "tốt",
         "overheating": "quá nóng", "dead": "hỏng", "over voltage": "quá áp", "cold": "quá lạnh",
         "failing": "sắp hỏng", "wireless": "không dây", "dock": "đế sạc"
+      }, w, w)
+    }
+    ar {
+      uptime: "uptime"; packages: "الحزم"; display: "الشاشة"; theme: "السمة"; memory: "الذاكرة"; disk: "القرص"
+      battery: "البطارية"; apps: "التطبيقات"; byDefault: "الافتراضية"; phone: "الهاتف"; device: "الجهاز"; hardware: "العتاد"
+      network: "الشبكة"; launcher: "المشغّل"; security: "الأمان"; build: "رقم الإصدار"; locale: "اللغة"; cores: "الأنوية"
+      storage: "التخزين"; speed: "السرعة"; received: "الوارد"; sent: "الصادر"; mobile: "شبكة الجوال"
+      level: "مستوى الشحن"; temperature: "الحرارة"; voltage: "الجهد"; health: "الحالة"; cycles: "دورات الشحن"
+      technology: "التقنية"; version: "الإصدار"; explicit: "مثبتة يدويا"; upgraded: "آخر ترقية"; never: "لم تتم بعد"
+      unknown: "غير معروفة"; installLinux: "تثبيت linux"
+      notInstalled: "غير مثبت. يضيف arch linux arm طرفية ووكلاء و pacman إلى المشغّل."
+      upTo: ghz => " · حتى ${ghz} GHz"
+      // Arabic counts: none, one and two in words, 3 to 10 plural, 11 to 99 singular with -an, hundreds singular.
+      androidApps: n => n == 0 ? "لا تطبيقات android" : n == 1 ? "تطبيق android واحد" : n == 2 ? "تطبيقا android" : "${n} " + (n % 100 >= 3 && n % 100 <= 10 ? "تطبيقات" : n % 100 >= 11 ? "تطبيقا" : "تطبيق") + " android"
+      appCount: n => n == 0 ? "لا تطبيقات" : n == 1 ? "تطبيق واحد" : n == 2 ? "تطبيقان" : "${n} " + (n % 100 >= 3 && n % 100 <= 10 ? "تطبيقات" : n % 100 >= 11 ? "تطبيقا" : "تطبيق")
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "قيد الشحن", "plugged in": "موصول", "on battery": "على البطارية", "good": "جيدة",
+        "overheating": "سخونة زائدة", "dead": "تالفة", "over voltage": "جهد زائد", "cold": "باردة",
+        "failing": "بها خلل", "wireless": "لاسلكي", "dock": "قاعدة"
+      }, w, w)
+    }
+    fa {
+      uptime: "uptime"; packages: "بسته‌ها"; display: "نمایشگر"; theme: "پوسته"; memory: "حافظه"; disk: "دیسک"
+      battery: "باتری"; apps: "برنامه‌ها"; byDefault: "پیش‌فرض"; phone: "تلفن"; device: "دستگاه"; hardware: "سخت‌افزار"
+      network: "شبکه"; launcher: "لانچر"; security: "امنیت"; build: "شماره ساخت"; locale: "زبان"; cores: "هسته‌ها"
+      storage: "ذخیره‌سازی"; speed: "سرعت"; received: "دریافتی"; sent: "ارسالی"; mobile: "داده همراه"
+      level: "شارژ"; temperature: "دما"; voltage: "ولتاژ"; health: "سلامت"; cycles: "چرخه شارژ"
+      technology: "فناوری"; version: "نسخه"; explicit: "نصب دستی"; upgraded: "آخرین ارتقا"; never: "هنوز نه"
+      unknown: "نامشخص"; installLinux: "نصب linux"
+      notInstalled: "نصب نشده. arch linux arm یک ترمینال، عامل‌ها و pacman را به لانچر اضافه می‌کند."
+      upTo: ghz => " · تا ${ghz} GHz"
+      // Persian nouns stay singular after a number.
+      androidApps: n => "${n} برنامه android"
+      appCount: n => "${n} برنامه"
+      // android.battery's status, health and plug.
+      word: w => get({
+        "charging": "در حال شارژ", "plugged in": "وصل به برق", "on battery": "با باتری", "good": "خوب",
+        "overheating": "داغ شده", "dead": "از کار افتاده", "over voltage": "ولتاژ زیاد", "cold": "سرد",
+        "failing": "معیوب", "wireless": "بی‌سیم", "dock": "پایه"
       }, w, w)
     }
   }

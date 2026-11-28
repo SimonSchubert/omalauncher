@@ -10,6 +10,9 @@ const val FILES_COMMAND = "omarchy-files"
 /** Exec of the Voice entry; the launcher opens its voice screen for it (see OpenBridge's shim). */
 const val VOICE_COMMAND = "omarchy-voice"
 
+/** Exec of the Terminal entry: foot, or the built-in terminal where style.toml picks it (see Runtime.launch). */
+const val TERMINAL_COMMAND = "foot"
+
 /** Exec of the Editor entry and Linux's $EDITOR; the launcher's own editor (see OpenBridge's shim). */
 const val EDIT_COMMAND = "omarchy-edit"
 
@@ -30,7 +33,7 @@ private fun entry(
  */
 private val CURATED =
     mapOf(
-        "foot" to entry("Terminal", "foot", terminal = false, icon = "foot"),
+        "foot" to entry("Terminal", TERMINAL_COMMAND, terminal = false, icon = "foot"),
         "btop" to entry("btop", "btop", icon = "btop"),
         "omarchy-files" to entry("Files", FILES_COMMAND, terminal = false, icon = bundledIcon("files")),
         "micro" to entry("Editor", EDIT_COMMAND, terminal = false, icon = bundledIcon("editor")),

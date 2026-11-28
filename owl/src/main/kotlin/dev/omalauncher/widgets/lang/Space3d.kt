@@ -67,7 +67,7 @@ class Mesh internal constructor(
     val faceNormals = FloatArray(tris.size)
 
     /** Each triangle's size, for weighing its normal in [cornerNormals]: twice its area. */
-    private val areas = FloatArray(triangles)
+    internal val areas = FloatArray(triangles)
 
     /** The bounding sphere, for skipping a model that's out of view. */
     val cx: Float
@@ -127,6 +127,7 @@ class Mesh internal constructor(
      */
     val cornerNormals: FloatArray by lazy {
         val out = FloatArray(tris.size * 3)
+        if (MeshKernels.kernel?.cornerNormals(points, tris, faceNormals, areas, out) == true) return@lazy out
         val at = HashMap<Position, MutableList<Int>>()
         fun key(p: Int) = Position(points[3 * p], points[3 * p + 1], points[3 * p + 2])
         for (t in 0 until triangles) for (k in 0..2) at.getOrPut(key(tris[3 * t + k])) { ArrayList(6) } += t
@@ -487,6 +488,7 @@ object Meshes {
         text: String,
         materials: Value,
     ): Mesh {
+        MeshKernels.kernel?.scanObj(text)?.let { return objMesh(it, materials) }
         val b = MeshBuilder()
         val vt = ArrayList<Float>()
         var color = -1
@@ -540,6 +542,42 @@ object Meshes {
             }
         }
         return b.build(smooth)
+    }
+
+    /** [parseObj]'s mesh from what a [MeshKernel] read of the file: the same points, faces, colors and errors. */
+    private fun objMesh(
+        o: ObjParts,
+        materials: Value,
+    ): Mesh {
+        val b = MeshBuilder()
+        val p = o.points
+        for (i in 0 until p.size / 3) b.point(p[3 * i], p[3 * i + 1], p[3 * i + 2])
+        val mats = (materials as? Obj)?.fields
+        // Each usemtl takes its palette place where it comes, as when the lines are read one by one.
+        val colors = IntArray(o.materials.size) { b.color(mats?.get(o.materials[it])) }
+        val faces = o.faceTex.size
+        val anyTex = faces > 0 && o.faceTex.all { it }
+        val vt = o.vt
+        val uv = FloatArray(6)
+        val corner = IntArray(3)
+        for (f in 0 until faces) {
+            val first = o.faceStart[f]
+            val color = o.faceMaterial[f].let { if (it < 0) -1 else colors[it] }
+            for (k in 1 until o.faceStart[f + 1] - first - 1) {
+                if (anyTex) {
+                    corner[0] = first
+                    corner[1] = first + k
+                    corner[2] = first + k + 1
+                    for (m in 0..2) {
+                        val t = o.cornerTex[corner[m]]
+                        uv[2 * m] = vt.getOrElse(2 * t) { 0f }
+                        uv[2 * m + 1] = 1f - vt.getOrElse(2 * t + 1) { 0f }
+                    }
+                }
+                b.tri(o.corners[first], o.corners[first + k], o.corners[first + k + 1], if (anyTex) uv else null, color)
+            }
+        }
+        return b.build(o.smooth)
     }
 
     /** turn(...)'s rotation as a 3x3 matrix, row by row: around z, then x, then y, each counterclockwise seen from its positive end. */
@@ -699,6 +737,53 @@ class Camera(
 }
 
 /**
+ * A [Scene3d]'s work per triangle, done somewhere faster than here: the app's is C (cpp/scene3d.c). It keeps the
+ * staged triangles itself, and must give the numbers [Scene3d] gives without it.
+ */
+interface SceneKernel {
+    /** Starts a frame: nothing is staged. */
+    fun reset()
+
+    /**
+     * Stages a model's faces that show: [v] is [Scene3d.KERNEL_FLOATS] numbers in the order [Scene3d.add] fills them in,
+     * [flags] of KERNEL_ ones, the arrays a [Mesh]'s. A mesh cut by a tree comes with the tree's [Bsp.planes] and
+     * [Bsp.nodes], and the eye at [ex], [ey], [ez] in the mesh's own space, to order its faces as [Bsp.order] does.
+     * Returns the triangles staged so far in the frame, or less than 0 when there are too many.
+     */
+    fun add(
+        v: FloatArray,
+        color: Int,
+        flags: Int,
+        texIndex: Int,
+        triangles: Int,
+        points: FloatArray,
+        tris: IntArray,
+        faceNormals: FloatArray,
+        cornerNormals: FloatArray?,
+        uvs: FloatArray?,
+        colorIndex: IntArray?,
+        palette: IntArray?,
+        planes: FloatArray?,
+        nodes: IntArray?,
+        ex: Float,
+        ey: Float,
+        ez: Float,
+    ): Int
+
+    /**
+     * Sorts the staged triangles far to near into [verts], [texs] and [colors], which have room for them, and their
+     * runs by texture into [batches], three each: first triangle, how many, texture. Returns how many runs there
+     * are; [batches] is only filled when it has room for them all.
+     */
+    fun finish(
+        verts: FloatArray,
+        texs: FloatArray,
+        colors: IntArray,
+        batches: IntArray,
+    ): Int
+}
+
+/**
  * Turns a scene's models into 2D triangles, ready for one drawVertices call per texture: each model is moved
  * into the camera's view, skipped whole when it's out of view, its faces turned away dropped, the rest lit,
  * fogged, cut at the near plane and projected; then every triangle of the scene is sorted far to near, so the
@@ -707,7 +792,10 @@ class Camera(
  *
  * Kept by a Canvas between frames: its arrays grow to the largest scene and are reused.
  */
-class Scene3d {
+class Scene3d(
+    /** Does the work per triangle instead of the Kotlin here, when given. */
+    private val kernel: SceneKernel? = null,
+) {
     private lateinit var cam: Camera
     private var w = 0f
     private var h = 0f
@@ -768,6 +856,15 @@ class Scene3d {
     private val rot = FloatArray(9)
     private val tmp = FloatArray(3)
 
+    /** The turn [rot] is of, as float bits (none yet: no turn never reaches it); models turned alike, one after the other, skip the sines and cosines. */
+    private var rotX = 0
+    private var rotY = 0
+    private var rotZ = 0
+
+    /** What [kernel] is told of a model, and its runs. */
+    private val kv = FloatArray(KERNEL_FLOATS)
+    private var kbatches = IntArray(3 * 16)
+
     /** A model's faces in its tree's order. */
     private var order = IntArray(256)
 
@@ -810,6 +907,7 @@ class Scene3d {
         batches = 0
         textures.clear()
         texSizes.clear()
+        kernel?.reset()
     }
 
     /**
@@ -834,7 +932,7 @@ class Scene3d {
         if (mesh.triangles == 0) return
         val first = n
         val amb = if (ambient.isNaN()) this.ambient else ambient.coerceIn(0f, 1f)
-        val r = Meshes.rotation(turn[0], turn[1], turn[2], rot)
+        val r = rotation(turn)
         val sx = scale[0]
         val sy = scale[1]
         val sz = scale[2]
@@ -883,10 +981,19 @@ class Scene3d {
         // space (a point's side of a plane doesn't change when the model is moved, turned or stretched).
         val bsp = if (sx != 0f && sy != 0f && sz != 0f) mesh.bsp else null
         val drawn = bsp?.mesh ?: mesh
+        var ex = 0f
+        var ey = 0f
+        var ez = 0f
         if (bsp != null) {
-            if (order.size < drawn.triangles) order = IntArray(drawn.triangles)
             // The eye from the model: -(at - eye), turned back (the transpose) and unstretched.
-            bsp.order(-(r[0] * qx + r[3] * qy + r[6] * qz) / sx, -(r[1] * qx + r[4] * qy + r[7] * qz) / sy, -(r[2] * qx + r[5] * qy + r[8] * qz) / sz, order)
+            ex = -(r[0] * qx + r[3] * qy + r[6] * qz) / sx
+            ey = -(r[1] * qx + r[4] * qy + r[7] * qz) / sy
+            ez = -(r[2] * qx + r[5] * qy + r[8] * qz) / sz
+            // A kernel walks the tree itself.
+            if (kernel == null) {
+                if (order.size < drawn.triangles) order = IntArray(drawn.triangles)
+                bsp.order(ex, ey, ez, order)
+            }
         }
         val count = drawn.points.size / 3
         if (px.size < count) {
@@ -922,6 +1029,22 @@ class Scene3d {
         val ci = drawn.colorIndex
         val near = cam.near
         val far = cam.far
+        if (kernel != null) {
+            val v = kv
+            v[0] = c00; v[1] = c01; v[2] = c02; v[3] = c10; v[4] = c11; v[5] = c12; v[6] = c20; v[7] = c21; v[8] = c22
+            v[9] = ox; v[10] = oy; v[11] = oz
+            v[12] = n00; v[13] = n01; v[14] = n02; v[15] = n10; v[16] = n11; v[17] = n12; v[18] = n20; v[19] = n21; v[20] = n22
+            v[21] = near; v[22] = far; v[23] = tx; v[24] = ty; v[25] = focal; v[26] = w; v[27] = h
+            v[28] = lx; v[29] = ly; v[30] = lz; v[31] = amb
+            v[32] = fogFrom; v[33] = fogR; v[34] = fogG; v[35] = fogB
+            v[36] = if (texIndex >= 0) texSizes[2 * texIndex] else 0f
+            v[37] = if (texIndex >= 0) texSizes[2 * texIndex + 1] else 0f
+            val flags = (if (twoSided) KERNEL_TWO_SIDED else 0) or (if (fog) KERNEL_FOG else 0) or (if (bsp != null) KERNEL_OWN_ORDER else 0)
+            val staged = kernel.add(v, color, flags, texIndex, drawn.triangles, pts, tris, fn, cn, uvs, ci, palette, bsp?.planes, bsp?.nodes, ex, ey, ez)
+            if (staged < 0) throw WidgetError("more than $MAX_SCENE_TRIANGLES triangles in one scene")
+            n = staged
+            return
+        }
         for (q in 0 until drawn.triangles) {
             val t = if (bsp != null) order[q] else q
             val a = tris[3 * t]
@@ -1078,8 +1201,49 @@ class Scene3d {
         tex = tex.copyOf(size)
     }
 
+    /** [turn]'s rotation, as [Meshes.rotation] gives it: no turn and the last model's turn are kept. */
+    private fun rotation(turn: FloatArray): FloatArray {
+        val x = java.lang.Float.floatToRawIntBits(turn[0])
+        val y = java.lang.Float.floatToRawIntBits(turn[1])
+        val z = java.lang.Float.floatToRawIntBits(turn[2])
+        if (x == 0 && y == 0 && z == 0) return NO_TURN
+        if (x != rotX || y != rotY || z != rotZ) {
+            Meshes.rotation(turn[0], turn[1], turn[2], rot)
+            rotX = x
+            rotY = y
+            rotZ = z
+        }
+        return rot
+    }
+
     /** Sorts the staged triangles far to near into [verts], [colors] and [texs], in [batches] by texture. */
     fun finish() {
+        if (kernel != null) {
+            if (verts.size < 6 * n) {
+                val size = maxOf(6 * n, verts.size * 2)
+                verts = FloatArray(size)
+                texs = FloatArray(size)
+                colors = IntArray(size)
+            }
+            var runs = kernel.finish(verts, texs, colors, kbatches)
+            if (3 * runs > kbatches.size) {
+                kbatches = IntArray(3 * runs)
+                runs = kernel.finish(verts, texs, colors, kbatches)
+            }
+            if (runs < 0) throw WidgetError("a scene ran out of memory")
+            if (batchStart.size < runs) {
+                batchStart = IntArray(runs)
+                batchCount = IntArray(runs)
+                batchTexture = IntArray(runs)
+            }
+            for (b in 0 until runs) {
+                batchStart[b] = kbatches[3 * b]
+                batchCount[b] = kbatches[3 * b + 1]
+                batchTexture[b] = kbatches[3 * b + 2]
+            }
+            batches = runs
+            return
+        }
         if (keys.size < n) keys = LongArray(depth.size)
         // Depths are positive, so their float bits sort as they do; ties keep the order the models came in.
         for (i in 0 until n) keys[i] = (java.lang.Float.floatToRawIntBits(depth[i]).toLong() shl 32) or (n - i).toLong()
@@ -1111,5 +1275,18 @@ class Scene3d {
             }
             batchCount[batches - 1]++
         }
+    }
+
+    companion object {
+        /** How many numbers [SceneKernel.add] takes: the matrices of [add], then the view, the light, the fog and the texture's size. */
+        const val KERNEL_FLOATS = 38
+        const val KERNEL_TWO_SIDED = 1
+        const val KERNEL_FOG = 2
+
+        /** The model's faces came in its tree's order, which stands: see the end of [add]. */
+        const val KERNEL_OWN_ORDER = 4
+
+        /** The rotation of no turn; read, never written. */
+        private val NO_TURN = Meshes.rotation(0f, 0f, 0f, FloatArray(9))
     }
 }

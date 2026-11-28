@@ -84,6 +84,7 @@ import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.LinuxState
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.TerminalText
+import dev.omalauncher.terminal.TerminalLibrary
 import dev.omalauncher.theme.OmarchyTheme
 import dev.omalauncher.theme.Setting
 import dev.omalauncher.theme.Style
@@ -110,6 +111,8 @@ import dev.omalauncher.ui.EdgeGap
 import dev.omalauncher.ui.Glyph
 import dev.omalauncher.ui.HomeGap
 import dev.omalauncher.ui.LauncherStyle
+import dev.omalauncher.ui.LeftToRight
+import dev.omalauncher.ui.TextAlignEnd
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.OverlayPanel
 import dev.omalauncher.ui.Palette
@@ -490,6 +493,21 @@ private fun TerminalSection(
 ) {
     LaunchedEffect(Unit) { font.refreshFamilies() }
     Heading(R.string.style_terminal)
+    // Only where this build has it (TerminalLibrary): a style.toml asking for it elsewhere gets foot.
+    if (TerminalLibrary.available) {
+        val foot = stringResource(R.string.style_terminal_foot)
+        val own = stringResource(R.string.style_terminal_omaterminal)
+        val selected = if (style.style[Style.TERMINAL_BUILT_IN]) own else foot
+        DropdownOption(
+            stringResource(R.string.style_terminal_opens_in),
+            value = { BasicText(selected, Modifier.weight(1f, fill = false), style = Mono.copy(color = Palette.foreground), maxLines = 1) },
+        ) { close ->
+            ChoicePopup(listOf(foot, own), selected, BelowAnchorStart, onDismiss = close, onPick = { pick ->
+                style.update { it.with(Style.TERMINAL_BUILT_IN, pick == own) }
+            }, label = { it })
+        }
+        OptionHint(stringResource(R.string.style_terminal_built_in_hint), Modifier.padding(bottom = 4.dp))
+    }
     FontOption(font.families, font.family) { family -> style.update { it.with(Style.TERMINAL_FONT, family) } }
     OptionHint(stringResource(R.string.style_terminal_hint), Modifier.padding(bottom = 4.dp))
     NumberOption(R.string.style_text, TerminalText.entries.map { it.label to it.em.toDouble() }, Style.TERMINAL_TEXT, style, unit = " dp")
@@ -499,13 +517,15 @@ private fun TerminalSection(
     OptionHint(pluralStringResource(R.plurals.style_terminal_size, columns, TerminalFont.format(font.size).removeSuffix(".0"), columns), Modifier.padding(top = 2.dp))
     Flag(R.string.style_keyboard_suggestions, R.string.style_on, R.string.style_off, style, Style.TERMINAL_SUGGESTIONS)
     OptionHint(stringResource(R.string.style_keyboard_suggestions_hint), Modifier.padding(bottom = 4.dp))
-    TerminalPreview(font, launcherFont)
+    // A terminal's lines start at the left in every language.
+    LeftToRight { TerminalPreview(font, launcherFont) }
 }
 
 /**
  * Terminal output in the chosen [TerminalFont] and the theme's terminal colors,
  * drawn here as foot will draw it: at its pixel size and pad, wrapped at its
- * columns, without ligatures. The family loads from Linux's files; until it
+ * columns, without ligatures. The built-in terminal has the same cells, so this
+ * shows its wrapping too. The family loads from Linux's files; until it
  * has, the one before it (or Android's monospace) stands in.
  */
 @Composable
@@ -822,28 +842,31 @@ private fun Stepper(
         // Keys at the end of the range go on to the other step, and from reset as it goes, to a step.
         val minus = remember { FocusRequester() }
         val plus = remember { FocusRequester() }
-        Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            val down = value > setting.range.start
-            val up = value < setting.range.endInclusive
-            BasicText(
-                "−",
-                Modifier
-                    .focusRequester(minus)
-                    .passesKeys(plus)
-                    .clickable(enabled = down) { set(ceil(value - 1)) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                style = Mono.copy(color = if (down) Palette.foreground else Palette.muted),
-            )
-            BasicText(Toml.format(value) + " dp", Modifier.widthIn(min = 64.dp), style = Mono.copy(textAlign = TextAlign.Center), softWrap = false)
-            BasicText(
-                "+",
-                Modifier
-                    .focusRequester(plus)
-                    .passesKeys(minus)
-                    .clickable(enabled = up) { set(floor(value + 1)) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                style = Mono.copy(color = if (up) Palette.foreground else Palette.muted),
-            )
+        // Less at the left and more at the right in every language, as the sliders have it.
+        LeftToRight {
+            Row(Modifier.frame(1.dp, Palette.border, radius = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                val down = value > setting.range.start
+                val up = value < setting.range.endInclusive
+                BasicText(
+                    "−",
+                    Modifier
+                        .focusRequester(minus)
+                        .passesKeys(plus)
+                        .clickable(enabled = down) { set(ceil(value - 1)) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = Mono.copy(color = if (down) Palette.foreground else Palette.muted),
+                )
+                BasicText(Toml.format(value) + " dp", Modifier.widthIn(min = 64.dp), style = Mono.copy(textAlign = TextAlign.Center), softWrap = false)
+                BasicText(
+                    "+",
+                    Modifier
+                        .focusRequester(plus)
+                        .passesKeys(minus)
+                        .clickable(enabled = up) { set(floor(value + 1)) }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    style = Mono.copy(color = if (up) Palette.foreground else Palette.muted),
+                )
+            }
         }
         if (all.any { style.style[it] != it.default }) {
             BracketAction(stringResource(R.string.style_reset), Palette.muted, Modifier.passesKeys(minus, plus)) { style.update { it.with(all) { s -> s.default } } }
@@ -905,7 +928,7 @@ private fun NumberSlider(
                     drawRoundRect(accent, Offset((size.width - thumbW) * f, cy - thumbH / 2), Size(thumbW, thumbH), CornerRadius(3.dp.toPx() * LauncherStyle.cornerScale))
                 },
         )
-        BasicText(Toml.format(value), Modifier.widthIn(min = 56.dp).padding(start = 12.dp), style = Mono.copy(textAlign = TextAlign.End), softWrap = false)
+        BasicText(Toml.format(value), Modifier.widthIn(min = 56.dp).padding(start = 12.dp), style = Mono.copy(textAlign = TextAlignEnd), softWrap = false)
         // Always there, so the slider doesn't narrow under the finger as it leaves the default.
         BracketAction(stringResource(R.string.style_reset), Palette.muted) { style.update { it.with(setting, setting.default) } }
     }

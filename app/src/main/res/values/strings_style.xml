@@ -129,6 +129,11 @@
     <string name="style_terminal_hint">terminals opened from now on · more with pacman, like ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">keyboard suggestions</string>
     <string name="style_keyboard_suggestions_hint">suggestions, glide typing and dictation; text reaches the terminal a word at a time · from the next time the keyboard opens</string>
+    <!-- The terminal foot, a program's name. -->
+    <string name="style_terminal_foot" translatable="false">foot</string>
+    <string name="style_terminal_opens_in">opens in</string>
+    <string name="style_terminal_omaterminal" translatable="false">omaterminal</string>
+    <string name="style_terminal_built_in_hint">omaterminal: Omalauncher’s own terminal, with the phone’s keyboard as in any app · for terminals opened from now on</string>
     <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->
     <plurals name="style_terminal_size">
         <item quantity="one">%1$s pt · %2$d column in portrait</item>

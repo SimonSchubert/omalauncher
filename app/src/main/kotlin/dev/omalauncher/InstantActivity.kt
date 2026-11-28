@@ -19,6 +19,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
 import dev.omalauncher.ui.KeyIndicated
+import dev.omalauncher.ui.LauncherDirection
 import dev.omalauncher.ui.keyPressed
 import dev.omalauncher.ui.keysRoot
 import dev.omalauncher.ui.keysFocused
@@ -76,7 +77,7 @@ abstract class InstantActivity : ComponentActivity() {
         applySystemBars(this, Palette.isLight)
         setContent {
             SystemBarsEffect(this)
-            if (!hidden) KeyIndicated { Box(Modifier.keysRoot()) { content() } }
+            if (!hidden) KeyIndicated { LauncherDirection { Box(Modifier.keysRoot()) { content() } } }
         }
     }
 

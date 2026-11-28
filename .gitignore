@@ -8,6 +8,8 @@ local.properties
 .kotlin/
 # fetched by scripts/fetch-proot.sh
 app/src/main/jniLibs/
+# built by scripts/fetch-ghostty-vt.sh
+app/src/main/cpp/ghostty-vt/
 # fetched by app/build.gradle.kts (sherpa-onnx)
 app/libs/
 # fastlane

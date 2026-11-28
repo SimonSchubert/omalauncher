@@ -29,7 +29,7 @@ KEYBOARD SHORTCUTS
 With a hardware keyboard: Super+T opens a terminal, Super+D the drawer, Super+1 to 9 switch pages and Super+W closes a window.
 
 LANGUAGES
-English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe, Italiano and Tiếng Việt.
+English, Bahasa Indonesia, Español, Português, Deutsch, 简体中文, Русский, 日本語, Українська, Français, Türkçe, Italiano, Tiếng Việt, العربية and فارسی.
 
 PRIVACY
 No account, no ads, no tracking. Omalauncher only connects to the internet to download themes, widgets, weather and, if you choose, Linux and its packages.

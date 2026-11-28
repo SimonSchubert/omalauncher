@@ -23,6 +23,7 @@ import dev.omalauncher.linux.AudioBridge
 import dev.omalauncher.linux.Bootstrap
 import dev.omalauncher.linux.EDIT_COMMAND
 import dev.omalauncher.linux.FILES_COMMAND
+import dev.omalauncher.linux.TERMINAL_COMMAND
 import dev.omalauncher.linux.VOICE_COMMAND
 import dev.omalauncher.linux.Gpu
 import dev.omalauncher.linux.LinuxApp
@@ -51,6 +52,8 @@ import dev.omalauncher.ui.settings.SettingsPage
 import dev.omalauncher.voice.Speaker
 import dev.omalauncher.voice.VoiceSession
 import dev.omalauncher.ui.home.TerminalTiles
+import dev.omalauncher.ui.terminal.TerminalWindows
+import dev.omalauncher.terminal.TerminalLibrary
 import dev.omalauncher.ui.WindowManager
 import dev.omalauncher.ui.bitmapMask
 import dev.omalauncher.ui.Palette
@@ -190,6 +193,9 @@ class Runtime(
     /** Its jobs write files and start the guest; one that fails (storage full) mustn't take the home screen down. */
     private val scope =
         CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e -> Log.e(TAG, "background job failed", e) })
+
+    /** The built-in terminal's windows, where style.toml's terminal.built-in has new terminals open in it. */
+    val terminalWindows = TerminalWindows(proot, scope)
     private var started = false
     private var prepared = false
 
@@ -275,20 +281,32 @@ class Runtime(
             // Recents uses the activity's manifest label, not the task description's; see the aliases in the manifest.
             val window = wm.windowByHandle(handle)
             val name = window?.let { displayName(it.appId, it.title) }
-            val activity =
-                when (name) {
-                    "Terminal" -> "TerminalWindow"
-                    "btop" -> "BtopWindow"
-                    else -> agentOf(window?.appId.orEmpty(), name)?.windowAlias ?: "LinuxWindowActivity"
-                }
-            InstantActivity.startInstantly(
-                context,
-                Intent()
-                    .setClassName(context, "dev.omalauncher.$activity")
-                    .setData(Uri.parse("omarchy://window/$handle"))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
-            )
+            openWindowTask(name, agentOf(window?.appId.orEmpty(), name), "omarchy://window/$handle")
         }
+    }
+
+    /**
+     * Opens a window's own task: LinuxWindowActivity, or the alias whose manifest label is [name] (Recents shows that
+     * label, not the task description's), at [uri], which says the window.
+     */
+    private fun openWindowTask(
+        name: String?,
+        agent: Agent?,
+        uri: String,
+    ) {
+        val activity =
+            when (name) {
+                "Terminal" -> "TerminalWindow"
+                "btop" -> "BtopWindow"
+                else -> agent?.windowAlias ?: "LinuxWindowActivity"
+            }
+        InstantActivity.startInstantly(
+            context,
+            Intent()
+                .setClassName(context, "dev.omalauncher.$activity")
+                .setData(Uri.parse(uri))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK),
+        )
     }
 
     /** The launcher first (it never waits for Linux), then Linux if it's installed or an install was started. */
@@ -682,7 +700,8 @@ class Runtime(
     /**
      * Opens [command] (or a shell) in a terminal named [name]. Each gets its own
      * foot app_id, so Recents shows "Grok" or "btop" rather than one "foot" per window.
-     * An [agent] session gets the agent's logo and Recents entry whatever it's named.
+     * An [agent] session gets the agent's logo and Recents entry whatever it's named. With style.toml's
+     * terminal.built-in it opens in the launcher's own terminal instead, where this build has it.
      */
     fun terminal(
         command: String?,
@@ -693,6 +712,13 @@ class Runtime(
             openSettings(SettingsPage.Linux)
             return
         }
+        if (builtInTerminal) {
+            // An agent's own app-list entry comes without its agent: found by name, as agentOf does for foot windows.
+            val runs = agent ?: AGENTS.firstOrNull { it.name == name }
+            val window = terminalWindows.add(command, name, runs, terminalFont.sizeOf(command))
+            openWindowTask(name, runs, "omarchy://${TerminalWindows.HOST}/${window.id}")
+            return
+        }
         // Per agent, so a Claude and a Grok "New app" don't share an app_id.
         val slug = if (agent == null || agent.name == name) name else "${agent.bin} $name"
         val appId = "omarchy." + slug.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
@@ -701,6 +727,9 @@ class Runtime(
         val args = command?.let { " -e bash -c " + shellQuote(it) }.orEmpty()
         launch("foot --app-id=$appId${terminalFont.optionFor(appId, command)}$args")
     }
+
+    /** Whether new terminals open in the built-in terminal: picked in style.toml, and in this build. */
+    private val builtInTerminal get() = style.style[Style.TERMINAL_BUILT_IN] && TerminalLibrary.available
 
     /** Opens a pinned app from the home screen. A Linux one runs its current desktop entry, which an update may have changed. */
     fun open(shortcut: Shortcut) {
@@ -716,6 +745,8 @@ class Runtime(
         if (app.exec == EDIT_COMMAND) return edit()
         if (app.exec == VOICE_COMMAND) return openVoice()
         if (app.terminal) return terminal(app.exec, app.name)
+        // The Terminal entry runs foot itself (DefaultApps); with the built-in terminal picked it opens that.
+        if (app.exec == TERMINAL_COMMAND && builtInTerminal) return terminal(null, app.name)
         // Like an Android icon: an app that already has a window comes back to it. Single-instance
         // apps would otherwise just exit on a second launch, showing nothing. Quickshell apps (App Finder)
         // all share the app_id org.quickshell, so their window title, which is their name, decides.

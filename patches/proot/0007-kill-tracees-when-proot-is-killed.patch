@@ -15,6 +15,7 @@ its tracer exits, however it ends. New tracees inherit it with the other
 options.
 
 diff --git a/src/compat.h b/src/compat.h
+index 24dcea0..c01d33e 100644
 --- a/src/compat.h
 +++ b/src/compat.h
 @@ -135,6 +135,9 @@
@@ -28,9 +29,10 @@ diff --git a/src/compat.h b/src/compat.h
  #        define PTRACE_EVENT_FORK	1
  #    endif
 diff --git a/src/tracee/event.c b/src/tracee/event.c
+index 1414226..0119684 100644
 --- a/src/tracee/event.c
 +++ b/src/tracee/event.c
-@@ -527,7 +527,14 @@
+@@ -543,7 +543,14 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
  				PTRACE_O_TRACEVFORKDONE	|
  				PTRACE_O_TRACEEXEC	|
  				PTRACE_O_TRACECLONE	|

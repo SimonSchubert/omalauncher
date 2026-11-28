@@ -88,6 +88,17 @@ class LangTest {
         return el.props["text"]!!(Env.root(host)).toString()
     }
 
+    /** A list literal that isn't constant hands over its items, to be read one by one like a model's at: [x, y, z]. */
+    @Test fun listLiteralsKeepTheirItems() {
+        val p = Compiler.compile("widget \"t\" {\nstate x = 3\nText { text: [1, x, x * 2] }\nText { text: [1, 2] }\n}")
+        val env = Env.root(TestHost(p))
+        val (live, fixed) = p.root.map { (it as WNode.Element).props.getValue("text") }
+        assertEquals(listOf(1.0, 3.0, 6.0), live.items!!.map { it.num(env, 0.0) })
+        assertEquals("[1, 3, 6]", live(env).toString())
+        assertNull(fixed.items)
+        assertNotNull(fixed.const)
+    }
+
     private fun compileError(src: String): String =
         try {
             Compiler.compile(src)
@@ -96,6 +107,21 @@ class LangTest {
         } catch (e: CompileError) {
             Source(src).format(e)
         }
+
+    /** A short offending line prints in full; a huge one is windowed, so the message stays small (no OOM from a link). */
+    @Test fun formatWindowsAHugeLine() {
+        val short = compileError("widget \"x\" { size: 2x2; let a = 1 @ }")
+        assertTrue(short, short.contains("let a = 1 @"))
+        assertFalse(short, short.contains("…"))
+
+        val huge = compileError("widget \"x\" {\n  let a = \"${"A".repeat(1_000_000)}\" @\n}")
+        assertTrue("message stayed small: ${huge.length}", huge.length < 400)
+        assertTrue(huge, huge.contains("…"))
+        // The caret still points somewhere inside the shown window.
+        val lines = huge.lines()
+        assertEquals('^', lines.last().trim().single())
+        assertTrue(huge, lines.last().indexOf('^') in 2..lines[lines.size - 2].length)
+    }
 
     @Test fun arithmeticAndPrecedence() {
         assertEquals("7", text("1 + 2 * 3"))
@@ -850,7 +876,9 @@ class LangTest {
         // A text long enough that one match takes a while, on this machine, but gives up on its own. The faster of two
         // runs, so the first one's warm-up (class loading, the regex thread) on a slow runner doesn't pass for it.
         while (minOf(timed(), timed()) < 60)host.slots[0] = Num((host.slots[0] as Num).v + 4)
-        host.slots[1] = Num(40.0)
+        // Far more than the second of matches needed: once the JIT compiles the regex engine, a match can take a
+        // fraction of what it took above, and 40 of them finished in time on CI.
+        host.slots[1] = Num(400.0)
         val started = System.nanoTime()
         try {
             host.budget.eval(ev, Env.root(host))
@@ -858,7 +886,7 @@ class LangTest {
         } catch (e: WidgetError) {
             assertTrue(e.message, e.message!!.contains("in all in one update"))
         }
-        // Over 40 times 60 ms before.
+        // Over 400 times 60 ms before.
         assertTrue((System.nanoTime() - started) / 1_000_000 < 1800)
         // The pattern isn't refused, and the next update has its own allowance.
         host.slots[1] = Num(1.0)
@@ -2272,6 +2300,22 @@ class LangTest {
         assertTrue(compileError("widget \"t\" {\n strings { en { a: \"a\" } }\n Text { text: str.a }\n}").contains("owl 16"))
         val warned = Compiler.compile("widget \"t\" {\n meta { owl: 16 }\n strings { en { a: \"a\"; b: \"b\" } id { a: \"x\" } }\n Text { text: str.a }\n}", "en").warnings
         assertEquals(listOf("3:2: id has no b, so those show in English"), warned)
+    }
+
+    @Test fun rightToLeftOnlyWithThatLanguagesStringsFromOwl27() {
+        fun rtl(level: Int, sets: String, language: String, kind: String = "widget \"t\"") =
+            Compiler.compile("$kind {\n meta { owl: $level }\n strings { en { a: \"a\" } $sets }\n Text { text: str.a }\n}", language).rtl
+        assertTrue(rtl(27, "ar { a: \"ا\" }", "ar"))
+        assertTrue(rtl(27, "fa { a: \"ا\" }", "fa", "app \"t\""))
+        assertTrue(rtl(27, "ar { a: \"ا\" }", "ar", "panel \"t\""))
+        assertTrue(rtl(27, "ar { a: \"ا\" }", "ar", "strip \"t\""))
+        // Made before owl 27, never seen mirrored: as it was.
+        assertFalse(rtl(26, "ar { a: \"ا\" }", "ar"))
+        // No set for the phone's language: English text, left to right.
+        assertFalse(rtl(27, "ar { a: \"ا\" }", "fa"))
+        assertFalse(rtl(27, "", "ar"))
+        assertFalse(rtl(27, "de { a: \"ä\" }", "de"))
+        assertFalse(Compiler.compile("widget {\n meta { owl: 27 }\n Text { text: 1 }\n}", "ar").rtl)
     }
 
     @Test fun lockHoldsTheHomeScreenStill() {

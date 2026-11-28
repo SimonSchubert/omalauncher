@@ -1,5 +1,5 @@
 widget "owl" {
-  meta { owl: 19; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.4"; license: "MIT"; category: "fun" }
+  meta { owl: 27; description: "A pixel owl to look after. Tap to hatch it, feed it and pet it; it sleeps at night and dances to your music"; version: "1.4"; license: "MIT"; category: "fun" }
   // Breathing, blinking and dancing step a few times a second: 10 is plenty. The rocking egg and the hop
   // and flap after a tap are smooth motion, so 30 for those.
   fps: time >= tapAt && time - tapAt < 3 ? 30 : !hatched ? (modes.saver ? 15 : 30) : modes.saver ? 5 : 10
@@ -82,6 +82,16 @@ widget "owl" {
       eggShort: "chạm để nở"; egg: "một quả trứng · chạm để nở"; hungryShort: "chạm để cho ăn"; hungry: "đói rồi · chạm để cho ăn"
       music: "nhạc"; minutes: n => "${n} phút"; hours: n => "${n} giờ"
       day: d => "ngày ${d}"; tiredShort: b => "mệt · ${b}%"; tired: b => "mệt · pin ${b}%"; fed: t => "đã ăn ${t} trước"
+    }
+    ar {
+      eggShort: "انقر لتفقس"; egg: "بيضة · انقر لتفقس"; hungryShort: "انقر لإطعامها"; hungry: "جائعة · انقر لإطعامها"
+      music: "موسيقى"; minutes: n => "${n} د"; hours: n => "${n} س"
+      day: d => "اليوم ${d}"; tiredShort: b => "متعبة · ${b}%"; tired: b => "متعبة · البطارية ${b}%"; fed: t => "أكلت قبل ${t}"
+    }
+    fa {
+      eggShort: "ضربه بزنید"; egg: "تخم · ضربه بزنید تا دربیاید"; hungryShort: "غذا بدهید"; hungry: "گرسنه · برای غذا ضربه بزنید"
+      music: "موسیقی"; minutes: n => "${n} دقیقه"; hours: n => "${n} ساعت"
+      day: d => "روز ${d}"; tiredShort: b => "خسته · ${b}%"; tired: b => "خسته · باتری ${b}%"; fed: t => "غذا: ${t} پیش"
     }
   }
 

@@ -33,7 +33,7 @@ index 6aaef1d..73d07f9 100644
  	tracee/statx.o		\
  	ptrace/ptrace.o		\
 diff --git a/src/extension/fake_id0/fake_id0.c b/src/extension/fake_id0/fake_id0.c
-index bea4c8a..6da1e96 100644
+index 9402732..5ebe08e 100644
 --- a/src/extension/fake_id0/fake_id0.c
 +++ b/src/extension/fake_id0/fake_id0.c
 @@ -38,6 +38,7 @@
@@ -44,7 +44,7 @@ index bea4c8a..6da1e96 100644
  #include "syscall/syscall.h"
  #include "syscall/sysnum.h"
  #include "syscall/seccomp.h"
-@@ -506,6 +507,17 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
+@@ -527,6 +528,17 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
  
  	(void) chmod(path, new_mode);
  
@@ -62,7 +62,7 @@ index bea4c8a..6da1e96 100644
  	return;
  }
  
-@@ -1416,6 +1428,8 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
+@@ -1502,6 +1514,8 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
  		case PR_setresgid32:
  		case PR_chroot:
  			status = handle_sigsys(tracee, config);
@@ -113,7 +113,7 @@ index b8eabdf..c7d523b 100644
  
  #endif /* F2FS_BUG_H */
 diff --git a/src/syscall/enter.c b/src/syscall/enter.c
-index 6bfdd56..acc1dd8 100644
+index 4d721f6..83734a1 100644
 --- a/src/syscall/enter.c
 +++ b/src/syscall/enter.c
 @@ -69,6 +69,7 @@
@@ -124,7 +124,7 @@ index 6bfdd56..acc1dd8 100644
  #include "tracee/tracee.h"
  #include "tracee/reg.h"
  #include "tracee/mem.h"
-@@ -2753,6 +2754,18 @@ int translate_syscall_enter(Tracee *tracee)
+@@ -2917,6 +2918,18 @@ int translate_syscall_enter(Tracee *tracee)
  		break;
  
  	case PR_prctl:
@@ -143,7 +143,7 @@ index 6bfdd56..acc1dd8 100644
  		/* Prevent tracees from setting dumpable flag.
  		 * (Otherwise it could break tracee memory access)  */
  		if (peek_reg(tracee, CURRENT, SYSARG_1) == PR_SET_DUMPABLE) {
-@@ -2897,6 +2910,9 @@ int translate_syscall_enter(Tracee *tracee)
+@@ -3061,6 +3074,9 @@ int translate_syscall_enter(Tracee *tracee)
  
  
  end:
@@ -154,7 +154,7 @@ index 6bfdd56..acc1dd8 100644
  	if (status2 < 0)
  		status = status2;
 diff --git a/src/syscall/exit.c b/src/syscall/exit.c
-index 285b67a..48b56a6 100644
+index 76d96ce..2f870b7 100644
 --- a/src/syscall/exit.c
 +++ b/src/syscall/exit.c
 @@ -39,6 +39,7 @@
@@ -165,7 +165,7 @@ index 285b67a..48b56a6 100644
  #include "tracee/reg.h"
  #include "tracee/mem.h"
  #include "tracee/abi.h"
-@@ -811,4 +812,6 @@ end:
+@@ -848,4 +849,6 @@ end:
  	status = notify_extensions(tracee, SYSCALL_EXIT_END, 0, 0);
  	if (status < 0)
  		poke_reg(tracee, SYSARG_RESULT, (word_t) status);
@@ -173,7 +173,7 @@ index 285b67a..48b56a6 100644
 +	fastpath_syscall(tracee, true);
  }
 diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
-index 58deeb3..f7e2c88 100644
+index 97451e6..0a19cbf 100644
 --- a/src/syscall/seccomp.c
 +++ b/src/syscall/seccomp.c
 @@ -41,6 +41,7 @@
@@ -638,10 +638,10 @@ index 0000000..8c21ba1
 +}
 diff --git a/src/tracee/fastpath.h b/src/tracee/fastpath.h
 new file mode 100644
-index 0000000..7f10b2a
+index 0000000..6698ebe
 --- /dev/null
 +++ b/src/tracee/fastpath.h
-@@ -0,0 +1,86 @@
+@@ -0,0 +1,88 @@
 +/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
 + *
 + * The fast lane: a library preloaded into guest programs answers simple
@@ -663,10 +663,12 @@ index 0000000..7f10b2a
 +#include <stdint.h>
 +#include "tracee/tracee.h"
 +
-+/* Where the library maps its "svc 0; ret".  Below EXEC_PIC_ADDRESS
-+ * (arch.h), which is where the loader puts programs.  The filter sees
-+ * the address of the instruction after the svc.  */
-+#define FASTPATH_ADDRESS 0x2fc0000000ULL
++/* Where the library maps its "svc 0; ret": 1 GiB below EXEC_PIC_ADDRESS
++ * (arch.h), which is where the loader puts programs, so between the
++ * loader and the program.  Anywhere below the loader would cut the
++ * address space PRoot keeps free for big mmap(2)s in two.  The filter
++ * sees the address of the instruction after the svc.  */
++#define FASTPATH_ADDRESS 0x54c0000000ULL
 +#define FASTPATH_SYSCALL_IP (FASTPATH_ADDRESS + 4)
 +
 +/* prctl(PR_PROOT_FASTPATH, buffer, size, what): fills @buffer and
@@ -680,7 +682,7 @@ index 0000000..7f10b2a
 +#define FASTPATH_INFO 0
 +#define FASTPATH_CWD 1
 +
-+#define FASTPATH_VERSION 2
++#define FASTPATH_VERSION 3
 +
 +/* A binding's host side lies inside the rootfs (or the other way
 + * round): a host path below the rootfs doesn't tell its guest path.  */
@@ -729,10 +731,10 @@ index 0000000..7f10b2a
 +
 +#endif /* TRACEE_FASTPATH_H */
 diff --git a/src/tracee/tracee.c b/src/tracee/tracee.c
-index 5da396f..cf1d1dd 100644
+index 3590752..a3373e0 100644
 --- a/src/tracee/tracee.c
 +++ b/src/tracee/tracee.c
-@@ -36,6 +36,7 @@
+@@ -37,6 +37,7 @@
  #include <inttypes.h>   /* PRI*, */
  
  #include "tracee/tracee.h"
@@ -740,7 +742,7 @@ index 5da396f..cf1d1dd 100644
  #include "tracee/reg.h"
  #include "tracee/mem.h"
  #include "path/binding.h"
-@@ -768,6 +769,10 @@ static int attach_child(Tracee *parent, word_t clone_flags, pid_t pid)
+@@ -890,6 +891,10 @@ static int attach_child(Tracee *parent, word_t clone_flags, pid_t pid)
  		child->fs = talloc_reference(child, parent->fs);
  	}
  	else {

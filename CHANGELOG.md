@@ -6,6 +6,18 @@ Dates are when the build was uploaded to Play.
 
 ## Unreleased
 
+## 1.12.0 (versionCode 48) – 2026-11-26
+
+- The launcher comes in Arabic and Persian, its first right-to-left languages: its screens, menus
+  and the stock widgets run right to left (owl 27), with home's pages, Linux windows and code left
+  to right as before.
+- omaterminal, the launcher's own terminal, can open terminals instead of foot (style › terminal):
+  typing goes through the phone's keyboard as in any app, and it uses about half the CPU.
+- A Linux window that keeps changing, such as an agent at work, takes about half the CPU to draw;
+  frosted widgets, monochrome icons, 3D scenes and btop/top in Linux cost less, worked out in C.
+- Fix: home could freeze building the drawer or the recent apps strip with a voice agent installed;
+  a widget's http source didn't fetch again when its headers changed.
+
 ## 1.11.0 (versionCode 47) – 2026-11-25
 
 - Voice reads replies aloud with Supertonic, natural voices that run on the phone itself: a 145 MB

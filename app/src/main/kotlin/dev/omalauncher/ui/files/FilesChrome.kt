@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
+import dev.omalauncher.ui.LauncherDirection
 import dev.omalauncher.storage.PhoneStorage
 import dev.omalauncher.R
 import dev.omalauncher.linux.GuestEntry
@@ -46,6 +47,7 @@ import dev.omalauncher.ui.Glyph
 import dev.omalauncher.ui.Icons
 import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.MenuItems
+import dev.omalauncher.ui.LeftToRight
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.PanelPadding
@@ -69,6 +71,8 @@ internal fun Breadcrumbs(
     val crumbs = listOf((if (phone) stringResource(R.string.files_place_phone_folders) else "/") to root) + parts.indices.map { i -> parts[i] to root + parts.take(i + 1).joinToString("/") }
     val state = rememberLazyListState()
     LaunchedEffect(path) { state.scrollToItem(crumbs.lastIndex) }
+    // A path reads from the left in every language.
+    LeftToRight {
     LazyRow(
         Modifier.bleed(PanelPadding),
         state = state,
@@ -86,6 +90,7 @@ internal fun Breadcrumbs(
                 style = Mono.copy(color = if (last) Palette.accent else Palette.muted),
             )
         }
+    }
     }
 }
 
@@ -259,6 +264,6 @@ internal fun MenuPopup(
     alignment: Alignment = Alignment.TopEnd,
 ) {
     Popup(alignment = alignment, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        Box(Modifier.holdsKeys()) { MenuItems(items, onDismiss, minWidth = 200.dp, itemPadding = 13.dp) }
+        LauncherDirection { Box(Modifier.holdsKeys()) { MenuItems(items, onDismiss, minWidth = 200.dp, itemPadding = 13.dp) } }
     }
 }

@@ -92,6 +92,8 @@ import dev.omalauncher.widgets.render.LocalHomeTiles
 import dev.omalauncher.widgets.editWidgetCommand
 import dev.omalauncher.widgets.fixDependenciesCommand
 import dev.omalauncher.widgets.newOwlCommand
+import dev.omalauncher.ui.LauncherDirection
+import dev.omalauncher.ui.LeftToRight
 import dev.omalauncher.ui.BracketAction
 import dev.omalauncher.ui.EdgeGap
 import dev.omalauncher.ui.ExtraKeys
@@ -444,6 +446,9 @@ fun HomeScreen(
                     bottom = bars.getBottom(density) + if (side != null) 0 else barRoom.roundToPx(),
                 )
             }
+        // Left to right in every language: pages are where the user put them, a face's run on from one to the next,
+        // and tiles and fingers are placed by their left edge. What home says there is in the launcher's direction again.
+        LeftToRight {
         HomeGrid(
             pager = pager,
             keepClear = keepClear,
@@ -490,7 +495,7 @@ fun HomeScreen(
                         app?.let { shortcutMenu(runtime, it, page = { item.page }, onOpen = { arrange.folder = null }) }
                     }
                 // Nothing until they're loaded, so the bar doesn't jump down as they arrive.
-                if (offered != null) Column {
+                if (offered != null) LauncherDirection { Column {
                     if (menu != null && offered.isNotEmpty()) {
                         MenuItems(emptyList(), { state.editing = null }, minWidth = 160.dp, itemPadding = 12.dp) {
                             ShortcutRows(offered, menu, { state.editing = null }, TextSize.Item, rule = false)
@@ -512,7 +517,7 @@ fun HomeScreen(
                         }
                         EditAction(stringResource(R.string.home_remove), Palette.red) { remove(item) }
                     }
-                }
+                } }
             },
             // A function of its own, which skips when its tile didn't change: a lambda's body here would run again for
             // every tile each time home recomposes, as on each page turn.
@@ -526,6 +531,7 @@ fun HomeScreen(
             onLongPressEmpty = { openMenu(null) },
             feed = { page ->
                 val agent = runtime.agents.default?.name
+                LauncherDirection {
                 PageInvite(
                     stringResource(R.string.home_face_invite_title),
                     agent?.let { stringResource(R.string.home_face_invite_text, it) } ?: stringResource(R.string.home_face_invite_text_no_agent),
@@ -538,9 +544,11 @@ fun HomeScreen(
                         state.show(SettingsPage.Linux)
                     }
                 }
+                }
             },
             invite = {
                 val agent = runtime.agents.default?.name
+                LauncherDirection {
                 PageInvite(
                     stringResource(R.string.home_widget_invite_title),
                     agent?.let { stringResource(R.string.home_widget_invite_text, it) } ?: stringResource(R.string.home_widget_invite_text_no_agent),
@@ -552,6 +560,7 @@ fun HomeScreen(
                     } else {
                         state.show(SettingsPage.Linux)
                     }
+                }
                 }
             },
             // Home turns to where a tile the user just added went; a shipped one that doesn't fit, as on a short
@@ -569,6 +578,7 @@ fun HomeScreen(
             onReorder = { app, before -> engine.shortcuts.moveBefore(app.key, before) },
             onRenameFolder = { folder, name -> engine.shortcuts.rename(folder.key, name) },
         )
+        }
     }
     }
 

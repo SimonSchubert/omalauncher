@@ -19,7 +19,7 @@ trap 'rm -rf "$WORK"' EXIT
 # the version and SHA256 here (from $REPO/dists/stable/main/binary-aarch64/Packages) and the source
 # links in LicensesScreen.kt together. PROOT's SHA256 is the one termux-packages pins in
 # packages/proot/build.sh.
-PROOT=5.1.107.96
+PROOT=5.1.107.102
 TALLOC=2.5.0
 SHMEM=0.7
 # The NDK Termux builds proot with (its clang version string), and one GitHub's Ubuntu runners have.
@@ -50,7 +50,7 @@ if [ -n "${PROOT_SRC:-}" ]; then
 else
   echo "fetching proot $PROOT source"
   curl -fsSL "https://github.com/termux/proot/archive/v$PROOT.zip" -o "$WORK/proot.zip"
-  echo "75f654fe60dea92dabff2bf083ae8bfe4f91baa6a1a374786a6bf391015eebaa  $WORK/proot.zip" |
+  echo "30d12a6e2cc4147123756ff58edea262d3083bbc238c12d0ab9b39e3d1c40852  $WORK/proot.zip" |
     shasum -a 256 -c --status || { echo "proot $PROOT source: SHA256 mismatch" >&2; exit 1; }
   (cd "$WORK" && bsdtar xf proot.zip)
   for p in "$ROOT"/patches/proot/*.patch; do

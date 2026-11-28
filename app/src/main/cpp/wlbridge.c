@@ -59,7 +59,7 @@ JNIEXPORT jint JNICALL FN(accept)(JNIEnv *env, jclass cls, jint fd) {
 JNIEXPORT jint JNICALL FN(recv)(JNIEnv *env, jclass cls, jint fd, jobject jbuf, jint off, jintArray jfds) {
     uint8_t *buf = (*env)->GetDirectBufferAddress(env, jbuf);
     jlong cap = (*env)->GetDirectBufferCapacity(env, jbuf);
-    if (!buf || off >= cap) return -ENOBUFS;
+    if (!buf || off < 0 || off >= cap) return -ENOBUFS;
     char cbuf[CMSG_SPACE(sizeof(int) * MAX_FDS)];
     struct iovec iov = {.iov_base = buf + off, .iov_len = (size_t) (cap - off)};
     struct msghdr msg = {.msg_iov = &iov, .msg_iovlen = 1, .msg_control = cbuf, .msg_controllen = sizeof(cbuf)};
@@ -239,8 +239,14 @@ JNIEXPORT jint JNICALL FN(storeCopy)(JNIEnv *env, jclass cls, jlong shm, jint of
 
 // --- windows ---------------------------------------------------------------
 //
-// One Linux window's Android surface. A frame is begin (lock the dirty rect,
-// clear it), a blit per visible surface, bottom to top, then end (post).
+// One Linux window's Android surface. A frame is begin (lock), clear (pick the
+// rect to draw and fill it), a blit per visible surface, bottom to top, then
+// end (post).
+//
+// The whole window is locked every time. Locking less makes Android copy the
+// rest of the frame over from the buffer on screen, a full-window memmove that
+// cost more than all our drawing. The caller instead keeps, per buffer, what
+// that buffer has missed since it was last drawn, and repaints just that.
 
 typedef struct {
     ANativeWindow *window;
@@ -273,24 +279,48 @@ JNIEXPORT void JNICALL FN(windowRelease)(JNIEnv *env, jclass cls, jlong ptr) {
     free(win);
 }
 
-// Locks the window for drawing [dirty] (left, top, right, bottom), which
-// Android may grow when it can't keep the previous frame's pixels; the rect
-// actually locked is written back. Fills it with [background] (0xAARRGGBB),
-// whose alpha only a translucent window keeps.
-JNIEXPORT jboolean JNICALL FN(windowBegin)(JNIEnv *env, jclass cls, jlong ptr, jintArray jdirty, jint background) {
+// Locks the whole window for drawing. Returns the address of the buffer's
+// pixels, which is all Android tells us about which buffer of the window's few
+// this is, or 0 if the lock failed. Nothing may be drawn before windowClear.
+JNIEXPORT jlong JNICALL FN(windowBegin)(JNIEnv *env, jclass cls, jlong ptr) {
     Window *win = (Window *) (intptr_t) ptr;
-    jint d[4];
-    (*env)->GetIntArrayRegion(env, jdirty, 0, 4, d);
-    ARect r = {.left = d[0], .top = d[1], .right = d[2], .bottom = d[3]};
-    if (ANativeWindow_lock(win->window, &win->buf, &r) != 0) return JNI_FALSE;
+    if (ANativeWindow_lock(win->window, &win->buf, NULL) != 0) return 0;
     win->locked = 1;
-    r.left = max_i(r.left, 0);
-    r.top = max_i(r.top, 0);
-    r.right = min_i(r.right, win->buf.width);
-    r.bottom = min_i(r.bottom, win->buf.height);
+    win->dirty = (ARect) {0, 0, 0, 0};
+    return (jlong) (intptr_t) win->buf.bits;
+}
+
+// A fingerprint of the locked buffer: its geometry and 16 pixels spread over
+// it. Taken after drawing and again at the buffer's next lock, it tells a
+// buffer that still holds our last frame from another one that Android has
+// since put at the same address. (A new buffer is zeroed and an opaque window
+// has alpha 255 everywhere, so those never match; a translucent window whose
+// samples are all fully transparent is the one case it can't tell.)
+JNIEXPORT jlong JNICALL FN(windowCanary)(JNIEnv *env, jclass cls, jlong ptr) {
+    Window *win = (Window *) (intptr_t) ptr;
+    if (!win->locked) return 0;
+    const ANativeWindow_Buffer *b = &win->buf;
+    uint64_t h = 0xcbf29ce484222325ull;
+    const uint32_t geometry[] = {(uint32_t) b->width, (uint32_t) b->height, (uint32_t) b->stride, (uint32_t) b->format};
+    for (int i = 0; i < 4; i++) h = (h ^ geometry[i]) * 0x100000001b3ull;
+    const uint32_t *px = b->bits;
+    for (int j = 0; j < 4; j++) {
+        const uint32_t *row = px + (size_t) (b->height * (2 * j + 1) / 8) * b->stride;
+        for (int i = 0; i < 4; i++) h = (h ^ row[b->width * (2 * i + 1) / 8]) * 0x100000001b3ull;
+    }
+    return (jlong) h;
+}
+
+// Makes [rect] (left, top, right, bottom) the part of the locked window that
+// is drawn this frame: blits are clipped to it. Fills it with [background]
+// (0xAARRGGBB), whose alpha only a translucent window keeps.
+JNIEXPORT void JNICALL FN(windowClear)(JNIEnv *env, jclass cls, jlong ptr, jintArray jrect, jint background) {
+    Window *win = (Window *) (intptr_t) ptr;
+    if (!win->locked) return;
+    jint d[4];
+    (*env)->GetIntArrayRegion(env, jrect, 0, 4, d);
+    ARect r = {.left = max_i(d[0], 0), .top = max_i(d[1], 0), .right = min_i(d[2], win->buf.width), .bottom = min_i(d[3], win->buf.height)};
     win->dirty = r;
-    d[0] = r.left, d[1] = r.top, d[2] = r.right, d[3] = r.bottom;
-    (*env)->SetIntArrayRegion(env, jdirty, 0, 4, d);
 
     uint32_t bg = (uint32_t) background;
     uint32_t fill = 0xff000000u | ((bg & 0xffu) << 16) | (bg & 0xff00u) | ((bg >> 16) & 0xffu);
@@ -305,7 +335,6 @@ JNIEXPORT jboolean JNICALL FN(windowBegin)(JNIEnv *env, jclass cls, jlong ptr, j
         uint32_t *row = px + (size_t) y * win->buf.stride;
         for (int x = r.left; x < r.right; x++) row[x] = fill;
     }
-    return JNI_TRUE;
 }
 
 // Draws a store at (dx, dy), scaled to dw x dh window pixels (nearest

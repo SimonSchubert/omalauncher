@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.drawText
@@ -79,6 +80,7 @@ import dev.omalauncher.ui.FrameWidth
 import dev.omalauncher.ui.Icons
 import dev.omalauncher.ui.KeyGap
 import dev.omalauncher.ui.KeyRowHeight
+import dev.omalauncher.ui.LeftToRight
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.Palette
 import dev.omalauncher.ui.PanelFrame
@@ -295,6 +297,8 @@ private fun EditorBody(
                 }
             },
         ) {
+            // Line numbers at the left and lines from the left in every language, as code is written.
+            LeftToRight {
             Row(Modifier.weight(1f).fillMaxWidth()) {
                 Gutter(state, layout, scroll, Modifier.fillMaxHeight())
                 BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
@@ -322,7 +326,8 @@ private fun EditorBody(
                                     .fillMaxHeight()
                                     .then(if (wrap) Modifier.fillMaxWidth() else Modifier.widthIn(min = viewport))
                                     .focusRequester(editorFocus),
-                            textStyle = Mono.copy(fontSize = TextSize.Large),
+                            // Each line in its own direction, from the left: Arabic prose still reads right to left.
+                            textStyle = Mono.copy(fontSize = TextSize.Large, textAlign = TextAlign.Left),
                             keyboardOptions =
                                 KeyboardOptions(
                                     capitalization = if (prose) KeyboardCapitalization.Sentences else KeyboardCapitalization.None,
@@ -335,6 +340,7 @@ private fun EditorBody(
                         )
                     }
                 }
+            }
             }
         }
         if (extraKeysWanted()) {

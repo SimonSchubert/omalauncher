@@ -941,12 +941,6 @@ object Builtins {
             else -> Null
         }
 
-    fun binary(
-        op: String,
-        a: Value,
-        b: Value,
-    ): Value = operator(op)(a, b)
-
     /**
      * The function for a binary operator, looked up once at compile time
      * rather than by name on every evaluation. Two numbers take a fast path

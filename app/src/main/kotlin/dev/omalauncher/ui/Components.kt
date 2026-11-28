@@ -46,10 +46,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -276,7 +278,10 @@ fun Modifier.card(
  */
 @Composable
 fun CodeBlock(text: String) =
-    BasicText(remember(text) { text.cutLongLines() }, Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).keyScrolled().padding(6.dp), style = Mono.copy(fontSize = TextSize.Small))
+    // Code starts at the left in every language.
+    LeftToRight {
+        BasicText(remember(text) { text.cutLongLines() }, Modifier.fillMaxWidth().background(Palette.surface).horizontalScroll(rememberScrollState()).keyScrolled().padding(6.dp), style = MonoLtr.copy(fontSize = TextSize.Small))
+    }
 
 private const val MAX_CODE_LINE = 10_000
 
@@ -298,7 +303,8 @@ private class BelowAnchor(
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ) = IntOffset(
-        (if (end) anchorBounds.right - popupContentSize.width else anchorBounds.left)
+        // The anchor's start is its right edge where the screen runs right to left.
+        (if (end == (layoutDirection == LayoutDirection.Ltr)) anchorBounds.right - popupContentSize.width else anchorBounds.left)
             .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
         (anchorBounds.bottom + 8).coerceAtMost((windowSize.height - popupContentSize.height).coerceAtLeast(0)),
     )
@@ -321,37 +327,40 @@ fun <T> ChoicePopup(
     footer: @Composable ColumnScope.() -> Unit = {},
 ) {
     Popup(popupPositionProvider = position, onDismissRequest = onDismiss, properties = PopupProperties(focusable = true)) {
-        // Keys start on the one picked now; a list longer than the screen scrolls to follow them.
-        val selectedFocus = remember { FocusRequester() }
-        Column(
-            Modifier
-                .width(IntrinsicSize.Max)
-                .widthIn(min = minWidth)
-                .frame(2.dp, Palette.accent, Palette.background)
-                .holdsKeys(start = selectedFocus.takeIf { selected in options })
-                .verticalScroll(rememberScrollState())
-                .padding(4.dp),
-        ) {
-            for (option in options) {
-                val current = option == selected
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .then(if (current) Modifier.focusRequester(selectedFocus) else Modifier)
-                        .clickable {
-                            onDismiss()
-                            onPick(option)
-                        }.padding(horizontal = 10.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
-                    Column(Modifier.weight(1f)) {
-                        BasicText(label(option), style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
-                        sublabel?.invoke(option)?.let { BasicText(it, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small)) }
+        // A popup or dialog is a window of its own, and without supportsRtl Android lays every window out left to right.
+        LauncherDirection {
+            // Keys start on the one picked now; a list longer than the screen scrolls to follow them.
+            val selectedFocus = remember { FocusRequester() }
+            Column(
+                Modifier
+                    .width(IntrinsicSize.Max)
+                    .widthIn(min = minWidth)
+                    .frame(2.dp, Palette.accent, Palette.background)
+                    .holdsKeys(start = selectedFocus.takeIf { selected in options })
+                    .verticalScroll(rememberScrollState())
+                    .padding(4.dp),
+            ) {
+                for (option in options) {
+                    val current = option == selected
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .then(if (current) Modifier.focusRequester(selectedFocus) else Modifier)
+                            .clickable {
+                                onDismiss()
+                                onPick(option)
+                            }.padding(horizontal = 10.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        BasicText(if (current) "● " else "  ", style = Mono.copy(color = Palette.accent))
+                        Column(Modifier.weight(1f)) {
+                            BasicText(label(option), style = Mono.copy(color = if (current) Palette.accent else Palette.foreground))
+                            sublabel?.invoke(option)?.let { BasicText(it, style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small)) }
+                        }
                     }
                 }
+                footer()
             }
-            footer()
         }
     }
 }
@@ -363,14 +372,20 @@ fun SectionLabel(
     modifier: Modifier = Modifier,
 ) = BasicText(text, modifier.padding(top = 12.dp, bottom = 4.dp), style = Mono.copy(color = Palette.muted))
 
-/** A [Glyph] from the launcher's Nerd Font subset, sized like text. */
+/**
+ * A [Glyph] from the launcher's Nerd Font subset, sized like text. The chevron that points on, or turned around back,
+ * points the other way where the screen runs right to left.
+ */
 @Composable
 fun Symbol(
     glyph: String,
     color: Color,
     modifier: Modifier = Modifier,
     fontSize: TextUnit = TextSize.Body,
-) = BasicText(glyph, modifier, style = Mono.copy(color = color, fontSize = fontSize, fontFamily = NerdSymbols))
+) {
+    val turned = glyph == Glyph.ChevronRight && LocalLayoutDirection.current == LayoutDirection.Rtl
+    BasicText(glyph, if (turned) modifier.scale(scaleX = -1f, scaleY = 1f) else modifier, style = Mono.copy(color = color, fontSize = fontSize, fontFamily = NerdSymbols))
+}
 
 /** A terminal-style `[ label ]` button. */
 @Composable
@@ -406,14 +421,14 @@ fun ActionsRow(
             val placed = text.measure(Constraints.fixedWidth(width - buttons.width))
             val height = maxOf(placed.height, buttons.height)
             layout(width, height) {
-                placed.place(0, (height - placed.height) / 2)
-                buttons.place(width - buttons.width, (height - buttons.height) / 2)
+                placed.placeRelative(0, (height - placed.height) / 2)
+                buttons.placeRelative(width - buttons.width, (height - buttons.height) / 2)
             }
         } else {
             val placed = text.measure(Constraints.fixedWidth(width))
             layout(width, placed.height + buttons.height) {
-                placed.place(0, 0)
-                buttons.place(width - buttons.width, placed.height)
+                placed.placeRelative(0, 0)
+                buttons.placeRelative(width - buttons.width, placed.height)
             }
         }
     }

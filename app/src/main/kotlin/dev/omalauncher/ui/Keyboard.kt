@@ -37,7 +37,27 @@ class StickyModifier(
     var latch by mutableStateOf(Latch.Off)
 }
 
-/** Translates Android key events and IME text into Wayland keyboard input for the focused window. */
+/**
+ * Where keys go instead of the focused Linux window: a built-in terminal that has the keyboard. It gets the same evdev
+ * codes, presses and releases a window would, latched and implied modifiers included.
+ */
+interface KeyTarget {
+    fun key(
+        code: Int,
+        pressed: Boolean,
+    )
+
+    /** A character no US key types, like æ, 你 or an emoji. */
+    fun typeCodePoint(cp: Int)
+
+    /** Text pasted whole, like an image's path. */
+    fun paste(text: String)
+
+    /** What the soft keyboard is still composing, empty once it's done; shown where the text will go. */
+    fun composing(text: CharSequence) = Unit
+}
+
+/** Translates Android key events and IME text into Wayland keyboard input for the focused window, or for [target]. */
 class KeyboardBridge(
     private val wm: WindowManager,
     private val images: GuestImages,
@@ -47,6 +67,15 @@ class KeyboardBridge(
 
     /** Types what the active soft keyboard is still composing; keys sent from a widget call it first so they don't overtake it. */
     var flush: () -> Unit = {}
+
+    /** A built-in terminal with the keyboard, which takes the keys instead of the focused window; main thread. */
+    var target: KeyTarget? = null
+        set(value) {
+            if (value === field) return
+            // Lifts what the old one was told is down, so no key stays held for it.
+            releaseHeld()
+            field = value
+        }
 
     val ctrl = StickyModifier(Keys.KEY_LEFTCTRL)
     val alt = StickyModifier(Keys.KEY_LEFTALT)
@@ -65,7 +94,7 @@ class KeyboardBridge(
         // Back and a gamepad's buttons: B is Back once nothing takes it, the way out of a window or a terminal tile.
         if (event.keyCode in volumeKeys || event.keyCode == KeyEvent.KEYCODE_BACK || KeyEvent.isGamepadButton(event.keyCode)) return false
         val code = Keys.evdev(event) ?: event.scanCode.takeIf { it > 0 } ?: return false
-        if (wm.focused == null) return false
+        if (wm.focused == null && target == null) return false
         if (!Keys.isModifier(code)) {
             holdImplied(event.metaState)
         } else if (event.action == KeyEvent.ACTION_DOWN) {
@@ -112,7 +141,7 @@ class KeyboardBridge(
             val mapped = if (cp <= 0xffff) KeyNames.forChar(cp.toChar()) else null
             if (mapped == null) {
                 // Not on a US key, like æ, 你 or an emoji: the keymap grows a key for it.
-                if (!Character.isISOControl(cp)) wm.server.postInput { typeCodePoint(cp) }
+                if (!Character.isISOControl(cp)) target?.typeCodePoint(cp) ?: wm.server.postInput { typeCodePoint(cp) }
                 continue
             }
             val (code, shift) = mapped
@@ -146,8 +175,13 @@ class KeyboardBridge(
             val paths = uris.mapNotNull { images.save(it, mime)?.let(images::guestPath) }
             done()
             if (paths.isEmpty()) return@thread
-            wm.server.insertText(paths.joinToString(" "))
-            main.post { tap(Keys.KEY_INSERT, Keys.KEY_LEFTSHIFT) }
+            val text = paths.joinToString(" ")
+            main.post {
+                target?.paste(text) ?: run {
+                    wm.server.insertText(text)
+                    tap(Keys.KEY_INSERT, Keys.KEY_LEFTSHIFT)
+                }
+            }
         }
     }
 
@@ -249,7 +283,12 @@ class KeyboardBridge(
             down -= code
             implied -= code
         }
-        wm.server.postInput { key(code, pressed) }
+        target?.key(code, pressed) ?: wm.server.postInput { key(code, pressed) }
+    }
+
+    /** The soft keyboard's composing text changed: see [KeyTarget.composing]. */
+    fun composing(text: CharSequence) {
+        target?.composing(text)
     }
 }
 
@@ -293,6 +332,10 @@ class KeyboardSink(
      * can't show it, and the IME's candidate bar does, so it's only typed once finished.
      */
     private var composing: CharSequence = ""
+        set(value) {
+            field = value
+            bridge.composing(value)
+        }
 
     /** Types the pending composing text ahead of a key sent from elsewhere, and restarts the IME so it drops its copy. */
     private val flushComposing: () -> Unit = {

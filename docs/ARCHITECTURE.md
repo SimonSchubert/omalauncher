@@ -33,6 +33,18 @@ a module folder; the OWL language is under
 - `app/src/main/cpp/wlbridge.c`: JNI for unix sockets with fd passing, shm
   mapping, per-surface pixel stores, and compositing them into a window's
   `ANativeWindow`
+- `app/src/main/cpp/scene3d.c`: a 3D scene's work per triangle, a port of the
+  Kotlin in owl's `Space3d.kt` that gives the same numbers (`SceneNativeTest`);
+  `Scene3d` takes it as its `SceneKernel` and works without one
+- `app/src/main/cpp/mesh3d.c`: building a mesh (smooth corner normals, the
+  `Bsp` tree, reading OBJ files), in the same library; owl's `MeshKernels`
+  holds it, set in `App`, and the Kotlin it ports runs where it isn't set
+  (`MeshNativeTest`). The native tests build the C for the machine they run
+  on (`HostNative`) and are skipped without a compiler
+- `app/src/main/cpp/pixels.c`: frost's blur and icon masks, with the Kotlin
+  kept as the fallback (`PixelsNativeTest`)
+- `app/src/main/cpp/procstat.c`: `ProcShim`'s count of CPU time, with the
+  Kotlin kept as the fallback (`ProcStatNativeTest`)
 - `wayland/`: the Wayland server in Kotlin (wl_compositor, wl_shm,
   wl_subcompositor, wl_seat, wl_output, xdg_wm_base, xdg-decoration, and
   text-input-v3 for where a client's text cursor is) and
@@ -70,7 +82,11 @@ the surface's pixel store, outside the server lock, and hands the buffer back
 right away. Each window's `WindowRenderer` runs on its own thread: at vsync it
 snapshots the surface tree, redraws only the dirty region of the SurfaceView
 (everything, if a surface moved or appeared), posts, and then sends the frame
-callbacks. Hidden windows get no frame callbacks, so their clients stop
+callbacks. The SurfaceView has a few buffers that take turns, and the whole
+window is locked each time: locking only the dirty region makes Android copy
+the rest of the frame from the buffer on screen, which cost more than the
+drawing. `BufferDamage` keeps what each buffer missed while the others were
+drawn, and that is what gets repainted. Hidden windows get no frame callbacks, so their clients stop
 drawing.
 
 ## Browser tiles

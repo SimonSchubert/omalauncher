@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The style menu (ui/StyleScreen.kt), settings' pages, gestures and coding agents screens. -->
+<resources>
+    <string name="style_title">ظاهر</string>
+
+    <!-- Section headings. -->
+    <string name="style_home_screen">صفحه اصلی</string>
+    <string name="style_widgets">ابزارک‌ها</string>
+    <string name="style_screens">نماها</string>
+    <string name="style_keybar">نوار کلید ترمینال</string>
+    <string name="style_system_bars">نوارهای سیستم</string>
+    <!-- The font of the launcher and its widgets. -->
+    <string name="style_launcher_widgets">لانچر و ابزارک‌ها</string>
+    <string name="style_theme">پوسته</string>
+    <string name="style_background">پس‌زمینه</string>
+    <string name="style_terminal">ترمینال</string>
+
+    <!-- Option names and their choices, in a narrow column beside the choices. -->
+    <string name="style_icons">نمادها</string>
+    <string name="style_monochrome">تک‌رنگ</string>
+    <string name="style_colored">رنگی</string>
+    <string name="style_icon_pack">بسته نماد</string>
+    <string name="style_icon_pack_none">هیچ‌کدام</string>
+    <string name="style_home_apps">برنامه‌ها</string>
+    <string name="style_boxed">قاب‌دار</string>
+    <string name="style_icon_only">فقط نماد</string>
+    <string name="style_recent_apps">برنامه‌های اخیر</string>
+    <string name="style_shown">نمایان</string>
+    <string name="style_hidden">پنهان</string>
+    <string name="style_empty_page_left">صفحه خالی چپ</string>
+    <string name="style_empty_page_right">صفحه خالی راست</string>
+    <string name="style_columns">ستون‌ها</string>
+    <!-- Whether home is one page, or as many as its apps take. -->
+    <string name="style_pages">صفحه‌ها</string>
+    <string name="style_pages_one">یکی</string>
+    <string name="style_pages_auto">خودکار</string>
+    <!-- A foldable's cover screen: home upright with the bar below (true), or turned on its side as in landscape. -->
+    <string name="style_cover_screen">نمایشگر بیرونی</string>
+    <string name="style_cover_upright">ایستاده</string>
+    <string name="style_cover_turned">چرخیده</string>
+    <!-- A foldable's inner screen unfolded: a home of its own there, or the pages as on the phone. -->
+    <string name="style_unfolded">حالت باز</string>
+    <string name="style_unfolded_own">صفحه اصلی جدا</string>
+    <string name="style_unfolded_pages">صفحه‌ها</string>
+    <string name="style_unfolded_columns">ستون‌های حالت باز</string>
+    <string name="style_corners">گوشه‌ها</string>
+    <string name="style_corners_edge">تیز</string>
+    <string name="style_corners_soft">نرم</string>
+    <string name="style_corners_round">گرد</string>
+    <!-- Like Hyprland's gaps_in and gaps_out: space between tiles, and from them to the screen's edges. -->
+    <string name="style_gaps_in">فاصله درونی</string>
+    <string name="style_gaps_out">فاصله بیرونی</string>
+    <string name="style_border_width">پهنای حاشیه</string>
+    <string name="style_opacity">ماتی</string>
+    <string name="style_frosted_glass">شیشه مات</string>
+    <string name="style_on">روشن</string>
+    <string name="style_off">خاموش</string>
+    <string name="style_status_bar">نوار وضعیت</string>
+    <!-- The band behind the system bars' icons. -->
+    <string name="style_bars_background">پس‌زمینه</string>
+    <string name="style_font">فونت</string>
+    <string name="style_system_font">پیش‌فرض سیستم</string>
+    <!-- The terminal's text size. -->
+    <string name="style_text">متن</string>
+    <string name="style_text_smaller">کوچک‌تر</string>
+    <string name="style_text_default">پیش‌فرض</string>
+    <string name="style_text_larger">بزرگ‌تر</string>
+    <string name="style_preview">پیش‌نمایش</string>
+    <!-- Stands in for an app's name in the home screen preview. -->
+    <string name="style_preview_app">برنامه</string>
+    <string name="style_reset">بازنشانی</string>
+    <!-- Under an option that sets several settings at once, which style.toml set to different values. -->
+    <string name="style_differ_step">در style.toml با هم فرق دارند؛ با یک گام تغییر، همه یکسان می‌شوند</string>
+    <string name="style_differ">فرق دارند</string>
+    <!-- %1$s is the value from style.toml, like "0.7" or "they differ". -->
+    <string name="style_custom">سفارشی: ⁨%1$s⁩، از style.toml</string>
+    <!-- %1$s is a file path. -->
+    <string name="style_more_settings">تنظیمات بیشتر، مثل رنگ حاشیه و نوارها: ⁨%1$s⁩</string>
+
+    <!-- The terminal key bar's file, keybar.owl. -->
+    <string name="style_keys">کلیدها</string>
+    <string name="style_keybar_removed">حذف‌شده</string>
+    <string name="style_keybar_errors">خطا دارد</string>
+    <string name="style_keybar_stock">پیش‌فرض</string>
+    <string name="style_keybar_edited">ویرایش‌شده</string>
+    <string name="style_keybar_edit">ویرایش با عامل</string>
+    <string name="style_keybar_back_to_stock">بازگشت به پیش‌فرض</string>
+    <!-- %1$s is the file name, keybar.owl. -->
+    <string name="style_keybar_gone">⁨%1$s⁩ نیست، پس کلیدهای پیش‌فرض نشان داده می‌شوند</string>
+    <string name="style_keybar_restore_title">بازگشت به کلیدهای پیش‌فرض؟</string>
+    <string name="style_keybar_restore_message">فایل keybar.owl شما با نسخه‌ای که همراه این لانچر است جایگزین می‌شود.</string>
+    <string name="style_strip">نوار</string>
+    <string name="style_strip_removed">حذف‌شده</string>
+    <string name="style_strip_stock">پیش‌فرض</string>
+    <string name="style_strip_edited">ویرایش‌شده</string>
+    <string name="style_strip_back_to_stock">بازگشت به پیش‌فرض</string>
+    <string name="style_strip_gone">⁨%1$s⁩ نیست، پس نوار پیش‌فرض نشان داده می‌شود</string>
+    <string name="style_strip_restore_title">بازگشت به نوار پیش‌فرض؟</string>
+    <string name="style_strip_restore_message">فایل strip.owl شما با نسخه‌ای که همراه این لانچر است جایگزین می‌شود.</string>
+    <string name="style_replace">جایگزینی</string>
+
+    <!-- Themes. -->
+    <string name="style_browse">مرور</string>
+    <string name="style_install">نصب</string>
+    <string name="style_install_theme">نصب پوسته</string>
+    <string name="style_install_hint">مخزن GitHub یک پوسته. جای پوسته نصب‌شده هم‌نامش را می‌گیرد.</string>
+    <!-- A theme the user installed from no known repo. -->
+    <string name="style_own_theme">پوسته خودتان</string>
+    <string name="style_update">به‌روزرسانی</string>
+    <string name="style_remove">حذف</string>
+    <!-- %1$s is the theme's name. -->
+    <string name="style_remove_theme_title">⁨%1$s⁩ حذف شود؟</string>
+    <string name="style_remove_theme_builtin">تغییرهای شما در آن از بین می‌رود؛ نسخه Omarchy می‌ماند.</string>
+    <string name="style_remove_deleted">از تلفن و از Linux حذف می‌شود.</string>
+    <string name="style_themes_downloading">پوسته‌های دیگر Omarchy از ⁨github.com/omacom/omarchy⁩ بارگیری می‌شوند (⁨~70 MB⁩).</string>
+    <string name="style_themes_not_installed">پوسته‌های Omarchy هنوز نصب نشده‌اند. از ⁨github.com/omacom/omarchy⁩ بارگیری می‌شوند (⁨~70 MB⁩).</string>
+    <string name="style_downloading">در حال بارگیری… ⁨%1$d MB⁩</string>
+    <!-- %1$s is the error. -->
+    <string name="style_failed">ناموفق: ⁨%1$s⁩</string>
+    <string name="style_retry">تلاش دوباره</string>
+    <string name="style_download_themes">بارگیری پوسته‌ها</string>
+
+    <!-- Backgrounds. -->
+    <string name="style_add_image">+ تصویر</string>
+    <string name="style_wallpaper_active">✓ پس‌زمینه android و رنگ‌های سیستم از پوسته پیروی می‌کنند (رنگ‌های سیستم پس از خاموش شدن صفحه به‌روز می‌شوند)</string>
+    <string name="style_wallpaper_use">استفاده به‌عنوان پس‌زمینه android + رنگ‌های سیستم</string>
+    <string name="style_remove_background_title">پس‌زمینه حذف شود؟</string>
+
+    <string name="style_terminal_hint">برای ترمینال‌هایی که از این پس باز می‌شوند · فونت‌های بیشتر با pacman، مثل ttf-cascadia-code</string>
+    <string name="style_keyboard_suggestions">پیشنهادهای صفحه‌کلید</string>
+    <string name="style_keyboard_suggestions_hint">پیشنهادها، تایپ لغزشی و تایپ صوتی؛ متن واژه‌به‌واژه به ترمینال می‌رسد · از دفعه بعد که صفحه‌کلید باز شود</string>
+    <string name="style_terminal_opens_in">باز شدن در</string>
+    <string name="style_terminal_built_in_hint">omaterminal: ترمینال خود Omalauncher، با صفحه‌کلید گوشی مثل هر برنامه‌ای · برای ترمینال‌هایی که از این پس باز می‌شوند</string>
+    <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->
+    <plurals name="style_terminal_size">
+        <item quantity="one">⁨%1$s pt⁩ · %2$d ستون در حالت عمودی</item>
+        <item quantity="other">⁨%1$s pt⁩ · %2$d ستون در حالت عمودی</item>
+    </plurals>
+
+    <!-- Settings › pages (ui/PagesScreen.kt). -->
+    <string name="pages_title">صفحه‌ها</string>
+    <string name="pages_intro">صفحه‌های صفحه اصلی، از چپ به راست. برای جابه‌جا کردن، صفحه را با ≡ بکشید، یا با کلیدها ≡ را با Enter بردارید و با کلیدهای جهت‌نما جابه‌جایش کنید. صفحه اصلی روی اولین صفحه‌ای که کاشی دارد باز می‌شود؛ ابزارک‌های تمام‌صفحه پیش از آن، سمت چپش می‌نشینند.</string>
+    <string name="pages_loading">در حال بارگیری…</string>
+    <!-- %1$s is a full-screen widget's name. -->
+    <string name="pages_remove_named">⁨%1$s⁩ برداشته شود؟</string>
+    <string name="pages_remove_page">این صفحه برداشته شود؟</string>
+    <string name="pages_remove_face_message">فایلش به ⁨.removed/⁩ در پوشه ابزارک‌ها می‌رود.</string>
+    <!-- %1$s is what's on the page, like "Weather, Clock, 3 apps". -->
+    <string name="pages_remove_tiles_message">⁨%1$s⁩. ابزارک‌هایش به ⁨.removed/⁩ در پوشه ابزارک‌ها می‌روند؛ برنامه‌هایش از صفحه اصلی برداشته می‌شوند و نصب‌شده می‌مانند.</string>
+    <string name="pages_remove">برداشتن</string>
+    <!-- How many apps are on a page, after the names of its widgets. -->
+    <plurals name="pages_apps">
+        <item quantity="one">%1$d برنامه</item>
+        <item quantity="other">%1$d برنامه</item>
+    </plurals>
+    <!-- A page with nothing on it. -->
+    <string name="pages_empty">خالی</string>
+    <!-- Beside a page's name: what it is. -->
+    <string name="pages_doesnt_compile">کامپایل نمی‌شود</string>
+    <string name="pages_face">تمام‌صفحه</string>
+    <string name="pages_home">اصلی</string>
+    <string name="pages_edit">ویرایش</string>
+    <string name="pages_share">هم‌رسانی</string>
+
+    <!-- Settings › gestures (ui/Gestures.kt). -->
+    <string name="gestures_title">اشاره‌ها</string>
+    <string name="gestures_swipe_up">تند کشیدن به بالا</string>
+    <string name="gestures_swipe_down">تند کشیدن به پایین</string>
+    <!-- What a swipe opens when it opens no panel. -->
+    <string name="gestures_nothing">هیچ‌چیز</string>
+    <!-- %1$s is a panel's name. -->
+    <string name="gestures_has_errors">⁨%1$s⁩ (خطا دارد)</string>
+    <!-- %1$s is the file name of a panel that is gone. -->
+    <string name="gestures_missing">⁨%1$s⁩ (نیست)</string>
+    <string name="gestures_edit">ویرایش</string>
+    <string name="gestures_hint">پنل‌ها فایل owl هستند و کشو هم یکی از آن‌هاست: مثل ابزارک ویرایششان کنید، یا از منوی صفحه اصلی با عاملتان یکی بسازید. اگر برای تند کشیدن به بالا «هیچ‌چیز» انتخاب شود، ضربه زدن روی نوار همچنان کشو را باز می‌کند</string>
+    <!-- Home's error banner, for a panel that doesn't compile. -->
+    <string name="gestures_stock_drawer">کشوی پیش‌فرض</string>
+    <!-- %1$s is a panel's name, "the stock drawer" or "nothing". -->
+    <string name="gestures_drawer_shows">کشو این را نشان می‌دهد: ⁨%1$s⁩</string>
+    <string name="gestures_swipe_down_nothing">تند کشیدن به پایین چیزی باز نمی‌کند</string>
+    <!-- %1$s is what happens meanwhile, like "the drawer shows the stock drawer"; %2$s the widget language's error, in English. -->
+    <string name="gestures_until_fixed">تا وقتی درست شود، %1$s. خطا: ⁨%2$s⁩</string>
+    <!-- %1$s is the widget language's error, in English. -->
+    <string name="gestures_keybar_until_fixed">نوار کلید ترمینال تا وقتی درست شود همان پیش‌فرض است. خطا: ⁨%1$s⁩</string>
+    <string name="gestures_strip_until_fixed">نوار برنامه‌ها تا وقتی درست شود همان پیش‌فرض است. خطا: ⁨%1$s⁩</string>
+
+    <!-- Settings › coding agents (ui/AgentsScreen.kt). -->
+    <string name="agents_title">عامل‌های برنامه‌نویسی</string>
+    <string name="agents_intro">به روش Omarchy نصب می‌شوند، بیشترشان با mise. ورود به حساب در مرورگرتان باز می‌شود؛ کلیدها را با بریده‌دان صفحه‌کلید جای‌گذاری کنید.</string>
+    <string name="agents_open">باز کردن</string>
+    <string name="agents_remove">حذف</string>
+    <string name="agents_still_running">⁨%1$s⁩ هنوز در حال اجراست: آن را ببندید و دوباره حذفش کنید</string>
+    <string name="agents_install">نصب</string>
+</resources>

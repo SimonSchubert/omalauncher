@@ -148,6 +148,25 @@ class Space3dTest {
         assertEquals(12, scene { model(Meshes.cube(), twoSided = true) }.triangles)
     }
 
+    /** A model's turn is worked out once and kept for the next: the model after it is turned its own way all the same. */
+    @Test fun eachModelHasItsOwnTurn() {
+        val turns = listOf(floatArrayOf(0f, 0f, 0f), floatArrayOf(30f, 40f, 0f), floatArrayOf(-0f, 0f, 0f), floatArrayOf(10f, 0f, 75f))
+        for (before in turns) {
+            for (turn in turns) {
+                val alone = scene { model(Meshes.cube(), turn = turn) }
+                // The one before is behind the camera: it draws nothing, but its turn is worked out.
+                val after =
+                    scene {
+                        model(Meshes.cube(), at = floatArrayOf(0f, 0f, 10f), turn = before)
+                        model(Meshes.cube(), turn = turn)
+                    }
+                assertEquals(alone.triangles, after.triangles)
+                for (i in 0 until alone.triangles * 6) assertEquals(alone.verts[i].toRawBits(), after.verts[i].toRawBits())
+                for (i in 0 until alone.triangles * 3) assertEquals(alone.colors[i], after.colors[i])
+            }
+        }
+    }
+
     @Test fun sceneSkipsWhatsOutOfView() {
         assertEquals(0, scene { model(Meshes.cube(), at = floatArrayOf(0f, 0f, 10f)) }.triangles)
         assertEquals(0, scene { model(Meshes.cube(), at = floatArrayOf(100f, 0f, 0f)) }.triangles)

@@ -102,13 +102,19 @@ class TerminalFont(
         appId: String,
         command: String?,
     ): String {
-        val fit = if (command == "btop") fitting(BTOP_COLUMNS, widthPx, scale, size) else size
-        if (fit >= size) {
+        val fit = sizeOf(command)
+        if (fit == null) {
             ownSize -= appId
             return ""
         }
         ownSize += appId
         return " -o " + shellQuote("main.font=$family:size=${format(fit)}")
+    }
+
+    /** The point size of its own [command]'s terminal opens at, as in [optionFor], or null for [size]. */
+    fun sizeOf(command: String?): Double? {
+        val fit = if (command == "btop") fitting(BTOP_COLUMNS, widthPx, scale, size) else size
+        return fit.takeIf { it < size }
     }
 
     /** Whether [appId]'s terminal was opened at a size of its own by [optionFor]. */
@@ -134,7 +140,10 @@ class TerminalFont(
     fun columns(widthPx: Int) = columns(widthPx, scale, size)
 
     /** The pixels an em takes in new terminals: [size] at foot's scale. */
-    val emPx get() = (size * PX_PER_PT * scale).toFloat()
+    val emPx get() = emPx(size)
+
+    /** The pixels an em of [points] takes at foot's scale. */
+    fun emPx(points: Double) = (points * PX_PER_PT * scale).toFloat()
 
     /** foot.ini's pad in pixels, on each side. */
     val padPx get() = PAD * scale

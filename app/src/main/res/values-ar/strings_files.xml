@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files (ui/FilesScreen.kt, FilesChrome.kt, FileDialogs.kt), the editor (ui/EditorScreen.kt) and the prompt bar
+     with its speech input (ui/PromptBar.kt, ui/Speech.kt). -->
+<resources>
+    <!-- A file operation failed without saying why. -->
+    <string name="files_failed">فشلت العملية</string>
+    <!-- %1$s is a file name. -->
+    <string name="files_cant_hand_over">تعذر تسليم ⁨%1$s⁩ إلى التطبيقات الأخرى</string>
+    <!-- %1$s is a file name. -->
+    <string name="files_no_app">لا يوجد تطبيق يفتح ⁨%1$s⁩</string>
+    <!-- Why a link can't be opened: its target doesn't exist. Shown as %2$s of files_cant_open. -->
+    <string name="files_leads_to_nothing">الرابط لا يؤدي إلى شيء</string>
+    <!-- %1$s is a file name, %2$s why it can't be opened. -->
+    <string name="files_cant_open">تعذر فتح ⁨%1$s⁩: ⁨%2$s⁩</string>
+    <!-- The title while files are selected. -->
+    <string name="files_selected">تم تحديد %1$d</string>
+    <string name="files_filter_hint">تصفية هذا المجلد</string>
+    <!-- The home folder, /root: the title there and a quick jump. -->
+    <string name="files_home">المجلد الرئيسي</string>
+    <!-- Quick jumps to /root/.config, /root/Downloads and / -->
+    <string name="files_place_config">config</string>
+    <string name="files_place_downloads">التنزيلات</string>
+    <!-- The phone folders the user granted (PhoneFolders), and the list of them. -->
+    <string name="files_place_phone_folders">مجلدات الهاتف</string>
+    <string name="files_add_phone_folder">إضافة مجلد من الهاتف</string>
+    <string name="files_no_phone_folders">لا مجلدات من الهاتف بعد: أضف واحدا من القائمة</string>
+    <string name="files_place_system">النظام</string>
+    <string name="files_search">بحث</string>
+    <string name="files_more">المزيد</string>
+    <string name="files_new_file">ملف جديد</string>
+    <string name="files_new_folder">مجلد جديد</string>
+    <string name="files_hide_hidden">إخفاء الملفات المخفية</string>
+    <string name="files_show_hidden">إظهار الملفات المخفية</string>
+    <string name="files_open_terminal">فتح الطرفية هنا</string>
+    <string name="files_empty_folder">مجلد فارغ</string>
+    <string name="files_no_matches">لا نتائج مطابقة</string>
+    <string name="files_create">إنشاء</string>
+    <string name="files_rename">إعادة تسمية</string>
+    <!-- %1$s is a file or folder name. -->
+    <string name="files_delete_one">حذف ⁨%1$s⁩؟</string>
+    <plurals name="files_delete_items">
+        <item quantity="zero">حذف %1$d عنصر؟</item>
+        <item quantity="one">حذف عنصر واحد؟</item>
+        <item quantity="two">حذف عنصرين؟</item>
+        <item quantity="few">حذف %1$d عناصر؟</item>
+        <item quantity="many">حذف %1$d عنصرا؟</item>
+        <item quantity="other">حذف %1$d عنصر؟</item>
+    </plurals>
+    <string name="files_delete_message">لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="files_delete">حذف</string>
+    <!-- How many items a folder holds, or how many are copied or cut. -->
+    <plurals name="files_items">
+        <item quantity="zero">لا عناصر</item>
+        <item quantity="one">عنصر واحد</item>
+        <item quantity="two">عنصران</item>
+        <item quantity="few">%1$d عناصر</item>
+        <item quantity="many">%1$d عنصرا</item>
+        <item quantity="other">%1$d عنصر</item>
+    </plurals>
+    <!-- A folder whose contents can't be counted. -->
+    <string name="files_folder">مجلد</string>
+    <string name="files_copy">نسخ</string>
+    <string name="files_cut">قص</string>
+    <string name="files_select_all">تحديد الكل</string>
+    <string name="files_edit">تعديل</string>
+    <string name="files_open_with">فتح باستخدام…</string>
+    <string name="files_share">مشاركة</string>
+    <string name="files_cancel">إلغاء</string>
+    <string name="files_move_here">نقل إلى هنا</string>
+    <string name="files_paste_here">لصق هنا</string>
+
+    <!-- The editor's name in Recents when it opens without a file. -->
+    <string name="editor_title">المحرر</string>
+    <!-- %1$s is a file name, %2$s why it can't be read. -->
+    <string name="editor_cant_read">تعذرت قراءة ⁨%1$s⁩: ⁨%2$s⁩</string>
+    <!-- %1$s is a file name, %2$s why it can't be saved. -->
+    <string name="editor_cant_save">تعذر حفظ ⁨%1$s⁩: ⁨%2$s⁩</string>
+    <!-- Searching in the file found nothing. -->
+    <string name="editor_not_found">لا نتائج</string>
+    <string name="editor_find_hint">بحث في الملف</string>
+    <!-- The title of a file with unsaved changes; %1$s is its name. -->
+    <string name="editor_title_unsaved">⁨%1$s⁩ *</string>
+    <string name="editor_previous_match">النتيجة السابقة</string>
+    <string name="editor_next_match">النتيجة التالية</string>
+    <string name="editor_save">حفظ</string>
+    <string name="editor_find">بحث</string>
+    <string name="editor_no_wrap">عدم التفاف الأسطر</string>
+    <string name="editor_wrap">التفاف الأسطر</string>
+    <string name="editor_show_in_files">عرض في الملفات</string>
+    <!-- micro is a terminal text editor. -->
+    <string name="editor_open_in_micro">فتح في micro</string>
+    <!-- %1$s is a file name. -->
+    <string name="editor_save_confirm">حفظ ⁨%1$s⁩؟</string>
+    <string name="editor_save_confirm_message">لديك تغييرات لم تحفظ بعد.</string>
+    <string name="editor_discard">تجاهل</string>
+    <!-- Screen reader names of the editor's arrow, undo and redo keys. -->
+    <string name="editor_key_left">يسار</string>
+    <string name="editor_key_up">أعلى</string>
+    <string name="editor_key_down">أسفل</string>
+    <string name="editor_key_right">يمين</string>
+    <string name="editor_key_undo">تراجع</string>
+    <string name="editor_key_redo">إعادة</string>
+    <!-- The editor's own screen, with recent files. -->
+    <string name="editor_home_title">المحرر</string>
+    <string name="editor_new">جديد</string>
+    <string name="editor_browse">تصفح</string>
+    <string name="editor_recent">الأخيرة</string>
+    <string name="editor_recent_empty">الملفات التي تعدلها تظهر هنا.</string>
+    <string name="editor_new_file_hint">مسار في Linux</string>
+
+    <string name="prompt_listening">جارٍ الاستماع…</string>
+    <string name="prompt_hint_apps">افتح تطبيقا…</string>
+    <!-- %1$s is a coding agent's command, like claude. -->
+    <string name="prompt_hint_ask">افتح تطبيقا أو اسأل ⁨%1$s⁩…</string>
+    <!-- Shown after typing: Enter sends the text to the coding agent. -->
+    <string name="prompt_enter_ask">⏎ اسأل</string>
+    <!-- In place of the coding agent's name when none is picked. -->
+    <string name="prompt_agent">الوكيل</string>
+    <!-- The leading spaces line it up with the agents above it. -->
+    <string name="prompt_manage_agents">"  إدارة الوكلاء…"</string>
+
+    <!-- Speech input errors, in the prompt bar and to widgets. -->
+    <string name="prompt_speech_no_recognizer">لا توجد خدمة للتعرف على الكلام في هذا الهاتف</string>
+    <string name="prompt_speech_refused">خدمة التعرف على الكلام في الهاتف لا تسمح للتطبيقات الأخرى باستخدامها</string>
+    <!-- %1$d is the recognizer's error code. -->
+    <string name="prompt_speech_failed">فشل التعرف على الكلام (%1$d)</string>
+    <string name="prompt_speech_language">التعرف على الكلام غير متاح بهذه اللغة</string>
+    <string name="prompt_speech_not_downloaded">بيانات الكلام لهذه اللغة غير منزّلة على هذا الهاتف</string>
+    <string name="prompt_speech_mic_permission">مطلوب إذن الميكروفون</string>
+    <string name="prompt_speech_network">التعرف على الكلام يتطلب اتصالا بالشبكة</string>
+</resources>

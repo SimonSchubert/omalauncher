@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -99,6 +99,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.focus.onFocusChanged
 import dev.omalauncher.ui.activateKeys
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -108,6 +109,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
@@ -188,29 +190,41 @@ fun WidgetContent(
     val density = LocalDensity.current.density
     if (program.animated) FrameClock(inst, LocalHomeCovered.current)
     val bg = program.background
-    Column(
-        modifier
-            .onSizeChanged { inst.setTile(null, null, (it.width / density).toDouble(), (it.height / density).toDouble()) }
-            .then(
-                if (bg != null) {
-                    Modifier.drawBehind {
-                        when (val v = inst.eval(bg, inst.root, "background")) {
-                            is Gradient -> if (program.level >= 10) drawRect(backgroundBrush(v, size, inst))
-                            else -> Builtins.argb(v, inst)?.let { drawRect(Color(it)) }
+    OwnDirection(program.rtl) {
+        Column(
+            modifier
+                .onSizeChanged { inst.setTile(null, null, (it.width / density).toDouble(), (it.height / density).toDouble()) }
+                .then(
+                    if (bg != null) {
+                        Modifier.drawBehind {
+                            when (val v = inst.eval(bg, inst.root, "background")) {
+                                is Gradient -> if (program.level >= 10) drawRect(backgroundBrush(v, size, inst))
+                                else -> Builtins.argb(v, inst)?.let { drawRect(Color(it)) }
+                            }
                         }
-                    }
-                } else {
-                    Modifier
-                },
-            )
-            .then(if (insets != null) Modifier.windowInsetsPadding(insets) else Modifier)
-            .padding(inset(program.padding)),
-    ) {
-        CompositionLocalProvider(LocalLongPress provides program.isFace, LocalRipple provides program.isFace) {
-            Nodes(program.root, inst.root, inst, this)
+                    } else {
+                        Modifier
+                    },
+                )
+                .then(if (insets != null) Modifier.windowInsetsPadding(insets) else Modifier)
+                .padding(inset(program.padding)),
+        ) {
+            CompositionLocalProvider(LocalLongPress provides program.isFace, LocalRipple provides program.isFace) {
+                Nodes(program.root, inst.root, inst, this)
+            }
         }
     }
 }
+
+/**
+ * A file's nodes in its own direction, whatever the screen around them has: right to left only when it says so
+ * ([dev.omalauncher.widgets.lang.Program.rtl]), left to right otherwise, as it was made. Its popups follow.
+ */
+@Composable
+private fun OwnDirection(
+    rtl: Boolean,
+    content: @Composable () -> Unit,
+) = CompositionLocalProvider(LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr, content = content)
 
 /** Whether nodes here take long presses: in screens, apps and faces, not on a tile, where the home screen has them. */
 val LocalLongPress = staticCompositionLocalOf { false }
@@ -250,7 +264,7 @@ class LongPressClaim {
 val LocalLongPressClaim = staticCompositionLocalOf<LongPressClaim?> { null }
 
 /** Widget text, 13sp as widgets were made for, whatever size the launcher's own text is. */
-internal val WidgetMono get() = Mono.copy(fontSize = 13.sp)
+internal val WidgetMono get() = Mono.copy(fontSize = 13.sp, textAlign = TextAlign.Unspecified)
 
 /** The widget's screen { } block, filling [modifier]; `screenWidth` and `screenHeight` follow its size. */
 @Composable
@@ -266,7 +280,7 @@ fun WidgetScreen(
 fun WidgetKeybar(
     inst: WidgetInstance,
     modifier: Modifier = Modifier,
-) = ScreenNodes(inst, modifier, Modifier.fillMaxWidth(), ripple = false)
+) = ScreenNodes(inst, modifier, Modifier.fillMaxWidth(), ripple = false, keys = true)
 
 /**
  * The strip above home's prompt bar (`strip "…" { }`, owl 24): its nodes, as wide as home and as tall as they are, or
@@ -285,15 +299,19 @@ private fun ScreenNodes(
     modifier: Modifier,
     column: Modifier,
     ripple: Boolean,
+    /** A key bar: its keys keep their places in every language, as a keyboard's do. */
+    keys: Boolean = false,
 ) {
     val nodes = inst.program.screen ?: return
     if (inst.program.animated) FrameClock(inst, LocalScreenHidden.current)
-    BoxWithConstraints(modifier) {
-        // Set before the nodes compose, so the first frame already has the size instead of null.
-        inst.setScreen(maxWidth.value.toDouble(), maxHeight.value.toDouble())
-        Column(column) {
-            CompositionLocalProvider(LocalLongPress provides true, LocalRipple provides ripple) {
-                Nodes(nodes, inst.root, inst, this)
+    OwnDirection(inst.program.rtl && !keys) {
+        BoxWithConstraints(modifier) {
+            // Set before the nodes compose, so the first frame already has the size instead of null.
+            inst.setScreen(maxWidth.value.toDouble(), maxHeight.value.toDouble())
+            Column(column) {
+                CompositionLocalProvider(LocalLongPress provides true, LocalRipple provides ripple) {
+                    Nodes(nodes, inst.root, inst, this)
+                }
             }
         }
     }
@@ -903,7 +921,8 @@ private fun common(
     if (p.has("offset")) {
         val offset = p.offset(held)
         m =
-            m.offset {
+            // From the left in a right-to-left file too: an offset often follows the finger, whose x counts that way.
+            m.absoluteOffset {
                 val o = offset()
                 IntOffset((o.x * density).toInt(), (o.y * density).toInt())
             }
@@ -1300,6 +1319,7 @@ private fun TextNode(
         }
     val defaultColor: () -> Color = if (style == "muted" || style == "label") ({ Palette.muted }) else ({ Palette.foreground })
     val color = p.color("color", defaultColor)
+    val rtl = p.inst.program.rtl
     val textStyle =
         TextStyle(
             fontFamily = fontFamily(p.observe("font"), p.inst),
@@ -1307,12 +1327,15 @@ private fun TextNode(
             fontWeight = weight(p.observe("fontWeight")) ?: if (p.observe("bold")?.truthy == true) FontWeight.Bold else null,
             letterSpacing = textUnit(p.observe("letterSpacing")) ?: androidx.compose.ui.unit.TextUnit.Unspecified,
             fontStyle = if (p.observe("italic")?.truthy == true) FontStyle.Italic else null,
+            // In a right-to-left file each text is written in its own direction, so a version or a path in it stays
+            // readable, and starts at the right whichever that is.
             textAlign =
                 when (p.observe("align")?.toString()) {
                     "center" -> TextAlign.Center
-                    "end" -> TextAlign.End
-                    else -> TextAlign.Start
+                    "end" -> if (rtl) TextAlign.Left else TextAlign.End
+                    else -> if (rtl) TextAlign.Right else TextAlign.Start
                 },
+            textDirection = if (rtl) TextDirection.Content else TextDirection.Unspecified,
         )
     val pieces = p.observe("spans")
     // Big text stays on one line in narrow tiles instead of breaking mid-word.
@@ -1381,11 +1404,14 @@ private fun PopupNode(
                 "end" -> Alignment.End
                 else -> Alignment.Start
             }
-        Column(
-            (if (framed) mod else Modifier.frame(2.dp, Palette.accent, Palette.background).then(mod).then(if (p.has("padding")) Modifier else Modifier.padding(4.dp))).holdsKeys(),
-            verticalArrangement = Arrangement.spacedBy(gap),
-            horizontalAlignment = align,
-        ) { Nodes(el.children, env, inst, this) }
+        // A popup is a window of its own, which Android lays out left to right whatever the widget runs.
+        OwnDirection(inst.program.rtl) {
+            Column(
+                (if (framed) mod else Modifier.frame(2.dp, Palette.accent, Palette.background).then(mod).then(if (p.has("padding")) Modifier else Modifier.padding(4.dp))).holdsKeys(),
+                verticalArrangement = Arrangement.spacedBy(gap),
+                horizontalAlignment = align,
+            ) { Nodes(el.children, env, inst, this) }
+        }
     }
 }
 
@@ -1404,7 +1430,7 @@ private class NextToAnchor(
         val down = anchorBounds.bottom
         val y = if (above) (if (up >= 0 || down + h > windowSize.height) up else down) else (if (down + h <= windowSize.height || up < 0) down else up)
         return IntOffset(
-            anchorBounds.left.coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
+            (if (layoutDirection == LayoutDirection.Ltr) anchorBounds.left else anchorBounds.right - popupContentSize.width).coerceAtMost(windowSize.width - popupContentSize.width).coerceAtLeast(0),
             y.coerceAtMost(windowSize.height - h).coerceAtLeast(0),
         )
     }
@@ -1428,7 +1454,7 @@ private fun Grid(
         layout(constraints.maxWidth, height) {
             var y = 0
             rows.forEachIndexed { ri, r ->
-                r.forEachIndexed { ci, pl -> pl.place(ci * (cell + g), y) }
+                r.forEachIndexed { ci, pl -> pl.placeRelative(ci * (cell + g), y) }
                 y += heights[ri] + g
             }
         }

@@ -18,10 +18,12 @@ typedef long i64;
 typedef unsigned int u32;
 typedef unsigned short u16;
 
-// Must match src/tracee/fastpath.h in the patched proot.
-#define FASTPATH_ADDRESS 0x2fc0000000UL
+// Must match src/tracee/fastpath.h in the patched proot. The address is written without a suffix
+// so that fast5() below can jump to it as well.
+#define FASTPATH_ADDRESS_HEX 0x54c0000000
+#define FASTPATH_ADDRESS ((u64)FASTPATH_ADDRESS_HEX)
 #define PR_PROOT_FASTPATH 0x50524f46
-#define FASTPATH_VERSION 2
+#define FASTPATH_VERSION 3
 #define FASTPATH_HOST_OVERLAP 1
 struct fastpath_info {
     u32 version, flags, uid, gid, fake_uid, fake_gid, length, reserved;
@@ -111,6 +113,8 @@ extern int *__errno_location(void);
 long slow(long nr, long a, long b, long c, long d, long e, long f) __attribute__((visibility("hidden")));
 long fast5(long nr, long a, long b, long c, long d, long e) __attribute__((visibility("hidden")));
 #define fast(nr, a, b, c, d) fast5(nr, a, b, c, d, 0)
+#define STRINGIFY(x) #x
+#define STRING(x) STRINGIFY(x)
 __asm__(
     ".text\n"
     ".hidden slow\n.type slow,%function\n"
@@ -118,7 +122,7 @@ __asm__(
     "      svc 0; ret\n"
     ".hidden fast5\n.type fast5,%function\n"
     "fast5: mov x8, x0; mov x0, x1; mov x1, x2; mov x2, x3; mov x3, x4; mov x4, x5\n"
-    "      ldr x9, =0x2fc0000000; br x9\n"  // "svc 0; ret" lives there and returns to our caller
+    "      ldr x9, =" STRING(FASTPATH_ADDRESS_HEX) "; br x9\n"  // "svc 0; ret" lives there and returns to our caller
     ".ltorg\n");
 
 static u32 length_of(const char *s) {
@@ -206,23 +210,27 @@ static int set_up(void) {
     code[0] = 0xd4000001;  // svc 0
     code[1] = 0xd65f03c0;  // ret
     // The kernel flushes the instruction cache when the page becomes executable.
-    if (slow(SYS_mprotect, FASTPATH_ADDRESS, 4096, 1 | 4, 0, 0, 0)) return 0;
+    // From here on a failure unmaps the page again, so it doesn't stay in the way of big mmaps.
+    if (slow(SYS_mprotect, FASTPATH_ADDRESS, 4096, 1 | 4, 0, 0, 0)) goto unmap;
 
     // Untraced, getuid shows the real id; if proot still answers it, the filter has no rule for us.
-    if (fast(SYS_getuid, 0, 0, 0, 0) != (long)s->real_uid || s->fake_uid == s->real_uid) return 0;
+    if (fast(SYS_getuid, 0, 0, 0, 0) != (long)s->real_uid || s->fake_uid == s->real_uid) goto unmap;
 
     // The counters proot keeps for every process on this rootfs. Its path is a host path.
     long fd = fast(SYS_openat, AT_FDCWD, (long)after_string(s->root), O_CLOEXEC, 0);
-    if (fd < 0) return 0;
+    if (fd < 0) goto unmap;
     long map = slow(SYS_mmap, 0, 4096, 1, MAP_SHARED, fd, 0);
     fast(SYS_close, fd, 0, 0, 0);
-    if (map < 0 && map > -4096) return 0;
+    if (map < 0 && map > -4096) goto unmap;
     shared = (const struct fastpath_state *)map;
     // Read after the handshake: a change in between is noticed late at worst by one call, like a
     // call made just before it.
     seen_config = shared->config;
     find_root_dev(s);
     return 1;
+unmap:
+    slow(SYS_munmap, FASTPATH_ADDRESS, 4096, 0, 0, 0, 0);
+    return 0;
 }
 
 // The handshake may answer differently now: ask again.
@@ -708,13 +716,13 @@ static int statx_at(int dirfd, const char *path, int flags, u32 mask, void *out)
                   : resolve(dirfd, path, !(flags & AT_SYMLINK_NOFOLLOW), &f, &r);
     if (how == FOUND) {
         how = SLOW;
-        // proot opens up a file without owner access for statx, and the answer shows that mode.
+        // proot used to open up a file without owner access for statx, so that answer showed the
+        // changed mode; it leaves the file alone now, but such files still go to proot.
         if (((f.st.st_mode & S_IFMT) == S_IFLNK || owner_has_access(&f.st)) &&
             !fast5(SYS_statx, AT_FDCWD, (long)f.host, flags, mask, (long)out)) {
             struct statx_start *stx = out;
             if ((stx->mask & STATX_UID) && stx->uid == f.s->real_uid) stx->uid = f.s->fake_uid;
-            // proot compares the group with its user id here.
-            if ((stx->mask & STATX_GID) && stx->gid == f.s->real_uid) stx->gid = f.s->fake_gid;
+            if ((stx->mask & STATX_GID) && stx->gid == f.s->real_gid) stx->gid = f.s->fake_gid;
             r = 0;
             how = FOUND;
         }
@@ -865,8 +873,8 @@ EXPORT int close(int fd) {
     return libc_result(slow(SYS_close, fd, 0, 0, 0, 0, 0));
 }
 
-// getxattr, listxattr and their forms for a symlink itself: proot only translates the path. As
-// for statx, it opens up a file whose owner lacks access first.
+// getxattr, listxattr and their forms for a symlink itself: proot only translates the path. It
+// opens up a file whose owner lacks access first.
 static long xattr_at(long nr, int follow, const char *path, long a, long b, long c) {
     struct found f;
     long r;

@@ -120,11 +120,11 @@ What proot does that the kernel doesn't, found this way (the library hands all o
 - A component proot can't lstat is ENOENT to it, not EACCES, and it never asks the kernel about
   what ".." drops.
 - A file or directory whose name starts with `.l2s.` is taken for the file behind a faked hard
-  link: its link count is the last four characters of the name.
+  link: its link count is the 4 to 9 digits after the last dot of the name.
 - Names of 255 bytes can be made in the guest but not removed again (rm says ENAMETOOLONG).
-- statx is not among the calls whose last component proot leaves alone: a file whose owner lacks
-  read or write permission shows up with both (`ls -l` and `stat` print 644 for a 444 file, while
-  python's os.stat says 444), and its ctime changes on every statx.
+- Before 5.1.107.102, statx was not among the calls whose last component proot leaves alone: a
+  file whose owner lacked read or write permission showed up with both (`ls -l` and `stat` printed
+  644 for a 444 file, while python's os.stat said 444), and its ctime changed on every statx.
 - readlink of a symlink into the rootfs' host path, which proot shows as the guest path, returns
   one more than the length when the buffer has room for exactly the path and a NUL.
 - The kernel turns down bad arguments (a readlink size of 0, an access mode above 7, a reserved

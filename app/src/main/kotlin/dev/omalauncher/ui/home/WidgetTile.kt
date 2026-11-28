@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import dev.omalauncher.widgets.runtime.WidgetInstance
 import dev.omalauncher.ui.BackTitle
 import dev.omalauncher.ui.LauncherStyle
+import dev.omalauncher.ui.LauncherDirection
 import dev.omalauncher.ui.Mono
 import dev.omalauncher.ui.OverlayPanel
 import dev.omalauncher.ui.Palette
@@ -86,6 +87,8 @@ internal fun WidgetTile(
                 LinuxPlaceholder(spec.name, waitsForLinux, onInstallLinux)
             }
         } else if (instance != null && needs.isNotEmpty()) {
+            // What the launcher says on a tile is in its own direction; the widget's nodes below are in theirs.
+            LauncherDirection {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 BasicText(spec.name, style = Mono.copy(color = Palette.muted))
                 BasicText(stringResource(R.string.home_widget_needs, needs.joinToString(", ")), style = Mono)
@@ -100,6 +103,7 @@ internal fun WidgetTile(
                     }
                     null -> TileButton(stringResource(R.string.home_install), Palette.accent, onInstall)
                 }
+            }
             }
         } else if (instance == null) {
             Column(Modifier.padding(12.dp)) {
@@ -134,6 +138,7 @@ private fun LinuxPlaceholder(
     onInstall: () -> Unit,
 ) {
     val stopped = phase == LinuxPhase.Stopped
+    LauncherDirection {
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         BasicText(name, style = Mono.copy(color = Palette.muted), maxLines = 1)
         Spacer(Modifier.weight(1f))
@@ -151,6 +156,7 @@ private fun LinuxPlaceholder(
                 else -> R.string.home_install
             }
         TileButton(stringResource(button), Palette.accent, onInstall)
+    }
     }
 }
 

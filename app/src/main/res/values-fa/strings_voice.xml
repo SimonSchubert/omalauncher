@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="voice_listening">در حال گوش دادن · برای ارسال ضربه بزنید</string>
+    <string name="voice_listening_working">در حال گوش دادن · هنوز مشغول کار</string>
+    <!-- Under the orb right after a tap, while on-device speech recognition loads: what's said is kept. -->
+    <string name="voice_listening_preparing">در حال آماده شدن · از همین حالا صحبت کنید</string>
+    <string name="voice_starting">در حال شروع</string>
+    <!-- Under the orb while an agent waits for an OK; %1$s is the time it has been working, like 0:12. -->
+    <string name="voice_needs_ok">منتظر تأیید شما · ⁨%1$s⁩</string>
+    <string name="voice_working">مشغول کار · ⁨%1$s⁩</string>
+    <!-- Under the orb while a reply is read aloud: a tap talks over it. -->
+    <string name="voice_tap_over">برای قطع کردن و صحبت ضربه بزنید</string>
+    <string name="voice_tap">برای صحبت ضربه بزنید</string>
+    <!-- A toggle: every question the agent asks is answered yes. -->
+    <string name="voice_allow_all">اجازه همه‌چیز</string>
+    <!-- Starts a new conversation; the last one can be resumed. -->
+    <string name="voice_new">جدید</string>
+    <!-- Brings back the last conversation. -->
+    <string name="voice_resume">ادامه</string>
+    <string name="voice_no_speech">«صدا» به تشخیص گفتار نیاز دارد و این تلفن ندارد. یکی نصب کنید، مثل Speech Recognition &amp; Synthesis از Google، و آن را در تنظیمات ورودی صوتی Android انتخاب کنید. یا به‌جایش تایپ کنید.</string>
+    <string name="voice_input_settings">ورودی صوتی</string>
+    <!-- Switches from talking to typing. -->
+    <string name="voice_type">تایپ</string>
+    <string name="voice_no_agent">«صدا» با یک عامل برنامه‌نویسی در Linux صحبت می‌کند. برای صحبت یکی نصب کنید.</string>
+    <string name="voice_agents">عامل‌ها</string>
+    <string name="voice_log_in">ورود</string>
+    <string name="voice_thinking">در حال فکر کردن</string>
+    <plurals name="voice_steps">
+        <item quantity="one">%1$d مرحله</item>
+        <item quantity="other">%1$d مرحله</item>
+    </plurals>
+    <!-- The text field's hint; %1$s is the agent, like Claude Code. -->
+    <string name="voice_message">پیام به ⁨%1$s⁩</string>
+    <string name="voice_answer_hint">بله، نه، یا اینکه به‌جایش چه کند</string>
+    <string name="voice_send">ارسال</string>
+    <string name="voice_erase">پاک کردن گفته‌هایتان</string>
+    <string name="voice_stop">توقف</string>
+    <!-- The approval card; %1$s is the agent, %2$s what it wants to do (a voice_do_ phrase, like "run a command"). -->
+    <string name="voice_wants">⁨%1$s⁩ می‌خواهد ⁨%2$s⁩</string>
+    <string name="voice_allow">اجازه</string>
+    <string name="voice_always">همیشه</string>
+    <string name="voice_deny">رد</string>
+    <string name="voice_or_type">یا تایپ کنید بله، نه، یا اینکه به‌جایش چه کند</string>
+    <string name="voice_or_say">یا روی گوی ضربه بزنید و بگویید بله، نه، یا اینکه به‌جایش چه کند</string>
+    <!-- Under a picture shown whole. -->
+    <string name="voice_tap_close">برای بستن ضربه بزنید</string>
+    <!-- Steps of a task, shown as they happen. %1$s is a command's description or the command. -->
+    <string name="voice_step_run">در حال اجرا: ⁨%1$s⁩</string>
+    <!-- %1$s is a file name or a web site. -->
+    <string name="voice_step_read">در حال خواندن ⁨%1$s⁩</string>
+    <string name="voice_step_write">در حال نوشتن ⁨%1$s⁩</string>
+    <string name="voice_step_edit">در حال ویرایش ⁨%1$s⁩</string>
+    <string name="voice_step_delete">در حال حذف ⁨%1$s⁩</string>
+    <string name="voice_step_search">در حال جستجوی ⁨%1$s⁩</string>
+    <string name="voice_step_web">در حال جستجو در وب: ⁨%1$s⁩</string>
+    <string name="voice_step_subtask">کار فرعی: ⁨%1$s⁩</string>
+    <string name="voice_step_plan">در حال برنامه‌ریزی</string>
+    <!-- A step whose tool has no name. -->
+    <string name="voice_step_tool">یک ابزار</string>
+    <!-- What the agent wants to do, in "%1$s wants to %2$s" (voice_wants, voice_say_wants): an infinitive phrase. -->
+    <string name="voice_do_run">این فرمان را اجرا کند: ⁨%1$s⁩</string>
+    <!-- Like voice_do_run when the command itself is shown below. -->
+    <string name="voice_do_command">یک فرمان اجرا کند</string>
+    <string name="voice_do_read">⁨%1$s⁩ را بخواند</string>
+    <string name="voice_do_write">⁨%1$s⁩ را بنویسد</string>
+    <string name="voice_do_edit">⁨%1$s⁩ را ویرایش کند</string>
+    <string name="voice_do_delete">⁨%1$s⁩ را حذف کند</string>
+    <string name="voice_do_search">⁨%1$s⁩ را جستجو کند</string>
+    <string name="voice_do_web">در وب جستجو کند: ⁨%1$s⁩</string>
+    <string name="voice_do_subtask">یک کار فرعی شروع کند: ⁨%1$s⁩</string>
+    <string name="voice_do_plan">برنامه‌ریزی کند</string>
+    <string name="voice_do_tool">از ⁨%1$s⁩ استفاده کند</string>
+    <string name="voice_do_tool_unknown">از یک ابزار استفاده کند</string>
+    <!-- Said aloud when the agent asks to do something; %2$s is one of the voice_do_ phrases. -->
+    <string name="voice_say_wants">⁨%1$s⁩ می‌خواهد ⁨%2$s⁩. اجازه می‌دهید؟</string>
+    <!-- Said aloud while the agent works quietly. -->
+    <string name="voice_say_failed">ببخشید، نشد.</string>
+    <!-- In place of the agent's name when there is none. -->
+    <string name="voice_the_agent">عامل</string>
+    <!-- Notes in the conversation, lower case. -->
+    <string name="voice_note_allow_all">هر چه ⁨%1$s⁩ بخواهد اجازه داده می‌شود</string>
+    <string name="voice_note_ask_again">دوباره پیش از هر کار پرسیده می‌شود</string>
+    <string name="voice_note_task_stopped">کار قبلی متوقف شد؛ برای ادامه‌اش بگویید «ادامه بده»</string>
+    <string name="voice_note_cant_continue">گفتگوی قبلی ادامه پیدا نکرد؛ این یک گفتگوی تازه است</string>
+    <string name="voice_cant_start">⁨%1$s⁩ شروع نشد: ⁨%2$s⁩</string>
+    <string name="voice_restarted">⁨%1$s⁩ متوقف شد و دوباره راه افتاد؛ دوباره بپرسید</string>
+    <!-- %2$s is what the agent printed last, in its own words. -->
+    <string name="voice_stopped">⁨%1$s⁩ متوقف شد: ⁨%2$s⁩</string>
+    <string name="voice_nothing_to_say">⁨%1$s⁩ جواب داد ولی چیزی برای گفتن نداشت</string>
+    <string name="voice_no_answer">هنوز جوابی از ⁨%1$s⁩ نیامده؛ شاید سهمیه‌اش تمام شده یا وارد حساب نشده باشد</string>
+    <string name="voice_quiet">⁨%1$s⁩ دو دقیقه است که ساکت مانده؛ اگر گیر کرده متوقفش کنید</string>
+    <string name="voice_offline">اینترنت نیست: تا تلفن آنلاین نشود ⁨%1$s⁩ نمی‌تواند جواب بدهد</string>
+    <!-- When the agent gave no reason for a failure. -->
+    <string name="voice_failed">ناموفق</string>
+    <!-- %1$s is the agent's error, like a network error. -->
+    <string name="voice_retrying">تلاش دوباره: ⁨%1$s⁩</string>
+    <!-- The voice settings: the chip in the top row and the dialog it opens. -->
+    <string name="voice_voice">صدا</string>
+    <string name="voice_language">زبان</string>
+    <!-- The language picked in the launcher, which Voice uses unless another is picked; %1$s is its name. -->
+    <string name="voice_language_launcher">پیش‌فرض (⁨%1$s⁩)</string>
+    <string name="voice_default">پیش‌فرض</string>
+    <string name="voice_default_named">پیش‌فرض (⁨%1$s⁩)</string>
+    <!-- After a voice that needs the internet. -->
+    <string name="voice_online">آنلاین</string>
+    <string name="voice_speed">سرعت</string>
+    <string name="voice_tts_settings">تنظیمات تبدیل متن به گفتار</string>
+    <string name="voice_no_voice">هنوز صدایی برای ⁨%1$s⁩ در این تلفن نیست: از تنظیمات تبدیل متن به گفتار یکی بگیرید.</string>
+    <string name="voice_sample">جواب‌ها با این صدا خوانده می‌شوند.</string>
+    <!-- Speech recognition in the voice settings: the phone's recognizer, or Parakeet, downloaded on request. -->
+    <string name="voice_recognition">تشخیص گفتار</string>
+    <!-- Which recognizer listens: the phone's own (usually Google's), as opposed to Parakeet. -->
+    <string name="voice_recognition_phone">تشخیص گفتار تلفن</string>
+    <string name="voice_recognition_parakeet">\u200fParakeet، در همین تلفن</string>
+    <string name="voice_parakeet_about">\u200fParakeet گفتار را در خود همین تلفن تشخیص می‌دهد: آفلاین، بدون بوق، به 25 زبان اروپایی. حجم بارگیری: ⁨%1$s⁩.</string>
+    <string name="voice_parakeet_download">بارگیری</string>
+    <string name="voice_parakeet_mobile_data">با داده تلفن همراه وصل هستید</string>
+    <!-- Download progress: %1$s and %2$s are sizes, like 312 MB of 670 MB. -->
+    <string name="voice_parakeet_progress">⁨%1$s⁩ از ⁨%2$s⁩</string>
+    <string name="voice_parakeet_checking">در حال بررسی فایل بارگیری‌شده…</string>
+    <string name="voice_parakeet_cancel">لغو</string>
+    <string name="voice_parakeet_delete">حذف Parakeet · ⁨%1$s⁩</string>
+    <string name="voice_parakeet_failed">بارگیری متوقف شد: ⁨%1$s⁩</string>
+    <string name="voice_parakeet_space">فضای کافی نیست: ⁨%1$s⁩ دیگر لازم است</string>
+    <string name="voice_parakeet_damaged">فایل بارگیری‌شده خراب بود؛ دوباره تلاش کنید</string>
+    <!-- %1$s is a language name, like Japanese. -->
+    <string name="voice_parakeet_language">\u200fParakeet این زبان را نمی‌شناسد: ⁨%1$s⁩. به‌جایش تشخیص گفتار تلفن گوش می‌دهد.</string>
+    <!-- Reading aloud in the voice settings: the phone's text-to-speech, or Supertonic, downloaded on request. -->
+    <string name="voice_reading">خواندن با صدای بلند</string>
+    <string name="voice_reading_phone">تبدیل متن به گفتار تلفن</string>
+    <string name="voice_reading_supertonic">\u200fSupertonic، در همین تلفن</string>
+    <string name="voice_supertonic_about">\u200fSupertonic جواب‌ها را در خود همین تلفن با صدای بلند می‌خواند: آفلاین، با صداهای طبیعی، به 31 زبان. حجم بارگیری: ⁨%1$s⁩.</string>
+    <string name="voice_supertonic_delete">حذف Supertonic · ⁨%1$s⁩</string>
+    <!-- %1$s is a language name, like Chinese. -->
+    <string name="voice_supertonic_language">\u200fSupertonic این زبان را نمی‌شناسد: ⁨%1$s⁩. به‌جایش تبدیل متن به گفتار تلفن می‌خواند.</string>
+    <!-- Supertonic's voices, numbered: female 1 to 5, male 1 to 5. -->
+    <string name="voice_female">زن %1$d</string>
+    <string name="voice_male">مرد %1$d</string>
+    <!-- In the voice settings: how long a pause in speech sends it to the agent; off means only a tap on the orb does. -->
+    <string name="voice_send_after">ارسال پس از مکث</string>
+    <string name="voice_send_after_off">خاموش</string>
+    <!-- A number of seconds, short: 2 s. -->
+    <string name="voice_seconds">%1$d ثانیه</string>
+    <!-- Under the orb while the agent waits for the answer to a question it asked; %1$s is the time it has been working. -->
+    <string name="voice_needs_answer">منتظر جواب شما · ⁨%1$s⁩</string>
+    <string name="voice_your_answer">جواب شما</string>
+    <!-- Above a question the agent asks the user; %1$s is the agent, like Hermes. -->
+    <string name="voice_asks">⁨%1$s⁩ می‌پرسد</string>
+    <!-- Answers the agent's question with nothing. -->
+    <string name="voice_skip">رد شدن</string>
+    <string name="voice_skipped">از سؤال رد شدید</string>
+    <string name="voice_or_type_answer">یا جواب خودتان را تایپ کنید</string>
+    <string name="voice_or_say_answer">یا روی گوی ضربه بزنید و جوابتان را بگویید</string>
+    <!-- Said aloud after a question the agent asks; %1$s is its choices, separated by commas. -->
+    <string name="voice_say_choices">گزینه‌ها: ⁨%1$s⁩.</string>
+    <!-- In the conversation when Voice was opened to change a widget or app; %1$s is its name. -->
+    <string name="voice_note_edit">در حال ویرایش ⁨%1$s⁩ · بگویید چه چیزی تغییر کند</string>
+    <!-- The button by the controls that adds a picture or what's copied to the next message, said or typed. -->
+    <string name="voice_attach">پیوست تصویر یا بریده‌دان</string>
+    <!-- Its two choices: one from the phone's photos, or what's on the clipboard. -->
+    <string name="voice_attach_picture">یک تصویر</string>
+    <string name="voice_attach_paste">جای‌گذاری</string>
+    <string name="voice_attach_failed">آن تصویر پیوست نشد</string>
+    <!-- Takes a picture or pasted text off the message before it's sent. -->
+    <string name="voice_detach">برداشتن</string>
+</resources>

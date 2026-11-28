@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Files (ui/FilesScreen.kt, FilesChrome.kt, FileDialogs.kt), the editor (ui/EditorScreen.kt) and the prompt bar
+     with its speech input (ui/PromptBar.kt, ui/Speech.kt). -->
+<resources>
+    <!-- A file operation failed without saying why. -->
+    <string name="files_failed">ناموفق</string>
+    <!-- %1$s is a file name. -->
+    <string name="files_cant_hand_over">نمی‌توان ⁨%1$s⁩ را به برنامه‌های دیگر داد</string>
+    <!-- %1$s is a file name. -->
+    <string name="files_no_app">هیچ برنامه‌ای ⁨%1$s⁩ را باز نمی‌کند</string>
+    <!-- Why a link can't be opened: its target doesn't exist. Shown as %2$s of files_cant_open. -->
+    <string name="files_leads_to_nothing">به هیچ‌جا نمی‌رسد</string>
+    <!-- %1$s is a file name, %2$s why it can't be opened. -->
+    <string name="files_cant_open">⁨%1$s⁩ باز نمی‌شود: ⁨%2$s⁩</string>
+    <!-- The title while files are selected. -->
+    <string name="files_selected">%1$d مورد انتخاب شد</string>
+    <string name="files_filter_hint">فیلتر این پوشه</string>
+    <!-- The home folder, /root: the title there and a quick jump. -->
+    <string name="files_home">خانه</string>
+    <!-- Quick jumps to /root/.config, /root/Downloads and / -->
+    <string name="files_place_config">پیکربندی</string>
+    <string name="files_place_downloads">بارگیری‌ها</string>
+    <!-- Where Linux sees the phone's storage (PhoneStorage.GUEST), a path's name. -->
+    <!-- The phone folders the user granted (PhoneFolders), and the list of them. -->
+    <string name="files_place_phone_folders">پوشه‌های تلفن</string>
+    <string name="files_add_phone_folder">افزودن پوشه تلفن</string>
+    <string name="files_no_phone_folders">هنوز پوشه‌ای از تلفن نیست: از منو یکی اضافه کنید</string>
+    <string name="files_place_system">سیستم</string>
+    <string name="files_search">جستجو</string>
+    <string name="files_more">بیشتر</string>
+    <string name="files_new_file">فایل جدید</string>
+    <string name="files_new_folder">پوشه جدید</string>
+    <string name="files_hide_hidden">پنهان کردن فایل‌های مخفی</string>
+    <string name="files_show_hidden">نمایش فایل‌های مخفی</string>
+    <string name="files_open_terminal">باز کردن ترمینال در اینجا</string>
+    <string name="files_empty_folder">پوشه خالی</string>
+    <string name="files_no_matches">چیزی پیدا نشد</string>
+    <string name="files_create">ساخت</string>
+    <string name="files_rename">تغییر نام</string>
+    <!-- %1$s is a file or folder name. -->
+    <string name="files_delete_one">⁨%1$s⁩ حذف شود؟</string>
+    <plurals name="files_delete_items">
+        <item quantity="one">%1$d مورد حذف شود؟</item>
+        <item quantity="other">%1$d مورد حذف شود؟</item>
+    </plurals>
+    <string name="files_delete_message">این کار برگشت‌پذیر نیست.</string>
+    <string name="files_delete">حذف</string>
+    <!-- How many items a folder holds, or how many are copied or cut. -->
+    <plurals name="files_items">
+        <item quantity="one">%1$d مورد</item>
+        <item quantity="other">%1$d مورد</item>
+    </plurals>
+    <!-- A folder whose contents can't be counted. -->
+    <string name="files_folder">پوشه</string>
+    <string name="files_copy">کپی</string>
+    <string name="files_cut">برش</string>
+    <string name="files_select_all">انتخاب همه</string>
+    <string name="files_edit">ویرایش</string>
+    <string name="files_open_with">باز کردن با…</string>
+    <string name="files_share">هم‌رسانی</string>
+    <string name="files_cancel">لغو</string>
+    <string name="files_move_here">انتقال به اینجا</string>
+    <string name="files_paste_here">جای‌گذاری در اینجا</string>
+
+    <!-- The editor's name in Recents when it opens without a file. -->
+    <string name="editor_title">ویرایشگر</string>
+    <!-- %1$s is a file name, %2$s why it can't be read. -->
+    <string name="editor_cant_read">⁨%1$s⁩ خوانده نمی‌شود: ⁨%2$s⁩</string>
+    <!-- %1$s is a file name, %2$s why it can't be saved. -->
+    <string name="editor_cant_save">⁨%1$s⁩ ذخیره نمی‌شود: ⁨%2$s⁩</string>
+    <!-- Searching in the file found nothing. -->
+    <string name="editor_not_found">پیدا نشد</string>
+    <string name="editor_find_hint">جستجو در فایل</string>
+    <!-- The title of a file with unsaved changes; %1$s is its name. -->
+    <string name="editor_title_unsaved">⁨%1$s⁩ *</string>
+    <string name="editor_previous_match">مورد قبلی</string>
+    <string name="editor_next_match">مورد بعدی</string>
+    <string name="editor_save">ذخیره</string>
+    <string name="editor_find">جستجو</string>
+    <string name="editor_no_wrap">بدون شکستن خط‌ها</string>
+    <string name="editor_wrap">شکستن خط‌ها</string>
+    <string name="editor_show_in_files">نمایش در فایل‌ها</string>
+    <!-- micro is a terminal text editor. -->
+    <string name="editor_open_in_micro">باز کردن در micro</string>
+    <!-- %1$s is a file name. -->
+    <string name="editor_save_confirm">⁨%1$s⁩ ذخیره شود؟</string>
+    <string name="editor_save_confirm_message">تغییرهایی دارید که هنوز ذخیره نشده‌اند.</string>
+    <string name="editor_discard">دور انداختن</string>
+    <!-- Screen reader names of the editor's arrow, undo and redo keys. -->
+    <string name="editor_key_left">چپ</string>
+    <string name="editor_key_up">بالا</string>
+    <string name="editor_key_down">پایین</string>
+    <string name="editor_key_right">راست</string>
+    <string name="editor_key_undo">واگرد</string>
+    <string name="editor_key_redo">بازانجام</string>
+    <!-- The editor's own screen, with recent files. -->
+    <string name="editor_home_title">ویرایشگر</string>
+    <string name="editor_new">جدید</string>
+    <string name="editor_browse">مرور</string>
+    <string name="editor_recent">اخیر</string>
+    <string name="editor_recent_empty">فایل‌هایی که ویرایش می‌کنید اینجا می‌آیند.</string>
+    <string name="editor_new_file_hint">مسیری در Linux</string>
+
+    <string name="prompt_listening">در حال گوش دادن…</string>
+    <string name="prompt_hint_apps">باز کردن برنامه…</string>
+    <!-- %1$s is a coding agent's command, like claude. -->
+    <string name="prompt_hint_ask">باز کردن برنامه یا پرسش از ⁨%1$s⁩…</string>
+    <!-- Shown after typing: Enter sends the text to the coding agent. -->
+    <string name="prompt_enter_ask">⏎ پرسش</string>
+    <!-- In place of the coding agent's name when none is picked. -->
+    <string name="prompt_agent">عامل</string>
+    <!-- The leading spaces line it up with the agents above it. -->
+    <string name="prompt_manage_agents">"  مدیریت عامل‌ها…"</string>
+
+    <!-- Speech input errors, in the prompt bar and to widgets. -->
+    <string name="prompt_speech_no_recognizer">این تلفن تشخیص گفتار ندارد</string>
+    <string name="prompt_speech_refused">تشخیص گفتار تلفن به برنامه‌های دیگر اجازه استفاده نمی‌دهد</string>
+    <!-- %1$d is the recognizer's error code. -->
+    <string name="prompt_speech_failed">تشخیص گفتار ناموفق بود (%1$d)</string>
+    <string name="prompt_speech_language">گفتار در این زبان در دسترس نیست</string>
+    <string name="prompt_speech_not_downloaded">گفتار این زبان روی این تلفن بارگیری نشده</string>
+    <string name="prompt_speech_mic_permission">مجوز میکروفون لازم است</string>
+    <string name="prompt_speech_network">تشخیص گفتار به اتصال شبکه نیاز دارد</string>
+</resources>

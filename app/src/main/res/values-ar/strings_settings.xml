@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The settings hub (ui/SettingsScreen.kt). -->
+<resources>
+    <string name="settings_title">الإعدادات</string>
+
+    <string name="settings_style">المظهر</string>
+    <string name="settings_style_subtitle">السمة، الخلفية، الشاشة الرئيسية</string>
+    <string name="settings_pages">الصفحات</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="zero">لا صفحات · ترتيب، تعديل، إزالة</item>
+        <item quantity="one">صفحة واحدة · ترتيب، تعديل، إزالة</item>
+        <item quantity="two">صفحتان · ترتيب، تعديل، إزالة</item>
+        <item quantity="few">%1$d صفحات · ترتيب، تعديل، إزالة</item>
+        <item quantity="many">%1$d صفحة · ترتيب، تعديل، إزالة</item>
+        <item quantity="other">%1$d صفحة · ترتيب، تعديل، إزالة</item>
+    </plurals>
+    <string name="settings_gestures">الإيماءات</string>
+    <!-- What swiping up and down on home open: a panel's name, or nothing. -->
+    <string name="settings_gestures_subtitle">للأعلى: ⁨%1$s⁩ · للأسفل: ⁨%2$s⁩</string>
+    <string name="settings_language">اللغة</string>
+    <!-- Following the language the phone is set to, rather than one picked here. -->
+    <string name="settings_language_phone">لغة الهاتف</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">مثبت · حذف</string>
+    <string name="settings_linux_stopped">مثبت · متوقف</string>
+    <!-- %2$s is the setup stage, like "download arch linux". -->
+    <string name="settings_linux_installing_percent">جارٍ التثبيت %1$d%% · ⁨%2$s⁩</string>
+    <string name="settings_linux_installing">جارٍ التثبيت · ⁨%1$s⁩</string>
+    <string name="settings_linux_failed">توقف الإعداد · إعادة المحاولة</string>
+    <string name="settings_linux_removing">جارٍ الحذف…</string>
+    <string name="settings_linux_not_installed">غير مثبت · ثبّت Arch Linux لتطبيقات الطرفية والوكلاء</string>
+    <string name="settings_agents">وكلاء البرمجة</string>
+    <string name="settings_agents_default">الافتراضي: ⁨%1$s⁩</string>
+    <string name="settings_agents_install">تثبيت Claude Code، OpenCode، …</string>
+    <string name="settings_needs_linux">بحاجة إلى linux</string>
+    <string name="settings_packages">الحزم</string>
+    <string name="settings_packages_subtitle">تثبيت تطبيقات وبرامج Linux عبر pacman و AUR</string>
+    <!-- Shown while Omalauncher isn't the default home app; tapping asks Android to make it one. -->
+    <string name="settings_home_app">تطبيق الشاشة الرئيسية الافتراضي</string>
+    <string name="settings_home_app_subtitle">اجعل Omalauncher شاشتك الرئيسية</string>
+    <string name="settings_local_network">الشبكة المحلية</string>
+    <string name="settings_local_network_subtitle">السماح للأدوات و linux بالوصول إلى طابعتك، home assistant، …</string>
+    <string name="settings_permissions">الأذونات</string>
+    <string name="settings_permissions_subtitle">الميكروفون، الموقع، الملفات، …</string>
+
+    <!-- The permissions screen (ui/settings/PermissionsScreen.kt). Its rows reuse settings_local_network. -->
+    <string name="permissions_title">الأذونات</string>
+    <!-- The phone folders Linux reaches (PhoneFoldersRow, on top of this screen); Files is the app's name. -->
+    <string name="permissions_folders_title">مجلدات الهاتف</string>
+    <string name="permissions_folders_about">مجلدات صورك وتنزيلاتك ومستنداتك التي يصل إليها linux: في الملفات، وللوكلاء والنصوص البرمجية عبر omalauncher</string>
+    <!-- After permissions_folders_about, on Android 11 and newer; %1$s: where Linux sees the phone's storage, /sdcard. -->
+    <string name="permissions_folders_sdcard">ما يحفظه linux في ⁨%1$s/Download⁩ أو ⁨%1$s/Documents⁩ تراه التطبيقات الأخرى أيضا</string>
+    <string name="permissions_folders_add">إضافة مجلد</string>
+    <string name="permissions_folders_remove">إزالة</string>
+    <string name="permissions_folders_cant_keep">لم يسمح android للمشغّل بالاحتفاظ بهذا المجلد</string>
+    <string name="permissions_folders_no_picker">اختيار المجلدات غير متوفر على هذا الهاتف</string>
+    <string name="permissions_note">يمكن للأدوات والوكلاء استخدام كل ما هو مفعّل هنا. المفاتيح بيد android: التفعيل يطلب الإذن، والإيقاف يفتح إعدادات android الخاصة به</string>
+    <!-- %1$s is what uses the permission, like "the prompt bar's mic". -->
+    <string name="permissions_on">مفعّل · ⁨%1$s⁩</string>
+    <string name="permissions_off">غير مفعّل · ⁨%1$s⁩</string>
+    <string name="permissions_mic">الميكروفون</string>
+    <string name="permissions_mic_uses">ميكروفون شريط الإدخال، الصوت، الأدوات التي تستمع</string>
+    <string name="permissions_location">الموقع</string>
+    <string name="permissions_location_uses">تقريبي · أدوات مثل الطقس، أثناء ظهورها على الشاشة · الوكلاء عبر omalauncher location</string>
+    <string name="permissions_calendar">التقويم</string>
+    <string name="permissions_calendar_uses">أحداثك، للقراءة فقط · أدوات التقويم · الوكلاء عبر omalauncher calendar</string>
+    <string name="permissions_bluetooth">بلوتوث</string>
+    <string name="permissions_bluetooth_uses">بطاريات AirPods وإعداداتها · أدوات AirPods · الوكلاء عبر omalauncher airpods</string>
+    <string name="permissions_notifications">الإشعارات</string>
+    <string name="permissions_notifications_uses">نظام linux أثناء عمله، والأدوات التي ترسل إليك إشعارات</string>
+    <string name="permissions_notification_access">الوصول إلى الإشعارات</string>
+    <string name="permissions_notification_access_uses">نقاط الإشعارات، ما يتم تشغيله الآن، ووضع عدم الإزعاج للأدوات</string>
+
+    <string name="settings_android">إعدادات android</string>
+    <string name="settings_android_subtitle">إعدادات نظام الهاتف</string>
+    <string name="settings_licenses">التراخيص</string>
+    <string name="settings_licenses_subtitle">البرامج مفتوحة المصدر في Omalauncher</string>
+
+    <!-- %1$s is what the running update does, like "upgrading packages". -->
+    <string name="settings_system_updating">جارٍ تحديث النظام: ⁨%1$s⁩…</string>
+    <string name="settings_system_update_failed">لم يكتمل أحد تحديثات النظام</string>
+    <string name="settings_retry">إعادة المحاولة</string>
+    <string name="settings_system_updates">تحديثات النظام</string>
+    <string name="settings_widget_updates">الأدوات</string>
+    <!-- The updates box's section for a newer launcher, on Google Play (Play builds) or GitHub releases (GitHub builds). -->
+    <string name="settings_launcher_updates">المشغّل</string>
+    <string name="settings_launcher_update_available">يتوفر إصدار جديد من Omalauncher على Google Play</string>
+    <string name="settings_launcher_update_failed">تعذر على Google Play تحديث Omalauncher</string>
+    <!-- The running version and the newer one on GitHub releases (GitHub builds). -->
+    <string name="settings_launcher_update_github">⁨Omalauncher %1$s → %2$s⁩ على GitHub</string>
+    <string name="settings_update_all">تحديث الكل</string>
+    <string name="settings_check">تحقق</string>
+    <string name="settings_update">تحديث</string>
+    <string name="settings_updating">جارٍ التحديث…</string>
+    <string name="settings_checking">جارٍ التحقق…</string>
+    <string name="settings_not_checked">لم يتم التحقق بعد</string>
+    <!-- %1$s is how long ago, like "5m ago". -->
+    <string name="settings_up_to_date">محدّث · آخر تحقق ⁨%1$s⁩</string>
+    <string name="settings_store_unreachable">تعذر الوصول إلى المتجر</string>
+    <!-- %1$s lists the edited widgets with their versions. -->
+    <string name="settings_updates_held">معدّلة، لذلك لا يتم تحديثها هنا: ⁨%1$s⁩ · تحديث إحداها من المتجر يستبدل تعديلاتك</string>
+    <!-- Below a list cut short: how many lines are left out. -->
+    <string name="settings_more_lines">⁨+%1$d⁩ أخرى</string>
+    <string name="settings_just_now">الآن</string>
+    <string name="settings_minutes_ago">منذ %1$d د</string>
+    <string name="settings_hours_ago">منذ %1$d س</string>
+    <string name="settings_days_ago">منذ %1$d ي</string>
+</resources>

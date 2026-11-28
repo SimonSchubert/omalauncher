@@ -11,6 +11,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
+import dev.omalauncher.BuildConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineTransducerModelConfig
@@ -232,7 +233,9 @@ internal class Parakeet(
             val text = recognizer.getResult(stream).text.trim()
             val ms = SystemClock.elapsedRealtime() - t
             val audio = samples.size * 1000L / RATE
-            Log.i(TAG, "decoded ${audio}ms of audio in ${ms}ms (RTF %.3f): %s".format(ms.toFloat() / audio.coerceAtLeast(1), text))
+            // What was said stays out of release logs; debug builds show it to diagnose recognition.
+            val said = if (BuildConfig.DEBUG) ": $text" else ", ${text.length} chars"
+            Log.i(TAG, "decoded %dms of audio in %dms (RTF %.3f)%s".format(audio, ms, ms.toFloat() / audio.coerceAtLeast(1), said))
             return text to ms
         } finally {
             stream.release()

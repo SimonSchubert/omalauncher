@@ -43,8 +43,14 @@ object Native {
 
     @JvmStatic external fun windowRelease(window: Long)
 
-    /** Locks [dirty] (left, top, right, bottom; updated to what was locked) and fills it with [background]. */
-    @JvmStatic external fun windowBegin(window: Long, dirty: IntArray, background: Int): Boolean
+    /** Locks the whole window; returns which of its buffers this is (the address of its pixels), or 0 if it failed. */
+    @JvmStatic external fun windowBegin(window: Long): Long
+
+    /** A fingerprint of the locked buffer's content, to recognize it at its next lock; see [BufferDamage]. */
+    @JvmStatic external fun windowCanary(window: Long): Long
+
+    /** Draws only inside [rect] (left, top, right, bottom) this frame, and fills it with [background]. */
+    @JvmStatic external fun windowClear(window: Long, rect: IntArray, background: Int)
 
     @JvmStatic external fun windowBlit(window: Long, store: Long, x: Int, y: Int, width: Int, height: Int, opaque: Boolean)
 

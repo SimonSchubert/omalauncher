@@ -246,9 +246,6 @@ class Proot(
                 "TERM=xterm-256color",
                 // mise-installed tools (coding agents, node) live in the last two.
                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin:/root/.local/bin:/root/.local/share/mise/shims",
-                // As (fake) root, GNU tar restores directory modes with fchmodat(AT_SYMLINK_NOFOLLOW),
-                // which fails with ENOENT under proot on newer kernels and fails the extraction (mise.run).
-                "TAR_OPTIONS=--no-same-permissions",
                 // mise's default npm installer hardlinks packages out of its store in ~/.cache/mise; under proot
                 // (--link2symlink) those become symlinks into the store, and `mise cache clear` after installs and
                 // updates then breaks them (Grok: "no platform binary installed"). npm copies the files.
@@ -258,10 +255,6 @@ class Proot(
                 "DISABLE_AUTOUPDATER=1",
                 "OPENCODE_DISABLE_AUTOUPDATE=1",
                 "GROK_DISABLE_AUTOUPDATER=1",
-                // Claude Code's cross-session messaging (its internal switch, undocumented): proot sends opens of
-                // /proc/*/uid_map to /dev/null, for bwrap's writes, so Claude reads an empty map, takes it for a user
-                // namespace without one, and greets every start with a warning that messaging is off.
-                "CLAUDE_CODE_HARBOR_KITE=0",
                 "BROWSER=xdg-open",
                 // The launcher's editor; yazi and git open files with it. Its shim falls back to micro.
                 "EDITOR=$EDIT_COMMAND",
@@ -315,6 +308,15 @@ class Proot(
             }
             redirectErrorStream(true)
         }
+    }
+
+    /**
+     * [process]'s argv and environment (as NAME=value), for a guest `sh -c [script]` started on a pseudo-terminal
+     * instead (terminal/TerminalSession.kt). Fails while Linux is [stopped].
+     */
+    fun ptyCommand(script: String): Pair<List<String>, List<String>> {
+        val builder = process(script)
+        return builder.command() to builder.environment().map { (name, value) -> "$name=$value" }
     }
 
     companion object {

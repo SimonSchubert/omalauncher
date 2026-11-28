@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The settings hub (ui/SettingsScreen.kt). -->
+<resources>
+    <string name="settings_title">تنظیمات</string>
+
+    <string name="settings_style">ظاهر</string>
+    <string name="settings_style_subtitle">پوسته، پس‌زمینه، صفحه اصلی</string>
+    <string name="settings_pages">صفحه‌ها</string>
+    <plurals name="settings_pages_subtitle">
+        <item quantity="one">%1$d صفحه · چیدن، ویرایش، برداشتن</item>
+        <item quantity="other">%1$d صفحه · چیدن، ویرایش، برداشتن</item>
+    </plurals>
+    <string name="settings_gestures">اشاره‌ها</string>
+    <!-- What swiping up and down on home open: a panel's name, or nothing. -->
+    <string name="settings_gestures_subtitle">بالا: ⁨%1$s⁩ · پایین: ⁨%2$s⁩</string>
+    <string name="settings_language">زبان</string>
+    <!-- Following the language the phone is set to, rather than one picked here. -->
+    <string name="settings_language_phone">زبان تلفن</string>
+    <string name="settings_linux">linux</string>
+    <string name="settings_linux_installed">نصب‌شده · حذف</string>
+    <string name="settings_linux_stopped">نصب‌شده · متوقف</string>
+    <!-- %2$s is the setup stage, like "download arch linux". -->
+    <string name="settings_linux_installing_percent">در حال نصب %1$d%% · ⁨%2$s⁩</string>
+    <string name="settings_linux_installing">در حال نصب · ⁨%1$s⁩</string>
+    <string name="settings_linux_failed">راه‌اندازی متوقف شد · تلاش دوباره</string>
+    <string name="settings_linux_removing">در حال حذف…</string>
+    <string name="settings_linux_not_installed">نصب نشده · برای برنامه‌های ترمینال و عامل‌ها Arch Linux را نصب کنید</string>
+    <string name="settings_agents">عامل‌های برنامه‌نویسی</string>
+    <string name="settings_agents_default">پیش‌فرض: ⁨%1$s⁩</string>
+    <string name="settings_agents_install">نصب ⁨Claude Code⁩، ⁨OpenCode⁩، …</string>
+    <string name="settings_needs_linux">نیاز به linux</string>
+    <string name="settings_packages">بسته‌ها</string>
+    <string name="settings_packages_subtitle">نصب برنامه‌ها و ابزارهای Linux با pacman و AUR</string>
+    <!-- Shown while Omalauncher isn't the default home app; tapping asks Android to make it one. -->
+    <string name="settings_home_app">برنامه صفحه اصلی پیش‌فرض</string>
+    <string name="settings_home_app_subtitle">استفاده از Omalauncher به‌عنوان صفحه اصلی</string>
+    <string name="settings_local_network">شبکه محلی</string>
+    <string name="settings_local_network_subtitle">دسترسی ابزارک‌ها و linux به چاپگر، home assistant، …</string>
+    <string name="settings_permissions">مجوزها</string>
+    <string name="settings_permissions_subtitle">میکروفون، مکان، فایل‌ها، …</string>
+
+    <!-- The permissions screen (ui/settings/PermissionsScreen.kt). Its rows reuse settings_local_network. -->
+    <string name="permissions_title">مجوزها</string>
+    <!-- The phone folders Linux reaches (PhoneFoldersRow, on top of this screen); Files is the app's name. -->
+    <string name="permissions_folders_title">پوشه‌های تلفن</string>
+    <string name="permissions_folders_about">پوشه‌های عکس‌ها، بارگیری‌ها و سندهای شما برای linux: در «فایل‌ها»، و برای عامل‌ها و اسکریپت‌ها از راه omalauncher</string>
+    <!-- After permissions_folders_about, on Android 11 and newer; %1$s: where Linux sees the phone's storage, /sdcard. -->
+    <string name="permissions_folders_sdcard">هرچه linux در ⁨%1$s/Download⁩ یا ⁨%1$s/Documents⁩ ذخیره کند، برنامه‌های دیگر هم می‌بینند</string>
+    <string name="permissions_folders_add">افزودن پوشه</string>
+    <string name="permissions_folders_remove">برداشتن</string>
+    <string name="permissions_folders_cant_keep">لانچر نتوانست این پوشه را نگه دارد: android اجازه نداد</string>
+    <string name="permissions_folders_no_picker">این تلفن انتخابگر پوشه ندارد</string>
+    <string name="permissions_note">ابزارک‌ها و عامل‌ها می‌توانند از هرچه اینجا روشن است استفاده کنند. این کلیدها در اختیار android است: برای روشن کردن از شما پرسیده می‌شود و خاموش کردن، تنظیمات android را برای آن باز می‌کند</string>
+    <!-- %1$s is what uses the permission, like "the prompt bar's mic". -->
+    <string name="permissions_on">روشن · ⁨%1$s⁩</string>
+    <string name="permissions_off">خاموش · ⁨%1$s⁩</string>
+    <string name="permissions_mic">میکروفون</string>
+    <string name="permissions_mic_uses">میکروفون نوار ورودی، «صدا»، ابزارک‌هایی که گوش می‌دهند</string>
+    <string name="permissions_location">مکان</string>
+    <string name="permissions_location_uses">تقریبی · ابزارک‌هایی مثل آب‌وهوا، تا وقتی روی صفحه‌اند · عامل‌ها با ⁨omalauncher location⁩</string>
+    <string name="permissions_calendar">تقویم</string>
+    <string name="permissions_calendar_uses">رویدادهای شما، فقط خواندن · ابزارک‌های تقویم · عامل‌ها با ⁨omalauncher calendar⁩</string>
+    <string name="permissions_bluetooth">بلوتوث</string>
+    <string name="permissions_bluetooth_uses">باتری و تنظیمات AirPods شما · ابزارک‌های AirPods · عامل‌ها با ⁨omalauncher airpods⁩</string>
+    <string name="permissions_notifications">اعلان‌ها</string>
+    <string name="permissions_notifications_uses">هنگام اجرای linux، و ابزارک‌هایی که به شما اعلان می‌دهند</string>
+    <string name="permissions_notification_access">دسترسی به اعلان‌ها</string>
+    <string name="permissions_notification_access_uses">نقطه‌های اعلان، آنچه پخش می‌شود و «مزاحم نشوید» برای ابزارک‌ها</string>
+
+    <string name="settings_android">تنظیمات android</string>
+    <string name="settings_android_subtitle">تنظیمات سیستم تلفن</string>
+    <string name="settings_licenses">پروانه‌ها</string>
+    <string name="settings_licenses_subtitle">نرم‌افزارهای متن‌باز در Omalauncher</string>
+
+    <!-- %1$s is what the running update does, like "upgrading packages". -->
+    <string name="settings_system_updating">به‌روزرسانی سیستم: ⁨%1$s⁩…</string>
+    <string name="settings_system_update_failed">یک به‌روزرسانی سیستم کامل نشد</string>
+    <string name="settings_retry">تلاش دوباره</string>
+    <string name="settings_system_updates">به‌روزرسانی‌های سیستم</string>
+    <string name="settings_widget_updates">ابزارک‌ها</string>
+    <!-- The updates box's section for a newer launcher, on Google Play (Play builds) or GitHub releases (GitHub builds). -->
+    <string name="settings_launcher_updates">لانچر</string>
+    <string name="settings_launcher_update_available">نسخه جدید Omalauncher در Google Play هست</string>
+    <string name="settings_launcher_update_failed">به‌روزرسانی Omalauncher با Google Play انجام نشد</string>
+    <!-- The running version and the newer one on GitHub releases (GitHub builds). -->
+    <string name="settings_launcher_update_github">در GitHub: ⁨Omalauncher %1$s → %2$s⁩</string>
+    <string name="settings_update_all">به‌روزرسانی همه</string>
+    <string name="settings_check">بررسی</string>
+    <string name="settings_update">به‌روزرسانی</string>
+    <string name="settings_updating">در حال به‌روزرسانی…</string>
+    <string name="settings_checking">در حال بررسی…</string>
+    <string name="settings_not_checked">هنوز بررسی نشده</string>
+    <!-- %1$s is how long ago, like "5m ago". -->
+    <string name="settings_up_to_date">به‌روز است · آخرین بررسی: %1$s</string>
+    <string name="settings_store_unreachable">دسترسی به فروشگاه ممکن نشد</string>
+    <!-- %1$s lists the edited widgets with their versions. -->
+    <string name="settings_updates_held">ویرایش شده‌اند و اینجا به‌روز نمی‌شوند: ⁨%1$s⁩ · به‌روزرسانی از فروشگاه تغییرهای شما را جایگزین می‌کند</string>
+    <!-- Below a list cut short: how many lines are left out. -->
+    <string name="settings_more_lines">%1$d مورد دیگر</string>
+    <string name="settings_just_now">همین حالا</string>
+    <string name="settings_minutes_ago">%1$d دقیقه پیش</string>
+    <string name="settings_hours_ago">%1$d ساعت پیش</string>
+    <string name="settings_days_ago">%1$d روز پیش</string>
+</resources>

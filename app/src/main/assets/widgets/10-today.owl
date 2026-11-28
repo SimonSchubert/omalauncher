@@ -3,7 +3,7 @@ widget "today" {
   order: 1
   size: 3x3
   minSize: 2x2
-  meta { description: "The date and the weather where you are: a city you type, or the phone's location once you allow it, or else by IP. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.8"; license: "MIT"; category: "world"; owl: 18 }
+  meta { description: "The date and the weather where you are: a city you type, or the phone's location once you allow it, or else by IP. Tap it for the next 24 hours, three days, wind, UV, sun and moon. Tap °C or °F to switch"; version: "1.8"; license: "MIT"; category: "world"; owl: 27 }
 
   // What it says, in the phone's language where it has a set. wttr names the sky and the moon in English, and
   // its own Indonesian misses newer conditions, so other languages name them from wttr's codes.
@@ -418,6 +418,72 @@ widget "today" {
         "Waxing Gibbous": "trăng khuyết đầu tháng", "Full Moon": "trăng tròn", "Waning Gibbous": "trăng khuyết cuối tháng",
         "Last Quarter": "hạ huyền", "Waning Crescent": "lưỡi liềm cuối tháng"
       }, phase, lower(phase)) + " · sáng ${lit}%"
+    }
+    ar {
+      title: "الطقس"; loading: "الطقس…"; offline: "الطقس غير متصل"; city: "المدينة · فارغ = تلقائي"; here: "استخدام موقعي"
+      feels: "المحسوسة"; humidity: "الرطوبة"; rainToday: "أمطار اليوم"; uv: "مؤشر uv"; pressure: "الضغط"
+      visibility: "الرؤية"; next24: "الساعات الـ 24 القادمة"; now: "الآن"; days: "3 أيام"; today: "اليوم"
+      sunrise: "الشروق"; sunset: "الغروب"; moon: "القمر"; kmh: "كم/س"; yr: "فتح yr.no ↗"
+      sky: (code, desc) => get({
+        "113": "صافٍ", "116": "غائم جزئيا", "119": "غائم", "122": "غائم كليا", "143": "ضباب خفيف",
+        "176": "مطر متفرق", "179": "ثلج متفرق", "182": "مطر ثلجي متفرق", "185": "رذاذ متجمد متفرق",
+        "200": "عواصف رعدية", "227": "ثلوج متطايرة", "230": "عاصفة ثلجية", "248": "ضباب", "260": "ضباب متجمد",
+        "263": "رذاذ خفيف متفرق", "266": "رذاذ خفيف", "281": "رذاذ متجمد", "284": "رذاذ متجمد غزير",
+        "293": "مطر خفيف متفرق", "296": "مطر خفيف", "299": "مطر معتدل أحيانا", "302": "مطر معتدل",
+        "305": "مطر غزير أحيانا", "308": "مطر غزير", "311": "مطر متجمد خفيف", "314": "مطر متجمد غزير",
+        "317": "مطر ثلجي خفيف", "320": "مطر ثلجي غزير", "323": "ثلج خفيف متفرق", "326": "ثلج خفيف",
+        "329": "ثلج معتدل متفرق", "332": "ثلج معتدل", "335": "ثلج كثيف متفرق", "338": "ثلج كثيف",
+        "350": "كريات جليدية", "353": "زخات مطر خفيفة", "356": "زخات مطر غزيرة", "359": "زخات مطر شديدة",
+        "362": "زخات مطر ثلجي خفيفة", "365": "زخات مطر ثلجي غزيرة", "368": "زخات ثلج خفيفة",
+        "371": "زخات ثلج كثيفة", "374": "زخات كريات جليدية خفيفة", "377": "زخات كريات جليدية غزيرة",
+        "386": "مطر خفيف مع رعد", "389": "مطر غزير مع رعد", "392": "ثلج خفيف مع رعد",
+        "395": "ثلج كثيف مع رعد"
+      }, code, lower(trim(desc)))
+      // Where the wind comes from, in eight points: the sixteen's in-between ones go to the nearer of the four.
+      wind: dir => "رياح " + get({
+        "N": "شمالية", "NNE": "شمالية", "NE": "شمالية شرقية", "ENE": "شرقية", "E": "شرقية", "ESE": "شرقية",
+        "SE": "جنوبية شرقية", "SSE": "جنوبية", "S": "جنوبية", "SSW": "جنوبية", "SW": "جنوبية غربية", "WSW": "غربية",
+        "W": "غربية", "WNW": "غربية", "NW": "شمالية غربية", "NNW": "شمالية"
+      }, dir, lower(dir))
+      uvLevel: uv => uv >= 8 ? "مرتفع جدا" : uv >= 6 ? "مرتفع" : uv >= 3 ? "متوسط" : "منخفض"
+      phase: (phase, lit) => get({
+        "New Moon": "محاق", "Waxing Crescent": "هلال متزايد", "First Quarter": "تربيع أول",
+        "Waxing Gibbous": "أحدب متزايد", "Full Moon": "بدر", "Waning Gibbous": "أحدب متناقص",
+        "Last Quarter": "تربيع أخير", "Waning Crescent": "هلال متناقص"
+      }, phase, lower(phase)) + " · الإضاءة ${lit}%"
+    }
+    fa {
+      title: "آب‌وهوا"; loading: "آب‌وهوا…"; offline: "آب‌وهوا آفلاین"; city: "شهر · خالی = خودکار"; here: "استفاده از مکان من"
+      feels: "حسی"; humidity: "رطوبت"; rainToday: "باران امروز"; uv: "شاخص uv"; pressure: "فشار"
+      visibility: "دید"; next24: "24 ساعت آینده"; now: "الان"; days: "3 روز"; today: "امروز"
+      sunrise: "طلوع"; sunset: "غروب"; moon: "ماه"; kmh: "km/h"; yr: "باز کردن yr.no ↗"
+      sky: (code, desc) => get({
+        "113": "صاف", "116": "نیمه‌ابری", "119": "ابری", "122": "تمام‌ابری", "143": "مه رقیق",
+        "176": "باران پراکنده", "179": "برف پراکنده", "182": "برف و باران پراکنده", "185": "نم‌نم یخ‌زن پراکنده",
+        "200": "رعدوبرق", "227": "برف و باد", "230": "کولاک", "248": "مه", "260": "مه یخ‌زن",
+        "263": "نم‌نم باران پراکنده", "266": "نم‌نم باران", "281": "نم‌نم یخ‌زن", "284": "نم‌نم یخ‌زن شدید",
+        "293": "باران سبک پراکنده", "296": "باران سبک", "299": "گاهی باران متوسط", "302": "باران متوسط",
+        "305": "گاهی باران شدید", "308": "باران شدید", "311": "باران یخ‌زن سبک", "314": "باران یخ‌زن شدید",
+        "317": "برف و باران سبک", "320": "برف و باران شدید", "323": "برف سبک پراکنده", "326": "برف سبک",
+        "329": "برف متوسط پراکنده", "332": "برف متوسط", "335": "برف سنگین پراکنده", "338": "برف سنگین",
+        "350": "دانه‌های یخ", "353": "رگبار سبک", "356": "رگبار شدید", "359": "رگبار سیل‌آسا",
+        "362": "رگبار سبک برف و باران", "365": "رگبار شدید برف و باران", "368": "رگبار سبک برف",
+        "371": "رگبار سنگین برف", "374": "رگبار سبک دانه‌های یخ", "377": "رگبار شدید دانه‌های یخ",
+        "386": "باران سبک با رعدوبرق", "389": "باران شدید با رعدوبرق", "392": "برف سبک با رعدوبرق",
+        "395": "برف سنگین با رعدوبرق"
+      }, code, lower(trim(desc)))
+      // Where the wind comes from, in eight points: the sixteen's in-between ones go to the nearer of the four.
+      wind: dir => "باد " + get({
+        "N": "شمالی", "NNE": "شمالی", "NE": "شمال شرقی", "ENE": "شرقی", "E": "شرقی", "ESE": "شرقی",
+        "SE": "جنوب شرقی", "SSE": "جنوبی", "S": "جنوبی", "SSW": "جنوبی", "SW": "جنوب غربی", "WSW": "غربی",
+        "W": "غربی", "WNW": "غربی", "NW": "شمال غربی", "NNW": "شمالی"
+      }, dir, lower(dir))
+      uvLevel: uv => uv >= 8 ? "بسیار زیاد" : uv >= 6 ? "زیاد" : uv >= 3 ? "متوسط" : "کم"
+      phase: (phase, lit) => get({
+        "New Moon": "ماه نو", "Waxing Crescent": "هلال فزاینده", "First Quarter": "تربیع اول",
+        "Waxing Gibbous": "کوژ فزاینده", "Full Moon": "ماه کامل", "Waning Gibbous": "کوژ کاهنده",
+        "Last Quarter": "تربیع آخر", "Waning Crescent": "هلال کاهنده"
+      }, phase, lower(phase)) + " · ${lit}% روشن"
     }
   }
 

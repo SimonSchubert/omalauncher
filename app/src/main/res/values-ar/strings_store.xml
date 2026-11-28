@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The store of widgets (full-screen ones too) and apps (ui/StoreScreen.kt), sharing a widget (ui/ShareWidgetScreen.kt), a widget shared with you (ui/SharedWidgetScreen.kt), adding an app's shortcut (ui/PinShortcutDialog.kt) and the community themes (ui/ThemeCatalogScreen.kt). -->
+<resources>
+    <!-- The store's two titles, the widgets' and the apps'; a button in the header switches between them. -->
+    <string name="store_widgets_title">متجر الأدوات</string>
+    <string name="store_apps_title">متجر التطبيقات</string>
+    <!-- Over the apps store's row of picked apps, above the list of every app. -->
+    <string name="store_featured">مميزة</string>
+
+    <!-- What the store holds, one of; the button to the other store in the header, and the %s in the store's sentences below. -->
+    <string name="store_kind_widgets">أدوات</string>
+    <string name="store_kind_faces">أدوات بملء الشاشة</string>
+    <string name="store_kind_apps">تطبيقات</string>
+    <string name="store_kind_panels">لوحات</string>
+    <string name="store_kind_keybars">أشرطة مفاتيح</string>
+    <!-- One of them, in the title of a widget shared with you: "shared widget". -->
+    <string name="store_kind_widget">أداة</string>
+    <string name="store_kind_face">أداة بملء الشاشة</string>
+    <string name="store_kind_app">تطبيق</string>
+    <string name="store_kind_panel">لوحة</string>
+    <string name="store_kind_keybar">شريط مفاتيح</string>
+
+    <!-- Beside the grid on a wide screen, before one is picked. -->
+    <string name="store_pick_widget">اختر أداة لترى ما تثبّته وما تشغّله</string>
+    <string name="store_pick_face">اختر أداة بملء الشاشة لترى ما تثبّته وما تشغّله</string>
+    <string name="store_pick_app">اختر تطبيقا لترى ما يثبّته وما يشغّله</string>
+    <string name="store_pick_panel">اختر لوحة لترى ما تثبّته وما تشغّله</string>
+    <string name="store_pick_keybar">اختر شريط مفاتيح لترى ما يثبّته وما يشغّله</string>
+    <string name="store_kind_strips">أشرطة تطبيقات</string>
+    <string name="store_kind_strip">شريط تطبيقات</string>
+    <string name="store_pick_strip">اختر شريط تطبيقات لترى ما يثبّته وما يشغّله</string>
+
+    <!-- %1$d is how many there are, %2$s what they are, like "widgets". -->
+    <string name="store_search">بحث: %2$s (%1$d)</string>
+    <!-- The store's tabs; the others are categories the store names. -->
+    <string name="store_tab_all">الكل</string>
+    <string name="store_tab_new">جديدة</string>
+    <string name="store_tab_installed">مثبتة</string>
+    <!-- The category of one the store gives none: a tab, and on its card. -->
+    <string name="store_category_other">أخرى</string>
+    <!-- A tab: its name and how many are in it. -->
+    <string name="store_tab">%1$s %2$d</string>
+    <!-- The installed tab with updates: its name, how many are installed, how many have an update. -->
+    <string name="store_tab_updates">%1$s %2$d · %3$d↑</string>
+
+    <!-- The terminal tiles the launcher has itself, above the store's. -->
+    <string name="store_builtin">مدمجة</string>
+    <string name="store_terminal">الطرفية</string>
+    <string name="store_terminal_details">\u200f6x4 · سطر أوامر</string>
+    <!-- %1$s is the coding agent's command, like "claude". -->
+    <string name="store_agent_details">\u200f6x6 · تشغيل ⁨%1$s⁩</string>
+    <string name="store_on_home">✓ على الشاشة الرئيسية</string>
+    <string name="store_tap_to_add">انقر للإضافة إلى الصفحة %1$d</string>
+
+    <!-- %1$s is what they are, like "widgets"; %2$s the store's repo, like "SimonSchubert/omarchy-widgets". -->
+    <string name="store_reviewed">\u200f%1$s تمت مراجعتها، من ⁨github.com/%2$s⁩</string>
+    <string name="store_loading">جارٍ التحميل…</string>
+    <!-- %1$s is what they are, like "widgets". -->
+    <string name="store_empty">لا توجد %1$s بعد</string>
+    <string name="store_no_new">لا توجد %1$s جديدة</string>
+    <string name="store_none_installed">لا توجد %1$s مثبتة من المتجر</string>
+    <!-- %1$s is what was searched for. -->
+    <string name="store_no_match">لا شيء يطابق «⁨%1$s⁩»</string>
+
+    <!-- A card's status line. -->
+    <string name="store_update_available">يتوفر تحديث</string>
+    <string name="store_installed">✓ تم التثبيت</string>
+    <string name="store_needs_newer">بحاجة إلى مشغّل أحدث</string>
+    <string name="store_needs_linux">بحاجة إلى linux</string>
+    <!-- Full-screen widgets (faces), a whole home page each: their tab and their shape on a card where a widget's size goes ("clock · full screen"). -->
+    <string name="store_full_screen">ملء الشاشة</string>
+    <!-- A face's page count, after its category: "clock · 3 pages". -->
+    <plurals name="store_pages">
+        <item quantity="zero">بلا صفحات</item>
+        <item quantity="one">صفحة واحدة</item>
+        <item quantity="two">صفحتان</item>
+        <item quantity="few">%1$d صفحات</item>
+        <item quantity="many">%1$d صفحة</item>
+        <item quantity="other">%1$d صفحة</item>
+    </plurals>
+    <!-- Beside the name of one added to the store in the last few days. -->
+    <string name="store_badge_new">جديد</string>
+
+    <!-- An entry's page. %1$d is the version of the widget language it needs. -->
+    <string name="store_needs_newer_detail">بحاجة إلى مشغّل أحدث (⁨owl %1$d⁩)؛ حدّث المشغّل للتثبيت</string>
+    <string name="store_may_have_changes">ربما أجريت تعديلات هنا، والتحديث يستبدلها</string>
+    <string name="store_you_changed">أجريت تعديلات هنا، والتحديث يستبدلها</string>
+    <!-- %1$s is the installed version, %2$s the new one. -->
+    <string name="store_update_anyway">تحديث على أي حال ⁦%1$s → %2$s⁩</string>
+    <string name="store_update">تحديث ⁦%1$s → %2$s⁩</string>
+    <string name="store_open">فتح</string>
+    <plurals name="store_add_missing_pages">
+        <item quantity="zero">إضافة الصفحات الناقصة</item>
+        <item quantity="one">إضافة الصفحة الناقصة</item>
+        <item quantity="two">إضافة الصفحتين الناقصتين</item>
+        <item quantity="few">إضافة %1$d صفحات ناقصة</item>
+        <item quantity="many">إضافة %1$d صفحة ناقصة</item>
+        <item quantity="other">إضافة %1$d صفحة ناقصة</item>
+    </plurals>
+    <string name="store_add_to_page">إضافة إلى الصفحة %1$d</string>
+    <string name="store_add_as_face">إضافة كأداة بملء الشاشة</string>
+    <string name="store_install">تثبيت</string>
+    <string name="store_uninstall">إلغاء التثبيت</string>
+    <string name="store_remove">إزالة</string>
+    <!-- %1$s is its name. -->
+    <string name="store_uninstall_confirm">إلغاء تثبيت ⁨%1$s⁩؟</string>
+    <string name="store_remove_confirm">إزالة ⁨%1$s⁩؟</string>
+    <string name="store_remove_file">ينتقل الملف إلى ⁨.removed/⁩ في مجلد الأدوات.</string>
+    <string name="store_remove_files">تنتقل الملفات إلى ⁨.removed/⁩ في مجلد الأدوات.</string>
+    <string name="store_changed_since_approval">تغيرت الأوامر أو الحزم منذ الإصدار الذي وافقت عليه</string>
+
+    <!-- Where one added went. -->
+    <string name="store_added_widget">✓ على شاشتك الرئيسية</string>
+    <string name="store_added_face">✓ يسار صفحتك الأولى</string>
+    <string name="store_added_app">✓ في درج التطبيقات</string>
+    <string name="store_added_panel">✓ في إعدادات الإيماءات</string>
+    <string name="store_added_keybar">✓ في مجلد الأدوات</string>
+
+    <string name="store_needs_linux_app">بحاجة إلى Linux لتشغيل أوامر في Arch، لذا يظهر في درج التطبيقات بعد أن تثبّت Linux من الإعدادات</string>
+    <string name="store_needs_linux_widget">بحاجة إلى Linux لتشغيل أوامر في Arch، لذا يظهر عنصر نائب في المكان إلى أن تثبّت Linux من الإعدادات</string>
+
+    <!-- %1$s lists them by package manager, like "pacman: jq, curl; aur: yay". -->
+    <string name="store_installs_packages">الحزم التي تُثبَّت: ⁨%1$s⁩</string>
+    <string name="store_packages_none">لا شيء</string>
+    <string name="store_runs_no_commands">لا تُشغَّل أي أوامر</string>
+    <string name="store_runs_commands">الأوامر التي تُشغَّل في Arch:</string>
+
+    <!-- What's happening to an entry, while it is. -->
+    <string name="store_installing">جارٍ التثبيت…</string>
+    <string name="store_updating">جارٍ التحديث…</string>
+    <string name="store_adding_pages">جارٍ إضافة الصفحات…</string>
+    <!-- %1$s is why, an error message from the system. -->
+    <string name="store_load_failed">تعذر تحميل المتجر: ⁨%1$s⁩</string>
+    <string name="store_download_mismatch">التنزيل لا يطابق الإصدار الذي تمت مراجعته؛ أعد المحاولة لاحقا</string>
+    <!-- %1$s is why, an error message. -->
+    <string name="store_install_failed">تعذر التثبيت: ⁨%1$s⁩</string>
+
+    <!-- A widget someone shared with you. %1$s is what it is, like "widget". -->
+    <string name="store_shared_title">مشاركة واردة: %1$s</string>
+    <!-- %1$s is the site it's on, like "dpaste.com". -->
+    <string name="store_shared_fetching">جارٍ الجلب من ⁨%1$s⁩…</string>
+    <string name="store_shared_unreadable">تعذرت القراءة</string>
+    <!-- %1$s is why. -->
+    <string name="store_shared_not_widget">هذا الرابط لا يحتوي على أداة: ⁨%1$s⁩.</string>
+    <!-- In place of the name of one shared without one. -->
+    <string name="store_shared_unnamed_app">تطبيق</string>
+    <string name="store_shared_unnamed_widget">أداة</string>
+    <!-- %1$s is its version and size when it says them, like " · v1.2 · 4x2", or nothing; %2$.1f its size in kilobytes. -->
+    <string name="store_shared_info">تمت المشاركة معك%1$s · ⁨%2$.1f KB⁩</string>
+    <string name="store_shared_warning">أضف فقط ما تثق بمرسله. سيتم تشغيل الأوامر أدناه في Arch باسمك، مع الوصول إلى ملفاتك وإلى الشبكة.</string>
+    <!-- %1$d is the version of the widget language it needs. -->
+    <string name="store_shared_needs_newer">بحاجة إلى مشغّل أحدث (⁨owl %1$d⁩)؛ حدّث المشغّل للإضافة</string>
+    <!-- %1$s is its name. -->
+    <string name="store_shared_replace">استبدال النسخة السابقة: ⁨%1$s⁩</string>
+    <string name="store_add_to_drawer">إضافة إلى درج التطبيقات</string>
+    <string name="store_add_to_panels">إضافة إلى لوحات الإيماءات</string>
+    <string name="store_add_to_widgets_folder">إضافة إلى مجلد الأدوات</string>
+    <string name="store_hide_file">إخفاء الملف</string>
+    <string name="store_show_file">عرض الملف كاملا</string>
+    <string name="store_review_with_agent">مراجعة عبر الوكيل</string>
+
+    <!-- Sharing a widget. %1$s is its name. -->
+    <string name="store_share_title">مشاركة ⁨%1$s⁩</string>
+    <string name="store_check_secrets">البحث عن أسرار عبر الوكيل</string>
+    <!-- %1$s is a file name. -->
+    <string name="store_share_unreadable">تعذرت قراءة ⁨%1$s⁩</string>
+    <!-- %1$s is a file name, %2$d the most a launcher takes. -->
+    <string name="store_share_too_big">الملف ⁨%1$s⁩ أكبر من ⁨%2$d KB⁩، وهذا فوق ما يقبله المشغّل</string>
+    <string name="store_uploading">جارٍ الرفع…</string>
+    <string name="store_share_get_code">إنشاء رمز QR</string>
+    <string name="store_something_wrong">حدث خطأ ما</string>
+    <!-- %1$s is the site, like "dpaste.com"; %2$d how many days it keeps it. -->
+    <string name="store_share_uploads">يُرفع علنا إلى ⁨%1$s⁩ لمدة %2$d يوما</string>
+    <string name="store_share_send_link">أو أرسل الرابط: دائم، والأداة كلها بداخله.</string>
+    <string name="store_share_too_big_link">الحجم أكبر من أن يُرسل كرابط: شارك عبر رمز QR.</string>
+    <!-- %1$s is the site, like "dpaste.com"; %2$d how many days it keeps it. -->
+    <string name="store_share_pasted_permanent">رابط إلى ⁨%1$s⁩، يزول بعد %2$d يوما. الرابط أدناه دائم.</string>
+    <string name="store_share_pasted">رابط إلى ⁨%1$s⁩، يزول بعد %2$d يوما.</string>
+    <string name="store_share_permanent">دائم: الأداة كلها داخل الصورة.</string>
+    <string name="store_share_code">مشاركة رمز QR</string>
+    <string name="store_share_link">مشاركة الرابط</string>
+    <string name="store_copied">تم النسخ</string>
+    <string name="store_copy_link">نسخ الرابط</string>
+    <!-- The subject of a shared message and the clipboard's label; %1$s is the widget's name. -->
+    <string name="store_share_subject">أداة ⁨%1$s⁩</string>
+    <!-- The clipboard's label for the code's image; %1$s is the widget's name. -->
+    <string name="store_share_code_clip">رمز QR: ⁨%1$s⁩</string>
+    <!-- The title of Android's share sheet; %1$s is the widget's name. -->
+    <string name="store_share_chooser">مشاركة ⁨%1$s⁩</string>
+    <string name="store_in_store">في المتجر</string>
+    <!-- %1$s is the store's repo, like "SimonSchubert/omarchy-widgets". -->
+    <string name="store_issue_info">مسألة (issue) على ⁨github.com/%1$s⁩؛ بعد المراجعة يستطيع الجميع التثبيت.</string>
+    <string name="store_pr_info">أو طلب سحب (pull request) من وكيلك، ويمكنه إضافة معاينة أيضا:</string>
+    <string name="store_create_pr">إنشاء طلب سحب عبر الوكيل</string>
+    <string name="store_open_issue">فتح مسألة على GitHub</string>
+    <!-- %1$s is a web address. -->
+    <string name="store_no_browser">لا يوجد متصفح لفتح ⁨%1$s⁩</string>
+    <!-- %1$s is the site, like "dpaste.com". -->
+    <string name="store_issue_uploads">يُرفع علنا إلى ⁨%1$s⁩ للمراجعة</string>
+    <!-- %1$s is why. -->
+    <string name="store_upload_failed">✗ تعذر الرفع: ⁨%1$s⁩</string>
+
+    <!-- An app asks to put one of its shortcuts on the home screen. -->
+    <string name="store_pin_title">إضافة إلى الشاشة الرئيسية؟</string>
+    <!-- %1$s is the app that asks. -->
+    <string name="store_pin_from">من ⁨%1$s⁩</string>
+    <string name="store_cancel">إلغاء</string>
+    <string name="store_add">إضافة</string>
+
+    <!-- The community themes listed on omarchy.org/themes. -->
+    <string name="store_theme_title">سمات المجتمع</string>
+    <string name="store_theme_search">بحث: السمات (%1$d)</string>
+    <string name="store_theme_header">من صنع المجتمع، مدرجة على omarchy.org/themes · التثبيت من GitHub</string>
+    <string name="store_theme_in_use">✓ قيد الاستخدام</string>
+    <!-- Under a theme's screenshot, with its colors: whether it is a light or a dark theme, how many wallpapers it has, and its download size. -->
+    <string name="store_theme_light">فاتحة</string>
+    <string name="store_theme_dark">داكنة</string>
+    <plurals name="store_theme_wallpapers">
+        <item quantity="zero">بلا خلفيات</item>
+        <item quantity="one">خلفية واحدة</item>
+        <item quantity="two">خلفيتان</item>
+        <item quantity="few">%d خلفيات</item>
+        <item quantity="many">%d خلفية</item>
+        <item quantity="other">%d خلفية</item>
+    </plurals>
+    <!-- Buttons under a theme's screenshot: use the installed theme, or open its repo. -->
+    <string name="store_theme_use">استخدام</string>
+    <string name="store_theme_github">GitHub</string>
+    <!-- %1$s is where it comes from, like "github.com/owner/repo". -->
+    <string name="store_theme_install_message">من ⁨%1$s⁩. يأخذ Linux ألوانها وخلفياتها، دون نصوصها البرمجية وإعدادات الطرفية فيها.</string>
+    <!-- %2$s is the name of the user's own theme it replaces. -->
+    <string name="store_theme_install_message_replaces">من ⁨%1$s⁩. يأخذ Linux ألوانها وخلفياتها، دون نصوصها البرمجية وإعدادات الطرفية فيها.\n\nتحل محل سمتك ⁨%2$s⁩.</string>
+    <!-- %2$s is the name of Omarchy's theme of the same name. -->
+    <string name="store_theme_install_message_over">من ⁨%1$s⁩. يأخذ Linux ألوانها وخلفياتها، دون نصوصها البرمجية وإعدادات الطرفية فيها.\n\nتحجب سمة Omarchy ⁨%2$s⁩، وإزالتها تعيد تلك السمة.</string>
+    <!-- %1$s is the theme's name, %2$d how many megabytes have downloaded. -->
+    <string name="store_theme_installing">جارٍ تثبيت ⁨%1$s⁩… ⁨%2$d MB⁩</string>
+    <!-- %1$s is why, an error message from the system. -->
+    <string name="store_theme_catalog_failed">تعذر تحميل omarchy.org/themes: ⁨%1$s⁩</string>
+    <string name="store_theme_page_changed">تغيرت الصفحة وتعذرت قراءتها</string>
+    <!-- %1$s is what the user gave as the theme's repo. -->
+    <string name="store_theme_not_github">ليس مستودع GitHub: ⁨%1$s⁩</string>
+    <!-- %1$s is the repo, like "github.com/owner/repo". -->
+    <string name="store_theme_not_on_github">غير موجود على GitHub: ⁨%1$s⁩</string>
+    <string name="store_theme_no_colors">ليس فيها colors.toml ولا alacritty.toml</string>
+    <string name="store_theme_cant_move">تعذر نقل السمة إلى مكانها</string>
+</resources>
