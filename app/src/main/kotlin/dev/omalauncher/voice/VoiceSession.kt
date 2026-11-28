@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import dev.omalauncher.system.AppLanguage
+import dev.omalauncher.BuildConfig
 import dev.omalauncher.R
 import dev.omalauncher.linux.AGENTS
 import dev.omalauncher.linux.Agent
@@ -819,7 +820,8 @@ class VoiceSession(
         process = null
         val code = runCatching { p.exitValue() }.getOrDefault(-1)
         val said = complaints.joinToString(" ").lowercase()
-        Log.i(TAG, "${agent?.bin} exited $code, ${said.length} chars of output")
+        // The agent's output can quote the conversation: release logs get only its length.
+        Log.i(TAG, "${agent?.bin} exited $code" + if (BuildConfig.DEBUG) ": ${said.takeLast(300)}" else ", ${said.length} chars of output")
         val wasBusy = busy
         turns = 0
         approvals.clear()
