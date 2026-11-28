@@ -83,7 +83,7 @@ A file holds declarations, then the nodes it shows:
   while a is null. Lists have `map`, `filter`, `sortBy` and the rest. Colors are the theme's names (`accent`,
   `foreground`, `muted`, `red`, ...), so widgets follow theme changes.
 - `meta { owl: 12 }` says which version of the language the file needs. Declare the highest it uses; without it,
-  it's 1. This launcher has 23.
+  it's 1. This launcher has 28.
 - Text is written in the language of whoever uses the widget. One meant for the store keeps its text in
   `strings { en { ... } id { ... } }` and shows `str.name`, the phone's language's (owl 16, see Text in more
   languages in docs/declarations.md).
@@ -145,7 +145,7 @@ docs say what's current.
 | the phone's own data | `examples/40-battery` (Ring), `examples/60-agents` (the coding agents installed, for, if, Button), `examples/85-quick` (alarm, modes, torch), `examples/97-now-playing` (media, album art), `examples/98-notifications`, `examples/99-volume` (Slider), `examples/airpods` (AirPods' batteries and settings, a screen), `examples/calendar` (the phone's calendars, asked for on a tap), `20-fetch` (with or without Linux) |
 | state, buttons and timers | `examples/91-focus` (persist, `at`, notify), `examples/87-breathe` (a session paced by the clock), `examples/88-notes` (Input, a saved list) |
 | drawing | `examples/90-analog-clock` (Canvas), `50-koi` (pixel art, taps), `60-owl` (sprites, a pet that keeps its state), `examples/92-aurora` and `examples/89-lava` (Shader) |
-| a game | `examples/space-bounce` (an app: `every frame` moving things by their speed, steering by tilting with `android.motion`, aiming with a finger, a Shader grid behind a Canvas), `examples/sky-raid` (a pixel-art scrolling shooter: sprites in one palette, a pixel font drawn with `sprite`, scrolling ground from a Shader, stages and a boss, keeping under the 2000 drawing calls), `examples/sunset-heist` (a 3D city seen from above, made from a seed: two scenes on one camera, the ground first; traffic on a road grid, police that chase, getting in and out of seven kinds of vehicle, each a convex body made with `mesh` so it never sorts wrong, jobs, guns with auto-aim and a held fire button, health and armor, pickups placed from the seed that come back after a while, police that follow the road grid and get out to chase on foot, a minimap; a joystick wherever the thumb goes down, from `onTouch`), `examples/canyon-run` (3D: a Canvas `scene` of terrain tiles laid end to end, models spawned ahead and dropped behind, hits as distances, a camera following the ship, `project` for a sun behind the scene) |
+| a game | `examples/space-bounce` (an app: `every frame` moving things by their speed, steering by tilting with `android.motion`, aiming with a finger, a Shader grid behind a Canvas), `examples/sky-raid` (a pixel-art scrolling shooter: sprites in one palette, a pixel font drawn with `sprite`, scrolling ground from a Shader, stages and a boss, keeping under 2000 drawing calls, the limit before owl 28), `examples/sunset-heist` (a 3D city seen from above, made from a seed: two scenes on one camera, the ground first; traffic on a road grid, police that chase, getting in and out of seven kinds of vehicle, each a convex body made with `mesh` so it never sorts wrong, jobs, guns with auto-aim and a held fire button, health and armor, pickups placed from the seed that come back after a while, police that follow the road grid and get out to chase on foot, a minimap; a joystick wherever the thumb goes down, from `onTouch`), `examples/canyon-run` (3D: a Canvas `scene` of terrain tiles laid end to end, models spawned ahead and dropped behind, hits as distances, a camera following the ship, `project` for a sun behind the scene) |
 | faces, a whole page | `examples/00-start` (frost, Grid, spans), `examples/01-minimal`, `examples/02-pixel`, `examples/03-matrix` |
 | panels and the prompt bar | `drawer.owl` (lazy lists, search with rank, Popup), `examples/65-ai-bar` (android.agents, ask, open) |
 | the strip above the prompt bar | `strip.owl` (android.strip, a Row that scrolls, a long-press menu), `examples/strip-pinned` (apps kept in place, sized to fit) |
@@ -156,9 +156,10 @@ docs say what's current.
 
 ## Limits
 
-A widget has at most 500 nodes (a page 1000), 2000 drawing calls per frame, lists of 1000
-items, 32 images and 128 SVGs on show at once (a view with more draws only those, and says so
-in `.errors/`), and a step budget per update. A widget that draws slowly animates at
+A widget has at most 500 nodes (a page 1000), 4000 drawing calls per frame, lists of 1000
+items, 64 images and 128 SVGs on show at once (a view with more draws only those, and says so
+in `.errors/`), and a step budget per update. Launchers before owl 28 stop at 2000 drawing calls
+and 32 images: a file that needs more declares `owl: 28`. A widget that draws slowly animates at
 half rate (an app with `fps: 60` keeps its 60). Errors never take the home screen down: the failing value shows `…`
 and the message goes to `.errors/`.
 

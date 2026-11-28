@@ -41,6 +41,11 @@ class ExamplesTest {
     private val readme = File("src/main/assets/widgets/README.md")
     private val docs = File("src/main/assets/widgets/docs").listFiles { f -> f.extension == "md" }.orEmpty().sortedBy { it.name }
 
+    /** The level the README tells agents this launcher has is the compiler's; it said 23 at level 27. */
+    @Test fun readmeNamesTheCurrentLevel() {
+        assertTrue(readme.readText().contains("This launcher has ${dev.omalauncher.widgets.lang.Compiler.LEVEL}."))
+    }
+
     /** The docs' samples must compile. */
     @Test fun readmeSamplesCompile() {
         var count = 0

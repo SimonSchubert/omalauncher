@@ -79,7 +79,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import java.util.IdentityHashMap
 
 /** Drawing calls per frame; beyond this a Canvas stops and reports. */
-private const val MAX_OPS = 2000
+private const val MAX_OPS = 4000
 
 /** The most arguments a drawing call takes. */
 private const val MAX_ARGS = 8

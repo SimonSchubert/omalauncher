@@ -242,7 +242,7 @@ internal class WidgetImages(
         private const val STREAM_RECHECK_MS = 1_000L
 
         /** Distinct bitmaps kept per widget. */
-        private const val MAX_IMAGES = 32
+        private const val MAX_IMAGES = 64
 
         /** How long an image goes undrawn before a new one may take its place. */
         private const val UNUSED_MS = 2_000L
