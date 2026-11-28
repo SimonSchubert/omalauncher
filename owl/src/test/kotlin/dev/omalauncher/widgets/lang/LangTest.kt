@@ -96,6 +96,81 @@ class LangTest {
         assertFalse(Regex("""\$\{get\((cur|day|d), "(temp_|FeelsLike|maxtemp|mintemp)""").containsMatchIn(today))
     }
 
+    /**
+     * today with Open-Meteo picked: its answer fills what the tile and the screen read, in the units picked, and
+     * while the phone's place is known wttr isn't asked, so the place goes to one service only.
+     */
+    @Test fun todayReadsOpenMeteo() {
+        val p = Compiler.compile(java.io.File("../app/src/main/assets/widgets/10-today.owl").readText())
+        val h = TestHost(p)
+
+        fun slot(name: String) = p.globals.indexOfFirst { it.name == name }.also { assertTrue(name, it >= 0) }
+
+        fun read(name: String) = h.read(slot(name)).toString()
+
+        fun url(name: String) = (p.globals[slot(name)] as Global.Source).arg!!(Env.root(h)).toString()
+        val hours = (0 until 72).joinToString(",")
+        h.slots[slot("now")] = Num(1795900000.0)
+        h.slots[slot("here")] = Json.parse("""{"granted": true, "available": true, "lat": 52.5163, "lon": 13.3777}""")
+        h.slots[slot("meteo")] =
+            Json.parse(
+                """{"timezone": "Europe/Berlin",
+                "current": {"time": "2026-11-28T21:15", "temperature_2m": -1.6, "relative_humidity_2m": 71, "apparent_temperature": -6.6, "weather_code": 2,
+                  "pressure_msl": 1036.3, "wind_speed_10m": 14.7, "wind_direction_10m": 118, "is_day": 0, "visibility": 35780.0, "uv_index": 0.4},
+                "hourly": {"time": [$hours], "temperature_2m": [$hours], "precipitation_probability": [$hours], "weather_code": [$hours]},
+                "daily": {"time": ["2026-11-28", "2026-11-29", "2026-11-30"], "weather_code": [3, 71, 51],
+                  "temperature_2m_max": [0.6, 0.0, 1.1], "temperature_2m_min": [-2.4, -4.0, -0.3],
+                  "sunrise": ["2026-11-28T07:49", "2026-11-29T07:51", "2026-11-30T07:52"],
+                  "sunset": ["2026-11-28T15:58", "2026-11-29T15:57", "2026-11-30T15:56"],
+                  "precipitation_probability_max": [0, 40, 10], "precipitation_sum": [0.0, 2.54, 0.1], "moon_phase": [0.649, 0.686, 0.722]}}""",
+            )
+        // wttr by default: it gets the place, to two decimals, and Open-Meteo nothing.
+        assertEquals("https://wttr.in/52.52,13.38?format=j1", url("wx"))
+        assertEquals("null", url("meteo"))
+        assertEquals("false", read("ready"))
+
+        h.slots[slot("feed")] = Str("open-meteo")
+        assertEquals("null", url("wx"))
+        assertTrue(url("meteo"), url("meteo").startsWith("https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.38&"))
+        assertEquals("true", read("ready"))
+        assertEquals("-2", read("tempNow"))
+        assertEquals("-7", read("feels"))
+        assertEquals("116", read("code"))
+        assertEquals("partly cloudy", read("desc"))
+        assertEquals("true", read("night"))
+        assertEquals("[07:49, 15:58]", read("sun"))
+        assertEquals("ESE", read("windDir"))
+        assertEquals("15 km/h", read("windSpeed"))
+        assertEquals("0% · 0.0 mm", read("rainToday"))
+        assertEquals("1036 hPa", read("pressure"))
+        assertEquals("36 km", read("visibility"))
+        assertEquals("Waning Gibbous", read("moonPhase"))
+        assertEquals("80", read("moonLit"))
+        val days = h.read(slot("days")) as Lst
+        assertEquals(3, days.items.size)
+        assertEquals("{date: 2026-11-29, lo: -4, hi: 0, code: 326, rain: 40}", days.items[1].toString())
+        // Eight three-hour steps from the one that holds the place's own now, 21:15, whatever the phone's hour is.
+        val steps = h.read(slot("steps")) as Lst
+        assertEquals(8, steps.items.size)
+        assertEquals("{hr: 21, t: 21, rain: 21, code: 122}", steps.items[0].toString())
+
+        // °F on a tap, worked out here: Open-Meteo answered in °C and km/h.
+        h.slots[slot("unitChoice")] = Str("F")
+        assertEquals("29", read("tempNow"))
+        assertEquals("9 mph", read("windSpeed"))
+        assertEquals("31 inHg", read("pressure"))
+        assertEquals("22 mi", read("visibility"))
+
+        // A typed city: Open-Meteo's own search finds it, by the name before the comma, and wttr still isn't asked.
+        h.slots[slot("city")] = Str("New York, US")
+        assertTrue(url("found"), url("found").startsWith("https://geocoding-api.open-meteo.com/v1/search?name=New%20York&count=1&"))
+        assertEquals("null", url("meteo"))
+        h.slots[slot("found")] = Json.parse("""{"results": [{"name": "New York", "latitude": 40.71427, "longitude": -74.00597, "country": "United States"}]}""")
+        assertTrue(url("meteo"), url("meteo").startsWith("https://api.open-meteo.com/v1/forecast?latitude=40.71&longitude=-74.01&"))
+        assertEquals("null", url("wx"))
+        assertEquals("New York", read("placeName"))
+    }
+
     /** A list literal that isn't constant hands over its items, to be read one by one like a model's at: [x, y, z]. */
     @Test fun listLiteralsKeepTheirItems() {
         val p = Compiler.compile("widget \"t\" {\nstate x = 3\nText { text: [1, x, x * 2] }\nText { text: [1, 2] }\n}")

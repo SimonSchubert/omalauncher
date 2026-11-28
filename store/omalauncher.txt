@@ -43,8 +43,10 @@ dpaste.com (sharing widgets)
 - Only when you choose to share a widget that is too big for one QR code, or to submit your own widget to the widget store, the widget's text is uploaded to dpaste.com as a public paste that anyone with the link can read. It is deleted after 7 days, or after one year for a store submission. Opening a shared link that points to dpaste.com downloads the widget from there.
 - Widgets shared as a QR code or link without dpaste.com carry the whole widget in the link itself and are not uploaded anywhere.
 
-wttr.in (weather widget)
+wttr.in and Open-Meteo (weather widget)
 - The weather widget requests the current weather for a city you type, or, if you allowed approximate location, for your approximate coordinates rounded to about a kilometre. Otherwise wttr.in estimates your approximate location from your IP address.
+- It asks wttr.in unless you pick Open-Meteo (open-meteo.com) as the source on the widget's screen. Then the city you type or your approximate coordinates go to Open-Meteo instead of wttr.in. Only with neither does it still ask wttr.in where your IP address is, and send the coordinates wttr.in answers to Open-Meteo.
+- Open-Meteo's terms and privacy: https://open-meteo.com/en/terms
 
 Widgets
 - Widgets you add from the widget store may contact other services to show their content (for example prices, news feeds or radio streams). Each widget's page in the store shows what it runs and which addresses it contacts.
