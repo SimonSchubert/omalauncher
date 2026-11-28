@@ -48,6 +48,21 @@ private val CURATED =
  */
 private val HIDDEN = listOf("avahi-discover", "bssh", "bvnc", "footclient", "foot-server", "vim", "nvim", "yazi")
 
+/**
+ * Chromium and VS Code refuse to start as root without these, and the guest only has root: tapping their
+ * icon did nothing. Both read a flags file: Arch's chromium launcher, and the `code` wrapper of the AUR's
+ * visual-studio-code-bin (Arch Linux ARM packages no VS Code). VS Code also wants its data directory
+ * named, so it gets the one it uses anyway.
+ */
+private val ROOT_FLAGS =
+    mapOf(
+        "chromium-flags.conf" to "--no-sandbox\n",
+        "code-flags.conf" to "--no-sandbox\n--user-data-dir=${Proot.GUEST_HOME}/.config/Code\n",
+    )
+
+/** The flags files of [ROOT_FLAGS] in [home]'s ~/.config; the user's own flags go into the same files. */
+fun rootFlags(home: File): List<Managed> = ROOT_FLAGS.map { (name, content) -> Managed.text(File(home, ".config/$name"), Policy.Seeded) { content } }
+
 /** The curated and hiding entries; ones the user edited are left alone. */
 fun defaultApps(applications: File): List<Managed> {
     val hidden = HIDDEN.associateWith { "[Desktop Entry]\nType=Application\nName=$it\nNoDisplay=true\n" }

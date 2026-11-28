@@ -40,6 +40,7 @@ import dev.omalauncher.linux.LauncherFont
 import dev.omalauncher.linux.TerminalFont
 import dev.omalauncher.linux.bundledIcons
 import dev.omalauncher.linux.defaultApps
+import dev.omalauncher.linux.rootFlags
 import dev.omalauncher.linux.matches
 import dev.omalauncher.linux.run
 import dev.omalauncher.linux.shellQuote
@@ -176,6 +177,7 @@ class Runtime(
             LauncherData.GUEST_MANIFEST,
             listOf(
                 { defaultApps(proot.applications) },
+                { rootFlags(proot.home) },
                 { bundledIcons(context, proot.home) },
                 openBridge::managed,
                 { phoneBridge.managed() },
