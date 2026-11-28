@@ -2,6 +2,7 @@ package dev.omalauncher.linux
 
 import android.content.Context
 import android.os.FileObserver
+import android.os.SystemClock
 import android.util.Log
 import dev.omalauncher.BuildConfig
 import dev.omalauncher.storage.PhoneFolders
@@ -36,14 +37,46 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 
 private const val TAG = "phone"
+
+/** [PhoneBridge]'s rate-limit map never holds more than this many distinct keys (least-recently-used dropped first),
+ * comfortably above any real location/calendar/link-target set, so eviction only ever bites a flood of made-up keys
+ * (e.g. a fabricated link target per request), not a real caller's rate-limit state. */
+internal const val MAX_LAST_CALL_KEYS = 64
+
+/**
+ * True, and [calls] remembering [now] for [key], only the first time [key] is asked within [minMs] of its last
+ * recorded call there; false (and [calls] left unchanged) otherwise. A top-level function, not a method on
+ * [PhoneBridge], so this rate-limit arithmetic is testable without the class's Android constructor dependencies.
+ */
+internal fun allowedCall(
+    calls: MutableMap<String, Long>,
+    key: String,
+    minMs: Long,
+    now: Long,
+): Boolean {
+    val last = calls[key]
+    if (last != null && now - last < minMs) return false
+    calls[key] = now
+    return true
+}
+
+/** A map for [allowedCall], capped at [MAX_LAST_CALL_KEYS] keys so an unbounded stream of distinct keys (a guest
+ * process cycling fabricated link targets, say) can't grow it forever. */
+internal fun cappedCallMap(): LinkedHashMap<String, Long> =
+    object : LinkedHashMap<String, Long>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Long>) = size > MAX_LAST_CALL_KEYS
+    }
 
 /**
  * `omalauncher` for the guest (`phone` until 0.20, which stays as another name for it): the phone's location, calendar
@@ -70,6 +103,23 @@ class PhoneBridge(
 ) {
     private val inbox = File(proot.runtimeDir, "phone")
     private var observer: FileObserver? = null
+
+    /** `location`/`calendar`/`link:<target>`'s last call, for [allow]. Capped by [cappedCallMap] against a flood of
+     * made-up `link:<target>` keys. Main thread only, like [receive]. */
+    private val lastCall = cappedCallMap()
+
+    private val _recentActivity = MutableStateFlow<List<Entry>>(emptyList())
+
+    /** The last [MAX_ACTIVITY] requests (command and ok/denied/error/usage, never the payload), for a future
+     * "recent phone-bridge activity" list in settings. */
+    val recentActivity = _recentActivity.asStateFlow()
+
+    /** One line of [recentActivity]. */
+    data class Entry(
+        val time: Long,
+        val command: String,
+        val result: String,
+    )
 
     fun managed(): List<Managed> {
         val bin = File(proot.rootfs, "usr/local/bin")
@@ -103,14 +153,19 @@ class PhoneBridge(
             }.also { it.startWatching() }
     }
 
+    // Every guest process shares one fake-root identity under proot (one real Android UID for all of them), so there's
+    // no caller here to check against a secret or token: anything written to a file the real `omalauncher` reads is
+    // just as readable by a malicious guest process. What follows isn't authentication; it's bounding and recording
+    // what an unauthenticated requester can do — rate limits on the pokiest commands, and an audit trail ([recentActivity])
+    // a future settings screen could show.
     private suspend fun receive(id: String) {
         val request = File(inbox, "$id.req")
         val args = withContext(Dispatchers.IO) { runCatching { request.readText() }.getOrNull().also { request.delete() } }?.removeSuffix("\u0000")?.split('\u0000') ?: return
         val reply =
             try {
                 when (args[0]) {
-                    "location" -> location()
-                    "calendar" -> calendar(args.getOrNull(1))
+                    "location" -> if (allow("location", LOCATION_RATE_MS)) location() else rateLimited("location")
+                    "calendar" -> if (allow("calendar", CALENDAR_RATE_MS)) calendar(args.getOrNull(1)) else rateLimited("calendar")
                     "battery" -> battery()
                     "share" -> share(args.drop(1).filter { it.isNotEmpty() })
                     "version" -> Answer.Ok(Obj(mapOf("version" to Str(BuildConfig.VERSION_NAME), "versionCode" to Num(BuildConfig.VERSION_CODE.toDouble()), "commands" to Lst(COMMANDS.map(::Str)))))
@@ -121,7 +176,9 @@ class PhoneBridge(
                     "get" -> withContext(Dispatchers.IO) { get(args.drop(1)) }
                     "put" -> withContext(Dispatchers.IO) { put(args.drop(1)) }
                     "pick" -> pick(args.getOrNull(1)?.takeIf { it.isNotEmpty() } ?: Proot.GUEST_DOWNLOADS)
-                    "link" -> link().handle(args.drop(1), deviceSync())
+                    // Rate-limited per target computer, args[2]: link also moves files, so a flood at one target is
+                    // worth slowing even though "link" itself covers many lightweight verbs (hello, watch, theme, …).
+                    "link" -> if (allow("link:${args.getOrNull(2).orEmpty()}", LINK_RATE_MS)) link().handle(args.drop(1), deviceSync()) else rateLimited("link")
                     "devices" -> link().devices(args.drop(1), deviceSync())
                     else -> Answer.Usage("unknown command '${args[0]}'")
                 }
@@ -129,11 +186,38 @@ class PhoneBridge(
                 Log.w(TAG, "phone ${args[0]} failed", e)
                 Answer.Error("${args[0]} failed: ${e.message}")
             }
+        record(args[0], reply)
         val text = reply.text
         withContext(Dispatchers.IO) {
             // Its .ack gone, the script gave up waiting: nothing would read the answer.
             if (File(inbox, "$id.ack").exists()) runCatching { writeAtomically(File(inbox, "$id.done"), (text + "\n").toByteArray()) }
         }
+    }
+
+    /** True, and remembers [now], only the first time [key] is asked within [minMs]; false (and no change) otherwise.
+     * [now] defaults to the monotonic clock, not wall-clock time, so a backward clock adjustment (NTP sync, manual
+     * date fix) can't make a legitimate caller look overdue and get denied until wall-clock time catches back up. */
+    private fun allow(
+        key: String,
+        minMs: Long,
+        now: Long = SystemClock.elapsedRealtime(),
+    ): Boolean = allowedCall(lastCall, key, minMs, now)
+
+    private fun rateLimited(command: String) = Answer.Denied("too many '$command' requests; wait a moment and ask again")
+
+    /** Appends to [recentActivity]: when, which command, and ok/denied/error/usage — never the request's or answer's payload. */
+    private fun record(
+        command: String,
+        reply: Answer,
+    ) {
+        val result =
+            when (reply) {
+                is Answer.Ok -> "ok"
+                is Answer.Denied -> "denied"
+                is Answer.Error -> "error"
+                is Answer.Usage -> "usage"
+            }
+        _recentActivity.update { (it + Entry(System.currentTimeMillis(), command, result)).takeLast(MAX_ACTIVITY) }
     }
 
     /** The fix android.location has, or the first one within [LOCATION_MS]. */
@@ -351,6 +435,14 @@ class PhoneBridge(
         const val DAYS = 14
         const val MAX_DAYS = 366
         const val MAX_EVENTS = 1000
+        /** Neither changes meaningfully faster than this; blunts a tight polling loop without slowing one widget's own refresh. */
+        const val LOCATION_RATE_MS = 2_000L
+        const val CALENDAR_RATE_MS = 2_000L
+        /** Tighter than location/calendar: link also carries file transfers (get/put), so a flood at one target is worth
+         * stopping sooner, but normal sync (theme, state) polls far slower than this. */
+        const val LINK_RATE_MS = 500L
+        /** [recentActivity] keeps at most this many lines. */
+        const val MAX_ACTIVITY = 50
         val CONTROLS = Aap.MODES + listOf("next", "conversation", "oneBud", "earDetection", "adaptiveLevel")
 
         /** on/off as well as JSON: `omalauncher airpods conversation off`. */
