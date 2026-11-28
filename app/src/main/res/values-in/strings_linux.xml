@@ -34,6 +34,7 @@
     <string name="linux_error_move_download">tidak dapat memindahkan unduhan ke tempatnya</string>
     <string name="linux_error_cant_run">Linux tidak dapat menjalankan perintah di sini (exit %1$d)</string>
     <string name="linux_error_kernel">kernel ponsel ini mencegah program Linux menjalankan program lain, jadi penyiapan tidak dapat dilanjutkan. custom ROM dengan kernel 4.14 memerlukan commit kernel 05b289263772 dari maintainer-nya; lihat github issue #105</string>
+    <string name="linux_error_ptrace">ponsel ini tidak mengizinkan launcher melacak programnya sendiri (ptrace), dan Linux tidak dapat berjalan tanpa itu. di GrapheneOS, izinkan debugging kode native untuk launcher di setelan ponsel › aplikasi › Omalauncher › perlindungan eksploit, lalu coba lagi</string>
     <string name="linux_error_command">`%1$s` gagal (exit %2$d)</string>
     <string name="linux_error_cliamp_mismatch">unduhan cliamp tidak cocok dengan %1$s</string>
     <string name="linux_error_cant_replace">tidak dapat mengganti %1$s</string>

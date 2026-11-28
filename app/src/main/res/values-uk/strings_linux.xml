@@ -37,6 +37,7 @@
     <string name="linux_error_move_download">не вдається перемістити завантажений файл</string>
     <string name="linux_error_cant_run">Linux не може виконувати команди тут (код %1$d)</string>
     <string name="linux_error_kernel">ядро цього телефона не дозволяє програмам Linux запускати інші програми, тож налаштування не може продовжитися. кастомним прошивкам з ядром 4.14 потрібен коміт ядра 05b289263772 від їхнього розробника; див. github issue #105</string>
+    <string name="linux_error_ptrace">цей телефон не дозволяє лаунчеру трасувати власні програми (ptrace), а без цього Linux працювати не може. у GrapheneOS дозвольте лаунчеру налагодження нативного коду в налаштуваннях телефона › застосунки › Omalauncher › захист від експлойтів і спробуйте ще раз</string>
     <string name="linux_error_command">`%1$s` завершилася з помилкою (код %2$d)</string>
     <string name="linux_error_cliamp_mismatch">завантажений cliamp не відповідає %1$s</string>
     <string name="linux_error_cant_replace">не вдається замінити %1$s</string>

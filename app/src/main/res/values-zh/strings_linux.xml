@@ -34,6 +34,7 @@
     <string name="linux_error_move_download">无法把下载的文件移到目标位置</string>
     <string name="linux_error_cant_run">Linux 无法在这里运行命令（退出码 %1$d）</string>
     <string name="linux_error_kernel">这台手机的内核不允许 Linux 程序启动其他程序，所以安装无法继续。使用 4.14 内核的第三方 ROM 需要维护者加入内核提交 05b289263772；参见 github issue #105</string>
+    <string name="linux_error_ptrace">这台手机不允许启动器跟踪自己的程序（ptrace），而 Linux 离不开它。在 GrapheneOS 上，请在手机的 设置 › 应用 › Omalauncher › 漏洞利用防护 中允许启动器进行原生代码调试，然后再试</string>
     <string name="linux_error_command">`%1$s` 失败（退出码 %2$d）</string>
     <string name="linux_error_cliamp_mismatch">下载的 cliamp 与 %1$s 不符</string>
     <string name="linux_error_cant_replace">无法替换 %1$s</string>

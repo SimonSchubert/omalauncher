@@ -36,6 +36,7 @@
     <string name="linux_error_move_download">impossible de mettre le téléchargement en place</string>
     <string name="linux_error_cant_run">Linux ne peut pas lancer de commandes ici (exit %1$d)</string>
     <string name="linux_error_kernel">le noyau de ce téléphone empêche les programmes Linux d’en lancer d’autres, l’installation ne peut donc pas continuer. les ROM custom avec un noyau 4.14 ont besoin du commit 05b289263772 de la part de leur mainteneur ; voir l’issue github #105</string>
+    <string name="linux_error_ptrace">ce téléphone ne laisse pas le launcher tracer ses propres programmes (ptrace), et Linux ne peut pas fonctionner sans ça. sur GrapheneOS, autorise le débogage de code natif pour le launcher dans les paramètres du téléphone › applications › Omalauncher › protection contre les exploits, puis réessaie</string>
     <string name="linux_error_command">`%1$s` a échoué (exit %2$d)</string>
     <string name="linux_error_cliamp_mismatch">le téléchargement de cliamp ne correspond pas à %1$s</string>
     <string name="linux_error_cant_replace">impossible de remplacer %1$s</string>

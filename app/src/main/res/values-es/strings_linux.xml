@@ -36,6 +36,7 @@
     <string name="linux_error_move_download">no se puede mover la descarga a su lugar</string>
     <string name="linux_error_cant_run">Linux no puede ejecutar comandos aquí (exit %1$d)</string>
     <string name="linux_error_kernel">el kernel de este teléfono impide que los programas de Linux inicien otros programas, así que la instalación no puede continuar. las ROMs personalizadas con kernel 4.14 necesitan que su mantenedor incluya el commit 05b289263772 del kernel; consulta el issue #105 en github</string>
+    <string name="linux_error_ptrace">este teléfono no deja que el launcher rastree sus propios programas (ptrace), y Linux no puede funcionar sin eso. en GrapheneOS, permite la depuración de código nativo para el launcher en los ajustes del teléfono › aplicaciones › Omalauncher › protección contra exploits y vuelve a intentarlo</string>
     <string name="linux_error_command">`%1$s` falló (exit %2$d)</string>
     <string name="linux_error_cliamp_mismatch">la descarga de cliamp no coincide con %1$s</string>
     <string name="linux_error_cant_replace">no se puede reemplazar %1$s</string>
