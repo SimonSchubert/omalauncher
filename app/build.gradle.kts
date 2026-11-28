@@ -129,6 +129,11 @@ tasks.matching { it.name.matches(Regex("pre\\w*(Debug|Release)Build")) }.configu
         val now = digest.digest().joinToString("") { "%02x".format(it) }
         val built = File(libs, ".source").takeIf { it.isFile }?.readText()?.trim()
         check(built == now) { "$libs was built from an older patches/proot or scripts/fetch-proot.sh; run scripts/fetch-proot.sh" }
+        // .source can match while libproot.so is another build's (copied in, or left by a run that stopped half way):
+        // the binary carries the version it was built as, which is the one the script pins.
+        val pinned = sources.first().readLines().first { it.startsWith("PROOT=") }.substringAfter('=')
+        val binary = File(libs, "libproot.so").readBytes().toString(Charsets.ISO_8859_1)
+        check("\u0000$pinned\u0000" in binary) { "$libs/libproot.so is not proot $pinned; run scripts/fetch-proot.sh" }
     }
 }
 
