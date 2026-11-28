@@ -101,6 +101,14 @@ class StyleTest {
         assertEquals(1, StyleFile.decode(mapOf("terminal.built-in" to "yes")).problems.size)
     }
 
+    /** The ⌨ button over Linux windows shows until someone hides it. */
+    @Test fun keyboardButtonShowsUnlessHidden() {
+        assertTrue(Style()[Style.KEYBOARD_BUTTON])
+        val decoded = StyleFile.decode(mapOf("window.keyboard-button" to false))
+        assertEquals(emptyList<String>(), decoded.problems)
+        assertFalse(decoded.style[Style.KEYBOARD_BUTTON])
+    }
+
     @Test fun eachBarHasItsOwnBorderWidth() {
         val decoded = StyleFile.decode(mapOf("status-bar.border-width" to 0.0, "navigation-bar.border-width" to 9.0))
         assertEquals(0.0, decoded.style[Style.STATUS_BAR.borderWidth], 0.0)

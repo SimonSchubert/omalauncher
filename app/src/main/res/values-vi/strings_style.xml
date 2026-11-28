@@ -129,6 +129,8 @@
     <string name="style_terminal_hint">áp dụng cho terminal mở từ giờ · thêm phông bằng pacman, như ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">gợi ý bàn phím</string>
     <string name="style_keyboard_suggestions_hint">gợi ý, nhập bằng cách vuốt và đọc chính tả; chữ đến terminal từng từ một · từ lần mở bàn phím tiếp theo</string>
+    <string name="style_keyboard_button">nút bàn phím</string>
+    <string name="style_keyboard_button_hint">nút ⌨ ở góc terminal và ứng dụng Linux · khi ẩn, chạm vào dòng có con trỏ để mở bàn phím</string>
     <string name="style_terminal_opens_in">mở bằng</string>
     <string name="style_terminal_built_in_hint">omaterminal: terminal riêng của Omalauncher, gõ bằng bàn phím điện thoại như mọi ứng dụng · áp dụng cho terminal mở từ giờ</string>
     <!-- %1$s is the terminal's font size in points, like "10.5"; %2$d how many characters fit across the phone in portrait. -->

@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">terminali aperti da adesso in poi · altri caratteri con pacman, come ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">parole suggerite</string>
     <string name="style_keyboard_suggestions_hint">suggerimenti, digitazione gestuale e dettatura; il testo arriva al terminale una parola alla volta · dalla prossima apertura della tastiera</string>
+    <string name="style_keyboard_button">pulsante tastiera</string>
+    <string name="style_keyboard_button_hint">il ⌨ nell’angolo dei terminali e delle app Linux · senza, tocca la riga del cursore per aprire la tastiera</string>
     <string name="style_terminal_opens_in">si apre in</string>
     <string name="style_terminal_built_in_hint">omaterminal: il terminale di Omalauncher, con la tastiera del telefono come in ogni app · terminali aperti da adesso in poi</string>
     <plurals name="style_terminal_size">

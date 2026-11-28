@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">para las terminales que abras a partir de ahora · más con pacman, como ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">sugerencias del teclado</string>
     <string name="style_keyboard_suggestions_hint">sugerencias, escritura deslizante y dictado; el texto llega a la terminal palabra por palabra · desde la próxima vez que se abra el teclado</string>
+    <string name="style_keyboard_button">botón del teclado</string>
+    <string name="style_keyboard_button_hint">el ⌨ en la esquina de las terminales y apps de Linux · sin él, toca la línea del cursor para abrir el teclado</string>
     <string name="style_terminal_opens_in">abre en</string>
     <string name="style_terminal_built_in_hint">omaterminal: la terminal propia de Omalauncher, con el teclado del teléfono como en cualquier app · para las terminales que abras a partir de ahora</string>
     <plurals name="style_terminal_size">

@@ -108,6 +108,8 @@
     <string name="style_terminal_hint">terminaux ouverts à partir de maintenant · d’autres polices avec pacman, comme ttf-cascadia-code</string>
     <string name="style_keyboard_suggestions">suggestions du clavier</string>
     <string name="style_keyboard_suggestions_hint">suggestions, saisie gestuelle et dictée ; le texte arrive dans le terminal mot par mot · dès la prochaine ouverture du clavier</string>
+    <string name="style_keyboard_button">bouton du clavier</string>
+    <string name="style_keyboard_button_hint">le ⌨ dans le coin des terminaux et des apps Linux · sans lui, touche la ligne du curseur pour ouvrir le clavier</string>
     <string name="style_terminal_opens_in">s’ouvre dans</string>
     <string name="style_terminal_built_in_hint">omaterminal : le terminal d’Omalauncher, avec le clavier du téléphone comme dans toute app · terminaux ouverts à partir de maintenant</string>
     <plurals name="style_terminal_size">

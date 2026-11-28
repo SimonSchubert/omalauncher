@@ -228,6 +228,13 @@ class Style(
             )
         val TERMINAL_SUGGESTIONS = Setting.Flag("terminal.keyboard-suggestions", true,"The terminals' input as a normal text field, so the keyboard can suggest words and clipboard items, glide-type and dictate; false hides these but passes raw keys. Text reaches the terminal a word at a time. Takes effect when the keyboard next opens.")
 
+        val KEYBOARD_BUTTON =
+            Setting.Flag(
+                "window.keyboard-button",
+                true,
+                "The ⌨ button in the corner of terminals and Linux apps, which shows or hides the phone's keyboard. Without it, a tap on the line with the cursor opens the keyboard (anywhere in the launcher's own terminal) and Android's back closes it.",
+            )
+
         val SWIPE_UP =
             Setting.Text(
                 "gestures.swipe-up",
@@ -280,7 +287,7 @@ object StyleFile {
         with(Style) {
             listOf(THEME, BACKGROUND, FONT, APP_TILES, RECENT_APPS, EMPTY_PAGE_LEFT, EMPTY_PAGE_RIGHT, HOME_PAGE, COLUMNS, FORCE_SINGLE_PAGE, COVER_SCREEN, UNFOLDED_LAYOUT, UNFOLDED_COLUMNS, GAPS_IN, GAPS_OUT, TILE_OPACITY, TILE_FROST, TILE_BORDER_WIDTH, TILE_BORDER, TILE_BORDER_FOCUSED) +
                 listOf(SCREEN_GAPS_OUT, SCREEN_BORDER_WIDTH, KEYBAR_GAPS_OUT, KEYBAR_BORDER_WIDTH, MONOCHROME_ICONS, ICON_PACK, CORNER_SCALE) +
-                listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_BUILT_IN, TERMINAL_FONT, TERMINAL_TEXT, TERMINAL_SUGGESTIONS, SWIPE_UP, SWIPE_DOWN)
+                listOf(STATUS_BAR_SHOWN) + STATUS_BAR.all + NAVIGATION_BAR.all + listOf(TERMINAL_BUILT_IN, TERMINAL_FONT, TERMINAL_TEXT, TERMINAL_SUGGESTIONS, KEYBOARD_BUTTON, SWIPE_UP, SWIPE_DOWN)
         }
 
     private val byKey = ALL.associateBy { it.key }

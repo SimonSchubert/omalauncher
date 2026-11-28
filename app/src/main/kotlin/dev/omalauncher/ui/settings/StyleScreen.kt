@@ -517,6 +517,8 @@ private fun TerminalSection(
     OptionHint(pluralStringResource(R.plurals.style_terminal_size, columns, TerminalFont.format(font.size).removeSuffix(".0"), columns), Modifier.padding(top = 2.dp))
     Flag(R.string.style_keyboard_suggestions, R.string.style_on, R.string.style_off, style, Style.TERMINAL_SUGGESTIONS)
     OptionHint(stringResource(R.string.style_keyboard_suggestions_hint), Modifier.padding(bottom = 4.dp))
+    Flag(R.string.style_keyboard_button, R.string.style_shown, R.string.style_hidden, style, Style.KEYBOARD_BUTTON)
+    OptionHint(stringResource(R.string.style_keyboard_button_hint), Modifier.padding(bottom = 4.dp))
     // A terminal's lines start at the left in every language.
     LeftToRight { TerminalPreview(font, launcherFont) }
 }

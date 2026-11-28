@@ -47,6 +47,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import dev.omalauncher.ui.ExtraKeys
 import dev.omalauncher.ui.ImagePicker
 import dev.omalauncher.ui.KeyboardSink
+import dev.omalauncher.theme.Style
+import dev.omalauncher.ui.LauncherStyle
 import dev.omalauncher.ui.LeftToRight
 import dev.omalauncher.ui.WidgetAsks
 import dev.omalauncher.ui.Mono
@@ -163,7 +165,7 @@ class LinuxWindowActivity : InstantActivity() {
                         },
                         modifier = Modifier.fillMaxSize(),
                     )
-                    KeyboardButton(Modifier.align(Alignment.BottomEnd)) { sink?.toggle() }
+                    if (LauncherStyle.style[Style.KEYBOARD_BUTTON]) KeyboardButton(Modifier.align(Alignment.BottomEnd)) { sink?.toggle() }
                 }
                 if (keyboard > 0) ExtraKeys(runtime, Modifier.background(Palette.background))
             }
@@ -346,7 +348,7 @@ private fun AppWindow(
                 // Over the SurfaceView, which Compose's pointer input doesn't reach.
                 // A tap on the prompt line brings the keyboard back, as the ⌨ button does.
                 Box(Modifier.fillMaxSize().linuxWindowInput(runtime.wm, window) { sink?.takeUnless { it.showing }?.show() })
-                KeyboardButton(Modifier.align(Alignment.BottomEnd)) { sink?.toggle() }
+                if (LauncherStyle.style[Style.KEYBOARD_BUTTON]) KeyboardButton(Modifier.align(Alignment.BottomEnd)) { sink?.toggle() }
             }
             // Below the window rather than over it, so the window shrinks and nothing hides behind the keys; only over a
             // docked keyboard (a hardware keyboard's toolbar takes no height, and that keyboard has these keys).
