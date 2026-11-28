@@ -129,7 +129,7 @@ fun ThemeCatalogScreen(
         }
         val q = query.trim().lowercase()
         val matched = catalog.entries.filter { q.isEmpty() || q in it.title.lowercase() || q in it.repo.label.lowercase() }
-        val shown = sortThemes(matched, sort, catalog.stats)
+        val shown = sortThemes(matched, sort)
         SearchField(query, { query = it }, onGo = { keyboard?.hide() }, placeholder = stringResource(R.string.store_theme_search, catalog.entries.size))
         Spacer(Modifier.height(8.dp))
         LazyVerticalGrid(
@@ -151,11 +151,6 @@ fun ThemeCatalogScreen(
                         items(ThemeSort.entries.toList(), key = { it.name }) { option ->
                             SortChip(option.label(), option == sort) { sort = option }
                         }
-                    }
-                    val sortLoading =
-                        if (sort != ThemeSort.LISTED && catalog.statsLoading) R.string.store_theme_sort_stats_loading else null
-                    if (sortLoading != null) {
-                        BasicText(stringResource(sortLoading), style = Mono.copy(color = Palette.muted, fontSize = TextSize.Small))
                     }
                     InstallStatus(store)
                     when {

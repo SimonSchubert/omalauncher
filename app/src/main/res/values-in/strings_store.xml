@@ -156,7 +156,6 @@
     <string name="store_theme_sort_listed">sesuai daftar</string>
     <string name="store_theme_sort_newest">terbaru</string>
     <string name="store_theme_sort_rating">rating</string>
-    <string name="store_theme_sort_stats_loading">mengambil data GitHub…</string>
     <string name="store_theme_in_use">✓ dipakai</string>
     <string name="store_theme_light">terang</string>
     <string name="store_theme_dark">gelap</string>

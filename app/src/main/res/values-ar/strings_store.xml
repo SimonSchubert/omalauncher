@@ -211,6 +211,10 @@
     <string name="store_theme_title">سمات المجتمع</string>
     <string name="store_theme_search">بحث: السمات (%1$d)</string>
     <string name="store_theme_header">من صنع المجتمع، مدرجة على omarchy.org/themes · التثبيت من GitHub</string>
+    <string name="store_theme_sort">ترتيب</string>
+    <string name="store_theme_sort_listed">كما في القائمة</string>
+    <string name="store_theme_sort_newest">الأحدث</string>
+    <string name="store_theme_sort_rating">التقييم</string>
     <string name="store_theme_in_use">✓ قيد الاستخدام</string>
     <!-- Under a theme's screenshot, with its colors: whether it is a light or a dark theme, how many wallpapers it has, and its download size. -->
     <string name="store_theme_light">فاتحة</string>

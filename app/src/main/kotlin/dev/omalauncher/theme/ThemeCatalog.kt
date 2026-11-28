@@ -7,9 +7,9 @@ import androidx.compose.runtime.setValue
 import dev.omalauncher.R
 import dev.omalauncher.net.httpGet
 import dev.omalauncher.upgrade.writeAtomically
+import dev.omalauncher.widgets.Market
 import dev.omalauncher.widgets.lang.sha256Hex
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
@@ -18,23 +18,6 @@ import java.time.Instant
 
 private const val TAG = "theme-catalog"
 
-/** GitHub's search query limit is 256 characters; leave room for percent-encoding and the API's own terms. */
-internal const val REPO_QUERY_LIMIT = 200
-
-/** GitHub's numbers for a theme, used to sort the catalog; null where they weren't available. */
-data class CatalogStats(
-    /** When its GitHub repo was created, as the theme's upload date. */
-    val created: Long? = null,
-    /** GitHub stars, as the community's rating. */
-    val stars: Long? = null,
-) {
-    internal fun mergedWith(other: CatalogStats) =
-        copy(
-            created = other.created ?: created,
-            stars = other.stars ?: stars,
-        )
-}
-
 /** The orders offered above the catalog grid. */
 internal enum class ThemeSort { LISTED, NEWEST, RATING }
 
@@ -42,26 +25,33 @@ internal enum class ThemeSort { LISTED, NEWEST, RATING }
 internal fun sortThemes(
     themes: List<CatalogTheme>,
     sort: ThemeSort,
-    stats: Map<String, CatalogStats>,
 ): List<CatalogTheme> {
     if (sort == ThemeSort.LISTED) return themes
     fun value(theme: CatalogTheme) =
-        stats[theme.repo.label.lowercase()]?.let { s ->
-            when (sort) {
-                ThemeSort.NEWEST -> s.created
-                ThemeSort.RATING -> s.stars
-                ThemeSort.LISTED -> null
-            }
+        when (sort) {
+            ThemeSort.NEWEST -> theme.created
+            ThemeSort.RATING -> theme.stars
+            ThemeSort.LISTED -> null
         }
     return themes.sortedWith(compareBy<CatalogTheme> { value(it) == null }.thenByDescending { value(it) ?: 0 })
 }
 
-/** A theme on omarchy.org/themes. */
+/** A theme on omarchy.org/themes, with what GitHub said about its repo; null where it didn't. */
 class CatalogTheme(
     val title: String,
     val repo: ThemeRepo,
     /** Its screenshot on omarchy.org, 1200x675. */
     val image: String,
+    /** When its GitHub repo was created, as the theme's upload date. */
+    val created: Long? = null,
+    /** GitHub stars, as the community's rating. */
+    val stars: Long? = null,
+    /** Its wallpapers' paths in the repo, in the order a theme shows them. */
+    val wallpapers: List<String>? = null,
+    /** About what installing it downloads: the size of its files. */
+    val bytes: Long? = null,
+    /** The file its colors come from, colors.toml or alacritty.toml; a guess of colors.toml when its files weren't read. */
+    val colorsFile: String? = "colors.toml",
 )
 
 /** What a catalog theme's repo holds, for its preview page; null where GitHub didn't say. */
@@ -76,39 +66,10 @@ class CatalogDetails(
     val isLight get() = colors?.get("mode") == "light"
 }
 
-/** A repo's files, from GitHub's tree of it: path to size. */
-internal class RepoFiles(
-    val sizes: Map<String, Long>,
-) {
-    /** The images in backgrounds/, which installing it brings along, by name like Omarchy orders them. */
-    val wallpapers get() =
-        sizes.keys
-            .filter { it.startsWith("backgrounds/") && '/' !in it.removePrefix("backgrounds/") && it.substringAfterLast('.').lowercase() in IMAGE_EXTENSIONS }
-            .sorted()
-
-    val bytes get() = sizes.values.sum()
-
-    /** The file its colors come from, as an installed theme reads them: colors.toml before alacritty.toml. */
-    val colorsFile get() = listOf("colors.toml", "alacritty.toml").firstOrNull { it in sizes }
-
-    companion object {
-        /** GitHub's `git/trees/HEAD?recursive=1` answer; only files count. */
-        fun parse(json: String): RepoFiles {
-            val tree = JSONObject(json).getJSONArray("tree")
-            val sizes = LinkedHashMap<String, Long>()
-            for (i in 0 until tree.length()) {
-                val e = tree.getJSONObject(i)
-                if (e.optString("type") == "blob") sizes[e.getString("path")] = e.optLong("size")
-            }
-            return RepoFiles(sizes)
-        }
-    }
-}
-
 /**
- * The community themes omarchy.org/themes lists. The site has no feed, so
- * this reads the page itself; the last copy that parsed is kept in [cacheDir]
- * for offline use, with the screenshots.
+ * The community themes omarchy.org/themes lists, from the widget store's themes.json: its CI reads the page and asks
+ * GitHub for each repo's stars, creation date and files every few hours, so one download has all of it. The last
+ * copy that parsed is kept in [cacheDir] for offline use, with the screenshots.
  */
 class ThemeCatalog(
     private val cacheDir: File,
@@ -119,116 +80,40 @@ class ThemeCatalog(
         private set
     var error by mutableStateOf<ThemeError?>(null)
         private set
-    /** Sort values by repo label, from GitHub and kept between runs. */
-    var stats by mutableStateOf<Map<String, CatalogStats>>(emptyMap())
-        private set
-    var statsLoading by mutableStateOf(false)
-        private set
 
-    private var statsSavedAt = 0L
-    private val page get() = File(cacheDir, "theme-catalog.html")
-    private val statsFile get() = File(cacheDir, "theme-catalog-stats.json")
+    private val cached get() = File(cacheDir, "theme-catalog.json")
     private val images get() = File(cacheDir, "theme-catalog")
 
-    /** Shows the cached list right away, then the page's current one. */
+    /** Shows the cached list right away, then the current one. */
     suspend fun refresh() {
         if (loading) return
         loading = true
         error = null
         try {
-            if (entries.isEmpty()) entries = withContext(Dispatchers.IO) { runCatching { parse(page.readText()) }.getOrDefault(emptyList()) }
-            val html = withContext(Dispatchers.IO) { String(httpGet(PAGE)) }
-            val parsed = parse(html)
-            // A redesign of the page would parse to nothing; keep what we had and say so.
+            if (entries.isEmpty()) entries = withContext(Dispatchers.IO) { readCached() }
+            val json = withContext(Dispatchers.IO) { String(httpGet(CATALOG)) }
+            val parsed = parse(json)
             if (parsed.isEmpty()) throw ThemeFailure(R.string.store_theme_page_changed)
-            val cached = withContext(Dispatchers.IO) { runCatching { readStats() }.getOrDefault(emptyMap()) }
             entries = parsed
-            stats = cached
-            withContext(Dispatchers.IO) { writeAtomically(page, html.toByteArray()) }
-            // Sorting is optional: a failed or rate-limited GitHub call keeps the cached numbers.
-            if (System.currentTimeMillis() - statsSavedAt > STATS_MAX_AGE || needsRepoStats(parsed)) {
-                statsLoading = true
-                val fresh =
-                    runCatching { withContext(Dispatchers.IO) { fetchRepoStats(parsed) } }
-                        .onFailure { Log.w(TAG, "no repo stats", it) }
-                        .getOrNull()
-                if (!fresh.isNullOrEmpty()) {
-                    val merged = mergeStats(stats, fresh)
-                    stats = merged
-                    withContext(Dispatchers.IO) { runCatching { writeStats(merged) }.onFailure { Log.w(TAG, "no stats cache", it) } }
-                }
+            withContext(Dispatchers.IO) {
+                writeAtomically(cached, json.toByteArray())
+                // Launchers before themes.json kept their own copy of omarchy.org/themes.
+                File(cacheDir, "theme-catalog.html").delete()
             }
         } catch (e: Exception) {
             Log.w(TAG, "refresh failed", e)
             error = if (e is ThemeFailure) ThemeError(e.reason) else ThemeError(null, e.message ?: e.toString())
         } finally {
-            statsLoading = false
             loading = false
         }
     }
 
-    private fun mergeStats(
-        old: Map<String, CatalogStats>,
-        new: Map<String, CatalogStats>,
-    ): Map<String, CatalogStats> = old + new.mapValues { (key, value) -> old[key]?.mergedWith(value) ?: value }
+    private fun readCached() = runCatching { parse(cached.readText()) }.getOrDefault(emptyList())
 
-    private fun needsRepoStats(themes: List<CatalogTheme>) =
-        themes.any { theme ->
-            val s = stats[theme.repo.label.lowercase()]
-            s?.created == null || s.stars == null
-        }
-
-    /** Repo creation dates and stars, in as few GitHub search calls as its 256-character query allows. */
-    private suspend fun fetchRepoStats(themes: List<CatalogTheme>): Map<String, CatalogStats> {
-        val out = LinkedHashMap<String, CatalogStats>()
-        val queries = repoQueries(themes.map { it.repo }.distinctBy { it.label.lowercase() })
-        for ((i, query) in queries.withIndex()) {
-            // GitHub allows ten unauthenticated search calls a minute; stay inside that without
-            // holding up the catalog, which already shows the cached entries and numbers.
-            if (i > 0) delay(GITHUB_SEARCH_INTERVAL)
-            val encoded = URLEncoder.encode(query, "UTF-8")
-            val answer =
-                runCatching { String(httpGet("https://api.github.com/search/repositories?q=$encoded&per_page=100")) }
-                    .onFailure { Log.w(TAG, "no repo stats for $query", it) }
-                    .getOrNull() ?: continue
-            out += parseRepoStats(answer)
-        }
-        return out
-    }
-
-    private fun readStats(): Map<String, CatalogStats> {
-        val json = JSONObject(statsFile.readText())
-        statsSavedAt = json.optLong("saved", 0L)
-        val repos = json.optJSONObject("repos") ?: return emptyMap()
-        val out = LinkedHashMap<String, CatalogStats>()
-        for (key in repos.keys()) {
-            val o = repos.getJSONObject(key)
-            out[key] =
-                CatalogStats(
-                    created = o.optLong("created", -1L).takeIf { it >= 0 },
-                    stars = o.optLong("stars", -1L).takeIf { it >= 0 },
-                )
-        }
-        return out
-    }
-
-    private fun writeStats(stats: Map<String, CatalogStats>) {
-        val now = System.currentTimeMillis()
-        val repos = JSONObject()
-        stats.forEach { (key, value) ->
-            val o = JSONObject()
-            value.created?.let { o.put("created", it) }
-            value.stars?.let { o.put("stars", it) }
-            repos.put(key, o)
-        }
-        writeAtomically(statsFile, JSONObject().put("saved", now).put("repos", repos).toString().toByteArray())
-        statsSavedAt = now
-    }
-
-    /** The entry for [repo], from the cached page when the catalog wasn't opened since the launcher started. */
+    /** The entry for [repo], from the cached catalog when it wasn't opened since the launcher started. */
     fun entryFor(repo: ThemeRepo): CatalogTheme? =
         entries
-            .ifEmpty { runCatching { parse(page.readText()) }.getOrDefault(emptyList()) }
+            .ifEmpty { readCached() }
             .firstOrNull { it.repo.label.equals(repo.label, ignoreCase = true) }
 
     private val wallpapers get() = File(cacheDir, "theme-wallpapers")
@@ -266,93 +151,58 @@ class ThemeCatalog(
 
     private val details = HashMap<String, CatalogDetails>()
 
-    /**
-     * [theme]'s palette, wallpaper count and size, from GitHub: one API call for the repo's files (60 an hour without
-     * a login, so only on the preview page) and its colors file. Kept until the launcher restarts.
-     */
+    /** [theme]'s palette, from its colors file on GitHub, with its wallpapers and size from the catalog. Kept until the launcher restarts. */
     suspend fun details(theme: CatalogTheme): CatalogDetails =
         withContext(Dispatchers.IO) {
             val key = theme.repo.label.lowercase()
             synchronized(details) { details[key] }?.let { return@withContext it }
             val repo = theme.repo
-            val files =
-                runCatching { RepoFiles.parse(String(httpGet("https://api.github.com/repos/${repo.owner}/${repo.repo}/git/trees/HEAD?recursive=1"))) }
-                    .onFailure { Log.w(TAG, "no file list for ${theme.title}", it) }
-                    .getOrNull()
-            // Without the list, colors.toml is the likely one.
-            val colorsFile = if (files != null) files.colorsFile else "colors.toml"
             val colors =
-                colorsFile?.let { name ->
+                theme.colorsFile?.let { name ->
                     runCatching {
                         val text = String(httpGet("https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/HEAD/$name"))
                         if (name == "colors.toml") ThemeColors.resolve(ThemeColors.parse(text)) else ThemeColors.fromAlacritty(text)?.let(ThemeColors::resolve)
                     }.onFailure { Log.w(TAG, "no colors for ${theme.title}", it) }.getOrNull()
                 }
-            val out = CatalogDetails(colors, files?.wallpapers, files?.bytes)
+            val out = CatalogDetails(colors, theme.wallpapers, theme.bytes)
             // Only a full answer is kept, so a failed call is tried again next time.
-            if (files != null && (colors != null || colorsFile == null)) synchronized(details) { details[key] = out }
+            if (colors != null || theme.colorsFile == null) synchronized(details) { details[key] = out }
             out
         }
 
     companion object {
         const val PAGE = "https://omarchy.org/themes/"
+        private const val CATALOG = Market.BASE + "themes.json"
         private const val SITE = "https://omarchy.org"
-        private const val GITHUB_SEARCH_INTERVAL = 6_000L
-        private const val STATS_MAX_AGE = 24 * 60 * 60 * 1000L
         private val SAFE_FILE = Regex("^[A-Za-z0-9_-][A-Za-z0-9._-]*$")
+        private val COLORS_FILES = setOf("colors.toml", "alacritty.toml")
 
-        /** An entry: `<li><a href="repo"><img src="/assets/themes/x.webp" …/><span …>Title</span></a></li>`. */
-        private val ENTRY = Regex("""<li><a href="(https://github\.com/[^"]+)"[^>]*><img src="([^"]+)"[^>]*/?><span[^>]*>([^<]+)</span></a></li>""")
+        /** themes.json (the widget store's tools/themes.py); an entry it can't read is left out, not the rest. */
+        fun parse(json: String): List<CatalogTheme> {
+            val themes = JSONObject(json).getJSONArray("themes")
+            return (0 until themes.length())
+                .mapNotNull { i -> runCatching { entry(themes.getJSONObject(i)) }.getOrNull() }
+                .distinctBy { it.repo.label.lowercase() }
+        }
 
-        fun parse(html: String): List<CatalogTheme> =
-            ENTRY
-                .findAll(html)
-                .mapNotNull { m ->
-                    val (href, src, title) = m.destructured
-                    val repo = ThemeRepo.parse(href) ?: return@mapNotNull null
-                    val image = if (src.startsWith("/") && !src.startsWith("//")) SITE + src else return@mapNotNull null
-                    CatalogTheme(unescape(title.trim()), repo, image)
-                }.distinctBy { it.repo.label.lowercase() }
-                .toList()
-
-        private fun unescape(s: String) =
-            s
-                .replace("&#39;", "'")
-                .replace("&#x27;", "'")
-                .replace("&quot;", "\"")
-                .replace("&lt;", "<")
-                .replace("&gt;", ">")
-                .replace("&amp;", "&")
-    }
-}
-
-/** `repo:` search terms for [repos], short enough for GitHub's 256-character query limit. */
-internal fun repoQueries(repos: List<ThemeRepo>): List<String> {
-    val out = ArrayList<String>()
-    var current = ""
-    for (repo in repos) {
-        val term = "repo:${repo.owner}/${repo.repo}"
-        val next = if (current.isEmpty()) term else "$current $term"
-        if (next.length > REPO_QUERY_LIMIT) {
-            if (current.isNotEmpty()) out += current
-            current = term
-        } else {
-            current = next
+        private fun entry(o: JSONObject): CatalogTheme? {
+            val repo = ThemeRepo.parse(o.getString("repo")) ?: return null
+            // Only omarchy.org's own screenshots.
+            val image = o.getString("image").takeIf { it.startsWith("$SITE/") } ?: return null
+            // "bytes" says its files were read; without it, its wallpapers and colors file are unknown.
+            val read = o.has("bytes")
+            val wallpapers =
+                o.optJSONArray("wallpapers")?.let { a -> (0 until a.length()).map { a.getString(it) } }
+            return CatalogTheme(
+                title = o.getString("title").trim(),
+                repo = repo,
+                image = image,
+                created = o.optString("created").takeIf { it.isNotEmpty() }?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() },
+                stars = if (o.has("stars")) o.getLong("stars") else null,
+                wallpapers = if (read) wallpapers.orEmpty() else null,
+                bytes = if (read) o.getLong("bytes") else null,
+                colorsFile = if (read) o.optString("colors").takeIf { it in COLORS_FILES } else "colors.toml",
+            )
         }
     }
-    if (current.isNotEmpty()) out += current
-    return out
-}
-
-/** GitHub's repository search answer, by `github.com/owner/repo`. */
-internal fun parseRepoStats(json: String): Map<String, CatalogStats> {
-    val items = JSONObject(json).optJSONArray("items") ?: return emptyMap()
-    val out = LinkedHashMap<String, CatalogStats>()
-    for (i in 0 until items.length()) {
-        val item = items.getJSONObject(i)
-        val name = item.optString("full_name").takeIf { it.isNotEmpty() } ?: continue
-        val created = item.optString("created_at").takeIf { it.isNotEmpty() }?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
-        out["github.com/${name.lowercase()}"] = CatalogStats(created = created, stars = item.optLong("stargazers_count", -1L).takeIf { it >= 0 })
-    }
-    return out
 }

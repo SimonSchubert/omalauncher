@@ -155,7 +155,6 @@
     <string name="store_theme_sort_listed">掲載順</string>
     <string name="store_theme_sort_newest">新しい順</string>
     <string name="store_theme_sort_rating">評価</string>
-    <string name="store_theme_sort_stats_loading">GitHub の情報を取得中…</string>
     <string name="store_theme_in_use">✓ 使用中</string>
     <string name="store_theme_light">ライト</string>
     <string name="store_theme_dark">ダーク</string>

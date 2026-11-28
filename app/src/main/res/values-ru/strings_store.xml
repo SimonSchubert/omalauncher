@@ -161,7 +161,6 @@
     <string name="store_theme_sort_listed">как в списке</string>
     <string name="store_theme_sort_newest">новые</string>
     <string name="store_theme_sort_rating">рейтинг</string>
-    <string name="store_theme_sort_stats_loading">получаем данные GitHub…</string>
     <string name="store_theme_in_use">✓ используется</string>
     <string name="store_theme_light">светлая</string>
     <string name="store_theme_dark">тёмная</string>

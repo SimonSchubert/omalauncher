@@ -156,7 +156,6 @@
     <string name="store_theme_sort_listed">默认顺序</string>
     <string name="store_theme_sort_newest">最新</string>
     <string name="store_theme_sort_rating">评分</string>
-    <string name="store_theme_sort_stats_loading">正在获取 GitHub 信息…</string>
     <string name="store_theme_in_use">✓ 使用中</string>
     <string name="store_theme_light">浅色</string>
     <string name="store_theme_dark">深色</string>

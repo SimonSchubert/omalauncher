@@ -160,7 +160,6 @@
     <string name="store_theme_sort_listed">como listados</string>
     <string name="store_theme_sort_newest">mais recentes</string>
     <string name="store_theme_sort_rating">avaliação</string>
-    <string name="store_theme_sort_stats_loading">a buscar informações do GitHub…</string>
     <string name="store_theme_in_use">✓ em uso</string>
     <string name="store_theme_light">claro</string>
     <string name="store_theme_dark">escuro</string>
