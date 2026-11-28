@@ -59,7 +59,7 @@ JNIEXPORT jint JNICALL FN(accept)(JNIEnv *env, jclass cls, jint fd) {
 JNIEXPORT jint JNICALL FN(recv)(JNIEnv *env, jclass cls, jint fd, jobject jbuf, jint off, jintArray jfds) {
     uint8_t *buf = (*env)->GetDirectBufferAddress(env, jbuf);
     jlong cap = (*env)->GetDirectBufferCapacity(env, jbuf);
-    if (!buf || off >= cap) return -ENOBUFS;
+    if (!buf || off < 0 || off >= cap) return -ENOBUFS;
     char cbuf[CMSG_SPACE(sizeof(int) * MAX_FDS)];
     struct iovec iov = {.iov_base = buf + off, .iov_len = (size_t) (cap - off)};
     struct msghdr msg = {.msg_iov = &iov, .msg_iovlen = 1, .msg_control = cbuf, .msg_controllen = sizeof(cbuf)};
