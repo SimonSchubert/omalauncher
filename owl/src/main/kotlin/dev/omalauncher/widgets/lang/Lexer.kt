@@ -25,8 +25,26 @@ class Source(
 
     fun format(e: CompileError): String {
         val (line, col) = lineCol(e.pos)
-        val src = text.lines().getOrElse(line - 1) { "" }
-        return "$line:$col: ${e.message}\n  ${src.trimEnd()}\n  ${" ".repeat((col - 1).coerceAtLeast(0))}^"
+        val full = text.lines().getOrElse(line - 1) { "" }.trimEnd()
+        // Keep the message small even when a line is huge (a widget from a link can be one line of a megabyte):
+        // show only a window around the caret, so the error never becomes a giant string for the UI to lay out.
+        val caret = (col - 1).coerceIn(0, full.length)
+        val (src, mark) =
+            if (full.length <= MAX_LINE) {
+                full to caret
+            } else {
+                val start = (caret - MAX_LINE / 2).coerceIn(0, full.length - MAX_LINE)
+                val end = (start + MAX_LINE).coerceAtMost(full.length)
+                val head = if (start > 0) "…" else ""
+                val tail = if (end < full.length) "…" else ""
+                (head + full.substring(start, end) + tail) to (caret - start + head.length)
+            }
+        return "$line:$col: ${e.message}\n  $src\n  ${" ".repeat(mark.coerceIn(0, src.length))}^"
+    }
+
+    companion object {
+        /** Longest offending line [format] prints in full; a longer one is windowed around the caret. */
+        const val MAX_LINE = 120
     }
 }
 
