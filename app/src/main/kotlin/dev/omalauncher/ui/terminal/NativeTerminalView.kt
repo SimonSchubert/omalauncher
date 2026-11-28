@@ -24,6 +24,7 @@ import android.widget.OverScroller
 import androidx.core.graphics.withScale
 import androidx.core.graphics.withTranslation
 import androidx.core.net.toUri
+import dev.omalauncher.LogText
 import dev.omalauncher.system.postLinuxNotification
 import dev.omalauncher.terminal.Cells
 import dev.omalauncher.terminal.TerminalKeyboard
@@ -1014,7 +1015,7 @@ class NativeTerminalView(
 
     private fun open(url: String) {
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            .onFailure { Log.w(TAG, "can't open $url", it) }
+            .onFailure { Log.w(TAG, "can't open ${LogText.url(url)}", it) }
     }
 
     // Last, once every field above has its value: measuring fills the paints glyphs are drawn with.

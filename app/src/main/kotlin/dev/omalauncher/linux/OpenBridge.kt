@@ -3,6 +3,7 @@ package dev.omalauncher.linux
 import android.content.Context
 import android.system.Os
 import android.util.Log
+import dev.omalauncher.LogText
 import dev.omalauncher.system.openUrl
 import dev.omalauncher.upgrade.Managed
 import dev.omalauncher.upgrade.Policy
@@ -61,10 +62,10 @@ class OpenBridge(
             return onEdit(path, proot.guestFile(reply)?.path ?: return)
         }
         if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            Log.i(TAG, "ignoring non-URL $url")
+            Log.i(TAG, "ignoring non-URL ${LogText.url(url)}")
             return
         }
-        if (!context.openUrl(url)) Log.w(TAG, "no browser for $url")
+        if (!context.openUrl(url)) Log.w(TAG, "no browser for ${LogText.url(url)}")
     }
 
     /** The shims; /usr/local/bin precedes /usr/bin, so xdg-open wins over xdg-utils if that's installed. */
