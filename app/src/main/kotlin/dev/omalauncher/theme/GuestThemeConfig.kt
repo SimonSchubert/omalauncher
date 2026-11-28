@@ -231,14 +231,33 @@ private const val OS_AGE_I18N = "omarchy-i18n --count \\\"\$days\\\" about.days 
 /** Omarchy 4.5's Uptime line: a command reading /proc/uptime, which Android denies apps, worded with omarchy-i18n. */
 private val UPTIME_COMMAND = Regex(""""type": "command",(\s*"key": "[^"]*Uptime",\s*"keyColor": "[^"]*"),\s*"text": "[^\n]*omarchy-i18n[^\n]*""")
 
+/** The Software box's first line, which says "Omarchy" and its version: only when omarchy-version is there. */
+private val OS_COMMAND = Regex(""""type": "command",(\s*"key": "[^"]*OS",\s*"keyColor": "[^"]*"),\s*"text": "[^\n]*omarchy-version\)[^\n]*""")
+
+/** The lines for Omarchy's branch, its channel and its last update: three commands the guest doesn't have. */
+private val VERSION_LINES = Regex("""\{\s*"type": "command",[^{}]*"text": "[^\n]*omarchy-version-(branch|channel|pkgs)[^\n]*\s*\},?\s*""")
+
+/** /var/log's birth time, which proot reports as 0: OS Age said 20785 days. */
+private const val INSTALLED_BIRTH = "\$(stat -c %W /var/log)"
+
+/** The time of pacman's first log line instead, which setup writes: `[2026-11-28T13:00:47+0100] [PACMAN] ...`. */
+private const val INSTALLED_PACMAN = "\$(date -d \\\"\$(head -n1 /var/log/pacman.log | cut -c2-25)\\\" +%s)"
+
 /**
  * Omarchy's fastfetch config, made to fit the guest. In portrait the
  * side-by-side logo leaves ~20 columns for the info, so it goes on top.
  * omarchy-i18n isn't in the guest: OS Age says its days in English, and
- * Uptime is fastfetch's own again, as before 4.5.
+ * Uptime is fastfetch's own again, as before 4.5. Nor are Omarchy's other
+ * commands: the OS line is fastfetch's own, the theme's name is read from
+ * where [GuestThemeConfig] writes it, and the lines about Omarchy's version
+ * go, where they printed "command not found".
  */
 internal fun guestFastfetch(config: String): String =
     config
         .replaceFirst("\"type\": \"file\",", "\"type\": \"file\",\n    \"position\": \"top\",")
         .replace(OS_AGE_I18N, "echo \\\"\$days days\\\"")
         .replace(UPTIME_COMMAND, "\"type\": \"uptime\",$1")
+        .replace(OS_COMMAND, "\"type\": \"os\",$1")
+        .replace(VERSION_LINES, "")
+        .replace("\$(omarchy-theme-current)", "\$(cat ~/.local/state/omarchy/current/theme.name)")
+        .replace(INSTALLED_BIRTH, INSTALLED_PACMAN)
